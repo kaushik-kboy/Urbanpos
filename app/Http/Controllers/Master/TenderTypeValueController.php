@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\TenderType;
@@ -10,9 +12,12 @@ use Illuminate\Http\Request;
 
 class TenderTypeValueController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $tenderTypeValues = TenderTypeValue::with(['tenderType', 'branch'])->orderBy('name')->paginate(20);
+        $tenderTypeValues = TenderTypeValue::with(['tenderType', 'branch'])->orderBy('name')->paginate($this->perPage());
 
         return view('master.tender-type-values.index', compact('tenderTypeValues'));
     }
@@ -65,5 +70,40 @@ class TenderTypeValueController extends Controller
             'group_ledger' => ['nullable', 'string', 'max:255'],
             'branch_id' => ['nullable', 'exists:branches,id'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return TenderTypeValue::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+            'Group Ledger' => ['column' => 'group_ledger'],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['tender_type_id', 'name'];
+    }
+
+    protected function importRelations(): array
+    {
+        return [
+            'Tender Type' => function (string $v) {
+                if ($v === '') {
+                    return ['__error' => 'Tender Type is required.'];
+                }
+
+                return ['tender_type_id' => TenderType::firstOrCreate(['name' => $v], ['status' => true, 'type' => 'Cash', 'mode' => 'Manual', 'service_applicable' => false, 'mandate_refno' => false, 'service_charge_perc' => 0])->id];
+            },
+
+            'Branch' => fn (string $v) => $v === '' ? ['branch_id' => null]
+                : ['branch_id' => Branch::firstOrCreate(['name' => $v], ['language' => 'English', 'business_type' => 'BRANCH', 'webstore' => false, 'country_code' => 'IN', 'enable_thirdparty_loyalty' => false, 'gst_type' => 'Un Register', 'gst_filing' => 'Monthly', 'status' => true])->id],
+        ];
     }
 }

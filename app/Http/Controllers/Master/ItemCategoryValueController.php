@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\ItemCategory;
 use App\Models\ItemCategoryValue;
@@ -9,9 +11,12 @@ use Illuminate\Http\Request;
 
 class ItemCategoryValueController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $itemCategoryValues = ItemCategoryValue::with('itemCategory')->orderBy('name')->paginate(20);
+        $itemCategoryValues = ItemCategoryValue::with('itemCategory')->orderBy('name')->paginate($this->perPage());
 
         return view('master.item-category-values.index', compact('itemCategoryValues'));
     }
@@ -63,5 +68,41 @@ class ItemCategoryValueController extends Controller
             'sellquick_applicable' => ['required', 'boolean'],
             'allowed_qty_ml' => ['nullable', 'integer'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return ItemCategoryValue::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Show In Webstore' => ['column' => 'show_in_webstore', 'cast' => fn ($v) => $this->importBool($v)],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+            'Sellquick Applicable' => ['column' => 'sellquick_applicable', 'cast' => fn ($v) => $this->importBool($v)],
+            'Allowed Qty Ml' => ['column' => 'allowed_qty_ml', 'cast' => fn ($v) => (int) $v],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['item_category_id', 'name'];
+    }
+
+    protected function importRelations(): array
+    {
+        return [
+            'Item Category' => function (string $value) {
+                if ($value === '') {
+                    return ['__error' => 'Item Category is required.'];
+                }
+
+                $category = ItemCategory::firstOrCreate(['name' => $value], ['is_mandatory' => false, 'status' => true]);
+
+                return ['item_category_id' => $category->id];
+            },
+        ];
     }
 }

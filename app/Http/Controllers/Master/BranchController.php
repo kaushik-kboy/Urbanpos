@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $branches = Branch::orderBy('name')->paginate(20);
+        $branches = Branch::orderBy('name')->paginate($this->perPage());
 
         return view('master.branches.index', compact('branches'));
     }
@@ -80,5 +85,49 @@ class BranchController extends Controller
             'gst_filing' => ['required', 'in:Monthly,Quarterly'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Branch::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Address Line1' => ['column' => 'address_line1'],
+            'Address Line2' => ['column' => 'address_line2'],
+            'City' => ['column' => 'city'],
+            'Postal Code' => ['column' => 'postal_code'],
+            'State' => ['column' => 'state'],
+            'Country' => ['column' => 'country'],
+            'Contact Person' => ['column' => 'contact_person'],
+            'Phone' => ['column' => 'phone'],
+            'Email' => ['column' => 'email'],
+            'Mobile' => ['column' => 'mobile'],
+            'Language' => ['column' => 'language'],
+            'Area Code' => ['column' => 'area_code'],
+            'Circle Code' => ['column' => 'circle_code'],
+            'Business Type' => ['column' => 'business_type'],
+            'Webstore' => ['column' => 'webstore', 'cast' => fn ($v) => $this->importBool($v)],
+            'ERP Code' => ['column' => 'erp_code'],
+            'Country Code' => ['column' => 'country_code'],
+            'License Id' => ['column' => 'license_id'],
+            'CST' => ['column' => 'cst'],
+            'Website Link' => ['column' => 'website_link'],
+            'Social Media Link' => ['column' => 'social_media_link'],
+            'Enable Thirdparty Loyalty' => ['column' => 'enable_thirdparty_loyalty', 'cast' => fn ($v) => $this->importBool($v)],
+            'GST No' => ['column' => 'gst_no'],
+            'PAN No' => ['column' => 'pan_no'],
+            'GST Type' => ['column' => 'gst_type'],
+            'GST Filing' => ['column' => 'gst_filing'],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name'];
     }
 }

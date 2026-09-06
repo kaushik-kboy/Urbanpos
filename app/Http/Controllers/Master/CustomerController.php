@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Area;
 use App\Models\Branch;
@@ -14,9 +16,12 @@ use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $customers = Customer::with('category')->orderBy('name')->paginate(20);
+        $customers = Customer::with('category')->orderBy('name')->paginate($this->perPage());
 
         return view('master.customers.index', compact('customers'));
     }
@@ -145,5 +150,67 @@ class CustomerController extends Controller
             'exempted_reason' => ['nullable', 'string', 'max:255'],
             'customer_type' => ['required', 'in:RETAIL INVOICE,TAX INVOICE,EXEMPTED,E-COMMERCE'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Customer::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Title' => ['column' => 'title'],
+            'Name' => ['column' => 'name', 'required' => true],
+            'Customer Code' => ['column' => 'customer_code', 'required' => true],
+            'Sales Type' => ['column' => 'sales_type'],
+            'Payment Mode' => ['column' => 'payment_mode'],
+            'Credit Limit' => ['column' => 'credit_limit', 'cast' => fn ($v) => $this->importDecimal($v)],
+            'Credit Balance' => ['column' => 'credit_balance', 'cast' => fn ($v) => $this->importDecimal($v)],
+            'Monthly Credit Balance' => ['column' => 'monthly_credit_balance', 'cast' => fn ($v) => $this->importDecimal($v)],
+            'Credit Days' => ['column' => 'credit_days', 'cast' => fn ($v) => (int) $v],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+            'Sales Formula' => ['column' => 'sales_formula'],
+            'GST Type' => ['column' => 'gst_type'],
+            'SMS Consent' => ['column' => 'sms_consent', 'cast' => fn ($v) => $this->importBool($v)],
+            'Address1' => ['column' => 'address1'],
+            'City' => ['column' => 'city'],
+            'State' => ['column' => 'state'],
+            'Country' => ['column' => 'country'],
+            'Postal Code' => ['column' => 'postal_code'],
+            'Std Code' => ['column' => 'std_code'],
+            'Phone' => ['column' => 'phone'],
+            'Email' => ['column' => 'email'],
+            'Remarks' => ['column' => 'remarks'],
+            'GST No' => ['column' => 'gst_no'],
+            'Aadhar No' => ['column' => 'aadhar_no'],
+            'PAN No' => ['column' => 'pan_no'],
+            'Mobile' => ['column' => 'mobile'],
+            'Gender' => ['column' => 'gender'],
+            'Exempted Reason' => ['column' => 'exempted_reason'],
+            'Customer Type' => ['column' => 'customer_type'],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['customer_code'];
+    }
+
+    protected function importRelations(): array
+    {
+        return [
+            'Customer Category' => fn (string $v) => $v === '' ? ['customer_category_id' => null]
+                : ['customer_category_id' => CustomerCategory::firstOrCreate(['name' => $v], [
+                    'app_access' => false, 'enable_loyalty' => false, 'discount_percent' => 0,
+                    'business_type' => 'ALL', 'status' => true,
+                ])->id],
+
+            'Branch' => fn (string $v) => $v === '' ? ['branch_id' => null]
+                : ['branch_id' => Branch::firstOrCreate(['name' => $v], ['language' => 'English', 'business_type' => 'BRANCH', 'webstore' => false, 'country_code' => 'IN', 'enable_thirdparty_loyalty' => false, 'gst_type' => 'Un Register', 'gst_filing' => 'Monthly', 'status' => true])->id],
+
+            'Area' => fn (string $v) => $v === '' ? ['area_id' => null]
+                : ['area_id' => Area::firstOrCreate(['name' => $v])->id],
+        ];
     }
 }

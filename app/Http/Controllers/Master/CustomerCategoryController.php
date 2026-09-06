@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerCategory;
 use Illuminate\Http\Request;
 
 class CustomerCategoryController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $customerCategories = CustomerCategory::orderBy('name')->paginate(20);
+        $customerCategories = CustomerCategory::orderBy('name')->paginate($this->perPage());
 
         return view('master.customer-categories.index', compact('customerCategories'));
     }
@@ -58,5 +63,27 @@ class CustomerCategoryController extends Controller
             'business_type' => ['required', 'in:ALL,COCO,FRANCHISE,BRANCH,DISTRIBUTION CENTER,SERVICE UNIT,FOFO,ASP'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return CustomerCategory::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'App Access' => ['column' => 'app_access', 'cast' => fn ($v) => $this->importBool($v)],
+            'Enable Loyalty' => ['column' => 'enable_loyalty', 'cast' => fn ($v) => $this->importBool($v)],
+            'Discount Percent' => ['column' => 'discount_percent', 'cast' => fn ($v) => $this->importDecimal($v)],
+            'Business Type' => ['column' => 'business_type'],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name'];
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Register;
@@ -9,9 +11,12 @@ use Illuminate\Http\Request;
 
 class RegisterController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $registers = Register::with('branch')->orderBy('name')->paginate(20);
+        $registers = Register::with('branch')->orderBy('name')->paginate($this->perPage());
 
         return view('master.registers.index', compact('registers'));
     }
@@ -65,5 +70,41 @@ class RegisterController extends Controller
             'online_sales_allowed' => ['required', 'boolean'],
             'register_prefix' => ['nullable', 'string', 'max:50'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Register::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Status' => ['column' => 'status'],
+            'Product Type' => ['column' => 'product_type'],
+            'Inv Seq No' => ['column' => 'inv_seq_no', 'cast' => fn ($v) => (int) $v],
+            'Device Id' => ['column' => 'device_id'],
+            'Online Sales Allowed' => ['column' => 'online_sales_allowed', 'cast' => fn ($v) => $this->importBool($v)],
+            'Register Prefix' => ['column' => 'register_prefix'],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['branch_id', 'name'];
+    }
+
+    protected function importRelations(): array
+    {
+        return [
+            'Branch' => function (string $v) {
+                if ($v === '') {
+                    return ['__error' => 'Branch is required.'];
+                }
+
+                return ['branch_id' => Branch::firstOrCreate(['name' => $v], ['language' => 'English', 'business_type' => 'BRANCH', 'webstore' => false, 'country_code' => 'IN', 'enable_thirdparty_loyalty' => false, 'gst_type' => 'Un Register', 'gst_filing' => 'Monthly', 'status' => true])->id];
+            },
+        ];
     }
 }

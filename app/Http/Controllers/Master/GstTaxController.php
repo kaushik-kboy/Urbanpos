@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\GstTax;
 use Illuminate\Http\Request;
 
 class GstTaxController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $gstTaxes = GstTax::orderBy('description')->paginate(20);
+        $gstTaxes = GstTax::orderBy('description')->paginate($this->perPage());
 
         return view('master.gst-taxes.index', compact('gstTaxes'));
     }
@@ -55,5 +60,24 @@ class GstTaxController extends Controller
             'percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return GstTax::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Description' => ['column' => 'description', 'required' => true],
+            'Percentage' => ['column' => 'percentage', 'cast' => fn ($v) => $this->importDecimal($v)],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['description'];
     }
 }

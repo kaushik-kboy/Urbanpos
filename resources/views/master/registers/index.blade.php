@@ -11,8 +11,11 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
+    @include('master.partials.import-result')
+
     <div class="card card-primary card-outline">
         <div class="card-header">
+            <x-import-button :import-route="route('master.registers.import')" :sample-route="route('master.registers.import-sample')" title="Register" />
             <a href="{{ route('master.registers.create') }}" class="btn btn-primary btn-sm float-right">
                 <i class="fas fa-plus"></i> Add Register
             </a>
@@ -52,6 +55,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer">{{ $registers->links() }}</div>
+        <div class="card-footer d-flex justify-content-between align-items-center flex-wrap">
+            <x-per-page-select :current="$registers->perPage()" />
+            {{ $registers->appends(request()->query())->links() }}
+        </div>
     </div>
 @stop

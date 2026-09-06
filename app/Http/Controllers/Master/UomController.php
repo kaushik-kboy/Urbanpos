@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Uom;
 use Illuminate\Http\Request;
 
 class UomController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $uoms = Uom::orderBy('name')->paginate(20);
+        $uoms = Uom::orderBy('name')->paginate($this->perPage());
 
         return view('master.uoms.index', compact('uoms'));
     }
@@ -54,5 +59,23 @@ class UomController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'alias' => ['nullable', 'string', 'max:50'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Uom::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Alias' => ['column' => 'alias'],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name'];
     }
 }

@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\ItemCategory;
 use Illuminate\Http\Request;
 
 class ItemCategoryController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $itemCategories = ItemCategory::orderBy('name')->paginate(20);
+        $itemCategories = ItemCategory::orderBy('name')->paginate($this->perPage());
 
         return view('master.item-categories.index', compact('itemCategories'));
     }
@@ -55,5 +60,24 @@ class ItemCategoryController extends Controller
             'is_mandatory' => ['required', 'boolean'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return ItemCategory::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Is Mandatory' => ['column' => 'is_mandatory', 'cast' => fn ($v) => $this->importBool($v)],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name'];
     }
 }

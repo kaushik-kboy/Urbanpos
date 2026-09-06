@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Color;
 use Illuminate\Http\Request;
 
 class ColorController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $colors = Color::orderBy('name')->paginate(20);
+        $colors = Color::orderBy('name')->paginate($this->perPage());
 
         return view('master.colors.index', compact('colors'));
     }
@@ -54,5 +59,23 @@ class ColorController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Color::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name'];
     }
 }

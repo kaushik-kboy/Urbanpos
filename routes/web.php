@@ -40,25 +40,31 @@ Auth::routes();
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
 Route::middleware('auth')->prefix('master')->name('master.')->group(function () {
-    Route::resource('item-categories', ItemCategoryController::class);
-    Route::resource('item-category-values', ItemCategoryValueController::class);
-    Route::resource('brands', BrandController::class);
-    Route::resource('uoms', UomController::class);
-    Route::resource('items', ItemController::class);
+    $masterResources = [
+        'item-categories' => ItemCategoryController::class,
+        'item-category-values' => ItemCategoryValueController::class,
+        'brands' => BrandController::class,
+        'uoms' => UomController::class,
+        'items' => ItemController::class,
+        'customer-categories' => CustomerCategoryController::class,
+        'customers' => CustomerController::class,
+        'areas' => AreaController::class,
+        'pet-types' => PetTypeController::class,
+        'breeds' => BreedController::class,
+        'colors' => ColorController::class,
+        'suppliers' => SupplierController::class,
+        'gst-taxes' => GstTaxController::class,
+        'branches' => BranchController::class,
+        'registers' => RegisterController::class,
+        'tender-types' => TenderTypeController::class,
+        'tender-type-values' => TenderTypeValueController::class,
+    ];
 
-    Route::resource('customer-categories', CustomerCategoryController::class);
-    Route::resource('customers', CustomerController::class);
-    Route::resource('areas', AreaController::class);
-    Route::resource('pet-types', PetTypeController::class);
-    Route::resource('breeds', BreedController::class);
-    Route::resource('colors', ColorController::class);
-
-    Route::resource('suppliers', SupplierController::class);
-    Route::resource('gst-taxes', GstTaxController::class);
-    Route::resource('branches', BranchController::class);
-    Route::resource('registers', RegisterController::class);
-    Route::resource('tender-types', TenderTypeController::class);
-    Route::resource('tender-type-values', TenderTypeValueController::class);
+    foreach ($masterResources as $uri => $controller) {
+        Route::resource($uri, $controller);
+        Route::post("{$uri}/import", [$controller, 'import'])->name("{$uri}.import");
+        Route::get("{$uri}/import/sample", [$controller, 'importSample'])->name("{$uri}.import-sample");
+    }
 });
 
 Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () {

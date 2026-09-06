@@ -11,8 +11,11 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
+    @include('master.partials.import-result')
+
     <div class="card card-primary card-outline">
         <div class="card-header">
+            <x-import-button :import-route="route('master.uoms.import')" :sample-route="route('master.uoms.import-sample')" title="UOM" />
             <a href="{{ route('master.uoms.create') }}" class="btn btn-primary btn-sm float-right">
                 <i class="fas fa-plus"></i> Add UOM
             </a>
@@ -48,6 +51,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer">{{ $uoms->links() }}</div>
+        <div class="card-footer d-flex justify-content-between align-items-center flex-wrap">
+            <x-per-page-select :current="$uoms->perPage()" />
+            {{ $uoms->appends(request()->query())->links() }}
+        </div>
     </div>
 @stop

@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $suppliers = Supplier::orderBy('name')->paginate(20);
+        $suppliers = Supplier::orderBy('name')->paginate($this->perPage());
 
         return view('master.suppliers.index', compact('suppliers'));
     }
@@ -73,5 +78,42 @@ class SupplierController extends Controller
             'pan_no' => ['nullable', 'string', 'max:20'],
             'gst_no' => ['nullable', 'string', 'max:20'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Supplier::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Currency' => ['column' => 'currency'],
+            'Purchase Type' => ['column' => 'purchase_type'],
+            'Purchase Mode' => ['column' => 'purchase_mode'],
+            'Credit Limit' => ['column' => 'credit_limit', 'cast' => fn ($v) => $this->importDecimal($v)],
+            'Credit Balance' => ['column' => 'credit_balance', 'cast' => fn ($v) => $this->importDecimal($v)],
+            'Credit Days' => ['column' => 'credit_days', 'cast' => fn ($v) => (int) $v],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+            'GST Type' => ['column' => 'gst_type'],
+            'Mail Type' => ['column' => 'mail_type'],
+            'Address' => ['column' => 'address'],
+            'City' => ['column' => 'city'],
+            'Postal Code' => ['column' => 'postal_code'],
+            'State' => ['column' => 'state'],
+            'Country' => ['column' => 'country'],
+            'Phone' => ['column' => 'phone'],
+            'Email' => ['column' => 'email'],
+            'Mobile' => ['column' => 'mobile'],
+            'Aadhar No' => ['column' => 'aadhar_no'],
+            'PAN No' => ['column' => 'pan_no'],
+            'GST No' => ['column' => 'gst_no'],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name'];
     }
 }

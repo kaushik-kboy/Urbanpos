@@ -11,8 +11,11 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
+    @include('master.partials.import-result')
+
     <div class="card card-primary card-outline">
         <div class="card-header">
+            <x-import-button :import-route="route('master.areas.import')" :sample-route="route('master.areas.import-sample')" title="Area" />
             <a href="{{ route('master.areas.create') }}" class="btn btn-primary btn-sm float-right">
                 <i class="fas fa-plus"></i> Add Area
             </a>
@@ -46,6 +49,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer">{{ $areas->links() }}</div>
+        <div class="card-footer d-flex justify-content-between align-items-center flex-wrap">
+            <x-per-page-select :current="$areas->perPage()" />
+            {{ $areas->appends(request()->query())->links() }}
+        </div>
     </div>
 @stop

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Breed;
 use App\Models\PetType;
@@ -9,9 +11,12 @@ use Illuminate\Http\Request;
 
 class BreedController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $breeds = Breed::with('petType')->orderBy('name')->paginate(20);
+        $breeds = Breed::with('petType')->orderBy('name')->paginate($this->perPage());
 
         return view('master.breeds.index', compact('breeds'));
     }
@@ -60,5 +65,36 @@ class BreedController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Breed::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['pet_type_id', 'name'];
+    }
+
+    protected function importRelations(): array
+    {
+        return [
+            'Pet Type' => function (string $v) {
+                if ($v === '') {
+                    return ['__error' => 'Pet Type is required.'];
+                }
+
+                return ['pet_type_id' => PetType::firstOrCreate(['name' => $v], ['status' => true])->id];
+            },
+        ];
     }
 }

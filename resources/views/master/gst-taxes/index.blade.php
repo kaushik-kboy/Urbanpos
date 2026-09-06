@@ -11,8 +11,11 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
+    @include('master.partials.import-result')
+
     <div class="card card-primary card-outline">
         <div class="card-header">
+            <x-import-button :import-route="route('master.gst-taxes.import')" :sample-route="route('master.gst-taxes.import-sample')" title="GST Tax" />
             <a href="{{ route('master.gst-taxes.create') }}" class="btn btn-primary btn-sm float-right">
                 <i class="fas fa-plus"></i> Add GST Tax
             </a>
@@ -48,6 +51,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer">{{ $gstTaxes->links() }}</div>
+        <div class="card-footer d-flex justify-content-between align-items-center flex-wrap">
+            <x-per-page-select :current="$gstTaxes->perPage()" />
+            {{ $gstTaxes->appends(request()->query())->links() }}
+        </div>
     </div>
 @stop

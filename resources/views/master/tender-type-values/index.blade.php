@@ -11,8 +11,11 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
+    @include('master.partials.import-result')
+
     <div class="card card-primary card-outline">
         <div class="card-header">
+            <x-import-button :import-route="route('master.tender-type-values.import')" :sample-route="route('master.tender-type-values.import-sample')" title="Tender Type Value" />
             <a href="{{ route('master.tender-type-values.create') }}" class="btn btn-primary btn-sm float-right">
                 <i class="fas fa-plus"></i> Add Tender Type Value
             </a>
@@ -50,6 +53,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer">{{ $tenderTypeValues->links() }}</div>
+        <div class="card-footer d-flex justify-content-between align-items-center flex-wrap">
+            <x-per-page-select :current="$tenderTypeValues->perPage()" />
+            {{ $tenderTypeValues->appends(request()->query())->links() }}
+        </div>
     </div>
 @stop

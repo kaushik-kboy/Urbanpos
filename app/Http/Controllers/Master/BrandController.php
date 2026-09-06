@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $brands = Brand::orderBy('name')->paginate(20);
+        $brands = Brand::orderBy('name')->paginate($this->perPage());
 
         return view('master.brands.index', compact('brands'));
     }
@@ -56,5 +61,25 @@ class BrandController extends Controller
             'alias_code' => ['nullable', 'string', 'max:50'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return Brand::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Prefix' => ['column' => 'prefix'],
+            'Alias Code' => ['column' => 'alias_code'],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name'];
     }
 }

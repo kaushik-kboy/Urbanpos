@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\TenderType;
@@ -9,9 +11,12 @@ use Illuminate\Http\Request;
 
 class TenderTypeController extends Controller
 {
+    use HasPerPage, Importable;
+
+
     public function index()
     {
-        $tenderTypes = TenderType::with('branch')->orderBy('name')->paginate(20);
+        $tenderTypes = TenderType::with('branch')->orderBy('name')->paginate($this->perPage());
 
         return view('master.tender-types.index', compact('tenderTypes'));
     }
@@ -65,5 +70,36 @@ class TenderTypeController extends Controller
             'service_charge_perc' => ['required', 'numeric', 'min:0', 'max:100'],
             'branch_id' => ['nullable', 'exists:branches,id'],
         ]);
+    }
+
+    protected function importModel(): string
+    {
+        return TenderType::class;
+    }
+
+    protected function importColumns(): array
+    {
+        return [
+            'Name' => ['column' => 'name', 'required' => true],
+            'Status' => ['column' => 'status', 'cast' => fn ($v) => $this->importBool($v)],
+            'Type' => ['column' => 'type'],
+            'Mode' => ['column' => 'mode'],
+            'Service Applicable' => ['column' => 'service_applicable', 'cast' => fn ($v) => $this->importBool($v)],
+            'Mandate Refno' => ['column' => 'mandate_refno', 'cast' => fn ($v) => $this->importBool($v)],
+            'Service Charge Perc' => ['column' => 'service_charge_perc', 'cast' => fn ($v) => $this->importDecimal($v)],
+        ];
+    }
+
+    protected function importUniqueBy(): array
+    {
+        return ['name', 'branch_id'];
+    }
+
+    protected function importRelations(): array
+    {
+        return [
+            'Branch' => fn (string $v) => $v === '' ? ['branch_id' => null]
+                : ['branch_id' => Branch::firstOrCreate(['name' => $v], ['language' => 'English', 'business_type' => 'BRANCH', 'webstore' => false, 'country_code' => 'IN', 'enable_thirdparty_loyalty' => false, 'gst_type' => 'Un Register', 'gst_filing' => 'Monthly', 'status' => true])->id],
+        ];
     }
 }
