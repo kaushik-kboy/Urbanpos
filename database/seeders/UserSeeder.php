@@ -14,7 +14,7 @@ class UserSeeder extends Seeder
             ['email' => 'admin@urbanpets.test'],
             [
                 'name' => 'Test Admin',
-                'password' => Hash::make('YourNewPassword123'),
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
