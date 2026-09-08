@@ -28,13 +28,16 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
-        Supplier::create($data);
+        $supplier = Supplier::create($data);
+        $this->syncContacts($request, $supplier);
 
         return redirect()->route('master.suppliers.index')->with('status', 'Supplier created successfully.');
     }
 
     public function edit(Supplier $supplier)
     {
+        $supplier->load('contacts');
+
         return view('master.suppliers.edit', compact('supplier'));
     }
 
@@ -42,8 +45,40 @@ class SupplierController extends Controller
     {
         $data = $this->validateData($request);
         $supplier->update($data);
+        $this->syncContacts($request, $supplier);
 
         return redirect()->route('master.suppliers.index')->with('status', 'Supplier updated successfully.');
+    }
+
+    private function syncContacts(Request $request, Supplier $supplier): void
+    {
+        foreach ($request->input('contacts', []) as $contact) {
+            if (! empty($contact['_delete'])) {
+                if (! empty($contact['id'])) {
+                    $supplier->contacts()->where('id', $contact['id'])->delete();
+                }
+
+                continue;
+            }
+
+            if (empty($contact['contact_person']) && empty($contact['mobile']) && empty($contact['phone']) && empty($contact['email'])) {
+                continue;
+            }
+
+            $attributes = [
+                'contact_person' => $contact['contact_person'] ?? null,
+                'designation' => $contact['designation'] ?? null,
+                'mobile' => $contact['mobile'] ?? null,
+                'phone' => $contact['phone'] ?? null,
+                'email' => $contact['email'] ?? null,
+            ];
+
+            if (! empty($contact['id'])) {
+                $supplier->contacts()->where('id', $contact['id'])->update($attributes);
+            } else {
+                $supplier->contacts()->create($attributes);
+            }
+        }
     }
 
     public function destroy(Supplier $supplier)

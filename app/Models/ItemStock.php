@@ -10,10 +10,22 @@ class ItemStock extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['item_id', 'branch_id', 'quantity'];
+    protected $fillable = [
+        'item_id',
+        'branch_id',
+        'quantity',
+        'cost_price',
+        'landing_cost',
+        'sell_price',
+        'mrp',
+    ];
 
     protected $casts = [
         'quantity' => 'decimal:3',
+        'cost_price' => 'decimal:2',
+        'landing_cost' => 'decimal:2',
+        'sell_price' => 'decimal:2',
+        'mrp' => 'decimal:2',
     ];
 
     public function item(): BelongsTo

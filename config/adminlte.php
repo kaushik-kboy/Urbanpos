@@ -326,9 +326,10 @@ return [
             'icon' => 'fas fa-fw fa-boxes',
             'submenu' => [
                 ['text' => 'Item Category', 'url' => 'master/item-categories'],
-                ['text' => 'Item Category Value', 'url' => 'master/item-category-values'],
+                ['text' => 'Item Category Values', 'url' => 'master/item-category-values'],
                 ['text' => 'Brand', 'url' => 'master/brands'],
                 ['text' => 'Item', 'url' => 'master/items'],
+                ['text' => 'Item Price Change', 'url' => 'master/item-price-change'],
                 ['text' => 'UOM', 'url' => 'master/uoms'],
             ],
         ],

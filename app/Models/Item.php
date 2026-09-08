@@ -58,4 +58,9 @@ class Item extends Model
     {
         return $this->belongsTo(GstTax::class);
     }
+
+    public function stocks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ItemStock::class);
+    }
 }

@@ -11,6 +11,7 @@ use App\Http\Controllers\Master\GstTaxController;
 use App\Http\Controllers\Master\ItemCategoryController;
 use App\Http\Controllers\Master\ItemCategoryValueController;
 use App\Http\Controllers\Master\ItemController;
+use App\Http\Controllers\Master\ItemPriceChangeController;
 use App\Http\Controllers\Master\PetTypeController;
 use App\Http\Controllers\Master\RegisterController;
 use App\Http\Controllers\Master\SupplierController;
@@ -65,6 +66,10 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         Route::post("{$uri}/import", [$controller, 'import'])->name("{$uri}.import");
         Route::get("{$uri}/import/sample", [$controller, 'importSample'])->name("{$uri}.import-sample");
     }
+
+    Route::get('item-price-change/search', [ItemPriceChangeController::class, 'search'])->name('item-price-change.search');
+    Route::get('item-price-change', [ItemPriceChangeController::class, 'index'])->name('item-price-change.index');
+    Route::post('item-price-change', [ItemPriceChangeController::class, 'update'])->name('item-price-change.update');
 });
 
 Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () {

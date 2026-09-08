@@ -24,7 +24,7 @@
             <table class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th>Name</th>
+                        <th>Item Category Name</th>
                         <th>Is Mandatory</th>
                         <th>Status</th>
                         <th class="text-right">Actions</th>

@@ -24,6 +24,7 @@
             <table class="table table-striped mb-0">
                 <thead>
                     <tr>
+                        <th style="width: 80px;">ID</th>
                         <th>Name</th>
                         <th>Purchase Type</th>
                         <th>Purchase Mode</th>
@@ -34,7 +35,8 @@
                 <tbody>
                     @forelse ($suppliers as $supplier)
                         <tr>
-                            <td>{{ $supplier->name }}</td>
+                            <td><span class="badge badge-secondary">#{{ $supplier->id }}</span></td>
+                            <td><strong>{{ $supplier->name }}</strong></td>
                             <td>{{ $supplier->purchase_type }}</td>
                             <td>{{ $supplier->purchase_mode }}</td>
                             <td><x-status-badge :active="$supplier->status" /></td>

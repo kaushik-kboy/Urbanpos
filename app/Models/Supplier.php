@@ -28,6 +28,11 @@ class Supplier extends Model
         return $this->hasMany(Item::class);
     }
 
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(SupplierContact::class);
+    }
+
     public function ledger(): HasOne
     {
         return $this->hasOne(Ledger::class);
