@@ -227,12 +227,133 @@ class SalesBillController extends Controller
         return 'SB'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
     }
 
+    public function lookupItem(Request $request)
+    {
+        $itemId = $request->input('item_id');
+        $query = trim((string) $request->input('query', ''));
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+
+        $item = null;
+        if (! empty($itemId)) {
+            $item = Item::with('gstTax:id,percentage')->find($itemId);
+        }
+
+        if (! $item && $query !== '') {
+            // Check exact item_code or ean_upc_code first (crucial for barcode / code inputs)
+            $item = Item::with('gstTax:id,percentage')
+                ->where('item_code', $query)
+                ->orWhere('ean_upc_code', $query)
+                ->first();
+
+            // Check primary key if numeric
+            if (! $item && is_numeric($query)) {
+                $item = Item::with('gstTax:id,percentage')->find($query);
+            }
+
+            // Check item name
+            if (! $item) {
+                $item = Item::with('gstTax:id,percentage')
+                    ->where('name', 'like', "%{$query}%")
+                    ->first();
+            }
+        }
+
+        if (! $item) {
+            return response()->json(['found' => false]);
+        }
+
+        // Get total available stock in the selected branch
+        $stock = (float) (ItemStock::where('item_id', $item->id)
+            ->where('branch_id', $branchId)
+            ->value('quantity') ?? 0);
+
+        // Get batches with available stock for this item in this branch from StockLedger
+        $ledgerBatches = \App\Models\StockLedger::where('item_id', $item->id)
+            ->where('branch_id', $branchId)
+            ->whereNotNull('exp_date')
+            ->groupBy('exp_date')
+            ->selectRaw('exp_date, SUM(qty_in - qty_out) as available_qty')
+            ->having('available_qty', '>', 0)
+            ->orderBy('exp_date', 'asc')
+            ->get();
+
+        $batches = [];
+        if ($ledgerBatches->isNotEmpty()) {
+            foreach ($ledgerBatches as $lb) {
+                $batches[] = [
+                    'exp_date' => $lb->exp_date ? \Carbon\Carbon::parse($lb->exp_date)->format('Y-m-d') : null,
+                    'qty' => (float) $lb->available_qty,
+                    'sell_price' => (float) ($item->sell_price ?? 0),
+                    'mrp' => (float) ($item->mrp ?? 0),
+                ];
+            }
+        } else {
+            // Fallback to purchase invoice items or opening stock with exp_date for this branch
+            $piItems = \App\Models\PurchaseInvoiceItem::where('item_id', $item->id)
+                ->whereNotNull('exp_date')
+                ->whereHas('purchaseInvoice', fn ($q) => $q->where('branch_id', $branchId))
+                ->selectRaw('exp_date, MAX(sell_price) as sell_price, MAX(mrp) as mrp, SUM(qty) as total_qty')
+                ->groupBy('exp_date')
+                ->orderBy('exp_date', 'asc')
+                ->get();
+
+            if ($piItems->isNotEmpty()) {
+                foreach ($piItems as $pi) {
+                    $batches[] = [
+                        'exp_date' => $pi->exp_date ? \Carbon\Carbon::parse($pi->exp_date)->format('Y-m-d') : null,
+                        'qty' => min($stock > 0 ? $stock : (float) $pi->total_qty, (float) $pi->total_qty),
+                        'sell_price' => (float) ($pi->sell_price ?: $item->sell_price),
+                        'mrp' => (float) ($pi->mrp ?: $item->mrp),
+                    ];
+                }
+            } else {
+                $osItems = \App\Models\OpeningStockItem::where('item_id', $item->id)
+                    ->whereNotNull('exp_date')
+                    ->whereHas('openingStock', fn ($q) => $q->where('branch_id', $branchId))
+                    ->selectRaw('exp_date, MAX(sell_price) as sell_price, MAX(mrp) as mrp, SUM(qty) as total_qty')
+                    ->groupBy('exp_date')
+                    ->orderBy('exp_date', 'asc')
+                    ->get();
+
+                foreach ($osItems as $os) {
+                    $batches[] = [
+                        'exp_date' => $os->exp_date ? \Carbon\Carbon::parse($os->exp_date)->format('Y-m-d') : null,
+                        'qty' => min($stock > 0 ? $stock : (float) $os->total_qty, (float) $os->total_qty),
+                        'sell_price' => (float) ($os->sell_price ?: $item->sell_price),
+                        'mrp' => (float) ($os->mrp ?: $item->mrp),
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'found' => true,
+            'item' => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'item_code' => $item->item_code,
+                'ean_upc_code' => $item->ean_upc_code,
+                'cost_price' => (float) ($item->cost_price ?? 0),
+                'sell_price' => (float) ($item->sell_price ?? 0),
+                'mrp' => (float) ($item->mrp ?? 0),
+                'stock' => $stock,
+                'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
+                'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
+            ],
+            'batches' => $batches,
+        ]);
+    }
+
     private function formOptions(): array
     {
+        $items = Item::with('gstTax:id,percentage')->orderBy('name')->get([
+            'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details'
+        ]);
+
         return [
             'customers' => Customer::orderBy('name')->pluck('name', 'id'),
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
-            'items' => Item::orderBy('name')->pluck('name', 'id'),
+            'items' => $items,
         ];
     }
 
