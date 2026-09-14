@@ -13,11 +13,32 @@ class BranchController extends Controller
     use HasPerPage, Importable;
 
 
-    public function index()
+    public function index(Request $request)
     {
-        $branches = Branch::orderBy('name')->paginate($this->perPage());
+        $query = Branch::query();
 
-        return view('master.branches.index', compact('branches'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('business_type')) {
+            $query->where('business_type', $request->business_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool)$request->status);
+        }
+
+        $branches = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $businessTypes = Branch::select('business_type')->distinct()->whereNotNull('business_type')->pluck('business_type');
+
+        return view('master.branches.index', compact('branches', 'businessTypes'));
     }
 
     public function create()

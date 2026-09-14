@@ -25,11 +25,39 @@ class StockTransferController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $stockTransfers = StockTransfer::with(['fromBranch', 'toBranch'])->latest('transfer_date')->paginate(20);
+        $query = StockTransfer::with(['fromBranch', 'toBranch']);
 
-        return view('inventory.stock-transfers.index', compact('stockTransfers'));
+        if ($request->filled('search')) {
+            $query->where('transfer_number', 'like', "%{$request->search}%");
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('transfer_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('transfer_date', '<=', $request->date_to);
+        }
+
+        if ($request->filled('from_branch_id')) {
+            $query->where('from_branch_id', $request->from_branch_id);
+        }
+
+        if ($request->filled('to_branch_id')) {
+            $query->where('to_branch_id', $request->to_branch_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $stockTransfers = $query->latest('transfer_date')->paginate(20)->withQueryString();
+        $branches = Branch::orderBy('name')->get();
+        $statuses = StockTransfer::select('status')->distinct()->whereNotNull('status')->pluck('status');
+
+        return view('inventory.stock-transfers.index', compact('stockTransfers', 'branches', 'statuses'));
     }
 
     public function create()

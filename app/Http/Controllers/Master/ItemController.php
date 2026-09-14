@@ -27,7 +27,8 @@ class ItemController extends Controller
             $query->where(function ($q) use ($term) {
                 $q->where('name', 'like', "%{$term}%")
                   ->orWhere('alias', 'like', "%{$term}%")
-                  ->orWhere('item_code', 'like', "%{$term}%");
+                  ->orWhere('item_code', 'like', "%{$term}%")
+                  ->orWhere('ean_upc_code', 'like', "%{$term}%");
             });
         }
 
@@ -35,10 +36,24 @@ class ItemController extends Controller
             $query->where('supplier_id', $request->input('supplier_id'));
         }
 
-        $items = $query->orderBy('name')->paginate($this->perPage());
-        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
+        if ($request->filled('brand_id')) {
+            $query->where('brand_id', $request->input('brand_id'));
+        }
 
-        return view('master.items.index', compact('items', 'suppliers'));
+        if ($request->filled('category_value_id')) {
+            $query->where('category_value_id', $request->input('category_value_id'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool)$request->input('status'));
+        }
+
+        $items = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
+        $brands = Brand::orderBy('name')->pluck('name', 'id');
+        $categories = $this->categoryValues('CATEGORY');
+
+        return view('master.items.index', compact('items', 'suppliers', 'brands', 'categories'));
     }
 
     public function create()

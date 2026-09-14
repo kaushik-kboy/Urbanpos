@@ -28,11 +28,49 @@ class SalesReturnController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $salesReturns = SalesReturn::with(['customer', 'branch'])->latest('return_date')->paginate(20);
+        $query = SalesReturn::with(['customer', 'branch', 'salesBill'])->latest('return_date');
 
-        return view('sales.sales-returns.index', compact('salesReturns'));
+        if ($request->filled('search')) {
+            $term = trim($request->input('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('return_number', 'like', "%{$term}%")
+                    ->orWhereHas('salesBill', fn ($bq) => $bq->where('bill_number', 'like', "%{$term}%"))
+                    ->orWhereHas('customer', function ($cq) use ($term) {
+                        $cq->where('name', 'like', "%{$term}%")
+                            ->orWhere('phone', 'like', "%{$term}%")
+                            ->orWhere('customer_code', 'like', "%{$term}%");
+                    });
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('return_date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('return_date', '<=', $request->input('date_to'));
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->input('branch_id'));
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->input('customer_id'));
+        }
+
+        if ($request->filled('return_mode')) {
+            $query->where('return_mode', $request->input('return_mode'));
+        }
+
+        $salesReturns = $query->paginate(20)->withQueryString();
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $customers = Customer::orderBy('name')->pluck('name', 'id');
+        $returnModes = ['Cash', 'Credit Note', 'Replacement'];
+
+        return view('sales.sales-returns.index', compact('salesReturns', 'branches', 'customers', 'returnModes'));
     }
 
     public function create()

@@ -65,51 +65,45 @@
 
     {{-- Filter Card --}}
     <div class="card card-outline card-secondary shadow-sm mb-3">
-        <div class="card-body py-2">
-            <form action="{{ route('inventory.damage-stocks.index') }}" method="GET" class="form-inline d-flex flex-wrap align-items-center justify-content-between">
-                <div class="d-flex flex-wrap align-items-center mb-1">
-                    {{-- Location / Branch Filter --}}
-                    <div class="input-group mr-2 mb-1">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text bg-light"><i class="fas fa-map-marker-alt text-danger mr-1"></i> Location</span>
-                        </div>
-                        <select name="branch_id" class="form-control" onchange="this.form.submit()">
-                            <option value="">-- All Locations --</option>
-                            @foreach ($branches as $bId => $bName)
-                                <option value="{{ $bId }}" @selected(request('branch_id') == $bId)>{{ $bName }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Wastage Type Filter --}}
-                    <div class="input-group mr-2 mb-1">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text bg-light"><i class="fas fa-tag text-info mr-1"></i> Type</span>
-                        </div>
-                        <select name="wastage_type" class="form-control" onchange="this.form.submit()">
-                            <option value="">-- All Types --</option>
-                            <option value="Wastage" @selected(request('wastage_type') === 'Wastage')>Wastage</option>
-                            <option value="Damage" @selected(request('wastage_type') === 'Damage')>Damage</option>
-                            <option value="Theft" @selected(request('wastage_type') === 'Theft')>Theft</option>
-                        </select>
-                    </div>
-
-                    {{-- Search Input --}}
-                    <div class="input-group mr-2 mb-1">
-                        <input type="text" name="q" value="{{ request('q') }}" class="form-control" placeholder="Damage No or Remarks...">
-                        <div class="input-group-append">
-                            <button type="submit" class="btn btn-secondary">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                    </div>
+        <div class="card-body py-3">
+            <form action="{{ route('inventory.damage-stocks.index') }}" method="GET" class="row align-items-end">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Damage No or Remarks...">
                 </div>
-
-                <div class="mb-1">
-                    @if (request()->hasAny(['branch_id', 'wastage_type', 'q']))
-                        <a href="{{ route('inventory.damage-stocks.index') }}" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-undo mr-1"></i> Reset Filters
-                        </a>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">From Date</label>
+                    <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">To Date</label>
+                    <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Location / Branch</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="">All Locations</option>
+                        @foreach ($branches as $bId => $bName)
+                            <option value="{{ $bId }}" @selected(request('branch_id') == $bId)>{{ $bName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Type</label>
+                    <select name="wastage_type" class="form-control form-control-sm">
+                        <option value="">All Types</option>
+                        <option value="Wastage" @selected(request('wastage_type') === 'Wastage')>Wastage</option>
+                        <option value="Damage" @selected(request('wastage_type') === 'Damage')>Damage</option>
+                        <option value="Theft" @selected(request('wastage_type') === 'Theft')>Theft</option>
+                    </select>
+                </div>
+                <div class="col-md-4 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply Filter</button>
+                    <a href="{{ route('inventory.damage-stocks.index') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    @if (request()->hasAny(['branch_id', 'wastage_type', 'q', 'date_from', 'date_to']))
+                        <span class="badge badge-warning px-2 py-1 ml-1 text-dark">
+                            <i class="fas fa-info-circle mr-1"></i> Filter Active
+                        </span>
                     @endif
                 </div>
             </form>

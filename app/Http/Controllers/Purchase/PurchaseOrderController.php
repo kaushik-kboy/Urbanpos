@@ -18,11 +18,46 @@ class PurchaseOrderController extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $purchaseOrders = PurchaseOrder::with(['supplier', 'branch'])->latest('po_date')->paginate(20);
+        $query = PurchaseOrder::with(['supplier', 'branch']);
 
-        return view('purchase.purchase-orders.index', compact('purchaseOrders'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($sq) use ($search) {
+                        $sq->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('po_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('po_date', '<=', $request->date_to);
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $purchaseOrders = $query->latest('po_date')->paginate(20)->withQueryString();
+        $branches = Branch::orderBy('name')->get();
+        $suppliers = Supplier::orderBy('name')->get();
+        $statuses = PurchaseOrder::select('status')->distinct()->whereNotNull('status')->pluck('status');
+
+        return view('purchase.purchase-orders.index', compact('purchaseOrders', 'branches', 'suppliers', 'statuses'));
     }
 
     public function create()

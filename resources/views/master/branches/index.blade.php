@@ -20,6 +20,39 @@
                 <i class="fas fa-plus"></i> Add Branch
             </a>
         </div>
+        <div class="card-header bg-light border-bottom">
+            <form method="GET" action="{{ route('master.branches.index') }}" class="row align-items-end">
+                <div class="col-md-4 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Name, City, Phone...">
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Business Type</label>
+                    <select name="business_type" class="form-control form-control-sm">
+                        <option value="">All Types</option>
+                        @foreach ($businessTypes as $bt)
+                            <option value="{{ $bt }}" {{ request('business_type') == $bt ? 'selected' : '' }}>{{ $bt }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Status</label>
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-sm btn-primary mr-1">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
+                    <a href="{{ route('master.branches.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
         <div class="card-body p-0">
             <table class="table table-striped mb-0">
                 <thead>

@@ -11,6 +11,38 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
+    <div class="card card-default mb-3 shadow-none border">
+        <div class="card-body p-3">
+            <form method="GET" action="{{ route('finance.ledgers.index') }}" class="row align-items-end">
+                <div class="col-md-4 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Ledger Name..." value="{{ request('search') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Ledger Group</label>
+                    <select name="ledger_group" class="form-control form-control-sm">
+                        <option value="">All Groups</option>
+                        @foreach ($groups as $grp)
+                            <option value="{{ $grp }}" {{ request('ledger_group') == $grp ? 'selected' : '' }}>{{ $grp }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Status</label>
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All Statuses</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
+                    <a href="{{ route('finance.ledgers.index') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card card-primary card-outline">
         <div class="card-header">
             <a href="{{ route('finance.ledgers.create') }}" class="btn btn-primary btn-sm float-right">

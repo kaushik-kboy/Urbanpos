@@ -11,11 +11,40 @@ use Illuminate\Validation\ValidationException;
 
 class TillSessionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $tillSessions = TillSession::with(['register', 'branch', 'user'])->latest('opened_at')->paginate(20);
+        $query = TillSession::with(['register', 'branch', 'user']);
 
-        return view('till.sessions.index', compact('tillSessions'));
+        if ($request->filled('date_from')) {
+            $query->whereDate('opened_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('opened_at', '<=', $request->date_to);
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('register_id')) {
+            $query->where('register_id', $request->register_id);
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $tillSessions = $query->latest('opened_at')->paginate(20)->withQueryString();
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        $registers = Register::orderBy('name')->get();
+        $users = \App\Models\User::orderBy('name')->get();
+
+        return view('till.sessions.index', compact('tillSessions', 'branches', 'registers', 'users'));
     }
 
     public function create()

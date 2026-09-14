@@ -48,15 +48,38 @@ class FinanceReportController extends Controller
     {
         $from = $request->input('from', now()->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
+        $branchId = $request->input('branch_id');
+        $voucherType = $request->input('voucher_type');
+        $search = $request->input('search');
 
-        $entries = JournalEntry::with(['lines.ledger', 'branch'])
+        $query = JournalEntry::with(['lines.ledger', 'branch'])
             ->whereDate('voucher_date', '>=', $from)
-            ->whereDate('voucher_date', '<=', $to)
-            ->orderBy('voucher_date')
+            ->whereDate('voucher_date', '<=', $to);
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($voucherType) {
+            $query->where('voucher_type', $voucherType);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('voucher_number', 'like', "%{$search}%")
+                    ->orWhere('narration', 'like', "%{$search}%")
+                    ->orWhereHas('lines.ledger', fn ($lq) => $lq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $entries = $query->orderBy('voucher_date')
             ->orderBy('id')
             ->get();
 
-        return view('finance.reports.day-book', compact('entries', 'from', 'to'));
+        $branches = \App\Models\Branch::orderBy('name')->pluck('name', 'id');
+        $voucherTypes = JournalEntry::select('voucher_type')->distinct()->whereNotNull('voucher_type')->pluck('voucher_type');
+
+        return view('finance.reports.day-book', compact('entries', 'from', 'to', 'branches', 'branchId', 'voucherTypes', 'voucherType', 'search'));
     }
 
     public function trialBalance(Request $request)

@@ -15,11 +15,33 @@ class UserController extends Controller
 {
     use HasPerPage;
 
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with(['roles', 'branch'])->orderBy('name')->paginate($this->perPage());
+        $query = User::with(['roles', 'branch']);
 
-        return view('master.users.index', compact('users'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->whereHas('roles', function ($rq) use ($request) {
+                $rq->where('name', $request->role);
+            });
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $users = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $roles = Role::orderBy('name')->pluck('name');
+        $branches = Branch::orderBy('name')->get();
+
+        return view('master.users.index', compact('users', 'roles', 'branches'));
     }
 
     public function create()

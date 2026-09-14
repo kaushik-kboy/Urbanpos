@@ -14,11 +14,37 @@ class SupplierController extends Controller
     use HasPerPage, Importable;
 
 
-    public function index()
+    public function index(Request $request)
     {
-        $suppliers = Supplier::orderBy('name')->paginate($this->perPage());
+        $query = Supplier::query();
 
-        return view('master.suppliers.index', compact('suppliers'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('gst_no', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('purchase_type')) {
+            $query->where('purchase_type', $request->purchase_type);
+        }
+
+        if ($request->filled('purchase_mode')) {
+            $query->where('purchase_mode', $request->purchase_mode);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool)$request->status);
+        }
+
+        $suppliers = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $purchaseTypes = Supplier::select('purchase_type')->distinct()->whereNotNull('purchase_type')->pluck('purchase_type');
+        $purchaseModes = Supplier::select('purchase_mode')->distinct()->whereNotNull('purchase_mode')->pluck('purchase_mode');
+
+        return view('master.suppliers.index', compact('suppliers', 'purchaseTypes', 'purchaseModes'));
     }
 
     public function create()

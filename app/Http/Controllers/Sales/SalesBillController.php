@@ -30,11 +30,48 @@ class SalesBillController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $salesBills = SalesBill::with(['customer', 'branch'])->latest('bill_date')->paginate(20);
+        $query = SalesBill::with(['customer', 'branch'])->latest('bill_date');
 
-        return view('sales.sales-bills.index', compact('salesBills'));
+        if ($request->filled('search')) {
+            $term = trim($request->input('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('bill_number', 'like', "%{$term}%")
+                    ->orWhereHas('customer', function ($cq) use ($term) {
+                        $cq->where('name', 'like', "%{$term}%")
+                            ->orWhere('phone', 'like', "%{$term}%")
+                            ->orWhere('customer_code', 'like', "%{$term}%");
+                    });
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('bill_date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('bill_date', '<=', $request->input('date_to'));
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->input('branch_id'));
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->input('customer_id'));
+        }
+
+        if ($request->filled('invoice_type')) {
+            $query->where('invoice_type', $request->input('invoice_type'));
+        }
+
+        $salesBills = $query->paginate(20)->withQueryString();
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $customers = Customer::orderBy('name')->pluck('name', 'id');
+        $invoiceTypes = ['Retail Invoice', 'Tax Invoice', 'Exempted'];
+
+        return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes'));
     }
 
     public function create()

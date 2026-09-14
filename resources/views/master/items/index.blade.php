@@ -21,32 +21,53 @@
             </a>
         </div>
         <div class="card-header bg-light border-bottom">
-            <form method="GET" action="{{ route('master.items.index') }}" class="form-row align-items-center">
-                <div class="col-md-4 col-sm-6 mb-2 mb-md-0">
-                    <div class="input-group input-group-sm">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        </div>
-                        <input type="text" name="name" value="{{ request('name') }}" class="form-control" placeholder="Search by name, code, or alias...">
-                    </div>
+            <form method="GET" action="{{ route('master.items.index') }}" class="row align-items-end">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="name" value="{{ request('name') }}" class="form-control form-control-sm" placeholder="Search name, code, barcode...">
                 </div>
-                <div class="col-md-4 col-sm-6 mb-2 mb-md-0">
-                    <select name="supplier_id" class="form-control form-control-sm select2" data-placeholder="All Suppliers">
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Brand</label>
+                    <select name="brand_id" class="form-control form-control-sm">
+                        <option value="">All Brands</option>
+                        @foreach ($brands as $bId => $bName)
+                            <option value="{{ $bId }}" {{ request('brand_id') == $bId ? 'selected' : '' }}>{{ $bName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Category</label>
+                    <select name="category_value_id" class="form-control form-control-sm">
+                        <option value="">All Categories</option>
+                        @foreach ($categories as $cId => $cName)
+                            <option value="{{ $cId }}" {{ request('category_value_id') == $cId ? 'selected' : '' }}>{{ $cName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Supplier</label>
+                    <select name="supplier_id" class="form-control form-control-sm">
                         <option value="">All Suppliers</option>
                         @foreach ($suppliers as $sId => $sName)
                             <option value="{{ $sId }}" {{ request('supplier_id') == $sId ? 'selected' : '' }}>{{ $sName }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-sm btn-primary">
-                        <i class="fas fa-filter"></i> Filter
+                <div class="col-md-1 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Status</label>
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-sm btn-primary mr-1">
+                        <i class="fas fa-filter"></i> Apply
                     </button>
-                    @if(request()->filled('name') || request()->filled('supplier_id'))
-                        <a href="{{ route('master.items.index') }}" class="btn btn-sm btn-outline-secondary ml-1">
-                            <i class="fas fa-times"></i> Reset
-                        </a>
-                    @endif
+                    <a href="{{ route('master.items.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
                 </div>
             </form>
         </div>

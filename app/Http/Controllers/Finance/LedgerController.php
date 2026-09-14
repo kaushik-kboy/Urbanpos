@@ -14,16 +14,32 @@ class LedgerController extends Controller
         'Indirect Expense', 'Capital Account', 'Fixed Assets', 'Current Liabilities',
     ];
 
-    public function index()
+    public function index(Request $request)
     {
-        $ledgers = Ledger::orderBy('ledger_group')->orderBy('name')->paginate(30);
+        $query = Ledger::query();
+
+        if ($request->filled('search')) {
+            $query->where('name', 'like', "%{$request->search}%");
+        }
+
+        if ($request->filled('ledger_group')) {
+            $query->where('ledger_group', $request->ledger_group);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool)$request->status);
+        }
+
+        $ledgers = $query->orderBy('ledger_group')->orderBy('name')->paginate(30)->withQueryString();
         $ledgers->getCollection()->transform(function (Ledger $ledger) {
             $ledger->current_balance = $ledger->balance();
 
             return $ledger;
         });
 
-        return view('finance.ledgers.index', compact('ledgers'));
+        $groups = self::GROUPS;
+
+        return view('finance.ledgers.index', compact('ledgers', 'groups'));
     }
 
     public function create()

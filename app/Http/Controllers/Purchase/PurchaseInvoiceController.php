@@ -30,11 +30,49 @@ class PurchaseInvoiceController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $purchaseInvoices = PurchaseInvoice::with(['supplier', 'branch'])->latest('invoice_date')->paginate(20);
+        $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder'])->latest('invoice_date');
 
-        return view('purchase.purchase-invoices.index', compact('purchaseInvoices'));
+        if ($request->filled('search')) {
+            $term = trim($request->input('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('invoice_number', 'like', "%{$term}%")
+                    ->orWhere('supplier_inv_no', 'like', "%{$term}%")
+                    ->orWhere('grn_number', 'like', "%{$term}%")
+                    ->orWhereHas('supplier', function ($sq) use ($term) {
+                        $sq->where('name', 'like', "%{$term}%")
+                            ->orWhere('phone', 'like', "%{$term}%");
+                    });
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('invoice_date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('invoice_date', '<=', $request->input('date_to'));
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->input('branch_id'));
+        }
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->input('supplier_id'));
+        }
+
+        if ($request->filled('purchase_type')) {
+            $query->where('purchase_type', $request->input('purchase_type'));
+        }
+
+        $purchaseInvoices = $query->paginate(20)->withQueryString();
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
+        $purchaseTypes = ['Local', 'Interstate'];
+
+        return view('purchase.purchase-invoices.index', compact('purchaseInvoices', 'branches', 'suppliers', 'purchaseTypes'));
     }
 
     public function create()

@@ -9,15 +9,42 @@
 @section('content')
     <div class="card card-primary card-outline">
         <div class="card-body">
-            <form method="GET" class="form-inline mb-3">
-                <label class="mr-2">Location</label>
-                <select name="branch_id" class="form-control form-control-sm mr-3">
-                    <option value="">All Location</option>
-                    @foreach ($branches as $id => $name)
-                        <option value="{{ $id }}" @selected((string) $branchId === (string) $id)>{{ $name }}</option>
-                    @endforeach
-                </select>
-                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+            <form method="GET" action="{{ route('reports.current-stock') }}" class="row align-items-end mb-3">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Item name, code, barcode...">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Location</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="">All Locations</option>
+                        @foreach ($branches as $id => $name)
+                            <option value="{{ $id }}" @selected((string) $branchId === (string) $id)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Brand</label>
+                    <select name="brand_id" class="form-control form-control-sm">
+                        <option value="">All Brands</option>
+                        @foreach ($brands as $bId => $bName)
+                            <option value="{{ $bId }}" {{ request('brand_id') == $bId ? 'selected' : '' }}>{{ $bName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Category</label>
+                    <select name="category_value_id" class="form-control form-control-sm">
+                        <option value="">All Categories</option>
+                        @foreach ($categories as $cId => $cName)
+                            <option value="{{ $cId }}" {{ request('category_value_id') == $cId ? 'selected' : '' }}>{{ $cName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
+                    <a href="{{ route('reports.current-stock') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                </div>
             </form>
 
             <table class="table table-sm table-striped">

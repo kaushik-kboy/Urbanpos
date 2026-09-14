@@ -22,11 +22,30 @@ class OpeningStockController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $openingStocks = OpeningStock::with('branch')->latest('entry_date')->paginate(20);
+        $query = OpeningStock::with('branch');
 
-        return view('inventory.opening-stocks.index', compact('openingStocks'));
+        if ($request->filled('search')) {
+            $query->where('entry_number', 'like', "%{$request->search}%");
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('entry_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('entry_date', '<=', $request->date_to);
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $openingStocks = $query->latest('entry_date')->paginate(20)->withQueryString();
+        $branches = Branch::orderBy('name')->get();
+
+        return view('inventory.opening-stocks.index', compact('openingStocks', 'branches'));
     }
 
     public function create()

@@ -22,14 +22,40 @@ class VoucherController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $vouchers = JournalEntry::with('branch')
-            ->whereIn('voucher_type', self::MANUAL_TYPES)
-            ->latest('voucher_date')
-            ->paginate(20);
+        $query = JournalEntry::with('branch')
+            ->whereIn('voucher_type', self::MANUAL_TYPES);
 
-        return view('finance.vouchers.index', compact('vouchers'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('voucher_number', 'like', "%{$search}%")
+                    ->orWhere('narration', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('voucher_type')) {
+            $query->where('voucher_type', $request->voucher_type);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('voucher_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('voucher_date', '<=', $request->date_to);
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $vouchers = $query->latest('voucher_date')->paginate(20)->withQueryString();
+        $branches = Branch::orderBy('name')->get();
+        $manualTypes = self::MANUAL_TYPES;
+
+        return view('finance.vouchers.index', compact('vouchers', 'branches', 'manualTypes'));
     }
 
     public function create()

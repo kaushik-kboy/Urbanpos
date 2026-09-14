@@ -9,7 +9,51 @@
 @section('content')
     <div class="card card-primary card-outline">
         <div class="card-body">
-            @include('reports._date-branch-filter')
+            <form method="GET" action="{{ route('reports.purchase-detail') }}" class="row align-items-end mb-3">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Inv No, Supplier Inv No, Supplier...">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">From Date</label>
+                    <input type="date" name="from" value="{{ $from }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">To Date</label>
+                    <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Location</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="">All Locations</option>
+                        @foreach ($branches as $id => $name)
+                            <option value="{{ $id }}" @selected((string) $branchId === (string) $id)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Supplier</label>
+                    <select name="supplier_id" class="form-control form-control-sm">
+                        <option value="">All Suppliers</option>
+                        @foreach ($suppliers as $supp)
+                            <option value="{{ $supp->id }}" {{ request('supplier_id') == $supp->id ? 'selected' : '' }}>{{ $supp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Purchase Type</label>
+                    <select name="purchase_type" class="form-control form-control-sm">
+                        <option value="">All Types</option>
+                        @foreach ($purchaseTypes as $pt)
+                            <option value="{{ $pt }}" {{ request('purchase_type') == $pt ? 'selected' : '' }}>{{ ucfirst(str_replace('_', ' ', $pt)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
+                    <a href="{{ route('reports.purchase-detail') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                </div>
+            </form>
 
             <table class="table table-sm table-striped">
                 <thead>

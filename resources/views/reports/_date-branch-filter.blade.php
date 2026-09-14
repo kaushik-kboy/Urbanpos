@@ -10,5 +10,6 @@
             <option value="{{ $id }}" @selected((string) $branchId === (string) $id)>{{ $name }}</option>
         @endforeach
     </select>
-    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
+    <a href="{{ url()->current() }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
 </form>

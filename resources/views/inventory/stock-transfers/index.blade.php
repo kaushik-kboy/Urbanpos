@@ -11,6 +11,62 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
+    <div class="card card-default mb-3 shadow-none border">
+        <div class="card-body p-3">
+            <form method="GET" action="{{ route('inventory.stock-transfers.index') }}" class="row align-items-end">
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Transfer No..." value="{{ request('search') }}">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">From Date</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">To Date</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">From Branch</label>
+                    <select name="from_branch_id" class="form-control form-control-sm">
+                        <option value="">All Branches</option>
+                        @foreach ($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ request('from_branch_id') == $branch->id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">To Branch</label>
+                    <select name="to_branch_id" class="form-control form-control-sm">
+                        <option value="">All Branches</option>
+                        @foreach ($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ request('to_branch_id') == $branch->id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Status</label>
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All Statuses</option>
+                        @foreach ($statuses as $st)
+                            <option value="{{ $st }}" {{ request('status') == $st ? 'selected' : '' }}>
+                                {{ $st }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply Filter</button>
+                    <a href="{{ route('inventory.stock-transfers.index') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card card-primary card-outline">
         <div class="card-header">
             <a href="{{ route('inventory.stock-transfers.create') }}" class="btn btn-primary btn-sm float-right">

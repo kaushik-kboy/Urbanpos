@@ -4,11 +4,17 @@ namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\Brand;
+use App\Models\Breed;
 use App\Models\Customer;
+use App\Models\CustomerCategory;
+use App\Models\ItemCategoryValue;
 use App\Models\ItemStock;
+use App\Models\PetType;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesBill;
 use App\Models\SalesReturn;
+use App\Models\Supplier;
 use App\Models\TillSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,17 +47,35 @@ class ReportController extends Controller
     public function billwiseSales(Request $request)
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $search = $request->input('search');
+        $customerId = $request->input('customer_id');
+        $invoiceType = $request->input('invoice_type');
 
-        $bills = SalesBill::with(['customer', 'branch', 'items.item'])
+        $query = SalesBill::with(['customer', 'branch', 'items.item'])
             ->whereDate('bill_date', '>=', $from)
             ->whereDate('bill_date', '<=', $to)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('bill_date')
-            ->get();
+            ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
+            ->when($invoiceType, fn ($q) => $q->where('invoice_type', $invoiceType));
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('bill_number', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%")
+                            ->orWhere('mobile', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $bills = $query->orderBy('bill_date')->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $customers = Customer::orderBy('name')->get();
+        $invoiceTypes = SalesBill::select('invoice_type')->distinct()->whereNotNull('invoice_type')->pluck('invoice_type');
 
-        return view('reports.billwise-sales', compact('bills', 'from', 'to', 'branchId', 'branches'));
+        return view('reports.billwise-sales', compact('bills', 'from', 'to', 'branchId', 'branches', 'customers', 'invoiceTypes', 'search', 'customerId', 'invoiceType'));
     }
 
     public function gstSalesSummary(Request $request)
@@ -90,65 +114,165 @@ class ReportController extends Controller
     public function purchaseDetail(Request $request)
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $search = $request->input('search');
+        $supplierId = $request->input('supplier_id');
+        $purchaseType = $request->input('purchase_type');
 
-        $invoices = PurchaseInvoice::with(['supplier', 'branch', 'items.item'])
+        $query = PurchaseInvoice::with(['supplier', 'branch', 'items.item'])
             ->whereDate('invoice_date', '>=', $from)
             ->whereDate('invoice_date', '<=', $to)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('invoice_date')
-            ->get();
+            ->when($supplierId, fn ($q) => $q->where('supplier_id', $supplierId))
+            ->when($purchaseType, fn ($q) => $q->where('purchase_type', $purchaseType));
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                    ->orWhere('supplier_inv_no', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $invoices = $query->orderBy('invoice_date')->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $suppliers = Supplier::orderBy('name')->get();
+        $purchaseTypes = PurchaseInvoice::select('purchase_type')->distinct()->whereNotNull('purchase_type')->pluck('purchase_type');
 
-        return view('reports.purchase-detail', compact('invoices', 'from', 'to', 'branchId', 'branches'));
+        return view('reports.purchase-detail', compact('invoices', 'from', 'to', 'branchId', 'branches', 'suppliers', 'purchaseTypes', 'search', 'supplierId', 'purchaseType'));
     }
 
     public function currentStock(Request $request)
     {
         $branchId = $request->input('branch_id');
+        $brandId = $request->input('brand_id');
+        $categoryValueId = $request->input('category_value_id');
+        $search = $request->input('search');
 
-        $rows = ItemStock::with(['item', 'branch'])
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->where('quantity', '>', 0)
-            ->orderBy('branch_id')
-            ->get();
+        $query = ItemStock::with(['item.brand', 'branch'])
+            ->where('quantity', '>', 0);
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($search) {
+            $query->whereHas('item', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('item_code', 'like', "%{$search}%")
+                    ->orWhere('ean_upc_code', 'like', "%{$search}%");
+            });
+        }
+
+        if ($brandId) {
+            $query->whereHas('item', fn ($q) => $q->where('brand_id', $brandId));
+        }
+
+        if ($categoryValueId) {
+            $query->whereHas('item', fn ($q) => $q->where('category_value_id', $categoryValueId));
+        }
+
+        $rows = $query->orderBy('branch_id')->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $brands = Brand::orderBy('name')->pluck('name', 'id');
+        $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
 
-        return view('reports.current-stock', compact('rows', 'branchId', 'branches'));
+        return view('reports.current-stock', compact('rows', 'branchId', 'branches', 'brands', 'categories', 'brandId', 'categoryValueId', 'search'));
     }
 
     public function salesReturnSummary(Request $request)
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $search = $request->input('search');
+        $customerId = $request->input('customer_id');
+        $returnMode = $request->input('return_mode');
 
-        $returns = SalesReturn::with(['customer', 'branch', 'salesBill'])
+        $query = SalesReturn::with(['customer', 'branch', 'salesBill'])
             ->whereDate('return_date', '>=', $from)
             ->whereDate('return_date', '<=', $to)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('return_date')
-            ->get();
+            ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
+            ->when($returnMode, fn ($q) => $q->where('return_mode', $returnMode));
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('return_number', 'like', "%{$search}%")
+                    ->orWhereHas('salesBill', fn ($bq) => $bq->where('bill_number', 'like', "%{$search}%"))
+                    ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $returns = $query->orderBy('return_date')->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $customers = Customer::orderBy('name')->get();
+        $returnModes = SalesReturn::select('return_mode')->distinct()->whereNotNull('return_mode')->pluck('return_mode');
 
-        return view('reports.sales-return-summary', compact('returns', 'from', 'to', 'branchId', 'branches'));
+        return view('reports.sales-return-summary', compact('returns', 'from', 'to', 'branchId', 'branches', 'customers', 'returnModes', 'search', 'customerId', 'returnMode'));
     }
 
-    public function customerMaster()
+    public function customerMaster(Request $request)
     {
-        $customers = Customer::with(['category', 'branch'])->orderBy('name')->paginate(50);
+        $query = Customer::with(['category', 'branch']);
 
-        return view('reports.customer-master', compact('customers'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('customer_code', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool) $request->status);
+        }
+
+        $customers = $query->orderBy('name')->paginate(50)->withQueryString();
+        $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.customer-master', compact('customers', 'categories', 'branches'));
     }
 
-    public function customerPetDetails()
+    public function customerPetDetails(Request $request)
     {
-        $customers = Customer::with(['pets.petType', 'pets.breed'])
-            ->whereHas('pets')
-            ->orderBy('name')
-            ->paginate(50);
+        $query = Customer::with(['pets.petType', 'pets.breed'])
+            ->whereHas('pets');
 
-        return view('reports.customer-pet-details', compact('customers'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhereHas('pets', fn ($pq) => $pq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($request->filled('pet_type_id')) {
+            $query->whereHas('pets', fn ($pq) => $pq->where('pet_type_id', $request->pet_type_id));
+        }
+
+        if ($request->filled('breed_id')) {
+            $query->whereHas('pets', fn ($pq) => $pq->where('breed_id', $request->breed_id));
+        }
+
+        $customers = $query->orderBy('name')->paginate(50)->withQueryString();
+        $petTypes = PetType::orderBy('name')->pluck('name', 'id');
+        $breeds = Breed::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.customer-pet-details', compact('customers', 'petTypes', 'breeds'));
     }
 
     /**

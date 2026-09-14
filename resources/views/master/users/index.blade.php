@@ -20,6 +20,42 @@
                 <i class="fas fa-plus"></i> Add User
             </a>
         </div>
+        <div class="card-header bg-light border-bottom">
+            <form method="GET" action="{{ route('master.users.index') }}" class="row align-items-end">
+                <div class="col-md-4 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Name or Email...">
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Role</label>
+                    <select name="role" class="form-control form-control-sm">
+                        <option value="">All Roles</option>
+                        @foreach ($roles as $rName)
+                            <option value="{{ $rName }}" {{ request('role') == $rName ? 'selected' : '' }}>{{ $rName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Branch</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="">All Branches</option>
+                        @foreach ($branches as $branch)
+                            <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
+                                {{ $branch->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-sm btn-primary mr-1">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
+                    <a href="{{ route('master.users.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
         <div class="card-body p-0">
             <table class="table table-striped mb-0">
                 <thead>

@@ -20,11 +20,32 @@ class CustomerController extends Controller
     use HasPerPage, Importable;
 
 
-    public function index()
+    public function index(Request $request)
     {
-        $customers = Customer::with('category')->orderBy('name')->paginate($this->perPage());
+        $query = Customer::with('category');
 
-        return view('master.customers.index', compact('customers'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('customer_code', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool)$request->status);
+        }
+
+        $customers = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
+
+        return view('master.customers.index', compact('customers', 'categories'));
     }
 
     public function create()
