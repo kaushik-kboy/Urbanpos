@@ -6,7 +6,7 @@
 <div class="row mb-3">
     <div class="col-md-4">
         <label for="branch_id" class="font-weight-bold">Location / Branch <span class="text-danger">*</span></label>
-        <select name="branch_id" id="branch_id" class="form-control" required>
+        <select name="branch_id" id="branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
             @foreach ($branches as $bId => $bName)
                 <option value="{{ $bId }}" @selected(($entry->branch_id ?? old('branch_id', 2)) == $bId)>{{ $bName }}</option>
@@ -20,7 +20,7 @@
     </div>
     <div class="col-md-3">
         <label for="wastage_type" class="font-weight-bold">Wastage Type <span class="text-danger">*</span></label>
-        <select name="wastage_type" id="wastage_type" class="form-control" required>
+        <select name="wastage_type" id="wastage_type" class="form-control select2" required>
             <option value="Damage" @selected(($entry->wastage_type ?? old('wastage_type', 'Damage')) === 'Damage')>Damage</option>
             <option value="Wastage" @selected(($entry->wastage_type ?? old('wastage_type')) === 'Wastage')>Wastage</option>
             <option value="Theft" @selected(($entry->wastage_type ?? old('wastage_type')) === 'Theft')>Theft</option>

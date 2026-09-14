@@ -31,7 +31,7 @@
                     </div>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
-                    <select name="category_id" class="form-control form-control-sm">
+                    <select name="category_id" class="form-control form-control-sm select2" data-placeholder="All Categories">
                         <option value="">All Categories</option>
                         @foreach ($itemCategories as $catId => $catName)
                             <option value="{{ $catId }}" {{ request('category_id') == $catId ? 'selected' : '' }}>{{ $catName }}</option>

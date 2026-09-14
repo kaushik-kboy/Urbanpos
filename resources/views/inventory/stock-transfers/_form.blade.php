@@ -1,7 +1,7 @@
 <div class="row mb-3">
     <div class="col-md-3">
         <label for="from_branch_id" class="font-weight-bold">From Branch <span class="text-danger">*</span></label>
-        <select name="from_branch_id" id="from_branch_id" class="form-control" required>
+        <select name="from_branch_id" id="from_branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
             @foreach ($branches as $bId => $bName)
                 <option value="{{ $bId }}" @selected(old('from_branch_id') == $bId)>{{ $bName }}</option>
@@ -10,7 +10,7 @@
     </div>
     <div class="col-md-3">
         <label for="to_branch_id" class="font-weight-bold">To Branch <span class="text-danger">*</span></label>
-        <select name="to_branch_id" id="to_branch_id" class="form-control" required>
+        <select name="to_branch_id" id="to_branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
             @foreach ($branches as $bId => $bName)
                 <option value="{{ $bId }}" @selected(old('to_branch_id') == $bId)>{{ $bName }}</option>

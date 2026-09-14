@@ -3,7 +3,7 @@
 <div class="form-group row">
     <label for="{{ $name }}" class="col-sm-3 col-form-label">{{ $label }}</label>
     <div class="col-sm-{{ $col }}">
-        <select id="{{ $name }}" name="{{ $name }}" class="form-control @error($name) is-invalid @enderror">
+        <select id="{{ $name }}" name="{{ $name }}" class="form-control select2 @error($name) is-invalid @enderror" @if($placeholder) data-placeholder="{{ $placeholder }}" @endif>
             @if($placeholder)
                 <option value="">{{ $placeholder }}</option>
             @endif
