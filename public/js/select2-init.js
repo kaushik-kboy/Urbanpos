@@ -233,4 +233,105 @@ $(document).ready(function () {
     $(document).on('focus', 'input[type="number"], input.pinv-item-code, input.pinv-qty, input.pinv-cost', function () {
         $(this).attr('autocomplete', 'off');
     });
+
+    // =========================================================================
+    // GLOBAL ACTIVE BRANCH SYNCHRONIZATION (E.g. Motera)
+    // "upar jo branch select ki hai vo hi sab mein auto aani chiye jaise motera"
+    // =========================================================================
+    var DEFAULT_BRANCH_ID = '3'; // URBAN PETS / MOTERA
+    var activeBranchId = localStorage.getItem('urbanpos_active_branch_id') || DEFAULT_BRANCH_ID;
+
+    function syncBranchAcrossApp(branchId) {
+        if (!branchId) return;
+        activeBranchId = String(branchId);
+        localStorage.setItem('urbanpos_active_branch_id', activeBranchId);
+
+        // Sync to server session via AJAX
+        var csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
+        if (csrfToken) {
+            $.ajax({
+                url: '/active-branch',
+                type: 'POST',
+                data: {
+                    _token: csrfToken,
+                    branch_id: activeBranchId
+                },
+                dataType: 'json'
+            });
+        }
+
+        // Sync top navbar selector if present
+        var $navSelect = $('#top-navbar-branch-select');
+        if ($navSelect.length && $navSelect.val() !== activeBranchId) {
+            $navSelect.val(activeBranchId);
+        }
+
+        // Sync any branch selects on the current page that match
+        $('select[name="branch_id"], select[name="from_branch_id"]').each(function () {
+            var $sel = $(this);
+            if ($sel.val() !== activeBranchId && $sel.find('option[value="' + activeBranchId + '"]').length) {
+                $sel.val(activeBranchId);
+                if ($sel.hasClass('select2-hidden-accessible')) {
+                    $sel.trigger('change.select2');
+                }
+            }
+        });
+    }
+
+    // Auto-apply active branch to all unselected branch dropdowns on page load
+    function applyActiveBranchToForm(context) {
+        var $scope = context ? $(context) : $(document);
+        $scope.find('select[name="branch_id"], select[name="from_branch_id"]').each(function () {
+            var $sel = $(this);
+            var currentVal = $sel.val();
+            // If empty or placeholder selected, auto-select active branch (e.g. Motera)
+            if (!currentVal || currentVal === '' || currentVal === '0') {
+                if ($sel.find('option[value="' + activeBranchId + '"]').length) {
+                    $sel.val(activeBranchId);
+                    if ($sel.hasClass('select2-hidden-accessible')) {
+                        $sel.trigger('change.select2');
+                    }
+                }
+            }
+        });
+    }
+
+    // Inject active branch selector into top navbar header if navbar exists
+    function injectTopNavbarBranchSelector() {
+        var $navbarRight = $('.main-header .navbar-nav.ml-auto');
+        if ($navbarRight.length && !$('#top-navbar-branch-wrapper').length) {
+            var navHtml = 
+                '<li class="nav-item d-flex align-items-center mr-2" id="top-navbar-branch-wrapper">' +
+                '    <span class="badge badge-primary px-2 py-1 mr-1 font-weight-bold" style="font-size: 0.82rem;"><i class="fas fa-store-alt mr-1"></i> Branch:</span>' +
+                '    <select id="top-navbar-branch-select" class="form-control form-control-sm font-weight-bold text-dark border-primary" style="width: auto; height: calc(1.5em + .5rem + 2px); min-width: 170px;">' +
+                '        <option value="1">GLOBAL</option>' +
+                '        <option value="2">URBANPETS SERVICES PRIVATE LIMITED</option>' +
+                '        <option value="3">URBAN PETS / MOTERA</option>' +
+                '    </select>' +
+                '</li>';
+            $navbarRight.prepend(navHtml);
+            $('#top-navbar-branch-select').val(activeBranchId);
+        }
+    }
+
+    injectTopNavbarBranchSelector();
+    applyActiveBranchToForm();
+
+    // Re-apply when modals or dynamic content load
+    $(document).on('shown.bs.modal reinit:select2', function () {
+        applyActiveBranchToForm(this);
+    });
+
+    // When user changes top navbar branch
+    $(document).on('change', '#top-navbar-branch-select', function () {
+        syncBranchAcrossApp($(this).val());
+    });
+
+    // When user changes branch in ANY form on the page
+    $(document).on('change', 'select[name="branch_id"], select[name="from_branch_id"]', function (e) {
+        var val = $(this).val();
+        if (val && val !== '' && val !== activeBranchId) {
+            syncBranchAcrossApp(val);
+        }
+    });
 });

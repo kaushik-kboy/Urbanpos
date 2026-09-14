@@ -248,3 +248,14 @@ Route::middleware('auth')->prefix('finance')->name('finance.')->group(function (
         Route::get('trial-balance', [FinanceReportController::class, 'trialBalance'])->name('trial-balance');
     });
 });
+
+Route::middleware('auth')->post('/active-branch', function (\Illuminate\Http\Request $request) {
+    $branchId = (int) $request->input('branch_id');
+    if ($branchId > 0) {
+        session(['active_branch_id' => $branchId]);
+    }
+    return response()->json([
+        'status' => 'ok',
+        'active_branch_id' => session('active_branch_id', 3),
+    ]);
+})->name('set-active-branch');

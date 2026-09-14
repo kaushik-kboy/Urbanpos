@@ -1,5 +1,11 @@
 @props(['name', 'label', 'options' => [], 'selected' => null, 'col' => 6, 'placeholder' => null])
 
+@php
+    if (in_array($name, ['branch_id', 'from_branch_id']) && (empty($selected) || $selected === '')) {
+        $selected = session('active_branch_id', auth()->user()?->branch_id ?? 3);
+    }
+@endphp
+
 <div class="form-group row">
     <label for="{{ $name }}" class="col-sm-3 col-form-label">{{ $label }}</label>
     <div class="col-sm-{{ $col }}">
