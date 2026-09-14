@@ -10,6 +10,7 @@
             @if($step) step="{{ $step }}" @endif
             class="form-control @error($name) is-invalid @enderror"
             value="{{ old($name, $value) }}"
+            autocomplete="off"
         >
         @error($name)
             <span class="invalid-feedback d-block">{{ $message }}</span>

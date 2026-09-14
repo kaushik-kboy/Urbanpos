@@ -3,6 +3,19 @@
     $existingItems = $inv?->items ?? collect();
 @endphp
 
+<style>
+    /* Remove spinners / up-down stepper buttons from all number inputs */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+    }
+    input[type=number] {
+        -moz-appearance: textfield !important;
+        appearance: textfield !important;
+    }
+</style>
+
 <x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" required />
 <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$inv->supplier_id ?? ''" placeholder="Select a Supplier" required />
 <x-select name="branch_id" label="Branch" :options="$branches" :selected="$inv->branch_id ?? ''" placeholder="Select a Branch" required />
@@ -13,7 +26,7 @@
 <x-field name="grn_date" label="GRN Date" type="date" :value="optional($inv->grn_date ?? null)->format('Y-m-d')" />
 <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" />
 <x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? null)->format('Y-m-d')" />
-<x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="$inv->supplier_inv_amount ?? ''" />
+<x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" />
 
 <hr>
 <h5 class="mb-3">Items</h5>
@@ -51,14 +64,14 @@
         <tfoot class="bg-light font-weight-bold">
             <tr>
                 <td colspan="4" class="text-right align-middle">Totals:</td>
-                <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty">0.000</td>
+                <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty"></td>
                 <td class="align-middle"></td>
-                <td class="text-right align-middle font-weight-bold" id="footer-total-cost">0.00</td>
+                <td class="text-right align-middle font-weight-bold" id="footer-total-cost"></td>
                 <td colspan="4" class="text-right align-middle">Total Discount:</td>
-                <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="footer-total-disc">0.00</td>
+                <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="footer-total-disc"></td>
                 <td class="text-right align-middle small text-muted">GST:</td>
-                <td class="text-right align-middle font-weight-bold text-dark" id="footer-total-gst">0.00</td>
-                <td class="text-right align-middle text-success font-weight-bold" id="footer-grand-net">0.00</td>
+                <td class="text-right align-middle font-weight-bold text-dark" id="footer-total-gst"></td>
+                <td class="text-right align-middle text-success font-weight-bold" id="footer-grand-net"></td>
                 <td></td>
             </tr>
         </tfoot>
@@ -69,13 +82,13 @@
 
 <hr>
 <h5 class="mb-3">Totals</h5>
-<x-field name="freight" label="Freight" type="number" step="0.01" :value="$inv->freight ?? 0" />
-<x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="$inv->round_off ?? 0" />
-<x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="$inv->scheme_item_disc_amt ?? 0" />
-<x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="$inv->other_disc_amt ?? 0" />
-<x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$inv->total_extra_cess ?? 0" />
-<x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="$inv->tcs_amount ?? 0" />
-<x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$inv->total_weight ?? 0" />
+<x-field name="freight" label="Freight" type="number" step="0.01" :value="isset($inv->freight) && $inv->freight != 0 ? $inv->freight : ''" />
+<x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
+<x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="isset($inv->scheme_item_disc_amt) && $inv->scheme_item_disc_amt != 0 ? $inv->scheme_item_disc_amt : ''" />
+<x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="isset($inv->other_disc_amt) && $inv->other_disc_amt != 0 ? $inv->other_disc_amt : ''" />
+<x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="isset($inv->total_extra_cess) && $inv->total_extra_cess != 0 ? $inv->total_extra_cess : ''" />
+<x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
+<x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="isset($inv->total_weight) && $inv->total_weight != 0 ? $inv->total_weight : ''" />
 <x-textarea name="remarks" label="Remarks" :value="$inv->remarks ?? ''" />
 <x-textarea name="message" label="Message" :value="$inv->message ?? ''" />
 
@@ -88,6 +101,9 @@
     $(document).ready(function () {
         let rowIndex = {{ $existingItems->count() ?: 1 }};
 
+        // Disable browser autocomplete dropdown on all number and text inputs in form
+        $('#pinv-items-table input, form input').attr('autocomplete', 'off');
+
         function updateRowNumbers() {
             $('#pinv-items-body tr').each(function (idx) {
                 $(this).find('.pinv-sr-no').text(idx + 1);
@@ -95,18 +111,23 @@
         }
 
         function calculateRow($row, source) {
-            let qty = parseFloat($row.find('.pinv-qty').val()) || 0;
-            let cost = parseFloat($row.find('.pinv-cost').val()) || 0;
-            let sell = parseFloat($row.find('.pinv-sell').val()) || 0;
-            let mrp = parseFloat($row.find('.pinv-mrp').val()) || 0;
+            let qtyStr = $row.find('.pinv-qty').val();
+            let costStr = $row.find('.pinv-cost').val();
+            let sellStr = $row.find('.pinv-sell').val();
+            let mrpStr = $row.find('.pinv-mrp').val();
+
+            let qty = parseFloat(qtyStr) || 0;
+            let cost = parseFloat(costStr) || 0;
+            let sell = parseFloat(sellStr) || 0;
+            let mrp = parseFloat(mrpStr) || 0;
             let base = qty * cost;
 
-            // Compute Margin % and Profit %
+            // Compute Margin % and Profit %:
             let baseSell = sell > 0 ? sell : mrp;
-            let marginPct = (baseSell > 0 && cost > 0) ? ((baseSell - cost) / baseSell) * 100 : 0;
-            let profitPct = (cost > 0 && baseSell > 0) ? ((baseSell - cost) / cost) * 100 : 0;
-            $row.find('.pinv-margin').val(marginPct !== 0 ? marginPct.toFixed(2) + '%' : '0.00%');
-            $row.find('.pinv-profit').val(profitPct !== 0 ? profitPct.toFixed(2) + '%' : '0.00%');
+            let marginPct = (baseSell > 0 && cost > 0) ? ((baseSell - cost) / baseSell) * 100 : null;
+            let profitPct = (cost > 0 && baseSell > 0) ? ((baseSell - cost) / cost) * 100 : null;
+            $row.find('.pinv-margin').val(marginPct !== null && marginPct !== 0 ? marginPct.toFixed(2) + '%' : '');
+            $row.find('.pinv-profit').val(profitPct !== null && profitPct !== 0 ? profitPct.toFixed(2) + '%' : '');
 
             let $discPct = $row.find('.pinv-disc-percent');
             let $discAmt = $row.find('.pinv-disc-amount');
@@ -118,27 +139,27 @@
             if (source === 'percent') {
                 if (base > 0 && discPct > 0) {
                     discAmt = Math.round((base * discPct / 100) * 100) / 100;
-                    $discAmt.val(discAmt.toFixed(2));
+                    $discAmt.val(discAmt > 0 ? discAmt.toFixed(2) : '');
                 } else if (discPct === 0) {
                     discAmt = 0;
-                    $discAmt.val('0.00');
+                    $discAmt.val('');
                 }
             } else if (source === 'amount') {
                 if (base > 0 && discAmt > 0) {
                     discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
-                    $discPct.val(discPct.toFixed(2));
+                    $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
                 } else if (discAmt === 0) {
                     discPct = 0;
-                    $discPct.val('0.00');
+                    $discPct.val('');
                 }
             } else {
                 // Qty or Cost changed
                 if (discPct > 0 && base > 0) {
                     discAmt = Math.round((base * discPct / 100) * 100) / 100;
-                    $discAmt.val(discAmt.toFixed(2));
+                    $discAmt.val(discAmt > 0 ? discAmt.toFixed(2) : '');
                 } else if (discAmt > 0 && base > 0) {
                     discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
-                    $discPct.val(discPct.toFixed(2));
+                    $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
                 }
             }
 
@@ -146,8 +167,14 @@
             let taxAmt = Math.round((taxable * gst / 100) * 100) / 100;
             let net = taxable + taxAmt;
 
-            $row.find('.pinv-gst-amt').val(taxAmt.toFixed(2));
-            $row.find('.pinv-row-net').text(net.toFixed(2));
+            if (base > 0) {
+                $row.find('.pinv-gst-amt').val(taxAmt > 0 ? taxAmt.toFixed(2) : '');
+                $row.find('.pinv-row-net').text(net > 0 ? net.toFixed(2) : '');
+            } else {
+                $row.find('.pinv-gst-amt').val('');
+                $row.find('.pinv-row-net').text('');
+            }
+
             calculateTotals();
         }
 
@@ -157,6 +184,7 @@
             let totalDiscAmt = 0;
             let totalGstAmt = 0;
             let totalNetAmt = 0;
+            let hasAny = false;
 
             $('#pinv-items-body tr').each(function () {
                 let $r = $(this);
@@ -165,6 +193,10 @@
                 let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
                 let discAmt = parseFloat($r.find('.pinv-disc-amount').val()) || 0;
                 let gst = parseFloat($r.find('.pinv-gst').val()) || 0;
+
+                if (qty > 0 || cost > 0) {
+                    hasAny = true;
+                }
 
                 let base = qty * cost;
                 let taxable = Math.max(0, base - discAmt);
@@ -178,11 +210,19 @@
                 totalNetAmt += net;
             });
 
-            $('#footer-total-qty').text(totalQty.toFixed(3));
-            $('#footer-total-cost').text(totalCost.toFixed(2));
-            $('#footer-total-disc').text(totalDiscAmt.toFixed(2));
-            $('#footer-total-gst').text(totalGstAmt.toFixed(2));
-            $('#footer-grand-net').text(totalNetAmt.toFixed(2));
+            if (hasAny) {
+                $('#footer-total-qty').text(totalQty > 0 ? totalQty.toFixed(3) : '');
+                $('#footer-total-cost').text(totalCost > 0 ? totalCost.toFixed(2) : '');
+                $('#footer-total-disc').text(totalDiscAmt > 0 ? totalDiscAmt.toFixed(2) : '');
+                $('#footer-total-gst').text(totalGstAmt > 0 ? totalGstAmt.toFixed(2) : '');
+                $('#footer-grand-net').text(totalNetAmt > 0 ? totalNetAmt.toFixed(2) : '');
+            } else {
+                $('#footer-total-qty').text('');
+                $('#footer-total-cost').text('');
+                $('#footer-total-disc').text('');
+                $('#footer-total-gst').text('');
+                $('#footer-grand-net').text('');
+            }
         }
 
         function updateExpiryRequirement($row, batchExpiry, shelfLife) {
@@ -317,11 +357,9 @@
                 $row.find('.pinv-cost').val(!isNaN(cost) && cost > 0 ? cost.toFixed(2) : '');
                 $row.find('.pinv-sell').val(!isNaN(sell) && sell > 0 ? sell.toFixed(2) : '');
                 $row.find('.pinv-mrp').val(!isNaN(mrp) && mrp > 0 ? mrp.toFixed(2) : '');
-                $row.find('.pinv-gst').val(!isNaN(gst) ? gst.toFixed(2) : '0.00');
+                $row.find('.pinv-gst').val(!isNaN(gst) && gst > 0 ? gst.toFixed(2) : '');
 
-                if (!$row.find('.pinv-qty').val()) {
-                    $row.find('.pinv-qty').val('1');
-                }
+                // Note: user requested no default 0 or 1 anywhere - user fills qty manually
 
                 calculateRow($row);
             } else {
@@ -335,11 +373,9 @@
                         $row.find('.pinv-cost').val(data.cost_price > 0 ? Number(data.cost_price).toFixed(2) : '');
                         $row.find('.pinv-sell').val(data.sell_price > 0 ? Number(data.sell_price).toFixed(2) : '');
                         $row.find('.pinv-mrp').val(data.mrp > 0 ? Number(data.mrp).toFixed(2) : '');
-                        $row.find('.pinv-gst').val(Number(data.gst_percent || 0).toFixed(2));
+                        $row.find('.pinv-gst').val(Number(data.gst_percent || 0) > 0 ? Number(data.gst_percent).toFixed(2) : '');
 
-                        if (!$row.find('.pinv-qty').val()) {
-                            $row.find('.pinv-qty').val('1');
-                        }
+                        // Note: user requested no default 0 or 1 anywhere - user fills qty manually
 
                         calculateRow($row);
                     }
@@ -379,6 +415,9 @@
                 placeholder: 'Select item',
                 allowClear: true
             });
+
+            // Ensure autocomplete is off on new row inputs
+            $newRow.find('input').attr('autocomplete', 'off');
 
             updateExpiryRequirement($newRow, 'Not Required', 0);
             rowIndex++;

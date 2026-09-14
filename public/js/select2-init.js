@@ -68,4 +68,25 @@ $(document).ready(function () {
             }
         }
     });
+
+    // =========================================================================
+    // REMOVE NUMBER SPINNERS/ARROWS AND AUTOCOMPLETE DROPDOWNS ON NUMBER FIELDS
+    // =========================================================================
+    var numStyle = document.createElement('style');
+    numStyle.textContent = 
+        'input[type=number]::-webkit-inner-spin-button, ' +
+        'input[type=number]::-webkit-outer-spin-button { ' +
+        '    -webkit-appearance: none !important; ' +
+        '    margin: 0 !important; ' +
+        '} ' +
+        'input[type=number] { ' +
+        '    -moz-appearance: textfield !important; ' +
+        '    appearance: textfield !important; ' +
+        '}';
+    document.head.appendChild(numStyle);
+
+    // Disable browser autocomplete dropdown on all number and code inputs
+    $(document).on('focus', 'input[type="number"], input.pinv-item-code, input.pinv-qty, input.pinv-cost', function () {
+        $(this).attr('autocomplete', 'off');
+    });
 });
