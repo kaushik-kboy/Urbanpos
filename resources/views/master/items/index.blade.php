@@ -20,6 +20,36 @@
                 <i class="fas fa-plus"></i> Add Item
             </a>
         </div>
+        <div class="card-header bg-light border-bottom">
+            <form method="GET" action="{{ route('master.items.index') }}" class="form-row align-items-center">
+                <div class="col-md-4 col-sm-6 mb-2 mb-md-0">
+                    <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        </div>
+                        <input type="text" name="name" value="{{ request('name') }}" class="form-control" placeholder="Search by name, code, or alias...">
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-6 mb-2 mb-md-0">
+                    <select name="supplier_id" class="form-control form-control-sm select2" data-placeholder="All Suppliers">
+                        <option value="">All Suppliers</option>
+                        @foreach ($suppliers as $sId => $sName)
+                            <option value="{{ $sId }}" {{ request('supplier_id') == $sId ? 'selected' : '' }}>{{ $sName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                    @if(request()->filled('name') || request()->filled('supplier_id'))
+                        <a href="{{ route('master.items.index') }}" class="btn btn-sm btn-outline-secondary ml-1">
+                            <i class="fas fa-times"></i> Reset
+                        </a>
+                    @endif
+                </div>
+            </form>
+        </div>
         <div class="card-body p-0">
             <table class="table table-striped mb-0">
                 <thead>

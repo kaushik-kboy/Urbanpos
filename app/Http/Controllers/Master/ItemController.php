@@ -18,11 +18,27 @@ class ItemController extends Controller
     use HasPerPage, Importable;
 
 
-    public function index()
+    public function index(Request $request)
     {
-        $items = Item::with(['brand', 'supplier'])->orderBy('name')->paginate($this->perPage());
+        $query = Item::with(['brand', 'supplier']);
 
-        return view('master.items.index', compact('items'));
+        if ($request->filled('name')) {
+            $term = $request->input('name');
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                  ->orWhere('alias', 'like', "%{$term}%")
+                  ->orWhere('item_code', 'like', "%{$term}%");
+            });
+        }
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->input('supplier_id'));
+        }
+
+        $items = $query->orderBy('name')->paginate($this->perPage());
+        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
+
+        return view('master.items.index', compact('items', 'suppliers'));
     }
 
     public function create()
