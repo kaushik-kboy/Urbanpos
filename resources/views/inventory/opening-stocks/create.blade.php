@@ -2,6 +2,8 @@
 
 @section('title', 'Add Opening Stock')
 
+@section('plugins.Select2', true)
+
 @section('content_header')
     <h1>Create Opening Stock</h1>
 @stop

@@ -1,0 +1,7 @@
+"Opening Stock Detail 
+ DATE : from 01-04-2024 11-09-2026 ; Location : All Location ; 
+"
+"URBANPETSSERVICESPRIVATELIMITED,AksharComplex,Ahmedabad,9662825744,GSTNO:24AAECU0338G1ZN"
+OS no,OS S.no,OS date,Branch,Branch Code,Supplier,Code,Item code,Item name,Alias Name,Batch no,OS Qty,Cost,Landing,Net margin %,Business Type,Selling,MRP,State,Remarks,Message,Conversion unit
+,,,,,,,,,,,,,,,,,,,,,
+11,1,2024-12-02,URBAN PETS / MOTERA,32772,AIMIL PHARMACEUTICALS (INDIA) LTD.,34411,7287,Maxi Adult 20KG,,,1,"1,966.10","2,320.00",0,BRANCH,"2,900.00","2,900.00",Gujarat,.,.,UNIT

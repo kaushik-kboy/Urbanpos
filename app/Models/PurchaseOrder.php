@@ -16,10 +16,12 @@ class PurchaseOrder extends Model
         'item_disc_amount', 'disc_percent', 'disc_amount', 'freight', 'round_off',
         'scheme_item_disc_amt', 'other_disc_amt', 'total_gst', 'total_extra_cess',
         'total_qty', 'total_weight', 'total', 'remarks', 'message', 'status',
+        'cancellation_reason', 'cancelled_at', 'cancelled_by_id',
     ];
 
     protected $casts = [
         'po_date' => 'date',
+        'cancelled_at' => 'datetime',
     ];
 
     public function supplier(): BelongsTo
@@ -40,5 +42,10 @@ class PurchaseOrder extends Model
     public function purchaseInvoices(): HasMany
     {
         return $this->hasMany(PurchaseInvoice::class);
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_id');
     }
 }

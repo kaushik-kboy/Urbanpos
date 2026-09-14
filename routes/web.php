@@ -7,6 +7,7 @@ use App\Http\Controllers\Master\BreedController;
 use App\Http\Controllers\Master\ColorController;
 use App\Http\Controllers\Master\CustomerCategoryController;
 use App\Http\Controllers\Master\CustomerController;
+use App\Http\Controllers\Master\FinancialYearController;
 use App\Http\Controllers\Master\GstTaxController;
 use App\Http\Controllers\Master\ItemCategoryController;
 use App\Http\Controllers\Master\ItemCategoryValueController;
@@ -24,13 +25,44 @@ use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Inventory\DamageStockController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\StockUpdateController;
+use App\Http\Controllers\Inventory\StockUpdateApprovalController;
+use App\Http\Controllers\Inventory\BarcodePrintingController;
+use App\Http\Controllers\Inventory\PriceFixingController;
+use App\Http\Controllers\Inventory\ChangeSellingController;
+use App\Http\Controllers\Inventory\InventoryMoreController;
+use App\Http\Controllers\Inventory\StockTransferController;
 use App\Http\Controllers\Sales\SalesBillController;
 use App\Http\Controllers\Sales\SalesReturnController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Finance\LedgerController;
 use App\Http\Controllers\Finance\VoucherController;
 use App\Http\Controllers\Finance\FinanceReportController;
+use App\Http\Controllers\Master\MasterAuxController;
+use App\Http\Controllers\Sales\SalesAuxController;
+use App\Http\Controllers\Purchase\PurchaseAuxController;
+use App\Http\Controllers\ToolsController;
 use Illuminate\Support\Facades\Route;
+
+/**
+ * Registers a resource controller's index/create/edit/show routes ungated (any
+ * authenticated user), and its store/update/destroy routes behind the matching
+ * "{module}.create"/"{module}.edit"/"{module}.cancel" permission plus branch scoping.
+ * A plain closure (not a top-level function declaration) — routes/web.php is re-required
+ * on every test's fresh application boot, and a `function` declaration here would fatal
+ * with "Cannot redeclare" on the second test.
+ */
+$gatedResource = function (string $uri, string $controller, string $module) {
+    Route::resource($uri, $controller)->only(['index', 'create', 'edit', 'show']);
+
+    Route::middleware(['permission:'.$module.'.create', 'branch.access'])
+        ->group(fn () => Route::resource($uri, $controller)->only(['store']));
+
+    Route::middleware(['permission:'.$module.'.edit', 'branch.access'])
+        ->group(fn () => Route::resource($uri, $controller)->only(['update']));
+
+    Route::middleware(['permission:'.$module.'.cancel', 'branch.access'])
+        ->group(fn () => Route::resource($uri, $controller)->only(['destroy']));
+};
 
 Route::get('/', function () {
     return view('welcome');
@@ -40,7 +72,9 @@ Auth::routes();
 
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-Route::middleware('auth')->prefix('master')->name('master.')->group(function () {
+Route::middleware('auth')->get('switch-branch/{branch}', \App\Http\Controllers\SwitchBranchController::class)->name('switch-branch');
+
+Route::middleware('auth')->prefix('master')->name('master.')->group(function () use ($gatedResource) {
     $masterResources = [
         'item-categories' => ItemCategoryController::class,
         'item-category-values' => ItemCategoryValueController::class,
@@ -54,38 +88,126 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         'breeds' => BreedController::class,
         'colors' => ColorController::class,
         'suppliers' => SupplierController::class,
-        'gst-taxes' => GstTaxController::class,
         'branches' => BranchController::class,
         'registers' => RegisterController::class,
         'tender-types' => TenderTypeController::class,
         'tender-type-values' => TenderTypeValueController::class,
+        'gst-taxes' => GstTaxController::class,
     ];
 
     foreach ($masterResources as $uri => $controller) {
-        Route::resource($uri, $controller);
-        Route::post("{$uri}/import", [$controller, 'import'])->name("{$uri}.import");
+        $gatedResource($uri, $controller, $uri);
+        Route::middleware(['permission:'.$uri.'.create', 'branch.access'])
+            ->post("{$uri}/import", [$controller, 'import'])->name("{$uri}.import");
         Route::get("{$uri}/import/sample", [$controller, 'importSample'])->name("{$uri}.import-sample");
     }
 
     Route::get('item-price-change/search', [ItemPriceChangeController::class, 'search'])->name('item-price-change.search');
     Route::get('item-price-change', [ItemPriceChangeController::class, 'index'])->name('item-price-change.index');
-    Route::post('item-price-change', [ItemPriceChangeController::class, 'update'])->name('item-price-change.update');
+    Route::middleware('permission:item-price-change.edit')
+        ->post('item-price-change', [ItemPriceChangeController::class, 'update'])->name('item-price-change.update');
+
+    // Users & Roles — Owner-only for create/edit/delete; index/create-form/edit-form/show
+    // stay open to any authenticated user so staff can at least see who has access.
+    $gatedResource('users', \App\Http\Controllers\Master\UserController::class, 'users');
+
+    // Financial Years — no destroy action exists (there's no "financial-years.cancel"
+    // permission, and $gatedResource always wires one), so this is a bespoke block
+    // instead of $gatedResource, plus two custom lock/reopen actions.
+    Route::resource('financial-years', FinancialYearController::class)->only(['index', 'create', 'edit', 'show']);
+    Route::middleware(['permission:financial-years.create', 'branch.access'])
+        ->group(fn () => Route::resource('financial-years', FinancialYearController::class)->only(['store']));
+    Route::middleware(['permission:financial-years.edit', 'branch.access'])
+        ->group(fn () => Route::resource('financial-years', FinancialYearController::class)->only(['update']));
+    Route::middleware('permission:financial-years.lock')
+        ->post('financial-years/{financial_year}/lock', [FinancialYearController::class, 'lock'])->name('financial-years.lock');
+    Route::middleware('permission:financial-years.reopen')
+        ->post('financial-years/{financial_year}/reopen', [FinancialYearController::class, 'reopen'])->name('financial-years.reopen');
+
+    Route::get('aux/{module}', [MasterAuxController::class, 'renderModule'])->name('aux');
 });
 
-Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () {
-    Route::resource('purchase-orders', PurchaseOrderController::class);
-    Route::resource('purchase-invoices', PurchaseInvoiceController::class);
+Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () use ($gatedResource) {
+    $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
+    $gatedResource('purchase-invoices', PurchaseInvoiceController::class, 'purchase-invoices');
+    Route::get('aux/{module}', [PurchaseAuxController::class, 'renderModule'])->name('aux');
 });
 
-Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(function () {
-    Route::resource('opening-stocks', OpeningStockController::class);
-    Route::resource('damage-stocks', DamageStockController::class);
-    Route::resource('stock-updates', StockUpdateController::class);
+Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(function () use ($gatedResource) {
+    Route::get('opening-stocks/search-items', [OpeningStockController::class, 'searchItems'])->name('opening-stocks.search-items');
+    Route::get('opening-stocks/item-by-code', [OpeningStockController::class, 'getItemByCode'])->name('opening-stocks.item-by-code');
+    $gatedResource('opening-stocks', OpeningStockController::class, 'opening-stocks');
+    Route::get('damage-stocks/search-items', [DamageStockController::class, 'searchItems'])->name('damage-stocks.search-items');
+    Route::get('damage-stocks/item-by-code', [DamageStockController::class, 'getItemByCode'])->name('damage-stocks.item-by-code');
+    $gatedResource('damage-stocks', DamageStockController::class, 'damage-stocks');
+    $gatedResource('stock-updates', StockUpdateController::class, 'stock-updates');
+
+    // Stock Update Approval
+    Route::get('stock-update-approval', [StockUpdateApprovalController::class, 'index'])->name('stock-update-approval.index');
+    Route::get('stock-update-approval/{stockUpdate}', [StockUpdateApprovalController::class, 'show'])->name('stock-update-approval.show');
+    Route::middleware(['permission:stock-update-approval.approve', 'branch.access'])
+        ->post('stock-update-approval/{stockUpdate}/approve', [StockUpdateApprovalController::class, 'approve'])->name('stock-update-approval.approve');
+    Route::middleware(['permission:stock-update-approval.reject', 'branch.access'])
+        ->post('stock-update-approval/{stockUpdate}/reject', [StockUpdateApprovalController::class, 'reject'])->name('stock-update-approval.reject');
+
+    // Barcode Printing
+    Route::get('barcode-printing', [BarcodePrintingController::class, 'index'])->name('barcode-printing.index');
+    Route::get('barcode-printing/search-items', [BarcodePrintingController::class, 'searchItems'])->name('barcode-printing.search-items');
+    Route::post('barcode-printing/print', [BarcodePrintingController::class, 'print'])->name('barcode-printing.print');
+
+    // Price Fixing
+    Route::get('price-fixing', [PriceFixingController::class, 'index'])->name('price-fixing.index');
+    Route::get('price-fixing/markup-markdown', [PriceFixingController::class, 'markupMarkdown'])->name('price-fixing.markup-markdown');
+    Route::get('price-fixing/price-level', [PriceFixingController::class, 'priceLevel'])->name('price-fixing.price-level');
+    Route::get('price-fixing/price-level-items', [PriceFixingController::class, 'priceLevelItems'])->name('price-fixing.price-level-items');
+    Route::middleware(['permission:price-fixing.apply', 'branch.access'])
+        ->post('price-fixing/apply', [PriceFixingController::class, 'apply'])->name('price-fixing.apply');
+
+    // Change Selling
+    Route::get('change-selling', [ChangeSellingController::class, 'index'])->name('change-selling.index');
+    Route::middleware(['permission:change-selling.edit', 'branch.access'])
+        ->post('change-selling', [ChangeSellingController::class, 'update'])->name('change-selling.update');
+
+    // More Operations
+    Route::get('repack', [InventoryMoreController::class, 'repack'])->name('repack.index');
+    Route::middleware(['permission:repack.create', 'branch.access'])
+        ->post('repack', [InventoryMoreController::class, 'processRepack'])->name('repack.process');
+
+    Route::get('kit-preparation', [InventoryMoreController::class, 'kitPreparation'])->name('kit-preparation.index');
+    Route::middleware(['permission:kit-preparation.create', 'branch.access'])
+        ->post('kit-preparation', [InventoryMoreController::class, 'processKitPreparation'])->name('kit-preparation.process');
+
+    Route::get('kit-unpack', [InventoryMoreController::class, 'kitUnpack'])->name('kit-unpack.index');
+    Route::middleware(['permission:kit-unpack.create', 'branch.access'])
+        ->post('kit-unpack', [InventoryMoreController::class, 'processKitUnpack'])->name('kit-unpack.process');
+
+    Route::get('price-drop', [InventoryMoreController::class, 'priceDrop'])->name('price-drop.index');
+    Route::get('shelf-talker', [InventoryMoreController::class, 'shelfTalker'])->name('shelf-talker.index');
+    Route::get('change-serial-no', [InventoryMoreController::class, 'changeSerialNo'])->name('change-serial-no.index');
+    Route::post('change-serial-no', [InventoryMoreController::class, 'processChangeSerialNo'])->name('change-serial-no.process');
+
+    // Stock Transfer
+    Route::get('stock-transfers/search-items', [StockTransferController::class, 'searchItems'])->name('stock-transfers.search-items');
+    Route::get('stock-transfers/item-by-code', [StockTransferController::class, 'getItemByCode'])->name('stock-transfers.item-by-code');
+    Route::get('stock-transfers/pending-receipt', [StockTransferController::class, 'pendingReceipt'])->name('stock-transfers.pending-receipt');
+    Route::get('stock-transfers/{stockTransfer}/receive', [StockTransferController::class, 'receiveForm'])->name('stock-transfers.receive-form');
+    Route::middleware(['permission:stock-transfers.receive', 'branch.access'])
+        ->post('stock-transfers/{stockTransfer}/receive', [StockTransferController::class, 'receive'])->name('stock-transfers.receive');
+    Route::middleware(['permission:stock-transfers.cancel', 'branch.access'])
+        ->post('stock-transfers/{stockTransfer}/cancel', [StockTransferController::class, 'cancel'])->name('stock-transfers.cancel');
+    Route::resource('stock-transfers', StockTransferController::class)->only(['index', 'create', 'show']);
+    Route::middleware(['permission:stock-transfers.create', 'branch.access'])
+        ->group(fn () => Route::resource('stock-transfers', StockTransferController::class)->only(['store']));
 });
 
-Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () {
-    Route::resource('sales-bills', SalesBillController::class);
-    Route::resource('sales-returns', SalesReturnController::class);
+Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () use ($gatedResource) {
+    $gatedResource('sales-bills', SalesBillController::class, 'sales-bills');
+    $gatedResource('sales-returns', SalesReturnController::class, 'sales-returns');
+    Route::get('aux/{module}', [SalesAuxController::class, 'renderModule'])->name('aux');
+});
+
+Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
+    Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });
 
 Route::middleware('auth')->prefix('reports')->name('reports.')->group(function () {
@@ -98,11 +220,24 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('sales-return-summary', [ReportController::class, 'salesReturnSummary'])->name('sales-return-summary');
     Route::get('customer-master', [ReportController::class, 'customerMaster'])->name('customer-master');
     Route::get('customer-pet-details', [ReportController::class, 'customerPetDetails'])->name('customer-pet-details');
+    Route::get('eod', [ReportController::class, 'eod'])->name('eod');
 });
 
-Route::middleware('auth')->prefix('finance')->name('finance.')->group(function () {
-    Route::resource('ledgers', LedgerController::class);
-    Route::resource('vouchers', VoucherController::class);
+Route::middleware('auth')->prefix('till')->name('till.')->group(function () {
+    Route::get('sessions', [\App\Http\Controllers\Till\TillSessionController::class, 'index'])->name('sessions.index');
+    Route::get('sessions/open', [\App\Http\Controllers\Till\TillSessionController::class, 'create'])->name('sessions.create');
+    Route::middleware('permission:till.open')
+        ->post('sessions/open', [\App\Http\Controllers\Till\TillSessionController::class, 'open'])->name('sessions.open');
+    Route::get('sessions/{tillSession}', [\App\Http\Controllers\Till\TillSessionController::class, 'show'])->name('sessions.show');
+    Route::middleware('permission:till.open')
+        ->post('sessions/{tillSession}/cash-movements', [\App\Http\Controllers\Till\TillSessionController::class, 'addCashMovement'])->name('sessions.cash-movements');
+    Route::middleware('permission:till.close')
+        ->post('sessions/{tillSession}/close', [\App\Http\Controllers\Till\TillSessionController::class, 'close'])->name('sessions.close');
+});
+
+Route::middleware('auth')->prefix('finance')->name('finance.')->group(function () use ($gatedResource) {
+    $gatedResource('ledgers', LedgerController::class, 'ledgers');
+    $gatedResource('vouchers', VoucherController::class, 'vouchers');
 
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [FinanceReportController::class, 'index'])->name('index');

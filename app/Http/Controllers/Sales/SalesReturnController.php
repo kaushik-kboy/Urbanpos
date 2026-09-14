@@ -6,17 +6,26 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Item;
-use App\Models\ItemStock;
 use App\Models\SalesBill;
+use App\Models\SalesBillItem;
 use App\Models\SalesReturn;
+use App\Services\Accounting\FinancialYearGuard;
 use App\Services\Accounting\LedgerPostingService;
+use App\Services\Audit\AuditLogger;
+use App\Services\Inventory\StockLedgerService;
+use App\Services\Tax\TaxEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SalesReturnController extends Controller
 {
-    public function __construct(private LedgerPostingService $ledgerPosting)
-    {
+    public function __construct(
+        private LedgerPostingService $ledgerPosting,
+        private StockLedgerService $stockLedger,
+        private TaxEngine $taxEngine,
+        private AuditLogger $auditLogger,
+        private FinancialYearGuard $financialYearGuard,
+    ) {
     }
 
     public function index()
@@ -34,17 +43,25 @@ class SalesReturnController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+        $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
+
+        if ($data['header']['posting_key'] ?? null) {
+            $existing = SalesReturn::where('posting_key', $data['header']['posting_key'])->first();
+            if ($existing) {
+                return redirect()->route('sales.sales-returns.index')->with('status', "Sales Return {$existing->return_number} created successfully.");
+            }
+        }
 
         $salesReturn = DB::transaction(function () use ($data) {
-            $lines = $this->computeLines($data['items']);
+            $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
             $salesReturn = SalesReturn::create(array_merge($data['header'], $totals, [
                 'return_number' => $this->nextNumber(),
             ]));
 
-            $salesReturn->items()->createMany($lines);
-            $this->applyStock($lines, $salesReturn->branch_id, +1);
+            $createdItems = $salesReturn->items()->createMany($lines);
+            $this->postStock($createdItems, $salesReturn);
             $this->ledgerPosting->postSalesReturn($salesReturn);
 
             return $salesReturn;
@@ -62,20 +79,22 @@ class SalesReturnController extends Controller
 
     public function update(Request $request, SalesReturn $salesReturn)
     {
+        $salesReturn->assertEditable();
+
         $data = $this->validateData($request);
+        $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
 
         DB::transaction(function () use ($data, $salesReturn) {
-            $oldLines = $salesReturn->items->map->only(['item_id', 'qty'])->all();
-            $this->applyStock($oldLines, $salesReturn->branch_id, -1);
+            $this->stockLedger->reverseByReference(SalesReturn::class, $salesReturn->id);
 
-            $lines = $this->computeLines($data['items']);
+            $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
             $salesReturn->update(array_merge($data['header'], $totals));
             $salesReturn->items()->delete();
-            $salesReturn->items()->createMany($lines);
+            $createdItems = $salesReturn->items()->createMany($lines);
 
-            $this->applyStock($lines, $salesReturn->branch_id, +1);
+            $this->postStock($createdItems, $salesReturn);
             $this->ledgerPosting->postSalesReturn($salesReturn);
         });
 
@@ -84,10 +103,13 @@ class SalesReturnController extends Controller
 
     public function destroy(SalesReturn $salesReturn)
     {
-        DB::transaction(function () use ($salesReturn) {
-            $lines = $salesReturn->items->map->only(['item_id', 'qty'])->all();
-            $this->applyStock($lines, $salesReturn->branch_id, -1);
+        // No assertEditable() guard here: destroy() already IS the cancel/reversal action.
+        $oldValues = $salesReturn->only(['return_number', 'return_date', 'customer_id', 'branch_id', 'total', 'status']);
+
+        DB::transaction(function () use ($salesReturn, $oldValues) {
+            $this->stockLedger->reverseByReference(SalesReturn::class, $salesReturn->id);
             $this->ledgerPosting->reverse(SalesReturn::class, $salesReturn->id);
+            $this->auditLogger->log('cancel', $salesReturn, $oldValues, null);
             $salesReturn->delete();
         });
 
@@ -95,12 +117,33 @@ class SalesReturnController extends Controller
     }
 
     /**
-     * $direction +1 restores returned stock (create), -1 reverses it (edit-reverse/delete).
+     * Restores stock at the ORIGINAL sale's cost_at_sale when the return is linked to a
+     * sales bill (per foundation spec: a return restores the original cost basis, not
+     * today's average) — falls back to cost-neutral (current average) when unlinked.
      */
-    private function applyStock(array $lines, int $branchId, int $direction): void
+    private function postStock($createdItems, SalesReturn $salesReturn): void
     {
-        foreach ($lines as $line) {
-            ItemStock::adjust($line['item_id'], $branchId, (float) $line['qty'] * $direction);
+        foreach ($createdItems as $itemLine) {
+            $originalCost = null;
+            if ($salesReturn->sales_bill_id) {
+                $originalCost = SalesBillItem::where('sales_bill_id', $salesReturn->sales_bill_id)
+                    ->where('item_id', $itemLine->item_id)
+                    ->value('cost_at_sale');
+            }
+
+            $ledgerRow = $this->stockLedger->post(
+                itemId: $itemLine->item_id,
+                branchId: $salesReturn->branch_id,
+                movementType: 'SALE_RETURN',
+                qtyDelta: (float) $itemLine->qty,
+                unitCost: $originalCost !== null ? (float) $originalCost : null,
+                referenceType: SalesReturn::class,
+                referenceId: $salesReturn->id,
+                documentDate: $salesReturn->return_date->toDateString(),
+                expDate: $itemLine->exp_date?->toDateString(),
+            );
+
+            $itemLine->update(['cost_at_sale' => $ledgerRow->unit_cost]);
         }
     }
 
@@ -121,34 +164,35 @@ class SalesReturnController extends Controller
         ];
     }
 
-    private function computeLines(array $items): array
+    private function computeLines(array $items, array $header): array
     {
-        return collect($items)->map(function ($line) {
+        $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
+        $isInterstate = ($header['sales_type'] ?? null) === 'Interstate';
+
+        return collect($items)->map(function ($line) use ($itemsById, $isInterstate) {
             $qty = (float) $line['qty'];
             $sellPrice = (float) $line['sell_price'];
-            $base = $qty * $sellPrice;
+            $item = $itemsById[$line['item_id']];
 
             $discPercent = (float) ($line['disc_percent'] ?? 0);
             $discAmount = (float) ($line['disc_amount'] ?? 0);
-            if ($discAmount <= 0 && $discPercent > 0) {
-                $discAmount = round($base * $discPercent / 100, 2);
-            }
 
-            $gstPercent = (float) ($line['gst_percent'] ?? 0);
-            $gstTaxAmount = round(($base - $discAmount) * $gstPercent / 100, 2);
-            $netAmount = round(($base - $discAmount) + $gstTaxAmount, 2);
+            $tax = $this->taxEngine->calculate($qty, $sellPrice, $item, $discPercent, $discAmount, 0.0, $isInterstate);
 
             return [
                 'item_id' => $line['item_id'],
-                'exp_date' => $this->normalizeDate($line['exp_date'] ?: null),
+                'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
                 'qty' => $qty,
                 'sell_price' => $sellPrice,
                 'mrp' => (float) ($line['mrp'] ?? 0),
                 'disc_percent' => $discPercent,
-                'disc_amount' => $discAmount,
-                'gst_percent' => $gstPercent,
-                'gst_tax_amount' => $gstTaxAmount,
-                'net_amount' => $netAmount,
+                'disc_amount' => $tax['disc_amount'],
+                'gst_percent' => $tax['gst_percent'],
+                'gst_tax_amount' => $tax['gst_tax_amount'],
+                'cgst_amount' => $tax['cgst_amount'],
+                'sgst_amount' => $tax['sgst_amount'],
+                'igst_amount' => $tax['igst_amount'],
+                'net_amount' => $tax['net_amount'],
             ];
         })->all();
     }
@@ -164,6 +208,9 @@ class SalesReturnController extends Controller
             'item_disc_amount' => $collection->sum('disc_amount'),
             'disc_amount' => $collection->sum('disc_amount'),
             'total_gst' => $collection->sum('gst_tax_amount'),
+            'total_cgst' => $collection->sum('cgst_amount'),
+            'total_sgst' => $collection->sum('sgst_amount'),
+            'total_igst' => $collection->sum('igst_amount'),
             'total' => round($collection->sum('net_amount') + $roundOff + $totalExtraCess + $gstCalamityCess, 2),
         ];
     }
@@ -181,6 +228,7 @@ class SalesReturnController extends Controller
             'total_extra_cess' => ['nullable', 'numeric', 'min:0'],
             'gst_calamity_cess' => ['nullable', 'numeric', 'min:0'],
             'remarks' => ['nullable', 'string'],
+            'posting_key' => ['nullable', 'string', 'max:100'],
         ]);
 
         $header['return_date'] = $this->normalizeDate($header['return_date']);

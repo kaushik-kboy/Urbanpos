@@ -40,12 +40,17 @@
                             <td>{{ number_format($po->total, 2) }}</td>
                             <td><span class="badge badge-{{ $po->status === 'Open' ? 'success' : ($po->status === 'Cancelled' ? 'danger' : 'secondary') }}">{{ $po->status }}</span></td>
                             <td class="text-right">
-                                <a href="{{ route('purchase.purchase-orders.edit', $po) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('purchase.purchase-orders.destroy', $po) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this purchase order?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
+                                @if ($po->status !== 'Cancelled')
+                                    <a href="{{ route('purchase.purchase-orders.edit', $po) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
+                                    <form action="{{ route('purchase.purchase-orders.destroy', $po) }}" method="POST" class="d-inline po-cancel-form">
+                                        @csrf
+                                        @method('DELETE')
+                                        <input type="hidden" name="reason" class="po-cancel-reason">
+                                        <button type="button" class="btn btn-xs btn-outline-danger po-cancel-btn"><i class="fas fa-ban"></i> Cancel</button>
+                                    </form>
+                                @else
+                                    <span class="text-muted small">Cancelled</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -56,4 +61,20 @@
         </div>
         <div class="card-footer">{{ $purchaseOrders->links() }}</div>
     </div>
+
+    @push('js')
+    <script>
+        document.querySelectorAll('.po-cancel-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const reason = prompt('Reason for cancelling this Purchase Order:');
+                if (reason === null || reason.trim() === '') {
+                    return;
+                }
+                const form = btn.closest('.po-cancel-form');
+                form.querySelector('.po-cancel-reason').value = reason.trim();
+                form.submit();
+            });
+        });
+    </script>
+    @endpush
 @stop

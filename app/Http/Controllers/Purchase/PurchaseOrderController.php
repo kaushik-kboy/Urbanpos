@@ -7,11 +7,17 @@ use App\Models\Branch;
 use App\Models\Item;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderController extends Controller
 {
+    public function __construct(private AuditLogger $auditLogger)
+    {
+    }
+
     public function index()
     {
         $purchaseOrders = PurchaseOrder::with(['supplier', 'branch'])->latest('po_date')->paginate(20);
@@ -53,6 +59,12 @@ class PurchaseOrderController extends Controller
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
+        if ($purchaseOrder->status === 'Cancelled') {
+            throw ValidationException::withMessages([
+                'purchase_order' => "Purchase Order {$purchaseOrder->po_number} is cancelled and cannot be edited.",
+            ]);
+        }
+
         $data = $this->validateData($request);
 
         DB::transaction(function () use ($data, $purchaseOrder) {
@@ -67,11 +79,40 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase.purchase-orders.index')->with('status', "Purchase Order {$purchaseOrder->po_number} updated successfully.");
     }
 
-    public function destroy(PurchaseOrder $purchaseOrder)
+    /**
+     * PO Cancel — like every other document in this app, this IS the cancel action, not
+     * a hard delete: the row stays, status moves to Cancelled with a reason on record.
+     */
+    public function destroy(Request $request, PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->delete();
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
+        ]);
 
-        return redirect()->route('purchase.purchase-orders.index')->with('status', 'Purchase Order deleted.');
+        if ($purchaseOrder->status === 'Cancelled') {
+            throw ValidationException::withMessages([
+                'purchase_order' => "Purchase Order {$purchaseOrder->po_number} is already cancelled.",
+            ]);
+        }
+
+        if ($purchaseOrder->purchaseInvoices()->exists()) {
+            throw ValidationException::withMessages([
+                'purchase_order' => "Cannot cancel Purchase Order {$purchaseOrder->po_number} — it already has Purchase Invoice(s) raised against it.",
+            ]);
+        }
+
+        $oldValues = $purchaseOrder->only(['status']);
+
+        $purchaseOrder->update([
+            'status' => 'Cancelled',
+            'cancellation_reason' => $data['reason'],
+            'cancelled_at' => now(),
+            'cancelled_by_id' => $request->user()->id,
+        ]);
+
+        $this->auditLogger->log('cancel', $purchaseOrder, $oldValues, ['status' => 'Cancelled'], $data['reason']);
+
+        return redirect()->route('purchase.purchase-orders.index')->with('status', "Purchase Order {$purchaseOrder->po_number} cancelled.");
     }
 
     private function nextNumber(): string
@@ -156,7 +197,10 @@ class PurchaseOrderController extends Controller
             'total_weight' => ['nullable', 'numeric', 'min:0'],
             'remarks' => ['nullable', 'string'],
             'message' => ['nullable', 'string'],
-            'status' => ['required', 'in:Open,Closed,Cancelled'],
+            // Cancelled is deliberately excluded here — cancellation only happens through
+            // the guarded destroy() action (requires a reason, blocks if already invoiced,
+            // writes an audit log), never silently via this form's status dropdown.
+            'status' => ['required', 'in:Open,Closed'],
         ]);
 
         $header['po_date'] = $this->normalizeDate($header['po_date']);

@@ -13,6 +13,7 @@ use App\Models\Customer;
 use App\Models\CustomerCategory;
 use App\Models\PetType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -50,10 +51,41 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $data = $this->validateData($request);
+        $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);
 
         return redirect()->route('master.customers.index')->with('status', 'Customer updated successfully.');
+    }
+
+    /**
+     * Credit terms are routine to SET when onboarding a new customer (store() is
+     * untouched), but CHANGING them on an existing one is credit-exposure-sensitive —
+     * same tier as item-price-change. Rather than a new permission/form split, this
+     * blocks the change inline: a Manager submitting the form unchanged (the normal
+     * case when editing unrelated fields) passes silently; actually altering a credit
+     * field requires Owner.
+     */
+    private function assertCreditFieldsUnchangedUnlessOwner(Request $request, Customer $customer, array $data): void
+    {
+        if ($request->user()->hasRole('Owner')) {
+            return;
+        }
+
+        $numericFields = ['credit_limit', 'credit_balance', 'monthly_credit_balance'];
+        foreach ($numericFields as $field) {
+            if (abs((float) $data[$field] - (float) $customer->$field) > 0.01) {
+                throw ValidationException::withMessages([
+                    $field => 'Only an Owner can change credit terms.',
+                ]);
+            }
+        }
+
+        if ((int) $data['credit_days'] !== (int) $customer->credit_days) {
+            throw ValidationException::withMessages([
+                'credit_days' => 'Only an Owner can change credit terms.',
+            ]);
+        }
     }
 
     public function destroy(Customer $customer)

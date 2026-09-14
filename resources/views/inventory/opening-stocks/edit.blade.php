@@ -2,6 +2,8 @@
 
 @section('title', 'Edit Opening Stock')
 
+@section('plugins.Select2', true)
+
 @section('content_header')
     <h1>Edit Opening Stock "{{ $openingStock->entry_number }}"</h1>
 @stop

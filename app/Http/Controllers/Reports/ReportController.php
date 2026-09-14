@@ -9,6 +9,7 @@ use App\Models\ItemStock;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesBill;
 use App\Models\SalesReturn;
+use App\Models\TillSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -148,6 +149,63 @@ class ReportController extends Controller
             ->paginate(50);
 
         return view('reports.customer-pet-details', compact('customers'));
+    }
+
+    /**
+     * Spec §14's EOD field list (sales/returns/discounts/GST/cash/UPI/card/credit/
+     * outstanding/till-variance), scoped to a branch+date range or a single till session.
+     * Payment totals are grouped by TenderType.type (Cash/Card/Wallet/Credit/...) rather
+     * than hard-coded "cash/UPI/card" buckets — this schema has no distinct "UPI" enum
+     * value, so whatever a store actually configures (e.g. UPI under type=Wallet) shows
+     * under its own real type instead of being force-fit into a bucket that doesn't
+     * exist here. Bills with no sales_bill_payments rows at all (old-style, or any bill
+     * that never opted into split-tender) are surfaced separately as "unattributed"
+     * rather than silently guessed at.
+     */
+    public function eod(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $tillSessionId = $request->input('till_session_id');
+
+        $bills = SalesBill::with('payments.tenderType')
+            ->whereDate('bill_date', '>=', $from)
+            ->whereDate('bill_date', '<=', $to)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($tillSessionId, fn ($q) => $q->where('till_session_id', $tillSessionId))
+            ->get();
+
+        $returns = SalesReturn::whereDate('return_date', '>=', $from)
+            ->whereDate('return_date', '<=', $to)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->get();
+
+        $paymentTotals = $bills->flatMap->payments
+            ->groupBy(fn ($payment) => $payment->tenderType->type)
+            ->map(fn ($group) => $group->sum('amount'));
+
+        $unattributedTotal = $bills->reject(fn ($bill) => $bill->payments->isNotEmpty())->sum('total');
+
+        $tillSessions = $tillSessionId
+            ? TillSession::whereKey($tillSessionId)->get()
+            : TillSession::whereDate('opened_at', '>=', $from)->whereDate('opened_at', '<=', $to)
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->get();
+
+        $summary = [
+            'sales_count' => $bills->count(),
+            'sales_total' => (float) $bills->sum('total'),
+            'returns_count' => $returns->count(),
+            'returns_total' => (float) $returns->sum('total'),
+            'discount_total' => (float) $bills->sum('disc_amount'),
+            'gst_total' => (float) $bills->sum('total_gst'),
+            'payment_totals' => $paymentTotals,
+            'unattributed_total' => (float) $unattributedTotal,
+            'till_variance_total' => (float) $tillSessions->whereNotNull('variance')->sum('variance'),
+        ];
+
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.eod', compact('summary', 'tillSessions', 'from', 'to', 'branchId', 'tillSessionId', 'branches'));
     }
 
     private function dateAndBranchFilter(Request $request): array

@@ -64,6 +64,32 @@
             if (rows.length <= 1) return;
             btn.closest('tr').remove();
         });
+
+        // Keyboard shortcuts: F4 Edit, F6 Save, F7 View, F8 Print, F9 Clear, F10 Close
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F4') {
+                e.preventDefault();
+                const firstInput = document.querySelector('#items-body input, #items-body select');
+                if (firstInput) firstInput.focus();
+            } else if (e.key === 'F6') {
+                e.preventDefault();
+                const form = document.querySelector('form');
+                if (form) form.submit();
+            } else if (e.key === 'F7') {
+                e.preventDefault();
+                window.location.href = "{{ route('inventory.stock-updates.index') }}";
+            } else if (e.key === 'F8') {
+                e.preventDefault();
+                window.print();
+            } else if (e.key === 'F9') {
+                e.preventDefault();
+                const form = document.querySelector('form');
+                if (form) form.reset();
+            } else if (e.key === 'F10') {
+                e.preventDefault();
+                window.location.href = "{{ route('inventory.stock-updates.index') }}";
+            }
+        });
     })();
 </script>
 @endpush

@@ -14,7 +14,7 @@ class JournalEntry extends Model
 
     protected $fillable = [
         'voucher_number', 'voucher_type', 'voucher_date', 'branch_id', 'reference_type',
-        'reference_id', 'narration', 'total_debit', 'total_credit',
+        'reference_id', 'narration', 'total_debit', 'total_credit', 'reversal_of',
     ];
 
     protected $casts = [
@@ -34,5 +34,10 @@ class JournalEntry extends Model
     public function reference(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function reversalOf(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reversal_of');
     }
 }

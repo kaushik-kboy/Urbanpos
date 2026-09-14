@@ -329,8 +329,14 @@ return [
                 ['text' => 'Item Category Values', 'url' => 'master/item-category-values'],
                 ['text' => 'Brand', 'url' => 'master/brands'],
                 ['text' => 'Item', 'url' => 'master/items'],
+                ['text' => 'Item Property Setting', 'url' => 'master/aux/item-property-setting'],
+                ['text' => 'Item EAN/UPC Entry', 'url' => 'master/aux/item-ean-upc-entry'],
+                ['text' => 'Assembly', 'url' => 'master/aux/assembly'],
+                ['text' => 'Kit Mapping', 'url' => 'master/aux/kit-mapping'],
                 ['text' => 'Item Price Change', 'url' => 'master/item-price-change'],
                 ['text' => 'UOM', 'url' => 'master/uoms'],
+                ['text' => 'UOM Vs Item Mapping', 'url' => 'master/aux/uom-vs-item-mapping'],
+                ['text' => 'Tax Slab', 'url' => 'master/aux/tax-slab'],
             ],
         ],
         [
@@ -340,9 +346,16 @@ return [
                 ['text' => 'Customer Category', 'url' => 'master/customer-categories'],
                 ['text' => 'Customer', 'url' => 'master/customers'],
                 ['text' => 'Area', 'url' => 'master/areas'],
-                ['text' => 'Pet Types', 'url' => 'master/pet-types'],
-                ['text' => 'Breed Master', 'url' => 'master/breeds'],
-                ['text' => 'Color Master', 'url' => 'master/colors'],
+                ['text' => 'Loyalty Program Info', 'url' => 'master/aux/loyalty-program-info'],
+                ['text' => 'Loyalty Points Update', 'url' => 'master/aux/loyalty-points-update'],
+                [
+                    'text' => 'Pet Masters',
+                    'submenu' => [
+                        ['text' => 'Pet Types', 'url' => 'master/pet-types'],
+                        ['text' => 'Breed Master', 'url' => 'master/breeds'],
+                        ['text' => 'Color Master', 'url' => 'master/colors'],
+                    ],
+                ],
             ],
         ],
         [
@@ -355,12 +368,16 @@ return [
             'icon' => 'fas fa-fw fa-percent',
             'submenu' => [
                 ['text' => 'GST Tax', 'url' => 'master/gst-taxes'],
+                ['text' => 'GSTNo Restriction Master', 'url' => 'master/aux/gstno-restriction'],
             ],
         ],
         [
             'text' => 'Branch',
-            'url' => 'master/branches',
             'icon' => 'fas fa-fw fa-store',
+            'submenu' => [
+                ['text' => 'Branch', 'url' => 'master/branches'],
+                ['text' => 'Distribution Centre Mapping', 'url' => 'master/aux/distribution-centre-mapping'],
+            ],
         ],
         [
             'text' => 'Register',
@@ -368,14 +385,57 @@ return [
             'icon' => 'fas fa-fw fa-cash-register',
         ],
         [
-            'text' => 'Tender Type',
-            'icon' => 'fas fa-fw fa-money-check-alt',
+            'text' => 'Promotion',
+            'icon' => 'fas fa-fw fa-bullhorn',
             'submenu' => [
-                ['text' => 'Tender Type', 'url' => 'master/tender-types'],
-                ['text' => 'Tender Type Values', 'url' => 'master/tender-type-values'],
+                ['text' => 'Promotion Management', 'url' => 'master/aux/promotion-management'],
+            ],
+        ],
+        [
+            'text' => 'More Master',
+            'icon' => 'fas fa-fw fa-ellipsis-h',
+            'submenu' => [
+                [
+                    'text' => 'Tools',
+                    'submenu' => [
+                        ['text' => 'Master Configuration', 'url' => 'master/aux/master-configuration'],
+                        ['text' => 'Tender Type Values', 'url' => 'master/tender-type-values'],
+                        ['text' => 'Unicode Master', 'url' => 'master/aux/unicode-master'],
+                        ['text' => 'Tender Type', 'url' => 'master/tender-types'],
+                        ['text' => 'Master Attributes', 'url' => 'master/aux/master-attributes'],
+                        ['text' => 'Addon Devices Inactivation', 'url' => 'master/aux/addon-devices'],
+                    ],
+                ],
+                [
+                    'text' => 'Utility',
+                    'submenu' => [
+                        ['text' => 'Transporter', 'url' => 'master/aux/transporters'],
+                        ['text' => 'Freight Settings', 'url' => 'master/aux/freight-settings'],
+                    ],
+                ],
             ],
         ],
         ['header' => 'Sales'],
+        [
+            'text' => 'Sales Quotation',
+            'url' => 'sales/aux/quotations',
+            'icon' => 'fas fa-fw fa-file-signature',
+        ],
+        [
+            'text' => 'Sales Order',
+            'url' => 'sales/aux/orders',
+            'icon' => 'fas fa-fw fa-shopping-basket',
+        ],
+        [
+            'text' => 'Sales Order Approval',
+            'url' => 'sales/aux/order-approval',
+            'icon' => 'fas fa-fw fa-user-check',
+        ],
+        [
+            'text' => 'Delivery Note',
+            'url' => 'sales/aux/delivery-notes',
+            'icon' => 'fas fa-fw fa-truck',
+        ],
         [
             'text' => 'Sales Bill',
             'url' => 'sales/sales-bills',
@@ -386,6 +446,19 @@ return [
             'url' => 'sales/sales-returns',
             'icon' => 'fas fa-fw fa-undo',
         ],
+        [
+            'text' => 'Delivery Note Return',
+            'url' => 'sales/aux/delivery-note-returns',
+            'icon' => 'fas fa-fw fa-truck-loading',
+        ],
+        [
+            'text' => 'More Sales',
+            'icon' => 'fas fa-fw fa-ellipsis-h',
+            'submenu' => [
+                ['text' => 'Transfer Out', 'url' => 'inventory/stock-transfers'],
+                ['text' => 'Transfer Out Approval & Auto TI', 'url' => 'sales/aux/transfer-out-approval'],
+            ],
+        ],
         ['header' => 'Purchase'],
         [
             'text' => 'Purchase Order',
@@ -393,9 +466,55 @@ return [
             'icon' => 'fas fa-fw fa-file-invoice',
         ],
         [
+            'text' => 'Receipt Note',
+            'url' => 'purchase/aux/receipt-notes',
+            'icon' => 'fas fa-fw fa-receipt',
+        ],
+        [
             'text' => 'Purchase Invoice',
             'url' => 'purchase/purchase-invoices',
             'icon' => 'fas fa-fw fa-file-invoice-dollar',
+        ],
+        [
+            'text' => 'Purchase Returns',
+            'url' => 'purchase/aux/purchase-returns',
+            'icon' => 'fas fa-fw fa-undo-alt',
+        ],
+        [
+            'text' => 'PO Cancel',
+            'url' => 'purchase/purchase-orders',
+            'icon' => 'fas fa-fw fa-ban',
+        ],
+        [
+            'text' => 'Transfer In',
+            'url' => 'inventory/stock-transfers/pending-receipt',
+            'icon' => 'fas fa-fw fa-dolly-flatbed',
+        ],
+        [
+            'text' => 'Indent',
+            'url' => 'purchase/aux/indents',
+            'icon' => 'fas fa-fw fa-clipboard-list',
+        ],
+        [
+            'text' => 'More Purchase',
+            'icon' => 'fas fa-fw fa-ellipsis-h',
+            'submenu' => [
+                ['text' => 'Auto Indent', 'url' => 'purchase/aux/auto-indent'],
+                ['text' => 'Indent Cancellation', 'url' => 'purchase/aux/indent-cancellation'],
+                ['text' => 'Transfer In Touch', 'url' => 'purchase/aux/transfer-in-touch'],
+                ['text' => 'Indent CutOff Time Configuration', 'url' => 'purchase/aux/indent-cutoff'],
+            ],
+        ],
+        ['header' => 'Till'],
+        [
+            'text' => 'Open Till',
+            'url' => 'till/sessions/open',
+            'icon' => 'fas fa-fw fa-door-open',
+        ],
+        [
+            'text' => 'Till Sessions',
+            'url' => 'till/sessions',
+            'icon' => 'fas fa-fw fa-cash-register',
         ],
         ['header' => 'Inventory'],
         [
@@ -409,17 +528,119 @@ return [
             'icon' => 'fas fa-fw fa-dumpster-fire',
         ],
         [
-            'text' => 'Stock Update',
+            'text' => 'Stock Update Entry',
             'url' => 'inventory/stock-updates',
             'icon' => 'fas fa-fw fa-warehouse',
         ],
+        [
+            'text' => 'Stock Update Approval',
+            'url' => 'inventory/stock-update-approval',
+            'icon' => 'fas fa-fw fa-clipboard-check',
+        ],
+        [
+            'text' => 'Barcode Printing',
+            'url' => 'inventory/barcode-printing',
+            'icon' => 'fas fa-fw fa-barcode',
+        ],
+        [
+            'text' => 'Price Fixing',
+            'icon' => 'fas fa-fw fa-tags',
+            'submenu' => [
+                [
+                    'text' => 'Price Fixing(markup/markdown)',
+                    'url' => 'inventory/price-fixing/markup-markdown',
+                ],
+                [
+                    'text' => 'Price Level',
+                    'url' => 'inventory/price-fixing/price-level',
+                ],
+                [
+                    'text' => 'Price Level Vs Items',
+                    'url' => 'inventory/price-fixing/price-level-items',
+                ],
+            ],
+        ],
+        [
+            'text' => 'Change Selling',
+            'url' => 'inventory/change-selling',
+            'icon' => 'fas fa-fw fa-dollar-sign',
+        ],
+        [
+            'text' => 'More Operations',
+            'icon' => 'fas fa-fw fa-layer-group',
+            'submenu' => [
+                ['text' => 'Repack', 'url' => 'inventory/repack', 'icon' => 'fas fa-fw fa-boxes'],
+                ['text' => 'Change Serial No', 'url' => 'inventory/change-serial-no', 'icon' => 'fas fa-fw fa-barcode'],
+                ['text' => 'Price Drop', 'url' => 'inventory/price-drop', 'icon' => 'fas fa-fw fa-level-down-alt'],
+                ['text' => 'Kit Preparation', 'url' => 'inventory/kit-preparation', 'icon' => 'fas fa-fw fa-tools'],
+                ['text' => 'Kit Unpack', 'url' => 'inventory/kit-unpack', 'icon' => 'fas fa-fw fa-box-open'],
+                ['text' => 'Shelf Talker', 'url' => 'inventory/shelf-talker', 'icon' => 'fas fa-fw fa-sticky-note'],
+            ],
+        ],
         ['header' => 'Reports'],
         [
-            'text' => 'Reports',
-            'url' => 'reports',
+            'text' => 'Reports Center',
             'icon' => 'fas fa-fw fa-chart-bar',
+            'submenu' => [
+                ['text' => 'Masters Reports', 'url' => 'reports?group=masters'],
+                ['text' => 'Purchase Reports', 'url' => 'reports/purchase-detail'],
+                ['text' => 'Sales Reports', 'url' => 'reports/sales-summary'],
+                ['text' => 'EOD / Settlement', 'url' => 'reports/eod'],
+                ['text' => 'Inventory Reports', 'url' => 'reports/current-stock'],
+                ['text' => 'Audit Reports', 'url' => 'reports?group=audit'],
+                ['text' => 'My Reports', 'url' => 'reports?group=my-reports'],
+            ],
         ],
-        ['header' => 'Finance & Accounts'],
+        ['header' => 'Tools'],
+        [
+            'text' => 'Configuration',
+            'icon' => 'fas fa-fw fa-cogs',
+            'submenu' => [
+                ['text' => 'Role Master', 'url' => 'master/users'],
+                ['text' => 'Financial Years', 'url' => 'master/financial-years'],
+                ['text' => 'Userwise Configuration', 'url' => 'tools/userwise-config'],
+                ['text' => 'Business Configuration', 'url' => 'tools/business-config'],
+                ['text' => 'Function Key Mapping', 'url' => 'tools/function-keys'],
+                ['text' => 'Ledger Map', 'url' => 'tools/ledger-map'],
+                ['text' => 'Asset LedgerMap', 'url' => 'tools/asset-ledger'],
+                ['text' => 'Mail Server Configuration', 'url' => 'tools/mail-server'],
+                ['text' => 'Category Wise Sequence', 'url' => 'tools/category-sequence'],
+            ],
+        ],
+        [
+            'text' => 'Integrations',
+            'icon' => 'fas fa-fw fa-plug',
+            'submenu' => [
+                ['text' => 'GoFrugal Alert', 'url' => 'tools/integrations-alert'],
+                ['text' => 'GST Efiling', 'url' => 'tools/integrations-gst'],
+                ['text' => 'GOFRUGAL Gosure', 'url' => 'tools/integrations-gosure'],
+            ],
+        ],
+        [
+            'text' => 'Master Migration',
+            'url' => 'tools/master-migration',
+            'icon' => 'fas fa-fw fa-database',
+        ],
+        [
+            'text' => 'Manage Subscription',
+            'url' => 'tools/manage-subscription',
+            'icon' => 'fas fa-fw fa-certificate',
+        ],
+        [
+            'text' => 'More Tools',
+            'icon' => 'fas fa-fw fa-ellipsis-h',
+            'submenu' => [
+                ['text' => 'Year Begin Sequence Change', 'url' => 'tools/year-begin-sequence'],
+                ['text' => 'Session Management', 'url' => 'tools/session-management'],
+                ['text' => 'Reprint', 'url' => 'tools/reprint'],
+                ['text' => 'Multiple Dispatch', 'url' => 'tools/multiple-dispatch'],
+                ['text' => 'Report Scheduler', 'url' => 'tools/report-scheduler'],
+                ['text' => 'E-way Update', 'url' => 'tools/eway-update'],
+                ['text' => 'Barcode Config', 'url' => 'tools/barcode-config'],
+                ['text' => 'Service User Consent', 'url' => 'tools/service-consent'],
+            ],
+        ],
+        ['header' => 'Finance And Accounts'],
         [
             'text' => 'Ledger Master',
             'url' => 'finance/ledgers',
@@ -434,6 +655,11 @@ return [
             'text' => 'Finance Reports',
             'url' => 'finance/reports',
             'icon' => 'fas fa-fw fa-chart-pie',
+            'submenu' => [
+                ['text' => 'General Ledger', 'url' => 'finance/reports/general-ledger'],
+                ['text' => 'Day Book', 'url' => 'finance/reports/day-book'],
+                ['text' => 'Trial Balance', 'url' => 'finance/reports/trial-balance'],
+            ],
         ],
     ],
 

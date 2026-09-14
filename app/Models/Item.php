@@ -11,7 +11,7 @@ class Item extends Model
     use HasFactory;
 
     protected $fillable = [
-        'ean_upc_code', 'name', 'alias', 'brand_id', 'supplier_id', 'product_type',
+        'item_code', 'ean_upc_code', 'name', 'alias', 'brand_id', 'supplier_id', 'product_type',
         'cost_price', 'landing_cost', 'sell_price', 'mrp', 'status', 'store_pickup',
         'tax_inclusive', 'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days',
         'allow_negative_stock', 'department_value_id', 'category_value_id', 'brand_value_id',

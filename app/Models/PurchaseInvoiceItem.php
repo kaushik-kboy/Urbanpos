@@ -13,7 +13,7 @@ class PurchaseInvoiceItem extends Model
     protected $fillable = [
         'purchase_invoice_id', 'item_id', 'exp_date', 'qty', 'free_qty', 'cost_price',
         'sell_price', 'mrp', 'disc_percent', 'disc_amount', 'gst_percent', 'gst_tax_amount',
-        'net_amount',
+        'cgst_amount', 'sgst_amount', 'igst_amount', 'net_amount',
     ];
 
     protected $casts = [

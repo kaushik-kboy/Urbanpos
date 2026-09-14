@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -44,10 +45,37 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier)
     {
         $data = $this->validateData($request);
+        $this->assertCreditFieldsUnchangedUnlessOwner($request, $supplier, $data);
         $supplier->update($data);
         $this->syncContacts($request, $supplier);
 
         return redirect()->route('master.suppliers.index')->with('status', 'Supplier updated successfully.');
+    }
+
+    /**
+     * Same guard as CustomerController::assertCreditFieldsUnchangedUnlessOwner() — credit
+     * terms are routine to SET at onboarding (store() untouched) but CHANGING them later
+     * is Owner-only, without needing a new permission or a form split.
+     */
+    private function assertCreditFieldsUnchangedUnlessOwner(Request $request, Supplier $supplier, array $data): void
+    {
+        if ($request->user()->hasRole('Owner')) {
+            return;
+        }
+
+        foreach (['credit_limit', 'credit_balance'] as $field) {
+            if (abs((float) $data[$field] - (float) $supplier->$field) > 0.01) {
+                throw ValidationException::withMessages([
+                    $field => 'Only an Owner can change credit terms.',
+                ]);
+            }
+        }
+
+        if ((int) $data['credit_days'] !== (int) $supplier->credit_days) {
+            throw ValidationException::withMessages([
+                'credit_days' => 'Only an Owner can change credit terms.',
+            ]);
+        }
     }
 
     private function syncContacts(Request $request, Supplier $supplier): void

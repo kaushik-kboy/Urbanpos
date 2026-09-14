@@ -22,11 +22,17 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportAllMasters extends Command
 {
-    protected $signature = 'import:all-masters';
+    protected $signature = 'import:all-masters {--force : Confirm you understand this bypasses the Stock Ledger}';
     protected $description = 'Import all remaining master files (Branches, Brands, Taxes, Suppliers, Employees, Customers, Pets, Price List)';
 
     public function handle()
     {
+        if (! $this->option('force')) {
+            $this->error('This command writes stock/price data directly, bypassing the Stock Ledger — it will NOT create the permanent, reversible movement record every other stock change in this app relies on. Re-run with --force once you have confirmed this is intended (e.g. a one-time data migration, not routine use).');
+
+            return 1;
+        }
+
         $this->info("=== STARTING MASTER DATA IMPORT ===");
 
         $this->importBranches();

@@ -9,7 +9,14 @@
 <x-field name="po_date" label="PO Date" type="date" :value="optional($po->po_date ?? now())->format('Y-m-d')" />
 <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$po->purchase_type ?? 'Local'" />
 <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$po->c_form ?? 'Against C-Form'" />
-<x-select name="status" label="Status" :options="['Open' => 'Open', 'Closed' => 'Closed', 'Cancelled' => 'Cancelled']" :selected="$po->status ?? 'Open'" />
+<x-select name="status" label="Status" :options="['Open' => 'Open', 'Closed' => 'Closed']" :selected="$po->status ?? 'Open'" />
+@if (($po->status ?? null) === 'Cancelled')
+    <div class="alert alert-secondary">
+        This Purchase Order was cancelled on {{ $po->cancelled_at->format('d-m-Y H:i') }}
+        @if ($po->cancellation_reason) — "{{ $po->cancellation_reason }}" @endif.
+        It cannot be edited.
+    </div>
+@endif
 
 <hr>
 <h5 class="mb-3">Items</h5>

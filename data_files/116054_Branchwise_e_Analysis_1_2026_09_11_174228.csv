@@ -1,0 +1,8 @@
+"Branchwise Stock Age Analysis 
+ DATE : from 01-09-2026 11-09-2026 ; Show Amount : Purchase Net , Location : All Location ; 
+"
+"URBANPETSSERVICESPRIVATELIMITED,AksharComplex,Ahmedabad,9662825744,GSTNO:24AAECU0338G1ZN"
+Store,<30 days,<30 days value,>30_to_<60 days,>30_to_<60 days value,>60_to_<90 days,>60_to_<90 days value,>90_to_<120 days,>90_to_<120 days value,>120 days,>120 days value,Total stock,Total stock value
+,,,,,,,,,,,,
+URBAN PETS / MOTERA,"8,924","2,789,519","10,472","1,143,716","5,390","655,754","6,921","400,345","12,658","1,714,222","44,365","6,703,557.08"
+URBANPETS SERVICES PRIVATE LIMITED,"5,137","935,716","3,630","690,974","4,116","469,141","1,756","239,960","6,771","822,803","21,410","3,158,593.56"

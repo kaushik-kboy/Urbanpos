@@ -6,11 +6,16 @@ use App\Http\Controllers\Concerns\HasPerPage;
 use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\GstTax;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 
 class GstTaxController extends Controller
 {
     use HasPerPage, Importable;
+
+    public function __construct(private AuditLogger $auditLogger)
+    {
+    }
 
 
     public function index()
@@ -41,7 +46,12 @@ class GstTaxController extends Controller
     public function update(Request $request, GstTax $gstTax)
     {
         $data = $this->validateData($request);
+        $oldValues = $gstTax->only(array_keys($data));
         $gstTax->update($data);
+
+        // GST rate is a master value that drives tax on every future transaction line —
+        // spec-named as an auditable "GST master change".
+        $this->auditLogger->log('update', $gstTax, $oldValues, $gstTax->only(array_keys($data)));
 
         return redirect()->route('master.gst-taxes.index')->with('status', 'GST tax updated successfully.');
     }

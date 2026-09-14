@@ -38,13 +38,25 @@ class ItemStock extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    /**
+     * @deprecated Legacy generic mutation path, kept only for call sites not yet
+     * retrofitted onto StockLedgerService (see app/Services/Inventory/StockLedgerService.php).
+     * Forwards to the ledger service so every stock change — even from an un-migrated
+     * caller — still produces an auditable stock_ledger row, tagged CORRECTION with no
+     * source-document reference since this path has no document context to supply.
+     * Retrofitted controllers should call StockLedgerService::post() directly instead.
+     */
     public static function adjust(int $itemId, int $branchId, float $delta): void
     {
-        $stock = static::firstOrCreate(
-            ['item_id' => $itemId, 'branch_id' => $branchId],
-            ['quantity' => 0]
+        app(\App\Services\Inventory\StockLedgerService::class)->post(
+            itemId: $itemId,
+            branchId: $branchId,
+            movementType: 'CORRECTION',
+            qtyDelta: $delta,
+            unitCost: null,
+            referenceType: null,
+            referenceId: null,
+            documentDate: now()->toDateString(),
         );
-
-        $stock->increment('quantity', $delta);
     }
 }

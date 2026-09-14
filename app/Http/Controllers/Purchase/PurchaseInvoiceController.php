@@ -5,18 +5,28 @@ namespace App\Http\Controllers\Purchase;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
-use App\Models\ItemStock;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Services\Accounting\CreditLimitGuard;
+use App\Services\Accounting\FinancialYearGuard;
 use App\Services\Accounting\LedgerPostingService;
+use App\Services\Audit\AuditLogger;
+use App\Services\Inventory\StockLedgerService;
+use App\Services\Tax\TaxEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseInvoiceController extends Controller
 {
-    public function __construct(private LedgerPostingService $ledgerPosting)
-    {
+    public function __construct(
+        private LedgerPostingService $ledgerPosting,
+        private StockLedgerService $stockLedger,
+        private TaxEngine $taxEngine,
+        private AuditLogger $auditLogger,
+        private CreditLimitGuard $creditLimitGuard,
+        private FinancialYearGuard $financialYearGuard,
+    ) {
     }
 
     public function index()
@@ -34,10 +44,20 @@ class PurchaseInvoiceController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+        $this->financialYearGuard->assertOpenForPosting($data['header']['invoice_date']);
+
+        if ($data['header']['posting_key'] ?? null) {
+            $existing = PurchaseInvoice::where('posting_key', $data['header']['posting_key'])->first();
+            if ($existing) {
+                return redirect()->route('purchase.purchase-invoices.index')->with('status', "Purchase Invoice {$existing->invoice_number} created successfully.");
+            }
+        }
 
         $purchaseInvoice = DB::transaction(function () use ($data) {
-            $lines = $this->computeLines($data['items']);
+            $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
+
+            $this->assertCreditLimit((int) $data['header']['supplier_id'], $totals['total']);
 
             $purchaseInvoice = PurchaseInvoice::create(array_merge($data['header'], $totals, [
                 'invoice_number' => $this->nextNumber(),
@@ -45,7 +65,7 @@ class PurchaseInvoiceController extends Controller
 
             $purchaseInvoice->items()->createMany($lines);
 
-            $this->applyStockAndItemMaster($lines, $purchaseInvoice->branch_id, +1);
+            $this->postStockAndItemMaster($purchaseInvoice, $lines);
             $this->ledgerPosting->postPurchaseInvoice($purchaseInvoice);
 
             return $purchaseInvoice;
@@ -63,21 +83,27 @@ class PurchaseInvoiceController extends Controller
 
     public function update(Request $request, PurchaseInvoice $purchaseInvoice)
     {
+        $purchaseInvoice->assertEditable();
+
         $data = $this->validateData($request);
+        $this->financialYearGuard->assertOpenForPosting($data['header']['invoice_date']);
+        $oldSupplierId = $purchaseInvoice->supplier_id;
+        $oldTotal = (float) $purchaseInvoice->total;
 
-        DB::transaction(function () use ($data, $purchaseInvoice) {
-            // Reverse the stock effect of the previous version of this invoice.
-            $oldLines = $purchaseInvoice->items->map->only(['item_id', 'qty', 'free_qty'])->all();
-            $this->applyStockAndItemMaster($oldLines, $purchaseInvoice->branch_id, -1);
+        DB::transaction(function () use ($data, $purchaseInvoice, $oldSupplierId, $oldTotal) {
+            // Reverse the previous version's stock/ledger effect instead of deleting it.
+            $this->stockLedger->reverseByReference(PurchaseInvoice::class, $purchaseInvoice->id);
 
-            $lines = $this->computeLines($data['items']);
+            $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
+
+            $this->assertCreditLimit((int) $data['header']['supplier_id'], $totals['total'], $oldSupplierId, $oldTotal);
 
             $purchaseInvoice->update(array_merge($data['header'], $totals));
             $purchaseInvoice->items()->delete();
             $purchaseInvoice->items()->createMany($lines);
 
-            $this->applyStockAndItemMaster($lines, $purchaseInvoice->branch_id, +1);
+            $this->postStockAndItemMaster($purchaseInvoice, $lines);
             $this->ledgerPosting->postPurchaseInvoice($purchaseInvoice);
         });
 
@@ -86,10 +112,13 @@ class PurchaseInvoiceController extends Controller
 
     public function destroy(PurchaseInvoice $purchaseInvoice)
     {
-        DB::transaction(function () use ($purchaseInvoice) {
-            $lines = $purchaseInvoice->items->map->only(['item_id', 'qty', 'free_qty'])->all();
-            $this->applyStockAndItemMaster($lines, $purchaseInvoice->branch_id, -1);
+        // No assertEditable() guard here: destroy() already IS the cancel/reversal action.
+        $oldValues = $purchaseInvoice->only(['invoice_number', 'invoice_date', 'supplier_id', 'branch_id', 'total', 'status']);
+
+        DB::transaction(function () use ($purchaseInvoice, $oldValues) {
+            $this->stockLedger->reverseByReference(PurchaseInvoice::class, $purchaseInvoice->id);
             $this->ledgerPosting->reverse(PurchaseInvoice::class, $purchaseInvoice->id);
+            $this->auditLogger->log('cancel', $purchaseInvoice, $oldValues, null);
             $purchaseInvoice->delete();
         });
 
@@ -97,24 +126,59 @@ class PurchaseInvoiceController extends Controller
     }
 
     /**
-     * $direction +1 adds the line quantities/master values (on create), -1 reverses only
-     * the stock quantity (on edit/delete) — item master price fields are a snapshot and
-     * are only ever overwritten forward, never reversed.
+     * Posts the PURCHASE_RECEIPT movement for every line at its own cost (the moving
+     * weighted average is recomputed inside StockLedgerService::post()), then snapshots
+     * the item master's price fields forward — that snapshot is intentionally never
+     * reversed on edit/delete, only ever overwritten by a newer purchase.
      */
-    private function applyStockAndItemMaster(array $lines, int $branchId, int $direction): void
+    private function postStockAndItemMaster(PurchaseInvoice $purchaseInvoice, array $lines): void
     {
         foreach ($lines as $line) {
-            $qtyDelta = ((float) $line['qty'] + (float) $line['free_qty']) * $direction;
-            ItemStock::adjust($line['item_id'], $branchId, $qtyDelta);
+            $qtyIn = (float) $line['qty'] + (float) $line['free_qty'];
 
-            if ($direction > 0 && isset($line['cost_price'])) {
-                Item::whereKey($line['item_id'])->update(array_filter([
-                    'cost_price' => $line['cost_price'],
-                    'sell_price' => $line['sell_price'] ?: null,
-                    'mrp' => $line['mrp'] ?: null,
-                ], fn ($v) => $v !== null));
+            if ($qtyIn > 0) {
+                $this->stockLedger->post(
+                    itemId: $line['item_id'],
+                    branchId: $purchaseInvoice->branch_id,
+                    movementType: 'PURCHASE_RECEIPT',
+                    qtyDelta: $qtyIn,
+                    unitCost: $line['cost_price'],
+                    referenceType: PurchaseInvoice::class,
+                    referenceId: $purchaseInvoice->id,
+                    documentDate: $purchaseInvoice->invoice_date->toDateString(),
+                    expDate: $line['exp_date'],
+                );
             }
+
+            Item::whereKey($line['item_id'])->update(array_filter([
+                'cost_price' => $line['cost_price'],
+                'sell_price' => $line['sell_price'] ?: null,
+                'mrp' => $line['mrp'] ?: null,
+            ], fn ($v) => $v !== null));
         }
+    }
+
+    /**
+     * Checks the credit-limit delta this save would introduce against the supplier, not
+     * the raw new total — mirrors SalesBillController::assertCreditLimit(). On an edit,
+     * the old total is already reflected in the supplier's live ledger balance, so only
+     * the CHANGE matters; if the supplier was switched, the old supplier's contribution
+     * is removed (a negative delta, never blocking) and the new supplier is checked
+     * against the full new total.
+     */
+    private function assertCreditLimit(int $newSupplierId, float $newTotal, ?int $oldSupplierId = null, float $oldTotal = 0.0): void
+    {
+        if ($oldSupplierId !== null && $oldSupplierId === $newSupplierId) {
+            $this->creditLimitGuard->assertWithinLimit(Supplier::findOrFail($newSupplierId), $newTotal - $oldTotal);
+
+            return;
+        }
+
+        if ($oldSupplierId !== null) {
+            $this->creditLimitGuard->assertWithinLimit(Supplier::findOrFail($oldSupplierId), -$oldTotal);
+        }
+
+        $this->creditLimitGuard->assertWithinLimit(Supplier::findOrFail($newSupplierId), $newTotal);
     }
 
     private function nextNumber(): string
@@ -134,36 +198,37 @@ class PurchaseInvoiceController extends Controller
         ];
     }
 
-    private function computeLines(array $items): array
+    private function computeLines(array $items, array $header): array
     {
-        return collect($items)->map(function ($line) {
+        $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
+        $isInterstate = ($header['purchase_type'] ?? null) === 'Interstate';
+
+        return collect($items)->map(function ($line) use ($itemsById, $isInterstate) {
             $qty = (float) $line['qty'];
             $costPrice = (float) $line['cost_price'];
-            $base = $qty * $costPrice;
+            $item = $itemsById[$line['item_id']];
 
             $discPercent = (float) ($line['disc_percent'] ?? 0);
             $discAmount = (float) ($line['disc_amount'] ?? 0);
-            if ($discAmount <= 0 && $discPercent > 0) {
-                $discAmount = round($base * $discPercent / 100, 2);
-            }
 
-            $gstPercent = (float) ($line['gst_percent'] ?? 0);
-            $gstTaxAmount = round(($base - $discAmount) * $gstPercent / 100, 2);
-            $netAmount = round(($base - $discAmount) + $gstTaxAmount, 2);
+            $tax = $this->taxEngine->calculate($qty, $costPrice, $item, $discPercent, $discAmount, 0.0, $isInterstate);
 
             return [
                 'item_id' => $line['item_id'],
-                'exp_date' => $this->normalizeDate($line['exp_date'] ?: null),
+                'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
                 'qty' => $qty,
                 'free_qty' => (float) ($line['free_qty'] ?? 0),
                 'cost_price' => $costPrice,
                 'sell_price' => (float) ($line['sell_price'] ?? 0),
                 'mrp' => (float) ($line['mrp'] ?? 0),
                 'disc_percent' => $discPercent,
-                'disc_amount' => $discAmount,
-                'gst_percent' => $gstPercent,
-                'gst_tax_amount' => $gstTaxAmount,
-                'net_amount' => $netAmount,
+                'disc_amount' => $tax['disc_amount'],
+                'gst_percent' => $tax['gst_percent'],
+                'gst_tax_amount' => $tax['gst_tax_amount'],
+                'cgst_amount' => $tax['cgst_amount'],
+                'sgst_amount' => $tax['sgst_amount'],
+                'igst_amount' => $tax['igst_amount'],
+                'net_amount' => $tax['net_amount'],
             ];
         })->all();
     }
@@ -181,6 +246,9 @@ class PurchaseInvoiceController extends Controller
             'item_disc_amount' => $collection->sum('disc_amount'),
             'disc_amount' => $collection->sum('disc_amount'),
             'total_gst' => $collection->sum('gst_tax_amount'),
+            'total_cgst' => $collection->sum('cgst_amount'),
+            'total_sgst' => $collection->sum('sgst_amount'),
+            'total_igst' => $collection->sum('igst_amount'),
             'total_qty' => $collection->sum('qty') + $collection->sum('free_qty'),
             'total' => round($collection->sum('net_amount') + $freight + $roundOff + $tcsAmount - $otherDiscAmt - $schemeDiscAmt, 2),
         ];
@@ -209,6 +277,7 @@ class PurchaseInvoiceController extends Controller
             'total_weight' => ['nullable', 'numeric', 'min:0'],
             'remarks' => ['nullable', 'string'],
             'message' => ['nullable', 'string'],
+            'posting_key' => ['nullable', 'string', 'max:100'],
         ]);
 
         $header['invoice_date'] = $this->normalizeDate($header['invoice_date']);

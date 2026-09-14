@@ -25,4 +25,9 @@ class ItemCategoryValue extends Model
     {
         return $this->belongsTo(ItemCategory::class);
     }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ItemCategory::class, 'item_category_id');
+    }
 }

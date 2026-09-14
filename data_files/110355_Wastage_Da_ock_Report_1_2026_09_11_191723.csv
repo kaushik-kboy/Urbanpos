@@ -1,0 +1,476 @@
+"Wastage/Damage Stock Report 
+ DATE : from 01-04-2024 11-09-2026 ; Location : All Location ; 
+"
+"URBANPETSSERVICESPRIVATELIMITED,AksharComplex,Ahmedabad,9662825744,GSTNO:24AAECU0338G1ZN"
+BRANDS,DEPARTMENT,CATEGORY,Branch Code,Branch Name,Entry date,Item code,Alias Name,Item name,Type,Batch no,Description,Wastage Qty,Current stock while wastage,GST Cess Amt,CGST TaxAmt,SGST TaxAmt,Total cost,Selling,Po no,Remarks,Message,Conversion unit,Ref. No,Expiry date
+,,,,,,,,,,,,"3,956","5,165",0.00,"65,212.68","65,212.68","975,392.52","674,273.28",,,,,,
+Drools,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-06,1536,,Drools Adult Optimum Performance Dog Food 20kg,Damage,,Damage,1,1,0.00,191.63,191.63,"2,512.50","3,350.00",0,,,UNIT,2,2099-12-12
+M-Pets,Bowls & Water Bottle ,Bowl,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-06,8146,,M-Pets Combi Bowl X Large 2X1500ml Beige and White,Damage,,Damage,1,1,0.00,133.44,133.44,"1,749.50","3,499.00",0,,,UNIT,4,
+Farmina,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-06,7102,,N and D GF PKN LB BB Puppy Med-Maxi 2.5KG,Damage,,Damage,5,9,0.00,641.83,641.83,"8,415.11","2,650.00",0,,,UNIT,5,2099-12-12
+Smart Heart,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-06,6977,,SH- Adult Chicken and Egg 20KG,Damage,,Damage,1,1,0.00,211.42,211.42,"2,772.00","3,850.00",0,,,UNIT,1,2025-05-30
+Vet pro ,Dog Food,Prescription Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-06,5977,,Vet Pro renal 8kg,Damage,,Damage,1,2,0.00,141.06,141.06,"1,849.50","3,699.00",0,,,UNIT,3,2099-12-12
+Andis,Grooming,"Brushes, scissors & Comb ",225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2348,,Andis Flea Comb White/Lime Green,Damage,,Damage,1,1,0.00,42.11,42.11,552.07,"1,095.00",0,,,UNIT,3,
+Andis,Grooming,"Brushes, scissors & Comb ",225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2347,,Andis Self Cleaning Slicker Brush W-L Green,Damage,,Damage,1,1,0.00,53.65,53.65,703.36,"1,395.00",0,,,UNIT,2,
+Aroma Groom,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2554,,Aroma Groom Spirit Deodorizing Shampoo-500ml,Damage,,Damage,1,4,0.00,24.79,24.79,325.00,650.00,0,,,UNIT,8,2099-12-12
+Aroma Groom,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2551,,Aroma Groom Spirit Puppies Shampoo-500 ml,Damage,,Damage,1,2,0.00,24.79,24.79,325.00,650.00,0,,,UNIT,7,2099-12-12
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2888,,Clavam 375mg Tablet,Wastage,,Wastage,15,196,0.00,98.15,98.15,"1,832.04",171.00,0,,,UNIT,2,2099-12-12
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2929,,Fixotic Spray,Wastage,,Wastage,6,6,0.00,82.81,82.81,"1,545.73",498.00,0,,,UNIT,3,2099-12-12
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2790,,Fondapet Deodrant,Wastage,,Wastage,4,17,0.00,41.19,41.19,540.02,250.00,0,,,UNIT,1,2099-12-12
+Manufacturer,Grooming,"Brushes, scissors & Comb ",225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2272,,GR-052 Slicker Brush Steel-L,Damage,,Damage,1,1,0.00,31.65,31.65,415.01,830.00,0,,,UNIT,1,
+TTK,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2581,,Hug N Wag 4 in 1 Essential Care 5 ltr,Damage,,Damage,1,8,0.00,127.40,127.40,"1,670.40","2,900.00",0,,,UNIT,9,2099-12-12
+Petkin,Grooming,Dental Care ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2537,,petkin Plaque Spray 120 ml Coolmint,Damage,,Damage,1,1,0.00,26.88,26.88,352.44,699.00,0,,,UNIT,6,2099-12-12
+Hygiene,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2417,,TTK Big Boss Shampoo,Damage,,Damage,6,6,0.00,44.36,44.36,827.97,230.00,0,,,UNIT,4,2099-12-12
+Virbac,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-09,2472,,Virbac Sebolytic Shampoo 200ML,Damage,,Damage,3,10,0.00,94.93,94.93,"1,244.59",605.00,0,,,UNIT,5,2099-12-12
+Ar Industries,Bowls & Water Bottle ,Bowl,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,10023,PP105AS,Adjustable Stand U Shape M,Wastage,,Wastage,1,1,0.00,42.32,42.32,790.00,"1,580.00",0,,,UNIT,7,
+Vetina ,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2965,,Allergia 30 Tabs,Wastage,,Wastage,5,5,0.00,99.00,99.00,"1,298.00",330.00,0,,,UNIT,12,2099-12-12
+Ar Industries,Clothing ,T-shirts ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9891,ARTS16,AR T-Shirt 16,Wastage,,Wastage,1,6,0.00,18.46,18.46,242.02,535.00,0,,,UNIT,21,
+Ar Industries,Clothing ,T-shirts ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9892,ARTS18,AR T-Shirt 18,Wastage,,Wastage,1,11,0.00,19.65,19.65,257.64,565.00,0,,,UNIT,15,
+Ar Industries,Clothing ,T-shirts ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9893,ARTS20,AR T-Shirt 20,Wastage,,Wastage,1,5,0.00,20.69,20.69,271.32,595.00,0,,,UNIT,7,
+Ar Industries,Clothing ,T-shirts ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9894,ARTS24,AR T-Shirt 24,Wastage,,Wastage,5,6,0.00,108.50,108.50,"1,422.55",625.00,0,,,UNIT,2,
+Aroma Groom,Hygiene,Towels & Wipes ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8045,,Aroma Groom Towel Green,Wastage,,Wastage,1,1,0.00,19.03,19.03,249.50,499.00,0,,,UNIT,18,2099-12-12
+Aroma Groom,Hygiene,Towels & Wipes ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8047,,Aroma Groom Towel Pink/Purple,Wastage,,Wastage,1,1,0.00,19.03,19.03,249.50,499.00,0,,,UNIT,19,2099-12-12
+Trixie,Accessories,Bow Ties & Bandanas ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8948,,Assortment Dog Hair Bows Set of 10 pcs,Wastage,,Wastage,1,1,0.00,65.02,65.02,852.50,"1,550.00",0,,,UNIT,3,
+Bayer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,10590,,Bayer Advocate 2.5ml,Wastage,,Wastage,1,1,0.00,40.37,40.37,753.60,942.00,0,,,UNIT,16,2024-04-30
+Trixie,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9504,,"BE NORDIC Knot Ball On Rope, 8/30 cm",Damage,,Damage,1,1,0.00,18.27,18.27,239.49,475.00,0,,,UNIT,1,
+Beaphar,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7905,,Beaphar Black Coat Shampoo 250 ML,Wastage,,Wastage,1,1,0.00,19.68,19.68,258.00,430.00,0,,,UNIT,14,2099-12-12
+Beaphar,Grooming,Dental Care ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7310,,Beaphar Double Action Paste Liver 100g,Wastage,,Wastage,1,1,0.00,20.14,20.14,264.00,400.00,0,,,UNIT,9,2099-12-12
+Trixie,Grooming,"Brushes, scissors & Comb ",225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9600,,Carding Groomer Detangle and Thin Medium 8X14 CM,Wastage,,Wastage,1,5,0.00,64.41,64.41,844.51,"1,675.00",0,,,UNIT,5,
+Trixie,Hygiene,Others ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2671,,Catnip Play Spray 175ml,Damage,,Damage,3,3,0.00,43.26,43.26,567.21,375.00,0,,,UNIT,2,2099-12-12
+Cesar,Dog Food,Wet Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7167,,Cesar Tuna with White Meat Fish and Vegetables 100 gm,Damage,,Damage,12,12,0.00,75.51,75.51,990.07,110.00,0,,,UNIT,22,2099-12-12
+Trixie,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8381,,Classic Lead Adjustable L-XL 4.0-6.oft.25mm Black,Wastage,,Wastage,1,1,0.00,19.19,19.19,251.60,499.00,0,,,UNIT,17,
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2888,,Clavam 375mg Tablet,Damage,,Damage,175,175,0.00,"1,145.03","1,145.03","21,373.80",171.00,0,,,UNIT,13,2099-12-12
+Trixie,Bedding & Mat ,Mat,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9216,,Cooling Mat XL-XXL 100x60 cm Blue,Wastage,,Wastage,1,4,0.00,122.70,122.70,"1,608.75","2,925.00",0,,,UNIT,3,
+Pils,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2584,,Dermopile Pet Shampoo 200ml,Damage,,Damage,10,10,0.00,51.84,51.84,967.68,242.00,0,,,UNIT,19,2099-12-12
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5989,,DICINE 2ML INJ,Damage,,Damage,37,37,0.00,74.89,74.89,"3,145.30",190.00,0,,,UNIT,21,2099-12-12
+Trixie,Grooming,Dental Care ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7960,,Dog Toothpaste With Tea Tree Oil 100 gms,Damage,,Damage,2,2,0.00,23.07,23.07,302.50,275.00,0,,,UNIT,5,2025-08-30
+Trixie,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,10294,,Dog Toy Ball Dia 6cm,Wastage,,Wastage,1,1,0.00,20.76,20.76,272.25,495.00,0,,,UNIT,6,
+Drools,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7420,,Drools Absolute Calcium Sausage 32 Pcs,Wastage,,Wastage,1,1,0.00,0.00,0.00,480.00,960.00,0,,,UNIT,17,2099-12-12
+Drools,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7331,,Drools Pup Booster 300gm,Wastage,,Wastage,2,3,0.00,0.00,0.00,448.50,299.00,0,,,UNIT,8,2026-02-28
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,327,,E collar 1 No,Damage,,Damage,5,18,0.00,51.48,51.48,675.02,270.00,0,,,UNIT,7,
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,327,,E collar 1 No,Damage,,Damage,4,18,0.00,41.19,41.19,540.02,270.00,0,,,UNIT,8,
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,327,,E collar 1 No,Damage,,Damage,1,18,0.00,10.30,10.30,135.00,270.00,0,,,UNIT,9,
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,326,,E collar 3 No,Damage,,Damage,5,21,0.00,85.81,85.81,"1,125.01",450.00,0,,,UNIT,8,
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,326,,E collar 3 No,Damage,,Damage,5,21,0.00,85.81,85.81,"1,125.01",450.00,0,,,UNIT,9,
+Trixie,Hygiene,Towels & Wipes ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2667,,Ear Wipes 30 Pcs,Wastage,,Wastage,1,1,0.00,18.88,18.88,247.51,450.00,0,,,UNIT,20,2028-05-30
+Earthbath,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7887,,Earthbath Shed Control Shampoo w/green Tea and Awapuhi 16oz,Wastage,,Wastage,1,1,0.00,73.41,73.41,962.50,"1,750.00",0,,,UNIT,9,2099-12-12
+Earthbath,Hygiene,Towels & Wipes ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7991,,Earthbath Ultra Mild Puppy Grooming Wipes 100ct,Wastage,,Wastage,2,2,0.00,125.76,125.76,"1,648.91","1,499.00",0,,,UNIT,10,2099-12-12
+EZRA,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8688,,EZRA HART HARNESS SIZE 60 BLUE,Wastage,,Wastage,1,1,0.00,102.78,102.78,"1,347.50","2,450.00",0,,,UNIT,3,
+EZRA,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8688,,EZRA HART HARNESS SIZE 60 BLUE,Wastage,,Wastage,1,2,0.00,102.78,102.78,"1,347.50","2,450.00",0,,,UNIT,9,
+EZRA,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5581,,EZRA HART HARNESS SIZE 60 ORANGE,Wastage,,Wastage,1,1,0.00,102.78,102.78,"1,347.50","2,450.00",0,,,UNIT,2,
+EZRA,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5581,,EZRA HART HARNESS SIZE 60 ORANGE,Wastage,,Wastage,2,3,0.00,205.55,205.55,"2,695.00","2,450.00",0,,,UNIT,8,
+EZRA,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8689,,EZRA HART HARNESS SIZE 65 BLUE,Wastage,,Wastage,1,3,0.00,104.87,104.87,"1,375.00","2,500.00",0,,,UNIT,7,
+EZRA,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8695,,EZRA VEST HARNESS-SIZE M BLUE,Wastage,,Wastage,1,1,0.00,54.53,54.53,715.00,"1,300.00",0,,,UNIT,7,
+Trixie,Grooming,"Brushes, scissors & Comb ",225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9591,,Flea and Dust Comb 21 cm,Wastage,,Wastage,3,3,0.00,63.45,63.45,831.94,550.00,0,,,UNIT,3,
+Petstages ,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8987,,Fold Away Tunnel Scratch  and  Hide 24Lx36Wx8H,Wastage,,Wastage,1,1,0.00,62.71,62.71,822.25,"1,495.00",0,,,UNIT,15,
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2790,,Fondapet Deodrant,Damage,,Damage,9,9,0.00,92.67,92.67,"1,215.03",250.00,0,,,UNIT,10,2099-12-12
+Fresh for Paws,Dog Food,Wet Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7250,,Fresh For Paws Peanut Butter 250G,Wastage,,Wastage,1,1,0.00,19.93,19.93,261.25,475.00,0,,,UNIT,10,2099-12-12
+Goodies,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7470,,Goodies Milky Bone Milk Large 12X1,Damage,,Damage,3,3,0.00,51.48,51.48,675.01,375.00,0,,,UNIT,10,2099-12-12
+Manufacturer,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9734,,Hd Rope Leash - S,Damage,,Damage,3,3,0.00,51.48,51.48,675.01,450.00,0,,,UNIT,11,
+Himalaya,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7922,,Himalaya Erina Puppy Shampoo Conditioner 2 in 1 200 ml,Damage,,Damage,3,3,0.00,53.73,53.73,704.50,315.00,0,,,UNIT,2,2099-12-12
+Himalaya,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2812,,Himalaya WND-Heal PRD 100gm,Damage,,Damage,58,58,0.00,313.20,313.20,"5,846.40",200.00,0,,,UNIT,18,2099-12-12
+Trixie,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9532,,"Junior Rustling Branch, Natural Rubber, 10 cm",Wastage,,Wastage,1,1,0.00,22.11,22.11,289.91,575.00,0,,,UNIT,1,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9178,,KD C18 Brass Choke Chain No.1.4MM 24 Inch,Wastage,,Wastage,1,1,0.00,75.30,75.30,987.25,"1,795.00",0,,,UNIT,8,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9178,,KD C18 Brass Choke Chain No.1.4MM 24 Inch,Wastage,,Wastage,1,2,0.00,75.30,75.30,987.25,"1,795.00",0,,,UNIT,20,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9157,,KD C18 Brass Choke Chain No.1.4MM 26 Inch,Wastage,,Wastage,1,2,0.00,75.30,75.30,987.25,"1,795.00",0,,,UNIT,18,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9157,,KD C18 Brass Choke Chain No.1.4MM 26 Inch,Wastage,,Wastage,1,1,0.00,75.30,75.30,987.25,"1,795.00",0,,,UNIT,6,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9158,,KD C18 Brass Choke Chain No.1.4MM 28 Inch,Wastage,,Wastage,1,1,0.00,75.30,75.30,987.25,"1,795.00",0,,,UNIT,1,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9158,,KD C18 Brass Choke Chain No.1.4MM 28 Inch,Wastage,,Wastage,1,3,0.00,75.30,75.30,987.25,"1,795.00",0,,,UNIT,7,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9158,,KD C18 Brass Choke Chain No.1.4MM 28 Inch,Wastage,,Wastage,1,4,0.00,75.30,75.30,987.25,"1,795.00",0,,,UNIT,19,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9177,,KD C34 Bronze Flat Choke Chain ( Antique ) Thick 22 Inch,Wastage,,Wastage,1,1,0.00,58.52,58.52,767.25,"1,395.00",0,,,UNIT,1,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9179,,KD C34 Bronze Flat Choke Chain Nickle Thick 20 Inch,Wastage,,Wastage,1,1,0.00,58.52,58.52,767.25,"1,395.00",0,,,UNIT,2,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9159,,KD C40 Brass Choke Chain No.0.5MM 28 Inch,Wastage,,Wastage,1,1,0.00,68.85,68.85,902.70,"1,530.00",0,,,UNIT,17,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9160,,KD C42 Brass Choke Chain No.0.5MM 30 Inch,Wastage,,Wastage,1,3,0.00,83.48,83.48,"1,094.45","1,855.00",0,,,UNIT,5,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9160,,KD C42 Brass Choke Chain No.0.5MM 30 Inch,Wastage,,Wastage,1,4,0.00,83.48,83.48,"1,094.45","1,855.00",0,,,UNIT,12,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9161,,KD C42 Brass Choke Chain No.0.5MM 32 Inch,Wastage,,Wastage,1,1,0.00,83.48,83.48,"1,094.45","1,855.00",0,,,UNIT,13,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9174,,KD C52 Bronze Flat Choke Chain ( Antique ) Medium 22 Inch,Wastage,,Wastage,1,1,0.00,54.32,54.32,712.25,"1,295.00",0,,,UNIT,8,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9115,,KD D1 Chain No. 1.4MM -60Inch,Wastage,,Wastage,1,1,0.00,66.07,66.07,866.25,"1,575.00",0,,,UNIT,19,
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8914,,KD E0 Premium Nylon Chain Lead No.0 5 MM 1-1/4 Inch 20 Inch,Wastage,,Wastage,1,1,0.00,52.23,52.23,684.75,"1,245.00",0,,,UNIT,4,
+Trixie,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9502,,Knotted Ball Natural Rubber 7cm,Wastage,,Wastage,2,2,0.00,39.45,39.45,517.29,495.00,0,,,UNIT,13,
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5995,,Komlinz 600mg Tab,Damage,,Damage,238,238,0.00,"1,231.51","1,231.51","22,988.13",142.00,0,,,UNIT,20,2099-12-12
+Kong ,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3340,,Kong Classic Large Toy,Wastage,,Wastage,1,1,0.00,75.18,75.18,985.64,"1,899.00",0,,,UNIT,21,
+Kong ,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3974,,Kong Classic X Large Toy,Wastage,,Wastage,1,3,0.00,72.42,72.42,949.50,"1,899.00",0,,,UNIT,10,
+Rena,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7444,,Love Chip 60 gm,Damage,,Damage,4,4,0.00,58.00,58.00,760.44,425.00,0,,,UNIT,3,2099-12-12
+MANKIND,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3042,,Mankind Emikind Pet Syrup,Damage,,Damage,23,23,0.00,147.85,147.85,"2,759.93",180.00,0,,,UNIT,14,2099-12-12
+ME-O,Cat Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,6809,,Me-O Mackeral  3KG,Wastage,,Wastage,1,1,0.00,56.23,56.23,737.30,"1,010.00",0,,,UNIT,4,2099-12-12
+ME-O,Cat Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,6835,,Me-O Persian Cat 2.8KG,Wastage,,Wastage,1,1,0.00,52.89,52.89,693.50,950.00,0,,,UNIT,1,2099-12-12
+Misc,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3204,,MegaFlex 250 gms,Wastage,,Wastage,1,2,0.00,65.05,65.05,852.93,"1,066.00",0,,,UNIT,21,2024-07-30
+Manufacturer,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9755,,Munchy Mix Flavour 1kg,Damage,,Damage,18,38,0.00,151.02,151.02,"1,979.99",220.00,0,,,UNIT,17,2024-10-30
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8319,,Muzzle Plastic M-L 26CM Black,Wastage,,Wastage,2,2,0.00,38.07,38.07,499.16,495.00,0,,,UNIT,4,
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2893,,Neem Capsule,Damage,,Damage,5,5,0.00,12.09,12.09,507.94,136.00,0,,,UNIT,16,2099-12-12
+NexGard,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3071,,Nexgard Dog 10- 25Kg,Wastage,,Wastage,2,2,0.00,146.28,146.28,"2,730.56","4,200.00",0,,,UNIT,5,2099-12-12
+NexGard,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3072,,Nexgard Dog 20-50 Kg,Wastage,,Wastage,1,1,0.00,83.61,83.61,"1,560.72","5,200.00",0,,,UNIT,2,2099-12-12
+Natural Remedies,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2835,,NR Reliflam Spray 75ML,Damage,,Damage,1,2,0.00,11.57,11.57,216.00,270.00,0,,,UNIT,5,2099-12-12
+Natural Remedies,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2835,,NR Reliflam Spray 75ML,Damage,,Damage,1,2,0.00,11.57,11.57,216.00,270.00,0,,,UNIT,6,2099-12-12
+Manufacturer,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,6095,,Omega shine 30Tab,Damage,,Damage,20,20,0.00,243.11,243.11,"3,187.42",360.00,0,,,UNIT,4,2099-12-12
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2956,,OPUS LYSINE 100 Cat Paste,Wastage,,Wastage,1,1,0.00,88.47,88.47,"1,160.00","1,450.00",0,,,UNIT,11,2099-12-12
+Petstages ,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9763,,Orbee Tuff Planet Ball Blue/ Green Small,Wastage,,Wastage,1,1,0.00,52.44,52.44,687.50,"1,250.00",0,,,UNIT,3,
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3139,,Pet-O Lite Syrup 100ml,Damage,,Damage,7,7,0.00,42.00,42.00,784.00,200.00,0,,,UNIT,15,2099-12-12
+Pets Empire,Accessories,Others ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5971,,Petsmpire A144 Dog Toilet,Wastage,,Wastage,1,1,0.00,60.06,60.06,787.51,"1,125.00",0,,,UNIT,18,
+Spectrapil,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3078,,Pil Spectrapil Pet Lotion,Damage,,Damage,4,4,0.00,0.00,0.00,504.16,211.75,0,,,UNIT,6,2099-12-12
+Trixie,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,9493,,Playing Rope with Balls Latex Cotton Soundless 32cm,Damage,,Damage,1,1,0.00,17.29,17.29,226.73,425.00,0,,,UNIT,7,
+Trixie,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8466,,Premium Leash L-XL 1.00M/25MM  Royal Blue,Wastage,,Wastage,1,2,0.00,55.58,55.58,728.74,"1,325.00",0,,,UNIT,5,
+Trixie,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8659,,Premium Touring Harness L 60-100CM/25MM Royal Blue,Wastage,,Wastage,1,1,0.00,59.78,59.78,783.74,"1,425.00",0,,,UNIT,20,
+Protexin,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3180,,Pro Fiber Dog 500gm Pellets,Wastage,,Wastage,3,6,0.00,281.72,281.72,"3,693.60","1,900.00",0,,,UNIT,4,2099-12-12
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,6732,,Protective E Collar With Velcro S 25-32Cm 12cm,Wastage,,Wastage,1,1,0.00,19.80,19.80,259.66,515.00,0,,,UNIT,11,
+Royal Canin,Cat Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,6790,,Royal Canin Kitten 2KG,Wastage,,Wastage,5,5,0.00,500.41,500.41,"6,560.98","1,620.00",0,,,UNIT,10,2024-02-03
+Ruffwear ,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8938,,Ruffwear Front Range Leash Red Sumac Standard,Wastage,,Wastage,1,1,0.00,106.73,106.73,"1,399.30","1,999.00",0,,,UNIT,1,
+Manufacturer,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5982,,Sancoat 150ml,Wastage,,Wastage,1,1,0.00,0.00,0.00,212.00,350.00,0,,,UNIT,16,2099-12-12
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3126,,Sava Vetachlor -  M Spray,Damage,,Damage,2,2,0.00,17.14,17.14,320.01,200.00,0,,,UNIT,3,2099-12-12
+Simple Solution,Hygiene,Diaper & Training Pads ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2713,,Simple Solution Disposable Diapers Medium,Wastage,,Wastage,1,1,0.00,34.98,34.98,652.94,"1,295.00",0,,,UNIT,2,2099-12-12
+Simple Solution,Hygiene,Diaper & Training Pads ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,2715,,Simple Solution Disposable Diapers XXL,Wastage,,Wastage,1,1,0.00,43.69,43.69,815.63,"1,695.00",0,,,UNIT,20,2099-12-12
+other,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,4055,,SM-048 Munchees Braided Mix,Damage,,Damage,14,14,0.00,213.56,213.56,"2,799.97",400.00,0,,,UNIT,1,2099-12-12
+Snackers,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7578,,Snackers Chicken Jerky 150 Gm,Damage,,Damage,1,2,0.00,17.39,17.39,228.00,475.00,0,,,UNIT,4,2099-12-12
+Supercoat,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7087,,Supercoat Adult Healthy Weight 3 kg,Wastage,,Wastage,1,1,0.00,72.61,72.61,952.00,"1,190.00",0,,,UNIT,4,2024-04-20
+Pet Like That Solutions Llp,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,3368,,TDD13 Dotz Trinagle LG,Wastage,,Wastage,1,1,0.00,53.35,53.35,699.50,"1,399.00",0,,,UNIT,9,
+Temptation,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,6929,,TEMP Tasty Chicken 85G,Damage,,Damage,4,14,0.00,34.32,34.32,450.00,150.00,0,,,UNIT,11,2099-12-12
+Temptation,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,6929,,TEMP Tasty Chicken 85G,Damage,,Damage,1,14,0.00,8.58,8.58,112.50,150.00,0,,,UNIT,12,2099-12-12
+other,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,10102,,Toptail Adult Salmon & Chicken 3KG,Wastage,,Wastage,1,1,0.00,54.63,54.63,716.26,"1,060.00",0,,,UNIT,6,2024-05-30
+Trixie,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8455,,Trixie Extra Wide Premium Collar L-XXL 55-80CM/50MM  Black,Wastage,,Wastage,1,1,0.00,62.71,62.71,822.25,"1,495.00",0,,,UNIT,13,
+Trixie,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8456,,Trixie Extra Wide Premium Collar L-XXL 55-80CM/50MM Red,Wastage,,Wastage,1,2,0.00,62.71,62.71,822.25,"1,495.00",0,,,UNIT,14,
+Trixie,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8453,,Trixie Extra Wide Premium Collar M-L 40-60CM/50MM Black,Wastage,,Wastage,1,2,0.00,59.78,59.78,783.74,"1,425.00",0,,,UNIT,19,
+Trixie,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8384,,Trixie Premium Collar L-XL 40-65Cm/25mm Jet Black,Wastage,,Wastage,1,1,0.00,19.04,19.04,249.58,495.00,0,,,UNIT,5,
+Trixie,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,4981,,Trixie Premium Touring Harness L-Xl 70-100cm/25mm Jet Black,Wastage,,Wastage,1,1,0.00,63.97,63.97,838.76,"1,525.00",0,,,UNIT,6,
+Trixie,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,4807,,Trixie Silver Reflect Adjustable Leash L-XL 2.0mm / 25mm Black / Silver Grey,Wastage,,Wastage,1,1,0.00,62.71,62.71,822.25,"1,495.00",0,,,UNIT,12,
+Vet Life,Dog Food,Prescription Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,1961,,Vet Life Dog Growth 2KG,Wastage,,Wastage,1,1,0.00,112.12,112.12,"1,470.00","2,100.00",0,,,UNIT,4,2099-12-12
+Vet-Pro,Dog Food,Prescription Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,7022,,Vet-Pro Obesity 3Kg,Wastage,,Wastage,3,3,0.00,165.89,165.89,"2,175.01","1,450.00",0,,,UNIT,18,2025-10-30
+Vetoquinol,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,10180,,vetoquinol imidospet 2.5 mg,Wastage,,Wastage,1,1,0.00,38.57,38.57,720.00,900.00,0,,,UNIT,3,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8849,,ZeeDog Army Green Air Mesh Harness S,Wastage,,Wastage,1,1,0.00,71.27,71.27,934.45,"1,699.00",0,,,UNIT,12,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8873,,ZeeDog Bliss Air Mesh Harness S,Wastage,,Wastage,1,1,0.00,71.27,71.27,934.45,"1,699.00",0,,,UNIT,13,
+ZeeDog,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8855,,ZeeDog Bordeau Leash Small,Wastage,,Wastage,1,1,0.00,62.88,62.88,824.45,"1,499.00",0,,,UNIT,11,
+ZeeDog,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5620,,ZeeDog Ella Leash Large,Wastage,,Wastage,1,1,0.00,75.47,75.47,989.45,"1,799.00",0,,,UNIT,15,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8906,,ZeeDog Fritz Air Mesh Harness S,Wastage,,Wastage,1,1,0.00,71.27,71.27,934.45,"1,699.00",0,,,UNIT,16,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8833,,ZeeDog Midnight Air Mesh Harness S,Wastage,,Wastage,1,1,0.00,71.27,71.27,934.45,"1,699.00",0,,,UNIT,11,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8879,,ZeeDog Neon Coral Air Mesh Harness S,Wastage,,Wastage,1,1,0.00,71.27,71.27,934.45,"1,699.00",0,,,UNIT,14,
+ZeeDog,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5746,,ZeeDog Parker Leash Large,Wastage,,Wastage,1,1,0.00,75.47,75.47,989.45,"1,799.00",0,,,UNIT,17,
+ZeeDog,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5737,,ZeeDog Parker Leash Small,Wastage,,Wastage,1,1,0.00,62.88,62.88,824.45,"1,499.00",0,,,UNIT,9,
+ZeeDog,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5624,,ZeeDog Phantom Collar (Cat),Wastage,,Wastage,1,1,0.00,20.93,20.93,274.44,499.00,0,,,UNIT,1,
+ZeeDog,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5626,,ZeeDog Phantom Leash Large,Wastage,,Wastage,1,1,0.00,75.47,75.47,989.45,"1,799.00",0,,,UNIT,16,
+ZeeDog,Accessories,Others ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8343,,ZeeDog Poop Bags,Wastage,,Wastage,2,2,0.00,41.86,41.86,548.89,499.00,0,,,UNIT,3,2099-12-12
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8779,,ZeeDog Prisma Air Mesh Harness  M,Wastage,,Wastage,1,4,0.00,106.93,106.93,"1,401.95","2,549.00",0,,,UNIT,1,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8779,,ZeeDog Prisma Air Mesh Harness  M,Wastage,,Wastage,1,8,0.00,106.93,106.93,"1,401.95","2,549.00",0,,,UNIT,6,
+ZeeDog,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5692,,ZeeDog Prisma Collar Cat,Wastage,,Wastage,1,1,0.00,20.93,20.93,274.44,499.00,0,,,UNIT,2,
+ZeeDog,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5631,,ZeeDog Skull Leash Small,Wastage,,Wastage,1,1,0.00,62.88,62.88,824.45,"1,499.00",0,,,UNIT,8,
+ZeeDog,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,5608,,ZeeDog Solarish Leash Large,Wastage,,Wastage,1,1,0.00,75.47,75.47,989.45,"1,799.00",0,,,UNIT,14,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8903,,ZeeDog Ultimate Blue Air Mesh Harness S,Wastage,,Wastage,1,1,0.00,71.27,71.27,934.45,"1,699.00",0,,,UNIT,2,
+ZeeDog,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-19,8903,,ZeeDog Ultimate Blue Air Mesh Harness S,Wastage,,Wastage,1,3,0.00,71.27,71.27,934.45,"1,699.00",0,,,UNIT,15,
+Gigwi,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,9681,,6863 Plush Jumball (M) Red Bull,Damage,,Damage,1,1,0.00,32.12,32.12,599.50,"1,199.00",0,,,UNIT,14,
+Andis,Accessories,Trimmer & Nail Cutter ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,476,,Andis Nail Clipper Large Lime Green,Damage,,Damage,2,2,0.00,99.60,99.60,"1,305.84","1,295.00",0,,,UNIT,9,
+Manufacturer,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,9218,,Be Nordic Fohr Bed Square 100X80 cm Dark,Damage,,Damage,2,2,0.00,102.77,102.77,"1,347.49","1,225.00",0,,,UNIT,3,
+Kong ,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,9692,,H22C153-Holiday Crackless Christmas Tree,Damage,,Damage,1,4,0.00,51.48,51.48,675.00,"1,350.00",0,,,UNIT,1,
+Kong ,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,9690,,H22D114-Holdiday Wild Knots Bear Assorted - Medium/Large,Damage,,Damage,1,5,0.00,49.54,49.54,649.50,"1,299.00",0,,,UNIT,10,
+Kong ,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,9690,,H22D114-Holdiday Wild Knots Bear Assorted - Medium/Large,Damage,,Damage,2,5,0.00,99.08,99.08,"1,298.99","1,299.00",0,,,UNIT,11,
+Himalaya,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,7335,,Himalaya Mobility Plus Tab,Damage,,Damage,2,4,0.00,98.76,98.76,"1,294.79",975.00,0,,,UNIT,12,2099-12-12
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8913,,KD E23 Premium Chain Lead No.1 4 MM 1-1/4 Inch 30 Inch,Damage,,Damage,1,2,0.00,51.39,51.39,673.74,"1,225.00",0,,,UNIT,2,
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,3186,,Kiltix Collar Large Size,Damage,,Damage,5,6,0.00,159.57,159.57,"2,978.64",840.00,0,,,UNIT,16,2026-10-31
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,3186,,Kiltix Collar Large Size,Damage,,Damage,1,6,0.00,31.91,31.91,595.73,840.00,0,,,UNIT,17,2026-10-31
+Rena,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,7767,,Love Snack Chicken Wings,Theft,,Theft,2,6,0.00,24.75,24.75,324.50,295.00,0,,,UNIT,1,2025-11-01
+Farmina,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,7206,,N and D GF PKN CP Puppy Mini 800 GM,Damage,,Damage,2,2,0.00,95.03,95.03,"1,246.01",890.00,0,,,UNIT,18,2099-12-12
+Cataholic,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,6937,,Neko Cat Spiral Soft Chicken and Fish,Theft,,Theft,4,4,0.00,33.84,33.84,443.68,220.00,0,,,UNIT,2,2099-12-12
+Petaholic,Clothing ,Sweater,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,1396,,Petaholic Checkers Sweater Size 16 To 20,Damage,,Damage,1,1,0.00,13.13,13.13,551.25,"1,180.00",0,,,UNIT,19,
+Trixie,Walk Essentials,Leash,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8465,,Premium Leash L-XL 1.00M/25MM  Black,Damage,,Damage,2,6,0.00,101.91,101.91,"1,336.14","1,325.00",0,,,UNIT,4,
+Trixie,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8918,,Premium Touring Harness S 35-65CM/20MM Red,Damage,,Damage,1,2,0.00,47.19,47.19,618.74,"1,125.00",0,,,UNIT,22,
+Trixie,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8645,,Premium Touring Harness S-M 40-70cm/20mm Black,Damage,,Damage,1,2,0.00,47.19,47.19,618.74,"1,150.00",0,,,UNIT,20,
+Trixie,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8645,,Premium Touring Harness S-M 40-70cm/20mm Black,Damage,,Damage,1,2,0.00,47.19,47.19,618.74,"1,150.00",0,,,UNIT,21,
+Trixie,Accessories,E-collar & Muzzle ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8964,,Protective E- Collar With Velcro XS 18-23 Cm 8cm,Damage,,Damage,2,2,0.00,96.14,96.14,"1,260.50","1,250.00",0,,,UNIT,15,
+Pawsindia,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,3906,,PW Bomb Durable Treat Toy Red,Damage,,Damage,1,1,0.00,50.30,50.30,659.45,"1,199.00",0,,,UNIT,5,
+Manufacturer,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,9842,,Turbinio ball with motor and mouse 9 cm,Damage,,Damage,1,1,0.00,50.11,50.11,657.01,"1,195.00",0,,,UNIT,8,
+Trixie,Toys,Toys,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,9035,,Turtle Animal Sound Plush 40cm,Damage,,Damage,1,1,0.00,32.28,32.28,602.50,"1,195.00",0,,,UNIT,13,
+ZeeDog,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8771,,ZD Bart Simpson Collar (Large),Damage,,Damage,1,1,0.00,50.30,50.30,659.45,"1,199.00",0,,,UNIT,7,
+ZeeDog,Walk Essentials,Collar ,225,URBANPETS SERVICES PRIVATE LIMITED,2024-04-26,8762,,ZeeDog Neopro Amazonia Collar Large,Damage,,Damage,1,2,0.00,50.30,50.30,659.45,"1,199.00",0,,,UNIT,6,
+other,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,10396,,Augmentin Duo Syrup 30ml,Damage,,Damage,3,3,0.00,8.42,8.42,157.21,67.54,0,,,UNIT,6,2024-10-30
+Bark Out Loud,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,10605,,BOL Dog Pillows Hip & Joint 100gm,Damage,,Damage,2,2,0.00,22.86,22.86,299.72,250.00,0,,,UNIT,8,2024-11-30
+Bark Out Loud,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,10603,,BOL Dog Pillows Weight Control 100gm,Damage,,Damage,1,1,0.00,11.43,11.43,149.86,250.00,0,,,UNIT,7,2024-11-30
+Scientific Remedies,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,7325,,COBALAZORB 60 CAPSULES,Damage,,Damage,9,9,0.00,880.73,880.73,"11,547.34","1,980.00",0,,expired stock till decembar 2024- Rahul,UNIT,10,2099-12-12
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,5983,,CYSTOPRO 120 CAPSULES (HPMC),Damage,,Damage,4,4,0.00,"1,184.19","1,184.19","15,526.06","5,990.00",0,,expired stock till decembar 2024- Rahul,UNIT,9,2099-12-12
+Misc,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,3028,,ENTERO SECURE BD  Tablets,Damage,,Damage,16,16,0.00,156.96,156.96,"2,057.92",230.00,0,,expired stock till decembar 2024- Rahul,UNIT,7,2099-12-12
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,2918,,Folrex 150ml,Damage,,Damage,2,2,0.00,153.72,153.72,"2,015.44","1,750.00",0,,expired stock till decembar 2024- Rahul,UNIT,4,2099-12-12
+Manufacturer,Walk Essentials,Harness ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,9768,,Hiking Harness -L / Camaouflage,Damage,,Damage,1,1,0.00,113.45,113.45,"1,487.50","2,975.00",0,,expired stock till decembar 2024- Rahul,UNIT,12,
+JerHigh,Dog Food,Wet Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,7655,,JerHigh Gravy Chicken Vegetable 120G,Damage,,Damage,6,18,0.00,21.78,21.78,285.61,70.00,0,,,UNIT,3,2024-05-30
+JerHigh,Dog Food,Wet Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,7655,,JerHigh Gravy Chicken Vegetable 120G,Damage,,Damage,12,18,0.00,43.57,43.57,571.21,70.00,0,,,UNIT,4,2024-05-30
+JerHigh,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,10183,,JH Meat as meals salmon  500gm,Damage,,Damage,1,1,0.00,52.81,52.81,692.37,"1,099.00",0,,,UNIT,5,2024-12-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,5995,,Komlinz 600mg Tab,Damage,,Damage,48,48,0.00,241.92,241.92,"4,515.84",142.00,0,,,UNIT,7,2024-05-31
+M & K,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,10848,,M and K Adult Dog Food 12 Kg,Damage,,Damage,1,1,0.00,480.43,480.43,"6,299.01","6,299.00",0,,expired stock till decembar 2024- Rahul,UNIT,14,2026-07-30
+M & K,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,10739,,M and K Puppy Dog Food 12 Kg,Damage,,Damage,1,1,0.00,526.19,526.19,"6,899.00","6,899.00",0,,expired stock till decembar 2024- Rahul,UNIT,13,2025-08-30
+Misc,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,3204,,MegaFlex 250 gms,Damage,,Damage,1,1,0.00,65.05,65.05,852.93,"1,066.00",0,,,UNIT,3,2024-10-30
+Farmina,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,7128,,N and D Quin Dog GF Skin Coat Quail Adult 2.5Kg,Damage,,Damage,1,1,0.00,197.35,197.35,"2,587.50","3,450.00",0,,expired stock till decembar 2024- Rahul,UNIT,16,2025-04-30
+SRK,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,2836,,Notix P Talc 100gm,Damage,,Damage,15,15,0.00,131.78,131.78,"2,459.86",250.00,0,,expired stock till decembar 2024- Rahul,UNIT,2,2099-12-12
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,4076,,NP Mix Veg 550G (S),Damage,,Damage,1,1,0.00,9.54,9.54,125.08,250.00,0,,,UNIT,4,2024-09-30
+PETCARE,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,3043,,Pet Joint Plus,Damage,,Damage,1,1,0.00,72.43,72.43,949.70,"1,350.00",0,,,UNIT,2,2023-12-30
+SRK,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,3176,,ProviBoost Drops 15 ml,Damage,,Damage,123,123,0.00,686.34,686.34,"8,998.68",140.00,0,,expired stock till decembar 2024- Rahul,UNIT,8,2099-12-12
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,2862,,Ridd Liquid 60 ml,Damage,,Damage,21,21,0.00,420.02,420.02,"7,840.39",600.00,0,,expired stock till decembar 2024- Rahul,UNIT,3,2099-12-12
+Royal Canin,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,7053,,Royal Canin Maxi Puppy 4 kg,Damage,,Damage,1,1,0.00,228.58,228.58,"2,997.00","3,800.00",0,,expired stock till decembar 2024- Rahul,UNIT,17,2024-02-02
+Sava Vet ,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,7859,,Sava Kiwof Plus Xl,Damage,,Damage,636,636,0.00,"2,907.03","2,907.03","54,264.54",118.50,0,,expired stock till decembar 2024- Rahul,UNIT,11,2024-09-30
+Smart Heart,Dog Food,Wet Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,6967,,SH Gravy Chicken Puppy 80GM,Damage,,Damage,12,12,0.00,27.82,27.82,364.76,40.00,0,,expired stock till decembar 2024- Rahul,UNIT,18,2026-01-30
+Supercoat,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,7252,,Supercoat Adult 10Kg,Damage,,Damage,1,1,0.00,194.03,194.03,"2,544.00","3,180.00",0,,expired stock till decembar 2024- Rahul,UNIT,15,2025-10-25
+TTK,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,2512,,TTK Hug N Wag Quick Bath 10S,Damage,,Damage,30,30,0.00,343.20,343.20,"4,499.69",250.00,0,,expired stock till decembar 2024- Rahul,UNIT,1,2099-12-12
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,3004,,Venlyte Pet 30gm,Damage,,Damage,67,67,0.00,120.18,120.18,"1,575.67",40.00,0,,expired stock till decembar 2024- Rahul,UNIT,5,2099-12-12
+Vet Life,Dog Food,Prescription Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,1978,,Vet Life Dog Struvite Management 2 Kg,Damage,,Damage,2,2,0.00,263.14,263.14,"3,450.01","2,300.00",0,,,UNIT,1,2024-09-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,5987,,WG WIGCLAV 250 MG,Damage,,Damage,1,1,0.00,0.52,0.52,9.70,16.50,0,,,UNIT,2,2024-09-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,5987,,WG WIGCLAV 250 MG,Damage,,Damage,53,53,0.00,27.54,27.54,514.06,16.50,0,,,UNIT,6,2024-10-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,5986,,WG-WIGCLAVE 500MG,Damage,,Damage,94,94,0.00,68.02,68.02,"1,269.68",23.00,0,,,UNIT,1,2024-08-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,5986,,WG-WIGCLAVE 500MG,Damage,,Damage,4,4,0.00,2.89,2.89,54.03,23.00,0,,,UNIT,5,2024-07-30
+Misc,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-27,3026,,Worex Suspension 15 ml,Damage,,Damage,22,22,0.00,78.38,78.38,"1,463.12",110.00,0,,expired stock till decembar 2024- Rahul,UNIT,6,2099-12-12
+Shreeji Pet Shop,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-28,3018,,Cardiopet 5 mg,Damage,,Damage,814,814,0.00,"2,226.13","2,226.13","41,554.37",90.00,0,,,UNIT,1,2025-04-30
+Sava Vet ,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-28,2999,,Renodis,Wastage,,Wastage,5,5,0.00,117.86,117.86,"2,200.02",550.00,0,,,UNIT,1,2025-12-30
+Sava Vet ,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-28,6128,,SAVA FELINTRA SYRUP 60 ML,Wastage,,Wastage,7,7,0.00,74.25,74.25,"1,385.96",275.00,0,,,UNIT,2,2024-10-30
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2025-01-28,2926,,Vivaldis Relaxzyme Tablet,Wastage,,Wastage,7,7,0.00,755.53,755.53,"9,905.89","1,900.00",0,,,UNIT,3,2099-12-12
+Beaphar,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,3084,,Beaphar HD Tablets 60 tab,Damage,,Damage,1,1,0.00,62.92,62.92,825.01,"1,100.00",0,,,UNIT,17,2025-06-30
+Bio Groom,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2428,,Bio Groom Crisp Apple Shampoo 355 ml,Damage,,Damage,2,2,0.00,30.00,30.00,"1,260.00","1,275.00",0,,,UNIT,4,2025-09-30
+Bark Out Loud,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7726,,BOL Multivitamin Immunity Chewstix 100gm,Wastage,,Wastage,5,5,0.00,63.00,63.00,826.00,250.00,0,,,UNIT,19,2025-09-30
+Manufacturer,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10111,,C De- Sheddining Dog Shampoo 375ml,Wastage,,Wastage,1,1,0.00,5.51,5.51,231.36,525.00,0,,,UNIT,26,2025-11-30
+Canine Creek ,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7181,,Canine Creek Adult 3 kg,Wastage,,Wastage,1,1,0.00,122.80,122.80,"1,610.00","2,300.00",0,,,UNIT,7,2025-08-30
+Canine Creek ,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7180,,Canine Creek Puppy 4 kg,Wastage,,Wastage,1,1,0.00,130.81,130.81,"1,715.00","2,450.00",0,,,UNIT,6,2025-07-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2843,,CETZINE Tablets,Damage,,Damage,5,5,0.00,2.81,2.81,118.13,31.50,0,,,UNIT,8,2025-06-30
+Dogaholic ,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7433,,Cheese Milky Chew Chicken Bone Style 10 Pcs,Wastage,,Wastage,5,5,0.00,81.80,81.80,"1,072.50",390.00,0,,,UNIT,10,2026-05-31
+Dogaholic ,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7447,,Chicken Bacon Bone BBQ,Wastage,,Wastage,4,7,0.00,72.99,72.99,956.98,435.00,0,,,UNIT,12,2025-08-21
+Dogaholic ,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7447,,Chicken Bacon Bone BBQ,Wastage,,Wastage,3,7,0.00,54.74,54.74,717.74,435.00,0,,,UNIT,13,2025-08-21
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10071,,Clindawel Injection,Wastage,,Wastage,30,30,0.00,63.75,63.75,"2,677.50",127.00,0,,,UNIT,24,2025-07-30
+Friskies ,Cat Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6880,,Friskies Seafood 2.5 KG,Damage,,Damage,1,1,0.00,68.64,68.64,900.00,"1,125.00",0,,,UNIT,23,2025-10-10
+Medicines,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,11710,,furcat eye drops 10 ml,Wastage,,Wastage,8,8,0.00,27.86,27.86,"1,170.04",182.81,0,,,UNIT,44,2026-03-30
+Gnawlers,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7523,,GN 2.5 Inch Small Braid 220G,Wastage,,Wastage,1,1,0.00,17.62,17.62,231.00,385.00,0,,,UNIT,14,2025-12-24
+Lozalo,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10073,,Hydrating Dog Shampoo 375 ml -  aloevera and cucumber,Wastage,,Wastage,1,1,0.00,5.51,5.51,231.36,525.00,0,,,UNIT,25,2025-08-30
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2894,,Intacef Tazo Injection,Damage,,Damage,9,9,0.00,11.27,11.27,473.35,85.00,0,,,UNIT,10,2025-08-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2870,,INTAS CEFPET TABLET,Damage,,Damage,4,4,0.00,1.13,1.13,47.38,19.50,0,,,UNIT,9,2025-09-30
+other,Grooming,Shampoo & Conditioner ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10413,,Ivtraz Shampoo 200ml,Wastage,,Wastage,4,4,0.00,25.00,25.00,"1,050.00",350.00,0,,,UNIT,28,2025-07-30
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7682,,JH 100G Banana,Wastage,,Wastage,1,1,0.00,12.49,12.49,163.80,260.00,0,,,UNIT,16,2024-08-15
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7400,,JH 70G Chicken Jerky,Wastage,,Wastage,1,1,0.00,9.26,9.26,121.42,210.00,0,,,UNIT,9,2025-12-01
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7762,,JH 70g Morning Time Stick,Wastage,,Wastage,2,2,0.00,18.21,18.21,238.81,199.00,0,,,UNIT,20,2024-12-08
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7667,,JH Duo Stick Milky Banana Stick 50G,Wastage,,Wastage,1,1,0.00,9.11,9.11,119.40,199.00,0,,,UNIT,15,2025-05-30
+JerHigh,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7777,,JH Meat as Meals Chicken Pumpkin 45gm,Wastage,,Wastage,1,1,0.00,5.95,5.95,78.06,135.00,0,,,UNIT,21,2025-11-18
+JerHigh,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10181,,JH Meat as meals chicken pumpkin 500 gm,Wastage,,Wastage,1,1,0.00,52.81,52.81,692.37,"1,099.00",0,,,UNIT,27,2025-04-30
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10830,,JH Stick 400gm,Wastage,,Wastage,1,1,0.00,45.53,45.53,597.00,995.00,0,,,UNIT,37,2025-08-30
+Kittos ,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6938,,Kittos Sunfish and Chicken Twirls Cat Treat 35 gm,Wastage,,Wastage,3,3,0.00,15.73,15.73,206.24,125.00,0,,,UNIT,2,2025-03-11
+Rena,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6950,,Kitty Licks Chicken Flavor Pack of 4 Tubes,Wastage,,Wastage,1,1,0.00,5.66,5.66,74.25,135.00,0,,,UNIT,3,2025-10-15
+Rena,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7442,,Love Stick 10pcs,Wastage,,Wastage,3,3,0.00,53.48,53.48,701.24,425.00,0,,,UNIT,11,2025-07-10
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6037,,MELOCAN S SYRUP 30ml,Damage,,Damage,3,3,0.00,5.02,5.02,210.92,150.00,0,,,UNIT,22,2025-10-30
+Farmina,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,1944,,N and D GF PKN CP Puppy Mini 2.5 KG,Damage,,Damage,1,1,0.00,145.87,145.87,"1,912.50","2,550.00",0,,,UNIT,3,2024-08-30
+Farmina,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7137,,N and D GF PKN CP Starter Puppy 800GM,Wastage,,Wastage,8,8,0.00,461.29,461.29,"6,048.02","1,050.00",0,,,UNIT,5,2027-01-15
+Hygiene,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,9672,,NATLIFE 30ML,Wastage,,Wastage,3,3,0.00,54.92,54.92,720.04,480.00,0,,,UNIT,23,2025-05-30
+MANKIND,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,3038,,Nephroways Syrup,Damage,,Damage,15,15,0.00,247.12,247.12,"3,239.99",300.00,0,,,UNIT,13,2025-05-30
+Natural Remedies,Grooming,Dry Bath & Perfumes ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7950,,NOMOTICKS Body Spray 175 ml,Wastage,,Wastage,6,6,0.00,41.31,41.31,"1,735.15",650.00,0,,,UNIT,22,2025-08-30
+Petkin,Hygiene,Towels & Wipes ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,11369,,Petkin Mega Value Oatmeal Petwipes - 200 Wipes,Wastage,,Wastage,1,1,0.00,14.57,14.57,611.76,"1,250.00",0,,,UNIT,42,2028-05-02
+Pils,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,3066,,Pilpan 40mg Inj,Damage,,Damage,13,13,0.00,4.10,4.10,171.99,56.50,0,,,UNIT,14,2025-05-30
+Pils,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,3066,,Pilpan 40mg Inj,Damage,,Damage,35,35,0.00,11.03,11.03,463.05,55.34,0,,,UNIT,15,2024-09-30
+Pils,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,3066,,Pilpan 40mg Inj,Damage,,Damage,10,10,0.00,3.15,3.15,132.30,55.34,0,,,UNIT,16,2025-05-30
+Panav Bio-Tech,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10791,,Pooch Acepron Tab.,Wastage,,Wastage,5,5,0.00,10.18,10.18,427.35,120.00,0,,,UNIT,36,2025-04-30
+Royal Canin,Cat Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,820,,Royal Canin Persian adult 2KG,Damage,,Damage,1,2,0.00,154.45,154.45,"2,025.00","2,500.00",0,,,UNIT,1,2026-01-01
+Royal Canin,Cat Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,820,,Royal Canin Persian adult 2KG,Damage,,Damage,1,2,0.00,154.45,154.45,"2,025.00","2,500.00",0,,,UNIT,2,2026-01-01
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,5954,,RR Safron Tablet 60Tab,Damage,,Damage,9,9,0.00,45.00,45.00,"1,890.00",280.00,0,,,UNIT,20,2024-11-30
+other,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10657,,Ruminfla DL Act Spary 100ml,Wastage,,Wastage,11,11,0.00,31.49,31.49,"1,322.48",160.00,0,,,UNIT,29,2024-12-30
+Sava Vet ,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2800,,SAVA BIOCLAN 600 MG TABLET,Damage,,Damage,2,2,0.00,9.94,9.94,417.61,290.00,0,,,UNIT,6,2025-11-30
+Sava Vet ,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,11376,,Sava Kynetra - 30 Tab,Wastage,,Wastage,1,1,0.00,6.10,6.10,256.27,400.00,0,,,UNIT,43,2026-11-30
+ABK,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10760,,Sea World Treats 80 gm,Wastage,,Wastage,3,3,0.00,25.04,25.04,328.34,199.00,0,,,UNIT,35,2025-05-25
+Smart Heart,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6978,,SH Power Pack Adult 3 Kg,Wastage,,Wastage,1,1,0.00,63.43,63.43,831.59,"1,155.00",0,,,UNIT,4,2025-12-30
+Smart Heart,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7296,,SH- Creamy Dog Treat Chicken and Pumpkin 60 gm,Wastage,,Wastage,4,4,0.00,21.36,21.36,279.99,100.00,0,,,UNIT,8,2026-01-18
+Snookie - Sai International,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10708,,Snookie Dental Stix Calcium Milk Flavour 220gm,Wastage,,Wastage,3,9,0.00,29.70,29.70,389.40,375.00,0,,,UNIT,31,2025-08-30
+Snookie - Sai International,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10708,,Snookie Dental Stix Calcium Milk Flavour 220gm,Wastage,,Wastage,4,9,0.00,39.60,39.60,519.20,375.00,0,,,UNIT,32,2025-08-30
+Snookie - Sai International,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10708,,Snookie Dental Stix Calcium Milk Flavour 220gm,Wastage,,Wastage,2,9,0.00,19.80,19.80,259.60,375.00,0,,,UNIT,33,2025-08-30
+Snookie - Sai International,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10709,,Snookie Dental Stix Chicken Flavour 220gm,Wastage,,Wastage,2,2,0.00,19.80,19.80,259.60,375.00,0,,,UNIT,34,2025-08-30
+Snookie - Sai International,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10859,,Snookie Dental Stix Seaweed  Flavour 220gm,Wastage,,Wastage,4,6,0.00,39.60,39.60,519.20,375.00,0,,,UNIT,38,2025-08-30
+Snookie - Sai International,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10859,,Snookie Dental Stix Seaweed  Flavour 220gm,Wastage,,Wastage,2,6,0.00,19.80,19.80,259.60,375.00,0,,,UNIT,39,2025-08-30
+Manufacturer,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,3003,,Sulbenz-Pet 200ml,Damage,,Damage,5,5,0.00,29.53,29.53,"1,240.31",420.00,0,,,UNIT,12,2025-04-30
+Super Bone,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7709,,Super Bone Olive Oil Stick 9Pcs.,Wastage,,Wastage,2,5,0.00,53.39,53.39,700.00,350.00,0,,,UNIT,17,2025-10-30
+Super Bone,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,7709,,Super Bone Olive Oil Stick 9Pcs.,Wastage,,Wastage,3,5,0.00,80.08,80.08,"1,050.00",350.00,0,,,UNIT,18,2025-10-30
+Temptation,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6928,,TEMP Seafood Medley 85G,Damage,,Damage,1,4,0.00,8.58,8.58,112.50,150.00,0,,,UNIT,24,2025-11-28
+Temptation,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6928,,TEMP Seafood Medley 85G,Damage,,Damage,3,4,0.00,25.74,25.74,337.50,150.00,0,,,UNIT,25,2025-11-28
+Temptation,Cat Food,Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,6930,,TEMP Tuna 85G,Wastage,,Wastage,3,3,0.00,25.74,25.74,337.50,150.00,0,,,UNIT,1,2025-11-27
+Manufacturer,Grooming,Dry Bath & Perfumes ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2457,,TOPICURE SPRAY 75 ML,Damage,,Damage,5,5,0.00,15.07,15.07,632.84,270.00,0,,,UNIT,5,2025-09-30
+Hygiene,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2947,,TTK Dermspot Spoton 4 Pipettes,Damage,,Damage,8,8,0.00,122.03,122.03,"5,125.43","1,000.00",0,,,UNIT,11,2025-12-30
+Twistix,"Treats, Biscuits & Chews ",Treats  ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,4149,,Twistix Pumpkin Small 50 sticks,Damage,,Damage,3,3,0.00,200.73,200.73,"2,631.74","1,595.00",0,,,UNIT,19,2025-12-30
+Virbac,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10884,,Virbac Vet HPM Baby Dog Large and Medium 3 KG,Wastage,,Wastage,3,3,0.00,507.97,507.97,"6,660.01","3,200.00",0,,,UNIT,41,2025-12-30
+Virbac,Dog Food,Dry Food ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10883,,Virbac Vet HPM Junior Dog Special Medium 3 KG,Wastage,,Wastage,1,1,0.00,169.32,169.32,"2,220.00","3,200.00",0,,,UNIT,40,2025-10-30
+Vitex ,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,5992,,VITEX Vieotic Ear Cleanze,Damage,,Damage,1,1,0.00,4.58,4.58,192.21,270.00,0,,,UNIT,21,2025-11-30
+Vivaldis,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,10701,,Vivaldis Atovaquin Tab 25,Wastage,,Wastage,1,1,0.00,18.90,18.90,793.80,"1,250.00",0,,,UNIT,30,2025-10-30
+Misc,Medicine & Supplements ,Medicine ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,2828,,Vivaldis Calowries 150gms,Damage,,Damage,4,4,0.00,79.20,79.20,"1,038.40",400.00,0,,,UNIT,7,2025-07-30
+Hygiene,Medicine & Supplements ,Supplements ,225,URBANPETS SERVICES PRIVATE LIMITED,2026-01-31,3114,,Zoetis Pet Tabs 60 Tab,Damage,,Damage,1,1,0.00,54.00,54.00,708.00,"1,093.00",0,,,UNIT,18,2025-08-30
+Andis,Accessories,Trimmer & Nail Cutter ,32772,URBAN PETS / MOTERA,2025-03-31,10965,,Andis DBLC-2 Pulse ZR II Clipper - Wild,Wastage,,Wastage,1,1,0.00,"2,916.00","2,916.00","38,232.00","54,000.00",0,,,UNIT,1,
+Trixie,Bowls & Water Bottle ,Bowl,32772,URBAN PETS / MOTERA,2025-03-31,8084,,Automatic Food Dispenser 5X0.24 L 33X5X36cm White/Grey,Wastage,,Wastage,1,1,0.00,262.18,262.18,"3,437.51","6,250.00",0,,,UNIT,7,
+Bio Groom,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2025-03-31,2455,,Bio-Groom Crisp Apple Natural Scents Gallon,Wastage,,Wastage,9,9,0.00,"3,474.90","3,474.90","45,559.80","7,150.00",0,,,UNIT,1,2031-02-08
+Bio Groom,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2025-03-31,2455,,Bio-Groom Crisp Apple Natural Scents Gallon,Wastage,,Wastage,3,3,0.00,"1,158.30","1,158.30","15,186.60","7,150.00",0,,,UNIT,4,2031-04-09
+Himalaya,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2025-03-31,7773,,Himalaya Puppy Chicken and Rice 20KG,Wastage,,Wastage,1,1,0.00,272.74,272.74,"3,575.97","4,470.00",0,,,UNIT,6,2025-01-28
+Kennel Doggy,Walk Essentials,Chain & Chock chain ,32772,URBAN PETS / MOTERA,2025-03-31,5316,,KD D20 Premium Nylon Brass Chain Set No.1 4 MM,Wastage,,Wastage,3,3,0.00,424.73,424.73,"5,568.74","3,375.00",0,,,UNIT,5,
+Lozalo,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2025-03-31,10388,,lozalo volumizing shampoo 5 ltre,Wastage,,Wastage,16,16,0.00,"2,717.71","2,717.71","35,632.22","4,499.00",0,,,UNIT,1,2026-06-30
+M-Pets,Accessories,Cage & Crates,32772,URBAN PETS / MOTERA,2025-03-31,9146,,M-Pets Foldable Puppy Pen Small,Wastage,,Wastage,1,1,0.00,200.21,200.21,"2,625.00","5,250.00",0,,,UNIT,8,
+Smartypet,Accessories,Cage & Crates,32772,URBAN PETS / MOTERA,2025-03-31,284,,Smartypet Cage 42 inch,Wastage,,Wastage,1,1,0.00,457.63,457.63,"6,000.01","12,000.00",0,,,UNIT,2,
+Smartypet,Accessories,Cage & Crates,32772,URBAN PETS / MOTERA,2025-03-31,293,,Smartypet Plastic Pet Carrier L-120,Wastage,,Wastage,1,1,0.00,"1,735.17","1,735.17","22,750.00","45,500.00",0,,,UNIT,3,
+Supercoat,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2025-03-31,7085,,Supercoat Puppy 10 kgs,Wastage,,Wastage,6,6,0.00,"1,244.74","1,244.74","16,319.97","3,400.00",0,,,UNIT,1,2025-04-30
+Andis,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,2349,,Andis Deshedding Tool W-L Green,Damage,,Damage,3,10,0.00,333.50,333.50,"4,372.50","2,650.00",0,,,UNIT,7,
+Andis,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,2348,,Andis Flea Comb White/Lime Green,Damage,,Damage,6,9,0.00,252.64,252.64,"3,312.45","1,095.00",0,,,UNIT,9,
+Andis,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,2368,,Andis Large Pin Brush Lime Green,Damage,,Damage,2,2,0.00,104.87,104.87,"1,375.01","1,250.00",0,,,UNIT,1,
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,4034,,Badalona Scratching Post 109cm Beige,Damage,,Damage,1,1,0.00,190.87,190.87,"2,502.50","4,550.00",0,,,UNIT,25,
+Cats Best,Hygiene,Cat Litter ,32772,URBAN PETS / MOTERA,2025-10-28,10286,,Baking Mat with Bone Silicone 38cm x 28cm,Damage,,Damage,2,2,0.00,132.14,132.14,"1,732.50","1,575.00",0,,,UNIT,44,
+Trixie,Accessories,Bowl Mat & Litter Tray ,32772,URBAN PETS / MOTERA,2025-10-28,10287,,Baking Mat with heart Silicone 38cm x 28cm,Damage,,Damage,2,2,0.00,132.14,132.14,"1,732.50","1,575.00",0,,,UNIT,45,
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,10329,,Be Nordic Hajo Flounder 35cm,Damage,,Damage,1,1,0.00,39.85,39.85,522.50,950.00,0,,,UNIT,14,
+Trixie,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,9600,,Carding Groomer Detangle and Thin Medium 8X14 CM,Damage,,Damage,2,2,0.00,128.82,128.82,"1,689.03","1,675.00",0,,,UNIT,4,
+Manufacturer,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,9616,,Carding Groomer Detangle and Thin Small 7x15 CM,Damage,,Damage,7,8,0.00,417.25,417.25,"5,470.60","1,550.00",0,,,UNIT,8,
+Trixie,Accessories,Trimmer & Nail Cutter ,32772,URBAN PETS / MOTERA,2025-10-28,9613,,Carding Groomer Plastic Metal Blade 11X15CM,Damage,,Damage,4,7,0.00,368.41,368.41,"4,830.26","2,395.00",0,,,UNIT,5,
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9417,,Caterpillar Latex 26CM,Damage,,Damage,4,5,0.00,161.51,161.51,"2,117.58","1,050.00",0,,,UNIT,13,
+Dogaholic ,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,7447,,Chicken Bacon Bone BBQ,Damage,,Damage,5,10,0.00,91.24,91.24,"1,196.23",435.00,0,,,UNIT,38,2026-11-10
+Chip Chops,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,7691,,Chip Chops Fish On Stick 70G,Damage,,Damage,1,1,0.00,9.02,9.02,118.25,215.00,0,,,UNIT,40,2026-04-22
+Chip Chops,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,7699,,Chip Chops Lamb Cubes 70gm,Damage,,Damage,2,4,0.00,18.04,18.04,236.50,215.00,0,,,UNIT,41,2026-06-11
+Chip Chops,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,7372,,Chip Chops Sushi Rolls 70g,Damage,,Damage,2,5,0.00,18.04,18.04,236.50,215.00,0,,,UNIT,42,2026-12-10
+Chip Chops,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,9701,,Chip Chops Vegetable Twists Real Chicken and Parsley Flavour 100g,Damage,,Damage,9,9,0.00,92.49,92.49,"1,212.70",245.00,0,,,UNIT,33,2025-08-09
+Trixie,Accessories,Others ,32772,URBAN PETS / MOTERA,2025-10-28,8312,,Clicker With Spiral Wrist Loop,Damage,,Damage,5,8,0.00,75.95,75.95,995.80,395.00,0,,,UNIT,11,
+Trixie,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,9589,,Dog Brush Natural Bristles,Damage,,Damage,3,3,0.00,28.84,28.84,378.14,250.00,0,,,UNIT,10,
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,6043,,Dog Toy Bird Animal Sound 30cm,Damage,,Damage,1,1,0.00,36.46,36.46,478.05,825.00,0,,,UNIT,24,
+Trixie,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,9598,,Dog/Cat Deshedding Massage Brush Rubber,Damage,,Damage,4,8,0.00,108.23,108.23,"1,419.02",645.00,0,,,UNIT,3,
+Andis,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,4023,,Flexible Dog Rake White/Lime Green,Damage,,Damage,3,3,0.00,162.97,162.97,"2,136.74","1,295.00",0,,,UNIT,6,
+Tropiclean ,Grooming,Dental Care ,32772,URBAN PETS / MOTERA,2025-10-28,7976,,Fresh Breath Skin and Coat Water Additive 473 ml,Damage,,Damage,4,4,0.00,69.68,69.68,"2,926.64","1,495.00",0,,,UNIT,39,2025-12-30
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9468,,Gorilla Spiky Bone Regular 16 cm,Damage,,Damage,1,3,0.00,23.07,23.07,302.50,550.00,0,,,UNIT,22,
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9527,,Hen Original Animal Sound Latex  48CM,Damage,,Damage,2,2,0.00,118.83,118.83,"1,557.98","1,545.00",0,,,UNIT,12,
+Petsport ,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,10301,,Jr. Tuff Peanut Butter Balls  2pk,Damage,,Damage,1,1,0.00,13.63,13.63,178.75,325.00,0,,,UNIT,21,
+Manufacturer,Accessories,Others ,32772,URBAN PETS / MOTERA,2025-10-28,8056,,Junior Licking Plate 15cm Mint,Damage,,Damage,3,3,0.00,39.64,39.64,519.74,315.00,0,,,UNIT,43,
+Rena,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,6947,,Kitty Licks Tuna with Scallop Flavor Pack of 4,Damage,,Damage,7,7,0.00,39.64,39.64,519.72,135.00,0,,,UNIT,34,2026-01-31
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9503,,Knotted Ball Natural Rubber 10cm,Damage,,Damage,5,6,0.00,178.34,178.34,"2,338.23",895.00,0,,,UNIT,19,
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9540,,Lion Plush 20 cm,Damage,,Damage,1,1,0.00,41.78,41.78,547.74,995.00,0,,,UNIT,17,
+Rena,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,7444,,Love Chip 60 gm,Damage,,Damage,3,17,0.00,53.48,53.48,701.24,425.00,0,,,UNIT,37,2026-01-25
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9457,,Natural Rubber Ball For Dogs,Damage,,Damage,2,6,0.00,44.22,44.22,579.83,575.00,0,,,UNIT,18,
+Cataholic,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,6937,,Neko Cat Spiral Soft Chicken and Fish,Damage,,Damage,1,1,0.00,10.45,10.45,137.00,249.00,0,,,UNIT,32,2026-09-04
+Manufacturer,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9791,,Orbee Tuff Planet Ball Blue/Green Medium,Damage,,Damage,1,5,0.00,77.61,77.61,"1,017.50","1,850.00",0,,,UNIT,16,
+Manufacturer,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9797,,Orbee Tuff Strobe Ball Blue dia 3 inch,Damage,,Damage,1,3,0.00,96.27,96.27,"1,262.25","2,295.00",0,,,UNIT,20,
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9478,,Rugby Ball Latex 11 Cm,Damage,,Damage,1,5,0.00,16.34,16.34,214.28,425.00,0,,,UNIT,15,
+Savic,Accessories,Bowl Mat & Litter Tray ,32772,URBAN PETS / MOTERA,2025-10-28,10780,,Savic Nestor Cat Toilet Home Nordic Blue 22 X 15 X 15 Inches,Damage,,Damage,1,1,0.00,98.58,98.58,"1,292.50","2,350.00",0,,,UNIT,26,
+Savic,Accessories,Bowl Mat & Litter Tray ,32772,URBAN PETS / MOTERA,2025-10-28,331,,Savic Rincon Corner Cat Litter Tray+Rim Cold Grey 23x18x5 inch,Damage,,Damage,1,1,0.00,52.44,52.44,687.50,"1,250.00",0,,,UNIT,28,
+ABK,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,10760,,Sea World Treats 80 gm,Damage,,Damage,4,5,0.00,33.39,33.39,437.78,199.00,0,,,UNIT,36,2025-05-25
+Trixie,Toys,Toys,32772,URBAN PETS / MOTERA,2025-10-28,9363,,Sporting Jumper Thermoplastic Rubber 9 Cm,Damage,,Damage,2,2,0.00,73.41,73.41,962.50,875.00,0,,,UNIT,23,
+Trixie,Accessories,Bowl Mat & Litter Tray ,32772,URBAN PETS / MOTERA,2025-10-28,316,,Trixie Berto Litter Tray Three Part With Separating System-Dark Grey,Damage,,Damage,3,3,0.00,253.80,253.80,"3,327.60","2,200.00",0,,,UNIT,27,
+Trixie,Grooming,"Brushes, scissors & Comb ",32772,URBAN PETS / MOTERA,2025-10-28,10777,,Trixie Massage brush polyester-silicone - TPR 11x14cm,Damage,,Damage,2,6,0.00,60.83,60.83,797.49,725.00,0,,,UNIT,2,
+Trixie,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,10758,,Trixie Premio Chicken Hearts Mit hunn 100 gm,Damage,,Damage,7,24,0.00,87.80,87.80,"1,151.11",299.00,0,,,UNIT,30,2026-11-25
+Trixie,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,10768,,Trixie Premio Chicken Mini Sticks 50 gm,Damage,,Damage,1,1,0.00,8.18,8.18,107.25,195.00,0,,,UNIT,29,2025-09-28
+Trixie,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,10785,,Trixie Premio Duck Hearts 50gm,Damage,,Damage,3,7,0.00,24.54,24.54,321.75,195.00,0,,,UNIT,31,2026-03-10
+Twistix,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2025-10-28,7683,,Twistix Peanut  and  Carob Large 156gm,Damage,,Damage,2,2,0.00,32.97,32.97,432.21,449.00,0,,,UNIT,35,2025-11-01
+Nutrisource,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2025-11-06,10870,,Nutrisource Adult All Breed 3.5 KG,Wastage,,Wastage,1,393,0.00,190.60,190.60,"2,498.99","2,499.00",0,,,UNIT,1,2027-05-30
+Himalaya,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2025-12-03,7877,,Himalaya Erina EP Shampoo 200 ml,Damage,,Damage,1,13,0.00,5.46,5.46,229.51,306.00,0,,,UNIT,1,2028-06-16
+Nutrisource,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2025-12-03,10871,,Nutrisource Puppy All Breed 3.5 KG,Damage,,Damage,1,88,0.00,205.86,205.86,"2,698.99","2,699.00",0,,,UNIT,1,2027-07-26
+Smartypet,Accessories,Cage & Crates,32772,URBAN PETS / MOTERA,2025-12-20,295,,Smartypet Cage 50 inch,Damage,,Damage,2,2,0.00,"2,288.13","2,288.13","29,999.99","30,000.00",0,,,UNIT,1,
+other,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,10394,,All 4 Pet Goat Elite Powd 200gm,Wastage,,Wastage,1,1,0.00,73.22,73.22,960.00,"1,200.00",0,,,UNIT,53,2025-10-30
+Applaws,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,10622,,Applaws Cat Treat Whole Mackerel Loin 30gm,Wastage,,Wastage,10,10,0.00,119.90,119.90,"1,572.00",250.00,0,,,UNIT,57,2025-10-17
+Applaws,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,10621,,Applaws Cat treat Whole Tuna Loin 30gm,Wastage,,Wastage,6,6,0.00,71.94,71.94,943.20,250.00,0,,,UNIT,56,2025-10-11
+Canine Creek ,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,7181,,Canine Creek Adult 3 kg,Wastage,,Wastage,1,1,0.00,122.80,122.80,"1,610.00","2,300.00",0,,,UNIT,33,2025-08-30
+Dogaholic ,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7447,,Chicken Bacon Bone BBQ,Wastage,,Wastage,1,1,0.00,17.83,17.83,233.75,425.00,0,,,UNIT,36,2025-08-30
+Chip Chops,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7371,,Chip Chops Barbeque Hearts 70g,Wastage,,Wastage,2,2,0.00,18.04,18.04,236.50,215.00,0,,,UNIT,34,2025-12-10
+Drools,Medicine & Supplements ,Supplements ,32772,URBAN PETS / MOTERA,2026-01-31,7827,,Drools Absolute Digestive Tablet 50 Pcs,Wastage,,Wastage,5,5,0.00,0.00,0.00,"1,060.00",265.00,0,,,UNIT,46,2025-08-30
+Drools,Medicine & Supplements ,Supplements ,32772,URBAN PETS / MOTERA,2026-01-31,10407,,Drools Absolute Mobility 110 Tab.,Wastage,,Wastage,2,2,0.00,0.00,0.00,840.00,525.00,0,,,UNIT,54,2025-08-30
+Drools,Medicine & Supplements ,Supplements ,32772,URBAN PETS / MOTERA,2026-01-31,10408,,Drools Absolute Mobility 50 Tab.,Wastage,,Wastage,8,8,0.00,0.00,0.00,"1,696.00",265.00,0,,,UNIT,55,2025-08-30
+Drools,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,812,,Drools Cat Ocean Fish 100gm,Wastage,,Wastage,1,1,0.00,0.72,0.72,9.44,10.00,0,,,UNIT,1,2024-08-30
+EktekPharma,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,11417,,Ektek Peanut Butter For Dogs 200gm,Wastage,,Wastage,1,1,0.00,16.78,16.78,220.01,275.00,0,,,UNIT,71,2025-12-12
+Fidele,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,2032,,Fidele Adult Large Breed 1KG,Wastage,,Wastage,10,10,0.00,371.83,371.83,"4,875.05",750.00,0,,,UNIT,9,2024-12-30
+SRK,Grooming,Dry Bath & Perfumes ,32772,URBAN PETS / MOTERA,2026-01-31,7938,,Fresh Me Up Bloom 160 ML,Wastage,,Wastage,4,4,0.00,20.34,20.34,854.24,300.00,0,,,UNIT,48,2025-01-30
+Friskies ,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,948,,Friskies Surfin 6 Kg,Wastage,,Wastage,4,4,0.00,609.92,609.92,"7,996.77","2,499.00",0,,,UNIT,3,2025-10-30
+Gnawlers,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,4522,,GN Calcium Milk Bone Large 4X1,Wastage,,Wastage,17,17,0.00,134.85,134.85,"1,768.09",160.00,0,,,UNIT,23,2024-12-30
+Gnawlers,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7516,,GN Vegetable Bone,Wastage,,Wastage,4,4,0.00,30.75,30.75,403.23,160.00,0,,,UNIT,40,2024-03-21
+Goodies,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7481,,Goodies Treat Chlorophyll 125G,Wastage,,Wastage,1,1,0.00,9.61,9.61,126.00,210.00,0,,,UNIT,39,2025-12-12
+Goodies,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7478,,Goodies Treat Liver 125G,Wastage,,Wastage,6,6,0.00,57.66,57.66,756.00,210.00,0,,,UNIT,37,2025-02-10
+Goodies,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7480,,Goodies Treat original 125Gm,Wastage,,Wastage,6,6,0.00,57.66,57.66,756.00,210.00,0,,,UNIT,38,2025-11-23
+Himalaya,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-01-31,7630,,Himalaya biscuit adult 400G,Wastage,,Wastage,1,1,0.00,10.99,10.99,144.08,180.00,0,,,UNIT,41,2024-07-30
+Himalaya,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,7169,,Himalaya Puppy Chicken and Rice 1.2KG,Wastage,,Wastage,8,8,0.00,207.45,207.45,"2,719.95",425.00,0,,,UNIT,32,2025-09-19
+Intas,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,10674,,Intas D-mag Spray 120ml,Wastage,,Wastage,4,4,0.00,16.57,16.57,696.02,232.00,0,,,UNIT,61,2025-05-30
+Manufacturer,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,3037,,INTAS ZIPVIT 200ML,Wastage,,Wastage,1,1,0.00,16.17,16.17,212.01,265.00,0,,,UNIT,14,2025-09-30
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7659,,JH 70G Bacon,Wastage,,Wastage,12,12,0.00,115.32,115.32,"1,512.00",210.00,0,,,UNIT,42,2025-09-12
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7659,,JH 70G Bacon,Wastage,,Wastage,3,3,0.00,28.83,28.83,378.00,210.00,0,,,UNIT,43,2025-07-18
+JerHigh,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7762,,JH 70g Morning Time Stick,Wastage,,Wastage,3,3,0.00,27.32,27.32,358.21,199.00,0,,,UNIT,45,2024-12-08
+Kittos ,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,6946,,Kittos Cod Sandwich 35gm,Wastage,,Wastage,4,4,0.00,20.97,20.97,274.99,125.00,0,,,UNIT,28,2025-09-01
+Kittos ,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,6939,,Kittos Snapper Jerky Strips Cat Treat 35g,Wastage,,Wastage,3,3,0.00,16.36,16.36,214.49,130.00,0,,,UNIT,26,2025-12-10
+Kittos ,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,6945,,Kittos Tuna Mini Sticks 35gm,Wastage,,Wastage,3,3,0.00,15.73,15.73,206.24,125.00,0,,,UNIT,27,2025-09-01
+Kitty Yums,Cat Food,Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,10873,,Kitty Yums Creamy Salmon and Skipjack - 5 Stick,Wastage,,Wastage,1,1,0.00,5.29,5.29,69.30,99.00,0,,,UNIT,67,2025-07-30
+Lets Bite,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,10660,,Lets Bite Pink Active Adult 20Kg,Wastage,,Wastage,1,1,0.00,160.17,160.17,"2,100.00","3,500.00",0,,,UNIT,60,2025-08-30
+Smartypet,Accessories,Others ,32772,URBAN PETS / MOTERA,2026-01-31,11638,,Lint Roller - Y Shape,Wastage,,Wastage,12,12,0.00,92.67,92.67,"1,215.07",450.00,0,,,UNIT,74,
+Rena,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7444,,Love Chip 60 gm,Wastage,,Wastage,1,1,0.00,17.83,17.83,233.75,425.00,0,,,UNIT,35,2026-01-25
+Lozalo,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2026-01-31,10085,,Lozalo Provilege  Ocean Conditioning Cream 125 ml,Wastage,,Wastage,2,2,0.00,6.90,6.90,289.82,329.00,0,,,UNIT,50,2025-04-30
+Lozalo,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2026-01-31,10083,,Lozalo Provilege Dew Canditioning Cream 125 ml,Wastage,,Wastage,6,6,0.00,20.70,20.70,869.46,329.00,0,,,UNIT,49,2025-12-30
+Lozalo,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2026-01-31,10086,,Lozalo Provilege Spring Conditioning Cream 125 ml,Wastage,,Wastage,1,1,0.00,3.45,3.45,144.91,329.00,0,,,UNIT,51,2025-12-30
+MATISSE,Cat Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-01-31,975,,Matisse Cat Mousse Lamb Gravy 85 gm,Wastage,,Wastage,6,6,0.00,37.41,37.41,490.50,109.00,0,,,UNIT,4,2024-12-30
+Farmina,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,918,,N and D Prime Cat GF LB BB Adult 300gms,Wastage,,Wastage,2,2,0.00,90.95,90.95,"1,192.48",795.00,0,,,UNIT,2,2025-01-30
+Farmina,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,7130,,N and D Quin Dog Weight-M Lamb Adult 2.5Kg,Wastage,,Wastage,1,1,0.00,197.35,197.35,"2,587.50","3,450.00",0,,,UNIT,31,2025-08-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-01-31,4063,,NP Cheese Biscuits 550G,Wastage,,Wastage,7,7,0.00,66.78,66.78,875.56,250.00,0,,,UNIT,18,2024-12-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-01-31,4060,,NP Chicken Biscuits 550G,Wastage,,Wastage,1,1,0.00,9.54,9.54,125.08,250.00,0,,,UNIT,17,2025-06-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-01-31,4094,,NP Little Pup Veg 800G,Wastage,,Wastage,1,1,0.00,5.34,5.34,70.00,140.00,0,,,UNIT,21,2024-11-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-01-31,4070,,NP Liver Biscuits 550G,Wastage,,Wastage,1,1,0.00,9.54,9.54,125.08,250.00,0,,,UNIT,19,2025-06-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-01-31,4078,,NP Milk Biscuits 550G,Wastage,,Wastage,15,15,0.00,143.10,143.10,"1,876.20",250.00,0,,,UNIT,20,2024-11-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-01-31,4104,,NP Multi Flavour Biscuits 900G,Wastage,,Wastage,14,14,0.00,117.50,117.50,"1,540.49",220.00,0,,,UNIT,22,2024-11-30
+Manufacturer,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,5985,,OPTHOCARE PETA EYE DROPS,Wastage,,Wastage,2,2,0.00,4.91,4.91,206.24,200.00,0,,,UNIT,24,2025-05-30
+Pedigree,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,11495,,Pedigree Pro Active Adult Large Breed 90gm,Wastage,,Wastage,24,24,0.00,1.84,1.84,24.07,35.00,0,,,UNIT,73,2025-10-02
+Pedigree,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,11494,,Pedigree Pro Puppy Large Breed 90hm,Wastage,,Wastage,24,24,0.00,1.84,1.84,24.07,35.00,0,,,UNIT,72,2025-10-01
+Hygiene,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,3122,,Pet Joint Tab,Wastage,,Wastage,1,1,0.00,67.27,67.27,881.99,"1,260.00",0,,,UNIT,15,2025-06-30
+Hygiene,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,3122,,Pet Joint Tab,Wastage,,Wastage,2,2,0.00,26.91,26.91,352.80,252.00,0,,,UNIT,16,2025-06-30
+Petaholic,Walk Essentials,Collar ,32772,URBAN PETS / MOTERA,2026-01-31,11132,,Petaholic sports series collar -M,Wastage,,Wastage,2,2,0.00,114.41,114.41,"1,499.99",750.00,0,,,UNIT,70,
+Hygiene,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2026-01-31,2420,,Pirofur Shampoo 200 ml,Wastage,,Wastage,1,1,0.00,3.78,3.78,158.55,300.00,0,,,UNIT,10,2025-11-30
+Trixie,Walk Essentials,Harness ,32772,URBAN PETS / MOTERA,2026-01-31,10376,,Premium Touring Harness S-M Apple 40-70cm/*20mm,Wastage,,Wastage,1,1,0.00,47.19,47.19,618.74,"1,125.00",0,,,UNIT,52,
+Proplan,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,10812,,Proplan Puppy Starter 4 kg,Wastage,,Wastage,1,1,0.00,155.59,155.59,"2,040.00","2,550.00",0,,,UNIT,66,2025-10-30
+Royal Canin,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,1660,,Royal Canin German Shepherd Puppy 3kg,Wastage,,Wastage,1,1,0.00,191.52,191.52,"2,511.00","3,100.00",0,,,UNIT,5,2024-08-06
+Royal Canin,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,1660,,Royal Canin German Shepherd Puppy 3kg,Wastage,,Wastage,1,1,0.00,194.61,194.61,"2,551.50","3,150.00",0,,,UNIT,6,2026-01-05
+Royal Canin,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,7037,,Royal Canin Golden Retriever Adult 12 kg,Wastage,,Wastage,1,1,0.00,667.22,667.22,"8,748.00","10,800.00",0,,,UNIT,30,2025-09-14
+Royal Canin,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-01-31,1691,,Royal Canin Mini Puppy 85 gm,Wastage,,Wastage,6,6,0.00,37.07,37.07,485.97,100.00,0,,,UNIT,7,2024-09-06
+Sava Vet ,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,2800,,SAVA BIOCLAN 600 MG TABLET,Wastage,,Wastage,1,1,0.00,4.97,4.97,208.80,290.00,0,,,UNIT,12,2025-11-30
+Sava Vet ,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,7859,,Sava Kiwof Plus Xl,Wastage,,Wastage,8,8,0.00,15.24,15.24,639.91,118.50,0,,,UNIT,47,2024-09-30
+Smart Heart,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-01-31,6978,,SH Power Pack Adult 3 Kg,Wastage,,Wastage,1,1,0.00,63.43,63.43,831.59,"1,155.00",0,,,UNIT,29,2025-12-30
+Manufacturer,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,3003,,Sulbenz-Pet 200ml,Wastage,,Wastage,3,3,0.00,17.72,17.72,744.19,420.00,0,,,UNIT,13,2025-04-30
+Manufacturer,Grooming,Dry Bath & Perfumes ,32772,URBAN PETS / MOTERA,2026-01-31,2457,,TOPICURE SPRAY 75 ML,Wastage,,Wastage,1,1,0.00,3.01,3.01,126.57,270.00,0,,,UNIT,11,2025-09-30
+Toptail,Cat Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-01-31,10676,,Toptail Adult Mackerel in Jelly 85gm,Wastage,,Wastage,12,12,0.00,37.05,37.05,485.83,55.00,0,,,UNIT,62,2025-07-30
+Toptail,Cat Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-01-31,10677,,Toptail Adult Shrimp and Tuna in Jelly 85gm,Wastage,,Wastage,4,4,0.00,12.35,12.35,161.94,55.00,0,,,UNIT,63,2025-11-30
+Trixie,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,10757,,Trixie Energy Bars with Fruits and Vegetables 5 pcs 100 gm,Wastage,,Wastage,2,2,0.00,25.08,25.08,328.89,299.00,0,,,UNIT,64,2025-09-01
+Trixie,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,10757,,Trixie Energy Bars with Fruits and Vegetables 5 pcs 100 gm,Wastage,,Wastage,1,1,0.00,12.54,12.54,164.44,299.00,0,,,UNIT,65,2025-09-28
+Twistix,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,7683,,Twistix Peanut  and  Carob Large 156gm,Wastage,,Wastage,10,10,0.00,207.65,207.65,"2,722.50",495.00,0,,,UNIT,44,2028-06-17
+Vet Life,Dog Food,Prescription Food ,32772,URBAN PETS / MOTERA,2026-01-31,1972,,Vet Life Dog Joint 12KG,Wastage,,Wastage,1,1,0.00,720.76,720.76,"9,449.99","12,600.00",0,,,UNIT,8,2025-05-30
+Vet-Pro,Dog Food,Prescription Food ,32772,URBAN PETS / MOTERA,2026-01-31,10955,,Vet-Pro Obesity Gravy 150gm,Wastage,,Wastage,14,16,0.00,74.00,74.00,970.22,99.00,0,,,UNIT,68,2025-12-12
+Vet-Pro,Dog Food,Prescription Food ,32772,URBAN PETS / MOTERA,2026-01-31,10955,,Vet-Pro Obesity Gravy 150gm,Wastage,,Wastage,2,16,0.00,10.57,10.57,138.60,99.00,0,,,UNIT,69,2025-12-12
+Vivaldis,Medicine & Supplements ,Medicine ,32772,URBAN PETS / MOTERA,2026-01-31,6437,,Vivaldis VIV Silky Shampoo 200ml,Wastage,,Wastage,2,2,0.00,6.90,6.90,289.80,250.00,0,,,UNIT,25,2025-07-30
+Wanpy,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,10639,,Wanpy Duck Sausages 100gm,Wastage,,Wastage,1,1,0.00,11.54,11.54,151.25,275.00,0,,,UNIT,58,2025-02-12
+Wanpy,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-01-31,10641,,Wanpy Soft Lamb Jerky Slices 100gm,Wastage,,Wastage,1,1,0.00,11.54,11.54,151.25,275.00,0,,,UNIT,59,2025-02-12
+Himalaya,Medicine & Supplements ,Supplements ,32772,URBAN PETS / MOTERA,2026-02-04,7850,,Himalaya Immunol 100 ml,Damage,,Damage,1,4,0.00,3.01,3.01,126.57,161.00,0,,,UNIT,1,2027-11-12
+M & K,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-03-17,10727,,Kuku Ma-u Tasty and Magic Kitten Food 7.2 Kg,Damage,,Damage,1,1,0.00,121.27,121.27,"1,590.00","2,650.00",0,,,UNIT,1,2026-03-15
+M & K,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-03-17,10725,,Kuku Ma-u Tuna Fish Oil Cat Food 7.2 Kg,Damage,,Damage,1,1,0.00,116.70,116.70,"1,530.13","2,550.00",0,,,UNIT,2,2026-03-13
+M & K,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-03-17,10847,,M and K Adult Dog Food 3 Kg,Damage,,Damage,4,4,0.00,276.03,276.03,"3,619.01","1,645.00",0,,,UNIT,1,2026-07-30
+M & K,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-03-17,10846,,M and K Puppy Dog Food 3 Kg,Damage,,Damage,1,1,0.00,85.79,85.79,"1,124.75","2,045.00",0,,,UNIT,2,2026-06-30
+M & K,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-03-17,11080,,M and K Wet Food Adult 85gm,Damage,,Damage,12,12,0.00,0.01,0.01,0.14,66.00,0,,,UNIT,3,2027-09-30
+Proplan,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-03-21,7256,,Proplan Puppy Medium 15kg,Damage,,Damage,1,1,0.00,618.89,618.89,"8,114.39","11,500.00",0,,,UNIT,1,2026-03-13
+Royal Canin,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-03-24,6790,,Royal Canin Kitten 2KG,Damage,,Damage,1,1,0.00,120.42,120.42,"1,578.86","2,210.00",0,,,UNIT,1,2026-08-28
+Pedigree,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-04-14,6132,,Pedigree Puppy Chicken And Milk 2.8 kg,Wastage,,Wastage,4,4,0.00,0.00,0.00,"1,935.04",685.00,0,,,UNIT,1,2030-08-30
+Smartypet,Bowls & Water Bottle ,Bowl,32772,URBAN PETS / MOTERA,2026-04-18,11633,,Melamine Bowl Plain Large,Damage,,Damage,1,1,0.00,0.00,0.00,220.00,480.00,0,,,UNIT,1,
+Smartypet,Bowls & Water Bottle ,Bowl,32772,URBAN PETS / MOTERA,2026-04-18,11629,,Melamine Bowl Printed Large,Damage,,Damage,1,1,0.00,0.00,0.00,237.71,510.00,0,,,UNIT,2,
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,10962,,Snookie Biscuit  Milk - Carrot flavour - 500gm jar,Wastage,,Wastage,3,3,0.00,0.00,0.00,381.36,250.00,0,,,UNIT,2,2026-07-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11153,,Snookie Biscuit cheese flavour - 500gm Refill Pack,Wastage,,Wastage,2,2,0.00,0.00,0.00,223.72,220.00,0,,m,UNIT,2,2026-06-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,10963,,Snookie Biscuit cheese flavour- 500gm jar,Wastage,,Wastage,1,1,0.00,0.00,0.00,127.12,250.00,0,,m,UNIT,1,2026-07-17
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,10961,,Snookie Biscuit chicken flavour - 500gm jar,Wastage,,Wastage,1,1,0.00,0.00,0.00,211.86,250.00,0,,m,UNIT,3,2026-06-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,10961,,Snookie Biscuit chicken flavour - 500gm jar,Wastage,,Wastage,4,4,0.00,0.00,0.00,508.48,250.00,0,,m,UNIT,4,2026-08-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11151,,Snookie Biscuit chicken flavour - 500gm Refill Pack,Wastage,,Wastage,18,40,0.00,0.00,0.00,"3,355.92",220.00,0,,2,UNIT,1,2028-05-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11151,,Snookie Biscuit chicken flavour - 500gm Refill Pack,Wastage,,Wastage,22,40,0.00,0.00,0.00,"4,101.68",220.00,0,,2,UNIT,2,2028-05-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,10960,,Snookie Biscuit Chicken Liver - 500gm jar,Wastage,,Wastage,1,1,0.00,0.00,0.00,127.12,250.00,0,,2,UNIT,3,2026-06-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,10960,,Snookie Biscuit Chicken Liver - 500gm jar,Wastage,,Wastage,2,2,0.00,0.00,0.00,254.24,250.00,0,,2,UNIT,4,2026-10-17
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11150,,Snookie Biscuit Chicken Liver flavour - 500gm Refill Pack,Wastage,,Wastage,1,1,0.00,0.00,0.00,111.86,220.00,0,,,UNIT,1,2026-12-12
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11152,,Snookie Biscuit Milk - Carrot flavour -  500gm Refill Pack,Wastage,,Wastage,2,26,0.00,0.00,0.00,372.88,220.00,0,,,UNIT,3,2028-05-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11152,,Snookie Biscuit Milk - Carrot flavour -  500gm Refill Pack,Wastage,,Wastage,24,26,0.00,0.00,0.00,"4,474.56",220.00,0,,,UNIT,4,2028-05-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,10964,,Snookie Biscuit Mix flavour - 500gm jar,Wastage,,Wastage,13,13,0.00,0.00,0.00,"1,652.56",250.00,0,,,UNIT,5,2026-07-18
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11154,,Snookie Biscuit Mix flavour - 500gm Refill Pack,Wastage,,Wastage,2,3,0.00,0.00,0.00,223.72,220.00,0,,,UNIT,6,2026-06-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-07,11154,,Snookie Biscuit Mix flavour - 500gm Refill Pack,Wastage,,Wastage,1,3,0.00,0.00,0.00,186.44,220.00,0,,,UNIT,7,2026-06-30
+Snookie,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-05-08,10960,,Snookie Biscuit Chicken Liver - 500gm jar,Wastage,,Wastage,2,2,0.00,0.00,0.00,254.24,250.00,0,,,UNIT,1,2026-06-30
+Drools,Dog Food,Veg Food ,32772,URBAN PETS / MOTERA,2026-05-09,11361,,Drools Veg 20KG,Wastage,,Wastage,3,8,0.00,0.00,0.00,"8,197.26","4,299.00",0,,,UNIT,1,2030-08-30
+Smart Heart,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-05-12,6968,,SH- Adult Lamb and Rice 20 kg,Wastage,,Wastage,1,1,0.00,0.00,0.00,"2,250.50","3,850.00",0,,,UNIT,1,2026-04-14
+Himalaya,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-05-26,7773,,Himalaya Puppy Chicken and Rice 20KG,Wastage,,Wastage,3,3,0.00,731.40,731.40,"9,589.47","4,892.00",0,,,UNIT,1,2026-10-12
+Himalaya,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-05-26,7773,,Himalaya Puppy Chicken and Rice 20KG,Wastage,,Wastage,3,4,0.00,731.40,731.40,"9,589.44","4,892.00",0,,,UNIT,2,2026-10-10
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-06-03,4083,,NP Mix Non Veg (Large) 550G,Wastage,,Wastage,1,2,0.00,8.58,8.58,112.50,250.00,0,,,UNIT,3,2027-04-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-06-03,4093,,NP Mix Non Veg (Medium) 550G,Wastage,,Wastage,1,4,0.00,8.58,8.58,112.50,250.00,0,,,UNIT,4,2027-02-03
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-06-03,4058,,NP Mix Veg 550G  (L),Wastage,,Wastage,3,3,0.00,25.74,25.74,337.50,250.00,0,,,UNIT,1,2026-08-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-06-03,4074,,NP Mix Veg 550G (M),Wastage,,Wastage,3,9,0.00,25.74,25.74,337.50,250.00,0,,,UNIT,2,2027-04-30
+Naughty Pet,"Treats, Biscuits & Chews ",Biscuits ,32772,URBAN PETS / MOTERA,2026-06-03,4117,,NP Picnic Biscuits 900G,Wastage,,Wastage,2,3,0.00,13.73,13.73,180.02,200.00,0,,,UNIT,1,2027-04-30
+Twistix,"Treats, Biscuits & Chews ",Treats  ,32772,URBAN PETS / MOTERA,2026-06-04,7431,,Twistix Yogurt Banana small 50 Sticks,Wastage,,Wastage,1,1,0.00,65.18,65.18,854.59,"1,695.00",0,,,UNIT,1,2026-12-20
+Royal Canin,Cat Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-06-06,11777,,Royal canin Instinctive loaf gravy 85 gm,Wastage,,Wastage,37,37,0.00,246.42,246.42,"3,230.84",110.00,0,,,UNIT,1,2026-05-12
+Himalaya,Dog Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-06-17,11713,,himalaya puppy chicken and milk 3 kg,Wastage,,Wastage,5,5,0.00,214.29,214.29,"2,809.52",860.00,0,,,UNIT,1,2026-06-14
+MATISSE,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-06-25,6901,,Matisse Salmon and Tuna 1.5KG,Wastage,,Wastage,1,1,0.00,75.23,75.23,986.40,"1,370.00",0,,,UNIT,1,2026-03-30
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11469,,huft saras wholesome flavours of india chicken biryani dog wet food - 300 gm,Wastage,,Wastage,2,2,0.00,32.84,32.84,430.56,299.00,0,,,UNIT,1,2026-03-20
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11285,,HUFT Saras Wholesome Grain-Free Lamb and Apple Dog Wet Food - 300gm,Wastage,,Wastage,5,5,0.00,104.06,104.06,"1,364.38",389.00,0,,,UNIT,1,2026-02-18
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11285,,HUFT Saras Wholesome Grain-Free Lamb and Apple Dog Wet Food - 300gm,Wastage,,Wastage,2,3,0.00,38.73,38.73,507.85,379.00,0,,,UNIT,2,2026-08-30
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11285,,HUFT Saras Wholesome Grain-Free Lamb and Apple Dog Wet Food - 300gm,Wastage,,Wastage,1,3,0.00,19.37,19.37,253.92,379.00,0,,,UNIT,3,2026-08-30
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11489,,Saras Mutton Biryani 300gm,Wastage,,Wastage,2,2,0.00,48.60,48.60,637.20,329.00,0,,,UNIT,4,2026-03-18
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11493,,saras wholesome food chicken and turkey 300 gm,Wastage,,Wastage,1,1,0.00,21.36,21.36,280.08,389.00,0,,,UNIT,5,2026-03-19
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11778,,saras wholesome food chicken and veggies 300 gm,Wastage,,Wastage,3,3,0.00,62.44,62.44,818.63,379.00,0,,,UNIT,6,2026-03-13
+HUFT,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-07-03,11779,,saras wholesome food Duck and Quinoa 300 gm,Wastage,,Wastage,8,8,0.00,170.90,170.90,"2,240.68",379.00,0,,,UNIT,7,2026-03-12
+Vet pro ,Dog Food,Prescription Food ,32772,URBAN PETS / MOTERA,2026-07-25,5977,,Vet Pro renal 8kg,Damage,,Damage,1,1,0.00,139.05,139.05,"1,823.10","3,699.00",0,,,UNIT,1,2099-12-12
+Forcans ,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2026-07-28,11571,,Forcans long coat Shampoo 4 litres,Wastage,,Wastage,1,11,0.00,66.59,66.59,"2,796.60","3,950.00",0,,,UNIT,1,2028-05-30
+Lozalo,Grooming,Shampoo & Conditioner ,32772,URBAN PETS / MOTERA,2026-07-28,10388,,lozalo volumizing shampoo 5 ltre,Damage,,Damage,2,12,0.00,94.37,94.37,"3,963.33","4,003.00",0,,,UNIT,1,2029-08-30
+Vet pro ,Dog Food,Prescription Food ,32772,URBAN PETS / MOTERA,2026-08-05,5963,,Vet-Pro Adult 12 KG,Wastage,,Wastage,1,1,0.00,99.00,99.00,"1,298.00","2,800.00",0,,,UNIT,1,2099-12-12
+Vet-Pro,Dog Food,Wet Food ,32772,URBAN PETS / MOTERA,2026-08-05,9665,,Vet-Pro Gastro Gravy 150gm,Wastage,,Wastage,2,2,0.00,10.57,10.57,138.60,99.00,0,,,UNIT,1,2028-05-30
+Vet-Pro,Dog Food,Prescription Food ,32772,URBAN PETS / MOTERA,2026-08-05,2207,,Vet-Pro Renal 3KG,Wastage,,Wastage,1,1,0.00,70.89,70.89,929.40,"1,549.00",0,,,UNIT,1,2027-03-03
+Royal Canin,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-08-07,11030,,Royal Canin Hair and Skin 1.2 KG,Wastage,,Wastage,3,6,0.00,222.24,222.24,"2,913.81","1,368.00",0,,,UNIT,1,2028-10-30
+Royal Canin,Cat Food,Dry Food ,32772,URBAN PETS / MOTERA,2026-08-07,11030,,Royal Canin Hair and Skin 1.2 KG,Wastage,,Wastage,3,6,0.00,234.76,234.76,"3,077.99","1,368.00",0,,,UNIT,2,2028-10-30
+other,Accessories,Cage & Crates,32772,URBAN PETS / MOTERA,2026-08-13,297,,Metal Cage 30 Inch,Damage,,Damage,2,2,0.00,297.46,297.46,"3,899.99","3,900.00",0,,,UNIT,1,

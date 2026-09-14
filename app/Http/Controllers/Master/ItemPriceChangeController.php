@@ -8,11 +8,17 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Item;
 use App\Models\ItemStock;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ItemPriceChangeController extends Controller
 {
     use HasPerPage;
+
+    public function __construct(private AuditLogger $auditLogger)
+    {
+    }
 
     public function search(Request $request)
     {
@@ -119,28 +125,41 @@ class ItemPriceChangeController extends Controller
         $item = Item::findOrFail($request->input('item_id'));
         $prices = $request->input('prices', []);
 
-        foreach ($prices as $branchId => $priceData) {
-            ItemStock::updateOrCreate(
-                ['item_id' => $item->id, 'branch_id' => $branchId],
-                [
+        // All branches (and the item's own default price fields) must land together —
+        // a failure partway through must not leave some branches repriced and others not.
+        DB::transaction(function () use ($item, $prices) {
+            foreach ($prices as $branchId => $priceData) {
+                $newValues = [
                     'cost_price' => $priceData['cost_price'] ?? 0,
                     'landing_cost' => $priceData['landing_cost'] ?? 0,
                     'sell_price' => $priceData['sell_price'] ?? 0,
                     'mrp' => $priceData['mrp'] ?? 0,
-                ]
-            );
-        }
+                ];
 
-        // Update default price fields on items table from first branch
-        $firstBranch = reset($prices);
-        if ($firstBranch) {
-            $item->update([
-                'cost_price' => $firstBranch['cost_price'] ?? $item->cost_price,
-                'landing_cost' => $firstBranch['landing_cost'] ?? $item->landing_cost,
-                'sell_price' => $firstBranch['sell_price'] ?? $item->sell_price,
-                'mrp' => $firstBranch['mrp'] ?? $item->mrp,
-            ]);
-        }
+                $existing = ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->first();
+                $oldValues = $existing?->only(array_keys($newValues));
+
+                $stock = ItemStock::updateOrCreate(
+                    ['item_id' => $item->id, 'branch_id' => $branchId],
+                    $newValues
+                );
+
+                // Cost/price override is a spec-named auditable action — log per branch since
+                // each branch's ItemStock row is the actual value that changed.
+                $this->auditLogger->log('update', $stock, $oldValues, $newValues);
+            }
+
+            // Update default price fields on items table from first branch
+            $firstBranch = reset($prices);
+            if ($firstBranch) {
+                $item->update([
+                    'cost_price' => $firstBranch['cost_price'] ?? $item->cost_price,
+                    'landing_cost' => $firstBranch['landing_cost'] ?? $item->landing_cost,
+                    'sell_price' => $firstBranch['sell_price'] ?? $item->sell_price,
+                    'mrp' => $firstBranch['mrp'] ?? $item->mrp,
+                ]);
+            }
+        });
 
         return redirect()->route('master.item-price-change.index', array_merge($request->query(), ['item_id' => $item->id]))
             ->with('status', "Branch prices updated successfully for \"{$item->name}\"!");

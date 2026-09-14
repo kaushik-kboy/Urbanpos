@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\JournalEntry;
 use App\Models\Ledger;
+use App\Services\Accounting\DocumentNumberingService;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +15,12 @@ use Illuminate\Validation\ValidationException;
 class VoucherController extends Controller
 {
     private const MANUAL_TYPES = ['Payment', 'Receipt', 'Journal', 'Contra'];
+
+    public function __construct(
+        private DocumentNumberingService $numbering,
+        private AuditLogger $auditLogger,
+    ) {
+    }
 
     public function index()
     {
@@ -77,7 +85,13 @@ class VoucherController extends Controller
 
     public function destroy(JournalEntry $voucher)
     {
-        $voucher->delete();
+        $oldValues = $voucher->only(['voucher_number', 'voucher_type', 'voucher_date', 'total_debit', 'total_credit', 'narration']);
+
+        DB::transaction(function () use ($voucher, $oldValues) {
+            // Payment/journal edit reversal is a spec-named auditable action.
+            $this->auditLogger->log('delete', $voucher, $oldValues, null);
+            $voucher->delete();
+        });
 
         return redirect()->route('finance.vouchers.index')->with('status', 'Voucher deleted.');
     }
@@ -87,7 +101,7 @@ class VoucherController extends Controller
         $debit = round(collect($lines)->sum('debit'), 2);
         $credit = round(collect($lines)->sum('credit'), 2);
 
-        if ($debit !== $credit) {
+        if (abs($debit - $credit) > 0.001) {
             throw ValidationException::withMessages([
                 'lines' => "Voucher does not balance: Total Debit ({$debit}) must equal Total Credit ({$credit}).",
             ]);
@@ -109,7 +123,7 @@ class VoucherController extends Controller
             default => 'JV',
         };
 
-        $next = (JournalEntry::max('id') ?? 0) + 1;
+        $next = $this->numbering->next('voucher:'.$voucherType);
 
         return $prefix.'-'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
     }

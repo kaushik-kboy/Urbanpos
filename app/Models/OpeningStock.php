@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasPostingLifecycle;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,10 +10,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OpeningStock extends Model
 {
-    use HasFactory;
+    use HasFactory, HasPostingLifecycle;
 
     protected $fillable = [
         'entry_number', 'branch_id', 'entry_date', 'total_qty', 'total', 'remarks', 'message',
+        'status', 'posting_key',
     ];
 
     protected $casts = [

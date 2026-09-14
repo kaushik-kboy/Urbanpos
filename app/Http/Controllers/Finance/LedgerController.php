@@ -62,6 +62,10 @@ class LedgerController extends Controller
             return redirect()->route('finance.ledgers.index')->with('status', 'Cannot delete a ledger linked to a Customer/Supplier — delete the master record instead.');
         }
 
+        if ($ledger->lines()->exists()) {
+            return redirect()->route('finance.ledgers.index')->with('status', 'Cannot delete a ledger with existing journal entries — it has posting history.');
+        }
+
         $ledger->delete();
 
         return redirect()->route('finance.ledgers.index')->with('status', 'Ledger deleted.');
