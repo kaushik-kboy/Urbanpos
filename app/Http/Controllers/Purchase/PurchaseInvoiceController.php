@@ -189,6 +189,38 @@ class PurchaseInvoiceController extends Controller
         return 'PINV'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
     }
 
+    public function lookupItem(Request $request)
+    {
+        $query = trim($request->input('query', ''));
+        if ($query === '') {
+            return response()->json(null);
+        }
+
+        $item = Item::with('gstTax:id,percentage')
+            ->where('item_code', $query)
+            ->orWhere('ean_upc_code', $query)
+            ->orWhere('name', 'like', "%{$query}%")
+            ->first();
+
+        if (! $item) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'id' => $item->id,
+            'name' => $item->name,
+            'item_code' => $item->item_code,
+            'ean_upc_code' => $item->ean_upc_code,
+            'cost_price' => (float) ($item->cost_price ?? 0),
+            'sell_price' => (float) ($item->sell_price ?? 0),
+            'mrp' => (float) ($item->mrp ?? 0),
+            'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
+            'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
+            'shelf_life_days' => $item->shelf_life_days ? (int) $item->shelf_life_days : null,
+            'minimum_shelf_life_days' => $item->minimum_shelf_life_days ? (int) $item->minimum_shelf_life_days : null,
+        ]);
+    }
+
     public function itemDetails(Item $item)
     {
         $item->loadMissing('gstTax:id,percentage');
@@ -197,6 +229,7 @@ class PurchaseInvoiceController extends Controller
             'id' => $item->id,
             'name' => $item->name,
             'item_code' => $item->item_code,
+            'ean_upc_code' => $item->ean_upc_code,
             'cost_price' => (float) ($item->cost_price ?? 0),
             'sell_price' => (float) ($item->sell_price ?? 0),
             'mrp' => (float) ($item->mrp ?? 0),
@@ -210,7 +243,7 @@ class PurchaseInvoiceController extends Controller
     private function formOptions(): array
     {
         $items = Item::with('gstTax:id,percentage')->orderBy('name')->get([
-            'id', 'name', 'item_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
+            'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
             'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days'
         ]);
 
@@ -332,6 +365,7 @@ class PurchaseInvoiceController extends Controller
             'items.*.disc_percent' => ['nullable', 'numeric', 'min:0'],
             'items.*.disc_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
+            'items.*.gst_tax_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $validator->after(function ($v) use ($request) {

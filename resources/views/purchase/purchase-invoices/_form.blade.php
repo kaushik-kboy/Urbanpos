@@ -3,14 +3,13 @@
     $existingItems = $inv?->items ?? collect();
 @endphp
 
-<h5 class="mb-3">Header</h5>
-<x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$inv->supplier_id ?? ''" placeholder="Select a supplier" />
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$inv->branch_id ?? ''" placeholder="Select a branch" />
-<x-select name="purchase_order_id" label="PO No" :options="$purchaseOrders" :selected="$inv->purchase_order_id ?? ''" placeholder="(direct purchase - no PO)" />
-<x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" />
-<x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" />
-<x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'Against C-Form'" />
-<x-field name="grn_number" label="GRN No" :value="$inv->grn_number ?? ''" />
+<x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" required />
+<x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$inv->supplier_id ?? ''" placeholder="Select a Supplier" required />
+<x-select name="branch_id" label="Branch" :options="$branches" :selected="$inv->branch_id ?? ''" placeholder="Select a Branch" required />
+<x-select name="purchase_order_id" label="Purchase Order" :options="$purchaseOrders" :selected="$inv->purchase_order_id ?? ''" placeholder="Select PO" />
+<x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
+<x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'No Forms'" required />
+<x-field name="grn_number" label="GRN Number" :value="$inv->grn_number ?? ''" />
 <x-field name="grn_date" label="GRN Date" type="date" :value="optional($inv->grn_date ?? null)->format('Y-m-d')" />
 <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" />
 <x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? null)->format('Y-m-d')" />
@@ -23,18 +22,23 @@
     <table class="table table-sm table-bordered" id="pinv-items-table">
         <thead>
             <tr>
-                <th style="min-width:250px">Code / Description</th>
-                <th style="width:130px">Exp Dt</th>
-                <th style="width:90px">Qty</th>
-                <th style="width:90px">Free</th>
-                <th style="width:105px">Cost Price</th>
-                <th style="width:105px">Sell Price</th>
-                <th style="width:105px">MRP</th>
-                <th style="width:85px">Disc %</th>
-                <th style="width:105px">Disc Amount</th>
-                <th style="width:80px">GST%</th>
-                <th style="width:115px">Net Amount</th>
-                <th style="width:40px"></th>
+                <th style="width: 35px;" class="text-center">#</th>
+                <th style="width: 110px;">Code</th>
+                <th style="min-width: 220px;">Description</th>
+                <th style="width: 125px;">Exp Date</th>
+                <th style="width: 85px;">Qty</th>
+                <th style="width: 80px;">Free</th>
+                <th style="width: 95px;">Cost Price</th>
+                <th style="width: 95px;">Sell Price</th>
+                <th style="width: 95px;">MRP</th>
+                <th style="width: 85px;" title="Margin % = ((Sell - Cost) / Sell) * 100">Margin %</th>
+                <th style="width: 85px;" title="Profit % = ((Sell - Cost) / Cost) * 100">Profit %</th>
+                <th style="width: 80px;">Disc %</th>
+                <th style="width: 90px;">Disc Amt</th>
+                <th style="width: 75px;">GST %</th>
+                <th style="width: 95px;">GST Tax Amt</th>
+                <th style="width: 105px;" class="text-right">Net Amount</th>
+                <th style="width: 35px;"></th>
             </tr>
         </thead>
         <tbody id="pinv-items-body">
@@ -46,13 +50,14 @@
         </tbody>
         <tfoot class="bg-light font-weight-bold">
             <tr>
-                <td colspan="2" class="text-right align-middle">Totals:</td>
-                <td class="text-right align-middle text-primary" id="footer-total-qty">0.000</td>
+                <td colspan="4" class="text-right align-middle">Totals:</td>
+                <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty">0.000</td>
                 <td class="align-middle"></td>
-                <td class="text-right align-middle" id="footer-total-cost">0.00</td>
-                <td colspan="2" class="text-right align-middle">Total Discount:</td>
-                <td colspan="2" class="text-right align-middle text-danger" id="footer-total-disc">0.00</td>
-                <td class="text-right align-middle small text-muted">GST: <span id="footer-total-gst" class="font-weight-bold text-dark">0.00</span></td>
+                <td class="text-right align-middle font-weight-bold" id="footer-total-cost">0.00</td>
+                <td colspan="4" class="text-right align-middle">Total Discount:</td>
+                <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="footer-total-disc">0.00</td>
+                <td class="text-right align-middle small text-muted">GST:</td>
+                <td class="text-right align-middle font-weight-bold text-dark" id="footer-total-gst">0.00</td>
                 <td class="text-right align-middle text-success font-weight-bold" id="footer-grand-net">0.00</td>
                 <td></td>
             </tr>
@@ -83,10 +88,25 @@
     $(document).ready(function () {
         let rowIndex = {{ $existingItems->count() ?: 1 }};
 
+        function updateRowNumbers() {
+            $('#pinv-items-body tr').each(function (idx) {
+                $(this).find('.pinv-sr-no').text(idx + 1);
+            });
+        }
+
         function calculateRow($row, source) {
             let qty = parseFloat($row.find('.pinv-qty').val()) || 0;
             let cost = parseFloat($row.find('.pinv-cost').val()) || 0;
+            let sell = parseFloat($row.find('.pinv-sell').val()) || 0;
+            let mrp = parseFloat($row.find('.pinv-mrp').val()) || 0;
             let base = qty * cost;
+
+            // Compute Margin % and Profit %
+            let baseSell = sell > 0 ? sell : mrp;
+            let marginPct = (baseSell > 0 && cost > 0) ? ((baseSell - cost) / baseSell) * 100 : 0;
+            let profitPct = (cost > 0 && baseSell > 0) ? ((baseSell - cost) / cost) * 100 : 0;
+            $row.find('.pinv-margin').val(marginPct !== 0 ? marginPct.toFixed(2) + '%' : '0.00%');
+            $row.find('.pinv-profit').val(profitPct !== 0 ? profitPct.toFixed(2) + '%' : '0.00%');
 
             let $discPct = $row.find('.pinv-disc-percent');
             let $discAmt = $row.find('.pinv-disc-amount');
@@ -126,6 +146,7 @@
             let taxAmt = Math.round((taxable * gst / 100) * 100) / 100;
             let net = taxable + taxAmt;
 
+            $row.find('.pinv-gst-amt').val(taxAmt.toFixed(2));
             $row.find('.pinv-row-net').text(net.toFixed(2));
             calculateTotals();
         }
@@ -203,18 +224,86 @@
             }
         }
 
-        // 1. Item Selection: Auto-populate Cost, Sell, MRP, GST and apply Batch/Expiry rule
+        // 1. Code Input: When entering code, automatically get Description & all other values
+        $(document).on('change blur keydown', '.pinv-item-code', function (e) {
+            if (e.type === 'keydown' && e.key !== 'Enter') {
+                return;
+            }
+            if (e.type === 'keydown' && e.key === 'Enter') {
+                e.preventDefault();
+            }
+
+            let $input = $(this);
+            let $row = $input.closest('tr');
+            let query = $.trim($input.val());
+            if (!query) return;
+
+            let $select = $row.find('.pinv-item-select');
+            let currentSelected = $select.find('option:selected');
+            let currentCode = currentSelected.data('code');
+            let currentEan = currentSelected.data('ean');
+
+            if ((currentCode && String(currentCode).toLowerCase() === query.toLowerCase()) ||
+                (currentEan && String(currentEan).toLowerCase() === query.toLowerCase())) {
+                return;
+            }
+
+            let matchedId = null;
+            $select.find('option').each(function () {
+                let optCode = $(this).data('code');
+                let optEan = $(this).data('ean');
+                if ((optCode && String(optCode).toLowerCase() === query.toLowerCase()) ||
+                    (optEan && String(optEan).toLowerCase() === query.toLowerCase())) {
+                    matchedId = $(this).val();
+                    return false;
+                }
+            });
+
+            if (matchedId) {
+                $select.val(matchedId).trigger('change');
+            } else {
+                // Lookup via AJAX
+                $.getJSON('{{ route("purchase.purchase-invoices.lookup-item") }}', { query: query }, function (data) {
+                    if (data && data.id) {
+                        if ($select.find(`option[value="${data.id}"]`).length === 0) {
+                            let opt = new Option(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''), data.id, true, true);
+                            $(opt).attr('data-code', data.item_code || '');
+                            $(opt).attr('data-ean', data.ean_upc_code || '');
+                            $(opt).attr('data-cost', data.cost_price || 0);
+                            $(opt).attr('data-sell', data.sell_price || 0);
+                            $(opt).attr('data-mrp', data.mrp || 0);
+                            $(opt).attr('data-gst', data.gst_percent || 0);
+                            $(opt).attr('data-batch-expiry', data.batch_expiry_details || 'Not Required');
+                            $(opt).attr('data-shelf-life', data.shelf_life_days || '');
+                            $select.append(opt);
+                        }
+                        $select.val(data.id).trigger('change');
+                    } else {
+                        $input.addClass('is-invalid');
+                        setTimeout(function () { $input.removeClass('is-invalid'); }, 2500);
+                    }
+                });
+            }
+        });
+
+        // 2. Item Selection: Auto-populate Code, Cost, Sell, MRP, GST, Margin %, Profit %, and apply Batch/Expiry rule
         $(document).on('change', '.pinv-item-select', function () {
             let $select = $(this);
             let $row = $select.closest('tr');
             let itemId = $select.val();
 
             if (!itemId) {
+                $row.find('.pinv-item-code').val('');
                 updateExpiryRequirement($row, 'Not Required', 0);
                 return;
             }
 
             let $opt = $select.find('option:selected');
+            let itemCode = $opt.data('code') || $opt.data('ean') || '';
+            if (itemCode) {
+                $row.find('.pinv-item-code').val(itemCode);
+            }
+
             let cost = parseFloat($opt.data('cost'));
             let sell = parseFloat($opt.data('sell'));
             let mrp = parseFloat($opt.data('mrp'));
@@ -239,6 +328,9 @@
                 // Fallback: Fetch from API endpoint if data attributes missing
                 $.getJSON('{{ url("purchase/purchase-invoices/item-details") }}/' + itemId, function (data) {
                     if (data) {
+                        if (data.item_code || data.ean_upc_code) {
+                            $row.find('.pinv-item-code').val(data.item_code || data.ean_upc_code);
+                        }
                         updateExpiryRequirement($row, data.batch_expiry_details, data.shelf_life_days);
                         $row.find('.pinv-cost').val(data.cost_price > 0 ? Number(data.cost_price).toFixed(2) : '');
                         $row.find('.pinv-sell').val(data.sell_price > 0 ? Number(data.sell_price).toFixed(2) : '');
@@ -255,8 +347,8 @@
             }
         });
 
-        // 2. Real-time Calculation Listeners
-        $(document).on('input', '.pinv-qty, .pinv-cost', function () {
+        // 3. Real-time Calculation Listeners
+        $(document).on('input', '.pinv-qty, .pinv-cost, .pinv-sell, .pinv-mrp', function () {
             calculateRow($(this).closest('tr'), 'base');
         });
 
@@ -272,7 +364,7 @@
             calculateRow($(this).closest('tr'), 'other');
         });
 
-        // 3. Add Row
+        // 4. Add Row
         $('#pinv-add-row').on('click', function () {
             let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#pinv-items-body');
@@ -290,18 +382,21 @@
 
             updateExpiryRequirement($newRow, 'Not Required', 0);
             rowIndex++;
+            updateRowNumbers();
             calculateTotals();
         });
 
-        // 4. Remove Row
+        // 5. Remove Row
         $('#pinv-items-body').on('click', '.pinv-remove-row', function () {
             let rows = $('#pinv-items-body tr');
             if (rows.length <= 1) return;
             $(this).closest('tr').remove();
+            updateRowNumbers();
             calculateTotals();
         });
 
-        // 5. Initial Run on existing rows
+        // 6. Initial Run on existing rows
+        updateRowNumbers();
         $('#pinv-items-body tr').each(function () {
             let $r = $(this);
             calculateRow($r, 'initial');
