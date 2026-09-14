@@ -26,7 +26,13 @@
 <x-field name="grn_date" label="GRN Date" type="date" :value="optional($inv->grn_date ?? null)->format('Y-m-d')" />
 <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" />
 <x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? null)->format('Y-m-d')" />
-<x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" />
+<x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
+<div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">
+    <div class="col-sm-3"></div>
+    <div class="col-sm-6">
+        <div id="supplier-inv-amount-match-status" class="small font-weight-bold"></div>
+    </div>
+</div>
 
 <hr>
 <h5 class="mb-3">Items</h5>
@@ -44,8 +50,8 @@
                 <th style="width: 95px;">Cost Price</th>
                 <th style="width: 95px;">Sell Price</th>
                 <th style="width: 95px;">MRP</th>
-                <th style="width: 85px;" title="Margin % = ((Sell - Cost) / Sell) * 100">Margin %</th>
-                <th style="width: 85px;" title="Profit % = ((Sell - Cost) / Cost) * 100">Profit %</th>
+                <th style="width: 85px;" title="Margin % = Profit Amount ÷ Selling Price × 100">Margin %</th>
+                <th style="width: 85px;" title="Profit % = Profit Amount ÷ Cost Price × 100">Profit %</th>
                 <th style="width: 80px;">Disc %</th>
                 <th style="width: 90px;">Disc Amt</th>
                 <th style="width: 75px;">GST %</th>
@@ -82,6 +88,14 @@
 
 <hr>
 <h5 class="mb-3">Totals</h5>
+<div class="alert alert-light border py-2 d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <span class="text-muted mr-2 font-weight-bold">Calculated Final Amount:</span>
+        <strong class="text-primary h5 mb-0">₹<span id="display-final-total">0.00</span></strong>
+    </div>
+    <div id="final-amount-match-badge"></div>
+</div>
+
 <x-field name="freight" label="Freight" type="number" step="0.01" :value="isset($inv->freight) && $inv->freight != 0 ? $inv->freight : ''" />
 <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
 <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="isset($inv->scheme_item_disc_amt) && $inv->scheme_item_disc_amt != 0 ? $inv->scheme_item_disc_amt : ''" />
@@ -122,12 +136,14 @@
             let mrp = parseFloat(mrpStr) || 0;
             let base = qty * cost;
 
-            // Compute Margin % and Profit %:
+            // Margin % = Profit Amount ÷ Selling Price × 100
+            // Profit % = Profit Amount ÷ Cost Price × 100
             let baseSell = sell > 0 ? sell : mrp;
-            let marginPct = (baseSell > 0 && cost > 0) ? ((baseSell - cost) / baseSell) * 100 : null;
-            let profitPct = (cost > 0 && baseSell > 0) ? ((baseSell - cost) / cost) * 100 : null;
-            $row.find('.pinv-margin').val(marginPct !== null && marginPct !== 0 ? marginPct.toFixed(2) + '%' : '');
-            $row.find('.pinv-profit').val(profitPct !== null && profitPct !== 0 ? profitPct.toFixed(2) + '%' : '');
+            let profitAmount = (baseSell > 0 && cost > 0) ? (baseSell - cost) : null;
+            let marginPct = (baseSell > 0 && profitAmount !== null) ? ((profitAmount / baseSell) * 100) : null;
+            let profitPct = (cost > 0 && profitAmount !== null) ? ((profitAmount / cost) * 100) : null;
+            $row.find('.pinv-margin').val(marginPct !== null ? marginPct.toFixed(2) + '%' : '');
+            $row.find('.pinv-profit').val(profitPct !== null ? profitPct.toFixed(2) + '%' : '');
 
             let $discPct = $row.find('.pinv-disc-percent');
             let $discAmt = $row.find('.pinv-disc-amount');
@@ -178,6 +194,64 @@
             calculateTotals();
         }
 
+        function getLiveFinalTotal() {
+            let totalNetAmt = 0;
+            $('#pinv-items-body tr').each(function () {
+                let $r = $(this);
+                let qty = parseFloat($r.find('.pinv-qty').val()) || 0;
+                let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
+                let discAmt = parseFloat($r.find('.pinv-disc-amount').val()) || 0;
+                let gst = parseFloat($r.find('.pinv-gst').val()) || 0;
+
+                let base = qty * cost;
+                let taxable = Math.max(0, base - discAmt);
+                let gstAmt = Math.round((taxable * gst / 100) * 100) / 100;
+                totalNetAmt += (taxable + gstAmt);
+            });
+
+            let freight = parseFloat($('input[name="freight"]').val()) || 0;
+            let roundOff = parseFloat($('input[name="round_off"]').val()) || 0;
+            let schemeDisc = parseFloat($('input[name="scheme_item_disc_amt"]').val()) || 0;
+            let otherDisc = parseFloat($('input[name="other_disc_amt"]').val()) || 0;
+            let tcsAmt = parseFloat($('input[name="tcs_amount"]').val()) || 0;
+
+            return Math.round((totalNetAmt + freight + roundOff + tcsAmt - schemeDisc - otherDisc) * 100) / 100;
+        }
+
+        function checkAmountMatch() {
+            let finalTotal = getLiveFinalTotal();
+            $('#display-final-total').text(finalTotal.toFixed(2));
+
+            let $invAmtInput = $('input[name="supplier_inv_amount"]');
+            let invAmtVal = $invAmtInput.val();
+            let $statusDiv = $('#supplier-inv-amount-match-status');
+            let $badgeDiv = $('#final-amount-match-badge');
+
+            if (!invAmtVal && finalTotal === 0) {
+                $statusDiv.html('');
+                $badgeDiv.html('');
+                $invAmtInput.removeClass('is-valid is-invalid');
+                return;
+            }
+
+            let invAmt = parseFloat(invAmtVal) || 0;
+            let diff = Math.round((invAmt - finalTotal) * 100) / 100;
+
+            if (invAmt > 0 && Math.abs(diff) <= 0.01) {
+                $statusDiv.html('<span class="text-success"><i class="fas fa-check-circle"></i> Inv Amount (Supplier) matches Final Amount (₹' + finalTotal.toFixed(2) + ')</span>');
+                $badgeDiv.html('<span class="badge badge-success px-3 py-2 font-weight-bold"><i class="fas fa-check-circle"></i> Amounts Matched (₹' + finalTotal.toFixed(2) + ')</span>');
+                $invAmtInput.removeClass('is-invalid').addClass('is-valid');
+            } else {
+                let diffText = (diff > 0 ? '+' : '') + diff.toFixed(2);
+                let msg = 'Diff: ₹' + diffText + ' (Supplier Inv: ₹' + invAmt.toFixed(2) + ' vs Final: ₹' + finalTotal.toFixed(2) + ')';
+                $statusDiv.html('<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + msg + ' — Dono same hona chahiye to hi save hoga</span>');
+                $badgeDiv.html('<span class="badge badge-danger px-3 py-2 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span>');
+                if (invAmtVal) {
+                    $invAmtInput.removeClass('is-valid').addClass('is-invalid');
+                }
+            }
+        }
+
         function calculateTotals() {
             let totalQty = 0;
             let totalCost = 0;
@@ -223,6 +297,8 @@
                 $('#footer-total-gst').text('');
                 $('#footer-grand-net').text('');
             }
+
+            checkAmountMatch();
         }
 
         function updateExpiryRequirement($row, batchExpiry, shelfLife) {
@@ -359,8 +435,6 @@
                 $row.find('.pinv-mrp').val(!isNaN(mrp) && mrp > 0 ? mrp.toFixed(2) : '');
                 $row.find('.pinv-gst').val(!isNaN(gst) && gst > 0 ? gst.toFixed(2) : '');
 
-                // Note: user requested no default 0 or 1 anywhere - user fills qty manually
-
                 calculateRow($row);
             } else {
                 // Fallback: Fetch from API endpoint if data attributes missing
@@ -374,8 +448,6 @@
                         $row.find('.pinv-sell').val(data.sell_price > 0 ? Number(data.sell_price).toFixed(2) : '');
                         $row.find('.pinv-mrp').val(data.mrp > 0 ? Number(data.mrp).toFixed(2) : '');
                         $row.find('.pinv-gst').val(Number(data.gst_percent || 0) > 0 ? Number(data.gst_percent).toFixed(2) : '');
-
-                        // Note: user requested no default 0 or 1 anywhere - user fills qty manually
 
                         calculateRow($row);
                     }
@@ -400,7 +472,27 @@
             calculateRow($(this).closest('tr'), 'other');
         });
 
-        // 4. Add Row
+        $(document).on('input change', 'input[name="supplier_inv_amount"], input[name="freight"], input[name="round_off"], input[name="scheme_item_disc_amt"], input[name="other_disc_amt"], input[name="tcs_amount"]', function () {
+            checkAmountMatch();
+        });
+
+        // 4. Form Submit Guard: Inv Amount (Supplier) and final amount MUST match to save
+        $('form').on('submit', function (e) {
+            let invAmt = parseFloat($('input[name="supplier_inv_amount"]').val()) || 0;
+            let finalTotal = getLiveFinalTotal();
+            let diff = Math.round((invAmt - finalTotal) * 100) / 100;
+
+            if (Math.abs(diff) > 0.01) {
+                e.preventDefault();
+                let diffMsg = (diff > 0 ? '+' : '') + diff.toFixed(2);
+                alert("Inv Amount (Supplier) [₹" + invAmt.toFixed(2) + "] and Final Amount [₹" + finalTotal.toFixed(2) + "] same ho to hi save hoga!\n\nDifference: ₹" + diffMsg);
+                $('input[name="supplier_inv_amount"]').focus().addClass('is-invalid');
+                checkAmountMatch();
+                return false;
+            }
+        });
+
+        // 5. Add Row
         $('#pinv-add-row').on('click', function () {
             let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#pinv-items-body');
@@ -425,7 +517,7 @@
             calculateTotals();
         });
 
-        // 5. Remove Row
+        // 6. Remove Row
         $('#pinv-items-body').on('click', '.pinv-remove-row', function () {
             let rows = $('#pinv-items-body tr');
             if (rows.length <= 1) return;
@@ -434,13 +526,14 @@
             calculateTotals();
         });
 
-        // 6. Initial Run on existing rows
+        // 7. Initial Run on existing rows
         updateRowNumbers();
         $('#pinv-items-body tr').each(function () {
             let $r = $(this);
             calculateRow($r, 'initial');
             updateExpiryRequirement($r);
         });
+        checkAmountMatch();
     });
 </script>
 @endpush

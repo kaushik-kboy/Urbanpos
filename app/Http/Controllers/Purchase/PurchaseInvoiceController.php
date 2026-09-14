@@ -58,6 +58,7 @@ class PurchaseInvoiceController extends Controller
             $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
+            $this->assertSupplierInvAmountMatchesTotal($data['header'], $totals);
             $this->assertCreditLimit((int) $data['header']['supplier_id'], $totals['total']);
 
             $purchaseInvoice = PurchaseInvoice::create(array_merge($data['header'], $totals, [
@@ -98,6 +99,7 @@ class PurchaseInvoiceController extends Controller
             $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
+            $this->assertSupplierInvAmountMatchesTotal($data['header'], $totals);
             $this->assertCreditLimit((int) $data['header']['supplier_id'], $totals['total'], $oldSupplierId, $oldTotal);
 
             $purchaseInvoice->update(array_merge($data['header'], $totals));
@@ -180,6 +182,18 @@ class PurchaseInvoiceController extends Controller
         }
 
         $this->creditLimitGuard->assertWithinLimit(Supplier::findOrFail($newSupplierId), $newTotal);
+    }
+
+    private function assertSupplierInvAmountMatchesTotal(array $header, array $totals): void
+    {
+        $supplierInvAmt = round((float) ($header['supplier_inv_amount'] ?? 0), 2);
+        $finalAmount = round((float) ($totals['total'] ?? 0), 2);
+
+        if (abs($supplierInvAmt - $finalAmount) > 0.01) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'supplier_inv_amount' => "Inv Amount (Supplier) [₹" . number_format($supplierInvAmt, 2) . "] and Final Amount [₹" . number_format($finalAmount, 2) . "] same ho to hi save hoga (Difference: ₹" . number_format($supplierInvAmt - $finalAmount, 2) . ").",
+            ]);
+        }
     }
 
     private function nextNumber(): string
