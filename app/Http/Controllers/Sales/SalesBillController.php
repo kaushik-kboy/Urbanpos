@@ -267,64 +267,81 @@ class SalesBillController extends Controller
             ->where('branch_id', $branchId)
             ->value('quantity') ?? 0);
 
-        // Get batches with available stock for this item in this branch from StockLedger
-        $ledgerBatches = \App\Models\StockLedger::where('item_id', $item->id)
-            ->where('branch_id', $branchId)
+        // Fetch purchase batches directly from PurchaseInvoiceItem (purchase se)
+        // Check for selected branch first
+        $piItems = \App\Models\PurchaseInvoiceItem::with('purchaseInvoice')
+            ->where('item_id', $item->id)
             ->whereNotNull('exp_date')
-            ->groupBy('exp_date')
-            ->selectRaw('exp_date, SUM(qty_in - qty_out) as available_qty')
-            ->having('available_qty', '>', 0)
+            ->where('exp_date', '!=', '')
+            ->where('exp_date', '!=', '0000-00-00')
+            ->whereHas('purchaseInvoice', fn ($q) => $q->where('branch_id', $branchId))
             ->orderBy('exp_date', 'asc')
             ->get();
 
-        $batches = [];
-        if ($ledgerBatches->isNotEmpty()) {
-            foreach ($ledgerBatches as $lb) {
-                $batches[] = [
-                    'exp_date' => $lb->exp_date ? \Carbon\Carbon::parse($lb->exp_date)->format('Y-m-d') : null,
-                    'qty' => (float) $lb->available_qty,
-                    'sell_price' => (float) ($item->sell_price ?? 0),
-                    'mrp' => (float) ($item->mrp ?? 0),
-                ];
-            }
-        } else {
-            // Fallback to purchase invoice items or opening stock with exp_date for this branch
-            $piItems = \App\Models\PurchaseInvoiceItem::where('item_id', $item->id)
+        // If no purchase records for this specific branch, check across all branches
+        if ($piItems->isEmpty()) {
+            $piItems = \App\Models\PurchaseInvoiceItem::with('purchaseInvoice')
+                ->where('item_id', $item->id)
                 ->whereNotNull('exp_date')
-                ->whereHas('purchaseInvoice', fn ($q) => $q->where('branch_id', $branchId))
-                ->selectRaw('exp_date, MAX(sell_price) as sell_price, MAX(mrp) as mrp, SUM(qty) as total_qty')
-                ->groupBy('exp_date')
+                ->where('exp_date', '!=', '')
+                ->where('exp_date', '!=', '0000-00-00')
                 ->orderBy('exp_date', 'asc')
                 ->get();
+        }
 
-            if ($piItems->isNotEmpty()) {
-                foreach ($piItems as $pi) {
-                    $batches[] = [
-                        'exp_date' => $pi->exp_date ? \Carbon\Carbon::parse($pi->exp_date)->format('Y-m-d') : null,
-                        'qty' => min($stock > 0 ? $stock : (float) $pi->total_qty, (float) $pi->total_qty),
-                        'sell_price' => (float) ($pi->sell_price ?: $item->sell_price),
-                        'mrp' => (float) ($pi->mrp ?: $item->mrp),
-                    ];
-                }
+        // Also check OpeningStockItem if still empty
+        if ($piItems->isEmpty()) {
+            $piItems = \App\Models\OpeningStockItem::with('openingStock')
+                ->where('item_id', $item->id)
+                ->whereNotNull('exp_date')
+                ->where('exp_date', '!=', '')
+                ->where('exp_date', '!=', '0000-00-00')
+                ->orderBy('exp_date', 'asc')
+                ->get();
+        }
+
+        // Also check StockLedger if still empty
+        if ($piItems->isEmpty()) {
+            $piItems = \App\Models\StockLedger::where('item_id', $item->id)
+                ->whereNotNull('exp_date')
+                ->where('exp_date', '!=', '')
+                ->where('exp_date', '!=', '0000-00-00')
+                ->orderBy('exp_date', 'asc')
+                ->get();
+        }
+
+        $grouped = [];
+        foreach ($piItems as $row) {
+            $exp = null;
+            try {
+                $exp = $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null;
+            } catch (\Exception $e) {
+                $exp = is_string($row->exp_date) ? substr($row->exp_date, 0, 10) : null;
+            }
+            if (! $exp) continue;
+
+            $sell = (float) (($row->sell_price ?? 0) > 0 ? $row->sell_price : ($item->sell_price ?? 0));
+            $mrp = (float) (($row->mrp ?? 0) > 0 ? $row->mrp : ($item->mrp ?? 0));
+            $qty = (float) ($row->qty ?? $row->qty_in ?? 0);
+
+            if (! isset($grouped[$exp])) {
+                $grouped[$exp] = [
+                    'productname' => $item->name,
+                    'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'exp_date' => $exp,
+                    'qty' => $qty,
+                    'sell_price' => $sell,
+                    'mrp' => $mrp,
+                    'source' => 'purchase',
+                ];
             } else {
-                $osItems = \App\Models\OpeningStockItem::where('item_id', $item->id)
-                    ->whereNotNull('exp_date')
-                    ->whereHas('openingStock', fn ($q) => $q->where('branch_id', $branchId))
-                    ->selectRaw('exp_date, MAX(sell_price) as sell_price, MAX(mrp) as mrp, SUM(qty) as total_qty')
-                    ->groupBy('exp_date')
-                    ->orderBy('exp_date', 'asc')
-                    ->get();
-
-                foreach ($osItems as $os) {
-                    $batches[] = [
-                        'exp_date' => $os->exp_date ? \Carbon\Carbon::parse($os->exp_date)->format('Y-m-d') : null,
-                        'qty' => min($stock > 0 ? $stock : (float) $os->total_qty, (float) $os->total_qty),
-                        'sell_price' => (float) ($os->sell_price ?: $item->sell_price),
-                        'mrp' => (float) ($os->mrp ?: $item->mrp),
-                    ];
-                }
+                $grouped[$exp]['qty'] += $qty;
+                if ($sell > 0) $grouped[$exp]['sell_price'] = $sell;
+                if ($mrp > 0) $grouped[$exp]['mrp'] = $mrp;
             }
         }
+
+        $batches = array_values($grouped);
 
         return response()->json([
             'found' => true,

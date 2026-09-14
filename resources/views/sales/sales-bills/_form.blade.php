@@ -102,14 +102,16 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered table-hover mb-0" id="modal-batches-table">
-                        <thead class="bg-light">
+                        <thead class="bg-dark text-white">
                             <tr>
-                                <th>#</th>
-                                <th>Expiry Date</th>
-                                <th class="text-right">Available Qty</th>
-                                <th class="text-right">Selling Price</th>
-                                <th class="text-right">MRP</th>
-                                <th class="text-center" style="width: 120px;">Action</th>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Product Name</th>
+                                <th class="text-center" style="width: 90px;">Code</th>
+                                <th class="text-center" style="width: 125px;">Expiry (Purchase Se)</th>
+                                <th class="text-right" style="width: 85px;">Qty</th>
+                                <th class="text-right" style="width: 95px;">Sell Price</th>
+                                <th class="text-right" style="width: 95px;">MRP</th>
+                                <th class="text-center" style="width: 85px;">Select</th>
                             </tr>
                         </thead>
                         <tbody id="modal-batches-body">
@@ -254,18 +256,26 @@
             $tbody.empty();
 
             batches.forEach(function (b, idx) {
+                let pName = b.productname || item.name || 'Item';
+                let pCode = b.code || item.item_code || item.ean_upc_code || '—';
                 let expDisplay = b.exp_date || 'No Expiry';
                 let qtyDisplay = b.qty ? parseFloat(b.qty).toFixed(3) : '0.000';
                 let sellDisplay = b.sell_price ? '₹' + parseFloat(b.sell_price).toFixed(2) : '—';
                 let mrpDisplay = b.mrp ? '₹' + parseFloat(b.mrp).toFixed(2) : '—';
 
                 let tr = `
-                    <tr>
+                    <tr class="batch-select-row" style="cursor: pointer;" 
+                        data-exp="${b.exp_date || ''}" 
+                        data-sell="${b.sell_price || ''}" 
+                        data-mrp="${b.mrp || ''}"
+                        title="Click to select this batch">
                         <td class="align-middle text-center font-weight-bold">${idx + 1}</td>
-                        <td class="align-middle font-weight-bold text-primary"><i class="far fa-calendar-alt mr-1"></i> ${expDisplay}</td>
+                        <td class="align-middle font-weight-bold text-dark">${pName}</td>
+                        <td class="align-middle text-center"><span class="badge badge-secondary px-2 py-1">${pCode}</span></td>
+                        <td class="align-middle text-center font-weight-bold text-danger"><i class="far fa-calendar-alt mr-1"></i> ${expDisplay}</td>
                         <td class="align-middle text-right font-weight-bold">${qtyDisplay}</td>
-                        <td class="align-middle text-right">${sellDisplay}</td>
-                        <td class="align-middle text-right">${mrpDisplay}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
                         <td class="align-middle text-center">
                             <button type="button" class="btn btn-success btn-xs px-2 btn-apply-batch" 
                                 data-exp="${b.exp_date || ''}" 
@@ -280,22 +290,39 @@
             });
 
             $('#sb-batch-modal').modal('show');
+            setTimeout(function() {
+                $('#modal-batches-body tr:first-child .btn-apply-batch').focus();
+            }, 350);
         }
 
-        // When user selects a batch from modal
-        $(document).on('click', '.btn-apply-batch', function () {
+        function applyBatchToRow(exp, sell, mrp) {
             if (!activeModalRow) return;
-            let exp = $(this).data('exp') || '';
-            let sell = $(this).data('sell') || '';
-            let mrp = $(this).data('mrp') || '';
-
-            if (exp) activeModalRow.find('.sb-exp-date').val(exp);
+            if (exp) {
+                let cleanExp = exp.toString().substring(0, 10);
+                activeModalRow.find('.sb-exp-date').val(cleanExp);
+            }
             if (sell && parseFloat(sell) > 0) activeModalRow.find('.sb-sell-price').val(parseFloat(sell).toFixed(2));
             if (mrp && parseFloat(mrp) > 0) activeModalRow.find('.sb-mrp').val(parseFloat(mrp).toFixed(2));
 
             $('#sb-batch-modal').modal('hide');
             calculateRow(activeModalRow, 'base');
             activeModalRow.find('.sb-qty').focus();
+        }
+
+        // When user selects a batch from modal button or row
+        $(document).on('click', '.btn-apply-batch', function (e) {
+            e.stopPropagation();
+            let exp = $(this).data('exp') || '';
+            let sell = $(this).data('sell') || '';
+            let mrp = $(this).data('mrp') || '';
+            applyBatchToRow(exp, sell, mrp);
+        });
+
+        $(document).on('click', '.batch-select-row', function () {
+            let exp = $(this).data('exp') || '';
+            let sell = $(this).data('sell') || '';
+            let mrp = $(this).data('mrp') || '';
+            applyBatchToRow(exp, sell, mrp);
         });
 
         // Click on batch button in row to re-open modal
@@ -375,16 +402,18 @@
                     if (batches.length === 1) {
                         // Agar single ho to expiry date automatic aani chahiye
                         let singleBatch = batches[0];
-                        if (singleBatch.exp_date) {
-                            $exp.val(singleBatch.exp_date);
+                        if (singleBatch && singleBatch.exp_date) {
+                            let cleanExp = singleBatch.exp_date.toString().substring(0, 10);
+                            $exp.val(cleanExp);
                         }
-                        if (singleBatch.sell_price > 0) {
+                        if (singleBatch && singleBatch.sell_price > 0) {
                             $sell.val(parseFloat(singleBatch.sell_price).toFixed(2));
                         }
-                        if (singleBatch.mrp > 0) {
+                        if (singleBatch && singleBatch.mrp > 0) {
                             $mrp.val(parseFloat(singleBatch.mrp).toFixed(2));
                         }
                         $batchWrap.addClass('d-none');
+                        calculateRow($row, 'base');
                         $row.find('.sb-qty').focus();
                     } else if (batches.length > 1) {
                         // Multiple batches exist: show button and pop up selection modal!
