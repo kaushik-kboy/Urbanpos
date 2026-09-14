@@ -16,6 +16,7 @@ use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class PurchaseInvoiceController extends Controller
 {
@@ -190,7 +191,7 @@ class PurchaseInvoiceController extends Controller
 
     public function itemDetails(Item $item)
     {
-        $item->load('gstTax:id,percentage');
+        $item->loadMissing('gstTax:id,percentage');
 
         return response()->json([
             'id' => $item->id,
@@ -199,14 +200,18 @@ class PurchaseInvoiceController extends Controller
             'cost_price' => (float) ($item->cost_price ?? 0),
             'sell_price' => (float) ($item->sell_price ?? 0),
             'mrp' => (float) ($item->mrp ?? 0),
-            'gst_percent' => (float) ($item->gstTax->percentage ?? 0),
+            'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
+            'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
+            'shelf_life_days' => $item->shelf_life_days ? (int) $item->shelf_life_days : null,
+            'minimum_shelf_life_days' => $item->minimum_shelf_life_days ? (int) $item->minimum_shelf_life_days : null,
         ]);
     }
 
     private function formOptions(): array
     {
         $items = Item::with('gstTax:id,percentage')->orderBy('name')->get([
-            'id', 'name', 'item_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id'
+            'id', 'name', 'item_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
+            'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days'
         ]);
 
         return [
@@ -315,7 +320,7 @@ class PurchaseInvoiceController extends Controller
         $header['grn_date'] = $this->normalizeDate($header['grn_date'] ?? null);
         $header['supplier_inv_date'] = $this->normalizeDate($header['supplier_inv_date'] ?? null);
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
             'items.*.exp_date' => ['nullable', 'date'],
@@ -328,6 +333,37 @@ class PurchaseInvoiceController extends Controller
             'items.*.disc_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $validator->after(function ($v) use ($request) {
+            $rawItems = $request->input('items', []);
+            if (! is_array($rawItems)) {
+                return;
+            }
+
+            $itemIds = collect($rawItems)->pluck('item_id')->filter()->unique();
+            $itemsMap = Item::whereIn('id', $itemIds)->get()->keyBy('id');
+
+            foreach ($rawItems as $idx => $line) {
+                $itemId = $line['item_id'] ?? null;
+                $itemModel = $itemsMap->get($itemId);
+                if (! $itemModel) {
+                    continue;
+                }
+
+                $batchExpiry = $itemModel->batch_expiry_details ?? 'Not Required';
+                if (in_array($batchExpiry, ['Mandatory', 'Days', 'Month'], true)) {
+                    if (empty($line['exp_date'])) {
+                        $rowNum = $idx + 1;
+                        $v->errors()->add(
+                            "items.{$idx}.exp_date",
+                            "Expiry date is mandatory for item '{$itemModel->name}' (Row #{$rowNum}) because its Batch/Expiry setting is '{$batchExpiry}'."
+                        );
+                    }
+                }
+            }
+        });
+
+        $validated = $validator->validate();
 
         return ['header' => $header, 'items' => $validated['items']];
     }

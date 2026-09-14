@@ -164,13 +164,53 @@
             $('#footer-grand-net').text(totalNetAmt.toFixed(2));
         }
 
-        // 1. Item Selection: Auto-populate Cost, Sell, MRP, GST from Item Master
+        function updateExpiryRequirement($row, batchExpiry, shelfLife) {
+            let $expInput = $row.find('.pinv-exp-date');
+            let $expBadge = $row.find('.pinv-exp-badge');
+
+            if (batchExpiry === undefined || batchExpiry === null) {
+                let $opt = $row.find('.pinv-item-select option:selected');
+                batchExpiry = $opt.data('batch-expiry') || 'Not Required';
+                shelfLife = parseInt($opt.data('shelf-life') || 0);
+            }
+
+            if (batchExpiry === 'Mandatory' || batchExpiry === 'Days' || batchExpiry === 'Month') {
+                $expInput.prop('required', true).addClass('border-danger');
+                $expBadge.removeClass('d-none').html('<i class="fas fa-exclamation-circle"></i> ' + (batchExpiry === 'Mandatory' ? 'Required' : batchExpiry));
+                $expInput.attr('title', 'Expiry date is mandatory for this item (' + batchExpiry + ')');
+
+                // Auto-fill expiry date from shelf life if date is empty
+                if ((batchExpiry === 'Days' || batchExpiry === 'Month') && shelfLife > 0 && !$expInput.val()) {
+                    let invDateVal = $('input[name="invoice_date"]').val();
+                    let base = invDateVal ? new Date(invDateVal) : new Date();
+                    if (!isNaN(base.getTime())) {
+                        if (batchExpiry === 'Days') {
+                            base.setDate(base.getDate() + shelfLife);
+                        } else if (batchExpiry === 'Month') {
+                            base.setMonth(base.getMonth() + shelfLife);
+                        }
+                        let yyyy = base.getFullYear();
+                        let mm = String(base.getMonth() + 1).padStart(2, '0');
+                        let dd = String(base.getDate()).padStart(2, '0');
+                        $expInput.val(`${yyyy}-${mm}-${dd}`);
+                    }
+                }
+            } else {
+                // Not Required or Optional: validation nahi lagega!
+                $expInput.prop('required', false).removeClass('border-danger');
+                $expBadge.addClass('d-none');
+                $expInput.attr('title', 'Expiry date (optional)');
+            }
+        }
+
+        // 1. Item Selection: Auto-populate Cost, Sell, MRP, GST and apply Batch/Expiry rule
         $(document).on('change', '.pinv-item-select', function () {
             let $select = $(this);
             let $row = $select.closest('tr');
             let itemId = $select.val();
 
             if (!itemId) {
+                updateExpiryRequirement($row, 'Not Required', 0);
                 return;
             }
 
@@ -179,6 +219,10 @@
             let sell = parseFloat($opt.data('sell'));
             let mrp = parseFloat($opt.data('mrp'));
             let gst = parseFloat($opt.data('gst'));
+            let batchExpiry = $opt.data('batch-expiry');
+            let shelfLife = parseInt($opt.data('shelf-life') || 0);
+
+            updateExpiryRequirement($row, batchExpiry, shelfLife);
 
             if (!isNaN(cost) || !isNaN(sell) || !isNaN(mrp) || !isNaN(gst)) {
                 $row.find('.pinv-cost').val(!isNaN(cost) && cost > 0 ? cost.toFixed(2) : '');
@@ -195,6 +239,7 @@
                 // Fallback: Fetch from API endpoint if data attributes missing
                 $.getJSON('{{ url("purchase/purchase-invoices/item-details") }}/' + itemId, function (data) {
                     if (data) {
+                        updateExpiryRequirement($row, data.batch_expiry_details, data.shelf_life_days);
                         $row.find('.pinv-cost').val(data.cost_price > 0 ? Number(data.cost_price).toFixed(2) : '');
                         $row.find('.pinv-sell').val(data.sell_price > 0 ? Number(data.sell_price).toFixed(2) : '');
                         $row.find('.pinv-mrp').val(data.mrp > 0 ? Number(data.mrp).toFixed(2) : '');
@@ -243,6 +288,7 @@
                 allowClear: true
             });
 
+            updateExpiryRequirement($newRow, 'Not Required', 0);
             rowIndex++;
             calculateTotals();
         });
@@ -257,7 +303,9 @@
 
         // 5. Initial Run on existing rows
         $('#pinv-items-body tr').each(function () {
-            calculateRow($(this), 'initial');
+            let $r = $(this);
+            calculateRow($r, 'initial');
+            updateExpiryRequirement($r);
         });
     });
 </script>
