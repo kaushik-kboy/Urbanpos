@@ -14,11 +14,26 @@ class ItemCategoryValueController extends Controller
     use HasPerPage, Importable;
 
 
-    public function index()
+    public function index(Request $request)
     {
-        $itemCategoryValues = ItemCategoryValue::with('itemCategory')->orderBy('name')->paginate($this->perPage());
+        $query = ItemCategoryValue::with('itemCategory');
 
-        return view('master.item-category-values.index', compact('itemCategoryValues'));
+        if ($request->filled('name')) {
+            $query->where('name', 'like', '%' . $request->input('name') . '%');
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('item_category_id', $request->input('category_id'));
+        }
+
+        if ($request->filled('status') && in_array($request->input('status'), ['0', '1'], true)) {
+            $query->where('status', (int) $request->input('status'));
+        }
+
+        $itemCategoryValues = $query->orderBy('name')->paginate($this->perPage());
+        $itemCategories = ItemCategory::orderBy('name')->pluck('name', 'id');
+
+        return view('master.item-category-values.index', compact('itemCategoryValues', 'itemCategories'));
     }
 
     public function create()

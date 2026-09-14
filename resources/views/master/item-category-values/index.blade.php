@@ -20,6 +20,43 @@
                 <i class="fas fa-plus"></i> Add Item Category Value
             </a>
         </div>
+        <div class="card-header bg-light border-bottom">
+            <form method="GET" action="{{ route('master.item-category-values.index') }}" class="form-row align-items-center">
+                <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
+                    <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        </div>
+                        <input type="text" name="name" value="{{ request('name') }}" class="form-control" placeholder="Search by name...">
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
+                    <select name="category_id" class="form-control form-control-sm">
+                        <option value="">All Categories</option>
+                        @foreach ($itemCategories as $catId => $catName)
+                            <option value="{{ $catId }}" {{ request('category_id') == $catId ? 'selected' : '' }}>{{ $catName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All Status</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                    @if(request()->filled('name') || request()->filled('category_id') || request()->filled('status'))
+                        <a href="{{ route('master.item-category-values.index') }}" class="btn btn-sm btn-outline-secondary ml-1">
+                            <i class="fas fa-times"></i> Reset
+                        </a>
+                    @endif
+                </div>
+            </form>
+        </div>
         <div class="card-body p-0">
             <table class="table table-striped mb-0">
                 <thead>
