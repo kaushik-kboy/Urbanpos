@@ -739,7 +739,7 @@ return [
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/select2-init.js?v=20260914_2',
+                    'location' => 'js/select2-init.js?v=20260914_3',
                 ],
             ],
         ],

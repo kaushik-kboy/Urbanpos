@@ -14,13 +14,20 @@ $(document).ready(function () {
                                      '-- Select --';
                 
                 var hasEmptyOption = Boolean($this.find('option[value=""]').length);
+                var maxLimit = $this.data('maximum-selection-length') || $this.data('max-selections') || null;
 
-                $this.select2({
+                var selectOptions = {
                     theme: 'bootstrap4',
                     width: '100%',
                     placeholder: placeholderText,
                     allowClear: hasEmptyOption && !$this.prop('multiple')
-                });
+                };
+
+                if (maxLimit) {
+                    selectOptions.maximumSelectionLength = parseInt(maxLimit, 10);
+                }
+
+                $this.select2(selectOptions);
             }
         });
     }
@@ -38,9 +45,9 @@ $(document).ready(function () {
     });
 
     // =========================================================================
-    // INSTANT SELECT2 OPEN: Single Mouse Click, Tab Key Focus, or Enter Key
-    // Works for both Single-select and Multi-value Select boxes
-    // Fixes the 2-click issue so the dropdown opens on the 1st click
+    // INSTANT SELECT2 OPEN & AUTOFOCUS: Single Click, Tab, Direct Typing, Enter
+    // Exact UX: Click/Tab -> Blinking Cursor -> Type Immediately -> Enter to select!
+    // Works seamlessly for both Single-select and Multi-value Select boxes
     // =========================================================================
     var isSelect2Closing = false;
     var closingTimer = null;
@@ -63,12 +70,25 @@ $(document).ready(function () {
         setClosingLatch();
     });
 
+    function focusActiveSearchField() {
+        var el = document.querySelector('.select2-container--open .select2-search__field');
+        if (el) {
+            el.focus();
+        }
+    }
+
     $(document).on('select2:open', function () {
         justOpened = true;
         if (justOpenedTimer) clearTimeout(justOpenedTimer);
         justOpenedTimer = setTimeout(function () {
             justOpened = false;
         }, 300);
+
+        // Instantly focus the search input so the user can type immediately without a 2nd click!
+        focusActiveSearchField();
+        requestAnimationFrame(focusActiveSearchField);
+        setTimeout(focusActiveSearchField, 50);
+        setTimeout(focusActiveSearchField, 150);
     });
 
     // CRITICAL: Capturing click listener prevents Select2 from toggling closed
@@ -109,27 +129,46 @@ $(document).ready(function () {
         }
     });
 
-    // 3. Enter key on Select2: Opens the dropdown if closed
-    $(document).on('keydown', '.select2-selection, .select2-container .select2-search__field', function (e) {
-        if (e.key === 'Enter' || e.keyCode === 13) {
-            var $container = $(this).closest('.select2-container');
-            var $select = $container.prev('select.select2');
-            if ($select.length && $select.data('select2')) {
-                if (!$select.data('select2').isOpen()) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    $select.select2('open');
-                    return false;
-                }
+    // 3. Direct typing & Enter key on Select2:
+    // - If closed and user presses Enter -> opens dropdown immediately.
+    // - If closed and user types any letter/number -> opens dropdown and inputs that letter into the search field!
+    $(document).on('keydown', '.select2-selection', function (e) {
+        var $container = $(this).closest('.select2-container');
+        var $select = $container.prev('select.select2');
+        if (!$select.length || !$select.data('select2')) return;
+
+        if (!$select.data('select2').isOpen()) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                e.stopPropagation();
+                $select.select2('open');
+                return false;
+            }
+
+            // Printable character pressed while focused on closed select
+            if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                $select.select2('open');
+                setTimeout(function () {
+                    var $search = $('.select2-container--open .select2-search__field');
+                    if ($search.length) {
+                        $search.val(e.key).trigger('input');
+                        $search[0].focus();
+                    }
+                }, 40);
+                return false;
             }
         }
     });
 
-    // 4. On selection: smoothly move focus to next input field in row (for single-selects only)
+    // 4. On selection:
+    // - For single-select: smoothly advance focus to next input field in row
+    // - For multi-select: keep focus inside the box so user can continue adding tags without interruption
     $(document).on('select2:select', function (e) {
         var $select = $(this);
-        // If it's a multi-select box, keep focus inside for user to add more values
         if ($select.prop('multiple')) {
+            setTimeout(focusActiveSearchField, 50);
             return;
         }
         setTimeout(function () {
