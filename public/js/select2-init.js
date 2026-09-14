@@ -44,6 +44,8 @@ $(document).ready(function () {
     // =========================================================================
     var isSelect2Closing = false;
     var closingTimer = null;
+    var justOpened = false;
+    var justOpenedTimer = null;
 
     function setClosingLatch() {
         isSelect2Closing = true;
@@ -60,6 +62,25 @@ $(document).ready(function () {
     $(document).on('select2:close', function () {
         setClosingLatch();
     });
+
+    $(document).on('select2:open', function () {
+        justOpened = true;
+        if (justOpenedTimer) clearTimeout(justOpenedTimer);
+        justOpenedTimer = setTimeout(function () {
+            justOpened = false;
+        }, 300);
+    });
+
+    // CRITICAL: Capturing click listener prevents Select2 from toggling closed
+    // on the immediate click event that follows mousedown/focus opening!
+    document.addEventListener('click', function (e) {
+        if (justOpened) {
+            var $target = $(e.target).closest('.select2-selection');
+            if ($target.length && !$(e.target).is('.select2-selection__choice__remove, .select2-selection__clear')) {
+                e.stopImmediatePropagation();
+            }
+        }
+    }, true);
 
     // 1. Single click on mouse: Opens immediately on the very first click
     $(document).on('mousedown', '.select2-container', function (e) {
