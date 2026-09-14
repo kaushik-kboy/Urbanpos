@@ -128,6 +128,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
 });
 
 Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () use ($gatedResource) {
+    Route::get('purchase-invoices/item-details/{item}', [PurchaseInvoiceController::class, 'itemDetails'])->name('purchase-invoices.item-details');
     $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
     $gatedResource('purchase-invoices', PurchaseInvoiceController::class, 'purchase-invoices');
     Route::get('aux/{module}', [PurchaseAuxController::class, 'renderModule'])->name('aux');

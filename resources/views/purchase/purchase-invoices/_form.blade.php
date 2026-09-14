@@ -23,16 +23,17 @@
     <table class="table table-sm table-bordered" id="pinv-items-table">
         <thead>
             <tr>
-                <th style="min-width:220px">Code / Description</th>
+                <th style="min-width:250px">Code / Description</th>
                 <th style="width:130px">Exp Dt</th>
                 <th style="width:90px">Qty</th>
                 <th style="width:90px">Free</th>
-                <th style="width:100px">Cost Price</th>
-                <th style="width:100px">Sell Price</th>
-                <th style="width:100px">MRP</th>
-                <th style="width:80px">Disc %</th>
-                <th style="width:100px">Disc Amount</th>
+                <th style="width:105px">Cost Price</th>
+                <th style="width:105px">Sell Price</th>
+                <th style="width:105px">MRP</th>
+                <th style="width:85px">Disc %</th>
+                <th style="width:105px">Disc Amount</th>
                 <th style="width:80px">GST%</th>
+                <th style="width:115px">Net Amount</th>
                 <th style="width:40px"></th>
             </tr>
         </thead>
@@ -43,6 +44,19 @@
                 @include('purchase.purchase-invoices._item-row', ['items' => $items, 'index' => 0, 'line' => null])
             @endforelse
         </tbody>
+        <tfoot class="bg-light font-weight-bold">
+            <tr>
+                <td colspan="2" class="text-right align-middle">Totals:</td>
+                <td class="text-right align-middle text-primary" id="footer-total-qty">0.000</td>
+                <td class="align-middle"></td>
+                <td class="text-right align-middle" id="footer-total-cost">0.00</td>
+                <td colspan="2" class="text-right align-middle">Total Discount:</td>
+                <td colspan="2" class="text-right align-middle text-danger" id="footer-total-disc">0.00</td>
+                <td class="text-right align-middle small text-muted">GST: <span id="footer-total-gst" class="font-weight-bold text-dark">0.00</span></td>
+                <td class="text-right align-middle text-success font-weight-bold" id="footer-grand-net">0.00</td>
+                <td></td>
+            </tr>
+        </tfoot>
     </table>
 </div>
 
@@ -66,25 +80,185 @@
 
 @push('js')
 <script>
-    (function () {
+    $(document).ready(function () {
         let rowIndex = {{ $existingItems->count() ?: 1 }};
 
-        document.getElementById('pinv-add-row').addEventListener('click', function () {
-            const html = document.getElementById('pinv-row-template').innerHTML.replaceAll('__INDEX__', rowIndex);
-            const tbody = document.getElementById('pinv-items-body');
-            const wrapper = document.createElement('tbody');
-            wrapper.innerHTML = html;
-            tbody.appendChild(wrapper.firstElementChild);
-            rowIndex++;
+        function calculateRow($row, source) {
+            let qty = parseFloat($row.find('.pinv-qty').val()) || 0;
+            let cost = parseFloat($row.find('.pinv-cost').val()) || 0;
+            let base = qty * cost;
+
+            let $discPct = $row.find('.pinv-disc-percent');
+            let $discAmt = $row.find('.pinv-disc-amount');
+            let gst = parseFloat($row.find('.pinv-gst').val()) || 0;
+
+            let discPct = parseFloat($discPct.val()) || 0;
+            let discAmt = parseFloat($discAmt.val()) || 0;
+
+            if (source === 'percent') {
+                if (base > 0 && discPct > 0) {
+                    discAmt = Math.round((base * discPct / 100) * 100) / 100;
+                    $discAmt.val(discAmt.toFixed(2));
+                } else if (discPct === 0) {
+                    discAmt = 0;
+                    $discAmt.val('0.00');
+                }
+            } else if (source === 'amount') {
+                if (base > 0 && discAmt > 0) {
+                    discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
+                    $discPct.val(discPct.toFixed(2));
+                } else if (discAmt === 0) {
+                    discPct = 0;
+                    $discPct.val('0.00');
+                }
+            } else {
+                // Qty or Cost changed
+                if (discPct > 0 && base > 0) {
+                    discAmt = Math.round((base * discPct / 100) * 100) / 100;
+                    $discAmt.val(discAmt.toFixed(2));
+                } else if (discAmt > 0 && base > 0) {
+                    discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
+                    $discPct.val(discPct.toFixed(2));
+                }
+            }
+
+            let taxable = Math.max(0, base - discAmt);
+            let taxAmt = Math.round((taxable * gst / 100) * 100) / 100;
+            let net = taxable + taxAmt;
+
+            $row.find('.pinv-row-net').text(net.toFixed(2));
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            let totalQty = 0;
+            let totalCost = 0;
+            let totalDiscAmt = 0;
+            let totalGstAmt = 0;
+            let totalNetAmt = 0;
+
+            $('#pinv-items-body tr').each(function () {
+                let $r = $(this);
+                let qty = parseFloat($r.find('.pinv-qty').val()) || 0;
+                let freeQty = parseFloat($r.find('.pinv-free-qty').val()) || 0;
+                let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
+                let discAmt = parseFloat($r.find('.pinv-disc-amount').val()) || 0;
+                let gst = parseFloat($r.find('.pinv-gst').val()) || 0;
+
+                let base = qty * cost;
+                let taxable = Math.max(0, base - discAmt);
+                let gstAmt = Math.round((taxable * gst / 100) * 100) / 100;
+                let net = taxable + gstAmt;
+
+                totalQty += (qty + freeQty);
+                totalCost += base;
+                totalDiscAmt += discAmt;
+                totalGstAmt += gstAmt;
+                totalNetAmt += net;
+            });
+
+            $('#footer-total-qty').text(totalQty.toFixed(3));
+            $('#footer-total-cost').text(totalCost.toFixed(2));
+            $('#footer-total-disc').text(totalDiscAmt.toFixed(2));
+            $('#footer-total-gst').text(totalGstAmt.toFixed(2));
+            $('#footer-grand-net').text(totalNetAmt.toFixed(2));
+        }
+
+        // 1. Item Selection: Auto-populate Cost, Sell, MRP, GST from Item Master
+        $(document).on('change', '.pinv-item-select', function () {
+            let $select = $(this);
+            let $row = $select.closest('tr');
+            let itemId = $select.val();
+
+            if (!itemId) {
+                return;
+            }
+
+            let $opt = $select.find('option:selected');
+            let cost = parseFloat($opt.data('cost'));
+            let sell = parseFloat($opt.data('sell'));
+            let mrp = parseFloat($opt.data('mrp'));
+            let gst = parseFloat($opt.data('gst'));
+
+            if (!isNaN(cost) || !isNaN(sell) || !isNaN(mrp) || !isNaN(gst)) {
+                $row.find('.pinv-cost').val(!isNaN(cost) && cost > 0 ? cost.toFixed(2) : '');
+                $row.find('.pinv-sell').val(!isNaN(sell) && sell > 0 ? sell.toFixed(2) : '');
+                $row.find('.pinv-mrp').val(!isNaN(mrp) && mrp > 0 ? mrp.toFixed(2) : '');
+                $row.find('.pinv-gst').val(!isNaN(gst) ? gst.toFixed(2) : '0.00');
+
+                if (!$row.find('.pinv-qty').val()) {
+                    $row.find('.pinv-qty').val('1');
+                }
+
+                calculateRow($row);
+            } else {
+                // Fallback: Fetch from API endpoint if data attributes missing
+                $.getJSON('{{ url("purchase/purchase-invoices/item-details") }}/' + itemId, function (data) {
+                    if (data) {
+                        $row.find('.pinv-cost').val(data.cost_price > 0 ? Number(data.cost_price).toFixed(2) : '');
+                        $row.find('.pinv-sell').val(data.sell_price > 0 ? Number(data.sell_price).toFixed(2) : '');
+                        $row.find('.pinv-mrp').val(data.mrp > 0 ? Number(data.mrp).toFixed(2) : '');
+                        $row.find('.pinv-gst').val(Number(data.gst_percent || 0).toFixed(2));
+
+                        if (!$row.find('.pinv-qty').val()) {
+                            $row.find('.pinv-qty').val('1');
+                        }
+
+                        calculateRow($row);
+                    }
+                });
+            }
         });
 
-        document.getElementById('pinv-items-body').addEventListener('click', function (e) {
-            const btn = e.target.closest('.pinv-remove-row');
-            if (! btn) return;
-            const rows = document.querySelectorAll('#pinv-items-body tr');
-            if (rows.length <= 1) return;
-            btn.closest('tr').remove();
+        // 2. Real-time Calculation Listeners
+        $(document).on('input', '.pinv-qty, .pinv-cost', function () {
+            calculateRow($(this).closest('tr'), 'base');
         });
-    })();
+
+        $(document).on('input', '.pinv-disc-percent', function () {
+            calculateRow($(this).closest('tr'), 'percent');
+        });
+
+        $(document).on('input', '.pinv-disc-amount', function () {
+            calculateRow($(this).closest('tr'), 'amount');
+        });
+
+        $(document).on('input', '.pinv-gst, .pinv-free-qty', function () {
+            calculateRow($(this).closest('tr'), 'other');
+        });
+
+        // 3. Add Row
+        $('#pinv-add-row').on('click', function () {
+            let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
+            let $tbody = $('#pinv-items-body');
+            let $newRow = $(html);
+
+            $tbody.append($newRow);
+
+            // Initialize Select2 on the newly added row's dropdown
+            $newRow.find('select.select2').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Select item',
+                allowClear: true
+            });
+
+            rowIndex++;
+            calculateTotals();
+        });
+
+        // 4. Remove Row
+        $('#pinv-items-body').on('click', '.pinv-remove-row', function () {
+            let rows = $('#pinv-items-body tr');
+            if (rows.length <= 1) return;
+            $(this).closest('tr').remove();
+            calculateTotals();
+        });
+
+        // 5. Initial Run on existing rows
+        $('#pinv-items-body tr').each(function () {
+            calculateRow($(this), 'initial');
+        });
+    });
 </script>
 @endpush

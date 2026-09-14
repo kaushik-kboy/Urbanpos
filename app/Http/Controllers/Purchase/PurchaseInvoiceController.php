@@ -188,12 +188,31 @@ class PurchaseInvoiceController extends Controller
         return 'PINV'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
     }
 
+    public function itemDetails(Item $item)
+    {
+        $item->load('gstTax:id,percentage');
+
+        return response()->json([
+            'id' => $item->id,
+            'name' => $item->name,
+            'item_code' => $item->item_code,
+            'cost_price' => (float) ($item->cost_price ?? 0),
+            'sell_price' => (float) ($item->sell_price ?? 0),
+            'mrp' => (float) ($item->mrp ?? 0),
+            'gst_percent' => (float) ($item->gstTax->percentage ?? 0),
+        ]);
+    }
+
     private function formOptions(): array
     {
+        $items = Item::with('gstTax:id,percentage')->orderBy('name')->get([
+            'id', 'name', 'item_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id'
+        ]);
+
         return [
             'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
-            'items' => Item::orderBy('name')->pluck('name', 'id'),
+            'items' => $items,
             'purchaseOrders' => PurchaseOrder::orderBy('po_number')->pluck('po_number', 'id'),
         ];
     }
@@ -207,11 +226,23 @@ class PurchaseInvoiceController extends Controller
             $qty = (float) $line['qty'];
             $costPrice = (float) $line['cost_price'];
             $item = $itemsById[$line['item_id']];
+            $base = $qty * $costPrice;
 
             $discPercent = (float) ($line['disc_percent'] ?? 0);
             $discAmount = (float) ($line['disc_amount'] ?? 0);
 
+            // Synchronize discount percentage and amount
+            if ($discAmount <= 0 && $discPercent > 0 && $base > 0) {
+                $discAmount = round($base * $discPercent / 100, 2);
+            } elseif ($discAmount > 0 && $discPercent <= 0 && $base > 0) {
+                $discPercent = round(($discAmount / $base) * 100, 2);
+            }
+
             $tax = $this->taxEngine->calculate($qty, $costPrice, $item, $discPercent, $discAmount, 0.0, $isInterstate);
+
+            $effectiveDiscPercent = $tax['disc_amount'] > 0 && $base > 0
+                ? round(($tax['disc_amount'] / $base) * 100, 2)
+                : $discPercent;
 
             return [
                 'item_id' => $line['item_id'],
@@ -221,7 +252,7 @@ class PurchaseInvoiceController extends Controller
                 'cost_price' => $costPrice,
                 'sell_price' => (float) ($line['sell_price'] ?? 0),
                 'mrp' => (float) ($line['mrp'] ?? 0),
-                'disc_percent' => $discPercent,
+                'disc_percent' => $effectiveDiscPercent,
                 'disc_amount' => $tax['disc_amount'],
                 'gst_percent' => $tax['gst_percent'],
                 'gst_tax_amount' => $tax['gst_tax_amount'],
