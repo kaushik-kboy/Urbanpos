@@ -261,6 +261,151 @@ class StockTransferController extends Controller
         }
     }
 
+    public function itemList(Request $request)
+    {
+        $branchId = (int) ($request->input('branch_id') ?: $request->input('from_branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $search   = trim((string) $request->input('search', ''));
+        $expiry   = trim((string) $request->input('expiry', ''));
+        $code     = trim((string) $request->input('code', ''));
+
+        // Require at least 1 character to avoid loading huge dataset
+        $hasFilter = $search !== '' || $code !== '' || $expiry !== '';
+        if (! $hasFilter) {
+            return response()->json(['items' => [], 'hint' => 'Type to search items…']);
+        }
+
+        $limit  = 100;
+        $where  = [];
+        $params = [$branchId, $branchId];
+
+        $orderSql    = 'i.name ASC';
+        $orderParams = [];
+
+        if ($search !== '') {
+            $sWild   = "%{$search}%";
+            $sExact  = $search;
+            $sPrefix = "{$search}%";
+
+            $where[] = '(i.name LIKE ? OR i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
+            $params  = array_merge($params, [$sWild, $sExact, $sPrefix, $sExact, $sPrefix]);
+
+            $orderSql = "
+                CASE
+                    WHEN i.item_code = ? THEN 1
+                    WHEN i.ean_upc_code = ? THEN 2
+                    WHEN i.item_code LIKE ? THEN 3
+                    WHEN i.ean_upc_code LIKE ? THEN 4
+                    WHEN i.name LIKE ? THEN 5
+                    ELSE 6
+                END ASC,
+                i.name ASC
+            ";
+            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sPrefix];
+        }
+
+        if ($code !== '') {
+            $cExact  = $code;
+            $cPrefix = "{$code}%";
+            $where[] = '(i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
+            $params  = array_merge($params, [$cExact, $cPrefix, $cExact, $cPrefix]);
+
+            if ($search === '') {
+                $orderSql = "
+                    CASE
+                        WHEN i.item_code = ? THEN 1
+                        WHEN i.ean_upc_code = ? THEN 2
+                        WHEN i.item_code LIKE ? THEN 3
+                        WHEN i.ean_upc_code LIKE ? THEN 4
+                        ELSE 5
+                    END ASC,
+                    i.name ASC
+                ";
+                $orderParams = [$cExact, $cExact, $cPrefix, $cPrefix];
+            }
+        }
+
+        $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "
+            SELECT
+                i.id,
+                i.name,
+                COALESCE(i.item_code, '')  AS item_code,
+                COALESCE(i.ean_upc_code, '') AS ean_upc_code,
+                COALESCE(st.quantity, 0)   AS qty,
+                ei.exp_date
+            FROM items i
+            LEFT JOIN item_stocks st
+                   ON st.item_id = i.id AND st.branch_id = ?
+            LEFT JOIN (
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date
+                FROM purchase_invoice_items pi2
+                INNER JOIN purchase_invoices pih
+                        ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
+                WHERE pi2.exp_date IS NOT NULL
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                GROUP BY pi2.item_id
+            ) ei ON ei.item_id = i.id
+            {$whereClause}
+            ORDER BY {$orderSql}
+            LIMIT {$limit}
+        ";
+
+        $finalParams = array_merge($params, $orderParams);
+        $rows = DB::select($sql, $finalParams);
+
+        // Fallback: for rows without branch-specific expiry, try cross-branch
+        $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
+        $expiryFallback = [];
+        if (! empty($noExpIds)) {
+            $ph = implode(',', array_fill(0, count($noExpIds), '?'));
+            $fbSql = "
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date
+                FROM purchase_invoice_items pi2
+                WHERE pi2.item_id IN ({$ph})
+                  AND pi2.exp_date IS NOT NULL
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                GROUP BY pi2.item_id
+            ";
+            foreach (DB::select($fbSql, $noExpIds) as $fb) {
+                $expiryFallback[$fb->item_id] = $fb->exp_date;
+            }
+        }
+
+        $result = [];
+        foreach ($rows as $row) {
+            $expRaw = $row->exp_date ?? ($expiryFallback[$row->id] ?? null);
+            $exp = null;
+            if (! empty($expRaw) && $expRaw !== '0000-00-00') {
+                try {
+                    $exp = \Carbon\Carbon::parse($expRaw)->format('Y-m-d');
+                } catch (\Throwable) {
+                    $exp = (string) $expRaw;
+                }
+            }
+
+            if ($expiry !== '' && (! $exp || ! str_contains($exp, $expiry))) {
+                continue;
+            }
+
+            $displayCode = $row->ean_upc_code ?: ($row->item_code ?: '');
+            $result[] = [
+                'id'       => $row->id,
+                'name'     => $row->name,
+                'code'     => $displayCode,
+                'barcode'  => $row->ean_upc_code,
+                'item_code'=> $row->item_code,
+                'exp_date' => $exp,
+                'qty'      => (float) $row->qty,
+                'available_qty' => (float) $row->qty,
+            ];
+        }
+
+        return response()->json(['items' => $result]);
+    }
+
     public function searchItems(Request $request)
     {
         $q = trim($request->input('q', ''));

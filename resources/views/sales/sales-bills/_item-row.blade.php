@@ -1,4 +1,7 @@
 @php
+    if (is_array($line)) {
+        $line = (object) $line;
+    }
     $selectedItemId = $line->item_id ?? null;
     $selectedItem = null;
     if ($selectedItemId && isset($items)) {
@@ -6,7 +9,7 @@
             ? collect($items)->firstWhere('id', $selectedItemId)
             : null;
     }
-    $itemCodeVal = $selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? '');
+    $itemCodeVal = $line->code ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
     $sellPriceVal = isset($line->sell_price) && $line->sell_price != 0 ? $line->sell_price : ($selectedItem?->sell_price > 0 ? $selectedItem->sell_price : '');
     $mrpPriceVal = isset($line->mrp) && $line->mrp != 0 ? $line->mrp : ($selectedItem?->mrp > 0 ? $selectedItem->mrp : '');
@@ -14,6 +17,10 @@
     $discAmountVal = isset($line->disc_amount) && $line->disc_amount != 0 ? $line->disc_amount : '';
     $gstPercentVal = isset($line->gst_percent) && $line->gst_percent != 0 ? $line->gst_percent : ($selectedItem?->gstTax?->percentage > 0 ? $selectedItem->gstTax->percentage : '');
     $netAmtVal = isset($line->net_amount) && $line->net_amount != 0 ? number_format($line->net_amount, 2) : '';
+    $expDateVal = '';
+    if (!empty($line->exp_date)) {
+        $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
+    }
 @endphp
 <tr>
     <td class="text-center align-middle font-weight-bold sb-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
@@ -54,7 +61,7 @@
         <div class="input-group input-group-sm">
             <input type="date"
                    name="items[{{ $index }}][exp_date]"
-                   value="{{ optional($line->exp_date ?? null)->format('Y-m-d') }}"
+                   value="{{ $expDateVal }}"
                    class="form-control form-control-sm sb-exp-date"
                    autocomplete="off"
                    title="Expiry date">

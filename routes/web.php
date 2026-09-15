@@ -190,6 +190,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::post('change-serial-no', [InventoryMoreController::class, 'processChangeSerialNo'])->name('change-serial-no.process');
 
     // Stock Transfer
+    Route::get('stock-transfers/item-list', [StockTransferController::class, 'itemList'])->name('stock-transfers.item-list');
     Route::get('stock-transfers/search-items', [StockTransferController::class, 'searchItems'])->name('stock-transfers.search-items');
     Route::get('stock-transfers/item-by-code', [StockTransferController::class, 'getItemByCode'])->name('stock-transfers.item-by-code');
     Route::get('stock-transfers/pending-receipt', [StockTransferController::class, 'pendingReceipt'])->name('stock-transfers.pending-receipt');

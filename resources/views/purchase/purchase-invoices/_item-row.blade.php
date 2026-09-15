@@ -1,4 +1,7 @@
 @php
+    if (is_array($line)) {
+        $line = (object) $line;
+    }
     $selectedItemId = $line->item_id ?? null;
     $selectedItem = null;
     if ($selectedItemId && isset($items)) {
@@ -7,7 +10,7 @@
             : null;
     }
     $isExpRequired = $selectedItem && in_array($selectedItem->batch_expiry_details ?? '', ['Mandatory', 'Days', 'Month']);
-    $itemCodeVal = $selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? '');
+    $itemCodeVal = $line->code ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
 
     $costVal = isset($line->cost_price) && $line->cost_price != 0 ? (float)$line->cost_price : (float)($selectedItem->cost_price ?? 0);
     $sellVal = isset($line->sell_price) && $line->sell_price != 0 ? (float)$line->sell_price : (float)($selectedItem->sell_price ?? 0);
@@ -29,6 +32,10 @@
     $gstPercentVal = isset($line->gst_percent) && $line->gst_percent != 0 ? $line->gst_percent : ($selectedItem?->gstTax?->percentage > 0 ? $selectedItem->gstTax->percentage : '');
     $gstTaxAmtVal = isset($line->gst_tax_amount) && $line->gst_tax_amount != 0 ? number_format($line->gst_tax_amount, 2, '.', '') : '';
     $netAmtVal = isset($line->net_amount) && $line->net_amount != 0 ? number_format($line->net_amount, 2) : '';
+    $expDateVal = '';
+    if (!empty($line->exp_date)) {
+        $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
+    }
 @endphp
 <tr>
     <td class="text-center align-middle font-weight-bold pinv-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
@@ -69,7 +76,7 @@
     <td style="width: 125px;">
         <input type="date"
                name="items[{{ $index }}][exp_date]"
-               value="{{ optional($line->exp_date ?? null)->format('Y-m-d') }}"
+               value="{{ $expDateVal }}"
                class="form-control form-control-sm pinv-exp-date {{ $isExpRequired ? 'border-danger' : '' }}"
                @if($isExpRequired) required @endif
                autocomplete="off"

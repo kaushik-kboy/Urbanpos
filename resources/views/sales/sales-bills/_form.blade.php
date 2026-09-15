@@ -1,6 +1,7 @@
 @php
     $bill = $salesBill ?? null;
-    $existingItems = $bill?->items ?? collect();
+    $oldItems = old('items');
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($bill?->items ?? collect());
 @endphp
 
 <h5 class="mb-3"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
@@ -320,10 +321,21 @@
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
                     : `<span class="text-muted">—</span>`;
-                let qtyClass = it.qty <= 0 ? 'text-danger' : 'text-success';
+                let isOutOfStock = parseFloat(it.qty) <= 0;
+                let qtyClass = isOutOfStock ? 'text-danger font-weight-bold' : 'text-success font-weight-bold';
+                let rowClass = isOutOfStock ? 'isl-item-row isl-item-disabled text-muted bg-light' : 'isl-item-row';
+                let rowStyle = isOutOfStock ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
+                let actionBtn = isOutOfStock
+                    ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock - Cannot select">
+                        <i class="fas fa-ban mr-1"></i>Out of Stock
+                       </button>`
+                    : `<button type="button" class="btn btn-success btn-xs px-2 isl-btn-select"
+                        data-id="${it.id}" data-code="${it.code}">
+                        <i class="fas fa-check mr-1"></i>Select
+                       </button>`;
 
                 html += `
-                    <tr class="isl-item-row" style="cursor:pointer;"
+                    <tr class="${rowClass}" style="${rowStyle}"
                         data-id="${it.id}"
                         data-code="${it.code}"
                         data-sell="${it.sell_price}"
@@ -332,17 +344,14 @@
                         data-qty="${it.qty}"
                         data-exp="${it.exp_date || ''}">
                         <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name} ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : ''}</td>
                         <td class="align-middle text-center">${codeBadge}</td>
                         <td class="align-middle text-center">${expBadge}</td>
-                        <td class="align-middle text-right font-weight-bold ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
+                        <td class="align-middle text-right ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
                         <td class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '\u20b9' + parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
                         <td class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9' + parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
                         <td class="align-middle text-center">
-                            <button type="button" class="btn btn-success btn-xs px-2 isl-btn-select"
-                                data-id="${it.id}" data-code="${it.code}">
-                                <i class="fas fa-check mr-1"></i>Select
-                            </button>
+                            ${actionBtn}
                         </td>
                     </tr>`;
             });
@@ -355,6 +364,9 @@
         $(document).on('click', '.isl-item-row, .isl-btn-select', function (e) {
             e.stopPropagation();
             let $row = $(this).hasClass('isl-item-row') ? $(this) : $(this).closest('tr');
+            if ($row.hasClass('isl-item-disabled') || parseFloat($row.data('qty')) <= 0) {
+                return false;
+            }
             let itemId   = $row.data('id');
             let itemCode = $row.data('code');
 
@@ -532,30 +544,40 @@
                 let pName = b.productname || item.name || 'Item';
                 let pCode = b.code || item.item_code || item.ean_upc_code || '—';
                 let expDisplay = b.exp_date || 'No Expiry';
-                let qtyDisplay = b.qty ? parseFloat(b.qty).toFixed(3) : '0.000';
+                let qtyNum = parseFloat(b.qty || 0);
+                let isBatchOOS = qtyNum <= 0;
+                let qtyDisplay = qtyNum.toFixed(3);
                 let sellDisplay = b.sell_price ? '₹' + parseFloat(b.sell_price).toFixed(2) : '—';
                 let mrpDisplay = b.mrp ? '₹' + parseFloat(b.mrp).toFixed(2) : '—';
+                let bRowClass = isBatchOOS ? 'batch-select-row batch-disabled text-muted bg-light' : 'batch-select-row';
+                let bRowStyle = isBatchOOS ? 'cursor: not-allowed; opacity: 0.65;' : 'cursor: pointer;';
+                let bActionBtn = isBatchOOS
+                    ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock">
+                        <i class="fas fa-ban mr-1"></i>Out of Stock
+                       </button>`
+                    : `<button type="button" class="btn btn-success btn-xs px-2 btn-apply-batch" 
+                        data-exp="${b.exp_date || ''}" 
+                        data-sell="${b.sell_price || ''}" 
+                        data-mrp="${b.mrp || ''}">
+                        <i class="fas fa-check mr-1"></i> Select
+                       </button>`;
 
                 let tr = `
-                    <tr class="batch-select-row" style="cursor: pointer;" 
+                    <tr class="${bRowClass}" style="${bRowStyle}" 
                         data-exp="${b.exp_date || ''}" 
                         data-sell="${b.sell_price || ''}" 
                         data-mrp="${b.mrp || ''}"
-                        title="Click to select this batch">
+                        data-qty="${qtyNum}"
+                        title="${isBatchOOS ? 'Batch out of stock' : 'Click to select this batch'}">
                         <td class="align-middle text-center font-weight-bold">${idx + 1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${pName}</td>
+                        <td class="align-middle font-weight-bold text-dark">${pName} ${isBatchOOS ? '<span class="badge badge-secondary ml-1 small">No Stock</span>' : ''}</td>
                         <td class="align-middle text-center"><span class="badge badge-secondary px-2 py-1">${pCode}</span></td>
                         <td class="align-middle text-center font-weight-bold text-danger"><i class="far fa-calendar-alt mr-1"></i> ${expDisplay}</td>
-                        <td class="align-middle text-right font-weight-bold">${qtyDisplay}</td>
+                        <td class="align-middle text-right font-weight-bold ${isBatchOOS ? 'text-danger' : ''}">${qtyDisplay}</td>
                         <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
                         <td class="align-middle text-right text-muted">${mrpDisplay}</td>
                         <td class="align-middle text-center">
-                            <button type="button" class="btn btn-success btn-xs px-2 btn-apply-batch" 
-                                data-exp="${b.exp_date || ''}" 
-                                data-sell="${b.sell_price || ''}" 
-                                data-mrp="${b.mrp || ''}">
-                                <i class="fas fa-check mr-1"></i> Select
-                            </button>
+                            ${bActionBtn}
                         </td>
                     </tr>
                 `;
@@ -564,7 +586,7 @@
 
             $('#sb-batch-modal').modal('show');
             setTimeout(function() {
-                $('#modal-batches-body tr:first-child .btn-apply-batch').focus();
+                $('#modal-batches-body tr:not(.batch-disabled):first .btn-apply-batch').focus();
             }, 350);
         }
 
@@ -585,6 +607,7 @@
         // When user selects a batch from modal button or row
         $(document).on('click', '.btn-apply-batch', function (e) {
             e.stopPropagation();
+            if ($(this).closest('tr').hasClass('batch-disabled')) return false;
             let exp = $(this).data('exp') || '';
             let sell = $(this).data('sell') || '';
             let mrp = $(this).data('mrp') || '';
@@ -592,6 +615,7 @@
         });
 
         $(document).on('click', '.batch-select-row', function () {
+            if ($(this).hasClass('batch-disabled')) return false;
             let exp = $(this).data('exp') || '';
             let sell = $(this).data('sell') || '';
             let mrp = $(this).data('mrp') || '';

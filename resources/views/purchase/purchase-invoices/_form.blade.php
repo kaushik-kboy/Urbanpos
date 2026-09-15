@@ -1,6 +1,7 @@
 @php
     $inv = $purchaseInvoice ?? null;
-    $existingItems = $inv?->items ?? collect();
+    $oldItems = old('items');
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($inv?->items ?? collect());
 @endphp
 
 <style>
