@@ -282,7 +282,7 @@
 
 {{-- Hidden: JSON-encoded TenderTypes for JS --}}
 <script id="tender-types-data" type="application/json">
-    @json($tenderTypes->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'mandate_refno' => $t->mandate_refno]))
+    {!! json_encode($tenderTypes->map(function($t) { return ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'mandate_refno' => (bool)$t->mandate_refno]; })->values()) !!}
 </script>
 
 
