@@ -552,10 +552,28 @@
                 $row.find('.sb-row-net').text('');
             }
 
-            // Stock warning border if selling more than available stock
+            // Stock warning: check TOTAL qty across ALL rows for the same item
             let $qtyInput = $row.find('.sb-qty');
-            if (stock > 0 && qty > stock) {
-                $qtyInput.addClass('border-danger text-danger').attr('title', 'Quantity (' + qty + ') exceeds available stock (' + stock + ')!');
+            let itemId = $row.find('.sb-item-select').val();
+            if (stock > 0 && itemId) {
+                let totalForItem = 0;
+                $('#sb-items-body tr').each(function () {
+                    if ($(this).find('.sb-item-select').val() === itemId) {
+                        totalForItem += parseFloat($(this).find('.sb-qty').val()) || 0;
+                    }
+                });
+                // Update warning on ALL rows of this item
+                $('#sb-items-body tr').each(function () {
+                    if ($(this).find('.sb-item-select').val() === itemId) {
+                        let $q = $(this).find('.sb-qty');
+                        if (totalForItem > stock) {
+                            $q.addClass('border-danger text-danger')
+                              .attr('title', 'Total qty (' + totalForItem + ') across all rows exceeds stock (' + stock + ')!');
+                        } else {
+                            $q.removeClass('border-danger text-danger').attr('title', '');
+                        }
+                    }
+                });
             } else {
                 $qtyInput.removeClass('border-danger text-danger').attr('title', '');
             }

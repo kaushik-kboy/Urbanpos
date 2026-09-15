@@ -243,16 +243,27 @@ class SalesBillController extends Controller
 
     private function assertStockAvailable(array $lines, int $branchId): void
     {
+        // Group by item_id and sum total requested qty per item
+        // This prevents the same item appearing in multiple rows with combined qty > stock
+        $totalQtyByItem = [];
         foreach ($lines as $line) {
-            $item = Item::find($line['item_id']);
+            $itemId = $line['item_id'];
+            $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0) + (float) $line['qty'];
+        }
+
+        foreach ($totalQtyByItem as $itemId => $totalRequested) {
+            $item = Item::find($itemId);
             if ($item->allow_negative_stock) {
                 continue;
             }
 
-            $available = (float) (ItemStock::where('item_id', $line['item_id'])->where('branch_id', $branchId)->value('quantity') ?? 0);
-            if ($line['qty'] > $available) {
+            $available = (float) (ItemStock::where('item_id', $itemId)
+                ->where('branch_id', $branchId)
+                ->value('quantity') ?? 0);
+
+            if ($totalRequested > $available) {
                 throw ValidationException::withMessages([
-                    'items' => "Insufficient stock for \"{$item->name}\": available {$available}, requested {$line['qty']}.",
+                    'items' => "Insufficient stock for \"{$item->name}\": available {$available}, requested {$totalRequested} (across all rows).",
                 ]);
             }
         }
