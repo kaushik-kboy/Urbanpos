@@ -83,6 +83,93 @@
     @include('sales.sales-bills._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>
 
+<!-- ============================================================
+     ITEM SEARCH MODAL — opens on Code/Barcode field focus
+     ============================================================ -->
+<div class="modal fade" id="sb-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="sbItemSearchLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white py-2">
+                <h5 class="modal-title" id="sbItemSearchLabel">
+                    <i class="fas fa-search mr-2"></i>Select Item
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <!-- Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            </div>
+                            <input type="text" id="isl-filter-name" class="form-control" placeholder="Search product name / barcode…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                            </div>
+                            <input type="text" id="isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                            <input type="text" id="isl-filter-expiry" class="form-control" placeholder="Filter expiry (YYYY-MM)…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <button type="button" id="isl-btn-clear" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-times mr-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading / No-results states -->
+                <div id="isl-loading" class="text-center py-4 d-none">
+                    <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2 text-muted">Loading items…</p>
+                </div>
+                <div id="isl-no-results" class="text-center py-4 d-none">
+                    <i class="fas fa-inbox fa-2x text-muted"></i>
+                    <p class="mt-2 text-muted">No items found.</p>
+                </div>
+
+                <!-- Items Table -->
+                <div class="table-responsive" id="isl-table-wrap">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="isl-items-table">
+                        <thead class="bg-dark text-white">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Product Name</th>
+                                <th class="text-center" style="width: 120px;">Code</th>
+                                <th class="text-center" style="width: 130px;">Expiry (Purchase Se)</th>
+                                <th class="text-right" style="width: 90px;">Qty (Stock)</th>
+                                <th class="text-right" style="width: 95px;">Sell Price</th>
+                                <th class="text-right" style="width: 95px;">MRP</th>
+                                <th class="text-center" style="width: 80px;">Select</th>
+                            </tr>
+                        </thead>
+                        <tbody id="isl-items-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted mt-2 d-block" id="isl-count-label"></small>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Multiple Batches Selection Modal -->
 <div class="modal fade" id="sb-batch-modal" tabindex="-1" role="dialog" aria-labelledby="sbBatchModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
@@ -132,6 +219,147 @@
     $(document).ready(function () {
         let rowIndex = {{ $existingItems->count() ?: 1 }};
         let activeModalRow = null;
+        let activeSearchRow = null;   // which row triggered the item search modal
+        let islDebounce = null;
+        const ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
+
+        /* ================================================================
+           ITEM SEARCH MODAL — open on Code/Barcode focus
+           ================================================================ */
+
+
+
+        // Debounced filter inputs
+        $('#isl-filter-name, #isl-filter-code, #isl-filter-expiry').on('input', function () {
+            clearTimeout(islDebounce);
+            islDebounce = setTimeout(fetchItemList, 320);
+        });
+
+        $('#isl-btn-clear').on('click', function () {
+            $('#isl-filter-name, #isl-filter-code, #isl-filter-expiry').val('');
+            fetchItemList();
+        });
+
+        function fetchItemList() {
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let params = {
+                branch_id : branchId,
+                search    : $('#isl-filter-name').val().trim(),
+                code      : $('#isl-filter-code').val().trim(),
+                expiry    : $('#isl-filter-expiry').val().trim(),
+            };
+
+            $('#isl-loading').removeClass('d-none');
+            $('#isl-no-results').addClass('d-none');
+            $('#isl-table-wrap').addClass('d-none');
+
+            $.getJSON(ISL_URL, params, function (res) {
+                $('#isl-loading').addClass('d-none');
+                let items = res.items || [];
+                let $tbody = $('#isl-items-body');
+                $tbody.empty();
+
+                if (items.length === 0) {
+                    $('#isl-no-results').removeClass('d-none');
+                    $('#isl-count-label').text('');
+                    return;
+                }
+
+                items.forEach(function (it, idx) {
+                    let expBadge = it.exp_date
+                        ? `<span class="badge badge-danger px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`
+                        : `<span class="text-muted">—</span>`;
+                    let codeBadge = it.code
+                        ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
+                        : `<span class="text-muted">—</span>`;
+                    let qtyClass = it.qty <= 0 ? 'text-danger' : 'text-success';
+
+                    let tr = `
+                        <tr class="isl-item-row" style="cursor:pointer;"
+                            data-id="${it.id}"
+                            data-name="${it.name.replace(/"/g,'&quot;')}"
+                            data-code="${it.code}"
+                            data-sell="${it.sell_price}"
+                            data-mrp="${it.mrp}"
+                            data-gst="${it.gst_percent}"
+                            data-qty="${it.qty}"
+                            data-exp="${it.exp_date || ''}">
+                            <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
+                            <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                            <td class="align-middle text-center">${codeBadge}</td>
+                            <td class="align-middle text-center">${expBadge}</td>
+                            <td class="align-middle text-right font-weight-bold ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
+                            <td class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—'}</td>
+                            <td class="align-middle text-right text-muted">${it.mrp > 0 ? '₹' + parseFloat(it.mrp).toFixed(2) : '—'}</td>
+                            <td class="align-middle text-center">
+                                <button type="button" class="btn btn-success btn-xs px-2 isl-btn-select"
+                                    data-id="${it.id}"
+                                    data-code="${it.code}">
+                                    <i class="fas fa-check mr-1"></i>Select
+                                </button>
+                            </td>
+                        </tr>`;
+                    $tbody.append(tr);
+                });
+
+                $('#isl-table-wrap').removeClass('d-none');
+                $('#isl-count-label').text(items.length + ' item(s) found');
+
+            }).fail(function () {
+                $('#isl-loading').addClass('d-none');
+                $('#isl-no-results').removeClass('d-none');
+                $('#isl-count-label').text('');
+            });
+        }
+
+        // Clicking a row or its Select button picks the item
+        $(document).on('click', '.isl-item-row, .isl-btn-select', function (e) {
+            e.stopPropagation();
+            let $row = $(this).hasClass('isl-item-row') ? $(this) : $(this).closest('tr');
+            let itemId   = $row.data('id');
+            let itemCode = $row.data('code');
+
+            $('#sb-item-search-modal').modal('hide');
+
+            if (! activeSearchRow || ! itemId) return;
+
+            // Fill code field and trigger the existing lookup (which handles expiry / batch)
+            activeSearchRow.find('.sb-item-code').val(itemCode || itemId);
+            processItemLookup(null, activeSearchRow, itemId);
+            activeSearchRow = null;
+        });
+
+        // When modal closes without selection, put focus back on code field
+        $('#sb-item-search-modal').on('hidden.bs.modal', function () {
+            if (activeSearchRow) {
+                // only refocus if user explicitly cancelled (no selection made)
+                setTimeout(function() {
+                    // do not re-open modal on this programmatic focus; blur first
+                }, 50);
+            }
+        });
+
+        // Prevent the code field focus from re-opening the modal if modal is being closed
+        let islModalOpen = false;
+        $('#sb-item-search-modal').on('show.bs.modal', function() { islModalOpen = true; });
+        $('#sb-item-search-modal').on('hidden.bs.modal', function() {
+            islModalOpen = false;
+            // Brief delay so focus event from modal close doesn't retrigger
+            setTimeout(function() { islModalOpen = false; }, 300);
+        });
+
+        // Override focus handler to not open when already open
+        $(document).off('focus', '.sb-item-code').on('focus', '.sb-item-code', function () {
+            if (islModalOpen) return;
+            activeSearchRow = $(this).closest('tr');
+            let prefill = $.trim($(this).val());
+            $('#isl-filter-name').val(prefill);
+            $('#isl-filter-code').val('');
+            $('#isl-filter-expiry').val('');
+            fetchItemList();
+            islModalOpen = true;
+            $('#sb-item-search-modal').modal('show');
+        });
 
         function updateBranchBadge() {
             let branchName = $('select[name="branch_id"] option:selected').text() || 'URBAN PETS / MOTERA';

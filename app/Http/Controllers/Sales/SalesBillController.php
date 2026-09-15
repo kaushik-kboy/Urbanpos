@@ -264,6 +264,106 @@ class SalesBillController extends Controller
         return 'SB'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
     }
 
+    public function itemList(Request $request)
+    {
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $search   = trim((string) $request->input('search', ''));
+        $expiry   = trim((string) $request->input('expiry', ''));
+        $code     = trim((string) $request->input('code', ''));
+
+        $query = Item::with('gstTax:id,percentage')
+            ->orderBy('name')
+            ->select(['id', 'name', 'item_code', 'ean_upc_code', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details']);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('item_code', 'like', "%{$search}%")
+                  ->orWhere('ean_upc_code', 'like', "%{$search}%");
+            });
+        }
+
+        if ($code !== '') {
+            $query->where(function ($q) use ($code) {
+                $q->where('item_code', 'like', "%{$code}%")
+                  ->orWhere('ean_upc_code', 'like', "%{$code}%");
+            });
+        }
+
+        $items = $query->get();
+
+        // Build stock map for the branch
+        $itemIds  = $items->pluck('id')->all();
+        $stockMap = \App\Models\ItemStock::where('branch_id', $branchId)
+            ->whereIn('item_id', $itemIds)
+            ->pluck('quantity', 'item_id');
+
+        // Build earliest expiry map from purchase invoices
+        $expiryRows = \App\Models\PurchaseInvoiceItem::with('purchaseInvoice')
+            ->whereIn('item_id', $itemIds)
+            ->whereNotNull('exp_date')
+            ->where('exp_date', '!=', '')
+            ->where('exp_date', '!=', '0000-00-00')
+            ->whereHas('purchaseInvoice', fn ($q) => $q->where('branch_id', $branchId))
+            ->orderBy('exp_date', 'asc')
+            ->get(['item_id', 'exp_date', 'sell_price', 'mrp']);
+
+        // If no branch-specific records, fall back to all branches
+        if ($expiryRows->isEmpty()) {
+            $expiryRows = \App\Models\PurchaseInvoiceItem::whereIn('item_id', $itemIds)
+                ->whereNotNull('exp_date')
+                ->where('exp_date', '!=', '')
+                ->where('exp_date', '!=', '0000-00-00')
+                ->orderBy('exp_date', 'asc')
+                ->get(['item_id', 'exp_date', 'sell_price', 'mrp']);
+        }
+
+        // Group expiry info per item (earliest exp_date per item)
+        $expiryMap = [];
+        foreach ($expiryRows as $row) {
+            $iid = $row->item_id;
+            try {
+                $exp = $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null;
+            } catch (\Exception $e) {
+                $exp = is_string($row->exp_date) ? substr($row->exp_date, 0, 10) : null;
+            }
+            if (! $exp) continue;
+            if (! isset($expiryMap[$iid])) {
+                $expiryMap[$iid] = [
+                    'exp_date'   => $exp,
+                    'sell_price' => (float) ($row->sell_price ?? 0),
+                    'mrp'        => (float) ($row->mrp ?? 0),
+                ];
+            }
+        }
+
+        // Filter by expiry if requested
+        $result = [];
+        foreach ($items as $item) {
+            $iid  = $item->id;
+            $exp  = $expiryMap[$iid]['exp_date'] ?? null;
+            $sell = (float) (($expiryMap[$iid]['sell_price'] ?? 0) > 0 ? ($expiryMap[$iid]['sell_price']) : ($item->sell_price ?? 0));
+            $mrp  = (float) (($expiryMap[$iid]['mrp'] ?? 0) > 0 ? ($expiryMap[$iid]['mrp']) : ($item->mrp ?? 0));
+            $qty  = (float) ($stockMap[$iid] ?? 0);
+
+            // Filter by expiry search if provided
+            if ($expiry !== '' && $exp && strpos($exp, $expiry) === false) continue;
+
+            $result[] = [
+                'id'         => $iid,
+                'name'       => $item->name,
+                'code'       => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'exp_date'   => $exp,
+                'qty'        => $qty,
+                'sell_price' => $sell,
+                'mrp'        => $mrp,
+                'gst_percent'=> (float) ($item->gstTax?->percentage ?? 0),
+            ];
+        }
+
+        return response()->json(['items' => $result]);
+    }
+
     public function lookupItem(Request $request)
     {
         $itemId = $request->input('item_id');
