@@ -105,7 +105,7 @@
                             <div class="input-group-prepend">
                                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                             </div>
-                            <input type="text" id="isl-filter-name" class="form-control" placeholder="Search product name / barcode…" autocomplete="off">
+                            <input type="text" id="isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off">
                         </div>
                     </div>
                     <div class="col-md-3">

@@ -282,15 +282,54 @@ class SalesBillController extends Controller
         $where  = [];
         $params = [$branchId, $branchId];
 
+        $orderSql    = 'i.name ASC';
+        $orderParams = [];
+
         if ($search !== '') {
-            $s = "%{$search}%";
-            $where[]  = '(i.name LIKE ? OR i.item_code LIKE ? OR i.ean_upc_code LIKE ?)';
-            $params   = array_merge($params, [$s, $s, $s]);
+            $sWild   = "%{$search}%";
+            $sExact  = $search;
+            $sPrefix = "{$search}%";
+
+            // Barcode (ean_upc_code) only matches exact or prefix — never substring in middle of 13-digit barcode!
+            // Item code matches exact or prefix
+            // Item name matches substring
+            $where[] = '(i.name LIKE ? OR i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
+            $params  = array_merge($params, [$sWild, $sExact, $sPrefix, $sExact, $sPrefix]);
+
+            // Rank exact code / barcode match first, then prefix, then name
+            $orderSql = "
+                CASE
+                    WHEN i.item_code = ? THEN 1
+                    WHEN i.ean_upc_code = ? THEN 2
+                    WHEN i.item_code LIKE ? THEN 3
+                    WHEN i.ean_upc_code LIKE ? THEN 4
+                    WHEN i.name LIKE ? THEN 5
+                    ELSE 6
+                END ASC,
+                i.name ASC
+            ";
+            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sPrefix];
         }
+
         if ($code !== '') {
-            $c = "%{$code}%";
-            $where[]  = '(i.item_code LIKE ? OR i.ean_upc_code LIKE ?)';
-            $params   = array_merge($params, [$c, $c]);
+            $cExact  = $code;
+            $cPrefix = "{$code}%";
+            $where[] = '(i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
+            $params  = array_merge($params, [$cExact, $cPrefix, $cExact, $cPrefix]);
+
+            if ($search === '') {
+                $orderSql = "
+                    CASE
+                        WHEN i.item_code = ? THEN 1
+                        WHEN i.ean_upc_code = ? THEN 2
+                        WHEN i.item_code LIKE ? THEN 3
+                        WHEN i.ean_upc_code LIKE ? THEN 4
+                        ELSE 5
+                    END ASC,
+                    i.name ASC
+                ";
+                $orderParams = [$cExact, $cExact, $cPrefix, $cPrefix];
+            }
         }
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -331,11 +370,12 @@ class SalesBillController extends Controller
             ) ei ON ei.item_id = i.id
             LEFT JOIN gst_taxes gt ON gt.id = i.gst_tax_id
             {$whereClause}
-            ORDER BY i.name ASC
+            ORDER BY {$orderSql}
             LIMIT {$limit}
         ";
 
-        $rows = \Illuminate\Support\Facades\DB::select($sql, $params);
+        $finalParams = array_merge($params, $orderParams);
+        $rows = \Illuminate\Support\Facades\DB::select($sql, $finalParams);
 
         // Fallback: for rows without branch-specific expiry, try all branches
         $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
