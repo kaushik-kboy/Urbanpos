@@ -50,7 +50,7 @@
                 <th style="width: 95px;">Cost Price</th>
                 <th style="width: 95px;">Sell Price</th>
                 <th style="width: 95px;">MRP</th>
-                <th style="width: 85px;" title="Margin % = Profit Amount ÷ Selling Price × 100">Margin %</th>
+                <th style="width: 85px;" title="Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100">Margin %</th>
                 <th style="width: 85px;" title="Profit % = Profit Amount ÷ Cost Price × 100">Profit %</th>
                 <th style="width: 80px;">Disc %</th>
                 <th style="width: 90px;">Disc Amt</th>
@@ -129,25 +129,27 @@
             let costStr = $row.find('.pinv-cost').val();
             let sellStr = $row.find('.pinv-sell').val();
             let mrpStr = $row.find('.pinv-mrp').val();
+            let gstStr = $row.find('.pinv-gst').val();
 
             let qty = parseFloat(qtyStr) || 0;
             let cost = parseFloat(costStr) || 0;
             let sell = parseFloat(sellStr) || 0;
             let mrp = parseFloat(mrpStr) || 0;
+            let gst = parseFloat(gstStr) || 0;
             let base = qty * cost;
 
-            // Margin % = Profit Amount ÷ Selling Price × 100
+            // Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100
             // Profit % = Profit Amount ÷ Cost Price × 100
             let baseSell = sell > 0 ? sell : mrp;
-            let profitAmount = (baseSell > 0 && cost > 0) ? (baseSell - cost) : null;
-            let marginPct = (baseSell > 0 && profitAmount !== null) ? ((profitAmount / baseSell) * 100) : null;
+            let sellExclGst = (baseSell > 0) ? (baseSell / (1 + (gst / 100))) : 0;
+            let profitAmount = (sellExclGst > 0 && cost > 0) ? (sellExclGst - cost) : null;
+            let marginPct = (sellExclGst > 0 && profitAmount !== null) ? ((profitAmount / sellExclGst) * 100) : null;
             let profitPct = (cost > 0 && profitAmount !== null) ? ((profitAmount / cost) * 100) : null;
             $row.find('.pinv-margin').val(marginPct !== null ? marginPct.toFixed(2) + '%' : '');
             $row.find('.pinv-profit').val(profitPct !== null ? profitPct.toFixed(2) + '%' : '');
 
             let $discPct = $row.find('.pinv-disc-percent');
             let $discAmt = $row.find('.pinv-disc-amount');
-            let gst = parseFloat($row.find('.pinv-gst').val()) || 0;
 
             let discPct = parseFloat($discPct.val()) || 0;
             let discAmt = parseFloat($discAmt.val()) || 0;

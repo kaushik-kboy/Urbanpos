@@ -12,10 +12,12 @@
     $costVal = isset($line->cost_price) && $line->cost_price != 0 ? (float)$line->cost_price : (float)($selectedItem->cost_price ?? 0);
     $sellVal = isset($line->sell_price) && $line->sell_price != 0 ? (float)$line->sell_price : (float)($selectedItem->sell_price ?? 0);
     $mrpVal = isset($line->mrp) && $line->mrp != 0 ? (float)$line->mrp : (float)($selectedItem->mrp ?? 0);
+    $gstVal = isset($line->gst_percent) && $line->gst_percent != 0 ? (float)$line->gst_percent : (float)($selectedItem?->gstTax?->percentage ?? 0);
 
     $baseSellVal = $sellVal > 0 ? $sellVal : $mrpVal;
-    $marginVal = ($baseSellVal > 0 && $costVal > 0) ? round((($baseSellVal - $costVal) / $baseSellVal) * 100, 2) : null;
-    $profitVal = ($costVal > 0 && $baseSellVal > 0) ? round((($baseSellVal - $costVal) / $costVal) * 100, 2) : null;
+    $sellExclGstVal = ($baseSellVal > 0) ? ($baseSellVal / (1 + ($gstVal / 100))) : 0;
+    $marginVal = ($sellExclGstVal > 0 && $costVal > 0) ? round((($sellExclGstVal - $costVal) / $sellExclGstVal) * 100, 2) : null;
+    $profitVal = ($costVal > 0 && $sellExclGstVal > 0) ? round((($sellExclGstVal - $costVal) / $costVal) * 100, 2) : null;
 
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
     $freeQtyVal = isset($line->free_qty) && $line->free_qty != 0 ? $line->free_qty : '';
@@ -79,7 +81,7 @@
     <td style="width: 95px;"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost" required autocomplete="off"></td>
     <td style="width: 95px;"><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm pinv-sell" autocomplete="off"></td>
     <td style="width: 95px;"><input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm pinv-mrp" autocomplete="off"></td>
-    <td style="width: 85px;"><input type="text" readonly class="form-control form-control-sm pinv-margin bg-light text-right font-weight-bold" value="{{ $marginVal !== null && $marginVal != 0 ? number_format($marginVal, 2).'%' : '' }}" autocomplete="off" title="Margin % = Profit Amount ÷ Selling Price × 100"></td>
+    <td style="width: 85px;"><input type="text" readonly class="form-control form-control-sm pinv-margin bg-light text-right font-weight-bold" value="{{ $marginVal !== null && $marginVal != 0 ? number_format($marginVal, 2).'%' : '' }}" autocomplete="off" title="Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100"></td>
     <td style="width: 85px;"><input type="text" readonly class="form-control form-control-sm pinv-profit bg-light text-right font-weight-bold" value="{{ $profitVal !== null && $profitVal != 0 ? number_format($profitVal, 2).'%' : '' }}" autocomplete="off" title="Profit % = Profit Amount ÷ Cost Price × 100"></td>
     <td style="width: 80px;"><input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent" autocomplete="off"></td>
     <td style="width: 90px;"><input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm pinv-disc-amount" autocomplete="off"></td>
