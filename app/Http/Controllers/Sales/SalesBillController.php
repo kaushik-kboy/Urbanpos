@@ -326,8 +326,7 @@ class SalesBillController extends Controller
                 INNER JOIN purchase_invoices pih
                         ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
                 WHERE pi2.exp_date IS NOT NULL
-                  AND pi2.exp_date != ''
-                  AND pi2.exp_date != '0000-00-00'
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
                 GROUP BY pi2.item_id
             ) ei ON ei.item_id = i.id
             LEFT JOIN gst_taxes gt ON gt.id = i.gst_tax_id
@@ -351,8 +350,7 @@ class SalesBillController extends Controller
                 FROM purchase_invoice_items pi2
                 WHERE pi2.item_id IN ({$ph})
                   AND pi2.exp_date IS NOT NULL
-                  AND pi2.exp_date != ''
-                  AND pi2.exp_date != '0000-00-00'
+                   AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
                 GROUP BY pi2.item_id
             ";
             foreach (\Illuminate\Support\Facades\DB::select($fbSql, $noExpIds) as $fb) {
