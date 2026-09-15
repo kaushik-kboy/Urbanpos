@@ -484,23 +484,118 @@
                 }
             }
 
-            let taxable = Math.max(0, base - discAmt);
-            let taxAmt = Math.round((taxable * gst / 100) * 100) / 100;
-            let net = taxable + taxAmt;
-
-            if (base > 0) {
-                $row.find('.pinv-gst-amt').val(taxAmt > 0 ? taxAmt.toFixed(2) : '');
-                $row.find('.pinv-row-net').text(net > 0 ? net.toFixed(2) : '');
-            } else {
-                $row.find('.pinv-gst-amt').val('');
-                $row.find('.pinv-row-net').text('');
-            }
-
             calculateTotals();
         }
 
-        function getLiveFinalTotal() {
+        function calculateTotals() {
+            let schemeDisc = parseFloat($('input[name="scheme_item_disc_amt"]').val()) || 0;
+            let otherDisc = parseFloat($('input[name="other_disc_amt"]').val()) || 0;
+            let totalHeaderDiscount = schemeDisc + otherDisc;
+
+            // 1. Collect line data & calculate basic cost after item discount
+            let rowsData = [];
+            let totalBaseAfterItemDisc = 0;
+
+            $('#pinv-items-body tr').each(function () {
+                let $r = $(this);
+                let qty = parseFloat($r.find('.pinv-qty').val()) || 0;
+                let freeQty = parseFloat($r.find('.pinv-free-qty').val()) || 0;
+                let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
+                let discAmt = parseFloat($r.find('.pinv-disc-amount').val()) || 0;
+                let gst = parseFloat($r.find('.pinv-gst').val()) || 0;
+
+                let base = qty * cost;
+                let baseAfterDisc = Math.max(0, base - discAmt);
+                totalBaseAfterItemDisc += baseAfterDisc;
+
+                rowsData.push({
+                    $row: $r,
+                    qty: qty,
+                    freeQty: freeQty,
+                    cost: cost,
+                    base: base,
+                    discAmt: discAmt,
+                    baseAfterDisc: baseAfterDisc,
+                    gst: gst
+                });
+            });
+
+            // 2. Allocate header discount (Scheme ItemDiscAmt + OtherDiscAmt) on basic cost without GST
+            let remainingDiscount = totalHeaderDiscount;
+            let totalQty = 0;
+            let totalCost = 0;
+            let totalDiscAmt = 0;
+            let totalGstAmt = 0;
             let totalNetAmt = 0;
+            let hasAny = false;
+
+            for (let i = 0; i < rowsData.length; i++) {
+                let d = rowsData[i];
+                let extraDeduction = 0;
+
+                if (totalBaseAfterItemDisc > 0 && totalHeaderDiscount > 0) {
+                    if (i === rowsData.length - 1) {
+                        extraDeduction = Math.round(remainingDiscount * 100) / 100;
+                    } else {
+                        extraDeduction = Math.round(((d.baseAfterDisc / totalBaseAfterItemDisc) * totalHeaderDiscount) * 100) / 100;
+                        remainingDiscount -= extraDeduction;
+                    }
+                }
+                extraDeduction = Math.max(0, extraDeduction);
+
+                let taxable = Math.max(0, d.baseAfterDisc - extraDeduction);
+                let taxAmt = Math.round((taxable * d.gst / 100) * 100) / 100;
+                let net = taxable + taxAmt;
+
+                if (d.base > 0) {
+                    d.$row.find('.pinv-gst-amt').val(taxAmt > 0 ? taxAmt.toFixed(2) : '');
+                    d.$row.find('.pinv-row-net').text(net > 0 ? net.toFixed(2) : '');
+                    hasAny = true;
+                } else {
+                    d.$row.find('.pinv-gst-amt').val('');
+                    d.$row.find('.pinv-row-net').text('');
+                }
+
+                totalQty += (d.qty + d.freeQty);
+                totalCost += d.base;
+                totalDiscAmt += d.discAmt;
+                totalGstAmt += taxAmt;
+                totalNetAmt += net;
+            }
+
+            // 3. Update footer totals
+            if (hasAny) {
+                $('#footer-total-qty').text(totalQty > 0 ? totalQty.toFixed(3) : '');
+                $('#footer-total-cost').text(totalCost > 0 ? totalCost.toFixed(2) : '');
+                $('#footer-total-disc').text(totalDiscAmt > 0 ? totalDiscAmt.toFixed(2) : '');
+                $('#footer-total-gst').text(totalGstAmt > 0 ? totalGstAmt.toFixed(2) : '');
+                $('#footer-grand-net').text(totalNetAmt > 0 ? totalNetAmt.toFixed(2) : '');
+            } else {
+                $('#footer-total-qty').text('');
+                $('#footer-total-cost').text('');
+                $('#footer-total-disc').text('');
+                $('#footer-total-gst').text('');
+                $('#footer-grand-net').text('');
+            }
+
+            // 4. Update Final Amount & check match
+            let freight = parseFloat($('input[name="freight"]').val()) || 0;
+            let roundOff = parseFloat($('input[name="round_off"]').val()) || 0;
+            let tcsAmt = parseFloat($('input[name="tcs_amount"]').val()) || 0;
+            let finalTotal = Math.round((totalNetAmt + freight + roundOff + tcsAmt) * 100) / 100;
+
+            $('#display-final-total').text(finalTotal.toFixed(2));
+            checkAmountMatch(finalTotal);
+        }
+
+        function getLiveFinalTotal() {
+            let schemeDisc = parseFloat($('input[name="scheme_item_disc_amt"]').val()) || 0;
+            let otherDisc = parseFloat($('input[name="other_disc_amt"]').val()) || 0;
+            let totalHeaderDiscount = schemeDisc + otherDisc;
+
+            let rowsData = [];
+            let totalBaseAfterItemDisc = 0;
+
             $('#pinv-items-body tr').each(function () {
                 let $r = $(this);
                 let qty = parseFloat($r.find('.pinv-qty').val()) || 0;
@@ -509,22 +604,48 @@
                 let gst = parseFloat($r.find('.pinv-gst').val()) || 0;
 
                 let base = qty * cost;
-                let taxable = Math.max(0, base - discAmt);
-                let gstAmt = Math.round((taxable * gst / 100) * 100) / 100;
-                totalNetAmt += (taxable + gstAmt);
+                let baseAfterDisc = Math.max(0, base - discAmt);
+                totalBaseAfterItemDisc += baseAfterDisc;
+
+                rowsData.push({
+                    baseAfterDisc: baseAfterDisc,
+                    gst: gst
+                });
             });
+
+            let remainingDiscount = totalHeaderDiscount;
+            let totalNetAmt = 0;
+
+            for (let i = 0; i < rowsData.length; i++) {
+                let d = rowsData[i];
+                let extraDeduction = 0;
+
+                if (totalBaseAfterItemDisc > 0 && totalHeaderDiscount > 0) {
+                    if (i === rowsData.length - 1) {
+                        extraDeduction = Math.round(remainingDiscount * 100) / 100;
+                    } else {
+                        extraDeduction = Math.round(((d.baseAfterDisc / totalBaseAfterItemDisc) * totalHeaderDiscount) * 100) / 100;
+                        remainingDiscount -= extraDeduction;
+                    }
+                }
+                extraDeduction = Math.max(0, extraDeduction);
+
+                let taxable = Math.max(0, d.baseAfterDisc - extraDeduction);
+                let taxAmt = Math.round((taxable * d.gst / 100) * 100) / 100;
+                totalNetAmt += (taxable + taxAmt);
+            }
 
             let freight = parseFloat($('input[name="freight"]').val()) || 0;
             let roundOff = parseFloat($('input[name="round_off"]').val()) || 0;
-            let schemeDisc = parseFloat($('input[name="scheme_item_disc_amt"]').val()) || 0;
-            let otherDisc = parseFloat($('input[name="other_disc_amt"]').val()) || 0;
             let tcsAmt = parseFloat($('input[name="tcs_amount"]').val()) || 0;
 
-            return Math.round((totalNetAmt + freight + roundOff + tcsAmt - schemeDisc - otherDisc) * 100) / 100;
+            return Math.round((totalNetAmt + freight + roundOff + tcsAmt) * 100) / 100;
         }
 
-        function checkAmountMatch() {
-            let finalTotal = getLiveFinalTotal();
+        function checkAmountMatch(finalTotal) {
+            if (finalTotal === undefined) {
+                finalTotal = getLiveFinalTotal();
+            }
             $('#display-final-total').text(finalTotal.toFixed(2));
 
             let $invAmtInput = $('input[name="supplier_inv_amount"]');
@@ -555,55 +676,6 @@
                     $invAmtInput.removeClass('is-valid').addClass('is-invalid');
                 }
             }
-        }
-
-        function calculateTotals() {
-            let totalQty = 0;
-            let totalCost = 0;
-            let totalDiscAmt = 0;
-            let totalGstAmt = 0;
-            let totalNetAmt = 0;
-            let hasAny = false;
-
-            $('#pinv-items-body tr').each(function () {
-                let $r = $(this);
-                let qty = parseFloat($r.find('.pinv-qty').val()) || 0;
-                let freeQty = parseFloat($r.find('.pinv-free-qty').val()) || 0;
-                let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
-                let discAmt = parseFloat($r.find('.pinv-disc-amount').val()) || 0;
-                let gst = parseFloat($r.find('.pinv-gst').val()) || 0;
-
-                if (qty > 0 || cost > 0) {
-                    hasAny = true;
-                }
-
-                let base = qty * cost;
-                let taxable = Math.max(0, base - discAmt);
-                let gstAmt = Math.round((taxable * gst / 100) * 100) / 100;
-                let net = taxable + gstAmt;
-
-                totalQty += (qty + freeQty);
-                totalCost += base;
-                totalDiscAmt += discAmt;
-                totalGstAmt += gstAmt;
-                totalNetAmt += net;
-            });
-
-            if (hasAny) {
-                $('#footer-total-qty').text(totalQty > 0 ? totalQty.toFixed(3) : '');
-                $('#footer-total-cost').text(totalCost > 0 ? totalCost.toFixed(2) : '');
-                $('#footer-total-disc').text(totalDiscAmt > 0 ? totalDiscAmt.toFixed(2) : '');
-                $('#footer-total-gst').text(totalGstAmt > 0 ? totalGstAmt.toFixed(2) : '');
-                $('#footer-grand-net').text(totalNetAmt > 0 ? totalNetAmt.toFixed(2) : '');
-            } else {
-                $('#footer-total-qty').text('');
-                $('#footer-total-cost').text('');
-                $('#footer-total-disc').text('');
-                $('#footer-total-gst').text('');
-                $('#footer-grand-net').text('');
-            }
-
-            checkAmountMatch();
         }
 
         function updateExpiryRequirement($row, batchExpiry, shelfLife) {
@@ -832,7 +904,7 @@
         });
 
         $(document).on('input change', 'input[name="supplier_inv_amount"], input[name="freight"], input[name="round_off"], input[name="scheme_item_disc_amt"], input[name="other_disc_amt"], input[name="tcs_amount"]', function () {
-            checkAmountMatch();
+            calculateTotals();
         });
 
         // 4. Form Submit Guard: Inv Amount (Supplier) and final amount MUST match to save

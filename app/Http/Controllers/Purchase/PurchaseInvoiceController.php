@@ -525,10 +525,15 @@ class PurchaseInvoiceController extends Controller
         $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
         $isInterstate = ($header['purchase_type'] ?? null) === 'Interstate';
 
-        return collect($items)->map(function ($line) use ($itemsById, $isInterstate) {
+        $totalHeaderDiscount = (float) ($header['scheme_item_disc_amt'] ?? 0) + (float) ($header['other_disc_amt'] ?? 0);
+
+        // Pre-calculate line base after item-level discount
+        $lineBases = [];
+        $totalBaseAfterItemDisc = 0.0;
+
+        foreach ($items as $idx => $line) {
             $qty = (float) $line['qty'];
             $costPrice = (float) $line['cost_price'];
-            $item = $itemsById[$line['item_id']];
             $base = $qty * $costPrice;
 
             $discPercent = (float) ($line['disc_percent'] ?? 0);
@@ -541,20 +546,59 @@ class PurchaseInvoiceController extends Controller
                 $discPercent = round(($discAmount / $base) * 100, 2);
             }
 
+            $baseAfterDisc = max(0, $base - $discAmount);
+            $lineBases[$idx] = [
+                'base' => $base,
+                'disc_percent' => $discPercent,
+                'disc_amount' => $discAmount,
+                'base_after_disc' => $baseAfterDisc,
+            ];
+            $totalBaseAfterItemDisc += $baseAfterDisc;
+        }
+
+        // Allocate header discount (Scheme ItemDiscAmt + OtherDiscAmt) on basic cost without GST
+        $allocatedExtraDeductions = [];
+        $remainingDiscount = $totalHeaderDiscount;
+        $count = count($items);
+        $i = 0;
+
+        foreach ($items as $idx => $line) {
+            $i++;
+            $baseAfterDisc = $lineBases[$idx]['base_after_disc'];
+            if ($totalBaseAfterItemDisc > 0 && $totalHeaderDiscount > 0) {
+                if ($i === $count) {
+                    $extra = round($remainingDiscount, 2);
+                } else {
+                    $extra = round(($baseAfterDisc / $totalBaseAfterItemDisc) * $totalHeaderDiscount, 2);
+                    $remainingDiscount -= $extra;
+                }
+            } else {
+                $extra = 0.0;
+            }
+            $allocatedExtraDeductions[$idx] = max(0, $extra);
+        }
+
+        return collect($items)->map(function ($line, $idx) use ($itemsById, $isInterstate, $lineBases, $allocatedExtraDeductions) {
+            $qty = (float) $line['qty'];
+            $costPrice = (float) $line['cost_price'];
+            $item = $itemsById[$line['item_id']];
+            $baseInfo = $lineBases[$idx];
+            $extraDeduction = $allocatedExtraDeductions[$idx] ?? 0.0;
+
             $tax = $this->taxEngine->calculate(
                 $qty,
                 $costPrice,
                 $item,
-                $discPercent,
-                $discAmount,
-                0.0,
+                $baseInfo['disc_percent'],
+                $baseInfo['disc_amount'],
+                $extraDeduction,
                 $isInterstate,
                 isTaxInclusive: false
             );
 
-            $effectiveDiscPercent = $tax['disc_amount'] > 0 && $base > 0
-                ? round(($tax['disc_amount'] / $base) * 100, 2)
-                : $discPercent;
+            $effectiveDiscPercent = $tax['disc_amount'] > 0 && $baseInfo['base'] > 0
+                ? round(($tax['disc_amount'] / $baseInfo['base']) * 100, 2)
+                : $baseInfo['disc_percent'];
 
             return [
                 'item_id' => $line['item_id'],
@@ -581,8 +625,6 @@ class PurchaseInvoiceController extends Controller
         $collection = collect($lines);
         $freight = (float) ($data['header']['freight'] ?? 0);
         $roundOff = (float) ($data['header']['round_off'] ?? 0);
-        $otherDiscAmt = (float) ($data['header']['other_disc_amt'] ?? 0);
-        $schemeDiscAmt = (float) ($data['header']['scheme_item_disc_amt'] ?? 0);
         $tcsAmount = (float) ($data['header']['tcs_amount'] ?? 0);
 
         return [
@@ -593,7 +635,7 @@ class PurchaseInvoiceController extends Controller
             'total_sgst' => $collection->sum('sgst_amount'),
             'total_igst' => $collection->sum('igst_amount'),
             'total_qty' => $collection->sum('qty') + $collection->sum('free_qty'),
-            'total' => round($collection->sum('net_amount') + $freight + $roundOff + $tcsAmount - $otherDiscAmt - $schemeDiscAmt, 2),
+            'total' => round($collection->sum('net_amount') + $freight + $roundOff + $tcsAmount, 2),
         ];
     }
 
