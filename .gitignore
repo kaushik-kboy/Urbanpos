@@ -24,3 +24,5 @@ yarn-error.log
 /.zed
 *.sql
 *.zip
+
+deploy.bat

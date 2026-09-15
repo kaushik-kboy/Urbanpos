@@ -581,6 +581,58 @@
             calculateTotals();
         }
 
+        // Validate stock and quantities across all rows
+        function validateStockErrors() {
+            let itemTotals = {};
+            let itemStocks = {};
+
+            $('#sb-items-body tr').each(function () {
+                let itemId = $(this).find('.sb-item-select').val();
+                let qty = parseFloat($(this).find('.sb-qty').val()) || 0;
+                let stockVal = $(this).find('.sb-item-stock').val();
+                let stock = parseFloat(stockVal);
+
+                if (itemId) {
+                    itemTotals[itemId] = (itemTotals[itemId] || 0) + qty;
+                    if (!isNaN(stock)) {
+                        itemStocks[itemId] = stock;
+                    }
+                }
+            });
+
+            let hasStockError = false;
+            let validItemCount = 0;
+
+            $('#sb-items-body tr').each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.sb-item-select').val();
+                let $qtyInput = $row.find('.sb-qty');
+                let qty = parseFloat($qtyInput.val()) || 0;
+
+                if (itemId) {
+                    let totalQty = itemTotals[itemId] || 0;
+                    let stock = itemStocks[itemId] !== undefined ? itemStocks[itemId] : null;
+
+                    if (stock !== null && stock >= 0 && totalQty > stock) {
+                        $qtyInput.addClass('border-danger text-danger')
+                                 .attr('title', 'Total qty (' + totalQty + ') across all rows exceeds stock (' + stock + ')!');
+                        hasStockError = true;
+                    } else if (qty <= 0) {
+                        $qtyInput.addClass('border-danger text-danger')
+                                 .attr('title', 'Quantity 0 se zyada honi chahiye.');
+                        hasStockError = true;
+                    } else {
+                        $qtyInput.removeClass('border-danger text-danger').attr('title', '');
+                        validItemCount++;
+                    }
+                } else {
+                    $qtyInput.removeClass('border-danger text-danger').attr('title', '');
+                }
+            });
+
+            return { hasStockError: hasStockError, validItemCount: validItemCount };
+        }
+
         function calculateTotals() {
             let totalQty = 0;
             let totalDisc = 0;
@@ -618,6 +670,25 @@
 
             $('#display-sb-final-total').text(finalTotal > 0 ? finalTotal.toFixed(2) : '0.00');
             $('#sb-total-items-badge').html('<span class="badge badge-primary px-3 py-2 font-weight-bold">' + itemCount + ' Item' + (itemCount === 1 ? '' : 's') + '</span>');
+
+            updateSaveButtonState();
+        }
+
+        // Enable/disable Save button based on stock and items validity
+        function updateSaveButtonState() {
+            let res = validateStockErrors();
+            let $saveBtn = $('button[type="submit"]');
+
+            if (res.hasStockError || res.validItemCount === 0) {
+                let reason = res.validItemCount === 0 ? 'Kam se kam 1 item aur proper quantity dalein.' : 'Kuch items ki qty available stock se zyada hai ya invalid hai.';
+                $saveBtn.prop('disabled', true)
+                        .attr('title', reason)
+                        .addClass('btn-secondary').removeClass('btn-primary');
+            } else {
+                $saveBtn.prop('disabled', false)
+                        .attr('title', '')
+                        .addClass('btn-primary').removeClass('btn-secondary');
+            }
         }
 
         // Open Batch Selection Modal
@@ -967,8 +1038,22 @@
 
         // Open tender modal when Save button clicked
         $(document).on('click', 'button[type="submit"]', function (e) {
-            let $form = $(this).closest('form');
+            let $btn = $(this);
+            if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
+                e.preventDefault();
+                return false;
+            }
+
+            let $form = $btn.closest('form');
             if (!$form.length) return;
+
+            // Check stock validation before opening tender modal
+            let res = validateStockErrors();
+            if (res.hasStockError || res.validItemCount === 0) {
+                e.preventDefault();
+                alert(res.validItemCount === 0 ? 'Kripya kam se kam ek item ki proper quantity dalein.' : 'Kuch items ki quantity available stock se zyada hai ya invalid hai. Pehle theek karein.');
+                return false;
+            }
 
             // Basic HTML5 validity check first
             if (!$form[0].checkValidity()) {
@@ -1050,8 +1135,22 @@
                 $form.append(`<input type="hidden" name="payments[${i}][amount]" value="${p.amount}">`);
             });
 
+            // Use native form submit to bypass jQuery event re-interception
+            let submitted = false;
+            function doSubmit() {
+                if (!submitted) {
+                    submitted = true;
+                    $form[0].submit(); // native submit — bypasses jQuery click handlers
+                }
+            }
+
+            $('#sb-tender-modal').one('hidden.bs.modal', function () {
+                doSubmit();
+            });
             $('#sb-tender-modal').modal('hide');
-            $form.off('submit').submit();
+
+            // Fallback in case modal event doesn't fire immediately
+            setTimeout(doSubmit, 350);
         });
 
     });
