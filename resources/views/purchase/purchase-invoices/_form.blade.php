@@ -110,10 +110,313 @@
     @include('purchase.purchase-invoices._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>
 
+<!-- ============================================================
+     ITEM SEARCH MODAL — opens on Code/Barcode field focus
+     ============================================================ -->
+<div class="modal fade" id="pinv-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="pinvItemSearchLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white py-2">
+                <h5 class="modal-title" id="pinvItemSearchLabel">
+                    <i class="fas fa-search mr-2"></i>Select Item
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <!-- Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            </div>
+                            <input type="text" id="pinv-isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                            </div>
+                            <input type="text" id="pinv-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                            <input type="text" id="pinv-isl-filter-expiry" class="form-control" placeholder="Filter expiry…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <button type="button" id="pinv-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-times mr-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading / No-results / Hint states -->
+                <div id="pinv-isl-loading" class="text-center py-4 d-none">
+                    <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2 text-muted">Loading items…</p>
+                </div>
+                <div id="pinv-isl-no-results" class="text-center py-4 d-none">
+                    <i class="fas fa-inbox fa-2x text-muted"></i>
+                    <p class="mt-2 text-muted">No items found.</p>
+                </div>
+
+                <!-- Items Table -->
+                <div class="table-responsive" id="pinv-isl-table-wrap">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="pinv-isl-items-table">
+                        <thead class="bg-dark text-white">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Product Name</th>
+                                <th class="text-center" style="width: 120px;">Code</th>
+                                <th class="text-right" style="width: 95px;">Cost Price</th>
+                                <th class="text-right" style="width: 95px;">Sell Price</th>
+                                <th class="text-right" style="width: 90px;">MRP</th>
+                                <th class="text-right" style="width: 85px;">Stock</th>
+                                <th class="text-center" style="width: 120px;">Expiry / Batch</th>
+                                <th class="text-center" style="width: 80px;">Select</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pinv-isl-items-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted mt-2 d-block" id="pinv-isl-count-label"></small>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('js')
 <script>
     $(document).ready(function () {
         let rowIndex = {{ $existingItems->count() ?: 1 }};
+        let activeSearchRow = null;   // which row triggered the item search modal
+        let islDebounce = null;
+        let islCache = {};
+        let islLastKey = null;
+        let islModalOpen = false;
+        const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
+
+        /* ================================================================
+           ITEM SEARCH MODAL — open on Code/Barcode focus
+           ================================================================ */
+
+        // Debounced filter inputs — 400ms to avoid firing on every keystroke
+        $('#pinv-isl-filter-name, #pinv-isl-filter-code, #pinv-isl-filter-expiry').on('input', function () {
+            clearTimeout(islDebounce);
+            islDebounce = setTimeout(fetchItemList, 400);
+        });
+
+        $('#pinv-isl-btn-clear').on('click', function () {
+            $('#pinv-isl-filter-name, #pinv-isl-filter-code, #pinv-isl-filter-expiry').val('');
+            fetchItemList();
+        });
+
+        function showHintState(msg) {
+            $('#pinv-isl-loading').addClass('d-none');
+            $('#pinv-isl-table-wrap').addClass('d-none');
+            $('#pinv-isl-items-body').empty();
+            $('#pinv-isl-no-results').removeClass('d-none').html(
+                '<i class="fas fa-search fa-2x text-muted"></i>' +
+                '<p class="mt-2 text-muted">' + (msg || 'Type at least 1 character to search…') + '</p>'
+            );
+            $('#pinv-isl-count-label').text('');
+        }
+
+        function fetchItemList() {
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let srch     = $.trim($('#pinv-isl-filter-name').val());
+            let code     = $.trim($('#pinv-isl-filter-code').val());
+            let expiry   = $.trim($('#pinv-isl-filter-expiry').val());
+
+            // If no filter at all, show hint without hitting database
+            if (!srch && !code && !expiry) {
+                showHintState('Type product name, code or barcode to search…');
+                return;
+            }
+
+            let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
+
+            // Return cached result if available (same query, same branch)
+            if (islCache[cacheKey]) {
+                if (islLastKey !== cacheKey) {
+                    islLastKey = cacheKey;
+                    renderItems(islCache[cacheKey]);
+                }
+                return;
+            }
+
+            islLastKey = cacheKey;
+            let params = { branch_id: branchId, search: srch, code: code, expiry: expiry };
+
+            $('#pinv-isl-loading').removeClass('d-none');
+            $('#pinv-isl-no-results').addClass('d-none');
+            $('#pinv-isl-table-wrap').addClass('d-none');
+
+            $.getJSON(ISL_URL, params, function (res) {
+                $('#pinv-isl-loading').addClass('d-none');
+                // Cache for 60s
+                islCache[cacheKey] = res.items || [];
+                setTimeout(function() { delete islCache[cacheKey]; }, 60000);
+                renderItems(res.items || []);
+            }).fail(function () {
+                $('#pinv-isl-loading').addClass('d-none');
+                showHintState('Error loading items. Please try again.');
+            });
+        }
+
+        let islSelectedIdx = -1;
+
+        function updateModalHighlight() {
+            let $rows = $('#pinv-isl-items-body tr.pinv-isl-item-row');
+            $rows.removeClass('table-primary');
+            if (islSelectedIdx >= 0 && islSelectedIdx < $rows.length) {
+                let $target = $rows.eq(islSelectedIdx);
+                $target.addClass('table-primary');
+                let container = $('#pinv-isl-table-wrap')[0];
+                let rowEl = $target[0];
+                if (container && rowEl) {
+                    let cTop = container.scrollTop;
+                    let cBottom = cTop + container.clientHeight;
+                    let rTop = rowEl.offsetTop;
+                    let rBottom = rTop + rowEl.clientHeight;
+                    if (rTop < cTop) container.scrollTop = rTop;
+                    else if (rBottom > cBottom) container.scrollTop = rBottom - container.clientHeight;
+                }
+            }
+        }
+
+        $('#pinv-isl-filter-name, #pinv-isl-filter-code, #pinv-isl-filter-expiry').on('keydown', function (e) {
+            let $rows = $('#pinv-isl-items-body tr.pinv-isl-item-row');
+            if ($rows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                islSelectedIdx = Math.min(islSelectedIdx + 1, $rows.length - 1);
+                updateModalHighlight();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                islSelectedIdx = Math.max(islSelectedIdx - 1, 0);
+                updateModalHighlight();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (islSelectedIdx >= 0 && islSelectedIdx < $rows.length) {
+                    $rows.eq(islSelectedIdx).trigger('click');
+                } else if ($rows.length === 1) {
+                    $rows.eq(0).trigger('click');
+                }
+            }
+        });
+
+        function renderItems(items) {
+            let $tbody = $('#pinv-isl-items-body');
+            $tbody.empty();
+
+            if (items.length === 0) {
+                $('#pinv-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-inbox fa-2x text-muted"></i>' +
+                    '<p class="mt-2 text-muted">No items found.</p>'
+                );
+                $('#pinv-isl-count-label').text('');
+                islSelectedIdx = -1;
+                return;
+            }
+
+            let html = '';
+            items.forEach(function (it, idx) {
+                let expBadge = '<span class="text-muted">—</span>';
+                if (it.exp_date) {
+                    expBadge = `<span class="badge badge-info px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`;
+                } else if (['Mandatory', 'Days', 'Month'].includes(it.batch_expiry_details)) {
+                    expBadge = `<span class="badge badge-warning px-2 py-1"><i class="fas fa-exclamation-circle mr-1"></i>${it.batch_expiry_details}</span>`;
+                }
+
+                let codeBadge = it.code
+                    ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
+                    : `<span class="text-muted">—</span>`;
+
+                let qtyClass = it.qty <= 0 ? 'text-muted' : 'text-primary font-weight-bold';
+                let costDisplay = it.cost_price > 0 ? '₹' + parseFloat(it.cost_price).toFixed(2) : '—';
+                let sellDisplay = it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—';
+                let mrpDisplay  = it.mrp > 0 ? '₹' + parseFloat(it.mrp).toFixed(2) : '—';
+
+                html += `
+                    <tr class="pinv-isl-item-row ${idx === 0 ? 'table-primary' : ''}" style="cursor:pointer;"
+                        data-id="${it.id}"
+                        data-code="${it.code}">
+                        <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td class="align-middle text-center">${codeBadge}</td>
+                        <td class="align-middle text-right font-weight-bold text-primary">${costDisplay}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
+                        <td class="align-middle text-right ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
+                        <td class="align-middle text-center">${expBadge}</td>
+                        <td class="align-middle text-center">
+                            <button type="button" class="btn btn-success btn-xs px-2 pinv-isl-btn-select"
+                                data-id="${it.id}" data-code="${it.code}">
+                                <i class="fas fa-check mr-1"></i>Select
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+            $tbody.html(html);
+            $('#pinv-isl-table-wrap').removeClass('d-none');
+            $('#pinv-isl-count-label').text(items.length + (items.length === 100 ? '+ (showing top 100)' : '') + ' item(s) found');
+            islSelectedIdx = items.length > 0 ? 0 : -1;
+        }
+
+        // Clicking a row or its Select button picks the item
+        $(document).on('click', '.pinv-isl-item-row, .pinv-isl-btn-select', function (e) {
+            e.stopPropagation();
+            let $row = $(this).hasClass('pinv-isl-item-row') ? $(this) : $(this).closest('tr');
+            let itemId   = $row.data('id');
+            let itemCode = $row.data('code');
+
+            $('#pinv-item-search-modal').modal('hide');
+
+            if (! activeSearchRow || ! itemId) return;
+
+            activeSearchRow.find('.pinv-item-code').val(itemCode || itemId);
+            processPurchaseItemLookup(activeSearchRow, itemId);
+            activeSearchRow = null;
+        });
+
+        // Modal open/close guards
+        $('#pinv-item-search-modal').on('show.bs.modal', function() { islModalOpen = true; });
+        $('#pinv-item-search-modal').on('hidden.bs.modal', function() {
+            islModalOpen = false;
+            setTimeout(function() { islModalOpen = false; }, 300);
+        });
+
+        // Open modal on Code/Barcode field focus
+        $(document).off('focus', '.pinv-item-code').on('focus', '.pinv-item-code', function () {
+            if (islModalOpen) return;
+            activeSearchRow = $(this).closest('tr');
+            let prefill = $.trim($(this).val());
+            $('#pinv-isl-filter-name').val(prefill);
+            $('#pinv-isl-filter-code').val('');
+            $('#pinv-isl-filter-expiry').val('');
+            fetchItemList();
+            islModalOpen = true;
+            $('#pinv-item-search-modal').modal('show');
+            $('#pinv-item-search-modal').one('shown.bs.modal', function () {
+                $('#pinv-isl-filter-name').focus();
+                if (prefill) fetchItemList();
+            });
+        });
 
         // Disable browser autocomplete dropdown on all number and text inputs in form
         $('#pinv-items-table input, form input').attr('autocomplete', 'off');
@@ -342,6 +645,80 @@
             }
         }
 
+        function processPurchaseItemLookup($row, itemId, query) {
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let $select = $row.find('.pinv-item-select');
+            let $code = $row.find('.pinv-item-code');
+
+            let params = { branch_id: branchId };
+            if (itemId) {
+                params.item_id = itemId;
+            } else if (query) {
+                params.query = query;
+            } else {
+                return;
+            }
+
+            $.getJSON('{{ route("purchase.purchase-invoices.lookup-item") }}', params, function (data) {
+                if (data && data.id) {
+                    let codeVal = data.item_code || data.ean_upc_code || '';
+                    if (codeVal) {
+                        $code.val(codeVal);
+                    }
+
+                    if ($select.find(`option[value="${data.id}"]`).length === 0) {
+                        let opt = new Option(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''), data.id, true, true);
+                        let $optEl = $(opt);
+                        $optEl.attr('data-code', data.item_code || '').data('code', data.item_code || '');
+                        $optEl.attr('data-ean', data.ean_upc_code || '').data('ean', data.ean_upc_code || '');
+                        $optEl.attr('data-cost', data.cost_price || 0).data('cost', data.cost_price || 0);
+                        $optEl.attr('data-sell', data.sell_price || 0).data('sell', data.sell_price || 0);
+                        $optEl.attr('data-mrp', data.mrp || 0).data('mrp', data.mrp || 0);
+                        $optEl.attr('data-gst', data.gst_percent || 0).data('gst', data.gst_percent || 0);
+                        $optEl.attr('data-batch-expiry', data.batch_expiry_details || 'Not Required').data('batch-expiry', data.batch_expiry_details || 'Not Required');
+                        $optEl.attr('data-shelf-life', data.shelf_life_days || '').data('shelf-life', data.shelf_life_days || '');
+                        $select.append(opt);
+                    }
+                    $select.val(data.id).trigger('change.select2');
+
+                    // Set pricing fields
+                    if (data.cost_price > 0) {
+                        $row.find('.pinv-cost').val(parseFloat(data.cost_price).toFixed(2));
+                    }
+                    if (data.sell_price > 0) {
+                        $row.find('.pinv-sell').val(parseFloat(data.sell_price).toFixed(2));
+                    }
+                    if (data.mrp > 0) {
+                        $row.find('.pinv-mrp').val(parseFloat(data.mrp).toFixed(2));
+                    }
+                    if (data.gst_percent >= 0) {
+                        $row.find('.pinv-gst').val(parseFloat(data.gst_percent).toFixed(2));
+                    }
+
+                    // Update expiry rules
+                    updateExpiryRequirement($row, data.batch_expiry_details, data.shelf_life_days);
+
+                    // If expiry is already known (or computed), populate it
+                    if (data.exp_date && !$row.find('.pinv-exp-date').val()) {
+                        $row.find('.pinv-exp-date').val(data.exp_date);
+                    }
+
+                    calculateRow($row, 'base');
+
+                    // Next field focus
+                    let isExpRequired = ['Mandatory', 'Days', 'Month'].includes(data.batch_expiry_details);
+                    if (isExpRequired && !$row.find('.pinv-exp-date').val()) {
+                        $row.find('.pinv-exp-date').focus();
+                    } else {
+                        $row.find('.pinv-qty').focus();
+                    }
+                } else {
+                    $code.addClass('is-invalid');
+                    setTimeout(function () { $code.removeClass('is-invalid'); }, 2500);
+                }
+            });
+        }
+
         // 1. Code Input: When entering code, automatically get Description & all other values
         $(document).on('change blur keydown', '.pinv-item-code', function (e) {
             if (e.type === 'keydown' && e.key !== 'Enter') {
@@ -380,28 +757,7 @@
             if (matchedId) {
                 $select.val(matchedId).trigger('change');
             } else {
-                // Lookup via AJAX
-                $.getJSON('{{ route("purchase.purchase-invoices.lookup-item") }}', { query: query }, function (data) {
-                    if (data && data.id) {
-                        if ($select.find(`option[value="${data.id}"]`).length === 0) {
-                            let opt = new Option(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''), data.id, true, true);
-                            let $optEl = $(opt);
-                            $optEl.attr('data-code', data.item_code || '').data('code', data.item_code || '');
-                            $optEl.attr('data-ean', data.ean_upc_code || '').data('ean', data.ean_upc_code || '');
-                            $optEl.attr('data-cost', data.cost_price || 0).data('cost', data.cost_price || 0);
-                            $optEl.attr('data-sell', data.sell_price || 0).data('sell', data.sell_price || 0);
-                            $optEl.attr('data-mrp', data.mrp || 0).data('mrp', data.mrp || 0);
-                            $optEl.attr('data-gst', data.gst_percent || 0).data('gst', data.gst_percent || 0);
-                            $optEl.attr('data-batch-expiry', data.batch_expiry_details || 'Not Required').data('batch-expiry', data.batch_expiry_details || 'Not Required');
-                            $optEl.attr('data-shelf-life', data.shelf_life_days || '').data('shelf-life', data.shelf_life_days || '');
-                            $select.append(opt);
-                        }
-                        $select.val(data.id).trigger('change');
-                    } else {
-                        $input.addClass('is-invalid');
-                        setTimeout(function () { $input.removeClass('is-invalid'); }, 2500);
-                    }
-                });
+                processPurchaseItemLookup($row, null, query);
             }
         });
 

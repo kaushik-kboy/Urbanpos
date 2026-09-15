@@ -33,7 +33,7 @@
 <tr>
     <td class="text-center align-middle font-weight-bold pinv-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     <td style="min-width: 110px;">
-        <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" title="Enter item code or barcode">
+        <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode">
     </td>
     <td style="min-width: 220px;">
         <select name="items[{{ $index }}][item_id]" class="form-control form-control-sm select2 pinv-item-select" required data-placeholder="Select item">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Purchase;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
+use App\Models\ItemStock;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
@@ -245,34 +246,242 @@ class PurchaseInvoiceController extends Controller
         return 'PINV'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
     }
 
-    public function lookupItem(Request $request)
+    public function itemList(Request $request)
     {
-        $query = trim($request->input('query', ''));
-        if ($query === '') {
-            return response()->json(null);
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $search   = trim((string) $request->input('search', ''));
+        $expiry   = trim((string) $request->input('expiry', ''));
+        $code     = trim((string) $request->input('code', ''));
+
+        // Require at least 1 character to avoid loading 8000+ items on initial empty state
+        $hasFilter = $search !== '' || $code !== '' || $expiry !== '';
+        if (! $hasFilter) {
+            return response()->json(['items' => [], 'hint' => 'Type to search items…']);
         }
 
-        $item = Item::with('gstTax:id,percentage')
-            ->where('item_code', $query)
-            ->orWhere('ean_upc_code', $query)
-            ->orWhere('name', 'like', "%{$query}%")
-            ->first();
+        // --- Single optimised query: items LEFT JOINed with stock & previous purchase info ---
+        $limit  = 100;
+        $where  = [];
+        $params = [$branchId, $branchId];
+
+        $orderSql    = 'i.name ASC';
+        $orderParams = [];
+
+        if ($search !== '') {
+            $sWild   = "%{$search}%";
+            $sExact  = $search;
+            $sPrefix = "{$search}%";
+
+            // Barcode (ean_upc_code) only matches exact or prefix — never substring in middle of 13-digit barcode!
+            // Item code matches exact or prefix
+            // Item name matches substring
+            $where[] = '(i.name LIKE ? OR i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
+            $params  = array_merge($params, [$sWild, $sExact, $sPrefix, $sExact, $sPrefix]);
+
+            // Rank exact code / barcode match first, then prefix, then name
+            $orderSql = "
+                CASE
+                    WHEN i.item_code = ? THEN 1
+                    WHEN i.ean_upc_code = ? THEN 2
+                    WHEN i.item_code LIKE ? THEN 3
+                    WHEN i.ean_upc_code LIKE ? THEN 4
+                    WHEN i.name LIKE ? THEN 5
+                    ELSE 6
+                END ASC,
+                i.name ASC
+            ";
+            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sPrefix];
+        }
+
+        if ($code !== '') {
+            $cExact  = $code;
+            $cPrefix = "{$code}%";
+            $where[] = '(i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
+            $params  = array_merge($params, [$cExact, $cPrefix, $cExact, $cPrefix]);
+
+            if ($search === '') {
+                $orderSql = "
+                    CASE
+                        WHEN i.item_code = ? THEN 1
+                        WHEN i.ean_upc_code = ? THEN 2
+                        WHEN i.item_code LIKE ? THEN 3
+                        WHEN i.ean_upc_code LIKE ? THEN 4
+                        ELSE 5
+                    END ASC,
+                    i.name ASC
+                ";
+                $orderParams = [$cExact, $cExact, $cPrefix, $cPrefix];
+            }
+        }
+
+        $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "
+            SELECT
+                i.id,
+                i.name,
+                COALESCE(i.item_code, '')  AS item_code,
+                COALESCE(i.ean_upc_code, '') AS ean_upc_code,
+                COALESCE(st.quantity, 0)   AS qty,
+                COALESCE(
+                    NULLIF(ei.cost_price, 0),
+                    NULLIF(i.cost_price, 0),
+                    0
+                )                          AS cost_price,
+                COALESCE(
+                    NULLIF(ei.sell_price, 0),
+                    NULLIF(i.sell_price, 0),
+                    0
+                )                          AS sell_price,
+                COALESCE(
+                    NULLIF(ei.mrp, 0),
+                    NULLIF(i.mrp, 0),
+                    0
+                )                          AS mrp,
+                ei.exp_date,
+                COALESCE(i.batch_expiry_details, 'Not Required') AS batch_expiry_details,
+                i.shelf_life_days,
+                i.minimum_shelf_life_days,
+                COALESCE(gt.percentage, 0) AS gst_percent
+            FROM items i
+            LEFT JOIN item_stocks st
+                   ON st.item_id = i.id AND st.branch_id = ?
+            LEFT JOIN (
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.cost_price ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS cost_price,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS sell_price,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS mrp
+                FROM purchase_invoice_items pi2
+                INNER JOIN purchase_invoices pih
+                        ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
+                WHERE pi2.exp_date IS NOT NULL
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                GROUP BY pi2.item_id
+            ) ei ON ei.item_id = i.id
+            LEFT JOIN gst_taxes gt ON gt.id = i.gst_tax_id
+            {$whereClause}
+            ORDER BY {$orderSql}
+            LIMIT {$limit}
+        ";
+
+        $finalParams = array_merge($params, $orderParams);
+        $rows = DB::select($sql, $finalParams);
+
+        // Cross-branch fallback for exp_date/pricing if not found in branch
+        $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
+        $expiryFallback = [];
+        if (! empty($noExpIds)) {
+            $ph = implode(',', array_fill(0, count($noExpIds), '?'));
+            $fbSql = "
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.cost_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS cost_price,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS sell_price,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS mrp
+                FROM purchase_invoice_items pi2
+                WHERE pi2.item_id IN ({$ph})
+                  AND pi2.exp_date IS NOT NULL
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                GROUP BY pi2.item_id
+            ";
+            foreach (DB::select($fbSql, $noExpIds) as $fb) {
+                $expiryFallback[$fb->item_id] = $fb;
+            }
+        }
+
+        $result = [];
+        foreach ($rows as $row) {
+            $expRaw = $row->exp_date ?? null;
+            if (empty($expRaw) && isset($expiryFallback[$row->id])) {
+                $fb     = $expiryFallback[$row->id];
+                $expRaw = $fb->exp_date;
+                if ((float) ($fb->cost_price ?? 0) > 0 && (float) $row->cost_price <= 0) $row->cost_price = $fb->cost_price;
+                if ((float) ($fb->sell_price ?? 0) > 0 && (float) $row->sell_price <= 0) $row->sell_price = $fb->sell_price;
+                if ((float) ($fb->mrp ?? 0) > 0        && (float) $row->mrp <= 0)        $row->mrp        = $fb->mrp;
+            }
+
+            $exp = null;
+            if (! empty($expRaw) && $expRaw !== '0000-00-00') {
+                try {
+                    $exp = \Carbon\Carbon::parse($expRaw)->format('Y-m-d');
+                } catch (\Exception $e) {
+                    $exp = substr((string) $expRaw, 0, 10) ?: null;
+                }
+            }
+
+            if ($expiry !== '' && (! $exp || strpos($exp, $expiry) === false)) continue;
+
+            $result[] = [
+                'id'                      => (int) $row->id,
+                'name'                    => $row->name,
+                'code'                    => $row->item_code ?: ($row->ean_upc_code ?: ''),
+                'qty'                     => (float) $row->qty,
+                'cost_price'              => (float) $row->cost_price,
+                'sell_price'              => (float) $row->sell_price,
+                'mrp'                     => (float) $row->mrp,
+                'exp_date'                => $exp,
+                'batch_expiry_details'    => $row->batch_expiry_details ?? 'Not Required',
+                'shelf_life_days'         => $row->shelf_life_days ? (int) $row->shelf_life_days : null,
+                'minimum_shelf_life_days' => $row->minimum_shelf_life_days ? (int) $row->minimum_shelf_life_days : null,
+                'gst_percent'             => (float) $row->gst_percent,
+            ];
+        }
+
+        return response()->json(['items' => $result]);
+    }
+
+    public function lookupItem(Request $request)
+    {
+        $itemId = $request->input('item_id');
+        $query  = trim((string) $request->input('query', ''));
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+
+        $item = null;
+        if (! empty($itemId)) {
+            $item = Item::with('gstTax:id,percentage')->find($itemId);
+        }
+
+        if (! $item && $query !== '') {
+            $item = Item::with('gstTax:id,percentage')
+                ->where('item_code', $query)
+                ->orWhere('ean_upc_code', $query)
+                ->orWhere('name', 'like', "%{$query}%")
+                ->first();
+
+            if (! $item && is_numeric($query)) {
+                $item = Item::with('gstTax:id,percentage')->find($query);
+            }
+        }
 
         if (! $item) {
             return response()->json(null);
         }
 
+        $stock = (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0);
+
+        // Check if there is recent purchase invoice exp_date
+        $lastExp = DB::table('purchase_invoice_items as pii')
+            ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
+            ->where('pii.item_id', $item->id)
+            ->whereNotNull('pii.exp_date')
+            ->whereRaw("CAST(pii.exp_date AS CHAR) NOT IN ('', '0000-00-00')")
+            ->orderBy('pi.invoice_date', 'desc')
+            ->value('pii.exp_date');
+
         return response()->json([
-            'id' => $item->id,
-            'name' => $item->name,
-            'item_code' => $item->item_code,
-            'ean_upc_code' => $item->ean_upc_code,
-            'cost_price' => (float) ($item->cost_price ?? 0),
-            'sell_price' => (float) ($item->sell_price ?? 0),
-            'mrp' => (float) ($item->mrp ?? 0),
-            'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
-            'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
-            'shelf_life_days' => $item->shelf_life_days ? (int) $item->shelf_life_days : null,
+            'id'                      => $item->id,
+            'name'                    => $item->name,
+            'item_code'               => $item->item_code,
+            'ean_upc_code'            => $item->ean_upc_code,
+            'cost_price'              => (float) ($item->cost_price ?? 0),
+            'sell_price'              => (float) ($item->sell_price ?? 0),
+            'mrp'                     => (float) ($item->mrp ?? 0),
+            'stock'                   => $stock,
+            'exp_date'                => $lastExp ? \Carbon\Carbon::parse($lastExp)->format('Y-m-d') : null,
+            'gst_percent'             => (float) ($item->gstTax?->percentage ?? 0),
+            'batch_expiry_details'    => $item->batch_expiry_details ?? 'Not Required',
+            'shelf_life_days'         => $item->shelf_life_days ? (int) $item->shelf_life_days : null,
             'minimum_shelf_life_days' => $item->minimum_shelf_life_days ? (int) $item->minimum_shelf_life_days : null,
         ]);
     }
