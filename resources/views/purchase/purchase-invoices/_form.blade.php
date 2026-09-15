@@ -385,14 +385,15 @@
                     if (data && data.id) {
                         if ($select.find(`option[value="${data.id}"]`).length === 0) {
                             let opt = new Option(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''), data.id, true, true);
-                            $(opt).attr('data-code', data.item_code || '');
-                            $(opt).attr('data-ean', data.ean_upc_code || '');
-                            $(opt).attr('data-cost', data.cost_price || 0);
-                            $(opt).attr('data-sell', data.sell_price || 0);
-                            $(opt).attr('data-mrp', data.mrp || 0);
-                            $(opt).attr('data-gst', data.gst_percent || 0);
-                            $(opt).attr('data-batch-expiry', data.batch_expiry_details || 'Not Required');
-                            $(opt).attr('data-shelf-life', data.shelf_life_days || '');
+                            let $optEl = $(opt);
+                            $optEl.attr('data-code', data.item_code || '').data('code', data.item_code || '');
+                            $optEl.attr('data-ean', data.ean_upc_code || '').data('ean', data.ean_upc_code || '');
+                            $optEl.attr('data-cost', data.cost_price || 0).data('cost', data.cost_price || 0);
+                            $optEl.attr('data-sell', data.sell_price || 0).data('sell', data.sell_price || 0);
+                            $optEl.attr('data-mrp', data.mrp || 0).data('mrp', data.mrp || 0);
+                            $optEl.attr('data-gst', data.gst_percent || 0).data('gst', data.gst_percent || 0);
+                            $optEl.attr('data-batch-expiry', data.batch_expiry_details || 'Not Required').data('batch-expiry', data.batch_expiry_details || 'Not Required');
+                            $optEl.attr('data-shelf-life', data.shelf_life_days || '').data('shelf-life', data.shelf_life_days || '');
                             $select.append(opt);
                         }
                         $select.val(data.id).trigger('change');
@@ -417,17 +418,17 @@
             }
 
             let $opt = $select.find('option:selected');
-            let itemCode = $opt.data('code') || $opt.data('ean') || '';
+            let itemCode = $opt.attr('data-code') || $opt.data('code') || $opt.attr('data-ean') || $opt.data('ean') || '';
             if (itemCode) {
                 $row.find('.pinv-item-code').val(itemCode);
             }
 
-            let cost = parseFloat($opt.data('cost'));
-            let sell = parseFloat($opt.data('sell'));
-            let mrp = parseFloat($opt.data('mrp'));
-            let gst = parseFloat($opt.data('gst'));
-            let batchExpiry = $opt.data('batch-expiry');
-            let shelfLife = parseInt($opt.data('shelf-life') || 0);
+            let cost = parseFloat($opt.attr('data-cost') !== undefined ? $opt.attr('data-cost') : $opt.data('cost'));
+            let sell = parseFloat($opt.attr('data-sell') !== undefined ? $opt.attr('data-sell') : $opt.data('sell'));
+            let mrp = parseFloat($opt.attr('data-mrp') !== undefined ? $opt.attr('data-mrp') : $opt.data('mrp'));
+            let gst = parseFloat($opt.attr('data-gst') !== undefined ? $opt.attr('data-gst') : $opt.data('gst'));
+            let batchExpiry = $opt.attr('data-batch-expiry') || $opt.data('batch-expiry');
+            let shelfLife = parseInt($opt.attr('data-shelf-life') || $opt.data('shelf-life') || 0);
 
             updateExpiryRequirement($row, batchExpiry, shelfLife);
 
@@ -435,7 +436,7 @@
                 $row.find('.pinv-cost').val(!isNaN(cost) && cost > 0 ? cost.toFixed(2) : '');
                 $row.find('.pinv-sell').val(!isNaN(sell) && sell > 0 ? sell.toFixed(2) : '');
                 $row.find('.pinv-mrp').val(!isNaN(mrp) && mrp > 0 ? mrp.toFixed(2) : '');
-                $row.find('.pinv-gst').val(!isNaN(gst) && gst > 0 ? gst.toFixed(2) : '');
+                $row.find('.pinv-gst').val(!isNaN(gst) && gst >= 0 ? gst.toFixed(2) : '');
 
                 calculateRow($row);
             } else {
@@ -449,7 +450,7 @@
                         $row.find('.pinv-cost').val(data.cost_price > 0 ? Number(data.cost_price).toFixed(2) : '');
                         $row.find('.pinv-sell').val(data.sell_price > 0 ? Number(data.sell_price).toFixed(2) : '');
                         $row.find('.pinv-mrp').val(data.mrp > 0 ? Number(data.mrp).toFixed(2) : '');
-                        $row.find('.pinv-gst').val(Number(data.gst_percent || 0) > 0 ? Number(data.gst_percent).toFixed(2) : '');
+                        $row.find('.pinv-gst').val(Number(data.gst_percent || 0) >= 0 ? Number(data.gst_percent).toFixed(2) : '');
 
                         calculateRow($row);
                     }
@@ -470,7 +471,7 @@
             calculateRow($(this).closest('tr'), 'amount');
         });
 
-        $(document).on('input', '.pinv-gst, .pinv-free-qty', function () {
+        $(document).on('input change blur', '.pinv-gst, .pinv-free-qty', function () {
             calculateRow($(this).closest('tr'), 'other');
         });
 
@@ -484,7 +485,7 @@
             let finalTotal = getLiveFinalTotal();
             let diff = Math.round((invAmt - finalTotal) * 100) / 100;
 
-            if (Math.abs(diff) > 0.01) {
+            if (invAmt > 0 && Math.abs(diff) > 0.01) {
                 e.preventDefault();
                 let diffMsg = (diff > 0 ? '+' : '') + diff.toFixed(2);
                 alert("Inv Amount (Supplier) [₹" + invAmt.toFixed(2) + "] and Final Amount [₹" + finalTotal.toFixed(2) + "] same ho to hi save hoga!\n\nDifference: ₹" + diffMsg);

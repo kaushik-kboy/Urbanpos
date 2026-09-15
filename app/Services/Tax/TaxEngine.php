@@ -22,6 +22,8 @@ class TaxEngine
      *                              Only meaningful for documents that carry a Local/
      *                              Interstate type (Purchase Invoice, Sales Bill, Sales
      *                              Return) — left false (all-Local shape) elsewhere.
+     * @param  bool|null  $isTaxInclusive  Explicit override for tax inclusive/exclusive calculation.
+     *                                     When null, defaults to $item->tax_inclusive.
      * @return array{disc_amount: float, gst_percent: float, taxable_value: float, gst_tax_amount: float, cgst_amount: float, sgst_amount: float, igst_amount: float, net_amount: float}
      */
     public function calculate(
@@ -32,6 +34,7 @@ class TaxEngine
         float $discAmount = 0.0,
         float $extraDeductions = 0.0,
         bool $isInterstate = false,
+        ?bool $isTaxInclusive = null,
     ): array {
         $base = $qty * $price;
 
@@ -42,7 +45,9 @@ class TaxEngine
         $taxableValue = max(0, $base - $discAmount - $extraDeductions);
         $gstPercent = (float) ($item->gstTax->percentage ?? 0);
 
-        if ($item->tax_inclusive && $gstPercent > 0) {
+        $inclusive = $isTaxInclusive !== null ? $isTaxInclusive : (bool) $item->tax_inclusive;
+
+        if ($inclusive && $gstPercent > 0) {
             $preTaxValue = round($taxableValue / (1 + $gstPercent / 100), 2);
             $gstTaxAmount = round($taxableValue - $preTaxValue, 2);
             $taxableValue = $preTaxValue;

@@ -224,10 +224,14 @@ class PurchaseInvoiceController extends Controller
 
     private function assertSupplierInvAmountMatchesTotal(array $header, array $totals): void
     {
-        $supplierInvAmt = round((float) ($header['supplier_inv_amount'] ?? 0), 2);
+        if (empty($header['supplier_inv_amount'])) {
+            return;
+        }
+
+        $supplierInvAmt = round((float) $header['supplier_inv_amount'], 2);
         $finalAmount = round((float) ($totals['total'] ?? 0), 2);
 
-        if (abs($supplierInvAmt - $finalAmount) > 0.01) {
+        if ($supplierInvAmt > 0 && abs($supplierInvAmt - $finalAmount) > 0.01) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'supplier_inv_amount' => "Inv Amount (Supplier) [₹" . number_format($supplierInvAmt, 2) . "] and Final Amount [₹" . number_format($finalAmount, 2) . "] same ho to hi save hoga (Difference: ₹" . number_format($supplierInvAmt - $finalAmount, 2) . ").",
             ]);
@@ -328,7 +332,16 @@ class PurchaseInvoiceController extends Controller
                 $discPercent = round(($discAmount / $base) * 100, 2);
             }
 
-            $tax = $this->taxEngine->calculate($qty, $costPrice, $item, $discPercent, $discAmount, 0.0, $isInterstate);
+            $tax = $this->taxEngine->calculate(
+                $qty,
+                $costPrice,
+                $item,
+                $discPercent,
+                $discAmount,
+                0.0,
+                $isInterstate,
+                isTaxInclusive: false
+            );
 
             $effectiveDiscPercent = $tax['disc_amount'] > 0 && $base > 0
                 ? round(($tax['disc_amount'] / $base) * 100, 2)
