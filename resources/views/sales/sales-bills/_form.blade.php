@@ -215,6 +215,77 @@
     </div>
 </div>
 
+{{-- ============================================================
+     TENDER / PAYMENT MODAL — shown on Save button click
+     ============================================================ --}}
+<div class="modal fade" id="sb-tender-modal" tabindex="-1" role="dialog" aria-labelledby="sbTenderModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white py-2">
+                <h5 class="modal-title" id="sbTenderModalLabel">
+                    <i class="fas fa-cash-register mr-2"></i>Payment / Tender
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                {{-- Bill total display --}}
+                <div class="alert alert-light border py-2 mb-3 d-flex justify-content-between align-items-center">
+                    <span class="text-muted font-weight-bold">Bill Total:</span>
+                    <strong class="text-success h5 mb-0">₹<span id="tender-bill-total">0.00</span></strong>
+                </div>
+
+                {{-- Payment Rows --}}
+                <table class="table table-sm table-bordered mb-2" id="tender-rows-table">
+                    <thead class="bg-dark text-white">
+                        <tr>
+                            <th>Payment Mode</th>
+                            <th class="text-right" style="width: 130px;">Amount (₹)</th>
+                            <th style="width: 30px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tender-rows-body">
+                        {{-- Rows added dynamically --}}
+                    </tbody>
+                </table>
+
+                <button type="button" id="tender-add-row" class="btn btn-link btn-sm p-0">
+                    <i class="fas fa-plus-circle mr-1"></i>Add Another Mode
+                </button>
+
+                <hr class="my-2">
+
+                {{-- Summary --}}
+                <div class="row small font-weight-bold">
+                    <div class="col-6 text-right text-muted">Tender Amount:</div>
+                    <div class="col-6 text-right text-primary" id="tender-tendered">₹0.00</div>
+                    <div class="col-6 text-right text-muted">Balance:</div>
+                    <div class="col-6 text-right" id="tender-balance">₹0.00</div>
+                    <div class="col-6 text-right text-muted">Outstanding (after bill):</div>
+                    <div class="col-6 text-right text-danger" id="tender-outstanding">₹0.00</div>
+                </div>
+
+                <div id="tender-error" class="alert alert-danger py-1 mt-2 d-none small"></div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
+                    <i class="fas fa-arrow-left mr-1"></i>Cancel
+                </button>
+                <button type="button" id="tender-confirm-btn" class="btn btn-success btn-sm">
+                    <i class="fas fa-check mr-1"></i>Confirm & Save Bill
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Hidden: JSON-encoded TenderTypes for JS --}}
+<script id="tender-types-data" type="application/json">
+    @json($tenderTypes->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'mandate_refno' => $t->mandate_refno]))
+</script>
+
+
 @push('js')
 <script>
     $(document).ready(function () {
@@ -825,6 +896,146 @@
             }
         });
         calculateTotals();
+
+        /* ================================================================
+           TENDER / PAYMENT MODAL — intercept form submit
+           ================================================================ */
+        const TENDER_TYPES = JSON.parse(document.getElementById('tender-types-data').textContent || '[]');
+        let tenderBillTotal = 0;
+
+        function buildTenderTypeOptions(selectedId) {
+            let html = '<option value="">-- Select Mode --</option>';
+            TENDER_TYPES.forEach(function (t) {
+                let sel = (t.id == selectedId) ? 'selected' : '';
+                html += `<option value="${t.id}" data-mandate="${t.mandate_refno ? 1 : 0}" ${sel}>${t.name}</option>`;
+            });
+            return html;
+        }
+
+        function addTenderRow(typeId, amount) {
+            let rowHtml = `
+                <tr class="tender-row">
+                    <td>
+                        <select class="form-control form-control-sm tender-type-sel">${buildTenderTypeOptions(typeId || '')}</select>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm text-right tender-amount" step="0.01" min="0" value="${amount || ''}">
+                    </td>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-link btn-sm text-danger p-0 tender-remove-row" title="Remove">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            $('#tender-rows-body').append(rowHtml);
+            recalcTender();
+        }
+
+        function recalcTender() {
+            let tendered = 0;
+            $('.tender-amount').each(function () {
+                tendered += parseFloat($(this).val()) || 0;
+            });
+            tendered = Math.round(tendered * 100) / 100;
+            let balance = Math.round((tendered - tenderBillTotal) * 100) / 100;
+
+            $('#tender-tendered').text('₹' + tendered.toFixed(2));
+            $('#tender-balance').text('₹' + balance.toFixed(2));
+            $('#tender-balance').removeClass('text-success text-danger text-dark')
+                .addClass(balance >= 0 ? 'text-success' : 'text-danger');
+            $('#tender-outstanding').text('₹' + Math.max(0, -balance).toFixed(2));
+            $('#tender-error').addClass('d-none').text('');
+        }
+
+        // Open tender modal when Save button clicked
+        $(document).on('click', 'button[type="submit"]', function (e) {
+            let $form = $(this).closest('form');
+            if (!$form.length) return;
+
+            // Basic HTML5 validity check first
+            if (!$form[0].checkValidity()) {
+                $form[0].reportValidity();
+                return;
+            }
+
+            e.preventDefault();
+
+            // Read current bill total from display
+            tenderBillTotal = parseFloat($('#display-sb-final-total').text()) || 0;
+            $('#tender-bill-total').text(tenderBillTotal.toFixed(2));
+
+            // Reset modal
+            $('#tender-rows-body').empty();
+            $('#tender-error').addClass('d-none');
+
+            // Default: Cash row pre-filled with total
+            let cashType = TENDER_TYPES.find(t => t.type === 'Cash' || t.name === 'Cash');
+            addTenderRow(cashType ? cashType.id : '', tenderBillTotal.toFixed(2));
+
+            $('#sb-tender-modal').modal('show');
+        });
+
+        // Add row
+        $('#tender-add-row').on('click', function () {
+            addTenderRow('', '');
+        });
+
+        // Remove row
+        $(document).on('click', '.tender-remove-row', function () {
+            $(this).closest('tr').remove();
+            recalcTender();
+        });
+
+        // Recalc on change
+        $(document).on('input change', '.tender-amount, .tender-type-sel', function () {
+            recalcTender();
+        });
+
+        // Confirm & Save
+        $('#tender-confirm-btn').on('click', function () {
+            $('#tender-error').addClass('d-none');
+
+            let payments = [];
+            let valid = true;
+            let tendered = 0;
+
+            $('.tender-row').each(function () {
+                let typeId = $(this).find('.tender-type-sel').val();
+                let amount = parseFloat($(this).find('.tender-amount').val()) || 0;
+
+                if (!typeId) { valid = false; return false; }
+                if (amount <= 0) { valid = false; return false; }
+
+                payments.push({ tender_type_id: typeId, amount: amount });
+                tendered += amount;
+            });
+
+            if (!valid) {
+                $('#tender-error').removeClass('d-none').text('Har row mein payment mode aur amount required hai.');
+                return;
+            }
+
+            tendered = Math.round(tendered * 100) / 100;
+            let diff = Math.abs(tendered - Math.round(tenderBillTotal * 100) / 100);
+            if (diff > 0.01) {
+                $('#tender-error').removeClass('d-none')
+                    .text('Payment total ₹' + tendered.toFixed(2) + ' bill total ₹' + tenderBillTotal.toFixed(2) + ' se match nahi karta.');
+                return;
+            }
+
+            // Inject hidden payment inputs into form
+            let $form = $('form[action*="sales-bills"]').first();
+            $form.find('input[name^="payments"]').remove(); // clean old
+
+            payments.forEach(function (p, i) {
+                $form.append(`<input type="hidden" name="payments[${i}][tender_type_id]" value="${p.tender_type_id}">`);
+                $form.append(`<input type="hidden" name="payments[${i}][amount]" value="${p.amount}">`);
+            });
+
+            $('#sb-tender-modal').modal('hide');
+            $form.off('submit').submit();
+        });
+
     });
 </script>
 @endpush

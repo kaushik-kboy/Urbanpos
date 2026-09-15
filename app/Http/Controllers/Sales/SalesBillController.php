@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Item;
+use App\Models\TenderType;
 use App\Models\ItemStock;
 use App\Models\SalesBill;
 use App\Services\Accounting\CreditLimitGuard;
@@ -579,9 +580,10 @@ class SalesBillController extends Controller
         ]);
 
         return [
-            'customers' => Customer::orderBy('name')->pluck('name', 'id'),
-            'branches' => Branch::orderBy('name')->pluck('name', 'id'),
-            'items' => $items,
+            'customers'   => Customer::orderBy('name')->pluck('name', 'id'),
+            'branches'    => Branch::orderBy('name')->pluck('name', 'id'),
+            'items'       => $items,
+            'tenderTypes' => TenderType::with('values')->where('status', true)->orderBy('name')->get(),
         ];
     }
 

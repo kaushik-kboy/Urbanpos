@@ -559,7 +559,7 @@
 
                 totalQty += (d.qty + d.freeQty);
                 totalCost += d.base;
-                totalDiscAmt += d.discAmt;
+                totalDiscAmt += (d.discAmt + extraDeduction); // item disc + proportional header disc
                 totalGstAmt += taxAmt;
                 totalNetAmt += net;
             }
