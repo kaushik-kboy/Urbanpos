@@ -418,6 +418,14 @@ class PurchaseInvoiceController extends Controller
         $header['grn_date'] = $this->normalizeDate($header['grn_date'] ?? null);
         $header['supplier_inv_date'] = $this->normalizeDate($header['supplier_inv_date'] ?? null);
 
+        $header['freight'] = (float) ($header['freight'] ?? 0);
+        $header['round_off'] = (float) ($header['round_off'] ?? 0);
+        $header['scheme_item_disc_amt'] = (float) ($header['scheme_item_disc_amt'] ?? 0);
+        $header['other_disc_amt'] = (float) ($header['other_disc_amt'] ?? 0);
+        $header['total_extra_cess'] = (float) ($header['total_extra_cess'] ?? 0);
+        $header['tcs_amount'] = (float) ($header['tcs_amount'] ?? 0);
+        $header['total_weight'] = (float) ($header['total_weight'] ?? 0);
+
         $validator = Validator::make($request->all(), [
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
