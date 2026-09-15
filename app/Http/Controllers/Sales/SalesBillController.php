@@ -271,93 +271,129 @@ class SalesBillController extends Controller
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));
 
-        $query = Item::with('gstTax:id,percentage')
-            ->orderBy('name')
-            ->select(['id', 'name', 'item_code', 'ean_upc_code', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details']);
+        // Require at least 1 character to avoid loading 8000+ items on every open
+        $hasFilter = $search !== '' || $code !== '' || $expiry !== '';
+        if (! $hasFilter) {
+            return response()->json(['items' => [], 'hint' => 'Type to search items\u2026']);
+        }
+
+        // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
+        $limit  = 100;
+        $where  = [];
+        $params = [$branchId, $branchId];
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('item_code', 'like', "%{$search}%")
-                  ->orWhere('ean_upc_code', 'like', "%{$search}%");
-            });
+            $s = "%{$search}%";
+            $where[]  = '(i.name LIKE ? OR i.item_code LIKE ? OR i.ean_upc_code LIKE ?)';
+            $params   = array_merge($params, [$s, $s, $s]);
         }
-
         if ($code !== '') {
-            $query->where(function ($q) use ($code) {
-                $q->where('item_code', 'like', "%{$code}%")
-                  ->orWhere('ean_upc_code', 'like', "%{$code}%");
-            });
+            $c = "%{$code}%";
+            $where[]  = '(i.item_code LIKE ? OR i.ean_upc_code LIKE ?)';
+            $params   = array_merge($params, [$c, $c]);
         }
 
-        $items = $query->get();
+        $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        // Build stock map for the branch
-        $itemIds  = $items->pluck('id')->all();
-        $stockMap = \App\Models\ItemStock::where('branch_id', $branchId)
-            ->whereIn('item_id', $itemIds)
-            ->pluck('quantity', 'item_id');
+        $sql = "
+            SELECT
+                i.id,
+                i.name,
+                COALESCE(i.item_code, '')  AS item_code,
+                COALESCE(i.ean_upc_code, '') AS ean_upc_code,
+                COALESCE(st.quantity, 0)   AS qty,
+                COALESCE(
+                    NULLIF(ei.sell_price, 0),
+                    NULLIF(i.sell_price, 0),
+                    0
+                )                          AS sell_price,
+                COALESCE(
+                    NULLIF(ei.mrp, 0),
+                    NULLIF(i.mrp, 0),
+                    0
+                )                          AS mrp,
+                ei.exp_date,
+                COALESCE(gt.percentage, 0) AS gst_percent
+            FROM items i
+            LEFT JOIN item_stocks st
+                   ON st.item_id = i.id AND st.branch_id = ?
+            LEFT JOIN (
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS sell_price,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS mrp
+                FROM purchase_invoice_items pi2
+                INNER JOIN purchase_invoices pih
+                        ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
+                WHERE pi2.exp_date IS NOT NULL
+                  AND pi2.exp_date != ''
+                  AND pi2.exp_date != '0000-00-00'
+                GROUP BY pi2.item_id
+            ) ei ON ei.item_id = i.id
+            LEFT JOIN gst_taxes gt ON gt.id = i.gst_tax_id
+            {$whereClause}
+            ORDER BY i.name ASC
+            LIMIT {$limit}
+        ";
 
-        // Build earliest expiry map from purchase invoices
-        $expiryRows = \App\Models\PurchaseInvoiceItem::with('purchaseInvoice')
-            ->whereIn('item_id', $itemIds)
-            ->whereNotNull('exp_date')
-            ->where('exp_date', '!=', '')
-            ->where('exp_date', '!=', '0000-00-00')
-            ->whereHas('purchaseInvoice', fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('exp_date', 'asc')
-            ->get(['item_id', 'exp_date', 'sell_price', 'mrp']);
+        $rows = \Illuminate\Support\Facades\DB::select($sql, $params);
 
-        // If no branch-specific records, fall back to all branches
-        if ($expiryRows->isEmpty()) {
-            $expiryRows = \App\Models\PurchaseInvoiceItem::whereIn('item_id', $itemIds)
-                ->whereNotNull('exp_date')
-                ->where('exp_date', '!=', '')
-                ->where('exp_date', '!=', '0000-00-00')
-                ->orderBy('exp_date', 'asc')
-                ->get(['item_id', 'exp_date', 'sell_price', 'mrp']);
-        }
-
-        // Group expiry info per item (earliest exp_date per item)
-        $expiryMap = [];
-        foreach ($expiryRows as $row) {
-            $iid = $row->item_id;
-            try {
-                $exp = $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null;
-            } catch (\Exception $e) {
-                $exp = is_string($row->exp_date) ? substr($row->exp_date, 0, 10) : null;
+        // Fallback: for rows without branch-specific expiry, try all branches
+        $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
+        $expiryFallback = [];
+        if (! empty($noExpIds)) {
+            $ph = implode(',', array_fill(0, count($noExpIds), '?'));
+            $fbSql = "
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS sell_price,
+                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS mrp
+                FROM purchase_invoice_items pi2
+                WHERE pi2.item_id IN ({$ph})
+                  AND pi2.exp_date IS NOT NULL
+                  AND pi2.exp_date != ''
+                  AND pi2.exp_date != '0000-00-00'
+                GROUP BY pi2.item_id
+            ";
+            foreach (\Illuminate\Support\Facades\DB::select($fbSql, $noExpIds) as $fb) {
+                $expiryFallback[$fb->item_id] = $fb;
             }
-            if (! $exp) continue;
-            if (! isset($expiryMap[$iid])) {
-                $expiryMap[$iid] = [
-                    'exp_date'   => $exp,
-                    'sell_price' => (float) ($row->sell_price ?? 0),
-                    'mrp'        => (float) ($row->mrp ?? 0),
-                ];
-            }
         }
 
-        // Filter by expiry if requested
         $result = [];
-        foreach ($items as $item) {
-            $iid  = $item->id;
-            $exp  = $expiryMap[$iid]['exp_date'] ?? null;
-            $sell = (float) (($expiryMap[$iid]['sell_price'] ?? 0) > 0 ? ($expiryMap[$iid]['sell_price']) : ($item->sell_price ?? 0));
-            $mrp  = (float) (($expiryMap[$iid]['mrp'] ?? 0) > 0 ? ($expiryMap[$iid]['mrp']) : ($item->mrp ?? 0));
-            $qty  = (float) ($stockMap[$iid] ?? 0);
+        foreach ($rows as $row) {
+            $expRaw = $row->exp_date ?? null;
 
-            // Filter by expiry search if provided
-            if ($expiry !== '' && $exp && strpos($exp, $expiry) === false) continue;
+            // Use cross-branch fallback expiry if main query returned null
+            if (empty($expRaw) && isset($expiryFallback[$row->id])) {
+                $fb     = $expiryFallback[$row->id];
+                $expRaw = $fb->exp_date;
+                if ((float) ($fb->sell_price ?? 0) > 0) $row->sell_price = $fb->sell_price;
+                if ((float) ($fb->mrp ?? 0) > 0)        $row->mrp        = $fb->mrp;
+            }
+
+            // Normalise expiry date
+            $exp = null;
+            if (! empty($expRaw) && $expRaw !== '0000-00-00') {
+                try {
+                    $exp = \Carbon\Carbon::parse($expRaw)->format('Y-m-d');
+                } catch (\Exception $e) {
+                    $exp = substr((string) $expRaw, 0, 10) ?: null;
+                }
+            }
+
+            // Apply expiry filter if requested
+            if ($expiry !== '' && (! $exp || strpos($exp, $expiry) === false)) continue;
 
             $result[] = [
-                'id'         => $iid,
-                'name'       => $item->name,
-                'code'       => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                'exp_date'   => $exp,
-                'qty'        => $qty,
-                'sell_price' => $sell,
-                'mrp'        => $mrp,
-                'gst_percent'=> (float) ($item->gstTax?->percentage ?? 0),
+                'id'          => (int) $row->id,
+                'name'        => $row->name,
+                'code'        => $row->item_code ?: ($row->ean_upc_code ?: ''),
+                'exp_date'    => $exp,
+                'qty'         => (float) $row->qty,
+                'sell_price'  => (float) $row->sell_price,
+                'mrp'         => (float) $row->mrp,
+                'gst_percent' => (float) $row->gst_percent,
             ];
         }
 

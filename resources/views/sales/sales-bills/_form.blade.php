@@ -229,10 +229,10 @@
 
 
 
-        // Debounced filter inputs
+        // Debounced filter inputs — 400ms to avoid firing on every keystroke
         $('#isl-filter-name, #isl-filter-code, #isl-filter-expiry').on('input', function () {
             clearTimeout(islDebounce);
-            islDebounce = setTimeout(fetchItemList, 320);
+            islDebounce = setTimeout(fetchItemList, 400);
         });
 
         $('#isl-btn-clear').on('click', function () {
@@ -240,14 +240,47 @@
             fetchItemList();
         });
 
+        // Client-side response cache to avoid redundant API calls
+        let islCache = {};
+        let islLastKey = null;
+
+        function showHintState(msg) {
+            $('#isl-loading').addClass('d-none');
+            $('#isl-table-wrap').addClass('d-none');
+            $('#isl-items-body').empty();
+            let $nr = $('#isl-no-results');
+            $nr.removeClass('d-none').html(
+                '<i class="fas fa-keyboard fa-2x text-muted"></i>' +
+                '<p class="mt-2 text-muted">' + msg + '</p>'
+            );
+            $('#isl-count-label').text('');
+        }
+
         function fetchItemList() {
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            let params = {
-                branch_id : branchId,
-                search    : $('#isl-filter-name').val().trim(),
-                code      : $('#isl-filter-code').val().trim(),
-                expiry    : $('#isl-filter-expiry').val().trim(),
-            };
+            let srch   = $('#isl-filter-name').val().trim();
+            let code   = $('#isl-filter-code').val().trim();
+            let expiry = $('#isl-filter-expiry').val().trim();
+
+            // No filter — show hint, skip AJAX
+            if (! srch && ! code && ! expiry) {
+                showHintState('Start typing to search items\u2026');
+                return;
+            }
+
+            let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
+
+            // Return cached result if available (same query, same branch)
+            if (islCache[cacheKey]) {
+                if (islLastKey !== cacheKey) {
+                    islLastKey = cacheKey;
+                    renderItems(islCache[cacheKey]);
+                }
+                return;
+            }
+
+            islLastKey = cacheKey;
+            let params = { branch_id: branchId, search: srch, code: code, expiry: expiry };
 
             $('#isl-loading').removeClass('d-none');
             $('#isl-no-results').addClass('d-none');
@@ -255,61 +288,67 @@
 
             $.getJSON(ISL_URL, params, function (res) {
                 $('#isl-loading').addClass('d-none');
-                let items = res.items || [];
-                let $tbody = $('#isl-items-body');
-                $tbody.empty();
-
-                if (items.length === 0) {
-                    $('#isl-no-results').removeClass('d-none');
-                    $('#isl-count-label').text('');
-                    return;
-                }
-
-                items.forEach(function (it, idx) {
-                    let expBadge = it.exp_date
-                        ? `<span class="badge badge-danger px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`
-                        : `<span class="text-muted">—</span>`;
-                    let codeBadge = it.code
-                        ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
-                        : `<span class="text-muted">—</span>`;
-                    let qtyClass = it.qty <= 0 ? 'text-danger' : 'text-success';
-
-                    let tr = `
-                        <tr class="isl-item-row" style="cursor:pointer;"
-                            data-id="${it.id}"
-                            data-name="${it.name.replace(/"/g,'&quot;')}"
-                            data-code="${it.code}"
-                            data-sell="${it.sell_price}"
-                            data-mrp="${it.mrp}"
-                            data-gst="${it.gst_percent}"
-                            data-qty="${it.qty}"
-                            data-exp="${it.exp_date || ''}">
-                            <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
-                            <td class="align-middle font-weight-bold text-dark">${it.name}</td>
-                            <td class="align-middle text-center">${codeBadge}</td>
-                            <td class="align-middle text-center">${expBadge}</td>
-                            <td class="align-middle text-right font-weight-bold ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
-                            <td class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—'}</td>
-                            <td class="align-middle text-right text-muted">${it.mrp > 0 ? '₹' + parseFloat(it.mrp).toFixed(2) : '—'}</td>
-                            <td class="align-middle text-center">
-                                <button type="button" class="btn btn-success btn-xs px-2 isl-btn-select"
-                                    data-id="${it.id}"
-                                    data-code="${it.code}">
-                                    <i class="fas fa-check mr-1"></i>Select
-                                </button>
-                            </td>
-                        </tr>`;
-                    $tbody.append(tr);
-                });
-
-                $('#isl-table-wrap').removeClass('d-none');
-                $('#isl-count-label').text(items.length + ' item(s) found');
-
+                // Cache for 60s
+                islCache[cacheKey] = res.items || [];
+                setTimeout(function() { delete islCache[cacheKey]; }, 60000);
+                renderItems(res.items || []);
             }).fail(function () {
                 $('#isl-loading').addClass('d-none');
-                $('#isl-no-results').removeClass('d-none');
-                $('#isl-count-label').text('');
+                showHintState('Error loading items. Please try again.');
             });
+        }
+
+        function renderItems(items) {
+            let $tbody = $('#isl-items-body');
+            $tbody.empty();
+
+            if (items.length === 0) {
+                $('#isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-inbox fa-2x text-muted"></i>' +
+                    '<p class="mt-2 text-muted">No items found.</p>'
+                );
+                $('#isl-count-label').text('');
+                return;
+            }
+
+            // Build rows in one string for faster DOM insertion
+            let html = '';
+            items.forEach(function (it, idx) {
+                let expBadge = it.exp_date
+                    ? `<span class="badge badge-danger px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`
+                    : `<span class="text-muted">—</span>`;
+                let codeBadge = it.code
+                    ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
+                    : `<span class="text-muted">—</span>`;
+                let qtyClass = it.qty <= 0 ? 'text-danger' : 'text-success';
+
+                html += `
+                    <tr class="isl-item-row" style="cursor:pointer;"
+                        data-id="${it.id}"
+                        data-code="${it.code}"
+                        data-sell="${it.sell_price}"
+                        data-mrp="${it.mrp}"
+                        data-gst="${it.gst_percent}"
+                        data-qty="${it.qty}"
+                        data-exp="${it.exp_date || ''}">
+                        <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td class="align-middle text-center">${codeBadge}</td>
+                        <td class="align-middle text-center">${expBadge}</td>
+                        <td class="align-middle text-right font-weight-bold ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '\u20b9' + parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
+                        <td class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9' + parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
+                        <td class="align-middle text-center">
+                            <button type="button" class="btn btn-success btn-xs px-2 isl-btn-select"
+                                data-id="${it.id}" data-code="${it.code}">
+                                <i class="fas fa-check mr-1"></i>Select
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+            $tbody.html(html);
+            $('#isl-table-wrap').removeClass('d-none');
+            $('#isl-count-label').text(items.length + (items.length === 100 ? '+ (showing top 100)' : '') + ' item(s) found');
         }
 
         // Clicking a row or its Select button picks the item
@@ -356,9 +395,15 @@
             $('#isl-filter-name').val(prefill);
             $('#isl-filter-code').val('');
             $('#isl-filter-expiry').val('');
+            // Show hint immediately — fetchItemList will skip AJAX if no filter
             fetchItemList();
             islModalOpen = true;
             $('#sb-item-search-modal').modal('show');
+            // Auto-focus the search box after modal opens
+            $('#sb-item-search-modal').one('shown.bs.modal', function () {
+                $('#isl-filter-name').focus();
+                if (prefill) fetchItemList(); // trigger search if code was pre-filled
+            });
         });
 
         function updateBranchBadge() {
