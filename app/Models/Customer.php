@@ -76,6 +76,19 @@ class Customer extends Model
         return (float) max(0.0, round($earned - $deducted + $reversals, 2));
     }
 
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->mobile ? "{$this->name} ({$this->mobile})" : $this->name;
+    }
+
+    public static function options(): \Illuminate\Support\Collection
+    {
+        return static::where('status', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+    }
+
     protected static function booted(): void
     {
         static::created(function (Customer $customer) {

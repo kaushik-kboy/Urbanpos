@@ -39,7 +39,7 @@
     </div>
     <div class="col-md-2 form-group">
         <label>Expected Delivery</label>
-        <input type="date" name="expected_delivery_date" class="form-control form-control-sm" value="{{ optional($order?->expected_delivery_date)->format('Y-m-d') }}">
+        <input type="date" name="expected_delivery_date" class="form-control form-control-sm" value="{{ optional($order?->expected_delivery_date ?? now())->format('Y-m-d') }}">
     </div>
     <div class="col-md-2 form-group">
         <label>Sales Type <span class="text-danger">*</span></label>

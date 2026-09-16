@@ -223,7 +223,7 @@ class SalesReturnController extends Controller
     private function formOptions(): array
     {
         return [
-            'customers' => Customer::orderBy('name')->pluck('name', 'id'),
+            'customers' => Customer::options(),
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
             'items' => Item::orderBy('name')->pluck('name', 'id'),
             'salesBills' => SalesBill::orderBy('bill_number')->pluck('bill_number', 'id'),

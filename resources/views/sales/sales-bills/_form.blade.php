@@ -482,9 +482,9 @@
         // When modal closes without selection, put focus back on code field
         $('#sb-item-search-modal').on('hidden.bs.modal', function () {
             if (activeSearchRow) {
-                // only refocus if user explicitly cancelled (no selection made)
+                let $target = activeSearchRow.find('.sb-item-code');
                 setTimeout(function() {
-                    // do not re-open modal on this programmatic focus; blur first
+                    $target.focus();
                 }, 50);
             }
         });
@@ -498,24 +498,6 @@
             setTimeout(function() { islModalOpen = false; }, 300);
         });
 
-        // Override focus handler to not open when already open
-        $(document).off('focus', '.sb-item-code').on('focus', '.sb-item-code', function () {
-            if (islModalOpen) return;
-            activeSearchRow = $(this).closest('tr');
-            let prefill = $.trim($(this).val());
-            $('#isl-filter-name').val(prefill);
-            $('#isl-filter-code').val('');
-            $('#isl-filter-expiry').val('');
-            // Show hint immediately — fetchItemList will skip AJAX if no filter
-            fetchItemList();
-            islModalOpen = true;
-            $('#sb-item-search-modal').modal('show');
-            // Auto-focus the search box after modal opens
-            $('#sb-item-search-modal').one('shown.bs.modal', function () {
-                $('#isl-filter-name').focus();
-                if (prefill) fetchItemList(); // trigger search if code was pre-filled
-            });
-        });
 
         function updateBranchBadge() {
             let branchName = $('select[name="branch_id"] option:selected').text() || 'URBAN PETS / MOTERA';
@@ -789,7 +771,7 @@
 
             $('#sb-batch-modal').modal('hide');
             calculateRow(activeModalRow, 'base');
-            activeModalRow.find('.sb-qty').focus();
+            setTimeout(() => activeModalRow.find('.sb-qty').focus().select(), 100);
         }
 
         // When user selects a batch from modal button or row
@@ -826,6 +808,7 @@
         function processItemLookup(query, $row, itemId) {
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let $select = $row.find('.sb-item-select');
+            let $desc = $row.find('.sb-item-desc');
             let $code = $row.find('.sb-item-code');
             let $stock = $row.find('.sb-item-stock');
             let $exp = $row.find('.sb-exp-date');
@@ -856,12 +839,9 @@
                     let codeVal = item.item_code || item.ean_upc_code || '';
                     if (codeVal) $code.val(codeVal);
 
-                    // Sync Select2 Description
-                    if ($select.find(`option[value="${item.id}"]`).length === 0) {
-                        let opt = new Option(item.name + (item.item_code ? ' [' + item.item_code + ']' : ''), item.id, true, true);
-                        $select.append(opt);
-                    }
-                    $select.val(item.id).trigger('change.select2');
+                    // Sync description display & hidden item id
+                    $desc.val(item.name + (item.item_code ? ' [' + item.item_code + ']' : ''));
+                    $select.val(item.id);
                     isSyncing = false;
 
                     // Show Product Stock
@@ -899,14 +879,15 @@
                         }
                         $batchWrap.addClass('d-none');
                         calculateRow($row, 'base');
-                        $row.find('.sb-qty').focus();
+                        setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
                     } else if (batches.length > 1) {
                         // Multiple batches exist: show button and pop up selection modal!
                         $batchWrap.removeClass('d-none');
                         showBatchModal($row, item, batches);
                     } else {
                         $batchWrap.addClass('d-none');
-                        $row.find('.sb-qty').focus();
+                        calculateRow($row, 'base');
+                        setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
                     }
 
                     calculateRow($row, 'base');
@@ -978,19 +959,47 @@
             let $newRow = $(html);
 
             $tbody.append($newRow);
-
-            $newRow.find('select.select2').select2({
-                theme: 'bootstrap4',
-                width: '100%',
-                placeholder: 'Select item',
-                allowClear: true
-            });
-
             $newRow.find('input').attr('autocomplete', 'off');
             rowIndex++;
             updateRowNumbers();
             calculateTotals();
             $newRow.find('.sb-item-code').focus();
+        });
+
+        function addNewRowAndOpenModal() {
+            $('#sb-add-row').trigger('click');
+            let $newRow = $('#sb-items-body tr:last');
+            activeSearchRow = $newRow;
+            $('#isl-filter-name').val('');
+            $('#isl-filter-code').val('');
+            $('#isl-filter-expiry').val('');
+            fetchItemList();
+            $('#sb-item-search-modal').modal('show');
+            $('#sb-item-search-modal').one('shown.bs.modal', function () {
+                $('#isl-filter-name').focus();
+            });
+        }
+
+        // Fast POS keyboard flow: Qty -> Disc % -> Disc Amt -> Auto Add Row + Open Modal
+        $(document).on('keydown', '.sb-qty', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $(this).closest('tr').find('.sb-disc-percent').focus().select();
+            }
+        });
+
+        $(document).on('keydown', '.sb-disc-percent', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $(this).closest('tr').find('.sb-disc-amount').focus().select();
+            }
+        });
+
+        $(document).on('keydown', '.sb-disc-amount', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                e.preventDefault();
+                addNewRowAndOpenModal();
+            }
         });
 
         // 5. Remove Row

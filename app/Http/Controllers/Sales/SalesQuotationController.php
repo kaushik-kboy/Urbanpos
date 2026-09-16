@@ -164,7 +164,7 @@ class SalesQuotationController extends Controller
         ]);
 
         return [
-            'customers' => Customer::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'customers' => Customer::options(),
             'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items' => $items,
         ];

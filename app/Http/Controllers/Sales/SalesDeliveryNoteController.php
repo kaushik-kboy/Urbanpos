@@ -326,7 +326,7 @@ class SalesDeliveryNoteController extends Controller
         }
 
         return [
-            'customers' => Customer::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'customers' => Customer::options(),
             'branches' => $branchQuery->pluck('name', 'id'),
             'items' => Item::where('status', true)->orderBy('name')->get(['id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp']),
             'salesOrders' => SalesOrder::whereNotIn('status', ['Cancelled', 'Converted'])->latest('order_date')->pluck('order_number', 'id'),

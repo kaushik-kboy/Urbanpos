@@ -28,45 +28,33 @@
         <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode">
     </td>
     <td style="min-width: 220px;">
-        <select name="items[{{ $index }}][item_id]" class="form-control form-control-sm select2 sb-item-select" required data-placeholder="Select item">
-            <option value="">Select item</option>
-            @foreach ($items as $item)
-                @php
-                    $itemId = is_object($item) ? $item->id : $item;
-                    $itemName = is_object($item) ? $item->name : $item;
-                    $itemCode = is_object($item) ? ($item->item_code ?? '') : '';
-                    $eanCode = is_object($item) ? ($item->ean_upc_code ?? '') : '';
-                    $sellPrice = is_object($item) ? (float)($item->sell_price ?? 0) : 0;
-                    $mrp = is_object($item) ? (float)($item->mrp ?? 0) : 0;
-                    $gstPercent = is_object($item) ? (float)($item->gstTax?->percentage ?? 0) : 0;
-                    $batchExpiry = is_object($item) ? ($item->batch_expiry_details ?? 'Not Required') : 'Not Required';
-                @endphp
-                <option value="{{ $itemId }}"
-                        data-code="{{ $itemCode }}"
-                        data-ean="{{ $eanCode }}"
-                        data-sell="{{ $sellPrice }}"
-                        data-mrp="{{ $mrp }}"
-                        data-gst="{{ $gstPercent }}"
-                        data-batch-expiry="{{ $batchExpiry }}"
-                        @selected(($line->item_id ?? null) == $itemId)>
-                    {{ $itemName }}{{ $itemCode ? ' ['.$itemCode.']' : '' }}
-                </option>
-            @endforeach
-        </select>
+        <input type="text"
+               class="form-control form-control-sm sb-item-desc bg-light font-weight-bold text-truncate"
+               readonly
+               tabindex="-1"
+               value="{{ $selectedItem ? $selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '') : '' }}"
+               placeholder="Product Description"
+               title="Product description (auto-filled on code entry)">
+        <input type="hidden"
+               name="items[{{ $index }}][item_id]"
+               class="sb-item-select"
+               value="{{ $selectedItemId }}"
+               required>
     </td>
     <td style="width: 85px;">
-        <input type="text" readonly class="form-control form-control-sm sb-item-stock bg-light text-center font-weight-bold" value="" placeholder="0.00" title="Current available stock in selected branch">
+        <input type="text" readonly tabindex="-1" class="form-control form-control-sm sb-item-stock bg-light text-center font-weight-bold" value="" placeholder="0.00" title="Current available stock in selected branch">
     </td>
     <td style="width: 135px;">
         <div class="input-group input-group-sm">
             <input type="date"
                    name="items[{{ $index }}][exp_date]"
                    value="{{ $expDateVal }}"
+                   tabindex="-1"
                    class="form-control form-control-sm sb-exp-date"
                    autocomplete="off"
                    title="Expiry date">
             <div class="input-group-append sb-batch-btn-wrap d-none">
-                <button type="button" class="btn btn-warning btn-xs sb-btn-choose-batch" title="Multiple batches available! Click to choose batch">
+                <button type="button" tabindex="-1" class="btn btn-warning btn-xs sb-btn-choose-batch" title="Multiple batches available! Click to choose batch">
                     <i class="fas fa-layer-group"></i>
                 </button>
             </div>
@@ -76,10 +64,10 @@
         <input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sb-qty font-weight-bold text-right" required autocomplete="off" placeholder="Qty">
     </td>
     <td style="width: 100px;">
-        <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm sb-sell-price text-right" required autocomplete="off" placeholder="0.00">
+        <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" tabindex="-1" class="form-control form-control-sm sb-sell-price text-right" required autocomplete="off" placeholder="0.00">
     </td>
     <td style="width: 100px;">
-        <input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm sb-mrp text-right" autocomplete="off" placeholder="0.00">
+        <input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" tabindex="-1" class="form-control form-control-sm sb-mrp text-right" autocomplete="off" placeholder="0.00">
     </td>
     <td style="width: 80px;">
         <input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm sb-disc-percent text-right" autocomplete="off" placeholder="0%">
@@ -88,10 +76,10 @@
         <input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm sb-disc-amount text-right" autocomplete="off" placeholder="0.00">
     </td>
     <td style="width: 75px;">
-        <input type="number" step="0.01" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm sb-gst-percent text-right" autocomplete="off" placeholder="0%">
+        <input type="number" step="0.01" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" tabindex="-1" class="form-control form-control-sm sb-gst-percent text-right" autocomplete="off" placeholder="0%">
     </td>
     <td style="width: 105px;" class="text-right align-middle font-weight-bold text-success sb-row-net">{{ $netAmtVal }}</td>
     <td style="width: 35px;" class="text-center align-middle">
-        <button type="button" class="btn btn-xs btn-outline-danger sb-remove-row"><i class="fas fa-times"></i></button>
+        <button type="button" tabindex="-1" class="btn btn-xs btn-outline-danger sb-remove-row"><i class="fas fa-times"></i></button>
     </td>
 </tr>

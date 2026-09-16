@@ -1,15 +1,26 @@
-@props(['name', 'label', 'type' => 'text', 'value' => null, 'col' => 6, 'step' => null])
+@props(['name', 'label', 'type' => 'text', 'value' => null, 'col' => 6, 'step' => null, 'required' => false])
+
+@php
+    $computedValue = old($name, $value);
+    if ($type === 'date' && (is_null($computedValue) || $computedValue === '')) {
+        $computedValue = now()->format('Y-m-d');
+    }
+@endphp
 
 <div class="form-group row">
-    <label for="{{ $name }}" class="col-sm-3 col-form-label">{{ $label }}</label>
+    <label for="{{ $name }}" class="col-sm-3 col-form-label">
+        {{ $label }}
+        @if($required || $attributes->has('required')) <span class="text-danger">*</span> @endif
+    </label>
     <div class="col-sm-{{ $col }}">
         <input
             type="{{ $type }}"
             id="{{ $name }}"
             name="{{ $name }}"
             @if($step) step="{{ $step }}" @endif
-            class="form-control @error($name) is-invalid @enderror"
-            value="{{ old($name, $value) }}"
+            @if($required || $attributes->has('required')) required @endif
+            {{ $attributes->merge(['class' => 'form-control ' . ($errors->has($name) ? 'is-invalid' : '')]) }}
+            value="{{ $computedValue }}"
             autocomplete="off"
         >
         @error($name)
@@ -17,3 +28,4 @@
         @enderror
     </div>
 </div>
+

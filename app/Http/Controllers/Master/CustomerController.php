@@ -165,7 +165,7 @@ class CustomerController extends Controller
         return $request->validate([
             // General
             'title' => ['nullable', 'in:Mr,Ms,Mrs,M/s,Dr'],
-            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('customers', 'name')->ignore($customer?->id)],
+            'name' => ['required', 'string', 'max:255'],
             'customer_category_id' => ['nullable', 'exists:customer_categories,id'],
             'customer_code' => ['nullable', 'string', 'max:100'],
             'sales_type' => ['required', 'in:Local,Interstate'],
@@ -194,12 +194,15 @@ class CustomerController extends Controller
             'gst_no' => ['nullable', 'string', 'max:20'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
-            'mobile' => ['nullable', 'string', 'max:50'],
+            'mobile' => ['required', 'string', 'max:50', \Illuminate\Validation\Rule::unique('customers', 'mobile')->ignore($customer?->id)],
 
             // Others
             'gender' => ['nullable', 'in:Male,Female'],
             'exempted_reason' => ['nullable', 'string', 'max:255'],
             'customer_type' => ['required', 'in:RETAIL INVOICE,TAX INVOICE,EXEMPTED,E-COMMERCE'],
+        ], [
+            'mobile.required' => 'Customer mobile number is required.',
+            'mobile.unique' => 'A customer with this mobile number already exists.',
         ]);
     }
 

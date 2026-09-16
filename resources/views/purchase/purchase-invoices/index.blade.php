@@ -20,11 +20,11 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">From Date</label>
-                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from', now()->format('Y-m-d')) }}">
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">To Date</label>
-                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to', now()->format('Y-m-d')) }}">
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>

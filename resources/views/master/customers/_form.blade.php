@@ -10,7 +10,8 @@
 <div class="tab-content pt-3">
     <div class="tab-pane active" id="tab-general">
         <x-select name="title" label="Title" :options="['Mr' => 'Mr', 'Ms' => 'Ms', 'Mrs' => 'Mrs', 'M/s' => 'M/s', 'Dr' => 'Dr']" :selected="$c->title ?? 'Mr'" />
-        <x-field name="name" label="Name" :value="$c->name ?? ''" />
+        <x-field name="name" label="Name" :value="$c->name ?? ''" required />
+        <x-field name="mobile" label="Mobile Number" :value="$c->mobile ?? ''" required />
         <x-select name="customer_category_id" label="Category" :options="$customerCategories" :selected="$c->customer_category_id ?? ''" placeholder="Select a category" />
         <x-field name="customer_code" label="Customer Id" :value="$c->customer_code ?? ''" />
         <x-select name="sales_type" label="Sales Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$c->sales_type ?? 'Local'" />
@@ -36,7 +37,6 @@
         <x-field name="std_code" label="STD Code" :value="$c->std_code ?? ''" />
         <x-field name="phone" label="Phone" :value="$c->phone ?? ''" />
         <x-field name="email" label="Email" type="email" :value="$c->email ?? ''" />
-        <x-field name="mobile" label="Mobile" :value="$c->mobile ?? ''" />
         <x-textarea name="remarks" label="Remarks" :value="$c->remarks ?? ''" />
         <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" />
         <x-field name="aadhar_no" label="Aadhar No" :value="$c->aadhar_no ?? ''" />

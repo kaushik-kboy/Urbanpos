@@ -73,7 +73,7 @@ class SalesBillController extends Controller
 
         $salesBills = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');
-        $customers = Customer::orderBy('name')->pluck('name', 'id');
+        $customers = Customer::options();
         $invoiceTypes = ['Retail Invoice', 'Tax Invoice', 'Exempted'];
 
         return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes'));
@@ -717,7 +717,7 @@ class SalesBillController extends Controller
         ]);
 
         return [
-            'customers'   => Customer::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'customers'   => Customer::options(),
             'branches'    => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items'       => $items,
             'tenderTypes' => TenderType::with(['values' => fn ($q) => $q->where('status', true)])->where('status', true)->orderBy('name')->get(),

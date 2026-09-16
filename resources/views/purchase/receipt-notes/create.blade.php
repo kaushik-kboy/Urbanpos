@@ -86,7 +86,7 @@
                     </div>
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Challan Date</label>
-                        <input type="date" name="supplier_challan_date" class="form-control" value="{{ old('supplier_challan_date') }}">
+                        <input type="date" name="supplier_challan_date" class="form-control" value="{{ old('supplier_challan_date', date('Y-m-d')) }}">
                     </div>
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Vehicle No</label>

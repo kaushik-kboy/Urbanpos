@@ -32,7 +32,7 @@
     </div>
     <div class="col-md-2 form-group">
         <label>Valid Until</label>
-        <input type="date" name="valid_until" class="form-control form-control-sm" value="{{ optional($quote?->valid_until)->format('Y-m-d') }}">
+        <input type="date" name="valid_until" class="form-control form-control-sm" value="{{ optional($quote?->valid_until ?? now())->format('Y-m-d') }}">
     </div>
     <div class="col-md-2 form-group">
         <label>Sales Type <span class="text-danger">*</span></label>

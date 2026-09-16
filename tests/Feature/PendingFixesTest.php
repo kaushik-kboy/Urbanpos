@@ -38,6 +38,7 @@ class PendingFixesTest extends TestCase
             'status' => 1,
             'gst_type' => 'Un Register',
             'sms_consent' => 0,
+            'mobile' => '9876543210',
             'customer_type' => 'RETAIL INVOICE',
         ], $overrides);
     }

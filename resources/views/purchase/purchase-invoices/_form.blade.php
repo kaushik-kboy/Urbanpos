@@ -8,7 +8,7 @@
     $selectedBranch = old('branch_id', $inv->branch_id ?? ($sourceRn->branch_id ?? ''));
     $selectedPo = old('purchase_order_id', $inv->purchase_order_id ?? ($sourceRn->purchase_order_id ?? ''));
     $grnNumberVal = old('grn_number', $inv->grn_number ?? ($sourceRn->receipt_number ?? ''));
-    $grnDateVal = old('grn_date', optional($inv->grn_date ?? ($sourceRn->receipt_date ?? null))->format('Y-m-d'));
+    $grnDateVal = old('grn_date', optional($inv->grn_date ?? ($sourceRn->receipt_date ?? now()))->format('Y-m-d'));
     $rnIdVal = old('purchase_receipt_note_id', $inv->purchase_receipt_note_id ?? ($sourceRn->id ?? ''));
 @endphp
 
@@ -43,7 +43,7 @@
 <x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" />
 <x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" />
 <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" />
-<x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? null)->format('Y-m-d')" />
+<x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? now())->format('Y-m-d')" />
 <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
 <div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">
     <div class="col-sm-3"></div>
