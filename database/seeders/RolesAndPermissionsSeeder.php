@@ -17,6 +17,7 @@ class RolesAndPermissionsSeeder extends Seeder
     private const MODULE_ACTIONS = [
         'purchase-invoices' => ['create', 'edit', 'cancel'],
         'purchase-returns' => ['create', 'edit', 'cancel'],
+        'purchase-receipt-notes' => ['create', 'edit', 'cancel'],
         'sales-bills' => ['create', 'edit', 'cancel'],
         'sales-returns' => ['create', 'edit', 'cancel'],
         'sales-quotations' => ['create', 'edit', 'cancel'],
@@ -87,7 +88,7 @@ class RolesAndPermissionsSeeder extends Seeder
      * for Owner — this is the real distinction between the two roles, not a cosmetic one.
      */
     private const MANAGER_MODULES = [
-        'purchase-invoices', 'purchase-returns', 'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'damage-stocks',
+        'purchase-invoices', 'purchase-returns', 'purchase-receipt-notes', 'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'damage-stocks',
         'opening-stocks', 'stock-updates', 'stock-transfers', 'bill-settlements', 'loyalty-programs',
         'item-categories', 'item-category-values', 'brands', 'uoms',
         'customer-categories', 'customers', 'areas', 'pet-types', 'breeds', 'colors',

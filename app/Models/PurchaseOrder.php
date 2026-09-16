@@ -44,6 +44,11 @@ class PurchaseOrder extends Model
         return $this->hasMany(PurchaseInvoice::class);
     }
 
+    public function receiptNotes(): HasMany
+    {
+        return $this->hasMany(PurchaseReceiptNote::class);
+    }
+
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by_id');

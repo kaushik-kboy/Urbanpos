@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\ItemStock;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseReceiptNote;
 use App\Models\Supplier;
 use App\Services\Accounting\CreditLimitGuard;
 use App\Services\Accounting\FinancialYearGuard;
@@ -76,9 +77,37 @@ class PurchaseInvoiceController extends Controller
         return view('purchase.purchase-invoices.index', compact('purchaseInvoices', 'branches', 'suppliers', 'purchaseTypes'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('purchase.purchase-invoices.create', $this->formOptions());
+        $options = $this->formOptions();
+        $sourceReceiptNote = null;
+        $convertedItems = collect();
+
+        if ($request->filled('from_receipt_note')) {
+            $sourceReceiptNote = PurchaseReceiptNote::with(['items.item.gstTax', 'supplier', 'branch', 'purchaseOrder'])
+                ->findOrFail($request->from_receipt_note);
+            $options['sourceReceiptNote'] = $sourceReceiptNote;
+            $options['convertedItems'] = $sourceReceiptNote->items->map(function ($rnItem) {
+                return [
+                    'item_id' => $rnItem->item_id,
+                    'exp_date' => $rnItem->exp_date ? $rnItem->exp_date->format('Y-m-d') : null,
+                    'qty' => (float) $rnItem->accepted_qty,
+                    'free_qty' => 0,
+                    'cost_price' => (float) $rnItem->unit_cost,
+                    'sell_price' => (float) ($rnItem->item->sell_price ?? 0),
+                    'mrp' => (float) ($rnItem->mrp ?? $rnItem->item->mrp ?? 0),
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => (float) ($rnItem->item->gstTax?->percentage ?? 0),
+                    'item' => $rnItem->item,
+                ];
+            })->filter(fn ($line) => $line['qty'] > 0)->values();
+        }
+
+        return view('purchase.purchase-invoices.create', array_merge($options, [
+            'sourceReceiptNote' => $sourceReceiptNote,
+            'convertedItems' => $convertedItems,
+        ]));
     }
 
     public function store(Request $request)
@@ -106,7 +135,28 @@ class PurchaseInvoiceController extends Controller
 
             $purchaseInvoice->items()->createMany($lines);
 
-            $this->postStockAndItemMaster($purchaseInvoice, $lines);
+            // Stock posting: if converted from a PurchaseReceiptNote, physical stock
+            // was already posted by the GRN. We only update item master prices
+            // without duplicating stock in stock_ledger.
+            if (!empty($data['header']['purchase_receipt_note_id'])) {
+                $rn = PurchaseReceiptNote::find($data['header']['purchase_receipt_note_id']);
+                if ($rn) {
+                    $rn->update([
+                        'status' => 'Invoiced',
+                        'purchase_invoice_id' => $purchaseInvoice->id,
+                    ]);
+                }
+                foreach ($lines as $line) {
+                    Item::whereKey($line['item_id'])->update(array_filter([
+                        'cost_price' => $line['cost_price'],
+                        'sell_price' => $line['sell_price'] ?: null,
+                        'mrp' => $line['mrp'] ?: null,
+                    ], fn ($v) => $v !== null));
+                }
+            } else {
+                $this->postStockAndItemMaster($purchaseInvoice, $lines);
+            }
+
             $this->ledgerPosting->postPurchaseInvoice($purchaseInvoice);
 
             return $purchaseInvoice;
@@ -648,6 +698,7 @@ class PurchaseInvoiceController extends Controller
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
+            'purchase_receipt_note_id' => ['nullable', 'exists:purchase_receipt_notes,id'],
             'grn_number' => ['nullable', 'string', 'max:100'],
             'grn_date' => ['nullable', 'date'],
             'supplier_inv_no' => ['nullable', 'string', 'max:100'],

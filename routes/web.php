@@ -24,6 +24,7 @@ use App\Http\Controllers\Master\UomController;
 use App\Http\Controllers\Master\BrandController;
 use App\Http\Controllers\Purchase\PurchaseInvoiceController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
+use App\Http\Controllers\Purchase\PurchaseReceiptNoteController;
 use App\Http\Controllers\Purchase\PurchaseReturnController;
 use App\Http\Controllers\Inventory\DamageStockController;
 use App\Http\Controllers\Inventory\OpeningStockController;
@@ -146,6 +147,8 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
     Route::get('purchase-invoices/lookup-item', [PurchaseInvoiceController::class, 'lookupItem'])->name('purchase-invoices.lookup-item');
     Route::get('purchase-invoices/item-details/{item}', [PurchaseInvoiceController::class, 'itemDetails'])->name('purchase-invoices.item-details');
     $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
+    Route::get('purchase-receipt-notes/{purchaseReceiptNote}/print', [PurchaseReceiptNoteController::class, 'print'])->name('purchase-receipt-notes.print');
+    $gatedResource('purchase-receipt-notes', PurchaseReceiptNoteController::class, 'purchase-receipt-notes');
     $gatedResource('purchase-invoices', PurchaseInvoiceController::class, 'purchase-invoices');
     Route::get('purchase-returns/invoice-items/{purchaseInvoice}', [PurchaseReturnController::class, 'invoiceItems'])->name('purchase-returns.invoice-items');
     $gatedResource('purchase-returns', PurchaseReturnController::class, 'purchase-returns');

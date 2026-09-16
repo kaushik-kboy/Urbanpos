@@ -467,7 +467,7 @@ return [
         ],
         [
             'text' => 'Receipt Note',
-            'url' => 'purchase/aux/receipt-notes',
+            'url' => 'purchase/purchase-receipt-notes',
             'icon' => 'fas fa-fw fa-receipt',
         ],
         [

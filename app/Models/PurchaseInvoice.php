@@ -14,7 +14,7 @@ class PurchaseInvoice extends Model
 
     protected $fillable = [
         'invoice_number', 'invoice_date', 'supplier_id', 'branch_id', 'purchase_order_id',
-        'grn_number', 'grn_date', 'supplier_inv_no', 'supplier_inv_date', 'supplier_inv_amount',
+        'purchase_receipt_note_id', 'grn_number', 'grn_date', 'supplier_inv_no', 'supplier_inv_date', 'supplier_inv_amount',
         'purchase_type', 'c_form', 'item_disc_amount', 'disc_percent', 'disc_amount', 'freight',
         'round_off', 'scheme_item_disc_amt', 'other_disc_amt', 'total_gst', 'total_cgst',
         'total_sgst', 'total_igst', 'total_extra_cess',
@@ -41,6 +41,11 @@ class PurchaseInvoice extends Model
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function receiptNote(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseReceiptNote::class, 'purchase_receipt_note_id');
     }
 
     public function items(): HasMany

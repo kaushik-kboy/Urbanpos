@@ -1,7 +1,15 @@
 @php
     $inv = $purchaseInvoice ?? null;
+    $sourceRn = $sourceReceiptNote ?? null;
     $oldItems = old('items');
-    $existingItems = !empty($oldItems) ? collect($oldItems) : ($inv?->items ?? collect());
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($inv?->items ?? ($convertedItems ?? collect()));
+
+    $selectedSupplier = old('supplier_id', $inv->supplier_id ?? ($sourceRn->supplier_id ?? ''));
+    $selectedBranch = old('branch_id', $inv->branch_id ?? ($sourceRn->branch_id ?? ''));
+    $selectedPo = old('purchase_order_id', $inv->purchase_order_id ?? ($sourceRn->purchase_order_id ?? ''));
+    $grnNumberVal = old('grn_number', $inv->grn_number ?? ($sourceRn->receipt_number ?? ''));
+    $grnDateVal = old('grn_date', optional($inv->grn_date ?? ($sourceRn->receipt_date ?? null))->format('Y-m-d'));
+    $rnIdVal = old('purchase_receipt_note_id', $inv->purchase_receipt_note_id ?? ($sourceRn->id ?? ''));
 @endphp
 
 <style>
@@ -17,14 +25,23 @@
     }
 </style>
 
+@if ($sourceRn)
+    <div class="alert alert-info py-2 mb-3">
+        <i class="fas fa-receipt mr-1"></i> Converting from Receipt Note <strong>{{ $sourceRn->receipt_number }}</strong>.
+        Physical stock was already received on {{ optional($sourceRn->receipt_date)->format('d M Y') }}; saving this invoice books financial liabilities and updates item prices without duplicating inventory.
+    </div>
+@endif
+
+<input type="hidden" name="purchase_receipt_note_id" value="{{ $rnIdVal }}">
+
 <x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" required />
-<x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$inv->supplier_id ?? ''" placeholder="Select a Supplier" required />
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$inv->branch_id ?? ''" placeholder="Select a Branch" required />
-<x-select name="purchase_order_id" label="Purchase Order" :options="$purchaseOrders" :selected="$inv->purchase_order_id ?? ''" placeholder="Select PO" />
+<x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$selectedSupplier" placeholder="Select a Supplier" required />
+<x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a Branch" required />
+<x-select name="purchase_order_id" label="Purchase Order" :options="$purchaseOrders" :selected="$selectedPo" placeholder="Select PO" />
 <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
 <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'No Forms'" required />
-<x-field name="grn_number" label="GRN Number" :value="$inv->grn_number ?? ''" />
-<x-field name="grn_date" label="GRN Date" type="date" :value="optional($inv->grn_date ?? null)->format('Y-m-d')" />
+<x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" />
+<x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" />
 <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" />
 <x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? null)->format('Y-m-d')" />
 <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
