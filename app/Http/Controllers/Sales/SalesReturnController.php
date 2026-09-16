@@ -183,6 +183,31 @@ class SalesReturnController extends Controller
     }
 
     /**
+     * AJAX endpoint: return all non-cancelled sales bills for a specific customer.
+     */
+    public function customerBills(Customer $customer)
+    {
+        $bills = SalesBill::where('customer_id', $customer->id)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'Cancelled');
+            })
+            ->latest('bill_date')
+            ->get(['id', 'bill_number', 'bill_date', 'total'])
+            ->map(function ($b) {
+                $dateStr = $b->bill_date ? $b->bill_date->format('d-m-Y') : '';
+                return [
+                    'id' => $b->id,
+                    'bill_number' => $b->bill_number,
+                    'bill_date' => $dateStr,
+                    'total' => (float) $b->total,
+                    'label' => "{$b->bill_number} (" . ($dateStr ? $dateStr . ' - ' : '') . "₹" . number_format($b->total, 2) . ")",
+                ];
+            });
+
+        return response()->json($bills);
+    }
+
+    /**
      * Restores stock at the ORIGINAL sale's cost_at_sale when the return is linked to a
      * sales bill (per foundation spec: a return restores the original cost basis, not
      * today's average) — falls back to cost-neutral (current average) when unlinked.
@@ -220,13 +245,21 @@ class SalesReturnController extends Controller
         return 'SRN'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
     }
 
-    private function formOptions(): array
+    private function formOptions(?SalesReturn $salesReturn = null): array
     {
+        $custId = old('customer_id', $salesReturn?->customer_id);
+        $salesBills = $custId
+            ? SalesBill::where('customer_id', $custId)
+                ->where(fn($q) => $q->whereNull('status')->orWhere('status', '!=', 'Cancelled'))
+                ->latest('bill_date')
+                ->pluck('bill_number', 'id')
+            : [];
+
         return [
             'customers' => Customer::options(),
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
             'items' => Item::orderBy('name')->pluck('name', 'id'),
-            'salesBills' => SalesBill::orderBy('bill_number')->pluck('bill_number', 'id'),
+            'salesBills' => $salesBills,
         ];
     }
 

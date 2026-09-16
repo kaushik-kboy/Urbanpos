@@ -1003,7 +1003,61 @@
                 checkAmountMatch();
                 return false;
             }
+
+            // Show submit loading indicator
+            let $btn = $(this).find('button[type="submit"]');
+            if ($btn.length) {
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+            }
         });
+
+        function initPinvItemSelect2($el) {
+            $el.each(function () {
+                let $s = $(this);
+                $s.select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    placeholder: 'Select item',
+                    allowClear: true,
+                    ajax: {
+                        url: '{{ route("purchase.purchase-invoices.item-list") }}',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+                            return {
+                                search: params.term || '',
+                                branch_id: branchId
+                            };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: (data.items || []).map(function (it) {
+                                    return {
+                                        id: it.id,
+                                        text: it.name + (it.code ? ' [' + it.code + ']' : ''),
+                                        item: it
+                                    };
+                                })
+                            };
+                        },
+                        cache: true
+                    }
+                }).on('select2:select', function (e) {
+                    let it = e.params?.data?.item;
+                    if (it) {
+                        let $opt = $(this).find('option:selected');
+                        $opt.attr('data-code', it.code || '').data('code', it.code || '');
+                        $opt.attr('data-cost', it.cost_price || 0).data('cost', it.cost_price || 0);
+                        $opt.attr('data-sell', it.sell_price || 0).data('sell', it.sell_price || 0);
+                        $opt.attr('data-mrp', it.mrp || 0).data('mrp', it.mrp || 0);
+                        $opt.attr('data-gst', it.gst_percent || 0).data('gst', it.gst_percent || 0);
+                        $opt.attr('data-batch-expiry', it.batch_expiry_details || 'Not Required').data('batch-expiry', it.batch_expiry_details || 'Not Required');
+                        $opt.attr('data-shelf-life', it.shelf_life_days || '').data('shelf-life', it.shelf_life_days || '');
+                    }
+                });
+            });
+        }
 
         // 5. Add Row
         $('#pinv-add-row').on('click', function () {
@@ -1014,12 +1068,7 @@
             $tbody.append($newRow);
 
             // Initialize Select2 on the newly added row's dropdown
-            $newRow.find('select.select2').select2({
-                theme: 'bootstrap4',
-                width: '100%',
-                placeholder: 'Select item',
-                allowClear: true
-            });
+            initPinvItemSelect2($newRow.find('.pinv-item-select'));
 
             // Ensure autocomplete is off on new row inputs
             $newRow.find('input').attr('autocomplete', 'off');
@@ -1040,6 +1089,7 @@
         });
 
         // 7. Initial Run on existing rows
+        initPinvItemSelect2($('.pinv-item-select'));
         updateRowNumbers();
         $('#pinv-items-body tr').each(function () {
             let $r = $(this);

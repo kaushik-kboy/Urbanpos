@@ -26,6 +26,16 @@
 
 <h5 class="mb-3"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
 <x-select name="customer_id" label="Customer" :options="$customers" :selected="$selectedCust" placeholder="Select a customer" required />
+<div class="form-group">
+    <label for="sb-customer-mobile" class="font-weight-bold"><i class="fas fa-phone-alt mr-1 text-primary"></i> Customer Mobile No</label>
+    <div class="input-group">
+        <div class="input-group-prepend">
+            <span class="input-group-text bg-white"><i class="fas fa-mobile-alt text-muted"></i></span>
+        </div>
+        <input type="text" id="sb-customer-mobile" class="form-control" placeholder="Customer Mobile No (auto-filled or type 10 digits to search)" value="{{ optional($bill?->customer)->mobile ?? optional($selectedCust ? \App\Models\Customer::find($selectedCust) : null)->mobile }}" autocomplete="off">
+    </div>
+    <small class="form-text text-muted">Customer select karne par auto-fill hoga, ya yahan mobile number enter karke customer search kar sakte hain.</small>
+</div>
 <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-3 shadow-sm align-items-center justify-content-between">
     <div>
         <i class="fas fa-coins text-warning mr-1"></i>
@@ -345,6 +355,48 @@
                 },
                 cache: true
             }
+        });
+
+        // Customer selection syncs Mobile No field
+        $custSelect.on('select2:select', function (e) {
+            let data = e.params?.data;
+            if (data) {
+                if (data.mobile) {
+                    $('#sb-customer-mobile').val(data.mobile);
+                } else if (data.text) {
+                    let match = data.text.match(/\((\d{10})\)/);
+                    if (match) {
+                        $('#sb-customer-mobile').val(match[1]);
+                    }
+                }
+            }
+        });
+        $custSelect.on('select2:clear', function () {
+            $('#sb-customer-mobile').val('');
+        });
+
+        // Typing mobile number directly auto-searches customer
+        $('#sb-customer-mobile').on('change blur keydown', function (e) {
+            if (e.type === 'keydown' && e.key !== 'Enter') return;
+            if (e.type === 'keydown' && e.key === 'Enter') e.preventDefault();
+
+            let mob = $.trim($(this).val());
+            if (!mob || mob.length < 5) return;
+
+            $.getJSON('{{ route("sales.sales-bills.customer-search") }}', { q: mob }, function (data) {
+                if (data && data.results && data.results.length > 0) {
+                    let matched = data.results.find(c => c.mobile === mob) || data.results[0];
+                    if (matched) {
+                        if ($custSelect.find(`option[value="${matched.id}"]`).length === 0) {
+                            let opt = new Option(matched.text, matched.id, true, true);
+                            $custSelect.append(opt);
+                        }
+                        $custSelect.val(matched.id).trigger('change');
+                        $('#sb-customer-mobile').val(matched.mobile || mob);
+                        fetchCustomerLoyalty(matched.id);
+                    }
+                }
+            });
         });
 
         /* ================================================================

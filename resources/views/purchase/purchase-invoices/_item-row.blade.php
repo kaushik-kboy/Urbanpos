@@ -9,6 +9,9 @@
             ? collect($items)->firstWhere('id', $selectedItemId)
             : null;
     }
+    if ($selectedItemId && ! $selectedItem) {
+        $selectedItem = \App\Models\Item::with('gstTax:id,percentage')->find($selectedItemId);
+    }
     $isExpRequired = $selectedItem && in_array($selectedItem->batch_expiry_details ?? '', ['Mandatory', 'Days', 'Month']);
     $itemCodeVal = $line->code ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
 
@@ -45,18 +48,18 @@
     <td style="min-width: 220px;">
         <select name="items[{{ $index }}][item_id]" class="form-control form-control-sm select2 pinv-item-select" required data-placeholder="Select item">
             <option value="">Select item</option>
-            @foreach ($items as $item)
+            @if ($selectedItem)
                 @php
-                    $itemId = is_object($item) ? $item->id : $item;
-                    $itemName = is_object($item) ? $item->name : $item;
-                    $itemCode = is_object($item) ? ($item->item_code ?? '') : '';
-                    $eanCode = is_object($item) ? ($item->ean_upc_code ?? '') : '';
-                    $costPrice = is_object($item) ? (float)($item->cost_price ?? 0) : 0;
-                    $sellPrice = is_object($item) ? (float)($item->sell_price ?? 0) : 0;
-                    $mrp = is_object($item) ? (float)($item->mrp ?? 0) : 0;
-                    $gstPercent = is_object($item) ? (float)($item->gstTax?->percentage ?? 0) : 0;
-                    $batchExpiry = is_object($item) ? ($item->batch_expiry_details ?? 'Not Required') : 'Not Required';
-                    $shelfLife = is_object($item) ? ($item->shelf_life_days ?? '') : '';
+                    $itemId = is_object($selectedItem) ? $selectedItem->id : $selectedItem;
+                    $itemName = is_object($selectedItem) ? $selectedItem->name : $selectedItem;
+                    $itemCode = is_object($selectedItem) ? ($selectedItem->item_code ?? '') : '';
+                    $eanCode = is_object($selectedItem) ? ($selectedItem->ean_upc_code ?? '') : '';
+                    $costPrice = is_object($selectedItem) ? (float)($selectedItem->cost_price ?? 0) : 0;
+                    $sellPrice = is_object($selectedItem) ? (float)($selectedItem->sell_price ?? 0) : 0;
+                    $mrp = is_object($selectedItem) ? (float)($selectedItem->mrp ?? 0) : 0;
+                    $gstPercent = is_object($selectedItem) ? (float)($selectedItem->gstTax?->percentage ?? 0) : 0;
+                    $batchExpiry = is_object($selectedItem) ? ($selectedItem->batch_expiry_details ?? 'Not Required') : 'Not Required';
+                    $shelfLife = is_object($selectedItem) ? ($selectedItem->shelf_life_days ?? '') : '';
                 @endphp
                 <option value="{{ $itemId }}"
                         data-code="{{ $itemCode }}"
@@ -67,10 +70,10 @@
                         data-gst="{{ $gstPercent }}"
                         data-batch-expiry="{{ $batchExpiry }}"
                         data-shelf-life="{{ $shelfLife }}"
-                        @selected(($line->item_id ?? null) == $itemId)>
+                        selected>
                     {{ $itemName }}{{ $itemCode ? ' ['.$itemCode.']' : '' }}
                 </option>
-            @endforeach
+            @endif
         </select>
     </td>
     <td style="width: 125px;">

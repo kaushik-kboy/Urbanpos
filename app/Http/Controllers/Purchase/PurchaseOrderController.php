@@ -62,7 +62,6 @@ class PurchaseOrderController extends Controller
 
     public function create(Request $request)
     {
-        $options = $this->formOptions();
         $indent = null;
         $initialItems = null;
 
@@ -90,6 +89,8 @@ class PurchaseOrderController extends Controller
                 ];
             });
         }
+
+        $options = $this->formOptions(null, $initialItems);
 
         return view('purchase.purchase-orders.create', array_merge($options, [
             'indent' => $indent,
@@ -131,7 +132,7 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder->load('items');
 
-        return view('purchase.purchase-orders.edit', array_merge(['purchaseOrder' => $purchaseOrder], $this->formOptions()));
+        return view('purchase.purchase-orders.edit', array_merge(['purchaseOrder' => $purchaseOrder], $this->formOptions($purchaseOrder)));
     }
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)
@@ -209,12 +210,19 @@ class PurchaseOrderController extends Controller
         return 'PO'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
     }
 
-    private function formOptions(): array
+    private function formOptions(?PurchaseOrder $purchaseOrder = null, $initialItems = null): array
     {
+        $existingItemIds = collect($purchaseOrder?->items ?? ($initialItems ?? []))->pluck('item_id')->filter()->unique();
+        $items = $existingItemIds->isNotEmpty()
+            ? Item::whereIn('id', $existingItemIds)->with('gstTax:id,percentage')->get([
+                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id'
+            ])
+            : collect();
+
         return [
             'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'items' => Item::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items' => $items,
         ];
     }
 

@@ -79,15 +79,13 @@ class PurchaseInvoiceController extends Controller
 
     public function create(Request $request)
     {
-        $options = $this->formOptions();
         $sourceReceiptNote = null;
         $convertedItems = collect();
 
         if ($request->filled('from_receipt_note')) {
             $sourceReceiptNote = PurchaseReceiptNote::with(['items.item.gstTax', 'supplier', 'branch', 'purchaseOrder'])
                 ->findOrFail($request->from_receipt_note);
-            $options['sourceReceiptNote'] = $sourceReceiptNote;
-            $options['convertedItems'] = $sourceReceiptNote->items->map(function ($rnItem) {
+            $convertedItems = $sourceReceiptNote->items->map(function ($rnItem) {
                 return [
                     'item_id' => $rnItem->item_id,
                     'exp_date' => $rnItem->exp_date ? $rnItem->exp_date->format('Y-m-d') : null,
@@ -102,6 +100,12 @@ class PurchaseInvoiceController extends Controller
                     'item' => $rnItem->item,
                 ];
             })->filter(fn ($line) => $line['qty'] > 0)->values();
+        }
+
+        $options = $this->formOptions(null, $convertedItems);
+        if ($sourceReceiptNote) {
+            $options['sourceReceiptNote'] = $sourceReceiptNote;
+            $options['convertedItems'] = $convertedItems;
         }
 
         return view('purchase.purchase-invoices.create', array_merge($options, [
@@ -169,7 +173,7 @@ class PurchaseInvoiceController extends Controller
     {
         $purchaseInvoice->load('items');
 
-        return view('purchase.purchase-invoices.edit', array_merge(['purchaseInvoice' => $purchaseInvoice], $this->formOptions()));
+        return view('purchase.purchase-invoices.edit', array_merge(['purchaseInvoice' => $purchaseInvoice], $this->formOptions($purchaseInvoice)));
     }
 
     public function update(Request $request, PurchaseInvoice $purchaseInvoice)
@@ -557,12 +561,15 @@ class PurchaseInvoiceController extends Controller
         ]);
     }
 
-    private function formOptions(): array
+    private function formOptions(?PurchaseInvoice $purchaseInvoice = null, $convertedItems = null): array
     {
-        $items = Item::where('status', true)->with('gstTax:id,percentage')->orderBy('name')->get([
-            'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
-            'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days'
-        ]);
+        $existingItemIds = collect($purchaseInvoice?->items ?? ($convertedItems ?? []))->pluck('item_id')->filter()->unique();
+        $items = $existingItemIds->isNotEmpty()
+            ? Item::whereIn('id', $existingItemIds)->with('gstTax:id,percentage')->get([
+                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
+                'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days'
+            ])
+            : collect();
 
         return [
             'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),

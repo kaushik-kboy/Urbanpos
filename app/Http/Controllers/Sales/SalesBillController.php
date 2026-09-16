@@ -752,6 +752,7 @@ class SalesBillController extends Controller
                 return [
                     'id' => $c->id,
                     'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
+                    'mobile' => $c->mobile ?? '',
                 ];
             });
 

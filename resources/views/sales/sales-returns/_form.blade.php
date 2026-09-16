@@ -334,7 +334,52 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-file-import mr-1"></i> Load Items';
             });
+        // Customer Sales Bills filter: only show invoices belonging to selected customer
+        let customerBillsLoading = false;
+        function loadCustomerBills(customerId, selectedBillId = null) {
+            let $billSelect = $('#sales_bill_id');
+            if (!customerId) {
+                $billSelect.html('<option value="">-- No Original Bill / Direct Return --</option>').trigger('change');
+                return;
+            }
+
+            customerBillsLoading = true;
+            $billSelect.prop('disabled', true);
+
+            $.getJSON('/sales/sales-returns/customer-bills/' + customerId, function (bills) {
+                let currentVal = selectedBillId || $billSelect.val();
+                let html = '<option value="">-- No Original Bill / Direct Return --</option>';
+                if (bills && bills.length > 0) {
+                    bills.forEach(function (b) {
+                        let sel = (String(b.id) === String(currentVal)) ? 'selected' : '';
+                        html += `<option value="${b.id}" ${sel}>${b.label || b.bill_number}</option>`;
+                    });
+                }
+                $billSelect.html(html);
+                if (currentVal) {
+                    $billSelect.val(currentVal);
+                }
+            }).fail(function () {
+                console.error('Failed to load customer bills');
+            }).always(function () {
+                $billSelect.prop('disabled', false);
+                if (window.jQuery && jQuery.fn.select2) {
+                    $billSelect.trigger('change.select2');
+                }
+                customerBillsLoading = false;
+            });
+        }
+
+        $('#customer_id').on('change', function () {
+            let custId = $(this).val();
+            loadCustomerBills(custId);
         });
+
+        let initialCustId = $('#customer_id').val();
+        let initialBillId = '{{ old("sales_bill_id", $ret->sales_bill_id ?? "") }}';
+        if (initialCustId) {
+            loadCustomerBills(initialCustId, initialBillId);
+        }
 
         // Initialize calculations
         recalculateAll();
