@@ -54,6 +54,28 @@ class Customer extends Model
         return $this->hasOne(Ledger::class);
     }
 
+    public function loyaltyPoints(): HasMany
+    {
+        return $this->hasMany(CustomerLoyaltyPoint::class);
+    }
+
+    public function loyaltyBalance(): float
+    {
+        $earned = (float) $this->loyaltyPoints()
+            ->whereIn('type', ['Earned', 'Adjustment_Add'])
+            ->sum('points');
+
+        $deducted = (float) $this->loyaltyPoints()
+            ->whereIn('type', ['Redeemed', 'Adjustment_Deduct'])
+            ->sum('points');
+
+        $reversals = (float) $this->loyaltyPoints()
+            ->where('type', 'Reversal')
+            ->sum('points');
+
+        return (float) max(0.0, round($earned - $deducted + $reversals, 2));
+    }
+
     protected static function booted(): void
     {
         static::created(function (Customer $customer) {

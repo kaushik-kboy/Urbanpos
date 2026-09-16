@@ -346,8 +346,8 @@ return [
                 ['text' => 'Customer Category', 'url' => 'master/customer-categories'],
                 ['text' => 'Customer', 'url' => 'master/customers'],
                 ['text' => 'Area', 'url' => 'master/areas'],
-                ['text' => 'Loyalty Program Info', 'url' => 'master/aux/loyalty-program-info'],
-                ['text' => 'Loyalty Points Update', 'url' => 'master/aux/loyalty-points-update'],
+                ['text' => 'Loyalty Program Info', 'url' => 'master/loyalty-programs'],
+                ['text' => 'Loyalty Points Update', 'url' => 'master/loyalty-points'],
                 [
                     'text' => 'Pet Masters',
                     'submenu' => [
@@ -588,6 +588,7 @@ return [
                 ['text' => 'EOD / Settlement', 'url' => 'reports/eod'],
                 ['text' => 'Inventory Reports', 'url' => 'reports/current-stock'],
                 ['text' => 'Audit Reports', 'url' => 'reports?group=audit'],
+                ['text' => 'Customer Loyalty Report', 'url' => 'reports/customer-loyalty'],
                 ['text' => 'My Reports', 'url' => 'reports?group=my-reports'],
             ],
         ],

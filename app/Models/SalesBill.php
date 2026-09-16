@@ -59,4 +59,19 @@ class SalesBill extends Model
     {
         return $this->morphMany(BillSettlementItem::class, 'billable');
     }
+
+    public function loyaltyTransactions(): HasMany
+    {
+        return $this->hasMany(CustomerLoyaltyPoint::class);
+    }
+
+    public function pointsEarned(): float
+    {
+        return (float) $this->loyaltyTransactions()->where('type', 'Earned')->sum('points');
+    }
+
+    public function pointsRedeemed(): float
+    {
+        return (float) $this->loyaltyTransactions()->where('type', 'Redeemed')->sum('points');
+    }
 }

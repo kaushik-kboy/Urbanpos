@@ -141,6 +141,10 @@
                                 <a href="{{ route('reports.customer-pet-details') }}" class="font-weight-bold text-dark">Customer Pet Details</a>
                                 <span class="badge badge-warning badge-pill"><i class="fas fa-arrow-right"></i></span>
                             </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{{ route('reports.customer-loyalty') }}" class="font-weight-bold text-dark">Customer Loyalty Details</a>
+                                <span class="badge badge-warning badge-pill"><i class="fas fa-arrow-right"></i></span>
+                            </li>
                         </ul>
                     </div>
                 </div>

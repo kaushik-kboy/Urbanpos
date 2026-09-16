@@ -16,6 +16,7 @@ use App\Services\Accounting\FinancialYearGuard;
 use App\Services\Accounting\LedgerPostingService;
 use App\Services\Audit\AuditLogger;
 use App\Services\Inventory\StockLedgerService;
+use App\Services\Loyalty\LoyaltyService;
 use App\Services\Tax\TaxEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,7 @@ class SalesBillController extends Controller
         private AuditLogger $auditLogger,
         private CreditLimitGuard $creditLimitGuard,
         private FinancialYearGuard $financialYearGuard,
+        private LoyaltyService $loyaltyService,
     ) {
     }
 
@@ -124,6 +126,16 @@ class SalesBillController extends Controller
             $this->persistPayments($salesBill, $data, $totals['total']);
             $this->ledgerPosting->postSalesBill($salesBill);
 
+            $this->loyaltyService->accruePointsForBill($salesBill);
+
+            if ($request->filled('redeemed_loyalty_points') && (float) $request->input('redeemed_loyalty_points') > 0) {
+                $this->loyaltyService->redeemPointsForBill(
+                    $salesBill,
+                    (float) $request->input('redeemed_loyalty_points'),
+                    $request->filled('redeemed_loyalty_amount') ? (float) $request->input('redeemed_loyalty_amount') : null
+                );
+            }
+
             if ($request->filled('from_quotation_id')) {
                 SalesQuotation::where('id', $request->input('from_quotation_id'))->update([
                     'status' => 'Converted',
@@ -203,11 +215,17 @@ class SalesBillController extends Controller
         DB::transaction(function () use ($salesBill, $oldValues) {
             $this->stockLedger->reverseByReference(SalesBill::class, $salesBill->id);
             $this->ledgerPosting->reverse(SalesBill::class, $salesBill->id);
+            $this->loyaltyService->reverseBillPoints($salesBill);
             $this->auditLogger->log('cancel', $salesBill, $oldValues, null);
             $salesBill->delete();
         });
 
         return redirect()->route('sales.sales-bills.index')->with('status', 'Sales Bill deleted and stock restored.');
+    }
+
+    public function customerLoyalty(Customer $customer)
+    {
+        return response()->json($this->loyaltyService->getCustomerLoyalty($customer));
     }
 
     /**

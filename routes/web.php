@@ -13,6 +13,8 @@ use App\Http\Controllers\Master\ItemCategoryController;
 use App\Http\Controllers\Master\ItemCategoryValueController;
 use App\Http\Controllers\Master\ItemController;
 use App\Http\Controllers\Master\ItemPriceChangeController;
+use App\Http\Controllers\Master\LoyaltyProgramController;
+use App\Http\Controllers\Master\LoyaltyPointsUpdateController;
 use App\Http\Controllers\Master\PetTypeController;
 use App\Http\Controllers\Master\RegisterController;
 use App\Http\Controllers\Master\SupplierController;
@@ -128,6 +130,13 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::middleware('permission:financial-years.reopen')
         ->post('financial-years/{financial_year}/reopen', [FinancialYearController::class, 'reopen'])->name('financial-years.reopen');
 
+    // Loyalty Programs & Points Update
+    $gatedResource('loyalty-programs', LoyaltyProgramController::class, 'loyalty-programs');
+    Route::get('loyalty-points', [LoyaltyPointsUpdateController::class, 'index'])->name('loyalty-points.index');
+    Route::get('loyalty-points/customer/{customer}', [LoyaltyPointsUpdateController::class, 'customerPoints'])->name('loyalty-points.customer');
+    Route::middleware(['permission:loyalty-programs.create', 'branch.access'])
+        ->post('loyalty-points', [LoyaltyPointsUpdateController::class, 'store'])->name('loyalty-points.store');
+
     Route::get('aux/{module}', [MasterAuxController::class, 'renderModule'])->name('aux');
 });
 
@@ -213,6 +222,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
 Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () use ($gatedResource) {
     Route::get('sales-bills/item-list', [SalesBillController::class, 'itemList'])->name('sales-bills.item-list');
     Route::get('sales-bills/lookup-item', [SalesBillController::class, 'lookupItem'])->name('sales-bills.lookup-item');
+    Route::get('sales-bills/customer-loyalty/{customer}', [SalesBillController::class, 'customerLoyalty'])->name('sales-bills.customer-loyalty');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');
     $gatedResource('sales-orders', SalesOrderController::class, 'sales-orders');
@@ -245,6 +255,7 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('damage-stock-summary', [ReportController::class, 'damageStockSummary'])->name('damage-stock-summary');
     Route::get('tender-summary', [ReportController::class, 'tenderSummary'])->name('tender-summary');
     Route::get('audit-logs', [ReportController::class, 'auditLogs'])->name('audit-logs');
+    Route::get('customer-loyalty', [FinanceReportController::class, 'customerLoyalty'])->name('customer-loyalty');
 });
 
 Route::middleware('auth')->prefix('till')->name('till.')->group(function () {
@@ -273,6 +284,7 @@ Route::middleware('auth')->prefix('finance')->name('finance.')->group(function (
         Route::get('profit-loss', [FinanceReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('cash-bank-book', [FinanceReportController::class, 'cashBankBook'])->name('cash-bank-book');
         Route::get('outstanding-aging', [FinanceReportController::class, 'outstandingAging'])->name('outstanding-aging');
+        Route::get('customer-loyalty', [FinanceReportController::class, 'customerLoyalty'])->name('customer-loyalty');
     });
 });
 

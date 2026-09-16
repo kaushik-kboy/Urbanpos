@@ -21,6 +21,14 @@
 
 <h5 class="mb-3"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
 <x-select name="customer_id" label="Customer" :options="$customers" :selected="$selectedCust" placeholder="Select a customer" required />
+<div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-3 shadow-sm align-items-center justify-content-between">
+    <div>
+        <i class="fas fa-coins text-warning mr-1"></i>
+        <strong>Loyalty Points:</strong> <span id="sb-loyalty-pts" class="text-primary font-weight-bold">0.00</span> pts
+        <span class="text-muted">(≈ ₹<span id="sb-loyalty-val">0.00</span>)</span>
+    </div>
+    <span id="sb-loyalty-notice" class="badge badge-success"></span>
+</div>
 <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a branch" required />
 <x-field name="bill_date" label="Bill Date" type="date" :value="optional($bill->bill_date ?? now())->format('Y-m-d')" required />
 <x-select name="invoice_type" label="Invoice Type" :options="['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
@@ -1167,6 +1175,36 @@
             // Fallback in case modal event doesn't fire immediately
             setTimeout(doSubmit, 350);
         });
+
+        function fetchCustomerLoyalty(customerId) {
+            if (!customerId) {
+                $('#sb-customer-loyalty-badge').addClass('d-none').removeClass('d-flex');
+                return;
+            }
+            $.ajax({
+                url: "{{ url('sales/sales-bills/customer-loyalty') }}/" + customerId,
+                type: 'GET',
+                dataType: 'json',
+                success: function (res) {
+                    if (res && res.enable_loyalty) {
+                        $('#sb-loyalty-pts').text(Number(res.balance_points).toFixed(2));
+                        $('#sb-loyalty-val').text(Number(res.rupee_value).toFixed(2));
+                        $('#sb-loyalty-notice').text(res.can_redeem ? 'Eligible to Redeem' : 'Min ' + res.min_points_redeem + ' pts required');
+                        $('#sb-customer-loyalty-badge').removeClass('d-none').addClass('d-flex');
+                    } else {
+                        $('#sb-customer-loyalty-badge').addClass('d-none').removeClass('d-flex');
+                    }
+                }
+            });
+        }
+
+        $('select[name="customer_id"]').on('change', function () {
+            fetchCustomerLoyalty($(this).val());
+        });
+
+        if ($('select[name="customer_id"]').val()) {
+            fetchCustomerLoyalty($('select[name="customer_id"]').val());
+        }
 
     });
 </script>

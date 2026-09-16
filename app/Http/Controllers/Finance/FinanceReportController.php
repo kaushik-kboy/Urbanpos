@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\Customer;
 use App\Models\JournalEntry;
 use App\Models\Ledger;
 use Illuminate\Http\Request;
@@ -385,5 +387,59 @@ class FinanceReportController extends Controller
         return view('finance.reports.outstanding-aging', compact(
             'partyType', 'branchId', 'asOfDate', 'branches', 'rows', 'totals'
         ));
+    }
+
+    public function customerLoyalty(Request $request)
+    {
+        $branchId = $request->input('branch_id');
+        $search = $request->input('search');
+
+        $query = Customer::with(['category', 'branch', 'loyaltyPoints'])
+            ->where('status', true);
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('customer_code', 'like', "%{$search}%");
+            });
+        }
+
+        $customers = $query->get()->map(function ($customer) {
+            $earned = (float) $customer->loyaltyPoints->whereIn('type', ['Earned', 'Adjustment_Add'])->sum('points');
+            $redeemed = (float) $customer->loyaltyPoints->whereIn('type', ['Redeemed', 'Adjustment_Deduct'])->sum('points');
+            $reversals = (float) $customer->loyaltyPoints->where('type', 'Reversal')->sum('points');
+            $balance = (float) max(0.0, round($earned - $redeemed + $reversals, 2));
+            $lastTrans = $customer->loyaltyPoints->sortByDesc('created_at')->first();
+
+            return [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'phone' => $customer->phone ?: $customer->mobile,
+                'category' => $customer->category?->name ?? 'Default',
+                'enable_loyalty' => (bool) ($customer->category?->enable_loyalty ?? false),
+                'earned' => $earned,
+                'redeemed' => $redeemed,
+                'balance' => $balance,
+                'last_activity' => $lastTrans?->created_at?->format('d M Y, h:i A') ?? 'Never',
+            ];
+        });
+
+        $customers = $customers->sortByDesc('balance')->values();
+
+        $totals = [
+            'total_customers' => $customers->count(),
+            'total_balance_points' => $customers->sum('balance'),
+            'total_earned_points' => $customers->sum('earned'),
+            'total_redeemed_points' => $customers->sum('redeemed'),
+        ];
+
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('finance.reports.customer-loyalty', compact('customers', 'totals', 'branches', 'branchId', 'search'));
     }
 }
