@@ -282,6 +282,7 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('sales-margin-category', [ReportController::class, 'salesMarginCategorywise'])->name('sales-margin-category');
     Route::get('quotation-order-summary', [ReportController::class, 'quotationOrderSummary'])->name('quotation-order-summary');
     Route::get('reorder-report', [ReportController::class, 'reorderReport'])->name('reorder-report');
+    Route::get('view/{module}', [ReportController::class, 'renderGenericReport'])->name('view');
 });
 
 Route::middleware('auth')->prefix('till')->name('till.')->group(function () {

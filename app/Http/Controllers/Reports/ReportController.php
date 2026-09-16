@@ -842,6 +842,15 @@ class ReportController extends Controller
         ));
     }
 
+    public function renderGenericReport(Request $request, string $module)
+    {
+        $title = ucwords(str_replace(['-', '_'], ' ', $module));
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+
+        return view('reports.generic-report', compact('title', 'module', 'branches', 'from', 'to', 'branchId'));
+    }
+
     private function dateAndBranchFilter(Request $request): array
     {
         $from = $request->input('from', now()->startOfMonth()->format('Y-m-d'));
