@@ -47,16 +47,22 @@ class DatabaseBackup extends Command
             escapeshellarg($filepath)
         );
 
-        @exec($cmd, $output, $returnVar);
+        $dumpSuccess = false;
+        if (function_exists('exec')) {
+            @exec($cmd, $output, $returnVar);
+            if (($returnVar ?? 1) === 0 && File::exists($filepath) && File::size($filepath) > 1024) {
+                $dumpSuccess = true;
+            }
+        }
 
-        if ($returnVar === 0 && File::exists($filepath) && File::size($filepath) > 1024) {
+        if ($dumpSuccess) {
             $sizeMb = round(File::size($filepath) / 1024 / 1024, 2);
             $this->info("Backup completed successfully via mysqldump: {$filename} ({$sizeMb} MB)");
             return 0;
         }
 
         // Pure PHP Table Dump Fallback
-        $this->warn("mysqldump exited with code {$returnVar}. Running native PHP table export fallback...");
+        $this->warn("Running native PHP table export fallback...");
         $tables = DB::select('SHOW TABLES');
         $tableKey = 'Tables_in_' . $database;
 
