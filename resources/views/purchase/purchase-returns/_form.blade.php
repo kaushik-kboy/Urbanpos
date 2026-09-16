@@ -78,15 +78,16 @@
     <table class="table table-sm table-bordered table-hover" id="pr-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="min-width: 250px;">Item Description <span class="text-danger">*</span></th>
-                <th style="width: 140px;">Exp Date</th>
-                <th style="width: 100px;" class="text-right">Qty <span class="text-danger">*</span></th>
-                <th style="width: 120px;" class="text-right">Cost Price <span class="text-danger">*</span></th>
-                <th style="width: 90px;" class="text-right">Disc %</th>
-                <th style="width: 110px;" class="text-right">Disc Amt</th>
-                <th style="width: 90px;" class="text-right">GST %</th>
-                <th style="width: 130px;" class="text-right">Net Amount</th>
-                <th style="width: 45px;" class="text-center"></th>
+                <th style="width: 170px;">Code / Barcode <span class="text-danger">*</span></th>
+                <th style="min-width: 220px;">Item Description</th>
+                <th style="width: 130px;">Exp Date</th>
+                <th style="width: 95px;" class="text-right">Qty <span class="text-danger">*</span></th>
+                <th style="width: 110px;" class="text-right">Cost Price <span class="text-danger">*</span></th>
+                <th style="width: 85px;" class="text-right">Disc %</th>
+                <th style="width: 95px;" class="text-right">Disc Amt</th>
+                <th style="width: 85px;" class="text-right">GST %</th>
+                <th style="width: 110px;" class="text-right">Net Amount</th>
+                <th style="width: 40px;" class="text-center"></th>
             </tr>
         </thead>
         <tbody id="pr-items-body">
@@ -98,7 +99,7 @@
         </tbody>
         <tfoot class="bg-light font-weight-bold">
             <tr>
-                <td colspan="2" class="text-right align-middle">Summary Totals:</td>
+                <td colspan="3" class="text-right align-middle">Summary Totals:</td>
                 <td class="text-right align-middle text-primary" id="footer-pr-qty">0.000</td>
                 <td></td>
                 <td></td>
@@ -148,10 +149,92 @@
     @include('purchase.purchase-returns._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>
 
+{{-- ================================================================ --}}
+{{-- ITEM SEARCH MODAL (Shared standard popup)                        --}}
+{{-- ================================================================ --}}
+<div class="modal fade" id="pr-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="prItemSearchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="prItemSearchModalLabel">
+                    <i class="fas fa-search mr-2"></i> Select Item
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light"><i class="fas fa-font text-muted"></i></span>
+                            </div>
+                            <input type="text" id="pr-isl-filter-name" class="form-control" placeholder="Search by item name..." autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light"><i class="fas fa-barcode text-muted"></i></span>
+                            </div>
+                            <input type="text" id="pr-isl-filter-code" class="form-control font-weight-bold" placeholder="Filter by Code / Barcode..." autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" id="pr-isl-btn-clear" class="btn btn-outline-secondary btn-block">
+                            <i class="fas fa-times mr-1"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div id="pr-isl-loading" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted mb-0">Searching products…</p>
+                </div>
+
+                <div id="pr-isl-no-results" class="text-center py-4 text-muted">
+                    <i class="fas fa-keyboard fa-2x text-muted"></i>
+                    <p class="mt-2 text-muted">Start typing to search items…</p>
+                </div>
+
+                <div id="pr-isl-table-wrap" class="table-responsive d-none" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover table-sm table-striped mb-0">
+                        <thead class="thead-dark sticky-top">
+                            <tr>
+                                <th style="width: 45px;" class="text-center">#</th>
+                                <th>Item Name</th>
+                                <th style="width: 140px;" class="text-center">Code / Barcode</th>
+                                <th style="width: 90px;" class="text-center">Stock</th>
+                                <th style="width: 110px;" class="text-right">Cost Price</th>
+                                <th style="width: 100px;" class="text-right">Sell Price</th>
+                                <th style="width: 80px;" class="text-right">GST %</th>
+                                <th style="width: 90px;" class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pr-isl-items-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer py-2 justify-content-between bg-light">
+                <span class="text-muted small" id="pr-isl-count-label"></span>
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('js')
 <script>
     (function () {
         let rowIndex = {{ max(count($existingItems), 1) }};
+        const PR_ISL_URL = "{{ route('sales.sales-bills.item-list') }}";
+        const PR_LOOKUP_URL = "{{ route('sales.sales-bills.lookup-item') }}";
+
+        let prActiveSearchRow = null;
+        let prModalOpen = false;
+        let prModalClosing = false;
+        let prIslDebounce = null;
 
         function recalculateRow(row) {
             const qty = parseFloat(row.querySelector('.pr-qty')?.value) || 0;
@@ -222,9 +305,6 @@
             tempWrapper.innerHTML = html;
             const newRow = tempWrapper.firstElementChild;
             tbody.appendChild(newRow);
-            if (window.jQuery && jQuery.fn.select2) {
-                $(newRow).find('.select2').select2({ theme: 'bootstrap4', width: '100%' });
-            }
             rowIndex++;
             recalculateAll();
         });
@@ -248,6 +328,190 @@
         });
 
         document.getElementById('round_off')?.addEventListener('input', recalculateAll);
+
+        /* ----------------------------------------------------------------
+           ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
+           ---------------------------------------------------------------- */
+        $(document).on('click focus', '.pr-item-code', function (e) {
+            if (prModalOpen || prModalClosing) return;
+            prActiveSearchRow = $(this).closest('tr');
+            let prefill = $.trim($(this).val());
+            $('#pr-isl-filter-name').val(prefill);
+            $('#pr-isl-filter-code').val('');
+            fetchPrItemList();
+            prModalOpen = true;
+            $('#pr-item-search-modal').modal('show');
+            $('#pr-item-search-modal').one('shown.bs.modal', function () {
+                $('#pr-isl-filter-name').focus().select();
+            });
+        });
+
+        $(document).on('click', '.pr-search-btn', function (e) {
+            e.preventDefault();
+            prActiveSearchRow = $(this).closest('tr');
+            let prefill = $.trim(prActiveSearchRow.find('.pr-item-code').val());
+            $('#pr-isl-filter-name').val(prefill);
+            $('#pr-isl-filter-code').val('');
+            fetchPrItemList();
+            prModalOpen = true;
+            $('#pr-item-search-modal').modal('show');
+            $('#pr-item-search-modal').one('shown.bs.modal', function () {
+                $('#pr-isl-filter-name').focus().select();
+            });
+        });
+
+        $('#pr-item-search-modal').on('show.bs.modal', function () { prModalOpen = true; });
+        $('#pr-item-search-modal').on('hidden.bs.modal', function () {
+            prModalOpen = false;
+            prModalClosing = true;
+            setTimeout(function () { prModalClosing = false; }, 350);
+        });
+
+        $('#pr-isl-filter-name, #pr-isl-filter-code').on('input', function () {
+            clearTimeout(prIslDebounce);
+            prIslDebounce = setTimeout(fetchPrItemList, 300);
+        });
+
+        $('#pr-isl-btn-clear').on('click', function () {
+            $('#pr-isl-filter-name, #pr-isl-filter-code').val('');
+            fetchPrItemList();
+        });
+
+        function fetchPrItemList() {
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let srch = $.trim($('#pr-isl-filter-name').val());
+            let code = $.trim($('#pr-isl-filter-code').val());
+
+            if (!srch && !code) {
+                $('#pr-isl-loading').addClass('d-none');
+                $('#pr-isl-table-wrap').addClass('d-none');
+                $('#pr-isl-items-body').empty();
+                $('#pr-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
+                );
+                $('#pr-isl-count-label').text('');
+                return;
+            }
+
+            $('#pr-isl-loading').removeClass('d-none');
+            $('#pr-isl-no-results').addClass('d-none');
+            $('#pr-isl-table-wrap').addClass('d-none');
+
+            $.getJSON(PR_ISL_URL, { branch_id: branchId, search: srch, code: code }, function (res) {
+                $('#pr-isl-loading').addClass('d-none');
+                let items = res.items || [];
+                let $tbody = $('#pr-isl-items-body').empty();
+
+                if (items.length === 0) {
+                    $('#pr-isl-no-results').removeClass('d-none').html(
+                        '<i class="fas fa-inbox fa-2x text-muted"></i><p class="mt-2 text-muted">No items found.</p>'
+                    );
+                    $('#pr-isl-count-label').text('');
+                    return;
+                }
+
+                let html = '';
+                items.forEach(function (it, idx) {
+                    let codeBadge = it.code ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>` : '—';
+                    let costDisplay = it.cost_price > 0 ? '₹' + parseFloat(it.cost_price).toFixed(2) : '—';
+                    let sellDisplay = it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—';
+                    let stockClass = it.qty <= 0 ? 'text-danger' : 'text-primary font-weight-bold';
+
+                    html += `
+                        <tr class="pr-isl-item-row" style="cursor:pointer;"
+                            data-id="${it.id}"
+                            data-code="${it.code || ''}"
+                            data-name="${it.name}"
+                            data-cost="${it.cost_price || 0}"
+                            data-gst="${it.gst_percent || 0}">
+                            <td class="align-middle text-center text-muted">${idx + 1}</td>
+                            <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                            <td class="align-middle text-center">${codeBadge}</td>
+                            <td class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(2)}</td>
+                            <td class="align-middle text-right font-weight-bold text-dark">${costDisplay}</td>
+                            <td class="align-middle text-right text-success">${sellDisplay}</td>
+                            <td class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
+                            <td class="align-middle text-center">
+                                <button type="button" class="btn btn-success btn-xs px-2 pr-isl-btn-select">
+                                    <i class="fas fa-check mr-1"></i>Select
+                                </button>
+                            </td>
+                        </tr>`;
+                });
+
+                $tbody.html(html);
+                $('#pr-isl-table-wrap').removeClass('d-none');
+                $('#pr-isl-count-label').text(items.length + ' item(s) found');
+            }).fail(function () {
+                $('#pr-isl-loading').addClass('d-none');
+            });
+        }
+
+        $(document).on('click', '.pr-isl-item-row, .pr-isl-btn-select', function (e) {
+            e.stopPropagation();
+            let $tr = $(this).hasClass('pr-isl-item-row') ? $(this) : $(this).closest('tr');
+            let itemData = {
+                id: $tr.data('id'),
+                name: $tr.data('name'),
+                code: $tr.data('code'),
+                cost_price: $tr.data('cost'),
+                gst_percent: $tr.data('gst')
+            };
+
+            $('#pr-item-search-modal').modal('hide');
+
+            if (!prActiveSearchRow || !itemData.id) return;
+            let $row = prActiveSearchRow;
+            $row.find('.pr-item-code').val(itemData.code);
+            $row.find('.pr-item-desc').val(itemData.name);
+            $row.find('.pr-item-id').val(itemData.id);
+
+            let currentCost = parseFloat($row.find('.pr-cost').val()) || 0;
+            if (currentCost <= 0 && parseFloat(itemData.cost_price) > 0) {
+                $row.find('.pr-cost').val(parseFloat(itemData.cost_price).toFixed(2));
+            }
+            if (parseFloat(itemData.gst_percent) >= 0) {
+                $row.find('.pr-gst-percent').val(parseFloat(itemData.gst_percent).toFixed(2));
+            }
+
+            recalculateAll();
+
+            setTimeout(function () {
+                $row.find('.pr-qty').focus().select();
+            }, 100);
+
+            prActiveSearchRow = null;
+        });
+
+        // Direct Code typing and Enter/Blur lookup
+        $(document).on('keydown blur', '.pr-item-code', function (e) {
+            if (e.type === 'keydown' && e.key !== 'Enter') return;
+            if (e.type === 'keydown' && e.key === 'Enter') e.preventDefault();
+
+            let $input = $(this);
+            let query = $.trim($input.val());
+            let $row = $input.closest('tr');
+            if (!query) return;
+
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            $.getJSON(PR_LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
+                if (item && item.id) {
+                    $row.find('.pr-item-code').val(item.code || query);
+                    $row.find('.pr-item-desc').val(item.name);
+                    $row.find('.pr-item-id').val(item.id);
+
+                    let currentCost = parseFloat($row.find('.pr-cost').val()) || 0;
+                    if (currentCost <= 0 && parseFloat(item.cost_price) > 0) {
+                        $row.find('.pr-cost').val(parseFloat(item.cost_price).toFixed(2));
+                    }
+                    if (parseFloat(item.gst_percent) >= 0) {
+                        $row.find('.pr-gst-percent').val(parseFloat(item.gst_percent).toFixed(2));
+                    }
+                    recalculateAll();
+                    $row.find('.pr-qty').focus().select();
+                }
+            });
+        });
 
         // Load items from Invoice
         document.getElementById('btn-load-invoice')?.addEventListener('click', function () {
@@ -286,8 +550,13 @@
                         tempWrapper.innerHTML = html;
                         const row = tempWrapper.firstElementChild;
 
-                        const select = row.querySelector('.pr-item-select');
-                        if (select) select.value = item.item_id;
+                        const idInput = row.querySelector('.pr-item-id');
+                        if (idInput) idInput.value = item.item_id;
+                        const codeInput = row.querySelector('.pr-item-code');
+                        if (codeInput) codeInput.value = item.item_code || '';
+                        const descInput = row.querySelector('.pr-item-desc');
+                        if (descInput) descInput.value = item.item_name || '';
+
                         const qtyInput = row.querySelector('.pr-qty');
                         if (qtyInput) qtyInput.value = item.qty;
                         const costInput = row.querySelector('.pr-cost');
@@ -298,13 +567,10 @@
                         if (discAmtInput) discAmtInput.value = item.disc_amount;
                         const gstPctInput = row.querySelector('.pr-gst-percent');
                         if (gstPctInput) gstPctInput.value = item.gst_percent;
-                        const expInput = row.querySelector('input[type="date"]');
+                        const expInput = row.querySelector('.pr-exp-date');
                         if (expInput && item.exp_date) expInput.value = item.exp_date;
 
                         tbody.appendChild(row);
-                        if (window.jQuery && jQuery.fn.select2) {
-                            $(row).find('.select2').select2({ theme: 'bootstrap4', width: '100%' });
-                        }
                     });
                     rowIndex = data.items.length;
                     recalculateAll();

@@ -218,6 +218,7 @@
         let islCache = {};
         let islLastKey = null;
         let islModalOpen = false;
+        let islModalClosing = false;
         let islSelectedIdx = -1;
         const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
         const LOOKUP_URL = '{{ route("purchase.purchase-invoices.lookup-item") }}';
@@ -446,7 +447,7 @@
 
         // Open modal on Code/Barcode field click or focus
         $(document).on('click focus', '.po-item-code', function (e) {
-            if (islModalOpen) return;
+            if (islModalOpen || islModalClosing) return;
             activeSearchRow = $(this).closest('tr');
             let prefill = $.trim($(this).val());
             $('#po-isl-filter-name').val(prefill);
@@ -456,7 +457,7 @@
             islModalOpen = true;
             $('#po-item-search-modal').modal('show');
             $('#po-item-search-modal').one('shown.bs.modal', function () {
-                $('#po-isl-filter-name').focus();
+                $('#po-isl-filter-name').focus().select();
                 if (prefill) fetchItemList();
             });
         });
@@ -464,7 +465,8 @@
         $('#po-item-search-modal').on('show.bs.modal', function () { islModalOpen = true; });
         $('#po-item-search-modal').on('hidden.bs.modal', function () {
             islModalOpen = false;
-            setTimeout(function () { islModalOpen = false; }, 300);
+            islModalClosing = true;
+            setTimeout(function () { islModalClosing = false; }, 350);
         });
 
         // Barcode / Code direct typing and Enter/Blur

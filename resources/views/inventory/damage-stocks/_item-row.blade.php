@@ -26,9 +26,10 @@
     {{-- Item Code (Barcode scanner or manual code input) --}}
     <td style="width: 155px;">
         <input type="text" class="form-control form-control-sm item-code-input text-monospace font-weight-bold" 
-               placeholder="Scan / Code" 
+               placeholder="Code / Barcode" 
                value="{{ $displayCode }}" 
-               autocomplete="off">
+               autocomplete="off"
+               title="Enter code or click/tab to search">
     </td>
 
     {{-- Item Description (Select2 AJAX) --}}

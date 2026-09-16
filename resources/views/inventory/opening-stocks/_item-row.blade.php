@@ -31,8 +31,9 @@
             <input type="text" 
                    class="form-control form-control-sm item-code-input" 
                    value="{{ $displayCode }}" 
-                   placeholder="Scan/Code" 
-                   autocomplete="off">
+                   placeholder="Code / Barcode" 
+                   autocomplete="off"
+                   title="Enter code or click/tab to search">
             <div class="input-group-append">
                 <button type="button" class="btn btn-outline-secondary btn-sm open-item-modal" title="Search Items Popup (F2)" tabindex="-1">
                     <i class="fas fa-search"></i>

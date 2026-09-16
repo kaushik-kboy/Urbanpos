@@ -50,8 +50,8 @@
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;">S.No</th>
-                        <th style="width: 155px;">Code</th>
-                        <th style="width: 270px;">Description</th>
+                        <th style="width: 155px;">Code / Barcode</th>
+                        <th style="width: 270px;">Item Description</th>
                         <th style="width: 135px;">Exp Dt</th>
                         <th style="width: 90px;">Qty</th>
                         <th style="width: 100px;">Cost Price</th>
@@ -252,6 +252,16 @@
             recalcRow($row);
             $qty.focus().select();
         }
+
+        let osModalOpen = false;
+        let osModalClosing = false;
+
+        $('#item-search-modal').on('show.bs.modal', function () { osModalOpen = true; });
+        $('#item-search-modal').on('hidden.bs.modal', function () {
+            osModalOpen = false;
+            osModalClosing = true;
+            setTimeout(function () { osModalClosing = false; }, 350);
+        });
 
         // Open item search modal popup
         function openItemModal($row, initialQuery) {
@@ -625,6 +635,13 @@
                 $(this).find('.row-sno').text(idx + 1);
             });
         }
+
+        // Trigger item search modal on click or focus of .item-code-input
+        $('#items-body').on('click focus', '.item-code-input', function () {
+            if (osModalOpen || osModalClosing) return;
+            const $row = $(this).closest('tr');
+            openItemModal($row, $(this).val());
+        });
 
         // Event listeners on items-body
         $('#items-body').on('change', '.item-code-input', function () {

@@ -55,7 +55,7 @@
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;">S.No</th>
-                        <th style="width: 155px;">Item Code</th>
+                        <th style="width: 155px;">Code / Barcode</th>
                         <th style="min-width: 280px;" class="text-left">Item Description</th>
                         <th style="width: 130px;">Exp Dt</th>
                         <th style="width: 95px;" class="text-right">Qty</th>
@@ -238,6 +238,16 @@
             recalcRow($row);
             $qty.focus().select();
         }
+
+        let damageModalOpen = false;
+        let damageModalClosing = false;
+
+        $('#item-search-modal').on('show.bs.modal', function () { damageModalOpen = true; });
+        $('#item-search-modal').on('hidden.bs.modal', function () {
+            damageModalOpen = false;
+            damageModalClosing = true;
+            setTimeout(function () { damageModalClosing = false; }, 350);
+        });
 
         // Open item search modal popup
         function openItemModal($row, initialQuery) {
@@ -606,6 +616,13 @@
             }
             $(this).closest('tr').remove();
             reindexRows();
+        });
+
+        // Open modal on item code click or focus
+        $('#items-body').on('click focus', '.item-code-input', function () {
+            if (damageModalOpen || damageModalClosing) return;
+            const $row = $(this).closest('tr');
+            openItemModal($row, $(this).val());
         });
 
         // Code input blur / enter

@@ -59,8 +59,8 @@
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;">S.No</th>
-                        <th style="width: 155px;">Code</th>
-                        <th style="width: 270px;">Description</th>
+                        <th style="width: 155px;">Code / Barcode</th>
+                        <th style="width: 270px;">Item Description</th>
                         <th style="width: 135px;">Exp Dt</th>
                         <th style="width: 100px;">Available</th>
                         <th style="width: 90px;">Qty</th>
@@ -205,6 +205,7 @@
         let stIslCache = {};
         let stIslLastKey = null;
         let stModalOpen = false;
+        let stModalClosing = false;
 
         function currentFromBranch() {
             return $('#from_branch_id').val() || '';
@@ -406,12 +407,13 @@
         $('#st-item-search-modal').on('show.bs.modal', function() { stModalOpen = true; });
         $('#st-item-search-modal').on('hidden.bs.modal', function() {
             stModalOpen = false;
-            setTimeout(function() { stModalOpen = false; }, 300);
+            stModalClosing = true;
+            setTimeout(function() { stModalClosing = false; }, 350);
         });
 
-        // Trigger item search modal on focus of .item-code-input
-        $(document).off('focus', '.item-code-input').on('focus', '.item-code-input', function () {
-            if (stModalOpen) return;
+        // Trigger item search modal on click or focus of .item-code-input
+        $(document).off('click focus', '.item-code-input').on('click focus', '.item-code-input', function () {
+            if (stModalOpen || stModalClosing) return;
             openItemModal($(this).closest('tr'), $(this).val());
         });
 

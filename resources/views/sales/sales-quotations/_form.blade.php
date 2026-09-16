@@ -74,6 +74,7 @@
         <thead class="bg-light">
             <tr>
                 <th style="width: 35px;" class="text-center">#</th>
+                <th style="width: 130px;">Code / Barcode</th>
                 <th style="min-width: 250px;">Item Description</th>
                 <th style="width: 100px;" class="text-right">Qty</th>
                 <th style="width: 120px;" class="text-right">Sell Price</th>
@@ -94,7 +95,7 @@
         </tbody>
         <tfoot class="bg-light font-weight-bold">
             <tr>
-                <td colspan="2" class="text-right align-middle">Totals:</td>
+                <td colspan="3" class="text-right align-middle">Totals:</td>
                 <td class="text-right align-middle text-primary font-weight-bold" id="sq-footer-qty">0.00</td>
                 <td colspan="2" class="align-middle"></td>
                 <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="sq-footer-disc">0.00</td>
@@ -143,29 +144,96 @@
     </tbody>
 </table>
 
+{{-- ============================================================
+     ITEM SEARCH MODAL for Sales Quotation
+     ============================================================ --}}
+<div class="modal fade" id="sq-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="sqItemSearchLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content shadow border-dark">
+            <div class="modal-header bg-dark text-white py-2">
+                <h5 class="modal-title" id="sqItemSearchLabel">
+                    <i class="fas fa-search mr-2"></i>Select Quotation Item
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            </div>
+                            <input type="text" id="sq-isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                            </div>
+                            <input type="text" id="sq-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <button type="button" id="sq-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-times mr-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div id="sq-isl-loading" class="text-center py-4 d-none">
+                    <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2 text-muted">Loading items…</p>
+                </div>
+                <div id="sq-isl-no-results" class="text-center py-4">
+                    <i class="fas fa-keyboard fa-2x text-muted"></i>
+                    <p class="mt-2 text-muted">Start typing to search items…</p>
+                </div>
+
+                <div class="table-responsive d-none" id="sq-isl-table-wrap" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="sq-isl-items-table">
+                        <thead class="bg-dark text-white sticky-top">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Product Name</th>
+                                <th class="text-center" style="width: 120px;">Code</th>
+                                <th class="text-center" style="width: 110px;">Stock</th>
+                                <th class="text-right" style="width: 90px;">Sell Price</th>
+                                <th class="text-right" style="width: 90px;">MRP</th>
+                                <th class="text-right" style="width: 80px;">GST %</th>
+                                <th class="text-center" style="width: 80px;">Select</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sq-isl-items-body"></tbody>
+                    </table>
+                </div>
+                <small class="text-muted mt-2 d-block" id="sq-isl-count-label"></small>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('js')
 <script>
 $(function() {
     let nextIndex = {{ count($existingItems) > 0 ? count($existingItems) : 1 }};
-
-    function initRowSelect2($row) {
-        $row.find('.select2').select2({
-            theme: 'bootstrap4',
-            width: '100%'
-        });
-    }
-
-    $('.select2').select2({
-        theme: 'bootstrap4',
-        width: '100%'
-    });
+    let sqActiveSearchRow = null;
+    let sqIslDebounce = null;
+    let sqModalOpen = false;
+    let sqModalClosing = false;
+    const SQ_ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
 
     $('#sq-add-row-btn').on('click', function() {
         let html = $('#sq-row-template').html().replace(/__INDEX__/g, nextIndex++);
         let $newRow = $(html);
         $('#sq-items-body').append($newRow);
-        initRowSelect2($newRow);
         recalcAll();
+        $newRow.find('.sq-item-code').focus();
     });
 
     $(document).on('click', '.sq-remove-row', function() {
@@ -177,22 +245,141 @@ $(function() {
         }
     });
 
-    $(document).on('change', '.sq-item-select', function() {
-        let $opt = $(this).find(':selected');
-        let $row = $(this).closest('tr');
-        if ($opt.val()) {
-            let sell = parseFloat($opt.data('sell')) || 0;
-            let mrp = parseFloat($opt.data('mrp')) || 0;
-            let gst = parseFloat($opt.data('gst')) || 0;
+    /* ----------------------------------------------------------------
+       ITEM SEARCH MODAL — open on click or focus/tab of Code/Barcode
+       ---------------------------------------------------------------- */
+    $(document).on('click focus', '.sq-item-code', function (e) {
+        if (sqModalOpen || sqModalClosing) return;
+        sqActiveSearchRow = $(this).closest('tr');
+        let prefill = $.trim($(this).val());
+        $('#sq-isl-filter-name').val(prefill);
+        $('#sq-isl-filter-code').val('');
+        fetchSqItemList();
+        sqModalOpen = true;
+        $('#sq-item-search-modal').modal('show');
+        $('#sq-item-search-modal').one('shown.bs.modal', function () {
+            $('#sq-isl-filter-name').focus().select();
+        });
+    });
 
-            if (!$row.find('.sq-qty').val()) {
-                $row.find('.sq-qty').val(1);
-            }
-            $row.find('.sq-sell-price').val(sell.toFixed(2));
-            $row.find('.sq-mrp').val(mrp.toFixed(2));
-            $row.find('.sq-gst-percent').val(gst.toFixed(2));
-            recalcRow($row);
+    $('#sq-item-search-modal').on('show.bs.modal', function () { sqModalOpen = true; });
+    $('#sq-item-search-modal').on('hidden.bs.modal', function () {
+        sqModalOpen = false;
+        sqModalClosing = true;
+        setTimeout(function () { sqModalClosing = false; }, 350);
+    });
+
+    $('#sq-isl-filter-name, #sq-isl-filter-code').on('input', function () {
+        clearTimeout(sqIslDebounce);
+        sqIslDebounce = setTimeout(fetchSqItemList, 300);
+    });
+
+    $('#sq-isl-btn-clear').on('click', function () {
+        $('#sq-isl-filter-name, #sq-isl-filter-code').val('');
+        fetchSqItemList();
+    });
+
+    function fetchSqItemList() {
+        let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+        let srch = $.trim($('#sq-isl-filter-name').val());
+        let code = $.trim($('#sq-isl-filter-code').val());
+
+        if (!srch && !code) {
+            $('#sq-isl-loading').addClass('d-none');
+            $('#sq-isl-table-wrap').addClass('d-none');
+            $('#sq-isl-items-body').empty();
+            $('#sq-isl-no-results').removeClass('d-none').html(
+                '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
+            );
+            $('#sq-isl-count-label').text('');
+            return;
         }
+
+        $('#sq-isl-loading').removeClass('d-none');
+        $('#sq-isl-no-results').addClass('d-none');
+        $('#sq-isl-table-wrap').addClass('d-none');
+
+        $.getJSON(SQ_ISL_URL, { branch_id: branchId, search: srch, code: code }, function (res) {
+            $('#sq-isl-loading').addClass('d-none');
+            let items = res.items || [];
+            let $tbody = $('#sq-isl-items-body').empty();
+
+            if (items.length === 0) {
+                $('#sq-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-inbox fa-2x text-muted"></i><p class="mt-2 text-muted">No items found.</p>'
+                );
+                $('#sq-isl-count-label').text('');
+                return;
+            }
+
+            let html = '';
+            items.forEach(function (it, idx) {
+                let codeBadge = it.code ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>` : '—';
+                let sellDisplay = it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—';
+                let mrpDisplay = it.mrp > 0 ? '₹' + parseFloat(it.mrp).toFixed(2) : '—';
+                let stockClass = it.qty <= 0 ? 'text-danger' : 'text-primary font-weight-bold';
+
+                html += `
+                    <tr class="sq-isl-item-row" style="cursor:pointer;"
+                        data-id="${it.id}"
+                        data-code="${it.code || ''}"
+                        data-name="${it.name}"
+                        data-sell="${it.sell_price || 0}"
+                        data-mrp="${it.mrp || 0}"
+                        data-gst="${it.gst_percent || 0}">
+                        <td class="align-middle text-center text-muted">${idx + 1}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td class="align-middle text-center">${codeBadge}</td>
+                        <td class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(2)}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
+                        <td class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
+                        <td class="align-middle text-center">
+                            <button type="button" class="btn btn-success btn-xs px-2 sq-isl-btn-select">
+                                <i class="fas fa-check mr-1"></i>Select
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+
+            $tbody.html(html);
+            $('#sq-isl-table-wrap').removeClass('d-none');
+            $('#sq-isl-count-label').text(items.length + ' item(s) found');
+        }).fail(function () {
+            $('#sq-isl-loading').addClass('d-none');
+        });
+    }
+
+    $(document).on('click', '.sq-isl-item-row, .sq-isl-btn-select', function (e) {
+        e.stopPropagation();
+        let $tr = $(this).hasClass('sq-isl-item-row') ? $(this) : $(this).closest('tr');
+        let itemData = {
+            id: $tr.data('id'),
+            name: $tr.data('name'),
+            code: $tr.data('code'),
+            sell_price: $tr.data('sell'),
+            mrp: $tr.data('mrp'),
+            gst_percent: $tr.data('gst')
+        };
+
+        $('#sq-item-search-modal').modal('hide');
+
+        if (!sqActiveSearchRow || !itemData.id) return;
+        let $row = sqActiveSearchRow;
+        $row.find('.sq-item-code').val(itemData.code);
+        $row.find('.sq-item-desc').val(itemData.name + (itemData.code ? ' [' + itemData.code + ']' : ''));
+        $row.find('.sq-item-select').val(itemData.id);
+
+        if (!$row.find('.sq-qty').val()) {
+            $row.find('.sq-qty').val(1);
+        }
+        $row.find('.sq-sell-price').val(parseFloat(itemData.sell_price || 0).toFixed(2));
+        $row.find('.sq-mrp').val(parseFloat(itemData.mrp || 0).toFixed(2));
+        $row.find('.sq-gst-percent').val(parseFloat(itemData.gst_percent || 0).toFixed(2));
+
+        recalcRow($row);
+        $row.find('.sq-qty').focus().select();
+        sqActiveSearchRow = null;
     });
 
     $(document).on('input', '.sq-qty, .sq-sell-price, .sq-disc-percent, .sq-disc-amount, .sq-gst-percent', function() {

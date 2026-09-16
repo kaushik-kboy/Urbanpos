@@ -9,6 +9,8 @@
             ? collect($items)->firstWhere('id', $selectedItemId)
             : null;
     }
+    $itemCodeVal = data_get($line, 'code') ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
+    $selectedItemName = $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '';
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
     $sellPriceVal = isset($line->sell_price) && $line->sell_price != 0 ? $line->sell_price : ($selectedItem?->sell_price > 0 ? $selectedItem->sell_price : '');
     $mrpPriceVal = isset($line->mrp) && $line->mrp != 0 ? $line->mrp : ($selectedItem?->mrp > 0 ? $selectedItem->mrp : '');
@@ -19,28 +21,27 @@
 @endphp
 <tr>
     <td class="text-center align-middle font-weight-bold sq-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
-    <td style="min-width: 250px;">
-        <select name="items[{{ $index }}][item_id]" class="form-control form-control-sm select2 sq-item-select" required data-placeholder="Select item">
-            <option value="">Select item</option>
-            @foreach ($items as $item)
-                @php
-                    $itemId = is_object($item) ? $item->id : $item;
-                    $itemName = is_object($item) ? $item->name : $item;
-                    $itemCode = is_object($item) ? ($item->item_code ?? '') : '';
-                    $sellPrice = is_object($item) ? (float)($item->sell_price ?? 0) : 0;
-                    $mrp = is_object($item) ? (float)($item->mrp ?? 0) : 0;
-                    $gstPercent = is_object($item) ? (float)($item->gstTax?->percentage ?? 0) : 0;
-                @endphp
-                <option value="{{ $itemId }}"
-                        data-code="{{ $itemCode }}"
-                        data-sell="{{ $sellPrice }}"
-                        data-mrp="{{ $mrp }}"
-                        data-gst="{{ $gstPercent }}"
-                        @selected(($line->item_id ?? null) == $itemId)>
-                    {{ $itemName }}{{ $itemCode ? ' ['.$itemCode.']' : '' }}
-                </option>
-            @endforeach
-        </select>
+    <td style="width: 130px;">
+        <input type="text"
+               class="form-control form-control-sm sq-item-code font-weight-bold"
+               value="{{ $itemCodeVal }}"
+               autocomplete="off"
+               placeholder="Code / Barcode"
+               title="Click or Tab to search item">
+    </td>
+    <td style="min-width: 220px;">
+        <input type="text"
+               class="form-control form-control-sm sq-item-desc bg-light font-weight-bold text-truncate"
+               readonly
+               tabindex="-1"
+               value="{{ $selectedItemName }}"
+               placeholder="Product Description (auto-filled)"
+               title="Product description">
+        <input type="hidden"
+               name="items[{{ $index }}][item_id]"
+               class="sq-item-select"
+               value="{{ $selectedItemId }}"
+               required>
     </td>
     <td style="width: 100px;">
         <input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sq-qty font-weight-bold text-right" required autocomplete="off" placeholder="Qty">

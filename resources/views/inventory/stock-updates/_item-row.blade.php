@@ -1,20 +1,46 @@
-<tr>
-    <td>
-        <select name="items[{{ $index }}][item_id]" class="form-control form-control-sm">
-            <option value="">Select item</option>
-            @foreach ($items as $id => $name)
-                <option value="{{ $id }}" @selected(($line->item_id ?? null) == $id)>{{ $name }}</option>
-            @endforeach
-        </select>
+@php
+    $idx = $index ?? 0;
+    $itemId = data_get($line, 'item_id');
+    $itemObj = null;
+    if ($line instanceof \App\Models\StockUpdateItem) {
+        $itemObj = $line->item;
+    } elseif ($itemId) {
+        $itemObj = \App\Models\Item::find($itemId);
+    }
+    $itemCode = $itemObj ? ($itemObj->item_code ?: $itemObj->ean_upc_code) : data_get($line, 'item_code', '');
+    $itemName = $itemObj ? $itemObj->name : data_get($line, 'item_name', '');
+@endphp
+<tr class="su-item-row" data-row-index="{{ $idx }}">
+    <td style="min-width: 140px;">
+        <input type="hidden" name="items[{{ $idx }}][item_id]" class="su-item-id" value="{{ $itemId }}" required>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control form-control-sm su-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Enter code or click/tab to search">
+            <div class="input-group-append">
+                <button type="button" class="btn btn-outline-secondary su-search-btn" title="Search Item (Popup)" tabindex="-1">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
     </td>
-    <td><input type="date" name="items[{{ $index }}][exp_date]" value="{{ optional($line->exp_date ?? null)->format('Y-m-d') }}" class="form-control form-control-sm"></td>
-    <td><input type="number" step="0.001" name="items[{{ $index }}][physical_qty]" value="{{ $line->physical_qty ?? '' }}" class="form-control form-control-sm" placeholder="Counted qty"></td>
-    <td class="align-middle text-muted small">
-        {{ isset($line) ? $line->system_qty_at_entry : 'saved on submit' }}
+    <td style="min-width: 220px;">
+        <input type="text" class="form-control form-control-sm su-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">
     </td>
-    <td><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $line->sell_price ?? '' }}" class="form-control form-control-sm"></td>
-    <td><input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $line->mrp ?? '' }}" class="form-control form-control-sm"></td>
-    <td class="text-center align-middle">
-        <button type="button" class="btn btn-xs btn-outline-danger row-remove"><i class="fas fa-times"></i></button>
+    <td style="width: 130px;">
+        <input type="date" name="items[{{ $idx }}][exp_date]" value="{{ optional($line->exp_date ?? null)->format('Y-m-d') }}" class="form-control form-control-sm su-exp-date">
+    </td>
+    <td style="width: 110px;">
+        <input type="number" step="0.001" name="items[{{ $idx }}][physical_qty]" value="{{ $line->physical_qty ?? '' }}" class="form-control form-control-sm text-right su-physical-qty font-weight-bold" placeholder="0.000" required>
+    </td>
+    <td class="align-middle text-muted small text-right su-current-stock" style="width: 100px;">
+        {{ isset($line) ? number_format((float)$line->system_qty_at_entry, 3) : 'saved on submit' }}
+    </td>
+    <td style="width: 100px;">
+        <input type="number" step="0.01" name="items[{{ $idx }}][sell_price]" value="{{ $line->sell_price ?? '' }}" class="form-control form-control-sm text-right su-sell-price" placeholder="0.00">
+    </td>
+    <td style="width: 100px;">
+        <input type="number" step="0.01" name="items[{{ $idx }}][mrp]" value="{{ $line->mrp ?? '' }}" class="form-control form-control-sm text-right su-mrp" placeholder="0.00">
+    </td>
+    <td class="text-center align-middle" style="width: 40px;">
+        <button type="button" class="btn btn-xs btn-outline-danger su-row-remove" title="Remove row"><i class="fas fa-times"></i></button>
     </td>
 </tr>
