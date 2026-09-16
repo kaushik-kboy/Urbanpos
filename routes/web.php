@@ -239,6 +239,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
 Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () use ($gatedResource) {
     Route::get('sales-bills/item-list', [SalesBillController::class, 'itemList'])->name('sales-bills.item-list');
     Route::get('sales-bills/lookup-item', [SalesBillController::class, 'lookupItem'])->name('sales-bills.lookup-item');
+    Route::get('sales-bills/customer-search', [SalesBillController::class, 'customerSearch'])->name('sales-bills.customer-search');
     Route::get('sales-bills/customer-loyalty/{customer}', [SalesBillController::class, 'customerLoyalty'])->name('sales-bills.customer-loyalty');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');

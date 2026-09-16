@@ -81,11 +81,14 @@ class Customer extends Model
         return $this->mobile ? "{$this->name} ({$this->mobile})" : $this->name;
     }
 
-    public static function options(): \Illuminate\Support\Collection
+    public static function options(int $limit = 50): \Illuminate\Support\Collection
     {
-        return static::where('status', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'mobile'])
+        $query = static::where('status', true)->orderBy('name');
+        if ($limit > 0) {
+            $query->limit($limit);
+        }
+
+        return $query->get(['id', 'name', 'mobile'])
             ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
     }
 

@@ -73,7 +73,20 @@ class SalesBillController extends Controller
 
         $salesBills = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');
-        $customers = Customer::options();
+        $filteredCustId = $request->input('customer_id');
+        $customers = Customer::where('status', true)
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+
+        if ($filteredCustId && ! isset($customers[$filteredCustId])) {
+            $fc = Customer::find($filteredCustId);
+            if ($fc) {
+                $customers->put($fc->id, $fc->mobile ? "{$fc->name} ({$fc->mobile})" : $fc->name);
+            }
+        }
+
         $invoiceTypes = ['Retail Invoice', 'Tax Invoice', 'Exempted'];
 
         return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes'));
@@ -81,23 +94,29 @@ class SalesBillController extends Controller
 
     public function create(Request $request)
     {
-        $options = $this->formOptions();
+        $options = [];
+        $convertedItems = null;
+        $sourceCustId = null;
 
         if ($request->filled('from_quotation')) {
             $quotation = SalesQuotation::with(['items.item.gstTax', 'customer', 'branch'])
                 ->findOrFail($request->input('from_quotation'));
             $options['sourceQuotation'] = $quotation;
             $options['convertedItems'] = $quotation->items;
+            $convertedItems = $quotation->items;
+            $sourceCustId = $quotation->customer_id;
         } elseif ($request->filled('from_order')) {
             $order = SalesOrder::with(['items.item.gstTax', 'customer', 'branch'])
                 ->findOrFail($request->input('from_order'));
             $options['sourceOrder'] = $order;
             $options['convertedItems'] = $order->items;
+            $convertedItems = $order->items;
+            $sourceCustId = $order->customer_id;
         } elseif ($request->filled('from_delivery_note')) {
             $deliveryNote = \App\Models\SalesDeliveryNote::with(['items.item.gstTax', 'customer', 'branch'])
                 ->findOrFail($request->input('from_delivery_note'));
             $options['sourceDeliveryNote'] = $deliveryNote;
-            $options['convertedItems'] = $deliveryNote->items->map(function ($dnItem) {
+            $convertedItems = $deliveryNote->items->map(function ($dnItem) {
                 return (object) [
                     'item_id' => $dnItem->item_id,
                     'item' => $dnItem->item,
@@ -115,7 +134,11 @@ class SalesBillController extends Controller
                     'net_amount' => $dnItem->line_total,
                 ];
             });
+            $options['convertedItems'] = $convertedItems;
+            $sourceCustId = $deliveryNote->customer_id;
         }
+
+        $options = array_merge($options, $this->formOptions(null, $convertedItems, $sourceCustId));
 
         return view('sales.sales-bills.create', $options);
     }
@@ -207,9 +230,9 @@ class SalesBillController extends Controller
 
     public function edit(SalesBill $salesBill)
     {
-        $salesBill->load('items');
+        $salesBill->load(['items.item.gstTax', 'customer']);
 
-        return view('sales.sales-bills.edit', array_merge(['salesBill' => $salesBill], $this->formOptions()));
+        return view('sales.sales-bills.edit', array_merge(['salesBill' => $salesBill], $this->formOptions($salesBill, $salesBill->items, $salesBill->customer_id)));
     }
 
     public function show(SalesBill $salesBill)
@@ -710,14 +733,58 @@ class SalesBillController extends Controller
         ]);
     }
 
-    private function formOptions(): array
+    public function customerSearch(Request $request)
     {
-        $items = Item::where('status', true)->with('gstTax:id,percentage')->orderBy('name')->get([
-            'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details'
-        ]);
+        $q = trim((string) $request->input('q', ''));
+
+        $customers = Customer::where('status', true)
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('mobile', 'like', "%{$q}%")
+                        ->orWhere('customer_code', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'name', 'mobile'])
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
+                ];
+            });
+
+        return response()->json(['results' => $customers]);
+    }
+
+    private function formOptions(?SalesBill $salesBill = null, $convertedItems = null, ?int $explicitCustomerId = null): array
+    {
+        // 1. Initial customers (top 20 active plus selected customer if editing or converting)
+        $selectedCustId = old('customer_id', $explicitCustomerId ?? $salesBill?->customer_id);
+        $customers = Customer::where('status', true)
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+
+        if ($selectedCustId && ! isset($customers[$selectedCustId])) {
+            $selCust = Customer::find($selectedCustId);
+            if ($selCust) {
+                $customers->put($selCust->id, $selCust->mobile ? "{$selCust->name} ({$selCust->mobile})" : $selCust->name);
+            }
+        }
+
+        // 2. Only load items that are currently in the bill (edit/convert mode), NOT all 8,597 items!
+        $existingItemIds = collect($salesBill?->items ?? ($convertedItems ?? []))->pluck('item_id')->filter()->unique();
+        $items = $existingItemIds->isNotEmpty()
+            ? Item::whereIn('id', $existingItemIds)->with('gstTax:id,percentage')->get([
+                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details'
+            ])
+            : collect();
 
         return [
-            'customers'   => Customer::options(),
+            'customers'   => $customers,
             'branches'    => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items'       => $items,
             'tenderTypes' => TenderType::with(['values' => fn ($q) => $q->where('status', true)])->where('status', true)->orderBy('name')->get(),

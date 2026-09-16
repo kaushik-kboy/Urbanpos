@@ -323,9 +323,45 @@
         let islDebounce = null;
         const ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
 
+        // Customer Select2 with remote AJAX search by name or mobile
+        let $custSelect = $('select[name="customer_id"]');
+        if ($custSelect.hasClass('select2-hidden-accessible')) {
+            $custSelect.select2('destroy');
+        }
+        $custSelect.select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            placeholder: 'Search customer by name or mobile...',
+            allowClear: true,
+            ajax: {
+                url: '{{ route("sales.sales-bills.customer-search") }}',
+                dataType: 'json',
+                delay: 200,
+                data: function (params) {
+                    return { q: params.term || '' };
+                },
+                processResults: function (data) {
+                    return { results: data.results };
+                },
+                cache: true
+            }
+        });
+
         /* ================================================================
-           ITEM SEARCH MODAL — open on Code/Barcode focus
+           ITEM SEARCH MODAL — open on direct click of Code/Barcode
            ================================================================ */
+        $(document).on('click', '.sb-item-code', function () {
+            activeSearchRow = $(this).closest('tr');
+            let prefill = $.trim($(this).val());
+            $('#isl-filter-name').val(prefill);
+            $('#isl-filter-code').val('');
+            $('#isl-filter-expiry').val('');
+            fetchItemList();
+            $('#sb-item-search-modal').modal('show');
+            $('#sb-item-search-modal').one('shown.bs.modal', function () {
+                $('#isl-filter-name').focus();
+            });
+        });
 
 
 
