@@ -220,4 +220,40 @@ class PurchaseReturnTest extends TestCase
             ]
         ]);
     }
+
+    public function test_sales_bill_show_and_thermal_receipt_render(): void
+    {
+        $customer = \App\Models\Customer::firstOrCreate(['phone' => '9999977777'], ['name' => 'Receipt Customer']);
+        $bill = \App\Models\SalesBill::create([
+            'bill_number' => 'BILL-RCPT-01',
+            'bill_date' => now()->toDateString(),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch->id,
+            'invoice_type' => 'Tax Invoice',
+            'delivery_type' => 'Delivered',
+            'sales_type' => 'Local',
+            'payment_type' => 'Cash',
+            'total' => 200,
+            'total_gst' => 0,
+            'status' => 'Posted',
+        ]);
+
+        $bill->items()->create([
+            'item_id' => $this->item->id,
+            'qty' => 2,
+            'sell_price' => 100,
+            'net_amount' => 200,
+        ]);
+
+        $showResponse = $this->actingAs($this->manager)->get(route('sales.sales-bills.show', $bill));
+        $showResponse->assertStatus(200);
+        $showResponse->assertSee('BILL-RCPT-01');
+        $showResponse->assertSee('Thermal Receipt (80mm)');
+
+        $receiptResponse = $this->actingAs($this->manager)->get(route('sales.sales-bills.receipt', $bill));
+        $receiptResponse->assertStatus(200);
+        $receiptResponse->assertSee('URBAN PETS');
+        $receiptResponse->assertSee('BILL-RCPT-01');
+        $receiptResponse->assertSee('GRAND TOTAL');
+    }
 }

@@ -121,6 +121,20 @@ class SalesBillController extends Controller
         return view('sales.sales-bills.edit', array_merge(['salesBill' => $salesBill], $this->formOptions()));
     }
 
+    public function show(SalesBill $salesBill)
+    {
+        $salesBill->load(['customer', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
+
+        return view('sales.sales-bills.show', compact('salesBill'));
+    }
+
+    public function receipt(SalesBill $salesBill)
+    {
+        $salesBill->load(['customer', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
+
+        return view('sales.sales-bills.receipt', compact('salesBill'));
+    }
+
     public function update(Request $request, SalesBill $salesBill)
     {
         $salesBill->assertEditable();

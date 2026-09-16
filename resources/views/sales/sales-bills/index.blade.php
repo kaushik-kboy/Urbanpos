@@ -88,18 +88,28 @@
                 <tbody>
                     @forelse ($salesBills as $bill)
                         <tr>
-                            <td>{{ $bill->bill_number }}</td>
+                            <td class="font-weight-bold">
+                                <a href="{{ route('sales.sales-bills.show', $bill) }}">{{ $bill->bill_number }}</a>
+                            </td>
                             <td>{{ $bill->bill_date->format('d-m-Y') }}</td>
                             <td>{{ $bill->customer?->name }}</td>
                             <td>{{ $bill->branch?->name }}</td>
                             <td>{{ $bill->invoice_type }}</td>
-                            <td>{{ number_format($bill->total, 2) }}</td>
-                            <td class="text-right">
-                                <a href="{{ route('sales.sales-bills.edit', $bill) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('sales.sales-bills.destroy', $bill) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this sales bill? Stock will be restored.')">
+                            <td class="font-weight-bold text-success">₹{{ number_format($bill->total, 2) }}</td>
+                            <td class="text-right text-nowrap">
+                                <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-xs btn-outline-success" title="Thermal Receipt (80mm)">
+                                    <i class="fas fa-receipt"></i>
+                                </a>
+                                <a href="{{ route('sales.sales-bills.show', $bill) }}" class="btn btn-xs btn-outline-info" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ route('sales.sales-bills.edit', $bill) }}" class="btn btn-xs btn-outline-secondary" title="Edit">
+                                    <i class="fas fa-pen"></i>
+                                </a>
+                                <form action="{{ route('sales.sales-bills.destroy', $bill) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this sales bill? Stock will be restored.')">
                                     @csrf
                                     @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                    <button class="btn btn-xs btn-outline-danger" title="Cancel & Restore Stock"><i class="fas fa-trash"></i></button>
                                 </form>
                             </td>
                         </tr>
