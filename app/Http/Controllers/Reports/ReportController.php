@@ -17,7 +17,10 @@ use App\Models\PetType;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\SalesBill;
+use App\Models\SalesBillItem;
 use App\Models\SalesBillPayment;
+use App\Models\SalesOrder;
+use App\Models\SalesQuotation;
 use App\Models\SalesReturn;
 use App\Models\StockTransfer;
 use App\Models\Supplier;
@@ -575,6 +578,268 @@ class ReportController extends Controller
         $actions = AuditLog::select('action')->distinct()->whereNotNull('action')->pluck('action');
 
         return view('reports.audit-logs', compact('logs', 'from', 'to', 'userId', 'action', 'search', 'users', 'actions'));
+    }
+
+    // ----------------------------------------------------------------
+    //  Phase 5 — Sales Margin, Quotation/Order Summary, Re-order Report
+    // ----------------------------------------------------------------
+
+    /**
+     * Itemwise sales margin — uses cost_at_sale stored at bill-creation time
+     * (Foundation Phase 1) so gross profit is always historically accurate even
+     * after item cost changes.
+     */
+    public function salesMarginItemwise(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $brandId       = $request->input('brand_id');
+        $categoryValueId = $request->input('category_value_id');
+        $customerId    = $request->input('customer_id');
+        $search        = $request->input('search');
+
+        $query = SalesBillItem::with(['item.brand', 'item.categoryValue', 'salesBill.customer', 'salesBill.branch'])
+            ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
+                $q->whereDate('bill_date', '>=', $from)
+                  ->whereDate('bill_date', '<=', $to)
+                  ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
+            })
+            ->when($brandId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('brand_id', $brandId)))
+            ->when($categoryValueId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('category_value_id', $categoryValueId)))
+            ->when($customerId, fn ($q) => $q->whereHas('salesBill', fn ($bq) => $bq->where('customer_id', $customerId)))
+            ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")));
+
+        $lines = $query->orderBy('id', 'desc')->get()->map(function ($line) {
+            $sellTotal  = (float) $line->net_amount;
+            $cogTotal   = (float) ($line->cost_at_sale * $line->qty);
+            $margin     = $sellTotal - $cogTotal;
+            $marginPct  = $sellTotal > 0 ? ($margin / $sellTotal) * 100 : 0;
+            return (object) [
+                'bill_date'     => $line->salesBill?->bill_date,
+                'bill_number'   => $line->salesBill?->bill_number,
+                'customer_name' => $line->salesBill?->customer?->name ?? 'Walk-in',
+                'branch_name'   => $line->salesBill?->branch?->name,
+                'item_code'     => $line->item?->item_code,
+                'item_name'     => $line->item?->name,
+                'brand_name'    => $line->item?->brand?->name,
+                'category_name' => $line->item?->categoryValue?->name,
+                'qty'           => $line->qty,
+                'sell_price'    => $line->sell_price,
+                'sell_total'    => $sellTotal,
+                'cost_at_sale'  => $line->cost_at_sale,
+                'cog_total'     => $cogTotal,
+                'gross_margin'  => $margin,
+                'margin_pct'    => $marginPct,
+            ];
+        });
+
+        $totals = [
+            'sell_total'   => $lines->sum('sell_total'),
+            'cog_total'    => $lines->sum('cog_total'),
+            'gross_margin' => $lines->sum('gross_margin'),
+        ];
+        $totals['margin_pct'] = $totals['sell_total'] > 0
+            ? ($totals['gross_margin'] / $totals['sell_total']) * 100 : 0;
+
+        $branches        = Branch::orderBy('name')->pluck('name', 'id');
+        $brands          = Brand::orderBy('name')->pluck('name', 'id');
+        $categories      = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
+        $customers       = Customer::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.sales-margin-itemwise', compact(
+            'lines', 'totals', 'from', 'to', 'branchId', 'brandId', 'categoryValueId',
+            'customerId', 'search', 'branches', 'brands', 'categories', 'customers'
+        ));
+    }
+
+    /**
+     * Categorywise sales margin — aggregate gross profit grouped by item category.
+     */
+    public function salesMarginCategorywise(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+
+        $lines = SalesBillItem::with(['item.categoryValue'])
+            ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
+                $q->whereDate('bill_date', '>=', $from)
+                  ->whereDate('bill_date', '<=', $to)
+                  ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
+            })
+            ->get();
+
+        $grouped = $lines->groupBy(fn ($line) => $line->item?->categoryValue?->name ?? 'Uncategorised')
+            ->map(function ($group, $categoryName) {
+                $sellTotal = $group->sum(fn ($l) => (float) $l->net_amount);
+                $cogTotal  = $group->sum(fn ($l) => (float) ($l->cost_at_sale * $l->qty));
+                $margin    = $sellTotal - $cogTotal;
+                return (object) [
+                    'category_name' => $categoryName,
+                    'qty'           => $group->sum('qty'),
+                    'sell_total'    => $sellTotal,
+                    'cog_total'     => $cogTotal,
+                    'gross_margin'  => $margin,
+                    'margin_pct'    => $sellTotal > 0 ? ($margin / $sellTotal) * 100 : 0,
+                ];
+            })
+            ->sortByDesc('gross_margin')
+            ->values();
+
+        $totals = [
+            'sell_total'   => $grouped->sum('sell_total'),
+            'cog_total'    => $grouped->sum('cog_total'),
+            'gross_margin' => $grouped->sum('gross_margin'),
+        ];
+        $totals['margin_pct'] = $totals['sell_total'] > 0
+            ? ($totals['gross_margin'] / $totals['sell_total']) * 100 : 0;
+
+        // Top-10 for chart
+        $chartLabels = $grouped->take(10)->pluck('category_name');
+        $chartMargin = $grouped->take(10)->pluck('gross_margin');
+        $chartSales  = $grouped->take(10)->pluck('sell_total');
+
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.sales-margin-categorywise', compact(
+            'grouped', 'totals', 'from', 'to', 'branchId', 'branches',
+            'chartLabels', 'chartMargin', 'chartSales'
+        ));
+    }
+
+    /**
+     * Combined Quotation + Order summary report with status tracking.
+     */
+    public function quotationOrderSummary(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $type     = $request->input('type');   // 'quotation' | 'order'
+        $status   = $request->input('status');
+        $customerId = $request->input('customer_id');
+
+        $quotations = collect();
+        $orders     = collect();
+
+        if (!$type || $type === 'quotation') {
+            $quotations = SalesQuotation::with(['customer', 'branch', 'items'])
+                ->whereDate('quotation_date', '>=', $from)
+                ->whereDate('quotation_date', '<=', $to)
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->when($status, fn ($q) => $q->where('status', $status))
+                ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
+                ->orderByDesc('quotation_date')
+                ->get()
+                ->map(fn ($q) => (object) [
+                    'type'         => 'Quotation',
+                    'number'       => $q->quotation_number,
+                    'date'         => $q->quotation_date,
+                    'valid_until'  => $q->valid_until,
+                    'customer'     => $q->customer?->name ?? 'Walk-in',
+                    'branch'       => $q->branch?->name,
+                    'items_count'  => $q->items->count(),
+                    'total'        => $q->total,
+                    'status'       => $q->status,
+                    'converted_bill_id' => $q->converted_sales_bill_id,
+                    'show_url'     => route('sales.sales-quotations.show', $q),
+                ]);
+        }
+
+        if (!$type || $type === 'order') {
+            $orders = SalesOrder::with(['customer', 'branch', 'items'])
+                ->whereDate('order_date', '>=', $from)
+                ->whereDate('order_date', '<=', $to)
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->when($status, fn ($q) => $q->where('status', $status))
+                ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
+                ->orderByDesc('order_date')
+                ->get()
+                ->map(fn ($o) => (object) [
+                    'type'         => 'Order',
+                    'number'       => $o->order_number,
+                    'date'         => $o->order_date,
+                    'valid_until'  => $o->expected_delivery_date,
+                    'customer'     => $o->customer?->name ?? 'Walk-in',
+                    'branch'       => $o->branch?->name,
+                    'items_count'  => $o->items->count(),
+                    'total'        => $o->total,
+                    'status'       => $o->status,
+                    'converted_bill_id' => $o->converted_sales_bill_id,
+                    'show_url'     => route('sales.sales-orders.show', $o),
+                ]);
+        }
+
+        $rows = $quotations->merge($orders)->sortByDesc('date')->values();
+
+        $summary = [
+            'total_quotations' => $quotations->count(),
+            'total_orders'     => $orders->count(),
+            'open'             => $rows->whereIn('status', ['Draft', 'Confirmed'])->count(),
+            'converted'        => $rows->where('status', 'Converted')->count(),
+            'cancelled'        => $rows->where('status', 'Cancelled')->count(),
+        ];
+
+        $branches   = Branch::orderBy('name')->pluck('name', 'id');
+        $customers  = Customer::orderBy('name')->pluck('name', 'id');
+        $statuses   = ['Draft', 'Confirmed', 'Converted', 'Cancelled'];
+
+        return view('reports.quotation-order-summary', compact(
+            'rows', 'summary', 'from', 'to', 'branchId', 'type', 'status',
+            'customerId', 'branches', 'customers', 'statuses'
+        ));
+    }
+
+    /**
+     * Re-order / Low Stock Report — items with quantity at or below a threshold (≤5),
+     * plus items that are completely out of stock.
+     */
+    public function reorderReport(Request $request)
+    {
+        $branchId        = $request->input('branch_id');
+        $brandId         = $request->input('brand_id');
+        $categoryValueId = $request->input('category_value_id');
+        $stockStatus     = $request->input('stock_status'); // 'out' | 'low'
+        $search          = $request->input('search');
+        $threshold       = (int) $request->input('threshold', 5); // default low-stock threshold
+
+        $query = ItemStock::with(['item.brand', 'item.categoryValue', 'item.supplier', 'branch'])
+            ->where('quantity', '<=', max($threshold, 0))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($brandId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('brand_id', $brandId)))
+            ->when($categoryValueId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('category_value_id', $categoryValueId)))
+            ->when($stockStatus === 'out', fn ($q) => $q->where('quantity', '<=', 0))
+            ->when($stockStatus === 'low', fn ($q) => $q->where('quantity', '>', 0)->where('quantity', '<=', $threshold))
+            ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) =>
+                $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")
+            ));
+
+        $rows = $query->orderBy('quantity')->get()->map(function ($stock) use ($threshold) {
+            return (object) [
+                'item_code'     => $stock->item?->item_code,
+                'item_name'     => $stock->item?->name,
+                'brand_name'    => $stock->item?->brand?->name,
+                'category_name' => $stock->item?->categoryValue?->name,
+                'branch_name'   => $stock->branch?->name,
+                'branch_id'     => $stock->branch_id,
+                'quantity'      => $stock->quantity,
+                'sell_price'    => $stock->sell_price,
+                'mrp'           => $stock->mrp,
+                'supplier_id'   => $stock->item?->supplier_id,
+                'supplier_name' => $stock->item?->supplier?->name,
+                'status'        => $stock->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
+            ];
+        });
+
+        $kpi = [
+            'out_of_stock' => $rows->where('quantity', '<=', 0)->count(),
+            'low_stock'    => $rows->where('quantity', '>', 0)->count(),
+            'total_skus'   => $rows->count(),
+        ];
+
+        $branches   = Branch::orderBy('name')->pluck('name', 'id');
+        $brands     = Brand::orderBy('name')->pluck('name', 'id');
+        $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
+
+        return view('reports.reorder-report', compact(
+            'rows', 'kpi', 'branchId', 'brandId', 'categoryValueId', 'stockStatus',
+            'search', 'threshold', 'branches', 'brands', 'categories'
+        ));
     }
 
     private function dateAndBranchFilter(Request $request): array

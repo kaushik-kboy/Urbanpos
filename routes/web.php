@@ -29,6 +29,7 @@ use App\Http\Controllers\Inventory\DamageStockController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\StockUpdateController;
 use App\Http\Controllers\Inventory\StockUpdateApprovalController;
+use App\Http\Controllers\Inventory\BarcodeController;
 use App\Http\Controllers\Inventory\BarcodePrintingController;
 use App\Http\Controllers\Inventory\PriceFixingController;
 use App\Http\Controllers\Inventory\ChangeSellingController;
@@ -168,10 +169,13 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::middleware(['permission:stock-update-approval.reject', 'branch.access'])
         ->post('stock-update-approval/{stockUpdate}/reject', [StockUpdateApprovalController::class, 'reject'])->name('stock-update-approval.reject');
 
-    // Barcode Printing
+    // Barcode Printing (legacy invoice-based)
     Route::get('barcode-printing', [BarcodePrintingController::class, 'index'])->name('barcode-printing.index');
     Route::get('barcode-printing/search-items', [BarcodePrintingController::class, 'searchItems'])->name('barcode-printing.search-items');
     Route::post('barcode-printing/print', [BarcodePrintingController::class, 'print'])->name('barcode-printing.print');
+    // Barcode Printing (Phase 5 — item search + label queue)
+    Route::get('barcode', [BarcodeController::class, 'index'])->name('barcode.index');
+    Route::get('barcode/print', [BarcodeController::class, 'print'])->name('barcode.print');
 
     // Price Fixing
     Route::get('price-fixing', [PriceFixingController::class, 'index'])->name('price-fixing.index');
@@ -256,6 +260,11 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('tender-summary', [ReportController::class, 'tenderSummary'])->name('tender-summary');
     Route::get('audit-logs', [ReportController::class, 'auditLogs'])->name('audit-logs');
     Route::get('customer-loyalty', [FinanceReportController::class, 'customerLoyalty'])->name('customer-loyalty');
+    // Phase 5 — new reports
+    Route::get('sales-margin-itemwise', [ReportController::class, 'salesMarginItemwise'])->name('sales-margin-itemwise');
+    Route::get('sales-margin-category', [ReportController::class, 'salesMarginCategorywise'])->name('sales-margin-category');
+    Route::get('quotation-order-summary', [ReportController::class, 'quotationOrderSummary'])->name('quotation-order-summary');
+    Route::get('reorder-report', [ReportController::class, 'reorderReport'])->name('reorder-report');
 });
 
 Route::middleware('auth')->prefix('till')->name('till.')->group(function () {

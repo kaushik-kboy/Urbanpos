@@ -539,7 +539,7 @@ return [
         ],
         [
             'text' => 'Barcode Printing',
-            'url' => 'inventory/barcode-printing',
+            'url' => 'inventory/barcode',
             'icon' => 'fas fa-fw fa-barcode',
         ],
         [

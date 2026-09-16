@@ -56,6 +56,18 @@
                                 <a href="{{ route('reports.eod') }}" class="font-weight-bold text-dark">EOD / Settlement Report</a>
                                 <span class="badge badge-primary badge-pill"><i class="fas fa-arrow-right"></i></span>
                             </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{{ route('reports.sales-margin-itemwise') }}" class="font-weight-bold text-dark"><i class="fas fa-chart-line text-success mr-1"></i> Sales Item Margin (Itemwise)</a>
+                                <span class="badge badge-success badge-pill"><i class="fas fa-arrow-right"></i></span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{{ route('reports.sales-margin-category') }}" class="font-weight-bold text-dark"><i class="fas fa-chart-bar text-success mr-1"></i> Sales Margin by Category</a>
+                                <span class="badge badge-success badge-pill"><i class="fas fa-arrow-right"></i></span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{{ route('reports.quotation-order-summary') }}" class="font-weight-bold text-dark"><i class="fas fa-file-alt text-info mr-1"></i> Quotation & Order Summary</a>
+                                <span class="badge badge-info badge-pill"><i class="fas fa-arrow-right"></i></span>
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -109,6 +121,10 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <a href="{{ route('reports.damage-stock-summary') }}" class="font-weight-bold text-dark">Damage / Wastage Stock Report</a>
                                 <span class="badge badge-info badge-pill"><i class="fas fa-arrow-right"></i></span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{{ route('reports.reorder-report') }}" class="font-weight-bold text-dark"><i class="fas fa-exclamation-triangle text-danger mr-1"></i> Re-order / Low Stock Report</a>
+                                <span class="badge badge-danger badge-pill"><i class="fas fa-arrow-right"></i></span>
                             </li>
                         </ul>
                     </div>
