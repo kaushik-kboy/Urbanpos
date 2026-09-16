@@ -98,7 +98,7 @@ class BranchController extends Controller
             'website_link' => ['nullable', 'string', 'max:255'],
             'social_media_link' => ['nullable', 'string', 'max:255'],
             'enable_thirdparty_loyalty' => ['required', 'boolean'],
-            'gst_no' => ['nullable', 'string', 'max:20'],
+            'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
             'pan_no' => ['nullable', 'string', 'max:20'],
             'gst_type' => ['required', 'in:Regular,Composite,Un Register'],
             'gst_filing' => ['required', 'in:Monthly,Quarterly'],

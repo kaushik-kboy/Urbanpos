@@ -204,7 +204,7 @@ class CustomerController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'remarks' => ['nullable', 'string'],
-            'gst_no' => ['nullable', 'string', 'max:20'],
+            'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
             'mobile' => ['required', 'string', 'digits:10', \Illuminate\Validation\Rule::unique('customers', 'mobile')->ignore($customer?->id)],

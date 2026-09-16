@@ -163,7 +163,7 @@ class SupplierController extends Controller
             'mobile' => ['nullable', 'string', 'digits:10'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
-            'gst_no' => ['nullable', 'string', 'max:20'],
+            'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
         ]);
     }
 

@@ -387,4 +387,72 @@ $(document).ready(function () {
             }
         }, 10);
     });
+
+    // =========================================================================
+    // GLOBAL GSTIN VALIDATION (Indian GST Number — 15 chars, strict format)
+    // Format: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric
+    // Example: 27AAPFU0939F1ZV
+    // =========================================================================
+    var gstSelector = 'input[name="gst_no"], input[id="qc-gst-no"], input[data-type="gstin"]';
+    var GSTIN_REGEX = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/;
+
+    function validateGstInput($el) {
+        var val = $.trim($el.val()).toUpperCase();
+        if (val !== $el.val()) {
+            $el.val(val);
+        }
+
+        // Remove previous feedback
+        $el.removeClass('is-valid is-invalid border-success border-danger');
+        var $feedback = $el.siblings('.gstin-feedback');
+        if (!$feedback.length) {
+            $feedback = $('<small class="gstin-feedback form-text" style="font-size:0.78rem;"></small>');
+            $el.after($feedback);
+        }
+
+        if (val === '') {
+            $feedback.text('').hide();
+            return;
+        }
+
+        if (val.length < 15) {
+            $el.addClass('border-warning');
+            $feedback.removeClass('text-success text-danger').addClass('text-muted').text('GST No: ' + val.length + '/15 characters').show();
+            return;
+        }
+
+        $el.removeClass('border-warning');
+        if (GSTIN_REGEX.test(val)) {
+            $el.addClass('is-valid border-success');
+            $feedback.removeClass('text-muted text-danger').addClass('text-success').text('✓ Valid GSTIN').show();
+        } else {
+            $el.addClass('is-invalid border-danger');
+            $feedback.removeClass('text-muted text-success').addClass('text-danger').text('✗ Invalid GSTIN format. Example: 27AAPFU0939F1ZV').show();
+        }
+    }
+
+    function setupGstInputs(context) {
+        var $scope = context ? $(context) : $(document);
+        $scope.find(gstSelector).each(function () {
+            var $this = $(this);
+            $this.attr('maxlength', '15');
+            $this.attr('placeholder', $this.attr('placeholder') || 'e.g. 27AAPFU0939F1ZV');
+            $this.attr('style', ($this.attr('style') || '') + ' text-transform:uppercase;');
+        });
+    }
+
+    setupGstInputs();
+
+    $(document).on('shown.bs.modal reinit:select2', function () {
+        setupGstInputs(this);
+    });
+
+    $(document).on('input blur', gstSelector, function () {
+        validateGstInput($(this));
+    });
+
+    $(document).on('paste', gstSelector, function () {
+        var $this = $(this);
+        setTimeout(function () { validateGstInput($this); }, 20);
+    });
 });
