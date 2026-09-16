@@ -161,16 +161,17 @@ class SalesReturnController extends Controller
     {
         $items = $salesBill->items()->with('item')->get()->map(function ($line) {
             return [
-                'item_id' => $line->item_id,
-                'item_name' => $line->item?->name ?? 'Unknown',
-                'exp_date' => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
-                'qty' => (float) $line->qty,
+                'item_id'    => $line->item_id,
+                'item_name'  => $line->item?->name ?? 'Unknown',
+                'item_code'  => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
+                'exp_date'   => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
+                'qty'        => (float) $line->qty,
                 'sell_price' => (float) $line->sell_price,
-                'mrp' => (float) ($line->mrp ?? 0),
+                'mrp'        => (float) ($line->mrp ?? 0),
                 'disc_percent' => (float) ($line->disc_percent ?? 0),
-                'disc_amount' => (float) ($line->disc_amount ?? 0),
-                'gst_percent' => (float) ($line->gst_percent ?? 0),
-                'net_amount' => (float) ($line->net_amount ?? 0),
+                'disc_amount'  => (float) ($line->disc_amount ?? 0),
+                'gst_percent'  => (float) ($line->gst_percent ?? 0),
+                'net_amount'   => (float) ($line->net_amount ?? 0),
             ];
         });
 

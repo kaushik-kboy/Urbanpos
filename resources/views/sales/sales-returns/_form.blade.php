@@ -71,16 +71,17 @@
     <table class="table table-sm table-bordered table-hover" id="sr-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="min-width: 250px;">Item Description <span class="text-danger">*</span></th>
-                <th style="width: 140px;">Exp Date</th>
-                <th style="width: 100px;" class="text-right">Qty <span class="text-danger">*</span></th>
+                <th style="width: 115px;">Code / Barcode</th>
+                <th style="min-width: 220px;">Item Description <span class="text-danger">*</span></th>
+                <th style="width: 135px;">Exp Date</th>
+                <th style="width: 90px;" class="text-right">Qty <span class="text-danger">*</span></th>
                 <th style="width: 110px;" class="text-right">Sell Price <span class="text-danger">*</span></th>
                 <th style="width: 100px;" class="text-right">MRP</th>
                 <th style="width: 85px;" class="text-right">Disc %</th>
                 <th style="width: 100px;" class="text-right">Disc Amt</th>
-                <th style="width: 85px;" class="text-right">GST %</th>
-                <th style="width: 120px;" class="text-right">Net Amount</th>
-                <th style="width: 45px;" class="text-center"></th>
+                <th style="width: 75px;" class="text-right">GST %</th>
+                <th style="width: 115px;" class="text-right">Net Amount</th>
+                <th style="width: 40px;" class="text-center"></th>
             </tr>
         </thead>
         <tbody id="sr-items-body">
@@ -92,7 +93,7 @@
         </tbody>
         <tfoot class="bg-light font-weight-bold">
             <tr>
-                <td colspan="2" class="text-right align-middle">Summary Totals:</td>
+                <td colspan="3" class="text-right align-middle">Summary Totals:</td>
                 <td class="text-right align-middle text-primary" id="footer-sr-qty">0.000</td>
                 <td colspan="2"></td>
                 <td colspan="2" class="text-right align-middle text-danger" id="footer-sr-disc">₹0.00</td>
@@ -149,10 +150,242 @@
     @include('sales.sales-returns._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>
 
+{{-- ============================================================
+     ITEM SEARCH MODAL for Sales Return — opens on Code/Barcode click
+     ============================================================ --}}
+<div class="modal fade" id="sr-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="srItemSearchLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white py-2">
+                <h5 class="modal-title" id="srItemSearchLabel">
+                    <i class="fas fa-search mr-2"></i>Select Return Item
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="row mb-3">
+                    <div class="col-md-5">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            </div>
+                            <input type="text" id="sr-isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                            </div>
+                            <input type="text" id="sr-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <button type="button" id="sr-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-times mr-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div id="sr-isl-loading" class="text-center py-4 d-none">
+                    <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2 text-muted">Loading items…</p>
+                </div>
+                <div id="sr-isl-no-results" class="text-center py-4">
+                    <i class="fas fa-keyboard fa-2x text-muted"></i>
+                    <p class="mt-2 text-muted">Start typing to search items…</p>
+                </div>
+
+                <div class="table-responsive d-none" id="sr-isl-table-wrap">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="sr-isl-items-table">
+                        <thead class="bg-dark text-white">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Product Name</th>
+                                <th class="text-center" style="width: 120px;">Code</th>
+                                <th class="text-center" style="width: 130px;">Expiry</th>
+                                <th class="text-right" style="width: 85px;">Sell Price</th>
+                                <th class="text-right" style="width: 85px;">MRP</th>
+                                <th class="text-right" style="width: 80px;">GST %</th>
+                                <th class="text-center" style="width: 80px;">Select</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sr-isl-items-body"></tbody>
+                    </table>
+                </div>
+                <small class="text-muted mt-2 d-block" id="sr-isl-count-label"></small>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('js')
 <script>
     (function () {
         let rowIndex = {{ max(count($existingItems), 1) }};
+        let srActiveSearchRow = null;
+        let srIslDebounce = null;
+        const SR_ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
+
+        /* ----------------------------------------------------------------
+           ITEM SEARCH MODAL — open on click of Code/Barcode field
+           ---------------------------------------------------------------- */
+        $(document).on('click', '.sr-item-code', function () {
+            srActiveSearchRow = $(this).closest('tr');
+            let prefill = $.trim($(this).val());
+            $('#sr-isl-filter-name').val(prefill);
+            $('#sr-isl-filter-code').val('');
+            srFetchItemList();
+            $('#sr-item-search-modal').modal('show');
+            $('#sr-item-search-modal').one('shown.bs.modal', function () {
+                $('#sr-isl-filter-name').focus();
+            });
+        });
+
+        // Filter inputs — debounced
+        $('#sr-isl-filter-name, #sr-isl-filter-code').on('input', function () {
+            clearTimeout(srIslDebounce);
+            srIslDebounce = setTimeout(srFetchItemList, 400);
+        });
+
+        $('#sr-isl-btn-clear').on('click', function () {
+            $('#sr-isl-filter-name, #sr-isl-filter-code').val('');
+            srFetchItemList();
+        });
+
+        let srIslCache = {};
+
+        function srFetchItemList() {
+            let srch = $('#sr-isl-filter-name').val().trim();
+            let code = $('#sr-isl-filter-code').val().trim();
+
+            if (!srch && !code) {
+                $('#sr-isl-loading').addClass('d-none');
+                $('#sr-isl-table-wrap').addClass('d-none');
+                $('#sr-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-keyboard fa-2x text-muted"></i>' +
+                    '<p class="mt-2 text-muted">Start typing to search items…</p>'
+                );
+                $('#sr-isl-count-label').text('');
+                return;
+            }
+
+            let cacheKey = srch + '|' + code;
+            if (srIslCache[cacheKey]) {
+                srRenderItems(srIslCache[cacheKey]);
+                return;
+            }
+
+            $('#sr-isl-loading').removeClass('d-none');
+            $('#sr-isl-no-results').addClass('d-none');
+            $('#sr-isl-table-wrap').addClass('d-none');
+
+            $.getJSON(SR_ISL_URL, { search: srch, code: code }, function (res) {
+                $('#sr-isl-loading').addClass('d-none');
+                srIslCache[cacheKey] = res.items || [];
+                setTimeout(function () { delete srIslCache[cacheKey]; }, 60000);
+                srRenderItems(res.items || []);
+            }).fail(function () {
+                $('#sr-isl-loading').addClass('d-none');
+                $('#sr-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-exclamation-circle fa-2x text-danger"></i>' +
+                    '<p class="mt-2 text-muted">Error loading items. Please try again.</p>'
+                );
+            });
+        }
+
+        function srRenderItems(items) {
+            let $tbody = $('#sr-isl-items-body');
+            $tbody.empty();
+            if (items.length === 0) {
+                $('#sr-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-inbox fa-2x text-muted"></i>' +
+                    '<p class="mt-2 text-muted">No items found.</p>'
+                );
+                $('#sr-isl-count-label').text('');
+                return;
+            }
+            let html = '';
+            items.forEach(function (it, idx) {
+                let expBadge = it.exp_date
+                    ? `<span class="badge badge-danger px-2 py-1">${it.exp_date}</span>`
+                    : `<span class="text-muted">—</span>`;
+                let codeBadge = it.code
+                    ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
+                    : `<span class="text-muted">—</span>`;
+                html += `
+                    <tr class="sr-isl-item-row" style="cursor:pointer;"
+                        data-id="${it.id}"
+                        data-code="${it.code || ''}"
+                        data-name="${it.name || ''}"
+                        data-sell="${it.sell_price || 0}"
+                        data-mrp="${it.mrp || 0}"
+                        data-gst="${it.gst_percent || 0}"
+                        data-exp="${it.exp_date || ''}">
+                        <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td class="align-middle text-center">${codeBadge}</td>
+                        <td class="align-middle text-center">${expBadge}</td>
+                        <td class="align-middle text-right text-success font-weight-bold">${it.sell_price > 0 ? '\u20b9'+parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
+                        <td class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9'+parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
+                        <td class="align-middle text-right">${it.gst_percent || 0}%</td>
+                        <td class="align-middle text-center">
+                            <button type="button" class="btn btn-success btn-xs px-2 sr-isl-btn-select"
+                                data-id="${it.id}">
+                                <i class="fas fa-check mr-1"></i>Select
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+            $tbody.html(html);
+            $('#sr-isl-table-wrap').removeClass('d-none');
+            $('#sr-isl-no-results').addClass('d-none');
+            $('#sr-isl-count-label').text(items.length + ' item(s) found');
+        }
+
+        // Row or Select button click — populate the active row
+        $(document).on('click', '.sr-isl-item-row, .sr-isl-btn-select', function (e) {
+            e.stopPropagation();
+            let $row = $(this).hasClass('sr-isl-item-row') ? $(this) : $(this).closest('tr');
+            let itemId   = $row.data('id');
+            let itemCode = $row.data('code');
+            let itemName = $row.data('name');
+            let sell     = $row.data('sell');
+            let mrp      = $row.data('mrp');
+            let gst      = $row.data('gst');
+            let exp      = $row.data('exp');
+
+            $('#sr-item-search-modal').modal('hide');
+
+            if (!srActiveSearchRow || !itemId) return;
+
+            srActiveSearchRow.find('.sr-item-code').val(itemCode || itemId);
+            srActiveSearchRow.find('.sr-item-desc').val(itemName + (itemCode ? ' [' + itemCode + ']' : ''));
+            srActiveSearchRow.find('.sr-item-select').val(itemId);
+            srActiveSearchRow.find('.sr-exp-date').val(exp || '');
+            srActiveSearchRow.find('.sr-price').val(sell > 0 ? parseFloat(sell).toFixed(2) : '');
+            srActiveSearchRow.find('.sr-mrp').val(mrp > 0 ? parseFloat(mrp).toFixed(2) : '');
+            srActiveSearchRow.find('.sr-gst-percent').val(gst || '');
+            srActiveSearchRow.find('.sr-disc-percent').val('').trigger('input');
+            srActiveSearchRow.find('.sr-disc-amount').val('');
+
+            // Focus qty
+            srActiveSearchRow.find('.sr-qty').val('').focus();
+            srActiveSearchRow = null;
+        });
+
+        // When modal closes without selection, refocus code field
+        $('#sr-item-search-modal').on('hidden.bs.modal', function () {
+            if (srActiveSearchRow) {
+                let $target = srActiveSearchRow.find('.sr-item-code');
+                setTimeout(function () { $target.focus(); }, 50);
+            }
+        });
 
         function recalculateRow(row) {
             const qty = parseFloat(row.querySelector('.sr-qty')?.value) || 0;
@@ -225,9 +458,10 @@
             tempWrapper.innerHTML = html;
             const newRow = tempWrapper.firstElementChild;
             tbody.appendChild(newRow);
-            if (window.jQuery && jQuery.fn.select2) {
-                $(newRow).find('.select2').select2({ theme: 'bootstrap4', width: '100%' });
-            }
+            // Focus the code field on new row
+            setTimeout(function () {
+                newRow.querySelector('.sr-item-code')?.focus();
+            }, 50);
             rowIndex++;
             recalculateAll();
         });
@@ -309,8 +543,16 @@
                         tempWrapper.innerHTML = html;
                         const row = tempWrapper.firstElementChild;
 
-                        const select = row.querySelector('.sr-item-select');
-                        if (select) select.value = item.item_id;
+                        // Fill hidden item_id
+                        const hiddenId = row.querySelector('.sr-item-select');
+                        if (hiddenId) hiddenId.value = item.item_id;
+                        // Fill code field
+                        const codeInput = row.querySelector('.sr-item-code');
+                        if (codeInput) codeInput.value = item.item_code || '';
+                        // Fill description field
+                        const descInput = row.querySelector('.sr-item-desc');
+                        if (descInput) descInput.value = item.item_name + (item.item_code ? ' [' + item.item_code + ']' : '');
+                        // Fill other fields
                         const qtyInput = row.querySelector('.sr-qty');
                         if (qtyInput) qtyInput.value = item.qty;
                         const priceInput = row.querySelector('.sr-price');
@@ -323,13 +565,10 @@
                         if (discAmtInput) discAmtInput.value = item.disc_amount;
                         const gstPctInput = row.querySelector('.sr-gst-percent');
                         if (gstPctInput) gstPctInput.value = item.gst_percent;
-                        const expInput = row.querySelector('input[type="date"]');
+                        const expInput = row.querySelector('.sr-exp-date');
                         if (expInput && item.exp_date) expInput.value = item.exp_date;
 
                         tbody.appendChild(row);
-                        if (window.jQuery && jQuery.fn.select2) {
-                            $(row).find('.select2').select2({ theme: 'bootstrap4', width: '100%' });
-                        }
                     });
                     rowIndex = data.items.length;
                     recalculateAll();
