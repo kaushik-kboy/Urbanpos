@@ -784,11 +784,17 @@ class SalesBillController extends Controller
             ])
             : collect();
 
+        $tenderTypes = TenderType::with(['values' => fn ($q) => $q->where('status', true)])->where('status', true)->orderBy('id')->get();
+        if ($tenderTypes->isEmpty()) {
+            (new \Database\Seeders\TenderTypeSeeder())->run();
+            $tenderTypes = TenderType::with(['values' => fn ($q) => $q->where('status', true)])->where('status', true)->orderBy('id')->get();
+        }
+
         return [
             'customers'   => $customers,
             'branches'    => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items'       => $items,
-            'tenderTypes' => TenderType::with(['values' => fn ($q) => $q->where('status', true)])->where('status', true)->orderBy('name')->get(),
+            'tenderTypes' => $tenderTypes,
         ];
     }
 
@@ -813,7 +819,7 @@ class SalesBillController extends Controller
                 $discAmount,
                 0.0,
                 $isInterstate,
-                isTaxInclusive: false
+                isTaxInclusive: true
             );
 
             return [

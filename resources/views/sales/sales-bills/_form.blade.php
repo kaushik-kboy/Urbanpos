@@ -55,7 +55,10 @@
 <hr>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Items</h5>
-    <span class="badge badge-info px-3 py-2" id="sb-branch-badge"><i class="fas fa-store mr-1"></i> Active Branch: Loading…</span>
+    <div>
+        <button type="button" class="btn btn-outline-warning btn-sm mr-2 btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset Form</button>
+        <span class="badge badge-info px-3 py-2" id="sb-branch-badge"><i class="fas fa-store mr-1"></i> Active Branch: Loading…</span>
+    </div>
 </div>
 
 <div class="table-responsive">
@@ -65,7 +68,6 @@
                 <th style="width: 35px;" class="text-center">#</th>
                 <th style="width: 120px;">Code / Barcode</th>
                 <th style="min-width: 230px;">Item Description</th>
-                <th style="width: 85px;" class="text-center" title="Available Stock in Selected Branch">Stock</th>
                 <th style="width: 140px;">Exp Date</th>
                 <th style="width: 85px;" class="text-right">Qty</th>
                 <th style="width: 100px;" class="text-right">Sell Price</th>
@@ -73,6 +75,7 @@
                 <th style="width: 80px;" class="text-right">Disc %</th>
                 <th style="width: 95px;" class="text-right">Disc Amt</th>
                 <th style="width: 75px;" class="text-right">GST %</th>
+                <th style="width: 85px;" class="text-right" title="Included GST Amount">GST Amt</th>
                 <th style="width: 105px;" class="text-right">Net Amount</th>
                 <th style="width: 35px;" class="text-center"></th>
             </tr>
@@ -86,11 +89,12 @@
         </tbody>
         <tfoot class="bg-light font-weight-bold">
             <tr>
-                <td colspan="5" class="text-right align-middle">Totals:</td>
+                <td colspan="4" class="text-right align-middle">Totals:</td>
                 <td class="text-right align-middle text-primary font-weight-bold" id="footer-sb-qty"></td>
                 <td colspan="2" class="align-middle"></td>
                 <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="footer-sb-disc"></td>
                 <td class="align-middle"></td>
+                <td class="text-right align-middle text-info font-weight-bold" id="footer-sb-tax"></td>
                 <td class="text-right align-middle text-success font-weight-bold" id="footer-sb-net"></td>
                 <td></td>
             </tr>
@@ -254,65 +258,196 @@
 </div>
 
 {{-- ============================================================
-     TENDER / PAYMENT MODAL — shown on Save button click
+     TENDER / PAYMENT MODAL — Redesigned to match POS UI Screenshot
      ============================================================ --}}
 <div class="modal fade" id="sb-tender-modal" tabindex="-1" role="dialog" aria-labelledby="sbTenderModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
-    <div class="modal-dialog modal-md" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white py-2">
-                <h5 class="modal-title" id="sbTenderModalLabel">
-                    <i class="fas fa-cash-register mr-2"></i>Payment / Tender
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+    <div class="modal-dialog modal-lg" role="document" style="max-width: 820px;">
+        <div class="modal-content rounded-0 border-primary shadow-lg">
+            <div class="modal-header text-white py-1 px-3 rounded-0" style="background-color: #0078d7 !important;">
+                <h5 class="modal-title font-weight-bold" id="sbTenderModalLabel" style="font-size: 1.15rem; letter-spacing: 0.5px;">Tender</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.9;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body p-3">
-                {{-- Bill total display --}}
-                <div class="alert alert-light border py-2 mb-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted font-weight-bold">Bill Total:</span>
-                    <strong class="text-success h5 mb-0">₹<span id="tender-bill-total">0.00</span></strong>
+            <div class="modal-body p-0" style="background-color: #f8f9fa;">
+                <style>
+                    .tender-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+                    .tender-table td { padding: 4px 8px; border: 1px solid #ced4da; vertical-align: middle; font-size: 0.92rem; }
+                    .tender-label { background-color: #e9ecef; font-weight: 600; color: #212529; width: 38%; }
+                    .tender-table input.form-control, .tender-table select.form-control {
+                        border: 1px solid #adb5bd;
+                        height: 28px;
+                        padding: 2px 8px;
+                        font-weight: 600;
+                        border-radius: 2px;
+                        font-size: 0.92rem;
+                        background-color: #fff;
+                    }
+                    .tender-table input.form-control:focus, .tender-table select.form-control:focus {
+                        border-color: #0078d7;
+                        box-shadow: 0 0 0 2px rgba(0, 120, 215, 0.25);
+                        background-color: #ffffea;
+                    }
+                    .tender-summary-label { background-color: #e9ecef; font-weight: 600; color: #212529; width: 40%; }
+                    .tender-summary-val { font-weight: 700; font-size: 0.95rem; background-color: #fff; padding: 4px 10px; }
+                    .tender-btn {
+                        border: 1px solid #7092be;
+                        background: linear-gradient(180deg, #fbfdff 0%, #e8f0f8 100%);
+                        color: #111;
+                        font-weight: 600;
+                        padding: 3px 25px;
+                        border-radius: 3px;
+                        min-width: 85px;
+                        font-size: 0.9rem;
+                        cursor: pointer;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+                    }
+                    .tender-btn:hover {
+                        background: linear-gradient(180deg, #eaf2fc 0%, #d5e5f7 100%);
+                        border-color: #3b6ea5;
+                    }
+                    .tender-hotkey-bar {
+                        border-top: 1px solid #e05b5b;
+                        color: #c92a2a;
+                        font-size: 0.85rem;
+                        padding: 4px 10px;
+                        background-color: #fff5f5;
+                        font-weight: 600;
+                        letter-spacing: 0.2px;
+                    }
+                </style>
+
+                <!-- Upper Section: 2 Column Inputs -->
+                <div class="row no-gutters">
+                    <!-- Left Column: Payment Modes -->
+                    <div class="col-md-6" style="border-right: 1px solid #ced4da;">
+                        <table class="tender-table">
+                            <tbody>
+                                <tr>
+                                    <td class="tender-label">A). Cash</td>
+                                    <td>
+                                        <input type="number" step="any" id="tender-cash" class="form-control text-left font-weight-bold" placeholder="0.00" autocomplete="off">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label">B). Credit</td>
+                                    <td>
+                                        <input type="number" step="any" id="tender-credit" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label">C). Card</td>
+                                    <td>
+                                        <input type="number" step="any" id="tender-card" class="form-control text-left font-weight-bold" placeholder="0.00" autocomplete="off">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label">W). Wallet</td>
+                                    <td>
+                                        <input type="number" step="any" id="tender-wallet" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label">N). RRN</td>
+                                    <td>
+                                        <input type="text" id="tender-rrn" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Right Column: Wallet & Card Details -->
+                    <div class="col-md-6">
+                        <table class="tender-table">
+                            <tbody>
+                                <tr>
+                                    <td class="tender-label">Wallet</td>
+                                    <td>
+                                        <input type="number" step="any" id="tender-wallet-side" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label">Wallet Type</td>
+                                    <td>
+                                        <select id="tender-wallet-type" class="form-control font-weight-bold">
+                                            <option value="PINELAB" selected>PINELAB</option>
+                                            <option value="PAYTM">PAYTM</option>
+                                            <option value="PHONEPE">PHONEPE</option>
+                                            <option value="GPAY">GPAY</option>
+                                            <option value="BHARATPE">BHARATPE</option>
+                                            <option value="OTHER">OTHER</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label">Card No</td>
+                                    <td>
+                                        <input type="text" id="tender-card-no" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label">Wallet RefNo</td>
+                                    <td>
+                                        <input type="text" id="tender-wallet-refno" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-label" style="height: 38px;">&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                {{-- Payment Rows --}}
-                <table class="table table-sm table-bordered mb-2" id="tender-rows-table">
-                    <thead class="bg-dark text-white">
-                        <tr>
-                            <th>Payment Mode</th>
-                            <th class="text-right" style="width: 130px;">Amount (₹)</th>
-                            <th style="width: 30px;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="tender-rows-body">
-                        {{-- Rows added dynamically --}}
-                    </tbody>
-                </table>
+                <div style="border-top: 2px solid #555;"></div>
 
-                <button type="button" id="tender-add-row" class="btn btn-link btn-sm p-0">
-                    <i class="fas fa-plus-circle mr-1"></i>Add Another Mode
-                </button>
-
-                <hr class="my-2">
-
-                {{-- Summary --}}
-                <div class="row small font-weight-bold">
-                    <div class="col-6 text-right text-muted">Tender Amount:</div>
-                    <div class="col-6 text-right text-primary" id="tender-tendered">₹0.00</div>
-                    <div class="col-6 text-right text-muted">Balance:</div>
-                    <div class="col-6 text-right" id="tender-balance">₹0.00</div>
-                    <div class="col-6 text-right text-muted">Outstanding (after bill):</div>
-                    <div class="col-6 text-right text-danger" id="tender-outstanding">₹0.00</div>
+                <!-- Lower Section: Summary Grid -->
+                <div class="row no-gutters">
+                    <div class="col-md-12">
+                        <table class="tender-table">
+                            <tbody>
+                                <tr>
+                                    <td class="tender-summary-label">Total</td>
+                                    <td class="tender-summary-val text-left" id="tender-total-display">0.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-summary-label">Outstanding</td>
+                                    <td class="tender-summary-val text-left text-danger" id="tender-outstanding-display">0.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-summary-label">Advance</td>
+                                    <td class="tender-summary-val text-left text-muted" id="tender-advance-display">0.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-summary-label">Tender Amount</td>
+                                    <td class="tender-summary-val text-left text-primary" id="tender-tendered-display">0.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-summary-label">Balance</td>
+                                    <td class="tender-summary-val text-left text-success" id="tender-balance-display">0.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="tender-summary-label">Loyalty Limit</td>
+                                    <td class="tender-summary-val text-left text-muted" id="tender-loyalty-display">0.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <div id="tender-error" class="alert alert-danger py-1 mt-2 d-none small"></div>
-            </div>
-            <div class="modal-footer py-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
-                    <i class="fas fa-arrow-left mr-1"></i>Cancel
-                </button>
-                <button type="button" id="tender-confirm-btn" class="btn btn-success btn-sm">
-                    <i class="fas fa-check mr-1"></i>Confirm & Save Bill
-                </button>
+                <!-- Action Buttons: Ok & Cancel -->
+                <div class="p-2 d-flex align-items-center bg-white" style="border-top: 1px solid #ced4da;">
+                    <button type="button" id="tender-ok-btn" class="tender-btn mr-2">Ok</button>
+                    <button type="button" class="tender-btn" data-dismiss="modal">Cancel</button>
+                    <div id="tender-error" class="ml-3 text-danger font-weight-bold small d-none"></div>
+                </div>
+
+                <!-- Bottom Hotkey Bar -->
+                <div class="tender-hotkey-bar">
+                    Press (A) - Cash; (B) - Credit; (C) - Card; (W) - Wallet; (N) - RRN
+                </div>
             </div>
         </div>
     </div>
@@ -320,13 +455,27 @@
 
 {{-- Hidden: JSON-encoded TenderTypes for JS --}}
 <script id="tender-types-data" type="application/json">
-    {!! json_encode($tenderTypes->map(function($t) { return ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'mandate_refno' => (bool)$t->mandate_refno]; })->values()) !!}
+    {!! json_encode($tenderTypes->map(function($t) {
+        return [
+            'id' => $t->id,
+            'name' => $t->name,
+            'type' => $t->type,
+            'mandate_refno' => (bool)$t->mandate_refno,
+            'values' => $t->values->map(fn($v) => ['id' => $v->id, 'name' => $v->name])->values()
+        ];
+    })->values()) !!}
 </script>
 
 
 @push('js')
 <script>
     $(document).ready(function () {
+        function formatDigits(num) {
+            if (num === '' || num === null || num === undefined || isNaN(num)) return '';
+            let n = parseFloat(num);
+            return (n % 1 === 0) ? n.toFixed(0) : n.toString();
+        }
+
         let rowIndex = {{ $existingItems->count() ?: 1 }};
         let activeModalRow = null;
         let activeSearchRow = null;   // which row triggered the item search modal
@@ -534,7 +683,7 @@
                         <td class="align-middle font-weight-bold text-dark">${it.name} ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : ''}</td>
                         <td class="align-middle text-center">${codeBadge}</td>
                         <td class="align-middle text-center">${expBadge}</td>
-                        <td class="align-middle text-right ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
+                        <td class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}</td>
                         <td class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '\u20b9' + parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
                         <td class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9' + parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
                         <td class="align-middle text-center">
@@ -600,11 +749,19 @@
             });
         }
 
+        function formatDigits(num) {
+            if (num === '' || num === null || num === undefined || isNaN(num)) return '';
+            let n = parseFloat(num);
+            return (n % 1 === 0) ? n.toFixed(0) : n.toString();
+        }
+
         function calculateRow($row, source) {
             let qty = parseFloat($row.find('.sb-qty').val()) || 0;
             let sellPrice = parseFloat($row.find('.sb-sell-price').val()) || 0;
             let mrp = parseFloat($row.find('.sb-mrp').val()) || 0;
-            let stock = parseFloat($row.find('.sb-item-stock').val()) || 0;
+            let stockVal = $row.find('.sb-item-stock-val').val();
+            if (stockVal === undefined || stockVal === '') stockVal = $row.data('stock');
+            let stock = parseFloat(stockVal) || 0;
 
             let base = qty * sellPrice;
             let $discPct = $row.find('.sb-disc-percent');
@@ -625,7 +782,7 @@
             } else if (source === 'amount') {
                 if (base > 0 && discAmt > 0) {
                     discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
-                    $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
+                    $discPct.val(discPct > 0 ? formatDigits(discPct) : '');
                 } else if (discAmt === 0) {
                     discPct = 0;
                     $discPct.val('');
@@ -636,13 +793,20 @@
                     $discAmt.val(discAmt > 0 ? discAmt.toFixed(2) : '');
                 } else if (discAmt > 0 && base > 0) {
                     discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
-                    $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
+                    $discPct.val(discPct > 0 ? formatDigits(discPct) : '');
                 }
             }
 
-            let taxable = Math.max(0, base - discAmt);
-            let gstAmt = Math.round((taxable * gst / 100) * 100) / 100;
-            let net = taxable + gstAmt;
+            // Tax-Inclusive GST calculation
+            // Selling price already includes GST. Net Amount = Base - Disc Amount!
+            let net = Math.max(0, base - discAmt);
+            let gstTaxAmt = 0;
+            if (net > 0 && gst > 0) {
+                let preTax = net / (1 + (gst / 100));
+                gstTaxAmt = Math.round((net - preTax) * 100) / 100;
+            }
+
+            $row.find('.sb-gst-tax-amount').val(gstTaxAmt > 0 ? gstTaxAmt.toFixed(2) : '0.00');
 
             if (base > 0) {
                 $row.find('.sb-row-net').text(net > 0 ? net.toFixed(2) : '');
@@ -650,30 +814,35 @@
                 $row.find('.sb-row-net').text('');
             }
 
-            // Stock warning: check TOTAL qty across ALL rows for the same item
+            // Strict stock validation: check TOTAL qty across ALL rows for the same item
             let $qtyInput = $row.find('.sb-qty');
             let itemId = $row.find('.sb-item-select').val();
-            if (stock > 0 && itemId) {
+            if (stock >= 0 && itemId && qty > 0) {
                 let totalForItem = 0;
                 $('#sb-items-body tr').each(function () {
                     if ($(this).find('.sb-item-select').val() === itemId) {
                         totalForItem += parseFloat($(this).find('.sb-qty').val()) || 0;
                     }
                 });
-                // Update warning on ALL rows of this item
                 $('#sb-items-body tr').each(function () {
                     if ($(this).find('.sb-item-select').val() === itemId) {
                         let $q = $(this).find('.sb-qty');
                         if (totalForItem > stock) {
-                            $q.addClass('border-danger text-danger')
-                              .attr('title', 'Total qty (' + totalForItem + ') across all rows exceeds stock (' + stock + ')!');
+                            $q.addClass('border-danger text-danger is-invalid')
+                              .attr('title', 'Total qty (' + formatDigits(totalForItem) + ') exceeds available stock (' + formatDigits(stock) + ')!');
                         } else {
-                            $q.removeClass('border-danger text-danger').attr('title', '');
+                            $q.removeClass('border-danger text-danger is-invalid').attr('title', '');
                         }
                     }
                 });
+                if (totalForItem > stock && !$qtyInput.data('stock-alerted')) {
+                    $qtyInput.data('stock-alerted', true);
+                    alert('Stock is only ' + formatDigits(stock) + '. Quantity (' + formatDigits(totalForItem) + ') cannot exceed available stock!');
+                } else if (totalForItem <= stock) {
+                    $qtyInput.data('stock-alerted', false);
+                }
             } else {
-                $qtyInput.removeClass('border-danger text-danger').attr('title', '');
+                $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
             }
 
             calculateTotals();
@@ -687,7 +856,8 @@
             $('#sb-items-body tr').each(function () {
                 let itemId = $(this).find('.sb-item-select').val();
                 let qty = parseFloat($(this).find('.sb-qty').val()) || 0;
-                let stockVal = $(this).find('.sb-item-stock').val();
+                let stockVal = $(this).find('.sb-item-stock-val').val();
+                if (stockVal === undefined || stockVal === '') stockVal = $(this).data('stock');
                 let stock = parseFloat(stockVal);
 
                 if (itemId) {
@@ -712,28 +882,29 @@
                     let stock = itemStocks[itemId] !== undefined ? itemStocks[itemId] : null;
 
                     if (stock !== null && stock >= 0 && totalQty > stock) {
-                        $qtyInput.addClass('border-danger text-danger')
-                                 .attr('title', 'Total qty (' + totalQty + ') across all rows exceeds stock (' + stock + ')!');
+                        $qtyInput.addClass('border-danger text-danger is-invalid')
+                                 .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
                         hasStockError = true;
                     } else if (qty <= 0) {
-                        $qtyInput.addClass('border-danger text-danger')
+                        $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Quantity 0 se zyada honi chahiye.');
                         hasStockError = true;
                     } else {
-                        $qtyInput.removeClass('border-danger text-danger').attr('title', '');
+                        $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                         validItemCount++;
                     }
                 } else {
-                    $qtyInput.removeClass('border-danger text-danger').attr('title', '');
+                    $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                 }
             });
 
             return { hasStockError: hasStockError, validItemCount: validItemCount };
         }
 
-        function calculateTotals() {
+        function calculateTotals(isManualRoundOff) {
             let totalQty = 0;
             let totalDisc = 0;
+            let totalGst = 0;
             let totalNet = 0;
             let itemCount = 0;
 
@@ -747,23 +918,40 @@
                 if (qty > 0 || sellPrice > 0) {
                     itemCount++;
                     let base = qty * sellPrice;
-                    let taxable = Math.max(0, base - discAmt);
-                    let gstAmt = Math.round((taxable * gst / 100) * 100) / 100;
-                    let net = taxable + gstAmt;
+                    let net = Math.max(0, base - discAmt);
+                    let gstAmt = 0;
+                    if (net > 0 && gst > 0) {
+                        let preTax = net / (1 + (gst / 100));
+                        gstAmt = Math.round((net - preTax) * 100) / 100;
+                    }
 
                     totalQty += qty;
                     totalDisc += discAmt;
+                    totalGst += gstAmt;
                     totalNet += net;
                 }
             });
 
-            let roundOff = parseFloat($('input[name="round_off"]').val()) || 0;
             let extraCess = parseFloat($('input[name="total_extra_cess"]').val()) || 0;
             let calCess = parseFloat($('input[name="gst_calamity_cess"]').val()) || 0;
-            let finalTotal = Math.round((totalNet + roundOff + extraCess + calCess) * 100) / 100;
+            let rawTotal = totalNet + extraCess + calCess;
 
-            $('#footer-sb-qty').text(totalQty > 0 ? totalQty.toFixed(3) : '');
+            let finalTotal = 0;
+            let roundOff = 0;
+
+            if (isManualRoundOff) {
+                roundOff = parseFloat($('input[name="round_off"]').val()) || 0;
+                finalTotal = Math.round((rawTotal + roundOff) * 100) / 100;
+            } else {
+                let roundedTotal = Math.round(rawTotal);
+                roundOff = Math.round((roundedTotal - rawTotal) * 100) / 100;
+                $('input[name="round_off"]').val(roundOff !== 0 ? roundOff.toFixed(2) : '0.00');
+                finalTotal = roundedTotal;
+            }
+
+            $('#footer-sb-qty').text(totalQty > 0 ? formatDigits(totalQty) : '');
             $('#footer-sb-disc').text(totalDisc > 0 ? totalDisc.toFixed(2) : '');
+            $('#footer-sb-tax').text(totalGst > 0 ? totalGst.toFixed(2) : '');
             $('#footer-sb-net').text(totalNet > 0 ? totalNet.toFixed(2) : '');
 
             $('#display-sb-final-total').text(finalTotal > 0 ? finalTotal.toFixed(2) : '0.00');
@@ -898,7 +1086,6 @@
             let $select = $row.find('.sb-item-select');
             let $desc = $row.find('.sb-item-desc');
             let $code = $row.find('.sb-item-code');
-            let $stock = $row.find('.sb-item-stock');
             let $exp = $row.find('.sb-exp-date');
             let $sell = $row.find('.sb-sell-price');
             let $mrp = $row.find('.sb-mrp');
@@ -932,9 +1119,10 @@
                     $select.val(item.id);
                     isSyncing = false;
 
-                    // Show Product Stock
-                    let stockVal = item.stock ? parseFloat(item.stock).toFixed(2) : '0.00';
-                    $stock.val(stockVal).attr('title', 'Available Stock: ' + stockVal);
+                    // Store Product Stock for validation
+                    let stockNum = item.stock ? parseFloat(item.stock) : 0;
+                    $row.attr('data-stock', stockNum);
+                    $row.find('.sb-item-stock-val').val(stockNum);
 
                     // Set Sell Price, MRP, GST %
                     if (item.sell_price > 0 && (!$sell.val() || parseFloat($sell.val()) === 0)) {
@@ -944,7 +1132,10 @@
                         $mrp.val(parseFloat(item.mrp).toFixed(2));
                     }
                     if (item.gst_percent !== undefined && item.gst_percent !== null) {
-                        $gst.val(parseFloat(item.gst_percent || 0).toFixed(2));
+                        $gst.val(formatDigits(item.gst_percent));
+                    }
+                    if (!$row.find('.sb-qty').val() || parseFloat($row.find('.sb-qty').val()) === 0) {
+                        $row.find('.sb-qty').val('1');
                     }
 
                     // =========================================================
@@ -1117,49 +1308,41 @@
         const TENDER_TYPES = JSON.parse(document.getElementById('tender-types-data').textContent || '[]');
         let tenderBillTotal = 0;
 
-        function buildTenderTypeOptions(selectedId) {
-            let html = '<option value="">-- Select Mode --</option>';
-            TENDER_TYPES.forEach(function (t) {
-                let sel = (t.id == selectedId) ? 'selected' : '';
-                html += `<option value="${t.id}" data-mandate="${t.mandate_refno ? 1 : 0}" ${sel}>${t.name}</option>`;
-            });
-            return html;
-        }
-
-        function addTenderRow(typeId, amount) {
-            let rowHtml = `
-                <tr class="tender-row">
-                    <td>
-                        <select class="form-control form-control-sm tender-type-sel">${buildTenderTypeOptions(typeId || '')}</select>
-                    </td>
-                    <td>
-                        <input type="number" class="form-control form-control-sm text-right tender-amount" step="0.01" min="0" value="${amount || ''}">
-                    </td>
-                    <td class="text-center align-middle">
-                        <button type="button" class="btn btn-link btn-sm text-danger p-0 tender-remove-row" title="Remove">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </td>
-                </tr>`;
-            $('#tender-rows-body').append(rowHtml);
-            recalcTender();
-        }
-
         function recalcTender() {
-            let tendered = 0;
-            $('.tender-amount').each(function () {
-                tendered += parseFloat($(this).val()) || 0;
-            });
-            tendered = Math.round(tendered * 100) / 100;
+            let cash = parseFloat($('#tender-cash').val()) || 0;
+            let credit = parseFloat($('#tender-credit').val()) || 0;
+            let card = parseFloat($('#tender-card').val()) || 0;
+            let wallet = parseFloat($('#tender-wallet').val()) || 0;
+            let rrn = parseFloat($('#tender-rrn').val()) || 0;
+
+            let tendered = Math.round((cash + credit + card + wallet + rrn) * 100) / 100;
             let balance = Math.round((tendered - tenderBillTotal) * 100) / 100;
 
-            $('#tender-tendered').text('₹' + tendered.toFixed(2));
-            $('#tender-balance').text('₹' + balance.toFixed(2));
-            $('#tender-balance').removeClass('text-success text-danger text-dark')
-                .addClass(balance >= 0 ? 'text-success' : 'text-danger');
-            $('#tender-outstanding').text('₹' + Math.max(0, -balance).toFixed(2));
+            $('#tender-tendered-display').text(tendered.toFixed(2));
+
+            if (balance >= 0) {
+                $('#tender-balance-display').text(balance.toFixed(2));
+                $('#tender-outstanding-display').text('0.00');
+            } else {
+                $('#tender-balance-display').text('0.00');
+                $('#tender-outstanding-display').text(Math.abs(balance).toFixed(2));
+            }
             $('#tender-error').addClass('d-none').text('');
         }
+
+        // Synchronize Wallet amounts on left and right columns
+        $(document).on('input', '#tender-wallet', function () {
+            $('#tender-wallet-side').val($(this).val());
+            recalcTender();
+        });
+        $(document).on('input', '#tender-wallet-side', function () {
+            $('#tender-wallet').val($(this).val());
+            recalcTender();
+        });
+
+        $(document).on('input', '#tender-cash, #tender-credit, #tender-card, #tender-rrn', function () {
+            recalcTender();
+        });
 
         // Open tender modal when Save button clicked
         $(document).on('click', 'button[type="submit"]', function (e) {
@@ -1190,82 +1373,139 @@
 
             // Read current bill total from display
             tenderBillTotal = parseFloat($('#display-sb-final-total').text()) || 0;
-            $('#tender-bill-total').text(tenderBillTotal.toFixed(2));
+            $('#tender-total-display').text(tenderBillTotal.toFixed(2));
+            $('#tender-advance-display').text('0.00');
+            $('#tender-loyalty-display').text(tenderBillTotal.toFixed(2));
 
-            // Reset modal
-            $('#tender-rows-body').empty();
-            $('#tender-error').addClass('d-none');
+            // Default: Cash pre-filled with total
+            $('#tender-cash').val(tenderBillTotal.toFixed(2));
+            $('#tender-credit').val('');
+            $('#tender-card').val('0.00');
+            $('#tender-wallet').val('');
+            $('#tender-wallet-side').val('');
+            $('#tender-rrn').val('');
+            $('#tender-card-no').val('');
+            $('#tender-wallet-refno').val('');
+            $('#tender-error').addClass('d-none').text('');
 
-            // Default: Cash row pre-filled with total
-            let cashType = TENDER_TYPES.find(t => t.type === 'Cash' || t.name === 'Cash');
-            addTenderRow(cashType ? cashType.id : '', tenderBillTotal.toFixed(2));
+            recalcTender();
 
             $('#sb-tender-modal').modal('show');
+            setTimeout(function () {
+                $('#tender-cash').focus().select();
+            }, 200);
         });
 
-        // Add row
-        $('#tender-add-row').on('click', function () {
-            addTenderRow('', '');
+        // Tender Modal Hotkeys: (A) Cash, (B) Credit, (C) Card, (W) Wallet, (N) RRN, Enter = Ok, Esc = Cancel
+        $(document).on('keydown', function (e) {
+            if (!$('#sb-tender-modal').is(':visible')) return;
+
+            let key = e.key.toUpperCase();
+            let target = e.target;
+            let isInput = $(target).is('input, select, textarea');
+
+            if (e.altKey || !isInput || target.id === 'tender-ok-btn') {
+                if (key === 'A') { e.preventDefault(); $('#tender-cash').focus().select(); }
+                else if (key === 'B') { e.preventDefault(); $('#tender-credit').focus().select(); }
+                else if (key === 'C') { e.preventDefault(); $('#tender-card').focus().select(); }
+                else if (key === 'W') { e.preventDefault(); $('#tender-wallet').focus().select(); }
+                else if (key === 'N') { e.preventDefault(); $('#tender-rrn').focus().select(); }
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('#tender-ok-btn').trigger('click');
+            }
         });
 
-        // Remove row
-        $(document).on('click', '.tender-remove-row', function () {
-            $(this).closest('tr').remove();
-            recalcTender();
-        });
-
-        // Recalc on change
-        $(document).on('input change', '.tender-amount, .tender-type-sel', function () {
-            recalcTender();
-        });
-
-        // Confirm & Save
-        $('#tender-confirm-btn').on('click', function () {
+        // Ok button clicked in Tender Modal
+        $('#tender-ok-btn').on('click', function () {
             $('#tender-error').addClass('d-none');
 
-            let payments = [];
-            let valid = true;
-            let tendered = 0;
+            let cash = parseFloat($('#tender-cash').val()) || 0;
+            let credit = parseFloat($('#tender-credit').val()) || 0;
+            let card = parseFloat($('#tender-card').val()) || 0;
+            let wallet = parseFloat($('#tender-wallet').val()) || 0;
+            let rrn = parseFloat($('#tender-rrn').val()) || 0;
 
-            $('.tender-row').each(function () {
-                let typeId = $(this).find('.tender-type-sel').val();
-                let amount = parseFloat($(this).find('.tender-amount').val()) || 0;
-
-                if (!typeId) { valid = false; return false; }
-                if (amount <= 0) { valid = false; return false; }
-
-                payments.push({ tender_type_id: typeId, amount: amount });
-                tendered += amount;
-            });
-
-            if (!valid) {
-                $('#tender-error').removeClass('d-none').text('Har row mein payment mode aur amount required hai.');
+            let tendered = Math.round((cash + credit + card + wallet + rrn) * 100) / 100;
+            if (tendered <= 0 && tenderBillTotal > 0) {
+                $('#tender-error').removeClass('d-none').text('Kripya payment amount enter karein.');
                 return;
             }
 
-            tendered = Math.round(tendered * 100) / 100;
-            let diff = Math.abs(tendered - Math.round(tenderBillTotal * 100) / 100);
-            if (diff > 0.01) {
-                $('#tender-error').removeClass('d-none')
-                    .text('Payment total ₹' + tendered.toFixed(2) + ' bill total ₹' + tenderBillTotal.toFixed(2) + ' se match nahi karta.');
-                return;
+            // Match payment modes to TenderType
+            let cashType = TENDER_TYPES.find(t => t.type === 'Cash' || t.name.toLowerCase() === 'cash') || TENDER_TYPES[0];
+            let creditType = TENDER_TYPES.find(t => t.type === 'Credit' || t.name.toLowerCase() === 'credit') || cashType;
+            let cardType = TENDER_TYPES.find(t => t.type === 'Card' || t.name.toLowerCase() === 'card') || cashType;
+            let walletType = TENDER_TYPES.find(t => t.type === 'Wallet' || t.name.toLowerCase() === 'wallet') || cashType;
+            let rrnType = TENDER_TYPES.find(t => t.name.toLowerCase() === 'rrn' || t.type === 'Finance') || walletType;
+
+            let selectedWalletTypeName = $('#tender-wallet-type').val();
+            let walletValueId = null;
+            if (walletType && walletType.values && walletType.values.length) {
+                let matchedVal = walletType.values.find(v => v.name.toUpperCase() === selectedWalletTypeName.toUpperCase());
+                if (matchedVal) walletValueId = matchedVal.id;
+            }
+
+            let payments = [];
+
+            // If tendered < total (unpaid balance), assign remaining to credit
+            let outstanding = Math.max(0, Math.round((tenderBillTotal - tendered) * 100) / 100);
+            if (outstanding > 0) {
+                credit += outstanding;
+            }
+
+            // If cash tendered > bill total, cap cash payment amount at bill total (minus other modes)
+            let otherPayments = credit + card + wallet + rrn;
+            let effectiveCash = cash;
+            if (cash + otherPayments > tenderBillTotal) {
+                effectiveCash = Math.max(0, Math.round((tenderBillTotal - otherPayments) * 100) / 100);
+            }
+
+            if (effectiveCash > 0 && cashType) {
+                payments.push({ tender_type_id: cashType.id, amount: effectiveCash });
+            }
+            if (credit > 0 && creditType) {
+                payments.push({ tender_type_id: creditType.id, amount: credit });
+            }
+            if (card > 0 && cardType) {
+                payments.push({ tender_type_id: cardType.id, amount: card });
+            }
+            if (wallet > 0 && walletType) {
+                payments.push({
+                    tender_type_id: walletType.id,
+                    tender_type_value_id: walletValueId,
+                    amount: wallet
+                });
+            }
+            if (rrn > 0 && rrnType) {
+                payments.push({ tender_type_id: rrnType.id, amount: rrn });
+            }
+
+            // Fallback if none entered
+            if (payments.length === 0 && cashType) {
+                payments.push({ tender_type_id: cashType.id, amount: tenderBillTotal });
             }
 
             // Inject hidden payment inputs into form
             let $form = $('form[action*="sales-bills"]').first();
-            $form.find('input[name^="payments"]').remove(); // clean old
+            $form.find('input[name^="payments"]').remove();
 
             payments.forEach(function (p, i) {
                 $form.append(`<input type="hidden" name="payments[${i}][tender_type_id]" value="${p.tender_type_id}">`);
+                if (p.tender_type_value_id) {
+                    $form.append(`<input type="hidden" name="payments[${i}][tender_type_value_id]" value="${p.tender_type_value_id}">`);
+                }
                 $form.append(`<input type="hidden" name="payments[${i}][amount]" value="${p.amount}">`);
             });
 
-            // Use native form submit to bypass jQuery event re-interception
+            // Use native form submit
             let submitted = false;
             function doSubmit() {
                 if (!submitted) {
                     submitted = true;
-                    $form[0].submit(); // native submit — bypasses jQuery click handlers
+                    $form[0].submit();
                 }
             }
 
@@ -1273,9 +1513,15 @@
                 doSubmit();
             });
             $('#sb-tender-modal').modal('hide');
-
-            // Fallback in case modal event doesn't fire immediately
             setTimeout(doSubmit, 350);
+        });
+
+        // Form Reset Button Handler
+        $(document).on('click', '.btn-reset-form', function (e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to reset this form? All unsaved inputs will be lost.')) {
+                window.location.reload();
+            }
         });
 
         function fetchCustomerLoyalty(customerId) {

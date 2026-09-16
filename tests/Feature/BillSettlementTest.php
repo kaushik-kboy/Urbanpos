@@ -40,7 +40,7 @@ class BillSettlementTest extends TestCase
             ['name' => 'Main Branch', 'code' => 'MAIN', 'state' => 'Maharashtra']
         );
 
-        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%']);
+        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%', 'description' => 'GST 18%']);
 
         $this->item = Item::firstOrCreate(
             ['item_code' => 'SETTLE-ITEM-001'],

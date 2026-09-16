@@ -1097,6 +1097,14 @@
             updateExpiryRequirement($r);
         });
         checkAmountMatch();
+
+        // Form Reset Button Handler
+        $(document).on('click', '.btn-reset-form', function (e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to reset this form? All unsaved inputs will be lost.')) {
+                window.location.reload();
+            }
+        });
     });
 </script>
 @endpush
