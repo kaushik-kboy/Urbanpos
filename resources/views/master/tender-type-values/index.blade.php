@@ -40,11 +40,6 @@
                             <td><x-status-badge :active="$value->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.tender-type-values.edit', $value) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.tender-type-values.destroy', $value) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this tender type value?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

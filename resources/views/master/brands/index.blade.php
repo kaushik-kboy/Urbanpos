@@ -42,11 +42,6 @@
                             <td>{{ $brand->updated_at->format('d-m-Y H:i') }}</td>
                             <td class="text-right">
                                 <a href="{{ route('master.brands.edit', $brand) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.brands.destroy', $brand) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this brand?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

@@ -160,9 +160,9 @@ class PurchaseOrderController extends Controller
     private function formOptions(): array
     {
         return [
-            'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
-            'branches' => Branch::orderBy('name')->pluck('name', 'id'),
-            'items' => Item::orderBy('name')->pluck('name', 'id'),
+            'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items' => Item::where('status', true)->orderBy('name')->pluck('name', 'id'),
         ];
     }
 

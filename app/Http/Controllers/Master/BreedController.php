@@ -9,6 +9,8 @@ use App\Models\Breed;
 use App\Models\PetType;
 use Illuminate\Http\Request;
 
+use Illuminate\Validation\Rule;
+
 class BreedController extends Controller
 {
     use HasPerPage, Importable;
@@ -23,7 +25,7 @@ class BreedController extends Controller
 
     public function create()
     {
-        $petTypes = PetType::orderBy('name')->pluck('name', 'id');
+        $petTypes = PetType::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('master.breeds.create', compact('petTypes'));
     }
@@ -38,14 +40,14 @@ class BreedController extends Controller
 
     public function edit(Breed $breed)
     {
-        $petTypes = PetType::orderBy('name')->pluck('name', 'id');
+        $petTypes = PetType::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('master.breeds.edit', compact('breed', 'petTypes'));
     }
 
     public function update(Request $request, Breed $breed)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $breed);
         $breed->update($data);
 
         return redirect()->route('master.breeds.index')->with('status', 'Breed updated successfully.');
@@ -53,16 +55,21 @@ class BreedController extends Controller
 
     public function destroy(Breed $breed)
     {
-        $breed->delete();
-
-        return redirect()->route('master.breeds.index')->with('status', 'Breed deleted.');
+        return redirect()->route('master.breeds.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Breed $breed = null): array
     {
         return $request->validate([
             'pet_type_id' => ['required', 'exists:pet_types,id'],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('breeds', 'name')
+                    ->where(fn ($q) => $q->where('pet_type_id', $request->input('pet_type_id')))
+                    ->ignore($breed?->id),
+            ],
             'status' => ['required', 'boolean'],
         ]);
     }

@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ItemCategory;
 use Illuminate\Http\Request;
 
+use Illuminate\Validation\Rule;
+
 class ItemCategoryController extends Controller
 {
     use HasPerPage, Importable;
@@ -40,7 +42,7 @@ class ItemCategoryController extends Controller
 
     public function update(Request $request, ItemCategory $itemCategory)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $itemCategory);
         $itemCategory->update($data);
 
         return redirect()->route('master.item-categories.index')->with('status', 'Item category updated successfully.');
@@ -48,15 +50,13 @@ class ItemCategoryController extends Controller
 
     public function destroy(ItemCategory $itemCategory)
     {
-        $itemCategory->delete();
-
-        return redirect()->route('master.item-categories.index')->with('status', 'Item category deleted.');
+        return redirect()->route('master.item-categories.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?ItemCategory $itemCategory = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('item_categories', 'name')->ignore($itemCategory?->id)],
             'is_mandatory' => ['required', 'boolean'],
             'status' => ['required', 'boolean'],
         ]);

@@ -452,6 +452,15 @@
             $row.find('.pinv-margin').val(marginPct !== null ? marginPct.toFixed(2) + '%' : '');
             $row.find('.pinv-profit').val(profitPct !== null ? profitPct.toFixed(2) + '%' : '');
 
+            // Validation: Sell Price must be strictly greater than Cost Price
+            let $sellInput = $row.find('.pinv-sell');
+            if (cost > 0 && sell <= cost) {
+                $sellInput.addClass('border-danger text-danger')
+                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') Cost Price (₹' + cost.toFixed(2) + ') se zyada honi chahiye!');
+            } else {
+                $sellInput.removeClass('border-danger text-danger').attr('title', '');
+            }
+
             let $discPct = $row.find('.pinv-disc-percent');
             let $discAmt = $row.find('.pinv-disc-amount');
 
@@ -908,8 +917,34 @@
             calculateTotals();
         });
 
-        // 4. Form Submit Guard: Inv Amount (Supplier) and final amount MUST match to save
+        // 4. Form Submit Guard
         $('form').on('submit', function (e) {
+            // Rule: Check Sell Price > Cost Price on all item rows
+            let priceError = null;
+            $('#pinv-items-body tr').each(function (idx) {
+                let $r = $(this);
+                let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
+                let sell = parseFloat($r.find('.pinv-sell').val()) || 0;
+                let itemName = $r.find('.pinv-item-select option:selected').text().trim() || ('Row #' + (idx + 1));
+                if (cost > 0 && sell <= cost) {
+                    priceError = {
+                        row: idx + 1,
+                        item: itemName,
+                        cost: cost,
+                        sell: sell,
+                        $input: $r.find('.pinv-sell')
+                    };
+                    return false; // break loop
+                }
+            });
+
+            if (priceError) {
+                e.preventDefault();
+                alert("Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (₹" + priceError.sell.toFixed(2) + ") Cost Price (₹" + priceError.cost.toFixed(2) + ") se zyada hona chahiye!");
+                priceError.$input.focus().addClass('border-danger text-danger');
+                return false;
+            }
+
             let invAmt = parseFloat($('input[name="supplier_inv_amount"]').val()) || 0;
             let finalTotal = getLiveFinalTotal();
             let diff = Math.round((invAmt - finalTotal) * 100) / 100;

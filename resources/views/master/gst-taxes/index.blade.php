@@ -38,11 +38,6 @@
                             <td><x-status-badge :active="$gstTax->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.gst-taxes.edit', $gstTax) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.gst-taxes.destroy', $gstTax) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this GST tax?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

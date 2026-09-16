@@ -75,11 +75,6 @@
                             <td><x-status-badge :active="$customer->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.customers.edit', $customer) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.customers.destroy', $customer) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this customer?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

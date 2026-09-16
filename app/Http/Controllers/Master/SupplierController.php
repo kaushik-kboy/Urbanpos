@@ -70,7 +70,7 @@ class SupplierController extends Controller
 
     public function update(Request $request, Supplier $supplier)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $supplier);
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $supplier, $data);
         $supplier->update($data);
         $this->syncContacts($request, $supplier);
@@ -137,15 +137,13 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
-        $supplier->delete();
-
-        return redirect()->route('master.suppliers.index')->with('status', 'Supplier deleted.');
+        return redirect()->route('master.suppliers.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Supplier $supplier = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('suppliers', 'name')->ignore($supplier?->id)],
             'currency' => ['required', 'string', 'max:10'],
             'purchase_type' => ['required', 'in:Local,Interstate,Import'],
             'purchase_mode' => ['required', 'in:Credit,Cash,Consignment'],

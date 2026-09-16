@@ -42,11 +42,6 @@
                             <td>{{ $register->status }}</td>
                             <td class="text-right">
                                 <a href="{{ route('master.registers.edit', $register) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.registers.destroy', $register) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this register?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

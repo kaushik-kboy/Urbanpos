@@ -45,7 +45,7 @@ class AreaController extends Controller
 
     public function update(Request $request, Area $area)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $area);
         $area->update($data);
 
         return redirect()->route('master.areas.index')->with('status', 'Area updated successfully.');
@@ -53,16 +53,22 @@ class AreaController extends Controller
 
     public function destroy(Area $area)
     {
-        $area->delete();
-
-        return redirect()->route('master.areas.index')->with('status', 'Area deleted.');
+        return redirect()->route('master.areas.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Area $area = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('areas', 'name')
+                    ->where(fn ($q) => $q->where('branch_id', $request->input('branch_id')))
+                    ->ignore($area?->id),
+            ],
             'branch_id' => ['nullable', 'exists:branches,id'],
+            'status' => ['required', 'boolean'],
         ]);
     }
 

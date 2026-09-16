@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Uom;
 use Illuminate\Http\Request;
 
+use Illuminate\Validation\Rule;
+
 class UomController extends Controller
 {
     use HasPerPage, Importable;
@@ -40,7 +42,7 @@ class UomController extends Controller
 
     public function update(Request $request, Uom $uom)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $uom);
         $uom->update($data);
 
         return redirect()->route('master.uoms.index')->with('status', 'UOM updated successfully.');
@@ -48,16 +50,15 @@ class UomController extends Controller
 
     public function destroy(Uom $uom)
     {
-        $uom->delete();
-
-        return redirect()->route('master.uoms.index')->with('status', 'UOM deleted.');
+        return redirect()->route('master.uoms.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Uom $uom = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('uoms', 'name')->ignore($uom?->id)],
             'alias' => ['nullable', 'string', 'max:50'],
+            'status' => ['required', 'boolean'],
         ]);
     }
 

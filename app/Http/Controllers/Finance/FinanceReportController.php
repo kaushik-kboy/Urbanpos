@@ -76,10 +76,13 @@ class FinanceReportController extends Controller
             ->orderBy('id')
             ->get();
 
+        $totalDebit = $entries->sum(fn ($e) => $e->lines->sum('debit'));
+        $totalCredit = $entries->sum(fn ($e) => $e->lines->sum('credit'));
+
         $branches = \App\Models\Branch::orderBy('name')->pluck('name', 'id');
         $voucherTypes = JournalEntry::select('voucher_type')->distinct()->whereNotNull('voucher_type')->pluck('voucher_type');
 
-        return view('finance.reports.day-book', compact('entries', 'from', 'to', 'branches', 'branchId', 'voucherTypes', 'voucherType', 'search'));
+        return view('finance.reports.day-book', compact('entries', 'from', 'to', 'branches', 'branchId', 'voucherTypes', 'voucherType', 'search', 'totalDebit', 'totalCredit'));
     }
 
     public function trialBalance(Request $request)
@@ -98,5 +101,68 @@ class FinanceReportController extends Controller
         })->filter(fn ($row) => $row->debit != 0 || $row->credit != 0)->values();
 
         return view('finance.reports.trial-balance', compact('ledgers', 'asOf'));
+    }
+
+    public function profitLoss(Request $request)
+    {
+        $from = $request->input('from', now()->startOfYear()->format('Y-m-d'));
+        $to = $request->input('to', now()->format('Y-m-d'));
+        $branchId = $request->input('branch_id');
+
+        // Sales & Returns
+        $salesQuery = \App\Models\SalesBill::whereDate('bill_date', '>=', $from)->whereDate('bill_date', '<=', $to);
+        $returnsQuery = \App\Models\SalesReturn::whereDate('return_date', '>=', $from)->whereDate('return_date', '<=', $to);
+        $purchaseQuery = \App\Models\PurchaseInvoice::whereDate('invoice_date', '>=', $from)->whereDate('invoice_date', '<=', $to);
+
+        if ($branchId) {
+            $salesQuery->where('branch_id', $branchId);
+            $returnsQuery->where('branch_id', $branchId);
+            $purchaseQuery->where('branch_id', $branchId);
+        }
+
+        $grossSales = (float) $salesQuery->sum('total');
+        $salesReturn = (float) $returnsQuery->sum('total');
+        $netSales = max(0, $grossSales - $salesReturn);
+
+        $grossPurchase = (float) $purchaseQuery->sum('total');
+
+        // Other Ledgers for Indirect Incomes & Expenses
+        $expenseLedgers = Ledger::whereIn('ledger_group', ['Indirect Expenses', 'Direct Expenses', 'Administrative Expenses'])
+            ->with(['lines' => fn ($q) => $q->whereHas('journalEntry', fn ($j) => $j->whereDate('voucher_date', '>=', $from)->whereDate('voucher_date', '<=', $to))])
+            ->get()
+            ->map(function ($l) {
+                $amount = $l->lines->sum('debit') - $l->lines->sum('credit');
+                return (object) ['name' => $l->name, 'group' => $l->ledger_group, 'amount' => $amount];
+            })
+            ->filter(fn ($r) => $r->amount > 0)
+            ->values();
+
+        $incomeLedgers = Ledger::whereIn('ledger_group', ['Indirect Incomes', 'Direct Incomes'])
+            ->with(['lines' => fn ($q) => $q->whereHas('journalEntry', fn ($j) => $j->whereDate('voucher_date', '>=', $from)->whereDate('voucher_date', '<=', $to))])
+            ->get()
+            ->map(function ($l) {
+                $amount = $l->lines->sum('credit') - $l->lines->sum('debit');
+                return (object) ['name' => $l->name, 'group' => $l->ledger_group, 'amount' => $amount];
+            })
+            ->filter(fn ($r) => $r->amount > 0)
+            ->values();
+
+        $totalExpenses = (float) $expenseLedgers->sum('amount');
+        $totalIndirectIncomes = (float) $incomeLedgers->sum('amount');
+
+        // Trading Gross Profit: Net Sales - Gross Purchases
+        $grossProfit = $netSales - $grossPurchase;
+        $netProfit = $grossProfit + $totalIndirectIncomes - $totalExpenses;
+
+        $branches = \App\Models\Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('finance.reports.profit-loss', compact(
+            'from', 'to', 'branchId', 'branches',
+            'grossSales', 'salesReturn', 'netSales',
+            'grossPurchase', 'grossProfit',
+            'expenseLedgers', 'totalExpenses',
+            'incomeLedgers', 'totalIndirectIncomes',
+            'netProfit'
+        ));
     }
 }

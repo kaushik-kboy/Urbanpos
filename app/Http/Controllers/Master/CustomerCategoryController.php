@@ -40,7 +40,7 @@ class CustomerCategoryController extends Controller
 
     public function update(Request $request, CustomerCategory $customerCategory)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $customerCategory);
         $customerCategory->update($data);
 
         return redirect()->route('master.customer-categories.index')->with('status', 'Customer category updated successfully.');
@@ -48,15 +48,13 @@ class CustomerCategoryController extends Controller
 
     public function destroy(CustomerCategory $customerCategory)
     {
-        $customerCategory->delete();
-
-        return redirect()->route('master.customer-categories.index')->with('status', 'Customer category deleted.');
+        return redirect()->route('master.customer-categories.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?CustomerCategory $customerCategory = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('customer_categories', 'name')->ignore($customerCategory?->id)],
             'app_access' => ['required', 'boolean'],
             'enable_loyalty' => ['required', 'boolean'],
             'discount_percent' => ['required', 'numeric', 'min:0', 'max:100'],

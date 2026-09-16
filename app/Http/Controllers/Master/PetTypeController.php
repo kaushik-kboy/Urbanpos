@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\PetType;
 use Illuminate\Http\Request;
 
+use Illuminate\Validation\Rule;
+
 class PetTypeController extends Controller
 {
     use HasPerPage, Importable;
@@ -40,7 +42,7 @@ class PetTypeController extends Controller
 
     public function update(Request $request, PetType $petType)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $petType);
         $petType->update($data);
 
         return redirect()->route('master.pet-types.index')->with('status', 'Pet type updated successfully.');
@@ -48,15 +50,13 @@ class PetTypeController extends Controller
 
     public function destroy(PetType $petType)
     {
-        $petType->delete();
-
-        return redirect()->route('master.pet-types.index')->with('status', 'Pet type deleted.');
+        return redirect()->route('master.pet-types.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?PetType $petType = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('pet_types', 'name')->ignore($petType?->id)],
             'status' => ['required', 'boolean'],
         ]);
     }

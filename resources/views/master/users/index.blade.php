@@ -80,11 +80,6 @@
                             <td>{{ $user->branch?->name ?? 'All Branches' }}</td>
                             <td class="text-right">
                                 <a href="{{ route('master.users.edit', $user) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.users.destroy', $user) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this user?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

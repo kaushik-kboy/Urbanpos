@@ -275,7 +275,7 @@ class StockTransferController extends Controller
         }
 
         $limit  = 100;
-        $where  = [];
+        $where  = ['i.status = 1'];
         $params = [$branchId, $branchId];
 
         $orderSql    = 'i.name ASC';
@@ -415,7 +415,8 @@ class StockTransferController extends Controller
 
         $branchId = (int) $request->input('branch_id');
 
-        $items = Item::with([
+        $items = Item::where('status', true)
+            ->with([
                 'gstTax',
                 'brand',
                 'stocks' => fn ($query) => $query->where('branch_id', $branchId),
@@ -453,10 +454,13 @@ class StockTransferController extends Controller
 
         $branchId = (int) $request->input('branch_id');
 
-        $item = Item::with(['stocks' => fn ($query) => $query->where('branch_id', $branchId)])
-            ->where('ean_upc_code', $code)
-            ->orWhere('item_code', $code)
-            ->orWhere('alias', $code)
+        $item = Item::where('status', true)
+            ->with(['stocks' => fn ($query) => $query->where('branch_id', $branchId)])
+            ->where(function ($q) use ($code) {
+                $q->where('ean_upc_code', $code)
+                  ->orWhere('item_code', $code)
+                  ->orWhere('alias', $code);
+            })
             ->first();
 
         if (! $item) {

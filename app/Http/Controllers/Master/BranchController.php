@@ -61,7 +61,7 @@ class BranchController extends Controller
 
     public function update(Request $request, Branch $branch)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $branch);
         $branch->update($data);
 
         return redirect()->route('master.branches.index')->with('status', 'Branch updated successfully.');
@@ -69,15 +69,13 @@ class BranchController extends Controller
 
     public function destroy(Branch $branch)
     {
-        $branch->delete();
-
-        return redirect()->route('master.branches.index')->with('status', 'Branch deleted.');
+        return redirect()->route('master.branches.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Branch $branch = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('branches', 'name')->ignore($branch?->id)],
             'address_line1' => ['nullable', 'string', 'max:255'],
             'address_line2' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],

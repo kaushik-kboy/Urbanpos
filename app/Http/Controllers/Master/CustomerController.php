@@ -71,12 +71,17 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $customer);
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);
 
         return redirect()->route('master.customers.index')->with('status', 'Customer updated successfully.');
+    }
+
+    public function destroy(Customer $customer)
+    {
+        return redirect()->route('master.customers.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
     /**
@@ -96,24 +101,17 @@ class CustomerController extends Controller
         $numericFields = ['credit_limit', 'credit_balance', 'monthly_credit_balance'];
         foreach ($numericFields as $field) {
             if (abs((float) $data[$field] - (float) $customer->$field) > 0.01) {
-                throw ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
                     $field => 'Only an Owner can change credit terms.',
                 ]);
             }
         }
 
         if ((int) $data['credit_days'] !== (int) $customer->credit_days) {
-            throw ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'credit_days' => 'Only an Owner can change credit terms.',
             ]);
         }
-    }
-
-    public function destroy(Customer $customer)
-    {
-        $customer->delete();
-
-        return redirect()->route('master.customers.index')->with('status', 'Customer deleted.');
     }
 
     private function syncPets(Request $request, Customer $customer): void
@@ -153,21 +151,21 @@ class CustomerController extends Controller
     private function formOptions(): array
     {
         return [
-            'customerCategories' => CustomerCategory::orderBy('name')->pluck('name', 'id'),
-            'branches' => Branch::orderBy('name')->pluck('name', 'id'),
-            'areas' => Area::orderBy('name')->pluck('name', 'id'),
-            'petTypes' => PetType::orderBy('name')->pluck('name', 'id'),
-            'breeds' => Breed::orderBy('name')->pluck('name', 'id'),
-            'colors' => Color::orderBy('name')->pluck('name', 'id'),
+            'customerCategories' => CustomerCategory::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'areas' => Area::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'petTypes' => PetType::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'breeds' => Breed::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'colors' => Color::where('status', true)->orderBy('name')->pluck('name', 'id'),
         ];
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Customer $customer = null): array
     {
         return $request->validate([
             // General
             'title' => ['nullable', 'in:Mr,Ms,Mrs,M/s,Dr'],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('customers', 'name')->ignore($customer?->id)],
             'customer_category_id' => ['nullable', 'exists:customer_categories,id'],
             'customer_code' => ['nullable', 'string', 'max:100'],
             'sales_type' => ['required', 'in:Local,Interstate'],

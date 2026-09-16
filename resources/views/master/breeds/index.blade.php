@@ -38,11 +38,6 @@
                             <td><x-status-badge :active="$breed->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.breeds.edit', $breed) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.breeds.destroy', $breed) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this breed?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

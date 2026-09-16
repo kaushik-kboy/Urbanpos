@@ -84,17 +84,15 @@ class ItemController extends Controller
 
     public function destroy(Item $item)
     {
-        $item->delete();
-
-        return redirect()->route('master.items.index')->with('status', 'Item deleted.');
+        return redirect()->route('master.items.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
     private function formOptions(): array
     {
         return [
-            'brands' => Brand::orderBy('name')->pluck('name', 'id'),
-            'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
-            'gstTaxes' => GstTax::orderBy('description')->pluck('description', 'id'),
+            'brands' => Brand::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'gstTaxes' => GstTax::where('status', true)->orderBy('description')->pluck('description', 'id'),
             'departmentValues' => $this->categoryValues('DEPARTMENT'),
             'categoryValues' => $this->categoryValues('CATEGORY'),
             'brandValues' => $this->categoryValues('Brands'),
@@ -105,7 +103,7 @@ class ItemController extends Controller
     {
         $head = ItemCategory::where('name', $headName)->first();
 
-        return $head ? $head->values()->orderBy('name')->pluck('name', 'id') : collect();
+        return $head ? $head->values()->where('status', true)->orderBy('name')->pluck('name', 'id') : collect();
     }
 
     private function validateData(Request $request, ?Item $item = null): array
@@ -117,7 +115,7 @@ class ItemController extends Controller
         return $request->validate([
             // General
             'ean_upc_code' => $eanRule,
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('items', 'name')->ignore($item?->id)],
             'alias' => ['nullable', 'string', 'max:255'],
             'brand_id' => ['nullable', 'exists:brands,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],

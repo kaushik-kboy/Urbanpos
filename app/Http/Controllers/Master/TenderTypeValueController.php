@@ -24,8 +24,8 @@ class TenderTypeValueController extends Controller
 
     public function create()
     {
-        $tenderTypes = TenderType::orderBy('name')->pluck('name', 'id');
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $tenderTypes = TenderType::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('master.tender-type-values.create', compact('tenderTypes', 'branches'));
     }
@@ -40,15 +40,15 @@ class TenderTypeValueController extends Controller
 
     public function edit(TenderTypeValue $tenderTypeValue)
     {
-        $tenderTypes = TenderType::orderBy('name')->pluck('name', 'id');
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $tenderTypes = TenderType::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('master.tender-type-values.edit', compact('tenderTypeValue', 'tenderTypes', 'branches'));
     }
 
     public function update(Request $request, TenderTypeValue $tenderTypeValue)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $tenderTypeValue);
         $tenderTypeValue->update($data);
 
         return redirect()->route('master.tender-type-values.index')->with('status', 'Tender type value updated successfully.');
@@ -56,16 +56,21 @@ class TenderTypeValueController extends Controller
 
     public function destroy(TenderTypeValue $tenderTypeValue)
     {
-        $tenderTypeValue->delete();
-
-        return redirect()->route('master.tender-type-values.index')->with('status', 'Tender type value deleted.');
+        return redirect()->route('master.tender-type-values.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?TenderTypeValue $tenderTypeValue = null): array
     {
         return $request->validate([
             'tender_type_id' => ['required', 'exists:tender_types,id'],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('tender_type_values', 'name')
+                    ->where(fn ($q) => $q->where('tender_type_id', $request->input('tender_type_id')))
+                    ->ignore($tenderTypeValue?->id),
+            ],
             'status' => ['required', 'boolean'],
             'group_ledger' => ['nullable', 'string', 'max:255'],
             'branch_id' => ['nullable', 'exists:branches,id'],

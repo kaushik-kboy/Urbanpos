@@ -36,11 +36,6 @@
                             <td><x-status-badge :active="$color->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.colors.edit', $color) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.colors.destroy', $color) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this color?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

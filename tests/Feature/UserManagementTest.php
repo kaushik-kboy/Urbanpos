@@ -120,6 +120,7 @@ class UserManagementTest extends TestCase
      */
     public function test_last_owner_guard_blocks_at_the_controller_level(): void
     {
+        User::role('Owner')->get()->each(fn ($u) => $u->removeRole('Owner'));
         $lastOwner = User::factory()->create();
         $lastOwner->assignRole('Owner');
         $this->assertEquals(1, User::role('Owner')->count());

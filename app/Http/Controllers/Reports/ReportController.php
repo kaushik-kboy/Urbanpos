@@ -3,19 +3,27 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Breed;
 use App\Models\Customer;
 use App\Models\CustomerCategory;
+use App\Models\DamageStock;
+use App\Models\Item;
 use App\Models\ItemCategoryValue;
 use App\Models\ItemStock;
 use App\Models\PetType;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseOrder;
 use App\Models\SalesBill;
+use App\Models\SalesBillPayment;
 use App\Models\SalesReturn;
+use App\Models\StockTransfer;
 use App\Models\Supplier;
+use App\Models\TenderType;
 use App\Models\TillSession;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -330,6 +338,243 @@ class ReportController extends Controller
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
         return view('reports.eod', compact('summary', 'tillSessions', 'from', 'to', 'branchId', 'tillSessionId', 'branches'));
+    }
+
+    public function itemMaster(Request $request)
+    {
+        $query = Item::with(['brand', 'gstTax', 'categoryValue']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('item_code', 'like', "%{$search}%")
+                    ->orWhere('ean_upc_code', 'like', "%{$search}%")
+                    ->orWhere('alias', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('brand_id')) {
+            $query->where('brand_id', $request->brand_id);
+        }
+
+        if ($request->filled('category_value_id')) {
+            $query->where('category_value_id', $request->category_value_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool) $request->status);
+        }
+
+        $items = $query->orderBy('name')->paginate(50)->withQueryString();
+        $brands = Brand::orderBy('name')->pluck('name', 'id');
+        $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
+
+        return view('reports.item-master', compact('items', 'brands', 'categories'));
+    }
+
+    public function supplierMaster(Request $request)
+    {
+        $query = Supplier::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('gst_no', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('state')) {
+            $query->where('state', $request->state);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool) $request->status);
+        }
+
+        $suppliers = $query->orderBy('name')->paginate(50)->withQueryString();
+        $states = Supplier::select('state')->distinct()->whereNotNull('state')->pluck('state');
+
+        return view('reports.supplier-master', compact('suppliers', 'states'));
+    }
+
+    public function gstPurchaseSummary(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+
+        $rows = PurchaseInvoice::with('items.item')
+            ->whereDate('invoice_date', '>=', $from)
+            ->whereDate('invoice_date', '<=', $to)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->get()
+            ->flatMap(fn ($inv) => $inv->items->map(fn ($line) => (object) [
+                'hsn_code' => $line->item?->hsn_code ?: 'N/A',
+                'gst_percent' => (float) ($line->gst_percent ?? 0),
+                'taxable_amount' => (float) ($line->net_amount - $line->gst_tax_amount),
+                'cgst_amount' => (float) ($line->cgst_amount ?? 0),
+                'sgst_amount' => (float) ($line->sgst_amount ?? 0),
+                'igst_amount' => (float) ($line->igst_amount ?? 0),
+                'gst_amount' => (float) ($line->gst_tax_amount ?? 0),
+            ]))
+            ->groupBy(fn ($row) => $row->hsn_code.'|'.$row->gst_percent)
+            ->map(function ($group) {
+                $first = $group->first();
+                return (object) [
+                    'hsn_code' => $first->hsn_code,
+                    'gst_percent' => $first->gst_percent,
+                    'taxable_amount' => $group->sum('taxable_amount'),
+                    'cgst_amount' => $group->sum('cgst_amount'),
+                    'sgst_amount' => $group->sum('sgst_amount'),
+                    'igst_amount' => $group->sum('igst_amount'),
+                    'gst_amount' => $group->sum('gst_amount'),
+                ];
+            })
+            ->values();
+
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.gst-purchase-summary', compact('rows', 'from', 'to', 'branchId', 'branches'));
+    }
+
+    public function purchaseOrderSummary(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $supplierId = $request->input('supplier_id');
+        $status = $request->input('status');
+        $search = $request->input('search');
+
+        $query = PurchaseOrder::with(['supplier', 'branch'])
+            ->whereDate('po_date', '>=', $from)
+            ->whereDate('po_date', '<=', $to)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($supplierId, fn ($q) => $q->where('supplier_id', $supplierId))
+            ->when($status, fn ($q) => $q->where('status', $status));
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $purchaseOrders = $query->orderByDesc('po_date')->paginate(30)->withQueryString();
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
+        $statuses = PurchaseOrder::select('status')->distinct()->whereNotNull('status')->pluck('status');
+
+        return view('reports.purchase-order-summary', compact('purchaseOrders', 'from', 'to', 'branchId', 'branches', 'suppliers', 'statuses', 'supplierId', 'status', 'search'));
+    }
+
+    public function stockTransferSummary(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $toBranchId = $request->input('to_branch_id');
+        $status = $request->input('status');
+        $search = $request->input('search');
+
+        $query = StockTransfer::with(['fromBranch', 'toBranch'])
+            ->whereDate('transfer_date', '>=', $from)
+            ->whereDate('transfer_date', '<=', $to)
+            ->when($branchId, fn ($q) => $q->where('from_branch_id', $branchId))
+            ->when($toBranchId, fn ($q) => $q->where('to_branch_id', $toBranchId))
+            ->when($status, fn ($q) => $q->where('status', $status));
+
+        if ($search) {
+            $query->where('transfer_number', 'like', "%{$search}%");
+        }
+
+        $transfers = $query->orderByDesc('transfer_date')->paginate(30)->withQueryString();
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $statuses = StockTransfer::select('status')->distinct()->whereNotNull('status')->pluck('status');
+
+        return view('reports.stock-transfer-summary', compact('transfers', 'from', 'to', 'branchId', 'toBranchId', 'branches', 'statuses', 'status', 'search'));
+    }
+
+    public function damageStockSummary(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $search = $request->input('search');
+
+        $query = DamageStock::with(['branch', 'items.item'])
+            ->whereDate('entry_date', '>=', $from)
+            ->whereDate('entry_date', '<=', $to)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+
+        if ($search) {
+            $query->where('damage_number', 'like', "%{$search}%");
+        }
+
+        $damageStocks = $query->orderByDesc('entry_date')->paginate(30)->withQueryString();
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.damage-stock-summary', compact('damageStocks', 'from', 'to', 'branchId', 'branches', 'search'));
+    }
+
+    public function tenderSummary(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $tenderTypeId = $request->input('tender_type_id');
+
+        $query = SalesBillPayment::with(['tenderType', 'tenderTypeValue', 'salesBill.branch'])
+            ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
+                $q->whereDate('bill_date', '>=', $from)
+                  ->whereDate('bill_date', '<=', $to)
+                  ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
+            })
+            ->when($tenderTypeId, fn ($q) => $q->where('tender_type_id', $tenderTypeId));
+
+        $payments = $query->get();
+
+        $rows = $payments->groupBy(fn ($p) => $p->tenderType?->name ?? 'Unknown')
+            ->map(function ($group, $name) {
+                return (object) [
+                    'tender_name' => $name,
+                    'type' => $group->first()->tenderType?->type ?? 'Other',
+                    'count' => $group->count(),
+                    'total_amount' => (float) $group->sum('amount'),
+                ];
+            })
+            ->values();
+
+        $totalCollected = (float) $rows->sum('total_amount');
+        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $tenderTypes = TenderType::orderBy('name')->pluck('name', 'id');
+
+        return view('reports.tender-summary', compact('rows', 'totalCollected', 'from', 'to', 'branchId', 'branches', 'tenderTypes', 'tenderTypeId'));
+    }
+
+    public function auditLogs(Request $request)
+    {
+        $from = $request->input('from', now()->startOfMonth()->format('Y-m-d'));
+        $to = $request->input('to', now()->format('Y-m-d'));
+        $userId = $request->input('user_id');
+        $action = $request->input('action');
+        $search = $request->input('search');
+
+        $query = AuditLog::with(['user', 'branch'])
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to)
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($action, fn ($q) => $q->where('action', $action));
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('auditable_type', 'like', "%{$search}%")
+                    ->orWhere('reason', 'like', "%{$search}%")
+                    ->orWhere('ip_address', 'like', "%{$search}%");
+            });
+        }
+
+        $logs = $query->orderByDesc('created_at')->paginate(50)->withQueryString();
+        $users = User::orderBy('name')->pluck('name', 'id');
+        $actions = AuditLog::select('action')->distinct()->whereNotNull('action')->pluck('action');
+
+        return view('reports.audit-logs', compact('logs', 'from', 'to', 'userId', 'action', 'search', 'users', 'actions'));
     }
 
     private function dateAndBranchFilter(Request $request): array

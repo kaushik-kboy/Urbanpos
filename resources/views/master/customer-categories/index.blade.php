@@ -42,11 +42,6 @@
                             <td><x-status-badge :active="$category->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.customer-categories.edit', $category) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.customer-categories.destroy', $category) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this customer category?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

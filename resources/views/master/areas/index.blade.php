@@ -26,6 +26,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Branch</th>
+                        <th>Status</th>
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>
@@ -34,13 +35,9 @@
                         <tr>
                             <td>{{ $area->name }}</td>
                             <td>{{ $area->branch?->name ?? 'GLOBAL' }}</td>
+                            <td><x-status-badge :active="$area->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.areas.edit', $area) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.areas.destroy', $area) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this area?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

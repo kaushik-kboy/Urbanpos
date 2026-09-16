@@ -227,6 +227,14 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('customer-master', [ReportController::class, 'customerMaster'])->name('customer-master');
     Route::get('customer-pet-details', [ReportController::class, 'customerPetDetails'])->name('customer-pet-details');
     Route::get('eod', [ReportController::class, 'eod'])->name('eod');
+    Route::get('item-master', [ReportController::class, 'itemMaster'])->name('item-master');
+    Route::get('supplier-master', [ReportController::class, 'supplierMaster'])->name('supplier-master');
+    Route::get('gst-purchase-summary', [ReportController::class, 'gstPurchaseSummary'])->name('gst-purchase-summary');
+    Route::get('purchase-order-summary', [ReportController::class, 'purchaseOrderSummary'])->name('purchase-order-summary');
+    Route::get('stock-transfer-summary', [ReportController::class, 'stockTransferSummary'])->name('stock-transfer-summary');
+    Route::get('damage-stock-summary', [ReportController::class, 'damageStockSummary'])->name('damage-stock-summary');
+    Route::get('tender-summary', [ReportController::class, 'tenderSummary'])->name('tender-summary');
+    Route::get('audit-logs', [ReportController::class, 'auditLogs'])->name('audit-logs');
 });
 
 Route::middleware('auth')->prefix('till')->name('till.')->group(function () {
@@ -250,6 +258,7 @@ Route::middleware('auth')->prefix('finance')->name('finance.')->group(function (
         Route::get('general-ledger', [FinanceReportController::class, 'generalLedger'])->name('general-ledger');
         Route::get('day-book', [FinanceReportController::class, 'dayBook'])->name('day-book');
         Route::get('trial-balance', [FinanceReportController::class, 'trialBalance'])->name('trial-balance');
+        Route::get('profit-loss', [FinanceReportController::class, 'profitLoss'])->name('profit-loss');
     });
 });
 

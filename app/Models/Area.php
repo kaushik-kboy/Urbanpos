@@ -10,7 +10,11 @@ class Area extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'branch_id'];
+    protected $fillable = ['name', 'branch_id', 'status'];
+
+    protected $casts = [
+        'status' => 'boolean',
+    ];
 
     public function branch(): BelongsTo
     {

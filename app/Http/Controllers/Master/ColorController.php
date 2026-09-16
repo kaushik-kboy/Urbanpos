@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Color;
 use Illuminate\Http\Request;
 
+use Illuminate\Validation\Rule;
+
 class ColorController extends Controller
 {
     use HasPerPage, Importable;
@@ -40,7 +42,7 @@ class ColorController extends Controller
 
     public function update(Request $request, Color $color)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $color);
         $color->update($data);
 
         return redirect()->route('master.colors.index')->with('status', 'Color updated successfully.');
@@ -48,15 +50,13 @@ class ColorController extends Controller
 
     public function destroy(Color $color)
     {
-        $color->delete();
-
-        return redirect()->route('master.colors.index')->with('status', 'Color deleted.');
+        return redirect()->route('master.colors.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Color $color = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('colors', 'name')->ignore($color?->id)],
             'status' => ['required', 'boolean'],
         ]);
     }

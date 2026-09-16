@@ -45,7 +45,7 @@ class GstTaxController extends Controller
 
     public function update(Request $request, GstTax $gstTax)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $gstTax);
         $oldValues = $gstTax->only(array_keys($data));
         $gstTax->update($data);
 
@@ -58,15 +58,13 @@ class GstTaxController extends Controller
 
     public function destroy(GstTax $gstTax)
     {
-        $gstTax->delete();
-
-        return redirect()->route('master.gst-taxes.index')->with('status', 'GST tax deleted.');
+        return redirect()->route('master.gst-taxes.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?GstTax $gstTax = null): array
     {
         return $request->validate([
-            'description' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('gst_taxes', 'description')->ignore($gstTax?->id)],
             'percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'status' => ['required', 'boolean'],
         ]);

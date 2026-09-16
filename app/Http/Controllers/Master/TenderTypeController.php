@@ -38,14 +38,14 @@ class TenderTypeController extends Controller
 
     public function edit(TenderType $tenderType)
     {
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('master.tender-types.edit', compact('tenderType', 'branches'));
     }
 
     public function update(Request $request, TenderType $tenderType)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $tenderType);
         $tenderType->update($data);
 
         return redirect()->route('master.tender-types.index')->with('status', 'Tender type updated successfully.');
@@ -53,15 +53,13 @@ class TenderTypeController extends Controller
 
     public function destroy(TenderType $tenderType)
     {
-        $tenderType->delete();
-
-        return redirect()->route('master.tender-types.index')->with('status', 'Tender type deleted.');
+        return redirect()->route('master.tender-types.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?TenderType $tenderType = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('tender_types', 'name')->ignore($tenderType?->id)],
             'status' => ['required', 'boolean'],
             'type' => ['required', 'in:Cash,Card,Coupon,Wallet,Credit,Finance'],
             'mode' => ['required', 'string', 'max:255'],

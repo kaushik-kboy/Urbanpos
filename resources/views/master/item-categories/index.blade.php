@@ -38,11 +38,6 @@
                             <td><x-status-badge :active="$itemCategory->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.item-categories.edit', $itemCategory) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.item-categories.destroy', $itemCategory) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this item category?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

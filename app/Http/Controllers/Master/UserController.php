@@ -98,27 +98,24 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user)
     {
-        if ($user->id === $request->user()->id) {
-            throw ValidationException::withMessages([
-                'user' => 'You cannot delete your own account.',
-            ]);
+        if ($request->user() && $request->user()->id === $user->id) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['user' => 'You cannot delete your own account.']);
         }
 
         if ($user->hasRole('Owner') && User::role('Owner')->count() <= 1) {
-            throw ValidationException::withMessages([
-                'user' => 'Cannot delete the last remaining Owner — the system would have no one left who can manage users.',
-            ]);
+            throw \Illuminate\Validation\ValidationException::withMessages(['user' => 'Cannot delete the only remaining Owner.']);
         }
 
+        $user->roles()->detach();
         $user->delete();
 
-        return redirect()->route('master.users.index')->with('status', 'User deleted.');
+        return redirect()->route('master.users.index')->with('status', 'User deleted successfully.');
     }
 
     private function formOptions(): array
     {
         return [
-            'branches' => Branch::orderBy('name')->pluck('name', 'id'),
+            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'roles' => Role::orderBy('name')->pluck('name', 'name'),
         ];
     }
@@ -126,7 +123,7 @@ class UserController extends Controller
     private function validateData(Request $request, ?User $user = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('users', 'name')->ignore($user?->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:8', 'confirmed'],
             'branch_id' => ['nullable', 'exists:branches,id'],

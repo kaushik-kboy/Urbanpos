@@ -259,9 +259,9 @@ class PurchaseInvoiceController extends Controller
             return response()->json(['items' => [], 'hint' => 'Type to search items…']);
         }
 
-        // --- Single optimised query: items LEFT JOINed with stock & previous purchase info ---
+        // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
         $limit  = 100;
-        $where  = [];
+        $where  = ['i.status = 1'];
         $params = [$branchId, $branchId];
 
         $orderSql    = 'i.name ASC';
@@ -439,18 +439,20 @@ class PurchaseInvoiceController extends Controller
 
         $item = null;
         if (! empty($itemId)) {
-            $item = Item::with('gstTax:id,percentage')->find($itemId);
+            $item = Item::where('status', true)->with('gstTax:id,percentage')->find($itemId);
         }
 
         if (! $item && $query !== '') {
-            $item = Item::with('gstTax:id,percentage')
-                ->where('item_code', $query)
-                ->orWhere('ean_upc_code', $query)
-                ->orWhere('name', 'like', "%{$query}%")
+            $item = Item::where('status', true)->with('gstTax:id,percentage')
+                ->where(function ($q) use ($query) {
+                    $q->where('item_code', $query)
+                        ->orWhere('ean_upc_code', $query)
+                        ->orWhere('name', 'like', "%{$query}%");
+                })
                 ->first();
 
             if (! $item && is_numeric($query)) {
-                $item = Item::with('gstTax:id,percentage')->find($query);
+                $item = Item::where('status', true)->with('gstTax:id,percentage')->find($query);
             }
         }
 
@@ -507,14 +509,14 @@ class PurchaseInvoiceController extends Controller
 
     private function formOptions(): array
     {
-        $items = Item::with('gstTax:id,percentage')->orderBy('name')->get([
+        $items = Item::where('status', true)->with('gstTax:id,percentage')->orderBy('name')->get([
             'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
             'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days'
         ]);
 
         return [
-            'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
-            'branches' => Branch::orderBy('name')->pluck('name', 'id'),
+            'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items' => $items,
             'purchaseOrders' => PurchaseOrder::orderBy('po_number')->pluck('po_number', 'id'),
         ];
@@ -715,6 +717,19 @@ class PurchaseInvoiceController extends Controller
                         $v->errors()->add(
                             "items.{$idx}.exp_date",
                             "Expiry date is mandatory for item '{$itemModel->name}' (Row #{$rowNum}) because its Batch/Expiry setting is '{$batchExpiry}'."
+                        );
+                    }
+                }
+
+                // Rule: Sell Price must be greater than Cost Price
+                $costPrice = (float) ($line['cost_price'] ?? 0);
+                if (isset($line['sell_price']) && $line['sell_price'] !== null && $line['sell_price'] !== '') {
+                    $sellPrice = (float) $line['sell_price'];
+                    if ($costPrice > 0 && $sellPrice <= $costPrice) {
+                        $rowNum = $idx + 1;
+                        $v->errors()->add(
+                            "items.{$idx}.sell_price",
+                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must be greater than cost price (₹{$costPrice})."
                         );
                     }
                 }

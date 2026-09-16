@@ -9,5 +9,9 @@ class Uom extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'alias'];
+    protected $fillable = ['name', 'alias', 'status'];
+
+    protected $casts = [
+        'status' => 'boolean',
+    ];
 }

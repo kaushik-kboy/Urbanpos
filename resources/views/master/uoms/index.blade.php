@@ -26,6 +26,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Alias</th>
+                        <th>Status</th>
                         <th>Updated Time</th>
                         <th class="text-right">Actions</th>
                     </tr>
@@ -35,14 +36,10 @@
                         <tr>
                             <td>{{ $uom->name }}</td>
                             <td>{{ $uom->alias }}</td>
+                            <td><x-status-badge :active="$uom->status" /></td>
                             <td>{{ $uom->updated_at->format('d-m-Y H:i') }}</td>
                             <td class="text-right">
                                 <a href="{{ route('master.uoms.edit', $uom) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.uoms.destroy', $uom) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this UOM?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

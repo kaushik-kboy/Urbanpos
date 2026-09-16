@@ -23,7 +23,7 @@ class RegisterController extends Controller
 
     public function create()
     {
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('master.registers.create', compact('branches'));
     }
@@ -38,14 +38,14 @@ class RegisterController extends Controller
 
     public function edit(Register $register)
     {
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('master.registers.edit', compact('register', 'branches'));
     }
 
     public function update(Request $request, Register $register)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $register);
         $register->update($data);
 
         return redirect()->route('master.registers.index')->with('status', 'Register updated successfully.');
@@ -53,16 +53,21 @@ class RegisterController extends Controller
 
     public function destroy(Register $register)
     {
-        $register->delete();
-
-        return redirect()->route('master.registers.index')->with('status', 'Register deleted.');
+        return redirect()->route('master.registers.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Register $register = null): array
     {
         return $request->validate([
             'branch_id' => ['required', 'exists:branches,id'],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('registers', 'name')
+                    ->where(fn ($q) => $q->where('branch_id', $request->input('branch_id')))
+                    ->ignore($register?->id),
+            ],
             'status' => ['required', 'in:Active,Inactive,Yet to Active'],
             'product_type' => ['required', 'string', 'max:255'],
             'inv_seq_no' => ['required', 'integer', 'min:1'],

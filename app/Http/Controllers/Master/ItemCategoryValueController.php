@@ -60,7 +60,7 @@ class ItemCategoryValueController extends Controller
 
     public function update(Request $request, ItemCategoryValue $itemCategoryValue)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $itemCategoryValue);
         $itemCategoryValue->update($data);
 
         return redirect()->route('master.item-category-values.index')->with('status', 'Item category value updated successfully.');
@@ -68,16 +68,21 @@ class ItemCategoryValueController extends Controller
 
     public function destroy(ItemCategoryValue $itemCategoryValue)
     {
-        $itemCategoryValue->delete();
-
-        return redirect()->route('master.item-category-values.index')->with('status', 'Item category value deleted.');
+        return redirect()->route('master.item-category-values.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?ItemCategoryValue $itemCategoryValue = null): array
     {
         return $request->validate([
             'item_category_id' => ['required', 'exists:item_categories,id'],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('item_category_values', 'name')
+                    ->where(fn ($q) => $q->where('item_category_id', $request->input('item_category_id')))
+                    ->ignore($itemCategoryValue?->id),
+            ],
             'show_in_webstore' => ['required', 'boolean'],
             'status' => ['required', 'boolean'],
             'sellquick_applicable' => ['required', 'boolean'],

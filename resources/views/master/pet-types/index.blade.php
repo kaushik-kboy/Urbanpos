@@ -36,11 +36,6 @@
                             <td><x-status-badge :active="$petType->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.pet-types.edit', $petType) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('master.pet-types.destroy', $petType) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this pet type?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

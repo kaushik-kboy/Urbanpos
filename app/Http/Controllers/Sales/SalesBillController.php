@@ -291,7 +291,7 @@ class SalesBillController extends Controller
 
         // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
         $limit  = 100;
-        $where  = [];
+        $where  = ['i.status = 1'];
         $params = [$branchId, $branchId];
 
         $orderSql    = 'i.name ASC';
@@ -458,24 +458,28 @@ class SalesBillController extends Controller
 
         $item = null;
         if (! empty($itemId)) {
-            $item = Item::with('gstTax:id,percentage')->find($itemId);
+            $item = Item::where('status', true)->with('gstTax:id,percentage')->find($itemId);
         }
 
         if (! $item && $query !== '') {
             // Check exact item_code or ean_upc_code first (crucial for barcode / code inputs)
-            $item = Item::with('gstTax:id,percentage')
-                ->where('item_code', $query)
-                ->orWhere('ean_upc_code', $query)
+            $item = Item::where('status', true)
+                ->where(function ($q) use ($query) {
+                    $q->where('item_code', $query)
+                      ->orWhere('ean_upc_code', $query);
+                })
+                ->with('gstTax:id,percentage')
                 ->first();
 
             // Check primary key if numeric
             if (! $item && is_numeric($query)) {
-                $item = Item::with('gstTax:id,percentage')->find($query);
+                $item = Item::where('status', true)->with('gstTax:id,percentage')->find($query);
             }
 
             // Check item name
             if (! $item) {
-                $item = Item::with('gstTax:id,percentage')
+                $item = Item::where('status', true)
+                    ->with('gstTax:id,percentage')
                     ->where('name', 'like', "%{$query}%")
                     ->first();
             }
@@ -586,15 +590,15 @@ class SalesBillController extends Controller
 
     private function formOptions(): array
     {
-        $items = Item::with('gstTax:id,percentage')->orderBy('name')->get([
+        $items = Item::where('status', true)->with('gstTax:id,percentage')->orderBy('name')->get([
             'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details'
         ]);
 
         return [
-            'customers'   => Customer::orderBy('name')->pluck('name', 'id'),
-            'branches'    => Branch::orderBy('name')->pluck('name', 'id'),
+            'customers'   => Customer::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches'    => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items'       => $items,
-            'tenderTypes' => TenderType::with('values')->where('status', true)->orderBy('name')->get(),
+            'tenderTypes' => TenderType::with(['values' => fn ($q) => $q->where('status', true)])->where('status', true)->orderBy('name')->get(),
         ];
     }
 

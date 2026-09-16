@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
 
+use Illuminate\Validation\Rule;
+
 class BrandController extends Controller
 {
     use HasPerPage, Importable;
@@ -40,7 +42,7 @@ class BrandController extends Controller
 
     public function update(Request $request, Brand $brand)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $brand);
         $brand->update($data);
 
         return redirect()->route('master.brands.index')->with('status', 'Brand updated successfully.');
@@ -48,15 +50,13 @@ class BrandController extends Controller
 
     public function destroy(Brand $brand)
     {
-        $brand->delete();
-
-        return redirect()->route('master.brands.index')->with('status', 'Brand deleted.');
+        return redirect()->route('master.brands.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Brand $brand = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('brands', 'name')->ignore($brand?->id)],
             'prefix' => ['nullable', 'string', 'max:50'],
             'alias_code' => ['nullable', 'string', 'max:50'],
             'status' => ['required', 'boolean'],
