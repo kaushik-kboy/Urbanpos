@@ -1,0 +1,282 @@
+@php
+    $quote = $salesQuotation ?? null;
+    $oldItems = old('items');
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($quote?->items ?? collect());
+    $selectedCust = $quote->customer_id ?? old('customer_id');
+    $selectedBranch = $quote->branch_id ?? old('branch_id');
+    $selectedSalesType = $quote->sales_type ?? old('sales_type', 'Local');
+@endphp
+
+<div class="row">
+    <div class="col-md-3 form-group">
+        <label>Customer <span class="text-danger">*</span></label>
+        <select name="customer_id" class="form-control form-control-sm select2" required>
+            <option value="">Select a customer</option>
+            @foreach($customers as $id => $name)
+                <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-md-3 form-group">
+        <label>Branch <span class="text-danger">*</span></label>
+        <select name="branch_id" class="form-control form-control-sm select2" required>
+            <option value="">Select a branch</option>
+            @foreach($branches as $id => $name)
+                <option value="{{ $id }}" @selected($selectedBranch == $id)>{{ $name }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-md-2 form-group">
+        <label>Quotation Date <span class="text-danger">*</span></label>
+        <input type="date" name="quotation_date" class="form-control form-control-sm" value="{{ optional($quote?->quotation_date ?? now())->format('Y-m-d') }}" required>
+    </div>
+    <div class="col-md-2 form-group">
+        <label>Valid Until</label>
+        <input type="date" name="valid_until" class="form-control form-control-sm" value="{{ optional($quote?->valid_until)->format('Y-m-d') }}">
+    </div>
+    <div class="col-md-2 form-group">
+        <label>Sales Type <span class="text-danger">*</span></label>
+        <select name="sales_type" id="sq-sales-type" class="form-control form-control-sm" required>
+            <option value="Local" @selected($selectedSalesType === 'Local')>Local</option>
+            <option value="Interstate" @selected($selectedSalesType === 'Interstate')>Interstate</option>
+        </select>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3 form-group">
+        <label>Status</label>
+        <select name="status" class="form-control form-control-sm">
+            @foreach(['Draft', 'Sent', 'Accepted'] as $st)
+                <option value="{{ $st }}" @selected(($quote->status ?? 'Draft') === $st)>{{ $st }}</option>
+            @endforeach
+            @if(isset($quote) && in_array($quote->status, ['Converted', 'Cancelled']))
+                <option value="{{ $quote->status }}" selected>{{ $quote->status }}</option>
+            @endif
+        </select>
+    </div>
+    <div class="col-md-9 form-group">
+        <label>Remarks</label>
+        <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional remarks or terms..." value="{{ $quote->remarks ?? old('remarks') }}">
+    </div>
+</div>
+
+<hr>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0 text-primary font-weight-bold"><i class="fas fa-boxes mr-1"></i> Line Items</h5>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="sq-add-row-btn">
+        <i class="fas fa-plus mr-1"></i> Add Row
+    </button>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-bordered" id="sq-items-table">
+        <thead class="bg-light">
+            <tr>
+                <th style="width: 35px;" class="text-center">#</th>
+                <th style="min-width: 250px;">Item Description</th>
+                <th style="width: 100px;" class="text-right">Qty</th>
+                <th style="width: 120px;" class="text-right">Sell Price</th>
+                <th style="width: 110px;" class="text-right">MRP</th>
+                <th style="width: 90px;" class="text-right">Disc %</th>
+                <th style="width: 100px;" class="text-right">Disc Amt</th>
+                <th style="width: 85px;" class="text-right">GST %</th>
+                <th style="width: 120px;" class="text-right">Net Amount</th>
+                <th style="width: 35px;" class="text-center"></th>
+            </tr>
+        </thead>
+        <tbody id="sq-items-body">
+            @forelse ($existingItems as $index => $line)
+                @include('sales.sales-quotations._item-row', ['items' => $items, 'index' => $index, 'line' => $line])
+            @empty
+                @include('sales.sales-quotations._item-row', ['items' => $items, 'index' => 0, 'line' => null])
+            @endforelse
+        </tbody>
+        <tfoot class="bg-light font-weight-bold">
+            <tr>
+                <td colspan="2" class="text-right align-middle">Totals:</td>
+                <td class="text-right align-middle text-primary font-weight-bold" id="sq-footer-qty">0.00</td>
+                <td colspan="2" class="align-middle"></td>
+                <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="sq-footer-disc">0.00</td>
+                <td class="align-middle"></td>
+                <td class="text-right align-middle text-success font-weight-bold" id="sq-footer-net">0.00</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="row justify-content-end mt-3">
+    <div class="col-md-4">
+        <div class="card card-outline card-secondary shadow-sm">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Sub Total:</span>
+                    <span class="font-weight-bold" id="sq-summary-subtotal">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Total Discount:</span>
+                    <span class="text-danger font-weight-bold" id="sq-summary-disc">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">GST Amount:</span>
+                    <span class="text-info font-weight-bold" id="sq-summary-gst">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted">Round Off:</span>
+                    <input type="number" step="0.01" name="round_off" id="sq-round-off" class="form-control form-control-sm text-right font-weight-bold" style="width: 100px;" value="{{ $quote->round_off ?? old('round_off', '0.00') }}">
+                </div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between text-lg font-weight-bold">
+                    <span>Grand Total:</span>
+                    <span class="text-success" id="sq-summary-total">₹0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Row Template for JS --}}
+<table class="d-none">
+    <tbody id="sq-row-template">
+        @include('sales.sales-quotations._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
+    </tbody>
+</table>
+
+@push('js')
+<script>
+$(function() {
+    let nextIndex = {{ count($existingItems) > 0 ? count($existingItems) : 1 }};
+
+    function initRowSelect2($row) {
+        $row.find('.select2').select2({
+            theme: 'bootstrap4',
+            width: '100%'
+        });
+    }
+
+    $('.select2').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+
+    $('#sq-add-row-btn').on('click', function() {
+        let html = $('#sq-row-template').html().replace(/__INDEX__/g, nextIndex++);
+        let $newRow = $(html);
+        $('#sq-items-body').append($newRow);
+        initRowSelect2($newRow);
+        recalcAll();
+    });
+
+    $(document).on('click', '.sq-remove-row', function() {
+        if ($('#sq-items-body tr').length > 1) {
+            $(this).closest('tr').remove();
+            recalcAll();
+        } else {
+            alert('At least one line item is required.');
+        }
+    });
+
+    $(document).on('change', '.sq-item-select', function() {
+        let $opt = $(this).find(':selected');
+        let $row = $(this).closest('tr');
+        if ($opt.val()) {
+            let sell = parseFloat($opt.data('sell')) || 0;
+            let mrp = parseFloat($opt.data('mrp')) || 0;
+            let gst = parseFloat($opt.data('gst')) || 0;
+
+            if (!$row.find('.sq-qty').val()) {
+                $row.find('.sq-qty').val(1);
+            }
+            $row.find('.sq-sell-price').val(sell.toFixed(2));
+            $row.find('.sq-mrp').val(mrp.toFixed(2));
+            $row.find('.sq-gst-percent').val(gst.toFixed(2));
+            recalcRow($row);
+        }
+    });
+
+    $(document).on('input', '.sq-qty, .sq-sell-price, .sq-disc-percent, .sq-disc-amount, .sq-gst-percent', function() {
+        let $row = $(this).closest('tr');
+        let isDiscPct = $(this).hasClass('sq-disc-percent');
+        recalcRow($row, isDiscPct);
+    });
+
+    $('#sq-round-off').on('input', function() {
+        recalcSummary();
+    });
+
+    function recalcRow($row, isDiscPctChanged) {
+        let qty = parseFloat($row.find('.sq-qty').val()) || 0;
+        let price = parseFloat($row.find('.sq-sell-price').val()) || 0;
+        let base = qty * price;
+
+        let discPctInput = $row.find('.sq-disc-percent');
+        let discAmtInput = $row.find('.sq-disc-amount');
+        let discPct = parseFloat(discPctInput.val()) || 0;
+        let discAmt = parseFloat(discAmtInput.val()) || 0;
+
+        if (isDiscPctChanged) {
+            discAmt = (base * discPct) / 100;
+            discAmtInput.val(discAmt > 0 ? discAmt.toFixed(2) : '');
+        } else if (discAmt > 0 && base > 0) {
+            discPct = (discAmt / base) * 100;
+            discPctInput.val(discPct.toFixed(2));
+        }
+
+        let taxable = Math.max(0, base - discAmt);
+        let gstPct = parseFloat($row.find('.sq-gst-percent').val()) || 0;
+        let gstAmt = (taxable * gstPct) / 100;
+        let net = taxable + gstAmt;
+
+        $row.find('.sq-row-net').text(net.toFixed(2));
+        recalcSummary();
+    }
+
+    function recalcSummary() {
+        let totQty = 0;
+        let totBase = 0;
+        let totDisc = 0;
+        let totGst = 0;
+        let totNet = 0;
+
+        $('#sq-items-body tr').each(function(i) {
+            $(this).find('.sq-sr-no').text(i + 1);
+            let qty = parseFloat($(this).find('.sq-qty').val()) || 0;
+            let price = parseFloat($(this).find('.sq-sell-price').val()) || 0;
+            let base = qty * price;
+            let disc = parseFloat($(this).find('.sq-disc-amount').val()) || 0;
+            let taxable = Math.max(0, base - disc);
+            let gstPct = parseFloat($(this).find('.sq-gst-percent').val()) || 0;
+            let gst = (taxable * gstPct) / 100;
+            let net = taxable + gst;
+
+            totQty += qty;
+            totBase += base;
+            totDisc += disc;
+            totGst += gst;
+            totNet += net;
+        });
+
+        let roundOff = parseFloat($('#sq-round-off').val()) || 0;
+        let grandTotal = totNet + roundOff;
+
+        $('#sq-footer-qty').text(totQty.toFixed(2));
+        $('#sq-footer-disc').text('₹' + totDisc.toFixed(2));
+        $('#sq-footer-net').text('₹' + totNet.toFixed(2));
+
+        $('#sq-summary-subtotal').text('₹' + totBase.toFixed(2));
+        $('#sq-summary-disc').text('-₹' + totDisc.toFixed(2));
+        $('#sq-summary-gst').text('₹' + totGst.toFixed(2));
+        $('#sq-summary-total').text('₹' + grandTotal.toFixed(2));
+    }
+
+    function recalcAll() {
+        $('#sq-items-body tr').each(function() {
+            recalcRow($(this));
+        });
+    }
+
+    recalcAll();
+});
+</script>
+@endpush

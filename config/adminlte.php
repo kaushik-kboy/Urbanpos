@@ -418,12 +418,12 @@ return [
         ['header' => 'Sales'],
         [
             'text' => 'Sales Quotation',
-            'url' => 'sales/aux/quotations',
+            'url' => 'sales/sales-quotations',
             'icon' => 'fas fa-fw fa-file-signature',
         ],
         [
             'text' => 'Sales Order',
-            'url' => 'sales/aux/orders',
+            'url' => 'sales/sales-orders',
             'icon' => 'fas fa-fw fa-shopping-basket',
         ],
         [

@@ -1,17 +1,32 @@
 @php
     $bill = $salesBill ?? null;
     $oldItems = old('items');
-    $existingItems = !empty($oldItems) ? collect($oldItems) : ($bill?->items ?? collect());
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($bill?->items ?? ($convertedItems ?? collect()));
+    $selectedCust = $bill->customer_id ?? ($sourceQuotation->customer_id ?? ($sourceOrder->customer_id ?? ''));
+    $selectedBranch = $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ''));
+    $selectedSalesType = $bill->sales_type ?? ($sourceQuotation->sales_type ?? ($sourceOrder->sales_type ?? 'Local'));
 @endphp
 
+@if(isset($sourceQuotation))
+    <div class="alert alert-info py-2 mb-3 shadow-sm border-0">
+        <i class="fas fa-info-circle mr-1"></i> Converting from <strong>Sales Quotation #{{ $sourceQuotation->quotation_number }}</strong> (Customer: {{ $sourceQuotation->customer?->name }}).
+        <input type="hidden" name="from_quotation_id" value="{{ $sourceQuotation->id }}">
+    </div>
+@elseif(isset($sourceOrder))
+    <div class="alert alert-info py-2 mb-3 shadow-sm border-0">
+        <i class="fas fa-info-circle mr-1"></i> Converting from <strong>Sales Order #{{ $sourceOrder->order_number }}</strong> (Customer: {{ $sourceOrder->customer?->name }}).
+        <input type="hidden" name="from_order_id" value="{{ $sourceOrder->id }}">
+    </div>
+@endif
+
 <h5 class="mb-3"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
-<x-select name="customer_id" label="Customer" :options="$customers" :selected="$bill->customer_id ?? ''" placeholder="Select a customer" required />
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$bill->branch_id ?? ''" placeholder="Select a branch" required />
+<x-select name="customer_id" label="Customer" :options="$customers" :selected="$selectedCust" placeholder="Select a customer" required />
+<x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a branch" required />
 <x-field name="bill_date" label="Bill Date" type="date" :value="optional($bill->bill_date ?? now())->format('Y-m-d')" required />
 <x-select name="invoice_type" label="Invoice Type" :options="['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
 <x-select name="delivery_type" label="Delivery Type" :options="['Delivered' => 'Delivered', 'Home Delivery' => 'Home Delivery', 'Pickup' => 'Pickup']" :selected="$bill->delivery_type ?? 'Delivered'" required />
 <x-field name="delivery_time" label="Delivery Time" type="time" :value="$bill->delivery_time ?? ''" />
-<x-select name="sales_type" label="Sales Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$bill->sales_type ?? 'Local'" required />
+<x-select name="sales_type" label="Sales Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$selectedSalesType" required />
 <x-field name="payment_type" label="Payment Type" :value="$bill->payment_type ?? 'None'" />
 
 <hr>

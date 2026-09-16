@@ -9,6 +9,8 @@ use App\Models\Item;
 use App\Models\TenderType;
 use App\Models\ItemStock;
 use App\Models\SalesBill;
+use App\Models\SalesOrder;
+use App\Models\SalesQuotation;
 use App\Services\Accounting\CreditLimitGuard;
 use App\Services\Accounting\FinancialYearGuard;
 use App\Services\Accounting\LedgerPostingService;
@@ -75,9 +77,23 @@ class SalesBillController extends Controller
         return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('sales.sales-bills.create', $this->formOptions());
+        $options = $this->formOptions();
+
+        if ($request->filled('from_quotation')) {
+            $quotation = SalesQuotation::with(['items.item.gstTax', 'customer', 'branch'])
+                ->findOrFail($request->input('from_quotation'));
+            $options['sourceQuotation'] = $quotation;
+            $options['convertedItems'] = $quotation->items;
+        } elseif ($request->filled('from_order')) {
+            $order = SalesOrder::with(['items.item.gstTax', 'customer', 'branch'])
+                ->findOrFail($request->input('from_order'));
+            $options['sourceOrder'] = $order;
+            $options['convertedItems'] = $order->items;
+        }
+
+        return view('sales.sales-bills.create', $options);
     }
 
     public function store(Request $request)
@@ -92,7 +108,7 @@ class SalesBillController extends Controller
             }
         }
 
-        $salesBill = DB::transaction(function () use ($data) {
+        $salesBill = DB::transaction(function () use ($data, $request) {
             $lines = $this->computeLines($data['items'], $data['header']);
             $this->assertStockAvailable($lines, $data['header']['branch_id']);
             $totals = $this->computeTotals($lines, $data);
@@ -107,6 +123,20 @@ class SalesBillController extends Controller
             $this->postStock($createdItems, $salesBill);
             $this->persistPayments($salesBill, $data, $totals['total']);
             $this->ledgerPosting->postSalesBill($salesBill);
+
+            if ($request->filled('from_quotation_id')) {
+                SalesQuotation::where('id', $request->input('from_quotation_id'))->update([
+                    'status' => 'Converted',
+                    'converted_sales_bill_id' => $salesBill->id,
+                ]);
+            }
+
+            if ($request->filled('from_order_id')) {
+                SalesOrder::where('id', $request->input('from_order_id'))->update([
+                    'status' => 'Converted',
+                    'converted_sales_bill_id' => $salesBill->id,
+                ]);
+            }
 
             return $salesBill;
         });
