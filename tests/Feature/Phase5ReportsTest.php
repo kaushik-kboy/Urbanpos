@@ -162,7 +162,7 @@ class Phase5ReportsTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Sales Item Margin');
         $response->assertSee('Sales Margin by Category');
-        $response->assertSee('Quotation & Order Summary');
+        $response->assertSee('Quotation &amp; Order Summary', false); // raw HTML entity
         $response->assertSee('Re-order / Low Stock Report');
     }
 }
