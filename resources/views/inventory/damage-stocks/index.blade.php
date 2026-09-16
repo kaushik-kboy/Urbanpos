@@ -185,13 +185,6 @@
                                     <a href="{{ route('inventory.damage-stocks.edit', $entry) }}" class="btn btn-xs btn-outline-secondary mr-1" title="Edit Entry">
                                         <i class="fas fa-pen"></i>
                                     </a>
-                                    <form action="{{ route('inventory.damage-stocks.destroy', $entry) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete damage stock {{ $entry->damage_number }}? Stock will be restored.')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-xs btn-outline-danger" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
                                 </td>
                             </tr>
                         @empty

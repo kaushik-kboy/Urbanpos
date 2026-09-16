@@ -469,13 +469,16 @@
             $row.find('.pinv-margin').val(marginPct !== null ? marginPct.toFixed(2) + '%' : '');
             $row.find('.pinv-profit').val(profitPct !== null ? profitPct.toFixed(2) + '%' : '');
 
-            // Validation: Sell Price must be strictly greater than Cost Price
+            // Validation 1: Sell Price must be strictly greater than Cost Price
             let $sellInput = $row.find('.pinv-sell');
-            if (cost > 0 && sell <= cost) {
+            $sellInput.removeClass('border-danger text-danger border-warning text-warning').attr('title', '');
+            if (cost > 0 && sell > 0 && sell <= cost) {
                 $sellInput.addClass('border-danger text-danger')
                           .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') Cost Price (₹' + cost.toFixed(2) + ') se zyada honi chahiye!');
-            } else {
-                $sellInput.removeClass('border-danger text-danger').attr('title', '');
+            } else if (mrp > 0 && sell > 0 && sell > mrp) {
+                // Validation 2: Sell Price must be <= MRP
+                $sellInput.addClass('border-warning text-warning')
+                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') MRP (₹' + mrp.toFixed(2) + ') se zyada nahi hona chahiye!');
             }
 
             let $discPct = $row.find('.pinv-disc-percent');
@@ -957,8 +960,34 @@
 
             if (priceError) {
                 e.preventDefault();
-                alert("Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (₹" + priceError.sell.toFixed(2) + ") Cost Price (₹" + priceError.cost.toFixed(2) + ") se zyada hona chahiye!");
+                alert("Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (\u20b9" + priceError.sell.toFixed(2) + ") Cost Price (\u20b9" + priceError.cost.toFixed(2) + ") se zyada hona chahiye!");
                 priceError.$input.focus().addClass('border-danger text-danger');
+                return false;
+            }
+
+            // Rule: Sell Price must be <= MRP
+            let mrpError = null;
+            $('#pinv-items-body tr').each(function (idx) {
+                let $r = $(this);
+                let sell = parseFloat($r.find('.pinv-sell').val()) || 0;
+                let mrp = parseFloat($r.find('.pinv-mrp').val()) || 0;
+                let itemName = $r.find('.pinv-item-select option:selected').text().trim() || ('Row #' + (idx + 1));
+                if (mrp > 0 && sell > mrp) {
+                    mrpError = {
+                        row: idx + 1,
+                        item: itemName,
+                        sell: sell,
+                        mrp: mrp,
+                        $input: $r.find('.pinv-sell')
+                    };
+                    return false; // break loop
+                }
+            });
+
+            if (mrpError) {
+                e.preventDefault();
+                alert("Row #" + mrpError.row + " (" + mrpError.item + "):\nSell Price (₹" + mrpError.sell.toFixed(2) + ") MRP (₹" + mrpError.mrp.toFixed(2) + ") se zyada nahi hona chahiye!");
+                mrpError.$input.focus().addClass('border-warning text-warning');
                 return false;
             }
 

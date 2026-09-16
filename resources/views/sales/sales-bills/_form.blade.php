@@ -875,8 +875,8 @@
                     if (item.mrp > 0 && (!$mrp.val() || parseFloat($mrp.val()) === 0)) {
                         $mrp.val(parseFloat(item.mrp).toFixed(2));
                     }
-                    if (item.gst_percent > 0) {
-                        $gst.val(parseFloat(item.gst_percent).toFixed(2));
+                    if (item.gst_percent !== undefined && item.gst_percent !== null) {
+                        $gst.val(parseFloat(item.gst_percent || 0).toFixed(2));
                     }
 
                     // =========================================================
@@ -963,7 +963,7 @@
             calculateRow($(this).closest('tr'), 'amount');
         });
 
-        $(document).on('input', '.sb-gst-percent', function () {
+        $(document).on('input change blur', '.sb-gst-percent', function () {
             calculateRow($(this).closest('tr'), 'other');
         });
 

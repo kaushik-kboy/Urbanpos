@@ -142,6 +142,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         ->post('loyalty-points', [LoyaltyPointsUpdateController::class, 'store'])->name('loyalty-points.store');
 
     Route::get('aux/{module}', [MasterAuxController::class, 'renderModule'])->name('aux');
+    Route::post('aux/item-ean-upc/update', [MasterAuxController::class, 'updateItemEanUpc'])->name('aux.item-ean-upc.update');
 });
 
 Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () use ($gatedResource) {

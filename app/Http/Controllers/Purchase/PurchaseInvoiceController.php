@@ -774,6 +774,7 @@ class PurchaseInvoiceController extends Controller
 
                 // Rule: Sell Price must be greater than Cost Price
                 $costPrice = (float) ($line['cost_price'] ?? 0);
+                $mrp = (float) ($line['mrp'] ?? 0);
                 if (isset($line['sell_price']) && $line['sell_price'] !== null && $line['sell_price'] !== '') {
                     $sellPrice = (float) $line['sell_price'];
                     if ($costPrice > 0 && $sellPrice <= $costPrice) {
@@ -781,6 +782,13 @@ class PurchaseInvoiceController extends Controller
                         $v->errors()->add(
                             "items.{$idx}.sell_price",
                             "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must be greater than cost price (₹{$costPrice})."
+                        );
+                    }
+                    if ($mrp > 0 && $sellPrice > $mrp) {
+                        $rowNum = $idx + 1;
+                        $v->errors()->add(
+                            "items.{$idx}.sell_price",
+                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) MRP (₹{$mrp}) se zyada nahi hona chahiye (Sell price must be <= MRP)."
                         );
                     }
                 }

@@ -20,9 +20,9 @@ trait HasPostingLifecycle
 
     public function assertEditable(): void
     {
-        if ($this->isPosted()) {
+        if ($this->status === 'Cancelled') {
             throw ValidationException::withMessages([
-                'status' => class_basename($this)." #{$this->getKey()} is already posted and cannot be edited directly. Use a return, reversal, or adjustment document instead.",
+                'status' => class_basename($this)." #{$this->getKey()} is cancelled and cannot be edited.",
             ]);
         }
     }

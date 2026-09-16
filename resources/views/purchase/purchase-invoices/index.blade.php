@@ -96,12 +96,7 @@
                             <td>{{ $invoice->purchaseOrder?->po_number }}</td>
                             <td>{{ number_format($invoice->total, 2) }}</td>
                             <td class="text-right">
-                                <a href="{{ route('purchase.purchase-invoices.edit', $invoice) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('purchase.purchase-invoices.destroy', $invoice) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this purchase invoice? Stock will be reversed.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
+                                <a href="{{ route('purchase.purchase-invoices.edit', $invoice) }}" class="btn btn-xs btn-outline-secondary" title="Edit"><i class="fas fa-pen"></i> Edit</a>
                             </td>
                         </tr>
                     @empty

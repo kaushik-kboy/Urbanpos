@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Models\Item;
 use Illuminate\Http\Request;
 
 class MasterAuxController extends Controller
 {
     public function renderModule(Request $request, string $module)
     {
+        if ($module === 'item-ean-upc-entry') {
+            return $this->itemEanUpcEntry($request);
+        }
         $configs = [
             'item-property-setting' => [
                 'title' => 'Item Property Setting',
@@ -140,5 +144,92 @@ class MasterAuxController extends Controller
         ];
 
         return view('common.module-view', $config);
+    }
+
+    public function itemEanUpcEntry(Request $request)
+    {
+        $query = Item::query()->with(['brand', 'departmentValue', 'categoryValue']);
+
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('item_code', 'like', "%{$search}%")
+                  ->orWhere('ean_upc_code', 'like', "%{$search}%")
+                  ->orWhere('alias', 'like', "%{$search}%");
+            });
+        }
+
+        $eanFilter = $request->input('ean_filter', 'all');
+        if ($eanFilter === 'with_ean') {
+            $query->whereNotNull('ean_upc_code')->where('ean_upc_code', '!=', '');
+        } elseif ($eanFilter === 'missing_ean') {
+            $query->where(function ($q) {
+                $q->whereNull('ean_upc_code')->orWhere('ean_upc_code', '');
+            });
+        }
+
+        $statusFilter = $request->input('status', 'all');
+        if ($statusFilter === 'active') {
+            $query->where('status', true);
+        } elseif ($statusFilter === 'inactive') {
+            $query->where('status', false);
+        }
+
+        $totalCount = Item::count();
+        $withEanCount = Item::whereNotNull('ean_upc_code')->where('ean_upc_code', '!=', '')->count();
+        $missingEanCount = $totalCount - $withEanCount;
+
+        $items = $query->orderBy('name')->paginate(25)->withQueryString();
+
+        return view('master.item-ean-upc', compact(
+            'items',
+            'search',
+            'eanFilter',
+            'statusFilter',
+            'totalCount',
+            'withEanCount',
+            'missingEanCount'
+        ));
+    }
+
+    public function updateItemEanUpc(Request $request)
+    {
+        $request->validate([
+            'item_id' => ['required', 'exists:items,id'],
+            'ean_upc_code' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $item = Item::findOrFail($request->item_id);
+        $eanCode = trim((string) $request->ean_upc_code);
+
+        if ($eanCode !== '') {
+            $duplicate = Item::where('ean_upc_code', $eanCode)
+                ->where('id', '!=', $item->id)
+                ->first();
+
+            if ($duplicate) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "This barcode '{$eanCode}' is already assigned to item: {$duplicate->name} (Code: {$duplicate->item_code}).",
+                    ], 422);
+                }
+                return back()->withErrors(['ean_upc_code' => "This barcode '{$eanCode}' is already assigned to {$duplicate->name}."]);
+            }
+        }
+
+        $item->ean_upc_code = $eanCode !== '' ? $eanCode : null;
+        $item->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Barcode updated successfully for {$item->name}!",
+                'ean_upc_code' => $item->ean_upc_code ?? '',
+            ]);
+        }
+
+        return back()->with('status', "Barcode updated successfully for {$item->name}.");
     }
 }

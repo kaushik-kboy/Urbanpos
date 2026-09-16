@@ -737,7 +737,16 @@ class SalesBillController extends Controller
             $discPercent = (float) ($line['disc_percent'] ?? 0);
             $discAmount = (float) ($line['disc_amount'] ?? 0);
 
-            $tax = $this->taxEngine->calculate($qty, $sellPrice, $item, $discPercent, $discAmount, 0.0, $isInterstate);
+            $tax = $this->taxEngine->calculate(
+                $qty,
+                $sellPrice,
+                $item,
+                $discPercent,
+                $discAmount,
+                0.0,
+                $isInterstate,
+                isTaxInclusive: false
+            );
 
             return [
                 'item_id' => $line['item_id'],

@@ -106,11 +106,6 @@
                                 <a href="{{ route('sales.sales-bills.edit', $bill) }}" class="btn btn-xs btn-outline-secondary" title="Edit">
                                     <i class="fas fa-pen"></i>
                                 </a>
-                                <form action="{{ route('sales.sales-bills.destroy', $bill) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this sales bill? Stock will be restored.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger" title="Cancel & Restore Stock"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

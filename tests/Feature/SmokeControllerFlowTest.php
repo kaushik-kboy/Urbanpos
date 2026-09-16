@@ -88,22 +88,35 @@ class SmokeControllerFlowTest extends TestCase
         $stock->refresh();
         $this->assertEquals(6, (float) $stock->quantity);
 
-        // Once Posted (the default status), the sales bill must refuse a silent edit —
-        // ValidationException is caught by Laravel's handler and surfaces as a redirect
-        // back with session errors, not a thrown exception, for a standard web request.
+        // Posted bills can be edited (stock reversed and reposted)
         $this->assertTrue($salesBill->fresh()->isPosted());
         $updateResponse = $this->from(route('sales.sales-bills.index'))->put(route('sales.sales-bills.update', $salesBill), [
             'bill_date' => '2026-09-13',
             'customer_id' => $customer->id,
             'branch_id' => $branch->id,
             'invoice_type' => 'Tax Invoice',
-            'delivery_type' => 'Counter',
+            'delivery_type' => 'Delivered',
+            'sales_type' => 'Local',
+            'items' => [
+                ['item_id' => $item->id, 'qty' => 2, 'sell_price' => 150],
+            ],
+        ]);
+        $updateResponse->assertSessionHasNoErrors();
+        $this->assertEquals(2, (float) $salesBill->fresh()->items->first()->qty, 'Edit must update line qty.');
+
+        // Cancelled bills cannot be edited
+        $salesBill->update(['status' => 'Cancelled']);
+        $blockedResponse = $this->from(route('sales.sales-bills.index'))->put(route('sales.sales-bills.update', $salesBill), [
+            'bill_date' => '2026-09-13',
+            'customer_id' => $customer->id,
+            'branch_id' => $branch->id,
+            'invoice_type' => 'Tax Invoice',
+            'delivery_type' => 'Delivered',
             'sales_type' => 'Local',
             'items' => [
                 ['item_id' => $item->id, 'qty' => 1, 'sell_price' => 150],
             ],
         ]);
-        $updateResponse->assertSessionHasErrors('status');
-        $this->assertEquals(4, (float) $salesBill->fresh()->items->first()->qty, 'Blocked edit must not have changed the posted line.');
+        $blockedResponse->assertSessionHasErrors('status');
     }
 }

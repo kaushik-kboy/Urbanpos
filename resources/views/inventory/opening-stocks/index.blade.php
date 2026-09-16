@@ -73,11 +73,6 @@
                             <td>{{ number_format($entry->total, 2) }}</td>
                             <td class="text-right">
                                 <a href="{{ route('inventory.opening-stocks.edit', $entry) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('inventory.opening-stocks.destroy', $entry) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this opening stock entry? Stock will be reversed.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
                             </td>
                         </tr>
                     @empty

@@ -95,12 +95,7 @@
                             <td>{{ $return->return_mode }}</td>
                             <td>{{ number_format($return->total, 2) }}</td>
                             <td class="text-right">
-                                <a href="{{ route('sales.sales-returns.edit', $return) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
-                                <form action="{{ route('sales.sales-returns.destroy', $return) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this sales return? Stock will be reversed.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
-                                </form>
+                                <a href="{{ route('sales.sales-returns.edit', $return) }}" class="btn btn-xs btn-outline-secondary" title="Edit"><i class="fas fa-pen"></i> Edit</a>
                             </td>
                         </tr>
                     @empty
