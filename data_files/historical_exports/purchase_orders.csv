@@ -1,0 +1,9 @@
+"Purchase Order Summary 
+ DATE : from 01-04-2024 14-09-2026 ; Stock Class : Trade , Location : All Location ; 
+"
+"URBANPETSSERVICESPRIVATELIMITED,AksharComplex,Ahmedabad,9662825744,GSTNO:24AAECU0338G1ZN"
+View,Sequence No,PO date,Expiry date,Currency,Exchange rate,PO amount,Code,Credit days,Delivery period,Branch ID,Counter,Branch Name,Supplier Name,Branch prefix,Discount %,Disc. Amount,Rounded off,Status,Freight,Tax amount,Service tax %,Service tax amt,Addl. Tax amount,Addl. Edu cess %,Addl. Edu cess amount,Edu cess %,Edu cess amount,Excise duty %,Excise duty amount,Customer ship code,Customer ship name,GST Cess Amt,CGST TaxAmt,GST TaxAmt,IGST TaxAmt,Order reference,SGST TaxAmt,Expiry Status,Approved Date,Supplier Bill No,Supplier Bill Date
+,,,,,,"199,845.64",,,,,,,,,,0.00,,,0.00,0.00,,0.00,0.00,,0.00,,0.00,,0.00,,,0.00,394.16,"30,226.38","29,438.06",,394.16,,,,
+,1,2026-08-26,2026-08-27,INDIAN RUPEE,1,"5,167.81",32679,0,1,225,CO-225,URBANPETS SERVICES PRIVATE LIMITED,Jay Projects,LN,0,0.00,0.00,Cancelled,0.00,0.00,0,0.00,0.00,0,0.00,0,0.00,0,0.00,0,,0.00,394.16,788.32,0.00,,394.16,Expired,,0,2026-08-26
+,1,2026-08-26,2026-08-27,INDIAN RUPEE,1,"45,978.30",32650,0,1,32772,CO-32772,URBAN PETS / MOTERA,ABK Imports Pvt. Ltd,LN,0,0.00,0.00,Pending,0.00,0.00,0,0.00,0.00,0,0.00,0,0.00,0,0.00,0,,0.00,0.00,"6,755.08","6,755.08",,0.00,Expired,,0,2026-08-26
+,2,2026-09-03,2026-09-04,INDIAN RUPEE,1,"148,699.53",32650,0,1,32772,CO-32772,URBAN PETS / MOTERA,ABK Imports Pvt. Ltd,LN,0,0.00,0.00,Pending,0.00,0.00,0,0.00,0.00,0,0.00,0,0.00,0,0.00,0,,0.00,0.00,"22,682.98","22,682.98",,0.00,Expired,,0,2026-09-03

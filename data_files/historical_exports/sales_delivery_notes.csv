@@ -1,0 +1,7 @@
+"Sales DeliveryNote Summary 
+ DATE : from 01-04-2024 14-09-2026 ; Stock Class : Trade , Location : All Location ; 
+"
+"URBANPETSSERVICESPRIVATELIMITED,AksharComplex,Ahmedabad,9662825744,GSTNO:24AAECU0338G1ZN"
+View,DN No,DN date,Customer code,Customer Name,Customer type,Address1,Landmark,City,Email,Phone,Mobile,Total No of items,Currency,Sales DN amount,Advance amount,Pending amount,Tax amount,Edu cess,Higher.cess,H.Edu amount,Freight,Disc. Amount,Sales executive,Status,Branch Name,Branch prefix,Shipping name,DELIVERY CATEGORY,Delivery type,Order No,Rev no,Order date,SO amount,Area name,Sales Man Commission,Bill seq. No,Bill No,GST Cess Amt,CGST TaxAmt,GST TaxAmt,IGST TaxAmt,Branch No,SGST TaxAmt
+,,,,,,,,,,,,144.00,,"28,800.00",0.00,"28,800.00",0.00,,,,,0.00,,,,,,,,,,,,,0.00,,,0.00,"2,196.61","4,393.22",0.00,,"2,196.61"
+,1,2025-05-21,33426,Rahul,WALK-IN,"Ashwika- 4 , survey No. 95 , behind Bharat Benz ,",,Ahmedabad,,9662825744,,144.00,INDIAN RUPEE,"28,800.00",0.00,"28,800.00",0.00,0.00,0.00,0.00,0.00,0.00,Default Sales Rep,PENDING,URBAN PETS / MOTERA,LN,,RDC,DEMO,0,,,0.00,,0.00,0,0,0.00,"2,196.61","4,393.22",0.00,1,"2,196.61"

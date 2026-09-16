@@ -1,0 +1,7 @@
+"Sales Order Summary 
+ DATE : from 01-04-2024 14-09-2026 ; Status : All , Stock Class : Trade , Location : All Location ; 
+"
+"URBANPETSSERVICESPRIVATELIMITED,AksharComplex,Ahmedabad,9662825744,GSTNO:24AAECU0338G1ZN"
+View,Ordered From Branch,Order No,Shipped From Branch,Rev no,Order date,Code,Sales man,Customer Name,SO amount,Address1,SO advance amount,Address2,Cash amount,Landmark,Area,Card amount,Cheque amount,City,Credit amount,Coupon,Delivery date,Credit days,BILLTYPE,CCNO(LAST_4_DIGITS),Order reference,Status,Approval code,Order DateTime,Po no,Ref. No,Delivery,Wallet Card Name,Tax amount,Wallet Card No.,Tag,Wallet RefNo,Shipping name,Branch prefix,Log ID,Message,Stock class,GST Cess Amt,CGST TaxAmt,GST TaxAmt,IGST TaxAmt,SGST TaxAmt,Delivery type,CRM Status,Raised from,Bill scheme discount amount,Bill discount amount,DO Number,Currency,Offer Applied in SO,Source
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0.00,449.25,898.50,0.00,449.25,,,,,,,,,
+,URBAN PETS / MOTERA,1,URBAN PETS / MOTERA,SO/1/1,2025-11-24,18038,uppetwear,keyuri trimandir,"7,234.00",ahm,0.00,,0.00,,,0.00,0.00,,"7,234.00",0.00,2025-11-24,0,LOCAL SALES,0,0,PENDING,0,2025-11-24 00:00:00,0,,32772,,0.00,0,P,0,,LN,petm1,.,1,0.00,449.25,898.50,0.00,449.25,Home Delivery or Phone,Pending,,0.00,0.00,0,INDIAN RUPEE,No,Pos
