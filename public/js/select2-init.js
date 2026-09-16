@@ -334,4 +334,57 @@ $(document).ready(function () {
             syncBranchAcrossApp(val);
         }
     });
+
+    // =========================================================================
+    // GLOBAL 10-DIGIT NUMERIC-ONLY MOBILE VALIDATION & INPUT RESTRICTION
+    // =========================================================================
+    var mobileSelector = 'input[name="mobile"], input[name*="[mobile]"], input[id*="mobile"], input[class*="mobile"], input[data-type="mobile"], #sb-customer-mobile';
+
+    function setupMobileInputs(context) {
+        var $scope = context ? $(context) : $(document);
+        $scope.find(mobileSelector).each(function () {
+            var $this = $(this);
+            $this.attr('maxlength', '10');
+            $this.attr('inputmode', 'numeric');
+            $this.attr('pattern', '[0-9]{10}');
+            // Clean up any initial non-numeric characters or overflow
+            var cur = $this.val();
+            if (cur && /[^0-9]/.test(cur)) {
+                $this.val(cur.replace(/[^0-9]/g, '').slice(0, 10));
+            }
+        });
+    }
+
+    setupMobileInputs();
+
+    $(document).on('shown.bs.modal reinit:select2', function () {
+        setupMobileInputs(this);
+    });
+
+    $(document).on('keypress', mobileSelector, function (e) {
+        // Allow navigation/control keys
+        if (e.which === 0 || e.which === 8 || e.which === 13) return;
+        // Only allow numbers 0-9
+        if (e.which < 48 || e.which > 57) {
+            e.preventDefault();
+            return false;
+        }
+        // Limit to 10 digits
+        var current = $(this).val();
+        if (current.length >= 10 && this.selectionStart === this.selectionEnd) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    $(document).on('input paste', mobileSelector, function () {
+        var $this = $(this);
+        setTimeout(function () {
+            var val = $this.val();
+            var cleaned = val.replace(/[^0-9]/g, '').slice(0, 10);
+            if (val !== cleaned) {
+                $this.val(cleaned);
+            }
+        }, 10);
+    });
 });

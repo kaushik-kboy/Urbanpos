@@ -248,6 +248,19 @@ class SalesReturnController extends Controller
     private function formOptions(?SalesReturn $salesReturn = null): array
     {
         $custId = old('customer_id', $salesReturn?->customer_id);
+        $customers = Customer::where('status', true)
+            ->orderBy('name')
+            ->limit(50)
+            ->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+
+        if ($custId && ! isset($customers[$custId])) {
+            $selCust = Customer::find($custId);
+            if ($selCust) {
+                $customers->put($selCust->id, $selCust->mobile ? "{$selCust->name} ({$selCust->mobile})" : $selCust->name);
+            }
+        }
+
         $salesBills = $custId
             ? SalesBill::where('customer_id', $custId)
                 ->where(fn($q) => $q->whereNull('status')->orWhere('status', '!=', 'Cancelled'))
@@ -256,7 +269,7 @@ class SalesReturnController extends Controller
             : [];
 
         return [
-            'customers' => Customer::options(),
+            'customers' => $customers,
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
             'items' => Item::orderBy('name')->pluck('name', 'id'),
             'salesBills' => $salesBills,

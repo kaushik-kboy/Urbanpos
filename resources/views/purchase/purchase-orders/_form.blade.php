@@ -45,6 +45,7 @@
                 <th style="width:35px" class="text-center">#</th>
                 <th style="width:120px">Code / Barcode</th>
                 <th style="min-width:220px">Item Description</th>
+                <th style="width:85px" class="text-right">Stock</th>
                 <th style="width:90px" class="text-right">Qty</th>
                 <th style="width:90px" class="text-right">Free</th>
                 <th style="width:105px" class="text-right">Cost Price</th>
@@ -364,6 +365,9 @@
             $row.find('.po-item-code').val(codeVal);
             $row.find('.po-item-desc').val(data.name + (codeVal ? ' [' + codeVal + ']' : ''));
             $row.find('.po-item-select').val(data.id);
+
+            let stockVal = data.stock !== undefined ? data.stock : (data.qty !== undefined ? data.qty : 0);
+            $row.find('.po-item-stock').val(Math.round(parseFloat(stockVal) || 0));
 
             if (parseFloat(data.cost_price) > 0) {
                 $row.find('.po-cost').val(parseFloat(data.cost_price).toFixed(2));

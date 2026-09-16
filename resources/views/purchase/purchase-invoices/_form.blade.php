@@ -1,12 +1,13 @@
 @php
     $inv = $purchaseInvoice ?? null;
     $sourceRn = $sourceReceiptNote ?? null;
+    $sourcePo = $sourceOrder ?? null;
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($inv?->items ?? ($convertedItems ?? collect()));
 
-    $selectedSupplier = old('supplier_id', $inv->supplier_id ?? ($sourceRn->supplier_id ?? ''));
-    $selectedBranch = old('branch_id', $inv->branch_id ?? ($sourceRn->branch_id ?? ''));
-    $selectedPo = old('purchase_order_id', $inv->purchase_order_id ?? ($sourceRn->purchase_order_id ?? ''));
+    $selectedSupplier = old('supplier_id', $inv->supplier_id ?? ($sourceRn->supplier_id ?? ($sourcePo->supplier_id ?? '')));
+    $selectedBranch = old('branch_id', $inv->branch_id ?? ($sourceRn->branch_id ?? ($sourcePo->branch_id ?? '')));
+    $selectedPo = old('purchase_order_id', $inv->purchase_order_id ?? ($sourceRn->purchase_order_id ?? ($sourcePo->id ?? '')));
     $grnNumberVal = old('grn_number', $inv->grn_number ?? ($sourceRn->receipt_number ?? ''));
     $grnDateVal = old('grn_date', optional($inv->grn_date ?? ($sourceRn->receipt_date ?? now()))->format('Y-m-d'));
     $rnIdVal = old('purchase_receipt_note_id', $inv->purchase_receipt_note_id ?? ($sourceRn->id ?? ''));
@@ -29,6 +30,11 @@
     <div class="alert alert-info py-2 mb-3">
         <i class="fas fa-receipt mr-1"></i> Converting from Receipt Note <strong>{{ $sourceRn->receipt_number }}</strong>.
         Physical stock was already received on {{ optional($sourceRn->receipt_date)->format('d M Y') }}; saving this invoice books financial liabilities and updates item prices without duplicating inventory.
+    </div>
+@elseif ($sourcePo)
+    <div class="alert alert-info py-2 mb-3">
+        <i class="fas fa-file-invoice mr-1"></i> Converting directly from Purchase Order <strong>{{ $sourcePo->po_number }}</strong>.
+        Items, quantities, and costs have been loaded automatically. Stock will be added to inventory upon saving this invoice.
     </div>
 @endif
 

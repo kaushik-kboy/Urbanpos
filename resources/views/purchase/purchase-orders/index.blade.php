@@ -97,7 +97,8 @@
                             <td><span class="badge badge-{{ $po->status === 'Open' ? 'success' : ($po->status === 'Cancelled' ? 'danger' : 'secondary') }}">{{ $po->status }}</span></td>
                             <td class="text-right">
                                 @if ($po->status !== 'Cancelled')
-                                    <a href="{{ route('purchase.purchase-receipt-notes.create', ['from_po' => $po->id]) }}" class="btn btn-xs btn-outline-info mr-1" title="Create Goods Receipt Note"><i class="fas fa-receipt"></i> GRN</a>
+                                    <a href="{{ route('purchase.purchase-receipt-notes.create', ['from_po' => $po->id]) }}" class="btn btn-xs btn-outline-info mr-1" title="Create Goods Receipt Note (GRN)"><i class="fas fa-receipt"></i> GRN</a>
+                                    <a href="{{ route('purchase.purchase-invoices.create', ['from_order' => $po->id]) }}" class="btn btn-xs btn-outline-primary mr-1" title="Direct Convert to Purchase Invoice"><i class="fas fa-file-invoice"></i> Invoice</a>
                                     <a href="{{ route('purchase.purchase-orders.edit', $po) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
                                     <form action="{{ route('purchase.purchase-orders.destroy', $po) }}" method="POST" class="d-inline po-cancel-form">
                                         @csrf

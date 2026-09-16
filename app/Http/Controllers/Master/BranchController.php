@@ -85,7 +85,7 @@ class BranchController extends Controller
             'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
-            'mobile' => ['nullable', 'string', 'max:50'],
+            'mobile' => ['nullable', 'string', 'digits:10'],
             'language' => ['required', 'string', 'max:50'],
             'area_code' => ['nullable', 'string', 'max:50'],
             'circle_code' => ['nullable', 'string', 'max:50'],

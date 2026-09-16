@@ -160,7 +160,7 @@ class SupplierController extends Controller
             'country' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
-            'mobile' => ['nullable', 'string', 'max:50'],
+            'mobile' => ['nullable', 'string', 'digits:10'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
             'gst_no' => ['nullable', 'string', 'max:20'],

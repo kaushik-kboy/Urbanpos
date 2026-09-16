@@ -44,6 +44,22 @@
                value="{{ $itemId }}"
                required>
     </td>
+    <td style="width: 85px;">
+        @php
+            $itemStockVal = 0;
+            if ($itemId) {
+                $bId = $branchId ?? (isset($po) ? $po->branch_id : session('active_branch_id', auth()->user()?->branch_id ?? 3));
+                $itemStockVal = (float) (\App\Models\ItemStock::where('item_id', $itemId)->where('branch_id', $bId)->value('quantity') ?? 0);
+            }
+        @endphp
+        <input type="text"
+               class="form-control form-control-sm po-item-stock text-right bg-light font-weight-bold text-info"
+               readonly
+               tabindex="-1"
+               value="{{ number_format($itemStockVal, 0) }}"
+               placeholder="0"
+               title="Current stock in this branch">
+    </td>
     <td><input type="number" step="0.001" min="0.001" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm po-qty text-right font-weight-bold" placeholder="Qty" required autocomplete="off"></td>
     <td><input type="number" step="0.001" min="0" name="items[{{ $rowId }}][free_qty]" value="{{ $freeQty }}" class="form-control form-control-sm po-free-qty text-right" placeholder="0" autocomplete="off"></td>
     <td><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm po-cost text-right font-weight-bold" placeholder="0.00" required autocomplete="off"></td>

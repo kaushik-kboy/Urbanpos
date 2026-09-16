@@ -32,9 +32,14 @@
         <div class="input-group-prepend">
             <span class="input-group-text bg-white"><i class="fas fa-mobile-alt text-muted"></i></span>
         </div>
-        <input type="text" id="sb-customer-mobile" class="form-control" placeholder="Customer Mobile No (auto-filled or type 10 digits to search)" value="{{ optional($bill?->customer)->mobile ?? optional($selectedCust ? \App\Models\Customer::find($selectedCust) : null)->mobile }}" autocomplete="off">
+        <input type="text" id="sb-customer-mobile" class="form-control" maxlength="10" placeholder="Type 10 digits mobile number to auto-select or add customer" value="{{ optional($bill?->customer)->mobile ?? optional($selectedCust ? \App\Models\Customer::find($selectedCust) : null)->mobile }}" autocomplete="off">
+        <div class="input-group-append">
+            <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary" title="Add Customer Master">
+                <i class="fas fa-user-plus mr-1"></i> Add Customer
+            </button>
+        </div>
     </div>
-    <small class="form-text text-muted">Customer select karne par auto-fill hoga, ya yahan mobile number enter karke customer search kar sakte hain.</small>
+    <small class="form-text text-muted">10 digits mobile number enter karte hi agar customer exist karta hai to auto-select hoga, nahi to Add Customer popup open ho jayega.</small>
 </div>
 <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-3 shadow-sm align-items-center justify-content-between">
     <div>
@@ -252,6 +257,96 @@
             </div>
             <div class="modal-footer py-2">
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     QUICK CUSTOMER MASTER MODAL — Popup to Add Customer
+     ============================================================ -->
+<div class="modal fade" id="sb-quick-customer-modal" tabindex="-1" role="dialog" aria-labelledby="sbQuickCustLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content shadow-lg border-primary">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="sbQuickCustLabel">
+                    <i class="fas fa-user-plus mr-2"></i> Add New Customer
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <div id="qc-alert" class="alert alert-danger py-2 d-none font-weight-bold small"></div>
+                <div class="form-group mb-2">
+                    <label class="small font-weight-bold mb-1">Mobile Number <span class="text-danger">*</span></label>
+                    <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-phone-alt"></i></span>
+                        </div>
+                        <input type="text" id="qc-mobile" class="form-control font-weight-bold" maxlength="10" placeholder="10 Digits Mobile No" required>
+                    </div>
+                </div>
+                <div class="form-group mb-2">
+                    <label class="small font-weight-bold mb-1">Customer Name <span class="text-danger">*</span></label>
+                    <div class="input-group input-group-sm">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        </div>
+                        <input type="text" id="qc-name" class="form-control font-weight-bold" placeholder="Enter Full Name" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Customer Type</label>
+                        <select id="qc-customer-type" class="form-control form-control-sm">
+                            <option value="RETAIL INVOICE" selected>Retail Invoice</option>
+                            <option value="TAX INVOICE">Tax Invoice</option>
+                            <option value="EXEMPTED">Exempted</option>
+                            <option value="E-COMMERCE">E-Commerce</option>
+                        </select>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Sales Type</label>
+                        <select id="qc-sales-type" class="form-control form-control-sm">
+                            <option value="Local" selected>Local (CGST + SGST)</option>
+                            <option value="Interstate">Interstate (IGST)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="small font-weight-bold mb-1">GST Type</label>
+                        <select id="qc-gst-type" class="form-control form-control-sm">
+                            <option value="Un Register" selected>Un Register</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Composite">Composite</option>
+                        </select>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="small font-weight-bold mb-1">GST No</label>
+                        <input type="text" id="qc-gst-no" class="form-control form-control-sm" placeholder="GSTIN (Optional)">
+                    </div>
+                </div>
+                <div class="form-group mb-2">
+                    <label class="small font-weight-bold mb-1">Email</label>
+                    <input type="email" id="qc-email" class="form-control form-control-sm" placeholder="Email Address (Optional)">
+                </div>
+                <div class="form-group mb-2">
+                    <label class="small font-weight-bold mb-1">Address / City</label>
+                    <input type="text" id="qc-address" class="form-control form-control-sm" placeholder="Address (Optional)">
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                    <a href="{{ route('master.customers.create') }}" target="_blank" class="small text-primary font-weight-bold">
+                        <i class="fas fa-external-link-alt mr-1"></i> Open Full Customer Master
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer py-2 bg-light">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                <button type="button" id="btn-save-quick-customer" class="btn btn-primary btn-sm font-weight-bold px-3">
+                    <i class="fas fa-save mr-1"></i> Save & Select
+                </button>
             </div>
         </div>
     </div>
@@ -524,13 +619,11 @@
             $('#sb-customer-mobile').val('');
         });
 
-        // Typing mobile number directly auto-searches customer
-        $('#sb-customer-mobile').on('change blur keydown', function (e) {
-            if (e.type === 'keydown' && e.key !== 'Enter') return;
-            if (e.type === 'keydown' && e.key === 'Enter') e.preventDefault();
-
-            let mob = $.trim($(this).val());
-            if (!mob || mob.length < 5) return;
+        // Typing mobile number directly auto-searches customer or opens Quick Customer Modal
+        let custSearchDebounce = null;
+        function checkAndHandleCustomerMobile(mob, triggeredByEnter = false) {
+            mob = $.trim(mob).replace(/[^0-9]/g, '').slice(0, 10);
+            if (!mob || (mob.length < 10 && !triggeredByEnter)) return;
 
             $.getJSON('{{ route("sales.sales-bills.customer-search") }}', { q: mob }, function (data) {
                 if (data && data.results && data.results.length > 0) {
@@ -543,9 +636,137 @@
                         $custSelect.val(matched.id).trigger('change');
                         $('#sb-customer-mobile').val(matched.mobile || mob);
                         fetchCustomerLoyalty(matched.id);
+                        setTimeout(function () {
+                            $('#sb-items-body tr:first .sb-item-code').focus();
+                        }, 100);
+                        return;
                     }
                 }
+
+                // If not found and user has typed 10 digits or pressed Enter
+                if (mob.length === 10 || (triggeredByEnter && mob.length >= 7)) {
+                    openQuickCustomerModal(mob);
+                }
             });
+        }
+
+        function openQuickCustomerModal(prefillMobile = '') {
+            $('#qc-alert').addClass('d-none').text('');
+            $('#qc-mobile').val(prefillMobile || $('#sb-customer-mobile').val());
+            $('#qc-name').val('');
+            $('#qc-email').val('');
+            $('#qc-address').val('');
+            $('#qc-gst-no').val('');
+            $('#sb-quick-customer-modal').modal('show');
+            setTimeout(function () {
+                if ($('#qc-mobile').val().length === 10) {
+                    $('#qc-name').focus();
+                } else {
+                    $('#qc-mobile').focus();
+                }
+            }, 500);
+        }
+
+        $('#btn-quick-add-customer').on('click', function () {
+            openQuickCustomerModal($('#sb-customer-mobile').val());
+        });
+
+        $('#sb-customer-mobile').on('input', function () {
+            let val = $(this).val().replace(/[^0-9]/g, '').slice(0, 10);
+            $(this).val(val);
+            clearTimeout(custSearchDebounce);
+            if (val.length === 10) {
+                custSearchDebounce = setTimeout(function () {
+                    checkAndHandleCustomerMobile(val, false);
+                }, 300);
+            }
+        });
+
+        $('#sb-customer-mobile').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkAndHandleCustomerMobile($(this).val(), true);
+            }
+        });
+
+        $('#btn-save-quick-customer').on('click', function () {
+            let name = $.trim($('#qc-name').val());
+            let mobile = $.trim($('#qc-mobile').val()).replace(/[^0-9]/g, '');
+
+            if (!name) {
+                $('#qc-alert').removeClass('d-none').text('Please enter customer name.');
+                $('#qc-name').focus();
+                return;
+            }
+            if (!mobile || mobile.length !== 10) {
+                $('#qc-alert').removeClass('d-none').text('Please enter a valid 10-digit mobile number.');
+                $('#qc-mobile').focus();
+                return;
+            }
+
+            let $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+            $('#qc-alert').addClass('d-none');
+
+            $.ajax({
+                url: '{{ route("master.customers.store") }}',
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    name: name,
+                    mobile: mobile,
+                    customer_type: $('#qc-customer-type').val() || 'RETAIL INVOICE',
+                    sales_type: $('#qc-sales-type').val() || 'Local',
+                    gst_type: $('#qc-gst-type').val() || 'Un Register',
+                    gst_no: $('#qc-gst-no').val() || '',
+                    payment_mode: 'Cash Only',
+                    credit_limit: 0,
+                    credit_balance: 0,
+                    monthly_credit_balance: 0,
+                    credit_days: 0,
+                    status: 1,
+                    sms_consent: 1,
+                    email: $('#qc-email').val() || '',
+                    address1: $('#qc-address').val() || '',
+                    branch_id: $('select[name="branch_id"]').val() || null
+                },
+                success: function (res) {
+                    if (res && res.customer) {
+                        let c = res.customer;
+                        let opt = new Option(c.text || `${c.name} (${c.mobile})`, c.id, true, true);
+                        $custSelect.append(opt).trigger('change');
+                        $('#sb-customer-mobile').val(c.mobile);
+                        $('#sb-quick-customer-modal').modal('hide');
+                        fetchCustomerLoyalty(c.id);
+                        setTimeout(function () {
+                            $('#sb-items-body tr:first .sb-item-code').focus();
+                        }, 200);
+                    }
+                },
+                error: function (xhr) {
+                    let err = 'Failed to save customer.';
+                    if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        err = Object.values(xhr.responseJSON.errors).flat().join('<br>');
+                    } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                        err = xhr.responseJSON.message;
+                    }
+                    $('#qc-alert').removeClass('d-none').html(err);
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save & Select');
+                }
+            });
+        });
+
+        $('#sb-quick-customer-modal input').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('#btn-save-quick-customer').trigger('click');
+            }
         });
 
         /* ================================================================

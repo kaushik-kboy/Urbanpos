@@ -127,5 +127,94 @@ class PosEnhancementsTest extends TestCase
         $response->assertSee('Code / Barcode');
         $response->assertSee('po-item-search-modal');
         $response->assertSee('po-item-code');
+        $response->assertSee('Stock');
+    }
+
+    public function test_quick_customer_creation_via_ajax(): void
+    {
+        $response = $this->actingAs($this->owner)->postJson(route('master.customers.store'), [
+            'name' => 'Quick Test Customer',
+            'mobile' => '9123456780',
+            'customer_type' => 'RETAIL INVOICE',
+            'sales_type' => 'Local',
+            'gst_type' => 'Un Register',
+            'payment_mode' => 'Cash Only',
+            'credit_limit' => 0,
+            'credit_balance' => 0,
+            'monthly_credit_balance' => 0,
+            'credit_days' => 0,
+            'status' => 1,
+            'sms_consent' => 1,
+            'branch_id' => $this->branch->id,
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'customer' => [
+                'name' => 'Quick Test Customer',
+                'mobile' => '9123456780',
+            ],
+        ]);
+
+        $this->assertDatabaseHas('customers', [
+            'name' => 'Quick Test Customer',
+            'mobile' => '9123456780',
+        ]);
+    }
+
+    public function test_customer_mobile_validation_requires_exact_10_digits(): void
+    {
+        $response = $this->actingAs($this->owner)->postJson(route('master.customers.store'), [
+            'name' => 'Invalid Mobile Cust',
+            'mobile' => '12345', // only 5 digits
+            'customer_type' => 'RETAIL INVOICE',
+            'sales_type' => 'Local',
+            'gst_type' => 'Un Register',
+            'payment_mode' => 'Cash Only',
+            'credit_limit' => 0,
+            'credit_balance' => 0,
+            'monthly_credit_balance' => 0,
+            'credit_days' => 0,
+            'status' => 1,
+            'sms_consent' => 1,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['mobile']);
+    }
+
+    public function test_purchase_invoice_from_order_conversion(): void
+    {
+        $supplier = \App\Models\Supplier::create([
+            'name' => 'PO Test Supplier',
+            'status' => true,
+            'mail_type' => 'None',
+        ]);
+
+        $po = \App\Models\PurchaseOrder::create([
+            'po_number' => 'PO99999',
+            'po_date' => now()->toDateString(),
+            'supplier_id' => $supplier->id,
+            'branch_id' => $this->branch->id,
+            'purchase_type' => 'Local',
+            'c_form' => 'No Forms',
+            'total' => 500,
+            'status' => 'Open',
+        ]);
+
+        $po->items()->create([
+            'item_id' => $this->item->id,
+            'qty' => 10,
+            'cost_price' => 50,
+            'sell_price' => 60,
+            'mrp' => 60,
+            'net_amount' => 500,
+        ]);
+
+        $response = $this->actingAs($this->owner)->get(route('purchase.purchase-invoices.create', ['from_order' => $po->id]));
+        $response->assertOk();
+        $response->assertSee('PO99999');
+        $response->assertSee('Converting directly from Purchase Order');
     }
 }

@@ -59,6 +59,19 @@ class CustomerController extends Controller
         $customer = Customer::create($data);
         $this->syncPets($request, $customer);
 
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'customer' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'mobile' => $customer->mobile,
+                    'text' => $customer->displayName,
+                ],
+                'message' => 'Customer created successfully.',
+            ]);
+        }
+
         return redirect()->route('master.customers.index')->with('status', 'Customer created successfully.');
     }
 
@@ -194,7 +207,7 @@ class CustomerController extends Controller
             'gst_no' => ['nullable', 'string', 'max:20'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
-            'mobile' => ['required', 'string', 'max:50', \Illuminate\Validation\Rule::unique('customers', 'mobile')->ignore($customer?->id)],
+            'mobile' => ['required', 'string', 'digits:10', \Illuminate\Validation\Rule::unique('customers', 'mobile')->ignore($customer?->id)],
 
             // Others
             'gender' => ['nullable', 'in:Male,Female'],
@@ -202,6 +215,7 @@ class CustomerController extends Controller
             'customer_type' => ['required', 'in:RETAIL INVOICE,TAX INVOICE,EXEMPTED,E-COMMERCE'],
         ], [
             'mobile.required' => 'Customer mobile number is required.',
+            'mobile.digits' => 'Customer mobile number must be exactly 10 digits.',
             'mobile.unique' => 'A customer with this mobile number already exists.',
         ]);
     }

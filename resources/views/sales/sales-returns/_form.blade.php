@@ -37,22 +37,15 @@
 </div>
 
 <div class="row">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-5 mb-3">
         <label for="sales_bill_id" class="font-weight-bold">Original Sales Bill</label>
-        <div class="input-group">
-            <select name="sales_bill_id" id="sales_bill_id" class="form-control select2">
-                <option value="">-- No Original Bill / Direct Return --</option>
-                @foreach ($salesBills as $id => $no)
-                    <option value="{{ $id }}" @selected(old('sales_bill_id', $ret->sales_bill_id ?? '') == $id)>{{ $no }}</option>
-                @endforeach
-            </select>
-            <div class="input-group-append">
-                <button type="button" id="btn-load-bill" class="btn btn-outline-info" title="Load items from this sales bill">
-                    <i class="fas fa-file-import mr-1"></i> Load Items
-                </button>
-            </div>
-        </div>
-        <small class="text-muted">Select bill and click "Load Items" to auto-populate returned lines.</small>
+        <select name="sales_bill_id" id="sales_bill_id" class="form-control select2">
+            <option value="">-- No Original Bill / Direct Return --</option>
+            @foreach ($salesBills as $id => $no)
+                <option value="{{ $id }}" @selected(old('sales_bill_id', $ret->sales_bill_id ?? '') == $id)>{{ $no }}</option>
+            @endforeach
+        </select>
+        <small class="text-muted">Bill select karte hi items automatically load ho jayenge.</small>
     </div>
     <div class="col-md-4 mb-3">
         <label for="return_mode" class="font-weight-bold">Return Mode <span class="text-danger">*</span></label>
@@ -261,26 +254,45 @@
         document.getElementById('total_extra_cess')?.addEventListener('input', recalculateAll);
         document.getElementById('gst_calamity_cess')?.addEventListener('input', recalculateAll);
 
-        // Load items from Bill
-        document.getElementById('btn-load-bill')?.addEventListener('click', function () {
-            const billId = document.getElementById('sales_bill_id')?.value;
-            if (!billId) {
-                alert('Please select a Sales Bill first.');
-                return;
+        // Customer Select2 Remote AJAX search (search any customer by name or mobile)
+        let $custSelect = $('#customer_id');
+        if ($custSelect.hasClass('select2-hidden-accessible')) {
+            $custSelect.select2('destroy');
+        }
+        $custSelect.select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            placeholder: '-- Search Customer by Name or Mobile --',
+            allowClear: true,
+            ajax: {
+                url: '{{ route("sales.sales-bills.customer-search") }}',
+                dataType: 'json',
+                delay: 200,
+                data: function (params) {
+                    return { q: params.term || '' };
+                },
+                processResults: function (data) {
+                    return { results: data.results };
+                },
+                cache: true
             }
+        });
 
-            const btn = this;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Loading…';
+        // Automatic Bill Items Loader when Bill is selected
+        let isAutoLoadingBill = false;
+        function loadBillItems(billId) {
+            if (!billId || isAutoLoadingBill) return;
+
+            isAutoLoadingBill = true;
+            const tbody = document.getElementById('sr-items-body');
+            const originalRows = tbody.innerHTML;
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-primary"><i class="fas fa-spinner fa-spin fa-2x"></i><div class="mt-2 font-weight-bold">Loading items from sales bill...</div></td></tr>';
 
             fetch(`/sales/sales-returns/bill-items/${billId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => res.json())
             .then(data => {
-                if (data.customer_id) {
-                    $('#customer_id').val(data.customer_id).trigger('change');
-                }
                 if (data.branch_id) {
                     $('#branch_id').val(data.branch_id).trigger('change');
                 }
@@ -289,7 +301,6 @@
                 }
 
                 if (data.items && data.items.length > 0) {
-                    const tbody = document.getElementById('sr-items-body');
                     tbody.innerHTML = '';
                     data.items.forEach((item, idx) => {
                         const template = document.getElementById('sr-row-template').innerHTML;
@@ -323,17 +334,27 @@
                     rowIndex = data.items.length;
                     recalculateAll();
                 } else {
+                    tbody.innerHTML = originalRows;
                     alert('No items found in selected bill.');
                 }
             })
             .catch(err => {
                 console.error(err);
+                tbody.innerHTML = originalRows;
                 alert('Failed to load items from bill.');
             })
             .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-file-import mr-1"></i> Load Items';
+                isAutoLoadingBill = false;
             });
+        }
+
+        $('#sales_bill_id').on('change', function () {
+            let billId = $(this).val();
+            if (billId) {
+                loadBillItems(billId);
+            }
+        });
+
         // Customer Sales Bills filter: only show invoices belonging to selected customer
         let customerBillsLoading = false;
         function loadCustomerBills(customerId, selectedBillId = null) {

@@ -80,6 +80,7 @@ class PurchaseInvoiceController extends Controller
     public function create(Request $request)
     {
         $sourceReceiptNote = null;
+        $sourceOrder = null;
         $convertedItems = collect();
 
         if ($request->filled('from_receipt_note')) {
@@ -100,6 +101,24 @@ class PurchaseInvoiceController extends Controller
                     'item' => $rnItem->item,
                 ];
             })->filter(fn ($line) => $line['qty'] > 0)->values();
+        } elseif ($request->filled('from_order')) {
+            $sourceOrder = \App\Models\PurchaseOrder::with(['items.item.gstTax', 'supplier', 'branch'])
+                ->findOrFail($request->from_order);
+            $convertedItems = $sourceOrder->items->map(function ($poItem) {
+                return [
+                    'item_id' => $poItem->item_id,
+                    'exp_date' => null,
+                    'qty' => (float) $poItem->qty,
+                    'free_qty' => (float) ($poItem->free_qty ?? 0),
+                    'cost_price' => (float) $poItem->cost_price,
+                    'sell_price' => (float) ($poItem->sell_price ?? $poItem->item->sell_price ?? 0),
+                    'mrp' => (float) ($poItem->mrp ?? $poItem->item->mrp ?? 0),
+                    'disc_percent' => (float) ($poItem->disc_percent ?? 0),
+                    'disc_amount' => (float) ($poItem->disc_amount ?? 0),
+                    'gst_percent' => (float) ($poItem->gst_percent ?? $poItem->item->gstTax?->percentage ?? 0),
+                    'item' => $poItem->item,
+                ];
+            })->filter(fn ($line) => $line['qty'] > 0)->values();
         }
 
         $options = $this->formOptions(null, $convertedItems);
@@ -107,9 +126,14 @@ class PurchaseInvoiceController extends Controller
             $options['sourceReceiptNote'] = $sourceReceiptNote;
             $options['convertedItems'] = $convertedItems;
         }
+        if ($sourceOrder) {
+            $options['sourceOrder'] = $sourceOrder;
+            $options['convertedItems'] = $convertedItems;
+        }
 
         return view('purchase.purchase-invoices.create', array_merge($options, [
             'sourceReceiptNote' => $sourceReceiptNote,
+            'sourceOrder' => $sourceOrder,
             'convertedItems' => $convertedItems,
         ]));
     }
