@@ -1,6 +1,7 @@
 @php
     $entry = $damageStock ?? null;
-    $existingItems = $entry?->items ?? collect();
+    $oldItems = old('items');
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($entry?->items ?? collect());
 @endphp
 
 <div class="row mb-3">

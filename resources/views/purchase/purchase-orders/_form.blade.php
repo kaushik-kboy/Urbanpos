@@ -1,6 +1,7 @@
 @php
     $po = $purchaseOrder ?? null;
-    $existingItems = $po?->items ?? collect();
+    $oldItems = old('items');
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($po?->items ?? collect());
 @endphp
 
 <h5 class="mb-3">Header</h5>

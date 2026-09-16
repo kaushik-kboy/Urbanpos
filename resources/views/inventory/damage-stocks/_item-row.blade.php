@@ -1,16 +1,20 @@
 @php
     $idx = $index ?? 0;
-    $item = $line?->item ?? null;
-    $itemId = $line?->item_id ?? null;
+    $itemId = data_get($line, 'item_id');
+    $item = is_object($line) && isset($line->item) ? $line->item : ($itemId ? \App\Models\Item::find($itemId) : null);
     $displayCode = $item?->ean_upc_code ?: ($item?->item_code ?: '');
     $displayText = $item ? "{$item->name}" . ($displayCode ? " [{$displayCode}]" : "") : '';
-    $qty = $line?->qty ?? '';
-    $costPrice = $line?->cost_price ?? ($item?->cost_price ?? '');
-    $sellPrice = $line?->sell_price ?? ($item?->sell_price ?? '');
-    $mrp = $line?->mrp ?? ($item?->mrp ?? '');
-    $gstPercent = $line?->gst_percent ?? ($item?->gstTax?->percentage ?? 0);
-    $gstTaxAmount = $line?->gst_tax_amount ?? 0;
-    $netAmount = $line?->net_amount ?? 0;
+    $expDate = data_get($line, 'exp_date');
+    if ($expDate instanceof \DateTimeInterface) {
+        $expDate = $expDate->format('Y-m-d');
+    }
+    $qty = data_get($line, 'qty', '');
+    $costPrice = data_get($line, 'cost_price', $item?->cost_price ?? '');
+    $sellPrice = data_get($line, 'sell_price', $item?->sell_price ?? '');
+    $mrp = data_get($line, 'mrp', $item?->mrp ?? '');
+    $gstPercent = data_get($line, 'gst_percent', $item?->gstTax?->percentage ?? 0);
+    $gstTaxAmount = data_get($line, 'gst_tax_amount', 0);
+    $netAmount = data_get($line, 'net_amount', 0);
 @endphp
 
 <tr class="item-row">
@@ -42,7 +46,7 @@
     {{-- Exp Date --}}
     <td style="width: 130px;">
         <input type="date" name="items[{{ $idx }}][exp_date]" 
-               value="{{ optional($line->exp_date ?? null)->format('Y-m-d') }}" 
+               value="{{ $expDate }}" 
                class="form-control form-control-sm item-exp-date">
     </td>
 

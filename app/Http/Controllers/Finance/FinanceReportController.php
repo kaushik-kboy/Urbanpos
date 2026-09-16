@@ -165,4 +165,66 @@ class FinanceReportController extends Controller
             'netProfit'
         ));
     }
+
+    public function cashBankBook(Request $request)
+    {
+        $from = $request->input('from', now()->startOfMonth()->format('Y-m-d'));
+        $to = $request->input('to', now()->format('Y-m-d'));
+        $accountType = $request->input('account_type', 'All');
+        $ledgerId = $request->input('ledger_id');
+        $branchId = $request->input('branch_id');
+
+        $groups = match ($accountType) {
+            'Cash' => ['Cash in Hand'],
+            'Bank' => ['Bank Account', 'Bank Accounts', 'Bank OCC Account'],
+            default => ['Cash in Hand', 'Bank Account', 'Bank Accounts', 'Bank OCC Account'],
+        };
+
+        $ledgersQuery = Ledger::where(function ($q) use ($groups) {
+            $q->whereIn('ledger_group', $groups)
+              ->orWhere('name', 'like', '%Cash%')
+              ->orWhere('name', 'like', '%Bank%');
+        });
+
+        $availableLedgers = (clone $ledgersQuery)->orderBy('name')->pluck('name', 'id');
+        $targetLedgerIds = $ledgerId ? [$ledgerId] : (clone $ledgersQuery)->pluck('id')->toArray();
+
+        $openingBalance = 0;
+        foreach ($targetLedgerIds as $id) {
+            $l = Ledger::find($id);
+            if ($l) {
+                $base = $l->opening_balance_type === 'Debit' ? (float) $l->opening_balance : -(float) $l->opening_balance;
+                $priorMovements = (float) $l->lines()
+                    ->whereHas('journalEntry', function ($q) use ($from, $branchId) {
+                        $q->whereDate('voucher_date', '<', $from);
+                        if ($branchId) $q->where('branch_id', $branchId);
+                    })
+                    ->selectRaw('COALESCE(SUM(debit), 0) - COALESCE(SUM(credit), 0) as net')
+                    ->value('net');
+                $openingBalance += ($base + $priorMovements);
+            }
+        }
+
+        $lines = \App\Models\JournalEntryLine::with(['journalEntry.branch', 'ledger'])
+            ->whereIn('ledger_id', $targetLedgerIds)
+            ->whereHas('journalEntry', function ($q) use ($from, $to, $branchId) {
+                $q->whereDate('voucher_date', '>=', $from)
+                  ->whereDate('voucher_date', '<=', $to);
+                if ($branchId) $q->where('branch_id', $branchId);
+            })
+            ->get()
+            ->sortBy(fn ($l) => $l->journalEntry->voucher_date . '_' . str_pad((string)$l->journalEntry->id, 8, '0', STR_PAD_LEFT))
+            ->values();
+
+        $totalDebit = (float) $lines->sum('debit');
+        $totalCredit = (float) $lines->sum('credit');
+        $closingBalance = $openingBalance + $totalDebit - $totalCredit;
+
+        $branches = \App\Models\Branch::orderBy('name')->pluck('name', 'id');
+
+        return view('finance.reports.cash-bank-book', compact(
+            'from', 'to', 'accountType', 'ledgerId', 'branchId', 'branches',
+            'availableLedgers', 'lines', 'openingBalance', 'totalDebit', 'totalCredit', 'closingBalance'
+        ));
+    }
 }

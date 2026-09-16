@@ -5,6 +5,7 @@ namespace App\Services\Accounting;
 use App\Models\JournalEntry;
 use App\Models\Ledger;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\SalesBill;
 use App\Models\SalesReturn;
 use App\Models\TenderType;
@@ -98,6 +99,29 @@ class LedgerPostingService
 
         $this->createEntry('Purchase', $invoice->invoice_date, $invoice->branch_id, PurchaseInvoice::class, $invoice->id,
             "Purchase Invoice {$invoice->invoice_number}", $lines);
+    }
+
+    public function postPurchaseReturn(PurchaseReturn $return): void
+    {
+        $this->reverse(PurchaseReturn::class, $return->id);
+
+        $supplierLedger = $return->supplier->ledger ?? Ledger::findOrCreateSystemLedger($return->supplier->name, 'Sundry Creditors');
+        $purchaseLedger = Ledger::findOrCreateSystemLedger('Purchase Account', 'Purchase Account');
+        $gstLedger = Ledger::findOrCreateSystemLedger('GST Input', 'Duties & Taxes');
+
+        $taxable = round($return->total - $return->total_gst, 2);
+
+        $lines = [
+            ['ledger_id' => $supplierLedger->id, 'debit' => $return->total, 'credit' => 0],
+            ['ledger_id' => $purchaseLedger->id, 'debit' => 0, 'credit' => $taxable],
+        ];
+
+        if ($return->total_gst > 0) {
+            $lines[] = ['ledger_id' => $gstLedger->id, 'debit' => 0, 'credit' => $return->total_gst];
+        }
+
+        $this->createEntry('Purchase Return', $return->return_date, $return->branch_id, PurchaseReturn::class, $return->id,
+            "Purchase Return {$return->return_number}", $lines);
     }
 
     public function postSalesReturn(SalesReturn $return): void

@@ -155,6 +155,34 @@ class SalesReturnController extends Controller
     }
 
     /**
+     * AJAX endpoint: return items from a sales bill for quick population.
+     */
+    public function billItems(SalesBill $salesBill)
+    {
+        $items = $salesBill->items()->with('item')->get()->map(function ($line) {
+            return [
+                'item_id' => $line->item_id,
+                'item_name' => $line->item?->name ?? 'Unknown',
+                'exp_date' => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
+                'qty' => (float) $line->qty,
+                'sell_price' => (float) $line->sell_price,
+                'mrp' => (float) ($line->mrp ?? 0),
+                'disc_percent' => (float) ($line->disc_percent ?? 0),
+                'disc_amount' => (float) ($line->disc_amount ?? 0),
+                'gst_percent' => (float) ($line->gst_percent ?? 0),
+                'net_amount' => (float) ($line->net_amount ?? 0),
+            ];
+        });
+
+        return response()->json([
+            'customer_id' => $salesBill->customer_id,
+            'branch_id' => $salesBill->branch_id,
+            'sales_type' => $salesBill->sales_type,
+            'items' => $items,
+        ]);
+    }
+
+    /**
      * Restores stock at the ORIGINAL sale's cost_at_sale when the return is linked to a
      * sales bill (per foundation spec: a return restores the original cost basis, not
      * today's average) — falls back to cost-neutral (current average) when unlinked.

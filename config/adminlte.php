@@ -477,7 +477,7 @@ return [
         ],
         [
             'text' => 'Purchase Returns',
-            'url' => 'purchase/aux/purchase-returns',
+            'url' => 'purchase/purchase-returns',
             'icon' => 'fas fa-fw fa-undo-alt',
         ],
         [
@@ -658,7 +658,9 @@ return [
             'submenu' => [
                 ['text' => 'General Ledger', 'url' => 'finance/reports/general-ledger'],
                 ['text' => 'Day Book', 'url' => 'finance/reports/day-book'],
+                ['text' => 'Cash & Bank Book', 'url' => 'finance/reports/cash-bank-book'],
                 ['text' => 'Trial Balance', 'url' => 'finance/reports/trial-balance'],
+                ['text' => 'Profit & Loss', 'url' => 'finance/reports/profit-loss'],
             ],
         ],
     ],

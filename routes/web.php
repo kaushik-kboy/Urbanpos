@@ -22,6 +22,7 @@ use App\Http\Controllers\Master\UomController;
 use App\Http\Controllers\Master\BrandController;
 use App\Http\Controllers\Purchase\PurchaseInvoiceController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
+use App\Http\Controllers\Purchase\PurchaseReturnController;
 use App\Http\Controllers\Inventory\DamageStockController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\StockUpdateController;
@@ -133,6 +134,8 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
     Route::get('purchase-invoices/item-details/{item}', [PurchaseInvoiceController::class, 'itemDetails'])->name('purchase-invoices.item-details');
     $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
     $gatedResource('purchase-invoices', PurchaseInvoiceController::class, 'purchase-invoices');
+    Route::get('purchase-returns/invoice-items/{purchaseInvoice}', [PurchaseReturnController::class, 'invoiceItems'])->name('purchase-returns.invoice-items');
+    $gatedResource('purchase-returns', PurchaseReturnController::class, 'purchase-returns');
     Route::get('aux/{module}', [PurchaseAuxController::class, 'renderModule'])->name('aux');
 });
 
@@ -208,6 +211,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('sales-bills/item-list', [SalesBillController::class, 'itemList'])->name('sales-bills.item-list');
     Route::get('sales-bills/lookup-item', [SalesBillController::class, 'lookupItem'])->name('sales-bills.lookup-item');
     $gatedResource('sales-bills', SalesBillController::class, 'sales-bills');
+    Route::get('sales-returns/bill-items/{salesBill}', [SalesReturnController::class, 'billItems'])->name('sales-returns.bill-items');
     $gatedResource('sales-returns', SalesReturnController::class, 'sales-returns');
     Route::get('aux/{module}', [SalesAuxController::class, 'renderModule'])->name('aux');
 });
@@ -259,6 +263,7 @@ Route::middleware('auth')->prefix('finance')->name('finance.')->group(function (
         Route::get('day-book', [FinanceReportController::class, 'dayBook'])->name('day-book');
         Route::get('trial-balance', [FinanceReportController::class, 'trialBalance'])->name('trial-balance');
         Route::get('profit-loss', [FinanceReportController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('cash-bank-book', [FinanceReportController::class, 'cashBankBook'])->name('cash-bank-book');
     });
 });
 
