@@ -842,13 +842,22 @@ class ReportController extends Controller
         ));
     }
 
-    public function renderGenericReport(Request $request, string $module)
+    public function renderGenericReport(Request $request, string $module, \App\Services\Reports\DynamicReportService $reportService)
     {
-        $title = ucwords(str_replace(['-', '_'], ' ', $module));
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $search = $request->input('search');
 
-        return view('reports.generic-report', compact('title', 'module', 'branches', 'from', 'to', 'branchId'));
+        $reportData = $reportService->generate($request, $module);
+
+        return view('reports.generic-report', array_merge($reportData, [
+            'module' => $module,
+            'branches' => $branches,
+            'from' => $from,
+            'to' => $to,
+            'branchId' => $branchId,
+            'search' => $search,
+        ]));
     }
 
     private function dateAndBranchFilter(Request $request): array
