@@ -60,9 +60,41 @@ class PurchaseOrderController extends Controller
         return view('purchase.purchase-orders.index', compact('purchaseOrders', 'branches', 'suppliers', 'statuses'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('purchase.purchase-orders.create', $this->formOptions());
+        $options = $this->formOptions();
+        $indent = null;
+        $initialItems = null;
+
+        if ($request->filled('from_indent')) {
+            $indent = \App\Models\PurchaseIndent::with(['items.item', 'branch'])->findOrFail($request->from_indent);
+            if ($indent->status !== 'Approved') {
+                return redirect()->route('purchase.purchase-indents.show', $indent)
+                    ->with('error', 'Only approved indents can be converted to Purchase Orders.');
+            }
+
+            $initialItems = $indent->items->map(function ($line) {
+                $qty = (float) ($line->approved_qty !== null ? $line->approved_qty : $line->requested_qty);
+                $costPrice = (float) ($line->estimated_cost > 0 ? $line->estimated_cost : ($line->item->cost_price ?? 0));
+
+                return [
+                    'item_id' => $line->item_id,
+                    'qty' => $qty > 0 ? $qty : 1,
+                    'free_qty' => 0,
+                    'cost_price' => $costPrice,
+                    'sell_price' => (float) ($line->item->sell_price ?? 0),
+                    'mrp' => (float) ($line->item->mrp ?? 0),
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => (float) ($line->item->tax_rate ?? 0),
+                ];
+            });
+        }
+
+        return view('purchase.purchase-orders.create', array_merge($options, [
+            'indent' => $indent,
+            'initialItems' => $initialItems,
+        ]));
     }
 
     public function store(Request $request)
@@ -78,6 +110,16 @@ class PurchaseOrderController extends Controller
             ]));
 
             $purchaseOrder->items()->createMany($lines);
+
+            if (!empty($data['header']['purchase_indent_id'])) {
+                $indent = \App\Models\PurchaseIndent::find($data['header']['purchase_indent_id']);
+                if ($indent && $indent->status === 'Approved') {
+                    $indent->update([
+                        'status' => 'Converted',
+                        'purchase_order_id' => $purchaseOrder->id,
+                    ]);
+                }
+            }
 
             return $purchaseOrder;
         });
@@ -144,6 +186,16 @@ class PurchaseOrderController extends Controller
             'cancelled_at' => now(),
             'cancelled_by_id' => $request->user()->id,
         ]);
+
+        if ($purchaseOrder->purchase_indent_id) {
+            $indent = \App\Models\PurchaseIndent::find($purchaseOrder->purchase_indent_id);
+            if ($indent && $indent->status === 'Converted') {
+                $indent->update([
+                    'status' => 'Approved',
+                    'purchase_order_id' => null,
+                ]);
+            }
+        }
 
         $this->auditLogger->log('cancel', $purchaseOrder, $oldValues, ['status' => 'Cancelled'], $data['reason']);
 
@@ -222,6 +274,7 @@ class PurchaseOrderController extends Controller
             'po_date' => ['required', 'date'],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
+            'purchase_indent_id' => ['nullable', 'exists:purchase_indents,id'],
             'purchase_type' => ['required', 'in:Local,Interstate'],
             'c_form' => ['required', 'in:Against C-Form,No Forms'],
             'freight' => ['nullable', 'numeric', 'min:0'],

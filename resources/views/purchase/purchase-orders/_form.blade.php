@@ -1,12 +1,25 @@
 @php
     $po = $purchaseOrder ?? null;
+    $indent = $indent ?? null;
     $oldItems = old('items');
-    $existingItems = !empty($oldItems) ? collect($oldItems) : ($po?->items ?? collect());
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($initialItems ?? ($po?->items ?? collect()));
 @endphp
+
+@if ($indent)
+    <input type="hidden" name="purchase_indent_id" value="{{ $indent->id }}">
+    <div class="alert alert-info mb-3">
+        <i class="fas fa-link mr-1"></i> Creating Purchase Order from Indent <strong>#{{ $indent->indent_number }}</strong>
+        ({{ $indent->branch->name ?? 'Branch' }}, Priority: <span class="badge badge-warning">{{ $indent->priority }}</span>, Department: <strong>{{ $indent->department }}</strong>)
+    </div>
+@elseif ($po?->purchase_indent_id)
+    <div class="alert alert-info mb-3">
+        <i class="fas fa-link mr-1"></i> Linked to Purchase Indent <strong>#{{ $po->purchaseIndent->indent_number ?? $po->purchase_indent_id }}</strong>
+    </div>
+@endif
 
 <h5 class="mb-3">Header</h5>
 <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$po->supplier_id ?? ''" placeholder="Select a supplier" />
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$po->branch_id ?? ''" placeholder="Select a branch" />
+<x-select name="branch_id" label="Branch" :options="$branches" :selected="$po->branch_id ?? ($indent->branch_id ?? '')" placeholder="Select a branch" />
 <x-field name="po_date" label="PO Date" type="date" :value="optional($po->po_date ?? now())->format('Y-m-d')" />
 <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$po->purchase_type ?? 'Local'" />
 <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$po->c_form ?? 'Against C-Form'" />
@@ -58,7 +71,7 @@
 <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="$po->other_disc_amt ?? 0" />
 <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$po->total_extra_cess ?? 0" />
 <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$po->total_weight ?? 0" />
-<x-textarea name="remarks" label="Remarks" :value="$po->remarks ?? ''" />
+<x-textarea name="remarks" label="Remarks" :value="$po->remarks ?? ($indent ? 'Requisition from Indent #' . $indent->indent_number . ($indent->remarks ? ' - ' . $indent->remarks : '') : '')" />
 <x-textarea name="message" label="Message" :value="$po->message ?? ''" />
 
 <template id="po-row-template">

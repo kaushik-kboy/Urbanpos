@@ -12,7 +12,7 @@ class PurchaseOrder extends Model
     use HasFactory;
 
     protected $fillable = [
-        'po_number', 'po_date', 'supplier_id', 'branch_id', 'purchase_type', 'c_form',
+        'po_number', 'po_date', 'supplier_id', 'branch_id', 'purchase_indent_id', 'purchase_type', 'c_form',
         'item_disc_amount', 'disc_percent', 'disc_amount', 'freight', 'round_off',
         'scheme_item_disc_amt', 'other_disc_amt', 'total_gst', 'total_extra_cess',
         'total_qty', 'total_weight', 'total', 'remarks', 'message', 'status',
@@ -52,5 +52,10 @@ class PurchaseOrder extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by_id');
+    }
+
+    public function purchaseIndent(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseIndent::class, 'purchase_indent_id');
     }
 }

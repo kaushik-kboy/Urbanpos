@@ -56,6 +56,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'tender-types' => ['create', 'edit', 'cancel'],
         'tender-type-values' => ['create', 'edit', 'cancel'],
         'purchase-orders' => ['create', 'edit', 'cancel'],
+        'purchase-indents' => ['create', 'edit', 'cancel', 'approve', 'reject'],
         'repack' => ['create'],
         'kit-preparation' => ['create'],
         'kit-unpack' => ['create'],
@@ -94,7 +95,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'item-categories', 'item-category-values', 'brands', 'uoms',
         'customer-categories', 'customers', 'areas', 'pet-types', 'breeds', 'colors',
         'suppliers', 'registers', 'tender-types', 'tender-type-values',
-        'purchase-orders', 'repack', 'kit-preparation', 'kit-unpack', 'till',
+        'purchase-orders', 'purchase-indents', 'repack', 'kit-preparation', 'kit-unpack', 'till',
     ];
 
     /**

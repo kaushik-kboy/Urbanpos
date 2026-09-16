@@ -23,6 +23,7 @@ use App\Http\Controllers\Master\TenderTypeValueController;
 use App\Http\Controllers\Master\UomController;
 use App\Http\Controllers\Master\BrandController;
 use App\Http\Controllers\Purchase\PurchaseInvoiceController;
+use App\Http\Controllers\Purchase\PurchaseIndentController;
 use App\Http\Controllers\Purchase\PurchaseOrderController;
 use App\Http\Controllers\Purchase\PurchaseReceiptNoteController;
 use App\Http\Controllers\Purchase\PurchaseReturnController;
@@ -147,6 +148,13 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
     Route::get('purchase-invoices/item-list', [PurchaseInvoiceController::class, 'itemList'])->name('purchase-invoices.item-list');
     Route::get('purchase-invoices/lookup-item', [PurchaseInvoiceController::class, 'lookupItem'])->name('purchase-invoices.lookup-item');
     Route::get('purchase-invoices/item-details/{item}', [PurchaseInvoiceController::class, 'itemDetails'])->name('purchase-invoices.item-details');
+    Route::get('purchase-indents/item-stock', [PurchaseIndentController::class, 'itemStock'])->name('purchase-indents.item-stock');
+    Route::get('purchase-indents/{purchase_indent}/print', [PurchaseIndentController::class, 'print'])->name('purchase-indents.print');
+    Route::middleware(['permission:purchase-indents.approve', 'branch.access'])
+        ->post('purchase-indents/{purchase_indent}/approve', [PurchaseIndentController::class, 'approve'])->name('purchase-indents.approve');
+    Route::middleware(['permission:purchase-indents.reject', 'branch.access'])
+        ->post('purchase-indents/{purchase_indent}/reject', [PurchaseIndentController::class, 'reject'])->name('purchase-indents.reject');
+    $gatedResource('purchase-indents', PurchaseIndentController::class, 'purchase-indents');
     $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
     Route::get('purchase-receipt-notes/{purchaseReceiptNote}/print', [PurchaseReceiptNoteController::class, 'print'])->name('purchase-receipt-notes.print');
     $gatedResource('purchase-receipt-notes', PurchaseReceiptNoteController::class, 'purchase-receipt-notes');

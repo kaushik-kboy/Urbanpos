@@ -491,8 +491,8 @@ return [
             'icon' => 'fas fa-fw fa-dolly-flatbed',
         ],
         [
-            'text' => 'Indent',
-            'url' => 'purchase/aux/indents',
+            'text' => 'Purchase Indent',
+            'url' => 'purchase/purchase-indents',
             'icon' => 'fas fa-fw fa-clipboard-list',
         ],
         [
