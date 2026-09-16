@@ -652,6 +652,11 @@ return [
             'icon' => 'fas fa-fw fa-file-invoice',
         ],
         [
+            'text' => 'Credit Settlement',
+            'url' => 'finance/settlements',
+            'icon' => 'fas fa-fw fa-hand-holding-usd',
+        ],
+        [
             'text' => 'Finance Reports',
             'url' => 'finance/reports',
             'icon' => 'fas fa-fw fa-chart-pie',
@@ -659,6 +664,7 @@ return [
                 ['text' => 'General Ledger', 'url' => 'finance/reports/general-ledger'],
                 ['text' => 'Day Book', 'url' => 'finance/reports/day-book'],
                 ['text' => 'Cash & Bank Book', 'url' => 'finance/reports/cash-bank-book'],
+                ['text' => 'Billwise Outstanding Aging', 'url' => 'finance/reports/outstanding-aging'],
                 ['text' => 'Trial Balance', 'url' => 'finance/reports/trial-balance'],
                 ['text' => 'Profit & Loss', 'url' => 'finance/reports/profit-loss'],
             ],

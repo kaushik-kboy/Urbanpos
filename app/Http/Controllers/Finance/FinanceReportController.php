@@ -227,4 +227,163 @@ class FinanceReportController extends Controller
             'availableLedgers', 'lines', 'openingBalance', 'totalDebit', 'totalCredit', 'closingBalance'
         ));
     }
+
+    public function outstandingAging(Request $request)
+    {
+        $partyType = $request->input('party_type', 'Customer') === 'Supplier' ? 'Supplier' : 'Customer';
+        $branchId = $request->input('branch_id');
+        $asOfDate = $request->input('as_of_date', now()->format('Y-m-d'));
+        $asOf = \Carbon\Carbon::parse($asOfDate);
+
+        $branches = \App\Models\Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $rows = [];
+
+        if ($partyType === 'Customer') {
+            $salesBills = \App\Models\SalesBill::with(['customer', 'payments.tenderType', 'settlementItems.settlement'])
+                ->whereDate('bill_date', '<=', $asOfDate);
+
+            if ($branchId) {
+                $salesBills->where('branch_id', $branchId);
+            }
+
+            $bills = $salesBills->get();
+
+            $partyGroups = $bills->groupBy('customer_id');
+
+            foreach ($partyGroups as $customerId => $partyBills) {
+                $customer = $partyBills->first()->customer;
+                if (!$customer) continue;
+
+                $partyTotalDue = 0.0;
+                $b0_30 = 0.0;
+                $b31_60 = 0.0;
+                $b61_90 = 0.0;
+                $b90_plus = 0.0;
+                $billCount = 0;
+
+                foreach ($partyBills as $sb) {
+                    $posImmediatePaid = 0.0;
+                    if ($sb->payments->isNotEmpty()) {
+                        $posImmediatePaid = (float) $sb->payments
+                            ->filter(fn ($p) => ($p->tenderType?->type ?? '') !== 'Credit')
+                            ->sum('amount');
+                    } elseif (!empty($sb->payment_type) && strtolower($sb->payment_type) !== 'credit' && strtolower($sb->payment_type) !== 'none') {
+                        $posImmediatePaid = (float) $sb->total;
+                    }
+
+                    $settledSum = (float) $sb->settlementItems
+                        ->filter(fn ($si) => ($si->settlement?->status ?? 'Active') === 'Active' && $si->settlement?->settlement_date?->lte($asOf))
+                        ->sum(fn ($si) => (float) $si->settled_amount + (float) $si->discount_amount);
+
+                    $balanceDue = round((float) $sb->total - $posImmediatePaid - $settledSum, 2);
+
+                    if ($balanceDue > 0.01) {
+                        $partyTotalDue += $balanceDue;
+                        $billCount++;
+                        $days = $sb->bill_date ? max(0, (int) $sb->bill_date->diffInDays($asOf, false)) : 0;
+
+                        if ($days <= 30) {
+                            $b0_30 += $balanceDue;
+                        } elseif ($days <= 60) {
+                            $b31_60 += $balanceDue;
+                        } elseif ($days <= 90) {
+                            $b61_90 += $balanceDue;
+                        } else {
+                            $b90_plus += $balanceDue;
+                        }
+                    }
+                }
+
+                if ($partyTotalDue > 0.01) {
+                    $rows[] = [
+                        'party_id' => $customer->id,
+                        'party_name' => $customer->name,
+                        'phone' => $customer->phone ?: '-',
+                        'bill_count' => $billCount,
+                        'total_due' => $partyTotalDue,
+                        'bucket_0_30' => $b0_30,
+                        'bucket_31_60' => $b31_60,
+                        'bucket_61_90' => $b61_90,
+                        'bucket_90_plus' => $b90_plus,
+                    ];
+                }
+            }
+        } else {
+            $purchaseInvoices = \App\Models\PurchaseInvoice::with(['supplier', 'settlementItems.settlement'])
+                ->where('status', '!=', 'Cancelled')
+                ->whereDate('invoice_date', '<=', $asOfDate);
+
+            if ($branchId) {
+                $purchaseInvoices->where('branch_id', $branchId);
+            }
+
+            $invoices = $purchaseInvoices->get();
+            $partyGroups = $invoices->groupBy('supplier_id');
+
+            foreach ($partyGroups as $supplierId => $partyInvoices) {
+                $supplier = $partyInvoices->first()->supplier;
+                if (!$supplier) continue;
+
+                $partyTotalDue = 0.0;
+                $b0_30 = 0.0;
+                $b31_60 = 0.0;
+                $b61_90 = 0.0;
+                $b90_plus = 0.0;
+                $billCount = 0;
+
+                foreach ($partyInvoices as $pi) {
+                    $settledSum = (float) $pi->settlementItems
+                        ->filter(fn ($si) => ($si->settlement?->status ?? 'Active') === 'Active' && $si->settlement?->settlement_date?->lte($asOf))
+                        ->sum(fn ($si) => (float) $si->settled_amount + (float) $si->discount_amount);
+
+                    $balanceDue = round((float) $pi->total - $settledSum, 2);
+
+                    if ($balanceDue > 0.01) {
+                        $partyTotalDue += $balanceDue;
+                        $billCount++;
+                        $days = $pi->invoice_date ? max(0, (int) $pi->invoice_date->diffInDays($asOf, false)) : 0;
+
+                        if ($days <= 30) {
+                            $b0_30 += $balanceDue;
+                        } elseif ($days <= 60) {
+                            $b31_60 += $balanceDue;
+                        } elseif ($days <= 90) {
+                            $b61_90 += $balanceDue;
+                        } else {
+                            $b90_plus += $balanceDue;
+                        }
+                    }
+                }
+
+                if ($partyTotalDue > 0.01) {
+                    $rows[] = [
+                        'party_id' => $supplier->id,
+                        'party_name' => $supplier->name,
+                        'phone' => $supplier->phone ?: '-',
+                        'bill_count' => $billCount,
+                        'total_due' => $partyTotalDue,
+                        'bucket_0_30' => $b0_30,
+                        'bucket_31_60' => $b31_60,
+                        'bucket_61_90' => $b61_90,
+                        'bucket_90_plus' => $b90_plus,
+                    ];
+                }
+            }
+        }
+
+        // Sort by highest total due first
+        usort($rows, fn ($a, $b) => $b['total_due'] <=> $a['total_due']);
+
+        $totals = [
+            'total' => collect($rows)->sum('total_due'),
+            'b0_30' => collect($rows)->sum('bucket_0_30'),
+            'b31_60' => collect($rows)->sum('bucket_31_60'),
+            'b61_90' => collect($rows)->sum('bucket_61_90'),
+            'b90_plus' => collect($rows)->sum('bucket_90_plus'),
+        ];
+
+        return view('finance.reports.outstanding-aging', compact(
+            'partyType', 'branchId', 'asOfDate', 'branches', 'rows', 'totals'
+        ));
+    }
 }

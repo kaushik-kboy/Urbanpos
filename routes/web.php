@@ -37,6 +37,7 @@ use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\Sales\SalesQuotationController;
 use App\Http\Controllers\Sales\SalesReturnController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\Finance\BillSettlementController;
 use App\Http\Controllers\Finance\LedgerController;
 use App\Http\Controllers\Finance\VoucherController;
 use App\Http\Controllers\Finance\FinanceReportController;
@@ -261,6 +262,8 @@ Route::middleware('auth')->prefix('till')->name('till.')->group(function () {
 Route::middleware('auth')->prefix('finance')->name('finance.')->group(function () use ($gatedResource) {
     $gatedResource('ledgers', LedgerController::class, 'ledgers');
     $gatedResource('vouchers', VoucherController::class, 'vouchers');
+    Route::get('settlements/unpaid-bills', [BillSettlementController::class, 'unpaidBills'])->name('settlements.unpaid-bills');
+    $gatedResource('settlements', BillSettlementController::class, 'bill-settlements');
 
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [FinanceReportController::class, 'index'])->name('index');
@@ -269,6 +272,7 @@ Route::middleware('auth')->prefix('finance')->name('finance.')->group(function (
         Route::get('trial-balance', [FinanceReportController::class, 'trialBalance'])->name('trial-balance');
         Route::get('profit-loss', [FinanceReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('cash-bank-book', [FinanceReportController::class, 'cashBankBook'])->name('cash-bank-book');
+        Route::get('outstanding-aging', [FinanceReportController::class, 'outstandingAging'])->name('outstanding-aging');
     });
 });
 

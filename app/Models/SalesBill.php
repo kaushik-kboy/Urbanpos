@@ -54,4 +54,9 @@ class SalesBill extends Model
     {
         return $this->hasMany(SalesBillPayment::class);
     }
+
+    public function settlementItems(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(BillSettlementItem::class, 'billable');
+    }
 }

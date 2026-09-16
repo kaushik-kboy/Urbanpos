@@ -27,6 +27,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'stock-update-approval' => ['approve', 'reject'],
         'stock-transfers' => ['create', 'receive', 'cancel'],
         'vouchers' => ['create', 'edit', 'cancel'],
+        'bill-settlements' => ['create', 'cancel'],
         // Widened from edit-only to full CRUD — same Owner-only tier as before, just
         // consistently gated instead of leaving create/delete open to anyone.
         'gst-taxes' => ['create', 'edit', 'cancel'],
@@ -86,7 +87,7 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     private const MANAGER_MODULES = [
         'purchase-invoices', 'purchase-returns', 'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'damage-stocks',
-        'opening-stocks', 'stock-updates', 'stock-transfers',
+        'opening-stocks', 'stock-updates', 'stock-transfers', 'bill-settlements',
         'item-categories', 'item-category-values', 'brands', 'uoms',
         'customer-categories', 'customers', 'areas', 'pet-types', 'breeds', 'colors',
         'suppliers', 'registers', 'tender-types', 'tender-type-values',

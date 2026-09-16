@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Models\BillSettlement;
 use App\Models\JournalEntry;
 use App\Models\Ledger;
 use App\Models\PurchaseInvoice;
@@ -147,6 +148,64 @@ class LedgerPostingService
             "Sales Return {$return->return_number}", $lines);
     }
 
+    public function postBillSettlement(BillSettlement $settlement): JournalEntry
+    {
+        $this->reverse(BillSettlement::class, $settlement->id);
+
+        $bankLedger = $settlement->bankLedger;
+        $totalAmount = (float) $settlement->total_amount;
+        $discountAmount = (float) $settlement->discount_amount;
+        $totalSettled = round($totalAmount + $discountAmount, 2);
+
+        if ($settlement->settlement_type === 'Customer') {
+            $customer = $settlement->customer;
+            $customerLedger = $customer?->ledger ?? Ledger::findOrCreateSystemLedger($customer?->name ?: 'Customer', 'Sundry Debtors');
+
+            $lines = [
+                ['ledger_id' => $bankLedger->id, 'debit' => $totalAmount, 'credit' => 0],
+                ['ledger_id' => $customerLedger->id, 'debit' => 0, 'credit' => $totalSettled],
+            ];
+
+            if ($discountAmount > 0) {
+                $discountLedger = Ledger::findOrCreateSystemLedger('Discount Allowed', 'Indirect Expenses');
+                $lines[] = ['ledger_id' => $discountLedger->id, 'debit' => $discountAmount, 'credit' => 0];
+            }
+
+            return $this->createEntry(
+                'Receipt',
+                $settlement->settlement_date,
+                $settlement->branch_id,
+                BillSettlement::class,
+                $settlement->id,
+                "Customer Credit Settlement {$settlement->settlement_number} - {$customer?->name}",
+                $lines
+            );
+        } else {
+            $supplier = $settlement->supplier;
+            $supplierLedger = $supplier?->ledger ?? Ledger::findOrCreateSystemLedger($supplier?->name ?: 'Supplier', 'Sundry Creditors');
+
+            $lines = [
+                ['ledger_id' => $supplierLedger->id, 'debit' => $totalSettled, 'credit' => 0],
+                ['ledger_id' => $bankLedger->id, 'debit' => 0, 'credit' => $totalAmount],
+            ];
+
+            if ($discountAmount > 0) {
+                $discountLedger = Ledger::findOrCreateSystemLedger('Discount Received', 'Indirect Incomes');
+                $lines[] = ['ledger_id' => $discountLedger->id, 'debit' => 0, 'credit' => $discountAmount];
+            }
+
+            return $this->createEntry(
+                'Payment',
+                $settlement->settlement_date,
+                $settlement->branch_id,
+                BillSettlement::class,
+                $settlement->id,
+                "Supplier Credit Settlement {$settlement->settlement_number} - {$supplier?->name}",
+                $lines
+            );
+        }
+    }
+
     /**
      * Posts an offsetting (debit/credit swapped) entry for every not-yet-reversed
      * journal entry tied to a source document, instead of deleting it — preserves
@@ -190,7 +249,7 @@ class LedgerPostingService
         }
     }
 
-    private function createEntry(string $voucherType, $date, int $branchId, string $referenceType, int $referenceId, string $narration, array $lines): void
+    private function createEntry(string $voucherType, $date, int $branchId, string $referenceType, int $referenceId, string $narration, array $lines): JournalEntry
     {
         $entry = JournalEntry::create([
             'voucher_number' => $this->nextNumber($voucherType),
@@ -205,6 +264,8 @@ class LedgerPostingService
         ]);
 
         $entry->lines()->createMany($lines);
+
+        return $entry;
     }
 
     private function nextNumber(string $voucherType): string
