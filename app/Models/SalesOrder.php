@@ -57,4 +57,9 @@ class SalesOrder extends Model
     {
         return $this->belongsTo(SalesBill::class, 'converted_sales_bill_id');
     }
+
+    public function deliveryNotes(): HasMany
+    {
+        return $this->hasMany(SalesDeliveryNote::class);
+    }
 }

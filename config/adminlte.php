@@ -433,7 +433,7 @@ return [
         ],
         [
             'text' => 'Delivery Note',
-            'url' => 'sales/aux/delivery-notes',
+            'url' => 'sales/delivery-notes',
             'icon' => 'fas fa-fw fa-truck',
         ],
         [

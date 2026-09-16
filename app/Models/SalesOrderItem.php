@@ -14,6 +14,7 @@ class SalesOrderItem extends Model
         'sales_order_id',
         'item_id',
         'qty',
+        'dispatched_qty',
         'sell_price',
         'mrp',
         'disc_percent',
@@ -25,6 +26,19 @@ class SalesOrderItem extends Model
         'igst_amount',
         'net_amount',
     ];
+
+    protected $casts = [
+        'qty' => 'decimal:3',
+        'dispatched_qty' => 'decimal:3',
+        'sell_price' => 'decimal:2',
+        'mrp' => 'decimal:2',
+        'net_amount' => 'decimal:2',
+    ];
+
+    public function getPendingQtyAttribute(): float
+    {
+        return max(0, (float) $this->qty - (float) ($this->dispatched_qty ?? 0));
+    }
 
     public function order(): BelongsTo
     {

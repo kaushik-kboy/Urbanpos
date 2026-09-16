@@ -93,6 +93,28 @@ class SalesBillController extends Controller
                 ->findOrFail($request->input('from_order'));
             $options['sourceOrder'] = $order;
             $options['convertedItems'] = $order->items;
+        } elseif ($request->filled('from_delivery_note')) {
+            $deliveryNote = \App\Models\SalesDeliveryNote::with(['items.item.gstTax', 'customer', 'branch'])
+                ->findOrFail($request->input('from_delivery_note'));
+            $options['sourceDeliveryNote'] = $deliveryNote;
+            $options['convertedItems'] = $deliveryNote->items->map(function ($dnItem) {
+                return (object) [
+                    'item_id' => $dnItem->item_id,
+                    'item' => $dnItem->item,
+                    'qty' => $dnItem->dispatched_qty,
+                    'sell_price' => $dnItem->unit_price,
+                    'mrp' => $dnItem->mrp ?? $dnItem->item->mrp,
+                    'cost_at_sale' => $dnItem->cost_at_dispatch,
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => (float) ($dnItem->item->gstTax?->igst ?? 0),
+                    'gst_tax_amount' => 0,
+                    'cgst_amount' => 0,
+                    'sgst_amount' => 0,
+                    'igst_amount' => 0,
+                    'net_amount' => $dnItem->line_total,
+                ];
+            });
         }
 
         return view('sales.sales-bills.create', $options);
@@ -112,7 +134,12 @@ class SalesBillController extends Controller
 
         $salesBill = DB::transaction(function () use ($data, $request) {
             $lines = $this->computeLines($data['items'], $data['header']);
-            $this->assertStockAvailable($lines, $data['header']['branch_id']);
+            
+            // If converted from delivery note, physical stock was already deducted at dispatch
+            if (empty($data['header']['sales_delivery_note_id'])) {
+                $this->assertStockAvailable($lines, $data['header']['branch_id']);
+            }
+
             $totals = $this->computeTotals($lines, $data);
 
             $this->assertCreditLimit((int) $data['header']['customer_id'], $totals['total']);
@@ -122,7 +149,29 @@ class SalesBillController extends Controller
             ]));
 
             $createdItems = $salesBill->items()->createMany($lines);
-            $this->postStock($createdItems, $salesBill);
+
+            // Stock posting: if converted from a SalesDeliveryNote, physical stock
+            // was already dispatched. We only update cost_at_sale on bill items without
+            // duplicating stock in stock_ledger.
+            if (!empty($data['header']['sales_delivery_note_id'])) {
+                $sdn = \App\Models\SalesDeliveryNote::with('items')->find($data['header']['sales_delivery_note_id']);
+                if ($sdn) {
+                    $sdn->update([
+                        'status' => 'Invoiced',
+                        'sales_bill_id' => $salesBill->id,
+                    ]);
+                    $sdnCosts = $sdn->items->pluck('cost_at_dispatch', 'item_id');
+                    foreach ($createdItems as $item) {
+                        $cost = $sdnCosts[$item->item_id] ?? 0;
+                        if ($cost > 0) {
+                            $item->update(['cost_at_sale' => $cost]);
+                        }
+                    }
+                }
+            } else {
+                $this->postStock($createdItems, $salesBill);
+            }
+
             $this->persistPayments($salesBill, $data, $totals['total']);
             $this->ledgerPosting->postSalesBill($salesBill);
 
@@ -213,14 +262,25 @@ class SalesBillController extends Controller
         $oldValues = $salesBill->only(['bill_number', 'bill_date', 'customer_id', 'branch_id', 'total', 'status']);
 
         DB::transaction(function () use ($salesBill, $oldValues) {
-            $this->stockLedger->reverseByReference(SalesBill::class, $salesBill->id);
+            if ($salesBill->sales_delivery_note_id) {
+                $sdn = \App\Models\SalesDeliveryNote::find($salesBill->sales_delivery_note_id);
+                if ($sdn && $sdn->status === 'Invoiced') {
+                    $sdn->update([
+                        'status' => 'Dispatched',
+                        'sales_bill_id' => null,
+                    ]);
+                }
+            } else {
+                $this->stockLedger->reverseByReference(SalesBill::class, $salesBill->id);
+            }
+
             $this->ledgerPosting->reverse(SalesBill::class, $salesBill->id);
             $this->loyaltyService->reverseBillPoints($salesBill);
             $this->auditLogger->log('cancel', $salesBill, $oldValues, null);
             $salesBill->delete();
         });
 
-        return redirect()->route('sales.sales-bills.index')->with('status', 'Sales Bill deleted and stock restored.');
+        return redirect()->route('sales.sales-bills.index')->with('status', 'Sales Bill deleted and journal reversed.');
     }
 
     public function customerLoyalty(Customer $customer)
@@ -722,6 +782,7 @@ class SalesBillController extends Controller
             'bill_date' => ['required', 'date'],
             'customer_id' => ['required', 'exists:customers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
+            'sales_delivery_note_id' => ['nullable', 'exists:sales_delivery_notes,id'],
             'invoice_type' => ['required', 'in:Retail Invoice,Tax Invoice,Exempted'],
             'delivery_type' => ['required', 'string', 'max:255'],
             'delivery_time' => ['nullable', 'date_format:H:i'],

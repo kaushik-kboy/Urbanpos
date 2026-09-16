@@ -63,6 +63,12 @@
                     </a>
                 </div>
                 <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
+                    <a href="{{ route('sales.delivery-notes.create') }}" class="btn btn-block btn-outline-primary shadow-sm py-2">
+                        <i class="fas fa-truck-loading fa-lg d-block mb-1 text-primary"></i>
+                        <span class="font-weight-bold">New Delivery Note</span>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
                     <a href="{{ route('sales.sales-quotations.create') }}" class="btn btn-block btn-outline-info shadow-sm py-2">
                         <i class="fas fa-file-signature fa-lg d-block mb-1"></i>
                         <span class="font-weight-bold">New Quotation</span>

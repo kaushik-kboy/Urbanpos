@@ -2,8 +2,8 @@
     $bill = $salesBill ?? null;
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($bill?->items ?? ($convertedItems ?? collect()));
-    $selectedCust = $bill->customer_id ?? ($sourceQuotation->customer_id ?? ($sourceOrder->customer_id ?? ''));
-    $selectedBranch = $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ''));
+    $selectedCust = $bill->customer_id ?? ($sourceQuotation->customer_id ?? ($sourceOrder->customer_id ?? ($sourceDeliveryNote->customer_id ?? '')));
+    $selectedBranch = $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ($sourceDeliveryNote->branch_id ?? '')));
     $selectedSalesType = $bill->sales_type ?? ($sourceQuotation->sales_type ?? ($sourceOrder->sales_type ?? 'Local'));
 @endphp
 
@@ -16,6 +16,11 @@
     <div class="alert alert-info py-2 mb-3 shadow-sm border-0">
         <i class="fas fa-info-circle mr-1"></i> Converting from <strong>Sales Order #{{ $sourceOrder->order_number }}</strong> (Customer: {{ $sourceOrder->customer?->name }}).
         <input type="hidden" name="from_order_id" value="{{ $sourceOrder->id }}">
+    </div>
+@elseif(isset($sourceDeliveryNote))
+    <div class="alert alert-info py-2 mb-3 shadow-sm border-0">
+        <i class="fas fa-truck mr-1"></i> Converting from <strong>Delivery Note #{{ $sourceDeliveryNote->delivery_number }}</strong> (Customer: {{ $sourceDeliveryNote->customer?->name }}). <em>Stock was already deducted upon dispatch.</em>
+        <input type="hidden" name="sales_delivery_note_id" value="{{ $sourceDeliveryNote->id }}">
     </div>
 @endif
 

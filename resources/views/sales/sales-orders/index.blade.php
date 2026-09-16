@@ -109,8 +109,11 @@
                             <td class="font-weight-bold text-right text-success">₹{{ number_format($order->total, 2) }}</td>
                             <td class="text-right text-nowrap">
                                 @if($order->status !== 'Converted' && $order->status !== 'Cancelled')
+                                    <a href="{{ route('sales.delivery-notes.create', ['from_order' => $order->id]) }}" class="btn btn-xs btn-outline-info mr-1" title="Create Delivery Challan">
+                                        <i class="fas fa-truck mr-1"></i> Dispatch
+                                    </a>
                                     <a href="{{ route('sales.sales-bills.create', ['from_order' => $order->id]) }}" class="btn btn-xs btn-success mr-1 shadow-sm" title="1-Click Convert to Sales Bill">
-                                        <i class="fas fa-cash-register mr-1"></i> Convert to Bill
+                                        <i class="fas fa-cash-register mr-1"></i> Bill
                                     </a>
                                     <a href="{{ route('sales.sales-orders.edit', $order) }}" class="btn btn-xs btn-outline-secondary mr-1" title="Edit">
                                         <i class="fas fa-pen"></i>

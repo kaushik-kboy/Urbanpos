@@ -39,6 +39,7 @@ use App\Http\Controllers\Inventory\StockTransferController;
 use App\Http\Controllers\Sales\SalesBillController;
 use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\Sales\SalesQuotationController;
+use App\Http\Controllers\Sales\SalesDeliveryNoteController;
 use App\Http\Controllers\Sales\SalesReturnController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Finance\BillSettlementController;
@@ -233,6 +234,8 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');
     $gatedResource('sales-orders', SalesOrderController::class, 'sales-orders');
+    Route::get('delivery-notes/{deliveryNote}/print', [SalesDeliveryNoteController::class, 'print'])->name('delivery-notes.print');
+    $gatedResource('delivery-notes', SalesDeliveryNoteController::class, 'sales-delivery-notes');
     $gatedResource('sales-bills', SalesBillController::class, 'sales-bills');
     Route::get('sales-returns/bill-items/{salesBill}', [SalesReturnController::class, 'billItems'])->name('sales-returns.bill-items');
     $gatedResource('sales-returns', SalesReturnController::class, 'sales-returns');

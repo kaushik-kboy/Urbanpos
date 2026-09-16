@@ -21,6 +21,9 @@
         </div>
         <div>
             @if($salesOrder->status !== 'Converted' && $salesOrder->status !== 'Cancelled')
+                <a href="{{ route('sales.delivery-notes.create', ['from_order' => $salesOrder->id]) }}" class="btn btn-outline-info btn-sm mr-1 shadow-sm font-weight-bold">
+                    <i class="fas fa-truck mr-1"></i> Create Delivery Note
+                </a>
                 <a href="{{ route('sales.sales-bills.create', ['from_order' => $salesOrder->id]) }}" class="btn btn-success btn-sm mr-1 shadow-sm font-weight-bold">
                     <i class="fas fa-cash-register mr-1"></i> Convert to Sales Bill
                 </a>
