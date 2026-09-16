@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\ClosingStock;
 use App\Models\Customer;
 use App\Models\DamageStock;
 use App\Models\GstTax;
@@ -917,6 +918,130 @@ class DynamicReportService
     {
         switch ($slug) {
             case 'closing-stock':
+                $query = ClosingStock::query()
+                    ->when($branchId, function ($q) use ($branchId) {
+                        $branch = Branch::find($branchId);
+                        $branchName = $branch ? strtoupper(trim($branch->name)) : '';
+                        $q->where(function ($sub) use ($branchId, $branchName) {
+                            $sub->where('branch_id', $branchId)
+                                ->orWhere('store_id', (string) $branchId);
+                            if ($branchName !== '') {
+                                $sub->orWhere(DB::raw('UPPER(store_name)'), 'like', "%{$branchName}%");
+                            }
+                        });
+                    })
+                    ->when($search, function ($q) use ($search) {
+                        $q->where(function ($sub) use ($search) {
+                            $sub->where('item_name', 'like', "%{$search}%")
+                                ->orWhere('item_code', 'like', "%{$search}%")
+                                ->orWhere('isbn', 'like', "%{$search}%")
+                                ->orWhere('brand_name', 'like', "%{$search}%")
+                                ->orWhere('cat2_name', 'like', "%{$search}%")
+                                ->orWhere('cat3_name', 'like', "%{$search}%")
+                                ->orWhere('batch_no', 'like', "%{$search}%")
+                                ->orWhere('store_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->orderBy('store_name')
+                    ->orderByDesc('closing_stock');
+
+                $paginator = $query->paginate(50)->withQueryString();
+
+                $rows = $paginator->through(fn ($item) => [
+                    'cells' => [
+                        '<strong>' . e($item->store_name ?: $item->store_id) . '</strong>',
+                        '<code>' . e($item->item_code) . '</code>',
+                        e($item->item_name),
+                        e($item->cat1_name ?: ($item->brand_name ?: '-')),
+                        e($item->cat2_name ?: '-'),
+                        e($item->cat3_name ?: '-'),
+                        e($item->isbn ?: '-'),
+                        '<span class="badge badge-light border">' . e($item->batch_no ?: 'Default') . '</span>',
+                        $item->expiry_date ? date('d M Y', strtotime($item->expiry_date)) : '-',
+                        $item->closing_stock > 0
+                            ? '<strong class="text-success">' . number_format($item->closing_stock) . '</strong>'
+                            : ($item->closing_stock < 0 ? '<strong class="text-danger">' . number_format($item->closing_stock) . '</strong>' : '<span class="text-muted">0</span>'),
+                        '₹ ' . number_format($item->net_cost, 2),
+                        $item->closing_stock_amount > 0
+                            ? '<strong>₹ ' . number_format($item->closing_stock_amount, 2) . '</strong>'
+                            : ($item->closing_stock_amount < 0 ? '<strong class="text-danger">₹ ' . number_format($item->closing_stock_amount, 2) . '</strong>' : '₹ 0.00'),
+                        '₹ ' . number_format($item->mrp, 2),
+                        e($item->hsn_code ?: '-'),
+                        strtolower($item->status) === 'active'
+                            ? '<span class="badge badge-success">Active</span>'
+                            : '<span class="badge badge-secondary">' . e($item->status) . '</span>'
+                    ]
+                ]);
+
+                // Filtered KPIs
+                $kpiQuery = ClosingStock::query()
+                    ->when($branchId, function ($q) use ($branchId) {
+                        $branch = Branch::find($branchId);
+                        $branchName = $branch ? strtoupper(trim($branch->name)) : '';
+                        $q->where(function ($sub) use ($branchId, $branchName) {
+                            $sub->where('branch_id', $branchId)
+                                ->orWhere('store_id', (string) $branchId);
+                            if ($branchName !== '') {
+                                $sub->orWhere(DB::raw('UPPER(store_name)'), 'like', "%{$branchName}%");
+                            }
+                        });
+                    });
+
+                $totalQty = (float) (clone $kpiQuery)->sum('closing_stock');
+                $totalValuation = (float) (clone $kpiQuery)->sum('closing_stock_amount');
+                $totalBatches = (clone $kpiQuery)->count();
+                $inStockBatches = (clone $kpiQuery)->where('closing_stock', '>', 0)->count();
+
+                return [
+                    'title' => 'Closing Stock Report (110204)',
+                    'subtitle' => 'TruePOS Branch-wise Closing Stock & Inventory Valuation with Batch, Category, Expiry & Cost Breakdown',
+                    'columns' => [
+                        '#',
+                        'Store / Branch',
+                        'Item Code',
+                        'Item Description',
+                        'Brand / Cat1',
+                        'Category / Cat2',
+                        'Sub-Cat / Cat3',
+                        'Barcode / ISBN',
+                        'Batch No',
+                        'Expiry Date',
+                        'Closing Stock',
+                        'Net Cost',
+                        'Valuation Amount',
+                        'MRP',
+                        'HSN Code',
+                        'Status'
+                    ],
+                    'column_alignments' => [
+                        'text-center',
+                        'text-left',
+                        'text-left',
+                        'text-left',
+                        'text-left',
+                        'text-left',
+                        'text-left',
+                        'text-left',
+                        'text-center',
+                        'text-center',
+                        'text-right',
+                        'text-right',
+                        'text-right',
+                        'text-right',
+                        'text-center',
+                        'text-center',
+                    ],
+                    'rows' => $rows,
+                    'kpis' => [
+                        ['label' => 'Total Closing Stock', 'value' => number_format($totalQty) . ' Units', 'icon' => 'fas fa-boxes', 'color' => 'success'],
+                        ['label' => 'Total Valuation (Net Cost)', 'value' => '₹ ' . number_format($totalValuation, 2), 'icon' => 'fas fa-rupee-sign', 'color' => 'primary'],
+                        ['label' => 'Total Catalog Batches', 'value' => number_format($totalBatches), 'icon' => 'fas fa-warehouse', 'color' => 'info'],
+                        ['label' => 'In-Stock Batches', 'value' => number_format($inStockBatches), 'icon' => 'fas fa-check-circle', 'color' => 'warning'],
+                    ],
+                    'hasDateFilter' => false,
+                    'hasBranchFilter' => true,
+                ];
+
             case 'itemwise-stock-statement':
             case 'itemwise-stock-sales-detail':
                 $query = ItemStock::with(['item.brand', 'item.categoryValue', 'branch'])

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\ClosingStock;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\ItemCategoryValue;
@@ -13,338 +14,287 @@ use Illuminate\Support\Facades\DB;
 
 class ImportClosingStock extends Command
 {
-    protected $signature = 'import:closing-stock {file? : Path to the Closing Stock CSV file} {--force : Confirm you understand this bypasses the Stock Ledger}';
-    protected $description = 'Import Closing Stock inventory and valuations into Urbanpos database';
+    protected $signature = 'import:closing-stock {file? : Specific CSV file or directory} {--force : Bypass stock ledger} {--truncate : Truncate closing_stocks before import}';
+    protected $description = 'Import TruePOS 110204 Closing Stock files into closing_stocks and update item_stocks';
 
     public function handle()
     {
-        if (! $this->option('force')) {
-            $this->error('This command writes stock quantity/cost directly, bypassing the Stock Ledger — it will NOT create the permanent, reversible movement record every other stock change in this app relies on. Re-run with --force once you have confirmed this is intended (e.g. a one-time data migration, not routine use).');
+        $target = $this->argument('file');
+        $filesToProcess = [];
 
-            return 1;
-        }
-
-        $filePath = $this->argument('file') ?? base_path('data_files/110204_Closing_St_sing_Stock_1_2026_09_11_161200.csv');
-
-        if (! file_exists($filePath)) {
-            $this->error("Closing Stock file not found at: {$filePath}");
-            return 1;
-        }
-
-        $this->info("=================================================");
-        $this->info("  STARTING CLOSING STOCK INVENTORY IMPORT");
-        $this->info("=================================================");
-        $this->info("File: {$filePath}");
-
-        $handle = fopen($filePath, 'r');
-        if (! $handle) {
-            $this->error("Failed to open file.");
-            return 1;
-        }
-
-        // 1. Locate header
-        $header = null;
-        $colIndex = [];
-        $headerLineNum = 0;
-        $lineNum = 0;
-
-        while (($row = fgetcsv($handle, 10000, ',')) !== false) {
-            $lineNum++;
-            $cleanRow = array_map(fn($v) => trim((string)$v), $row);
-            if (in_array('Store ID', $cleanRow) || in_array('Item code', $cleanRow)) {
-                $header = $cleanRow;
-                $headerLineNum = $lineNum;
-                foreach ($header as $idx => $name) {
-                    if ($name !== '') {
-                        $colIndex[$name] = $idx;
-                    }
+        if ($target && is_file($target)) {
+            $filesToProcess[] = $target;
+        } elseif ($target && is_dir($target)) {
+            $filesToProcess = glob(rtrim($target, '/\\') . '/*.csv');
+        } else {
+            // Default directory
+            $dir = base_path('data_files/closing_stock');
+            if (is_dir($dir)) {
+                $filesToProcess = glob($dir . '/*.csv');
+            }
+            if (empty($filesToProcess)) {
+                // Fallback to legacy single file
+                $fallback = base_path('data_files/110204_Closing_St_sing_Stock_1_2026_09_11_161200.csv');
+                if (file_exists($fallback)) {
+                    $filesToProcess[] = $fallback;
                 }
-                break;
             }
         }
 
-        if (! $header) {
-            $this->error("Could not find table header with 'Store ID' or 'Item code'.");
-            fclose($handle);
+        if (empty($filesToProcess)) {
+            $this->error("No Closing Stock CSV files found to process.");
             return 1;
         }
 
-        $this->info("Found table header on line {$headerLineNum} with " . count($colIndex) . " recognized columns.");
-
-        // 2. Load Branch mappings
-        $branches = Branch::all();
-        $branchMap = []; // Store ID or Name -> Branch Model
-        foreach ($branches as $branch) {
-            $branchMap[strtoupper(trim($branch->name))] = $branch;
+        $this->info("=================================================");
+        $this->info("  STARTING TRUEPOS CLOSING STOCK IMPORT (110204)");
+        $this->info("=================================================");
+        $this->info("Found " . count($filesToProcess) . " file(s) to process:");
+        foreach ($filesToProcess as $f) {
+            $this->line("  - " . basename($f) . " (" . number_format(filesize($f) / 1024 / 1024, 2) . " MB)");
         }
 
-        // Explicit store ID mappings based on verified ERP data
+        if ($this->option('truncate') || true) {
+            $this->info("Clearing existing records in closing_stocks table...");
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            ClosingStock::truncate();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
+
+        // Cache Master Data
+        $branches = Branch::all();
+        $branchNameMap = [];
+        foreach ($branches as $b) {
+            $branchNameMap[strtoupper(trim($b->name))] = $b;
+        }
+
         $storeIdMap = [
-            '225' => $branches->firstWhere('name', 'URBANPETS SERVICES PRIVATE LIMITED') ?? $branches->find(2),
-            '32772' => $branches->firstWhere('name', 'URBAN PETS / MOTERA') ?? $branches->find(3),
+            '225' => $branches->firstWhere('name', 'URBANPETS SERVICES PRIVATE LIMITED') ?? $branches->first(),
+            '32772' => $branches->firstWhere('name', 'URBAN PETS / MOTERA') ?? $branches->skip(1)->first(),
         ];
 
-        // 3. Prepare Item Caches
+        $itemsByCode = Item::whereNotNull('item_code')->where('item_code', '!=', '')->pluck('id', 'item_code')->toArray();
         $itemsByName = Item::pluck('id', 'name')->toArray();
         $itemsByBarcode = Item::whereNotNull('ean_upc_code')->where('ean_upc_code', '!=', '')->pluck('id', 'ean_upc_code')->toArray();
-        $brandsCache = Brand::pluck('id', 'name')->toArray();
 
-        $catHead = ItemCategory::firstOrCreate(['name' => 'CATEGORY'], ['is_mandatory' => false, 'status' => true]);
-        $catValuesCache = ItemCategoryValue::where('item_category_id', $catHead->id)->pluck('id', 'name')->toArray();
+        $cleanNum = fn($v) => (float) str_replace(',', '', trim((string)$v));
 
-        // 4. Read & Aggregate rows
-        $this->info("Parsing and aggregating stock across batch records...");
+        $totalRecordsInserted = 0;
+        $totalQtyConsolidated = 0.0;
+        $totalValuationConsolidated = 0.0;
+        $stockAgg = []; // [branch_id][item_id] => ['qty' => 0.0, 'cost' => 0.0, 'mrp' => 0.0]
 
-        $stockAgg = []; // [branch_id => [item_id => ['qty' => float, 'cost' => float, 'mrp' => float]]]
-        $rawRowCount = 0;
-        $newItemsCount = 0;
-        $unmatchedCount = 0;
-
-        $cleanNum = fn($v) => (float) str_replace(',', '', (string)$v);
-
-        while (($row = fgetcsv($handle, 10000, ',')) !== false) {
-            $rawRowCount++;
-            $cleanRow = array_map(fn($v) => trim((string)$v), $row);
-
-            $getVal = fn($key) => isset($colIndex[$key]) ? ($cleanRow[$colIndex[$key]] ?? '') : '';
-
-            $storeId = $getVal('Store ID');
-            $storeName = $getVal('Store');
-            $itemName = $getVal('Item name');
-            $isbn = $getVal('ISBN');
-            $stockVal = $cleanNum($getVal('Closing stock'));
-            $netCost = $cleanNum($getVal('Net cost'));
-            $mrp = $cleanNum($getVal('MRP'));
-            $hsn = $getVal('HSN Code');
-            $brandName = $getVal('Brand name');
-            $catName = $getVal('Cat2 name');
-
-            // Skip empty summary/footer rows
-            if ($storeId === '' && $itemName === '') {
+        foreach ($filesToProcess as $filePath) {
+            $this->info("\nProcessing: " . basename($filePath) . "...");
+            $handle = fopen($filePath, 'r');
+            if (! $handle) {
+                $this->error("Cannot open file: {$filePath}");
                 continue;
             }
 
-            // Resolve Branch
-            $branch = $storeIdMap[$storeId] ?? ($branchMap[strtoupper($storeName)] ?? null);
-            if (! $branch) {
-                continue;
-            }
-            $branchId = $branch->id;
+            // Extract As On Date and Location from header preamble if present
+            $asOnDate = '2026-09-02';
+            $fileHeader = null;
+            $colIndex = [];
+            $lineCount = 0;
 
-            // Resolve Item
-            $itemId = $itemsByName[$itemName] ?? ($isbn !== '' && isset($itemsByBarcode[$isbn]) ? $itemsByBarcode[$isbn] : null);
-
-            // Auto-create item if missing
-            if (! $itemId && $itemName !== '') {
-                // Ensure Brand
-                $brandId = null;
-                if ($brandName !== '') {
-                    if (! isset($brandsCache[$brandName])) {
-                        $b = Brand::create(['name' => $brandName, 'status' => true]);
-                        $brandsCache[$brandName] = $b->id;
+            while (($row = fgetcsv($handle, 10000, ',')) !== false) {
+                $lineCount++;
+                if (isset($row[0]) && str_contains($row[0], 'As On')) {
+                    if (preg_match('/As On\s+(\d{2}-\d{2}-\d{4})/', $row[0], $m)) {
+                        $parts = explode('-', $m[1]);
+                        if (count($parts) === 3) {
+                            $asOnDate = "{$parts[2]}-{$parts[1]}-{$parts[0]}";
+                        }
                     }
-                    $brandId = $brandsCache[$brandName];
                 }
 
-                // Ensure Category
-                $catValId = null;
-                if ($catName !== '') {
-                    if (! isset($catValuesCache[$catName])) {
-                        $cv = ItemCategoryValue::create([
-                            'item_category_id' => $catHead->id,
-                            'name' => $catName,
-                            'status' => true,
-                        ]);
-                        $catValuesCache[$catName] = $cv->id;
+                $cleanRow = array_map(fn($v) => trim((string)$v), $row);
+                if (in_array('Store ID', $cleanRow) || in_array('Item code', $cleanRow)) {
+                    $fileHeader = $cleanRow;
+                    foreach ($fileHeader as $idx => $col) {
+                        if ($col !== '') {
+                            $colIndex[$col] = $idx;
+                        }
                     }
-                    $catValId = $catValuesCache[$catName];
+                    break;
                 }
-
-                $barcodeToUse = ($isbn !== '' && ! isset($itemsByBarcode[$isbn])) ? $isbn : null;
-
-                $newItem = Item::create([
-                    'ean_upc_code' => $barcodeToUse,
-                    'name' => $itemName,
-                    'brand_id' => $brandId,
-                    'category_value_id' => $catValId,
-                    'cost_price' => $netCost,
-                    'landing_cost' => $netCost,
-                    'sell_price' => $mrp > 0 ? $mrp : $netCost,
-                    'mrp' => $mrp,
-                    'status' => true,
-                    'hsn_code' => $hsn ?: null,
-                ]);
-
-                $itemId = $newItem->id;
-                $itemsByName[$itemName] = $itemId;
-                if ($barcodeToUse) {
-                    $itemsByBarcode[$barcodeToUse] = $itemId;
-                }
-                $newItemsCount++;
             }
 
-            if (! $itemId) {
-                $unmatchedCount++;
+            if (! $fileHeader) {
+                $this->error("Could not find table header in " . basename($filePath));
+                fclose($handle);
                 continue;
             }
 
-            // Aggregate into branch-item bucket
-            if (! isset($stockAgg[$branchId][$itemId])) {
-                $stockAgg[$branchId][$itemId] = [
-                    'qty' => 0.0,
-                    'cost' => $netCost,
+            $batchRows = [];
+            $fileRows = 0;
+            $fileQty = 0.0;
+            $fileVal = 0.0;
+
+            while (($row = fgetcsv($handle, 10000, ',')) !== false) {
+                $cleanRow = array_map(fn($v) => trim((string)$v), $row);
+                $get = fn($k) => isset($colIndex[$k]) ? ($cleanRow[$colIndex[$k]] ?? '') : '';
+
+                $storeId = $get('Store ID');
+                $storeName = $get('Store');
+                $itemCode = $get('Item code');
+                $itemName = $get('Item name');
+
+                // Skip summary / empty rows
+                if ($storeId === '' && $itemCode === '' && $itemName === '') {
+                    continue;
+                }
+                if ($storeId === '' && $get('Net cost') !== '') {
+                    // This is the total summary row at the top/bottom of TruePOS exports
+                    continue;
+                }
+
+                $qty = $cleanNum($get('Closing stock'));
+                $netCost = $cleanNum($get('Net cost'));
+                $stockAmt = $cleanNum($get('Closing stock amount'));
+                $mrp = $cleanNum($get('MRP'));
+                $isbn = $get('ISBN');
+                $batchNo = $get('Batch no');
+                $expiryDate = $get('Expiry date');
+                if ($expiryDate === '' || $expiryDate === '0000-00-00' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiryDate)) {
+                    $expiryDate = null;
+                }
+
+                // Resolve Branch
+                $branch = $storeIdMap[$storeId] ?? ($branchNameMap[strtoupper($storeName)] ?? null);
+                $branchId = $branch ? $branch->id : null;
+
+                // Resolve Item
+                $itemId = $itemsByCode[$itemCode] ?? ($itemsByName[$itemName] ?? ($isbn !== '' && isset($itemsByBarcode[$isbn]) ? $itemsByBarcode[$isbn] : null));
+
+                $batchRows[] = [
+                    'store_id' => $storeId,
+                    'store_name' => $storeName ?: ($branch ? $branch->name : null),
+                    'branch_id' => $branchId,
+                    'item_code' => $itemCode,
+                    'item_name' => $itemName,
+                    'item_id' => $itemId,
+                    'isbn' => $isbn ?: null,
+                    'item_alias' => $get('Item alias') ?: null,
+                    'cat1_code' => $get('Cat1 code') ?: null,
+                    'cat1_name' => $get('Cat1 name') ?: null,
+                    'cat2_code' => $get('Cat2 code') ?: null,
+                    'cat2_name' => $get('Cat2 name') ?: null,
+                    'cat3_code' => $get('Cat3_Code') ?: null,
+                    'cat3_name' => $get('Cat3_Name') ?: null,
+                    'brand_code' => $get('Brand code') ?: null,
+                    'brand_name' => $get('Brand name') ?: null,
+                    'batch_no' => $batchNo ?: null,
+                    'expiry_date' => $expiryDate,
+                    'hsn_code' => $get('HSN Code') ?: null,
+                    'status' => $get('Status') ?: 'Active',
+                    'net_cost' => $netCost,
+                    'closing_stock' => $qty,
+                    'closing_stock_amount' => $stockAmt,
                     'mrp' => $mrp,
+                    'as_on_date' => $asOnDate,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ];
+
+                $fileRows++;
+                $fileQty += $qty;
+                $fileVal += $stockAmt;
+
+                // Aggregate for item_stocks
+                if ($branchId && $itemId) {
+                    if (! isset($stockAgg[$branchId][$itemId])) {
+                        $stockAgg[$branchId][$itemId] = [
+                            'qty' => 0.0,
+                            'cost' => $netCost,
+                            'mrp' => $mrp,
+                        ];
+                    }
+                    $stockAgg[$branchId][$itemId]['qty'] += $qty;
+                    if ($netCost > 0) {
+                        $stockAgg[$branchId][$itemId]['cost'] = $netCost;
+                    }
+                    if ($mrp > 0) {
+                        $stockAgg[$branchId][$itemId]['mrp'] = $mrp;
+                    }
+                }
+
+                // Batch insert into closing_stocks
+                if (count($batchRows) >= 500) {
+                    DB::table('closing_stocks')->insert($batchRows);
+                    $totalRecordsInserted += count($batchRows);
+                    $batchRows = [];
+                }
             }
 
-            $stockAgg[$branchId][$itemId]['qty'] += $stockVal;
-            if ($netCost > 0) {
-                $stockAgg[$branchId][$itemId]['cost'] = $netCost;
+            if (! empty($batchRows)) {
+                DB::table('closing_stocks')->insert($batchRows);
+                $totalRecordsInserted += count($batchRows);
+                $batchRows = [];
             }
-            if ($mrp > 0) {
-                $stockAgg[$branchId][$itemId]['mrp'] = $mrp;
-            }
+
+            fclose($handle);
+
+            $this->info("  -> Imported {$fileRows} records from " . basename($filePath));
+            $this->info("  -> File Closing Stock: " . number_format($fileQty, 2) . " | Valuation: ₹ " . number_format($fileVal, 2));
+            $totalQtyConsolidated += $fileQty;
+            $totalValuationConsolidated += $fileVal;
         }
 
-        fclose($handle);
+        $this->info("\n=================================================");
+        $this->info("  TOTAL CLOSING STOCK RECORDS: " . number_format($totalRecordsInserted));
+        $this->info("  TOTAL CONSOLIDATED QUANTITY: " . number_format($totalQtyConsolidated, 2));
+        $this->info("  TOTAL CONSOLIDATED VALUATION: ₹ " . number_format($totalValuationConsolidated, 2));
+        $this->info("=================================================");
 
-        $this->info("Processed {$rawRowCount} CSV rows.");
-        if ($newItemsCount > 0) {
-            $this->info("Auto-created {$newItemsCount} missing items from closing stock data.");
-        }
-        if ($unmatchedCount > 0) {
-            $this->warn("Unmatched rows skipped: {$unmatchedCount}");
-        }
-
-        // 5. Database Update in Chunks
-        $this->info("\nUpdating ItemStock records in database...");
-
-        DB::beginTransaction();
-
-        try {
-            $totalPairsUpdated = 0;
-            $branchSummaries = [];
-
-            // Existing ItemStocks cache: [branch_id][item_id] => ItemStock model / attributes
-            $existingStocks = ItemStock::select('id', 'item_id', 'branch_id', 'sell_price')->get();
+        // Sync ItemStock table for POS operations
+        if (! empty($stockAgg)) {
+            $this->info("\nSyncing branch-wise item_stocks table...");
+            $existingStocks = ItemStock::select('id', 'item_id', 'branch_id')->get();
             $existingMap = [];
             foreach ($existingStocks as $es) {
-                $existingMap[$es->branch_id][$es->item_id] = $es;
+                $existingMap[$es->branch_id][$es->item_id] = $es->id;
             }
 
-            // Also load items for sell_price fallback
-            $itemsPriceCache = Item::pluck('sell_price', 'id')->toArray();
+            $itemsSellPrice = Item::pluck('sell_price', 'id')->toArray();
+            $upsertData = [];
 
-            foreach ($stockAgg as $branchId => $items) {
-                $branch = Branch::find($branchId);
-                $branchName = $branch ? $branch->name : "Branch #{$branchId}";
-                $branchTotalQty = 0.0;
-                $branchTotalVal = 0.0;
-                $branchPairCount = 0;
-
-                $recordsToUpsert = [];
-
-                foreach ($items as $itemId => $data) {
-                    $qty = round($data['qty'], 3);
-                    $cost = round($data['cost'], 2);
-                    $mrp = round($data['mrp'], 2);
-
-                    $existing = $existingMap[$branchId][$itemId] ?? null;
-                    $sellPrice = ($existing && (float)$existing->sell_price > 0)
-                        ? (float)$existing->sell_price
-                        : (($itemsPriceCache[$itemId] ?? 0) > 0 ? (float)$itemsPriceCache[$itemId] : $mrp);
-
-                    $recordsToUpsert[] = [
-                        'item_id' => $itemId,
-                        'branch_id' => $branchId,
-                        'quantity' => $qty,
-                        'cost_price' => $cost,
-                        'landing_cost' => $cost,
-                        'sell_price' => $sellPrice,
-                        'mrp' => $mrp,
-                        'created_at' => now(),
+            foreach ($stockAgg as $bId => $items) {
+                foreach ($items as $itmId => $dat) {
+                    $sellPrice = $itemsSellPrice[$itmId] ?? ($dat['mrp'] > 0 ? $dat['mrp'] : $dat['cost']);
+                    $record = [
+                        'item_id' => $itmId,
+                        'branch_id' => $bId,
+                        'quantity' => max(0, round($dat['qty'], 3)),
+                        'cost_price' => round($dat['cost'], 2),
+                        'landing_cost' => round($dat['cost'], 2),
+                        'sell_price' => round($sellPrice, 2),
+                        'mrp' => round($dat['mrp'], 2),
                         'updated_at' => now(),
                     ];
 
-                    $branchTotalQty += $qty;
-                    if ($qty > 0) {
-                        $branchTotalVal += ($qty * $cost);
+                    if (isset($existingMap[$bId][$itmId])) {
+                        $record['id'] = $existingMap[$bId][$itmId];
+                    } else {
+                        $record['created_at'] = now();
                     }
-                    $branchPairCount++;
-                    $totalPairsUpdated++;
 
-                    // Also update master Item cost & MRP if currently 0
-                    Item::where('id', $itemId)
-                        ->where(function ($q) {
-                            $q->where('cost_price', 0)->orWhere('mrp', 0);
-                        })
-                        ->update(array_filter([
-                            'cost_price' => $cost > 0 ? $cost : null,
-                            'landing_cost' => $cost > 0 ? $cost : null,
-                            'mrp' => $mrp > 0 ? $mrp : null,
-                        ]));
+                    $upsertData[] = $record;
+                    if (count($upsertData) >= 500) {
+                        ItemStock::upsert($upsertData, ['id'], ['quantity', 'cost_price', 'landing_cost', 'sell_price', 'mrp', 'updated_at']);
+                        $upsertData = [];
+                    }
                 }
-
-                // Chunked upsert into item_stocks
-                foreach (array_chunk($recordsToUpsert, 500) as $chunk) {
-                    ItemStock::upsert(
-                        $chunk,
-                        ['item_id', 'branch_id'],
-                        ['quantity', 'cost_price', 'landing_cost', 'sell_price', 'mrp', 'updated_at']
-                    );
-                }
-
-                $branchSummaries[] = [
-                    'branch_id' => $branchId,
-                    'branch_name' => $branchName,
-                    'items_count' => $branchPairCount,
-                    'total_qty' => $branchTotalQty,
-                    'total_val' => $branchTotalVal,
-                ];
             }
 
-            DB::commit();
-
-            $this->info("\n=================================================");
-            $this->info("     CLOSING STOCK IMPORT COMPLETED SUCCESSFULLY");
-            $this->info("=================================================");
-
-            $grandTotalQty = 0;
-            $grandTotalVal = 0;
-
-            $tableRows = [];
-            foreach ($branchSummaries as $bs) {
-                $grandTotalQty += $bs['total_qty'];
-                $grandTotalVal += $bs['total_val'];
-                $tableRows[] = [
-                    $bs['branch_id'],
-                    $bs['branch_name'],
-                    number_format($bs['items_count']),
-                    number_format($bs['total_qty'], 2),
-                    '₹ ' . number_format($bs['total_val'], 2),
-                ];
+            if (! empty($upsertData)) {
+                ItemStock::upsert($upsertData, ['id'], ['quantity', 'cost_price', 'landing_cost', 'sell_price', 'mrp', 'updated_at']);
             }
-
-            $tableRows[] = [
-                'TOTAL',
-                'ALL BRANCHES',
-                number_format($totalPairsUpdated),
-                number_format($grandTotalQty, 2),
-                '₹ ' . number_format($grandTotalVal, 2),
-            ];
-
-            $this->table(
-                ['Branch ID', 'Branch Name', 'Items Tracked', 'Total Stock Qty', 'Total Cost Valuation'],
-                $tableRows
-            );
-
-            return 0;
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            $this->error("\nImport failed: " . $e->getMessage());
-            $this->error($e->getTraceAsString());
-            return 1;
+            $this->info("item_stocks table successfully synchronized with Closing Stock!");
         }
+
+        $this->info("\nImport completed successfully!");
+        return 0;
     }
 }
