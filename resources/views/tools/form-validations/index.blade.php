@@ -6,7 +6,7 @@
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <h1 class="m-0 text-dark"><i class="fas fa-check-double text-primary mr-2"></i>Form Field Validations</h1>
-            <p class="text-muted small mb-0">Configure dynamic validation rules (Required, Block Future Date, Readonly, Unique) and custom alert messages per module.</p>
+            <p class="text-muted small mb-0">Customize and toggle field rules (Required, Future Date Block, Readonly, Unique) and custom alert messages across all pages.</p>
         </div>
     </div>
 @stop
@@ -21,14 +21,42 @@
         </div>
     @endif
 
-    {{-- Standard AdminLTE Card with Outline Tabs --}}
+    {{-- Category Groups Bar & Quick Jump Selector --}}
+    <div class="mb-3 d-flex flex-wrap justify-content-between align-items-center">
+        <div class="btn-group mb-2 mb-md-0 shadow-sm" role="group">
+            @foreach($moduleGroups as $gKey => $group)
+                <a href="{{ route('tools.form-validations.index', ['group' => $gKey]) }}"
+                   class="btn {{ $activeGroup === $gKey ? 'btn-primary font-weight-bold' : 'btn-outline-secondary bg-white' }} px-3 py-2">
+                    <i class="{{ $group['icon'] }} mr-1"></i> {{ $group['name'] }}
+                    <span class="badge badge-light border ml-1">{{ count($group['modules']) }}</span>
+                </a>
+            @endforeach
+        </div>
+
+        <div class="d-flex align-items-center bg-white p-2 rounded border shadow-sm">
+            <label class="mr-2 mb-0 small font-weight-bold text-muted text-nowrap"><i class="fas fa-search mr-1"></i> Jump to Page:</label>
+            <select class="form-control form-control-sm" style="min-width: 230px;" onchange="if(this.value) window.location.href=this.value;">
+                @foreach($moduleGroups as $gKey => $group)
+                    <optgroup label="── {{ $group['name'] }} ──">
+                        @foreach($group['modules'] as $mKey => $mod)
+                            <option value="{{ route('tools.form-validations.index', ['group' => $gKey, 'module' => $mKey]) }}" @selected($activeModule === $mKey)>
+                                {{ $mod['name'] }}
+                            </option>
+                        @endforeach
+                    </optgroup>
+                @endforeach
+            </select>
+        </div>
+    </div>
+
+    {{-- Standard AdminLTE Card with Outline Tabs for Active Category's Pages --}}
     <div class="card card-primary card-outline card-outline-tabs shadow-sm">
         <div class="card-header p-0 border-bottom-0">
-            <ul class="nav nav-tabs" id="module-tabs" role="tablist">
-                @foreach($modules as $key => $mod)
+            <ul class="nav nav-tabs" id="page-tabs" role="tablist">
+                @foreach($moduleGroups[$activeGroup]['modules'] as $mKey => $mod)
                     <li class="nav-item">
-                        <a class="nav-link font-weight-bold {{ $activeModule === $key ? 'active' : '' }}"
-                           href="{{ route('tools.form-validations.index', ['module' => $key]) }}">
+                        <a class="nav-link font-weight-bold {{ $activeModule === $mKey ? 'active' : '' }}"
+                           href="{{ route('tools.form-validations.index', ['group' => $activeGroup, 'module' => $mKey]) }}">
                             <i class="{{ $mod['icon'] }} mr-1"></i> {{ $mod['name'] }}
                         </a>
                     </li>
@@ -39,13 +67,13 @@
         <div class="card-body border-bottom bg-light py-2 px-3 d-flex justify-content-between align-items-center">
             <div>
                 <span class="font-weight-bold text-dark">
-                    <i class="{{ $modules[$activeModule]['icon'] }} text-primary mr-1"></i> {{ $modules[$activeModule]['name'] }} Rules
+                    <i class="{{ $moduleGroups[$activeGroup]['modules'][$activeModule]['icon'] }} text-primary mr-1"></i> {{ $moduleGroups[$activeGroup]['modules'][$activeModule]['name'] }} Rules
                 </span>
-                <span class="text-muted small ml-2 d-none d-md-inline">({{ $modules[$activeModule]['description'] }})</span>
+                <span class="text-muted small ml-2 d-none d-md-inline">({{ $moduleGroups[$activeGroup]['modules'][$activeModule]['description'] }})</span>
             </div>
             <div>
                 <form action="{{ route('tools.form-validations.reset') }}" method="POST" class="d-inline"
-                      onsubmit="return confirm('Are you sure you want to reset validation rules for {{ $modules[$activeModule]['name'] }} to system defaults?');">
+                      onsubmit="return confirm('Are you sure you want to reset validation rules for {{ $moduleGroups[$activeGroup]['modules'][$activeModule]['name'] }} to system defaults?');">
                     @csrf
                     <input type="hidden" name="module_key" value="{{ $activeModule }}">
                     <button type="submit" class="btn btn-xs btn-outline-danger font-weight-bold">

@@ -137,7 +137,12 @@ class DynamicValidationService
         if ($moduleKey) {
             Cache::forget(self::CACHE_PREFIX . $moduleKey);
         } else {
-            $modules = ['purchase_invoices', 'sales_bills', 'stock_transfers', 'customers', 'suppliers'];
+            $modules = [
+                'purchase_invoices', 'purchase_orders', 'purchase_receipt_notes', 'purchase_indents', 'purchase_returns',
+                'sales_bills', 'sales_returns', 'sales_quotations', 'sales_orders', 'sales_delivery_notes',
+                'stock_transfers', 'opening_stocks', 'damage_stocks', 'stock_updates',
+                'customers', 'suppliers', 'items', 'branches',
+            ];
             foreach ($modules as $mod) {
                 Cache::forget(self::CACHE_PREFIX . $mod);
             }
