@@ -948,6 +948,7 @@ return [
                         ['text' => 'Asset LedgerMap', 'url' => 'tools/asset-ledger', 'icon' => 'fas fa-fw fa-landmark'],
                         ['text' => 'Mail Server Configuration', 'url' => 'tools/mail-server', 'icon' => 'fas fa-fw fa-envelope'],
                         ['text' => 'Category Wise Sequence', 'url' => 'tools/category-sequence', 'icon' => 'fas fa-fw fa-sort-numeric-down'],
+                        ['text' => 'Form Field Validations', 'url' => 'tools/form-validations', 'icon' => 'fas fa-fw fa-check-double'],
                     ],
                 ],
                 [

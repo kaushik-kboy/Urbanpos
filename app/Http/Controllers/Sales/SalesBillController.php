@@ -908,7 +908,7 @@ class SalesBillController extends Controller
         $request->merge(['items' => $filteredItems]);
 
         $now = now()->addMinutes(2)->format('Y-m-d H:i:s');
-        $header = $request->validate([
+        $headerRules = [
             'bill_number' => ['nullable', 'string', 'max:100'],
             'bill_date' => ['required', 'date', "before_or_equal:{$now}"],
             'customer_id' => ['required', 'exists:customers,id'],
@@ -927,15 +927,27 @@ class SalesBillController extends Controller
             'remarks' => ['nullable', 'string'],
             'message' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
-        ], [
-            'bill_date.before_or_equal' => 'Future date and time is not allowed for Bill Date.',
-        ]);
+        ];
 
-        if (!empty($header['bill_number'])) {
+        $headerMessages = [
+            'bill_date.before_or_equal' => 'Future date and time is not allowed for Bill Date.',
+        ];
+
+        $dynamicService = app(\App\Services\DynamicValidationService::class);
+        $dynamicService->applyTo('sales_bills', $headerRules, $headerMessages);
+
+        $header = $request->validate($headerRules, $headerMessages);
+
+        $configs = $dynamicService->getConfigsForModule('sales_bills');
+
+        if (!empty($header['bill_number']) && ($configs['bill_number']->is_unique ?? true)) {
             $duplicateBill = SalesBill::where('bill_number', $header['bill_number'])->exists();
             if ($duplicateBill) {
+                $msg = !empty($configs['bill_number']->custom_error_message)
+                    ? $configs['bill_number']->custom_error_message
+                    : "Bill Number '{$header['bill_number']}' already exists.";
                 throw ValidationException::withMessages([
-                    'bill_number' => "Bill Number '{$header['bill_number']}' already exists.",
+                    'bill_number' => $msg,
                 ]);
             }
         }

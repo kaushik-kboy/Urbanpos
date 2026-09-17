@@ -507,15 +507,22 @@ class StockTransferController extends Controller
     private function validateData(Request $request): array
     {
         $today = date('Y-m-d');
-        $header = $request->validate([
+        $headerRules = [
             'transfer_date' => ['required', 'date', "before_or_equal:{$today}"],
             'from_branch_id' => ['required', 'exists:branches,id', 'different:to_branch_id'],
             'to_branch_id' => ['required', 'exists:branches,id'],
             'remarks' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
-        ], [
+        ];
+
+        $headerMessages = [
             'transfer_date.before_or_equal' => 'Future date is not allowed for Transfer Date.',
-        ]);
+        ];
+
+        $dynamicService = app(\App\Services\DynamicValidationService::class);
+        $dynamicService->applyTo('stock_transfers', $headerRules, $headerMessages);
+
+        $header = $request->validate($headerRules, $headerMessages);
 
         $header['transfer_date'] = $this->normalizeDate($header['transfer_date']);
 

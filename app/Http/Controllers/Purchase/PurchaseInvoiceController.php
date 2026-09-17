@@ -762,7 +762,7 @@ class PurchaseInvoiceController extends Controller
     private function validateData(Request $request, ?int $id = null): array
     {
         $today = date('Y-m-d');
-        $header = $request->validate([
+        $headerRules = [
             'invoice_date' => ['required', 'date', "before_or_equal:{$today}"],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
@@ -786,31 +786,47 @@ class PurchaseInvoiceController extends Controller
             'remarks' => ['nullable', 'string'],
             'message' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
-        ], [
+        ];
+
+        $headerMessages = [
             'invoice_date.before_or_equal' => 'Future date is not allowed for Invoice Date.',
             'grn_date.before_or_equal' => 'Future date is not allowed for GRN Date.',
             'supplier_inv_date.before_or_equal' => 'Future date is not allowed for Supplier Inv Date.',
-        ]);
+        ];
 
-        if (!empty($header['supplier_inv_no'])) {
+        // Apply dynamic field validations configured in Admin Configuration
+        $dynamicService = app(\App\Services\DynamicValidationService::class);
+        $dynamicService->applyTo('purchase_invoices', $headerRules, $headerMessages);
+
+        $header = $request->validate($headerRules, $headerMessages);
+
+        $configs = $dynamicService->getConfigsForModule('purchase_invoices');
+
+        if (!empty($header['supplier_inv_no']) && ($configs['supplier_inv_no']->is_unique ?? true)) {
             $duplicateSupplierInv = PurchaseInvoice::where('supplier_id', $header['supplier_id'])
                 ->where('supplier_inv_no', $header['supplier_inv_no'])
                 ->when($id, fn ($q) => $q->where('id', '!=', $id))
                 ->exists();
             if ($duplicateSupplierInv) {
+                $msg = !empty($configs['supplier_inv_no']->custom_error_message)
+                    ? $configs['supplier_inv_no']->custom_error_message
+                    : "Supplier Invoice Number '{$header['supplier_inv_no']}' is already recorded for this supplier.";
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'supplier_inv_no' => "Supplier Invoice Number '{$header['supplier_inv_no']}' is already recorded for this supplier.",
+                    'supplier_inv_no' => $msg,
                 ]);
             }
         }
 
-        if (!empty($header['grn_number'])) {
+        if (!empty($header['grn_number']) && ($configs['grn_number']->is_unique ?? true)) {
             $duplicateGrn = PurchaseInvoice::where('grn_number', $header['grn_number'])
                 ->when($id, fn ($q) => $q->where('id', '!=', $id))
                 ->exists();
             if ($duplicateGrn) {
+                $msg = !empty($configs['grn_number']->custom_error_message)
+                    ? $configs['grn_number']->custom_error_message
+                    : "GRN Number '{$header['grn_number']}' already exists. Please use a unique GRN Number.";
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'grn_number' => "GRN Number '{$header['grn_number']}' already exists. Please use a unique GRN Number.",
+                    'grn_number' => $msg,
                 ]);
             }
         }
