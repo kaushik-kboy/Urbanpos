@@ -89,15 +89,18 @@
     </div>
 
     <div class="card card-primary card-outline shadow-sm">
-        <div class="card-header py-2">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
             <h5 class="card-title font-weight-bold mb-0">
                 <i class="fas fa-table mr-1"></i>
                 {{ $partyType === 'Customer' ? 'Customer Outstanding Debtors' : 'Supplier Outstanding Creditors' }} (As of {{ \Carbon\Carbon::parse($asOfDate)->format('d-M-Y') }})
             </h5>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="finance.reports.outstanding-aging" table-id="outstandingAgingTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-bordered table-sm mb-0">
+                <table class="table table-striped table-bordered table-sm mb-0" id="outstandingAgingTable">
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 40px;" class="text-center">#</th>

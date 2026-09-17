@@ -97,8 +97,11 @@
 
     {{-- Main Table --}}
     <div class="card card-outline card-secondary shadow-sm">
-        <div class="card-header bg-light py-2">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
             <h5 class="card-title font-weight-bold mb-0">Customer Reward Balances</h5>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="finance.reports.customer-loyalty" table-id="loyalty-report-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0 table-responsive">
             <table class="table table-hover table-striped table-sm mb-0" id="loyalty-report-table">

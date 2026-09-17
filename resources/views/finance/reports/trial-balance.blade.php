@@ -13,9 +13,12 @@
                 <label class="mr-2">As on</label>
                 <input type="date" name="as_of" value="{{ $asOf }}" class="form-control form-control-sm mr-3">
                 <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-            </form>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0 font-weight-bold text-muted">Trial Balance Accounts</h5>
+                <x-table-column-customizer table-key="finance.reports.trial-balance" table-id="trialBalanceTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
 
-            <table class="table table-sm table-striped">
+            <table class="table table-sm table-striped" id="trialBalanceTable">
                 <thead>
                     <tr>
                         <th>Ledger</th>

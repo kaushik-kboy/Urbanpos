@@ -111,13 +111,16 @@
 
     {{-- Transactions Table --}}
     <div class="card card-outline card-primary shadow-sm">
-        <div class="card-header py-2">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold text-dark mb-0">
                 <i class="fas fa-book mr-1 text-primary"></i> Transactions Log ({{ count($lines) }} Entries)
             </h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="finance.reports.cash-bank-book" table-id="cashBankBookTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-sm table-striped table-hover mb-0">
+            <table class="table table-sm table-striped table-hover mb-0" id="cashBankBookTable">
                 <thead class="bg-light">
                     <tr>
                         <th style="width: 105px;">Date</th>

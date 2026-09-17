@@ -25,7 +25,11 @@
             </form>
 
             @if ($ledger)
-                <table class="table table-sm table-striped">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0 font-weight-bold text-muted">Statement Records</h5>
+                    <x-table-column-customizer table-key="finance.reports.general-ledger" table-id="generalLedgerTable" button-class="btn btn-sm btn-light border text-secondary" />
+                </div>
+                <table class="table table-sm table-striped" id="generalLedgerTable">
                     <thead>
                         <tr>
                             <th>Date</th>
