@@ -11,25 +11,6 @@
             <small class="text-muted">Real-time store metrics, visual analytics, and fast-action command center</small>
         </div>
         <div class="d-flex align-items-center mt-2 mt-md-0">
-            @if (auth()->user()?->branch_id === null)
-                <form method="GET" action="{{ route('home') }}" class="form-inline mr-2">
-                    <div class="input-group input-group-sm">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-store text-muted"></i></span>
-                        </div>
-                        <select name="branch_id" class="form-control form-control-sm border-left-0" onchange="this.form.submit()">
-                            <option value="all" {{ empty($branchId) ? 'selected' : '' }}>All Branches (Consolidated)</option>
-                            @foreach ($allBranches as $id => $name)
-                                <option value="{{ $id }}" {{ (string)$branchId === (string)$id ? 'selected' : '' }}>{{ $name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </form>
-            @else
-                <span class="badge badge-light border px-3 py-2 mr-2 font-weight-normal">
-                    <i class="fas fa-store text-primary mr-1"></i> {{ auth()->user()->branch?->name ?? 'Branch User' }}
-                </span>
-            @endif
             <span class="badge badge-primary px-3 py-2 shadow-sm font-weight-normal">
                 <i class="far fa-calendar-alt mr-1"></i> {{ now()->format('d M Y') }}
             </span>

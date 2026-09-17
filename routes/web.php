@@ -75,7 +75,7 @@ $gatedResource = function (string $uri, string $controller, string $module) {
 };
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 Auth::routes();
@@ -316,12 +316,14 @@ Route::middleware('auth')->prefix('finance')->name('finance.')->group(function (
 });
 
 Route::middleware('auth')->post('/active-branch', function (\Illuminate\Http\Request $request) {
-    $branchId = (int) $request->input('branch_id');
-    if ($branchId > 0) {
-        session(['active_branch_id' => $branchId]);
+    $branchId = $request->input('branch_id');
+    if ($branchId === 'all' || empty($branchId) || $branchId === '0') {
+        session()->forget('active_branch_id');
+    } else {
+        session(['active_branch_id' => (int) $branchId]);
     }
     return response()->json([
         'status' => 'ok',
-        'active_branch_id' => session('active_branch_id', 3),
+        'active_branch_id' => session('active_branch_id', null),
     ]);
 })->name('set-active-branch');
