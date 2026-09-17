@@ -349,7 +349,68 @@
                 let idx = $(this).data('idx');
                 $(this).data('item', items[idx]);
             });
+
+            stIslSelectedIdx = $tbody.find('tr.st-isl-item-row').not('.st-isl-item-disabled').length > 0 ? 0 : -1;
+            updateStModalHighlight();
         }
+
+        let stIslSelectedIdx = -1;
+        function updateStModalHighlight() {
+            let $rows = $('#st-isl-items-body tr.st-isl-item-row').not('.st-isl-item-disabled');
+            $('#st-isl-items-body tr').removeClass('table-primary');
+            if (stIslSelectedIdx >= 0 && stIslSelectedIdx < $rows.length) {
+                let $target = $rows.eq(stIslSelectedIdx);
+                $target.addClass('table-primary');
+                let container = $('#st-isl-table-wrap')[0];
+                let rowEl = $target[0];
+                if (container && rowEl) {
+                    let cTop = container.scrollTop;
+                    let cBottom = cTop + container.clientHeight;
+                    let rTop = rowEl.offsetTop;
+                    let rBottom = rTop + rowEl.clientHeight;
+                    if (rTop < cTop) container.scrollTop = rTop;
+                    else if (rBottom > cBottom) container.scrollTop = rBottom - container.clientHeight;
+                }
+            }
+        }
+
+        $('#st-isl-filter-name, #st-isl-filter-code, #st-isl-filter-expiry').on('keydown', function (e) {
+            let $rows = $('#st-isl-items-body tr.st-isl-item-row').not('.st-isl-item-disabled');
+            if ($rows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                stIslSelectedIdx = Math.min(stIslSelectedIdx + 1, $rows.length - 1);
+                updateStModalHighlight();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                stIslSelectedIdx = Math.max(stIslSelectedIdx - 1, 0);
+                updateStModalHighlight();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (stIslSelectedIdx >= 0 && stIslSelectedIdx < $rows.length) {
+                    $rows.eq(stIslSelectedIdx).trigger('click');
+                } else if ($rows.length === 1) {
+                    $rows.eq(0).trigger('click');
+                }
+            }
+        });
+
+        // Last column (.item-qty): pressing Tab or Enter advances to next row or adds a new row and opens search modal
+        $(document).on('keydown', '.item-qty', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr');
+                let $nextRow = $currentRow.next('tr.item-row');
+                if (!$nextRow.length) {
+                    e.preventDefault();
+                    $('#add-row').trigger('click');
+                    let $newRow = $('#items-table tbody tr.item-row').last();
+                    setTimeout(function () {
+                        $newRow.find('.item-code-input').focus().trigger('click');
+                    }, 60);
+                }
+            }
+        });
 
         function openItemModal($row, initialQuery) {
             if (!currentFromBranch()) {

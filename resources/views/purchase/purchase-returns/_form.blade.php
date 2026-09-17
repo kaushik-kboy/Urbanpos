@@ -39,20 +39,13 @@
 <div class="row">
     <div class="col-md-4 mb-3">
         <label for="purchase_invoice_id" class="font-weight-bold">Original Purchase Invoice</label>
-        <div class="input-group">
-            <select name="purchase_invoice_id" id="purchase_invoice_id" class="form-control select2">
-                <option value="">-- No Original Invoice / Direct Return --</option>
-                @foreach ($purchaseInvoices as $id => $no)
-                    <option value="{{ $id }}" @selected(old('purchase_invoice_id', $ret->purchase_invoice_id ?? '') == $id)>{{ $no }}</option>
-                @endforeach
-            </select>
-            <div class="input-group-append">
-                <button type="button" id="btn-load-invoice" class="btn btn-outline-info" title="Load items from this purchase invoice">
-                    <i class="fas fa-file-import mr-1"></i> Load Items
-                </button>
-            </div>
-        </div>
-        <small class="text-muted">Select invoice and click "Load Items" to auto-populate returned lines.</small>
+        <select name="purchase_invoice_id" id="purchase_invoice_id" class="form-control select2">
+            <option value="">-- No Original Invoice / Direct Return --</option>
+            @foreach ($purchaseInvoices as $id => $no)
+                <option value="{{ $id }}" @selected(old('purchase_invoice_id', $ret->purchase_invoice_id ?? '') == $id)>{{ $no }}</option>
+            @endforeach
+        </select>
+        <small class="text-muted" id="invoice-loading-hint">Select supplier & invoice to automatically load items.</small>
     </div>
     <div class="col-md-4 mb-3">
         <label for="supplier_debit_note_no" class="font-weight-bold">Supplier Debit Note No</label>
@@ -513,25 +506,54 @@
             });
         });
 
-        // Load items from Invoice
-        document.getElementById('btn-load-invoice')?.addEventListener('click', function () {
-            const invId = document.getElementById('purchase_invoice_id')?.value;
+        // Filter Invoices when Supplier changes
+        $('#supplier_id').on('change', function () {
+            const supplierId = $(this).val();
+            const $invSelect = $('#purchase_invoice_id');
+            const currentSelected = $invSelect.val();
+            $invSelect.empty().append('<option value="">-- No Original Invoice / Direct Return --</option>');
+            if (!supplierId) return;
+
+            fetch(`/purchase/purchase-returns/supplier-invoices/${supplierId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.invoices && data.invoices.length > 0) {
+                    data.invoices.forEach(inv => {
+                        const opt = new Option(`${inv.invoice_number} (${inv.invoice_date} - ₹${inv.total})`, inv.id, false, inv.id == currentSelected);
+                        $invSelect.append(opt);
+                    });
+                }
+                $invSelect.trigger('change.select2');
+            })
+            .catch(err => console.error(err));
+        });
+
+        // Automatically load items as soon as an Invoice is selected
+        let isAutoLoadingInvoice = false;
+        $('#purchase_invoice_id').on('change', function () {
+            const invId = $(this).val();
+            const hint = document.getElementById('invoice-loading-hint');
             if (!invId) {
-                alert('Please select a Purchase Invoice first.');
+                if (hint) hint.textContent = 'Select supplier & invoice to automatically load items.';
                 return;
             }
 
-            const btn = this;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Loading…';
+            if (isAutoLoadingInvoice) return;
+            isAutoLoadingInvoice = true;
+
+            if (hint) {
+                hint.innerHTML = '<i class="fas fa-spinner fa-spin text-primary mr-1"></i> Loading items from selected invoice…';
+            }
 
             fetch(`/purchase/purchase-returns/invoice-items/${invId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => res.json())
             .then(data => {
-                if (data.supplier_id) {
-                    $('#supplier_id').val(data.supplier_id).trigger('change');
+                if (data.supplier_id && $('#supplier_id').val() != data.supplier_id) {
+                    $('#supplier_id').val(data.supplier_id).trigger('change.select2');
                 }
                 if (data.branch_id) {
                     $('#branch_id').val(data.branch_id).trigger('change');
@@ -574,17 +596,19 @@
                     });
                     rowIndex = data.items.length;
                     recalculateAll();
+                    if (hint) {
+                        hint.innerHTML = '<span class="text-success font-weight-bold"><i class="fas fa-check-circle mr-1"></i> ' + data.items.length + ' item(s) auto-loaded successfully.</span>';
+                    }
                 } else {
-                    alert('No items found in selected invoice.');
+                    if (hint) hint.textContent = 'No items found in selected invoice.';
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert('Failed to load items from invoice.');
+                if (hint) hint.textContent = 'Failed to load items from invoice.';
             })
             .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-file-import mr-1"></i> Load Items';
+                isAutoLoadingInvoice = false;
             });
         });
 

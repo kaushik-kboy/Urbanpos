@@ -108,6 +108,20 @@ class SalesReturnController extends Controller
         return redirect()->route('sales.sales-returns.index')->with('status', "Sales Return {$salesReturn->return_number} created successfully.");
     }
 
+    public function show(SalesReturn $salesReturn)
+    {
+        $salesReturn->load(['customer', 'branch', 'salesBill', 'items.item']);
+
+        return view('sales.sales-returns.show', compact('salesReturn'));
+    }
+
+    public function print(SalesReturn $salesReturn)
+    {
+        $salesReturn->load(['customer', 'branch', 'salesBill', 'items.item']);
+
+        return view('sales.sales-returns.print', compact('salesReturn'));
+    }
+
     public function edit(SalesReturn $salesReturn)
     {
         $salesReturn->load('items');
@@ -161,13 +175,14 @@ class SalesReturnController extends Controller
     {
         $items = $salesBill->items()->with('item')->get()->map(function ($line) {
             return [
-                'item_id'    => $line->item_id,
-                'item_name'  => $line->item?->name ?? 'Unknown',
-                'item_code'  => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
-                'exp_date'   => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
-                'qty'        => (float) $line->qty,
-                'sell_price' => (float) $line->sell_price,
-                'mrp'        => (float) ($line->mrp ?? 0),
+                'item_id'      => $line->item_id,
+                'item_name'    => $line->item?->name ?? 'Unknown',
+                'item_code'    => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
+                'exp_date'     => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
+                'original_qty' => (float) $line->qty,
+                'qty'          => (float) $line->qty,
+                'sell_price'   => (float) $line->sell_price,
+                'mrp'          => (float) ($line->mrp ?? 0),
                 'disc_percent' => (float) ($line->disc_percent ?? 0),
                 'disc_amount'  => (float) ($line->disc_amount ?? 0),
                 'gst_percent'  => (float) ($line->gst_percent ?? 0),
@@ -330,6 +345,12 @@ class SalesReturnController extends Controller
 
     private function validateData(Request $request): array
     {
+        $rawItems = $request->input('items', []);
+        $filteredItems = collect($rawItems)->filter(function ($item) {
+            return !empty($item['item_id']) && (float)($item['qty'] ?? 0) > 0;
+        })->values()->all();
+        $request->merge(['items' => $filteredItems]);
+
         $header = $request->validate([
             'return_date' => ['required', 'date'],
             'customer_id' => ['required', 'exists:customers,id'],
@@ -357,6 +378,27 @@ class SalesReturnController extends Controller
             'items.*.disc_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        if (!empty($header['sales_bill_id'])) {
+            $bill = SalesBill::with('items.item')->find($header['sales_bill_id']);
+            if ($bill) {
+                $billItemQtys = $bill->items->groupBy('item_id')->map->sum('qty');
+                foreach ($validated['items'] as $itemLine) {
+                    $itemId = (int) $itemLine['item_id'];
+                    if (!isset($billItemQtys[$itemId])) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'items' => ["Item #{$itemId} does not belong to Sales Bill #{$bill->bill_number}."]
+                        ]);
+                    }
+                    $maxQty = (float) $billItemQtys[$itemId];
+                    if ((float) $itemLine['qty'] > $maxQty + 0.0001) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'items' => ["Return quantity ({$itemLine['qty']}) cannot exceed original bill quantity ({$maxQty})."]
+                        ]);
+                    }
+                }
+            }
+        }
 
         return ['header' => $header, 'items' => $validated['items']];
     }

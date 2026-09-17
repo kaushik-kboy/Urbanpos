@@ -107,12 +107,13 @@
                                 @endphp
                                 <span class="badge badge-{{ $badge }}">{{ $transfer->status }}</span>
                             </td>
-                            <td class="text-right">
-                                <a href="{{ route('inventory.stock-transfers.show', $transfer) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-eye"></i></a>
+                            <td class="text-right text-nowrap">
+                                <a href="{{ route('inventory.stock-transfers.show', $transfer) }}" class="btn btn-xs btn-outline-info mr-1" title="View"><i class="fas fa-eye"></i> View</a>
+                                <a href="{{ route('inventory.stock-transfers.print', $transfer) }}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Print"><i class="fas fa-print"></i> Print</a>
                                 @if ($transfer->status === 'Dispatched')
                                     <form action="{{ route('inventory.stock-transfers.cancel', $transfer) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this transfer? Source stock will be restored.')">
                                         @csrf
-                                        <button class="btn btn-xs btn-outline-danger"><i class="fas fa-times"></i></button>
+                                        <button class="btn btn-xs btn-outline-danger" title="Cancel"><i class="fas fa-times"></i></button>
                                     </form>
                                 @endif
                             </td>

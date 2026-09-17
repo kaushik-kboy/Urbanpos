@@ -41,8 +41,11 @@
                 <p class="text-muted mb-0"><strong>Remarks:</strong> {{ $stockTransfer->remarks }}</p>
             @endif
         </div>
-        <div class="card-footer">
+        <div class="card-footer d-flex justify-content-between">
             <a href="{{ route('inventory.stock-transfers.index') }}" class="btn btn-default">Back</a>
+            <a href="{{ route('inventory.stock-transfers.print', $stockTransfer) }}" target="_blank" class="btn btn-primary">
+                <i class="fas fa-print mr-1"></i> Print Transfer Note
+            </a>
         </div>
     </div>
 @stop

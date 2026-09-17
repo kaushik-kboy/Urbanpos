@@ -50,12 +50,14 @@
                readonly tabindex="-1">
     </td>
     {{-- Qty --}}
-    <td style="width: 90px;">
+    <td style="width: 100px;">
         <input type="number" step="0.001" min="0.001"
                name="items[{{ $rowId }}][qty]"
                value="{{ $rowId === '__INDEX__' ? '' : $qty }}"
+               data-original-qty="{{ data_get($line, 'original_qty', '') }}"
                class="form-control form-control-sm text-right sr-qty font-weight-bold"
                placeholder="Qty" required autocomplete="off">
+        <small class="text-muted d-block text-right sr-max-qty-label" style="font-size: 10px;"></small>
     </td>
     {{-- Sell Price --}}
     <td style="width: 110px;">

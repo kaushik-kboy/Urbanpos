@@ -46,35 +46,18 @@
         <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode">
     </td>
     <td style="min-width: 220px;">
-        <select name="items[{{ $index }}][item_id]" class="form-control form-control-sm select2 pinv-item-select" required data-placeholder="Select item">
-            <option value="">Select item</option>
-            @if ($selectedItem)
-                @php
-                    $itemId = is_object($selectedItem) ? $selectedItem->id : $selectedItem;
-                    $itemName = is_object($selectedItem) ? $selectedItem->name : $selectedItem;
-                    $itemCode = is_object($selectedItem) ? ($selectedItem->item_code ?? '') : '';
-                    $eanCode = is_object($selectedItem) ? ($selectedItem->ean_upc_code ?? '') : '';
-                    $costPrice = is_object($selectedItem) ? (float)($selectedItem->cost_price ?? 0) : 0;
-                    $sellPrice = is_object($selectedItem) ? (float)($selectedItem->sell_price ?? 0) : 0;
-                    $mrp = is_object($selectedItem) ? (float)($selectedItem->mrp ?? 0) : 0;
-                    $gstPercent = is_object($selectedItem) ? (float)($selectedItem->gstTax?->percentage ?? 0) : 0;
-                    $batchExpiry = is_object($selectedItem) ? ($selectedItem->batch_expiry_details ?? 'Not Required') : 'Not Required';
-                    $shelfLife = is_object($selectedItem) ? ($selectedItem->shelf_life_days ?? '') : '';
-                @endphp
-                <option value="{{ $itemId }}"
-                        data-code="{{ $itemCode }}"
-                        data-ean="{{ $eanCode }}"
-                        data-cost="{{ $costPrice }}"
-                        data-sell="{{ $sellPrice }}"
-                        data-mrp="{{ $mrp }}"
-                        data-gst="{{ $gstPercent }}"
-                        data-batch-expiry="{{ $batchExpiry }}"
-                        data-shelf-life="{{ $shelfLife }}"
-                        selected>
-                    {{ $itemName }}{{ $itemCode ? ' ['.$itemCode.']' : '' }}
-                </option>
-            @endif
-        </select>
+        <input type="text"
+               class="form-control form-control-sm pinv-item-desc bg-light font-weight-bold text-truncate"
+               readonly
+               tabindex="-1"
+               value="{{ $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '' }}"
+               placeholder="Product Description"
+               title="Product description">
+        <input type="hidden"
+               name="items[{{ $index }}][item_id]"
+               class="pinv-item-select"
+               value="{{ $selectedItemId }}"
+               required>
     </td>
     <td style="width: 125px;">
         <input type="date"
@@ -91,12 +74,12 @@
     <td style="width: 95px;"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost" required autocomplete="off"></td>
     <td style="width: 95px;"><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm pinv-sell" autocomplete="off"></td>
     <td style="width: 95px;"><input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm pinv-mrp" autocomplete="off"></td>
-    <td style="width: 85px;"><input type="text" readonly class="form-control form-control-sm pinv-margin bg-light text-right font-weight-bold" value="{{ $marginVal !== null && $marginVal != 0 ? number_format($marginVal, 2).'%' : '' }}" autocomplete="off" title="Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100"></td>
-    <td style="width: 85px;"><input type="text" readonly class="form-control form-control-sm pinv-profit bg-light text-right font-weight-bold" value="{{ $profitVal !== null && $profitVal != 0 ? number_format($profitVal, 2).'%' : '' }}" autocomplete="off" title="Profit % = Profit Amount ÷ Cost Price × 100"></td>
+    <td style="width: 85px;"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-margin bg-light text-right font-weight-bold" value="{{ $marginVal !== null && $marginVal != 0 ? number_format($marginVal, 2).'%' : '' }}" autocomplete="off" title="Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100"></td>
+    <td style="width: 85px;"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-profit bg-light text-right font-weight-bold" value="{{ $profitVal !== null && $profitVal != 0 ? number_format($profitVal, 2).'%' : '' }}" autocomplete="off" title="Profit % = Profit Amount ÷ Cost Price × 100"></td>
     <td style="width: 80px;"><input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent" autocomplete="off"></td>
     <td style="width: 90px;"><input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm pinv-disc-amount" autocomplete="off"></td>
-    <td style="width: 75px;"><input type="number" step="0.01" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm pinv-gst" autocomplete="off"></td>
-    <td style="width: 95px;"><input type="number" step="0.01" readonly name="items[{{ $index }}][gst_tax_amount]" value="{{ $gstTaxAmtVal }}" class="form-control form-control-sm pinv-gst-amt bg-light text-right" autocomplete="off"></td>
+    <td style="width: 75px;"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm pinv-gst bg-light text-right" autocomplete="off" placeholder="0%" title="GST % (Read-only)"></td>
+    <td style="width: 95px;"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_tax_amount]" value="{{ $gstTaxAmtVal }}" class="form-control form-control-sm pinv-gst-amt bg-light text-right" autocomplete="off" title="GST Tax Amount (Read-only)"></td>
     <td style="width: 105px;" class="text-right align-middle font-weight-bold text-success pinv-row-net">{{ $netAmtVal }}</td>
     <td style="width: 35px;" class="text-center align-middle">
         <button type="button" class="btn btn-xs btn-outline-danger pinv-remove-row"><i class="fas fa-times"></i></button>

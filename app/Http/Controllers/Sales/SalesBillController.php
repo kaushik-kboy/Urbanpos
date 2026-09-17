@@ -311,6 +311,34 @@ class SalesBillController extends Controller
         return response()->json($this->loyaltyService->getCustomerLoyalty($customer));
     }
 
+    public function customerInvoices(Customer $customer)
+    {
+        $bills = SalesBill::where('customer_id', $customer->id)
+            ->orderBy('bill_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->limit(100)
+            ->get(['id', 'bill_number', 'bill_date', 'total', 'invoice_type', 'status'])
+            ->map(function ($bill) {
+                return [
+                    'id' => $bill->id,
+                    'bill_number' => $bill->bill_number,
+                    'bill_date' => $bill->bill_date ? $bill->bill_date->format('d-m-Y h:i A') : '',
+                    'total' => (float) $bill->total,
+                    'invoice_type' => $bill->invoice_type,
+                    'status' => $bill->status,
+                    'view_url' => route('sales.sales-bills.show', $bill),
+                    'edit_url' => route('sales.sales-bills.edit', $bill),
+                    'print_url' => route('sales.sales-bills.receipt', $bill),
+                ];
+            });
+
+        return response()->json([
+            'customer_name' => $customer->name,
+            'customer_mobile' => $customer->mobile ?? '',
+            'invoices' => $bills,
+        ]);
+    }
+
     /**
      * Posts the SALE movement for each line and snapshots the cost the ledger actually
      * released (the item's moving-average cost at this moment) as cost_at_sale — this is
@@ -350,6 +378,12 @@ class SalesBillController extends Controller
         }
 
         $sum = round(collect($payments)->sum('amount'), 2);
+        $diff = round($total - $sum, 2);
+        if (abs($diff) <= 0.05 && $diff != 0 && count($payments) > 0) {
+            $payments[0]['amount'] = round((float) $payments[0]['amount'] + $diff, 2);
+            $sum = round(collect($payments)->sum('amount'), 2);
+        }
+
         if (abs($sum - round($total, 2)) > 0.01) {
             throw ValidationException::withMessages([
                 'payments' => "Payment total ({$sum}) does not match the bill total ({$total}).",
@@ -861,6 +895,13 @@ class SalesBillController extends Controller
 
     private function validateData(Request $request): array
     {
+        // Filter out empty rows (where item_id is missing or qty <= 0) before validation
+        $rawItems = $request->input('items', []);
+        $filteredItems = collect($rawItems)->filter(function ($item) {
+            return !empty($item['item_id']) && (float)($item['qty'] ?? 0) > 0;
+        })->values()->all();
+        $request->merge(['items' => $filteredItems]);
+
         $header = $request->validate([
             'bill_date' => ['required', 'date'],
             'customer_id' => ['required', 'exists:customers,id'],
@@ -881,7 +922,7 @@ class SalesBillController extends Controller
             'posting_key' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $header['bill_date'] = $this->normalizeDate($header['bill_date']);
+        $header['bill_date'] = \Illuminate\Support\Carbon::parse($header['bill_date'])->format('Y-m-d H:i:s');
 
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],

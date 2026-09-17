@@ -58,6 +58,33 @@
 </div>
 
 <hr>
+{{-- Smart Bill Item Picker: shown when a Sales Bill is selected --}}
+<div id="sr-bill-picker-wrap" class="card border-primary mb-3 bg-light shadow-sm" style="display: none;">
+    <div class="card-body py-2 px-3">
+        <div class="row align-items-center">
+            <div class="col-md-7 mb-2 mb-md-0">
+                <label class="small font-weight-bold text-primary mb-1">
+                    <i class="fas fa-receipt mr-1"></i> Select Item from Sales Bill to Return:
+                </label>
+                <div class="input-group input-group-sm">
+                    <select id="sr-bill-item-select" class="form-control form-control-sm">
+                        <option value="">-- Choose an item from this bill --</option>
+                    </select>
+                </div>
+                <small class="text-muted">Return quantity cannot exceed original bill quantity. Select 1 item or click "Add All Items".</small>
+            </div>
+            <div class="col-md-5 text-md-right pt-2 pt-md-0">
+                <button type="button" id="btn-add-bill-item" class="btn btn-primary btn-sm font-weight-bold mr-1">
+                    <i class="fas fa-plus mr-1"></i> Add to Return
+                </button>
+                <button type="button" id="btn-add-all-bill-items" class="btn btn-outline-secondary btn-sm font-weight-bold">
+                    <i class="fas fa-layer-group mr-1"></i> Add All Bill Items
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0 font-weight-bold text-dark">
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
@@ -236,6 +263,10 @@
            ITEM SEARCH MODAL — open on click of Code/Barcode field
            ---------------------------------------------------------------- */
         $(document).on('click', '.sr-item-code', function () {
+            if ($('#sales_bill_id').val()) {
+                alert('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
+                return;
+            }
             srActiveSearchRow = $(this).closest('tr');
             let prefill = $.trim($(this).val());
             $('#sr-isl-filter-name').val(prefill);
@@ -469,11 +500,6 @@
         document.getElementById('sr-items-body')?.addEventListener('click', function (e) {
             const btn = e.target.closest('.sr-row-remove');
             if (!btn) return;
-            const rows = document.querySelectorAll('#sr-items-body .sr-item-row');
-            if (rows.length <= 1) {
-                alert('At least one item row is required.');
-                return;
-            }
             btn.closest('tr').remove();
             recalculateAll();
         });
@@ -482,6 +508,17 @@
             if (e.target.matches('.sr-qty, .sr-price, .sr-mrp, .sr-disc-percent, .sr-disc-amount, .sr-gst-percent')) {
                 recalculateAll();
             }
+        });
+
+        // Cap return quantity to original bill quantity
+        $(document).on('input change', '.sr-qty', function () {
+            let maxQty = parseFloat($(this).attr('data-original-qty') || $(this).attr('max'));
+            let currentVal = parseFloat($(this).val()) || 0;
+            if (maxQty > 0 && currentVal > maxQty) {
+                alert(`Return quantity cannot exceed original bill quantity (${maxQty}). Quantity adjusted.`);
+                $(this).val(maxQty);
+            }
+            recalculateAll();
         });
 
         document.getElementById('round_off')?.addEventListener('input', recalculateAll);
@@ -512,15 +549,19 @@
             }
         });
 
-        // Automatic Bill Items Loader when Bill is selected
+        // Smart Bill Items Picker & Automatic Loader when Bill is selected
+        let cachedBillItems = [];
         let isAutoLoadingBill = false;
-        function loadBillItems(billId) {
+
+        function loadBillItems(billId, preserveExisting = false) {
             if (!billId || isAutoLoadingBill) return;
 
             isAutoLoadingBill = true;
             const tbody = document.getElementById('sr-items-body');
             const originalRows = tbody.innerHTML;
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-primary"><i class="fas fa-spinner fa-spin fa-2x"></i><div class="mt-2 font-weight-bold">Loading items from sales bill...</div></td></tr>';
+            if (!preserveExisting) {
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-primary"><i class="fas fa-spinner fa-spin fa-2x"></i><div class="mt-2 font-weight-bold">Loading items from sales bill...</div></td></tr>';
+            }
 
             fetch(`/sales/sales-returns/bill-items/${billId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -534,63 +575,173 @@
                     $('#sales_type').val(data.sales_type).trigger('change');
                 }
 
-                if (data.items && data.items.length > 0) {
-                    tbody.innerHTML = '';
-                    data.items.forEach((item, idx) => {
-                        const template = document.getElementById('sr-row-template').innerHTML;
-                        const html = template.replaceAll('__INDEX__', idx);
-                        const tempWrapper = document.createElement('tbody');
-                        tempWrapper.innerHTML = html;
-                        const row = tempWrapper.firstElementChild;
+                cachedBillItems = data.items || [];
 
-                        // Fill hidden item_id
-                        const hiddenId = row.querySelector('.sr-item-select');
-                        if (hiddenId) hiddenId.value = item.item_id;
-                        // Fill code field
-                        const codeInput = row.querySelector('.sr-item-code');
-                        if (codeInput) codeInput.value = item.item_code || '';
-                        // Fill description field
-                        const descInput = row.querySelector('.sr-item-desc');
-                        if (descInput) descInput.value = item.item_name + (item.item_code ? ' [' + item.item_code + ']' : '');
-                        // Fill other fields
-                        const qtyInput = row.querySelector('.sr-qty');
-                        if (qtyInput) qtyInput.value = item.qty;
-                        const priceInput = row.querySelector('.sr-price');
-                        if (priceInput) priceInput.value = item.sell_price;
-                        const mrpInput = row.querySelector('.sr-mrp');
-                        if (mrpInput) mrpInput.value = item.mrp;
-                        const discPctInput = row.querySelector('.sr-disc-percent');
-                        if (discPctInput) discPctInput.value = item.disc_percent;
-                        const discAmtInput = row.querySelector('.sr-disc-amount');
-                        if (discAmtInput) discAmtInput.value = item.disc_amount;
-                        const gstPctInput = row.querySelector('.sr-gst-percent');
-                        if (gstPctInput) gstPctInput.value = item.gst_percent;
-                        const expInput = row.querySelector('.sr-exp-date');
-                        if (expInput && item.exp_date) expInput.value = item.exp_date;
+                // Populate smart item picker dropdown
+                let $pickerSelect = $('#sr-bill-item-select');
+                let optHtml = '<option value="">-- Choose item from original bill (' + cachedBillItems.length + ' items) --</option>';
+                cachedBillItems.forEach((item, idx) => {
+                    let codeStr = item.item_code ? ' [' + item.item_code + ']' : '';
+                    let expStr = item.exp_date ? ' (Exp: ' + item.exp_date + ')' : '';
+                    optHtml += `<option value="${idx}">${item.item_name}${codeStr} - Sold: ${item.original_qty} @ ₹${parseFloat(item.sell_price).toFixed(2)}${expStr}</option>`;
+                });
+                $pickerSelect.html(optHtml);
 
-                        tbody.appendChild(row);
+                if (preserveExisting) {
+                    // Update max on existing rows
+                    $('#sr-items-body .sr-item-row').each(function () {
+                        let itemId = $(this).find('.sr-item-select').val();
+                        let found = cachedBillItems.find(b => String(b.item_id) === String(itemId));
+                        if (found) {
+                            $(this).find('.sr-qty').attr('max', found.original_qty).attr('data-original-qty', found.original_qty);
+                            $(this).find('.sr-max-qty-label').text('Max: ' + found.original_qty).show();
+                            $(this).find('.sr-item-code').prop('readonly', true);
+                        }
                     });
-                    rowIndex = data.items.length;
                     recalculateAll();
                 } else {
-                    tbody.innerHTML = originalRows;
-                    alert('No items found in selected bill.');
+                    // Show helpful instruction placeholder
+                    tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-primary mr-1"></i> Original Sales Bill loaded (${cachedBillItems.length} items). Select the item being returned from the dropdown above, or click <strong>Add All Bill Items</strong>.</td></tr>`;
+                    recalculateAll();
                 }
             })
             .catch(err => {
                 console.error(err);
-                tbody.innerHTML = originalRows;
-                alert('Failed to load items from bill.');
+                if (!preserveExisting) {
+                    tbody.innerHTML = originalRows;
+                }
+                alert('Failed to load items from sales bill.');
             })
             .finally(() => {
                 isAutoLoadingBill = false;
             });
         }
 
+        function appendBillItemRow(item, initialQty) {
+            const template = document.getElementById('sr-row-template').innerHTML;
+            const html = template.replaceAll('__INDEX__', rowIndex);
+            const tempWrapper = document.createElement('tbody');
+            tempWrapper.innerHTML = html;
+            const row = tempWrapper.firstElementChild;
+
+            // Fill item fields
+            const hiddenId = row.querySelector('.sr-item-select');
+            if (hiddenId) hiddenId.value = item.item_id;
+
+            const codeInput = row.querySelector('.sr-item-code');
+            if (codeInput) {
+                codeInput.value = item.item_code || '';
+                codeInput.readOnly = true;
+                codeInput.title = 'Item from Sales Bill (cannot be changed)';
+            }
+
+            const descInput = row.querySelector('.sr-item-desc');
+            if (descInput) descInput.value = item.item_name + (item.item_code ? ' [' + item.item_code + ']' : '');
+
+            const qtyInput = row.querySelector('.sr-qty');
+            if (qtyInput) {
+                qtyInput.value = initialQty;
+                qtyInput.max = item.original_qty;
+                qtyInput.setAttribute('data-original-qty', item.original_qty);
+            }
+
+            const maxLabel = row.querySelector('.sr-max-qty-label');
+            if (maxLabel) {
+                maxLabel.innerText = 'Max: ' + item.original_qty;
+                maxLabel.style.display = 'block';
+            }
+
+            const priceInput = row.querySelector('.sr-price');
+            if (priceInput) priceInput.value = parseFloat(item.sell_price).toFixed(2);
+
+            const mrpInput = row.querySelector('.sr-mrp');
+            if (mrpInput) mrpInput.value = parseFloat(item.mrp || 0).toFixed(2);
+
+            const discPctInput = row.querySelector('.sr-disc-percent');
+            if (discPctInput) discPctInput.value = item.disc_percent || 0;
+
+            const discAmtInput = row.querySelector('.sr-disc-amount');
+            if (discAmtInput) discAmtInput.value = item.disc_amount || 0;
+
+            const gstPctInput = row.querySelector('.sr-gst-percent');
+            if (gstPctInput) gstPctInput.value = item.gst_percent || 0;
+
+            const expInput = row.querySelector('.sr-exp-date');
+            if (expInput && item.exp_date) expInput.value = item.exp_date;
+
+            document.getElementById('sr-items-body').appendChild(row);
+            rowIndex++;
+            recalculateAll();
+
+            // Focus the quantity input
+            setTimeout(() => {
+                row.querySelector('.sr-qty')?.focus();
+                row.querySelector('.sr-qty')?.select();
+            }, 50);
+        }
+
+        // Add 1 selected item from bill to return table
+        $('#btn-add-bill-item').on('click', function () {
+            let idx = $('#sr-bill-item-select').val();
+            if (idx === '' || idx === null || typeof cachedBillItems[idx] === 'undefined') {
+                alert('Please select an item from the bill dropdown first.');
+                return;
+            }
+
+            let item = cachedBillItems[idx];
+            let tbody = document.getElementById('sr-items-body');
+
+            // If already in table, focus its qty input
+            let existingRow = $(tbody).find(`.sr-item-row .sr-item-select[value="${item.item_id}"]`).closest('tr');
+            if (existingRow.length > 0) {
+                alert(`"${item.item_name}" is already in the return list. You can edit its return quantity below.`);
+                existingRow.find('.sr-qty').focus();
+                return;
+            }
+
+            // Remove placeholder if present
+            if ($(tbody).find('td[colspan]').length > 0) {
+                tbody.innerHTML = '';
+            }
+
+            appendBillItemRow(item, 1 <= item.original_qty ? 1 : item.original_qty);
+        });
+
+        // Add all items from bill to return table
+        $('#btn-add-all-bill-items').on('click', function () {
+            if (!cachedBillItems || cachedBillItems.length === 0) {
+                alert('No items found in selected bill.');
+                return;
+            }
+            let tbody = document.getElementById('sr-items-body');
+            tbody.innerHTML = '';
+            cachedBillItems.forEach(item => {
+                appendBillItemRow(item, item.original_qty);
+            });
+        });
+
+        function updateBillModeUI() {
+            let billId = $('#sales_bill_id').val();
+            if (billId) {
+                $('#sr-add-row').hide();
+                $('#sr-bill-picker-wrap').slideDown(200);
+            } else {
+                $('#sr-add-row').show();
+                $('#sr-bill-picker-wrap').slideUp(200);
+                cachedBillItems = [];
+                $('#sr-items-body .sr-item-row').each(function () {
+                    $(this).find('.sr-qty').removeAttr('max').removeAttr('data-original-qty');
+                    $(this).find('.sr-max-qty-label').hide();
+                    $(this).find('.sr-item-code').prop('readonly', false);
+                });
+            }
+        }
+
         $('#sales_bill_id').on('change', function () {
             let billId = $(this).val();
+            updateBillModeUI();
             if (billId) {
-                loadBillItems(billId);
+                loadBillItems(billId, false);
             }
         });
 
@@ -627,6 +778,7 @@
                     $billSelect.trigger('change.select2');
                 }
                 customerBillsLoading = false;
+                updateBillModeUI();
             });
         }
 
@@ -639,7 +791,58 @@
         let initialBillId = '{{ old("sales_bill_id", $ret->sales_bill_id ?? "") }}';
         if (initialCustId) {
             loadCustomerBills(initialCustId, initialBillId);
+        } else if (initialBillId) {
+            updateBillModeUI();
+            loadBillItems(initialBillId, true);
         }
+
+        // Form Submit Handler: prune invalid rows and re-index contiguous names
+        $('form').on('submit', function (e) {
+            let hasBill = !!$('#sales_bill_id').val();
+            let validRows = 0;
+            let hasError = false;
+
+            $('#sr-items-body .sr-item-row').each(function () {
+                let itemId = $(this).find('.sr-item-select').val();
+                let qty = parseFloat($(this).find('.sr-qty').val()) || 0;
+                let origQty = parseFloat($(this).find('.sr-qty').attr('data-original-qty') || $(this).find('.sr-qty').attr('max')) || 0;
+
+                if (!itemId || qty <= 0) {
+                    $(this).remove();
+                    return;
+                }
+
+                if (hasBill && origQty > 0 && qty > origQty + 0.0001) {
+                    alert(`Return quantity (${qty}) cannot exceed original bill quantity (${origQty}).`);
+                    $(this).find('.sr-qty').focus();
+                    hasError = true;
+                    return false;
+                }
+                validRows++;
+            });
+
+            if (hasError) {
+                e.preventDefault();
+                return false;
+            }
+
+            if (validRows === 0) {
+                alert('Please add at least one valid item to return.');
+                e.preventDefault();
+                return false;
+            }
+
+            // Re-index remaining rows so items[0], items[1] are contiguous
+            $('#sr-items-body .sr-item-row').each(function (idx) {
+                $(this).attr('data-row-index', idx);
+                $(this).find('input, select').each(function () {
+                    let name = $(this).attr('name');
+                    if (name && name.indexOf('items[') !== -1) {
+                        $(this).attr('name', name.replace(/items\[\w+\]/, 'items[' + idx + ']'));
+                    }
+                });
+            });
+        });
 
         // Initialize calculations
         recalculateAll();

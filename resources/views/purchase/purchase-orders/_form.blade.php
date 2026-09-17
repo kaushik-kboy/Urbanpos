@@ -353,6 +353,7 @@
             $('#po-isl-table-wrap').removeClass('d-none');
             $('#po-isl-count-label').text(items.length + (items.length === 100 ? '+ (showing top 100)' : '') + ' item(s) found');
             islSelectedIdx = items.length > 0 ? 0 : -1;
+            updateModalHighlight();
         }
 
         function updateModalHighlight() {
@@ -578,6 +579,33 @@
         // Initial calculation on page load (for edit forms with existing items)
         calculatePoTotals();
 
+
+        function addPoRowAndOpenSearchModal() {
+            let html = $('#po-row-template').html().replaceAll('__INDEX__', rowIndex);
+            let $tbody = $('#po-items-body');
+            let $newRow = $(html);
+            $tbody.append($newRow);
+            $newRow.find('input').attr('autocomplete', 'off');
+            rowIndex++;
+            updateRowNumbers();
+            setTimeout(function () {
+                $newRow.find('.po-item-code').focus().trigger('click');
+            }, 60);
+        }
+
+        // Last columns: pressing Tab or Enter advances to next row or adds a new row and opens search modal
+        $(document).on('keydown', '.po-gst, .po-disc-amount', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr');
+                let $nextRow = $currentRow.next('tr');
+                if ($(this).hasClass('po-gst') || e.key === 'Enter') {
+                    if (!$nextRow.length) {
+                        e.preventDefault();
+                        addPoRowAndOpenSearchModal();
+                    }
+                }
+            }
+        });
 
         // Add Row
         $('#po-add-row').on('click', function () {

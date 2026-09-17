@@ -13,10 +13,10 @@
             @endif
         </h1>
         <div>
+            <a href="{{ route('purchase.purchase-returns.print', $purchaseReturn) }}" target="_blank" class="btn btn-primary btn-sm mr-1">
+                <i class="fas fa-print mr-1"></i> Print Slip
+            </a>
             @if ($purchaseReturn->status !== 'Cancelled')
-                <a href="{{ route('purchase.purchase-returns.edit', $purchaseReturn) }}" class="btn btn-outline-secondary btn-sm mr-1">
-                    <i class="fas fa-pen mr-1"></i> Edit
-                </a>
                 <form action="{{ route('purchase.purchase-returns.destroy', $purchaseReturn) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this purchase return? Stock will be restored.')">
                     @csrf
                     @method('DELETE')

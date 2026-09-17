@@ -74,6 +74,13 @@
         @if($layoutHelper->isRightSidebarEnabled())
             @include('adminlte::partials.navbar.menu-item-right-sidebar-toggler')
         @endif
+
+        {{-- Global Back Button in Top Right Corner --}}
+        <li class="nav-item ml-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm d-flex align-items-center my-1" onclick="if(window.history.length > 1){ window.history.back(); } else { window.location.href='{{ url('/') }}'; }" title="Go Back">
+                <i class="fas fa-arrow-left mr-1"></i> <span>Back</span>
+            </button>
+        </li>
     </ul>
 
 </nav>

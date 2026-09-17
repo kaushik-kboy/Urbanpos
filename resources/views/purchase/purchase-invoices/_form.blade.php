@@ -121,8 +121,9 @@
 </div>
 
 <x-field name="freight" label="Freight" type="number" step="0.01" :value="isset($inv->freight) && $inv->freight != 0 ? $inv->freight : ''" />
-<x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
 <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="isset($inv->scheme_item_disc_amt) && $inv->scheme_item_disc_amt != 0 ? $inv->scheme_item_disc_amt : ''" />
+<x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="isset($inv->scheme_item_disc_percent) && $inv->scheme_item_disc_percent != 0 ? $inv->scheme_item_disc_percent : ''" />
+<x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
 <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="isset($inv->other_disc_amt) && $inv->other_disc_amt != 0 ? $inv->other_disc_amt : ''" />
 <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="isset($inv->total_extra_cess) && $inv->total_extra_cess != 0 ? $inv->total_extra_cess : ''" />
 <x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
@@ -227,11 +228,20 @@
     $(document).ready(function () {
         let rowIndex = {{ $existingItems->count() ?: 1 }};
         let activeSearchRow = null;   // which row triggered the item search modal
+        let pendingFocusExpRow = null; // row to focus on Exp Date after modal hide
         let islDebounce = null;
         let islCache = {};
         let islLastKey = null;
         let islModalOpen = false;
         const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
+
+        function focusExpDateField($row) {
+            if (!$row || !$row.length) return;
+            let $exp = $row.find('.pinv-exp-date');
+            if ($exp.length) {
+                $exp.trigger('focus').focus().trigger('click');
+            }
+        }
 
         /* ================================================================
            ITEM SEARCH MODAL — open on Code/Barcode focus
@@ -409,12 +419,15 @@
             let itemId   = $row.data('id');
             let itemCode = $row.data('code');
 
+            let $targetRow = activeSearchRow;
+            pendingFocusExpRow = $targetRow;
+
             $('#pinv-item-search-modal').modal('hide');
 
-            if (! activeSearchRow || ! itemId) return;
+            if (! $targetRow || ! itemId) return;
 
-            activeSearchRow.find('.pinv-item-code').val(itemCode || itemId);
-            processPurchaseItemLookup(activeSearchRow, itemId);
+            $targetRow.find('.pinv-item-code').val(itemCode || itemId);
+            processPurchaseItemLookup($targetRow, itemId);
             activeSearchRow = null;
         });
 
@@ -423,6 +436,16 @@
         $('#pinv-item-search-modal').on('hidden.bs.modal', function() {
             islModalOpen = false;
             setTimeout(function() { islModalOpen = false; }, 300);
+            if (pendingFocusExpRow && pendingFocusExpRow.length) {
+                let $target = pendingFocusExpRow;
+                pendingFocusExpRow = null;
+                setTimeout(function () {
+                    focusExpDateField($target);
+                }, 50);
+                setTimeout(function () {
+                    focusExpDateField($target);
+                }, 150);
+            }
         });
 
         // Open modal on Code/Barcode field focus
@@ -714,14 +737,28 @@
             }
         }
 
+        function focusExpDateField($row) {
+            if (!$row || !$row.length) return;
+            let $exp = $row.find('.pinv-exp-date');
+            if ($exp.length) {
+                $exp[0].focus();
+                setTimeout(function () {
+                    $exp[0].focus();
+                }, 60);
+                setTimeout(function () {
+                    $exp[0].focus();
+                }, 180);
+            }
+        }
+
         function updateExpiryRequirement($row, batchExpiry, shelfLife) {
             let $expInput = $row.find('.pinv-exp-date');
             let $expBadge = $row.find('.pinv-exp-badge');
 
             if (batchExpiry === undefined || batchExpiry === null) {
-                let $opt = $row.find('.pinv-item-select option:selected');
-                batchExpiry = $opt.data('batch-expiry') || 'Not Required';
-                shelfLife = parseInt($opt.data('shelf-life') || 0);
+                let $sel = $row.find('.pinv-item-select');
+                batchExpiry = $sel.attr('data-batch-expiry') || 'Not Required';
+                shelfLife = parseInt($sel.attr('data-shelf-life') || 0);
             }
 
             if (batchExpiry === 'Mandatory' || batchExpiry === 'Days' || batchExpiry === 'Month') {
@@ -756,6 +793,7 @@
         function processPurchaseItemLookup($row, itemId, query) {
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let $select = $row.find('.pinv-item-select');
+            let $desc = $row.find('.pinv-item-desc');
             let $code = $row.find('.pinv-item-code');
 
             let params = { branch_id: branchId };
@@ -774,20 +812,10 @@
                         $code.val(codeVal);
                     }
 
-                    if ($select.find(`option[value="${data.id}"]`).length === 0) {
-                        let opt = new Option(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''), data.id, true, true);
-                        let $optEl = $(opt);
-                        $optEl.attr('data-code', data.item_code || '').data('code', data.item_code || '');
-                        $optEl.attr('data-ean', data.ean_upc_code || '').data('ean', data.ean_upc_code || '');
-                        $optEl.attr('data-cost', data.cost_price || 0).data('cost', data.cost_price || 0);
-                        $optEl.attr('data-sell', data.sell_price || 0).data('sell', data.sell_price || 0);
-                        $optEl.attr('data-mrp', data.mrp || 0).data('mrp', data.mrp || 0);
-                        $optEl.attr('data-gst', data.gst_percent || 0).data('gst', data.gst_percent || 0);
-                        $optEl.attr('data-batch-expiry', data.batch_expiry_details || 'Not Required').data('batch-expiry', data.batch_expiry_details || 'Not Required');
-                        $optEl.attr('data-shelf-life', data.shelf_life_days || '').data('shelf-life', data.shelf_life_days || '');
-                        $select.append(opt);
-                    }
-                    $select.val(data.id).trigger('change.select2');
+                    $select.val(data.id);
+                    $select.attr('data-batch-expiry', data.batch_expiry_details || 'Not Required');
+                    $select.attr('data-shelf-life', data.shelf_life_days || 0);
+                    $desc.val(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''));
 
                     // Set pricing fields
                     if (data.cost_price > 0) {
@@ -813,13 +841,8 @@
 
                     calculateRow($row, 'base');
 
-                    // Next field focus
-                    let isExpRequired = ['Mandatory', 'Days', 'Month'].includes(data.batch_expiry_details);
-                    if (isExpRequired && !$row.find('.pinv-exp-date').val()) {
-                        $row.find('.pinv-exp-date').focus();
-                    } else {
-                        $row.find('.pinv-qty').focus();
-                    }
+                    // Next field focus: Always direct trigger Exp-date
+                    focusExpDateField($row);
                 } else {
                     $code.addClass('is-invalid');
                     setTimeout(function () { $code.removeClass('is-invalid'); }, 2500);
@@ -841,32 +864,7 @@
             let query = $.trim($input.val());
             if (!query) return;
 
-            let $select = $row.find('.pinv-item-select');
-            let currentSelected = $select.find('option:selected');
-            let currentCode = currentSelected.data('code');
-            let currentEan = currentSelected.data('ean');
-
-            if ((currentCode && String(currentCode).toLowerCase() === query.toLowerCase()) ||
-                (currentEan && String(currentEan).toLowerCase() === query.toLowerCase())) {
-                return;
-            }
-
-            let matchedId = null;
-            $select.find('option').each(function () {
-                let optCode = $(this).data('code');
-                let optEan = $(this).data('ean');
-                if ((optCode && String(optCode).toLowerCase() === query.toLowerCase()) ||
-                    (optEan && String(optEan).toLowerCase() === query.toLowerCase())) {
-                    matchedId = $(this).val();
-                    return false;
-                }
-            });
-
-            if (matchedId) {
-                $select.val(matchedId).trigger('change');
-            } else {
-                processPurchaseItemLookup($row, null, query);
-            }
+            processPurchaseItemLookup($row, null, query);
         });
 
         // 2. Item Selection: Auto-populate Code, Cost, Sell, MRP, GST, Margin %, Profit %, and apply Batch/Expiry rule
@@ -917,8 +915,17 @@
                         $row.find('.pinv-gst').val(Number(data.gst_percent || 0) >= 0 ? Number(data.gst_percent).toFixed(2) : '');
 
                         calculateRow($row);
+                        focusExpDateField($row);
                     }
                 });
+            }
+        });
+
+        // Advance to Qty when Enter is pressed on Exp Date
+        $(document).on('keydown', '.pinv-exp-date', function (e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                $(this).closest('tr').find('.pinv-qty').focus().select();
             }
         });
 
@@ -939,7 +946,62 @@
             calculateRow($(this).closest('tr'), 'other');
         });
 
-        $(document).on('input change', 'input[name="supplier_inv_amount"], input[name="freight"], input[name="round_off"], input[name="scheme_item_disc_amt"], input[name="other_disc_amt"], input[name="tcs_amount"]', function () {
+        function getPinvTotalBaseCost() {
+            let total = 0;
+            $('#pinv-items-body tr').each(function () {
+                let $r = $(this);
+                let qty = parseFloat($r.find('.pinv-qty').val()) || 0;
+                let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
+                let discAmt = parseFloat($r.find('.pinv-disc-amount').val()) || 0;
+                let base = qty * cost;
+                total += Math.max(0, base - discAmt);
+            });
+            return total;
+        }
+
+        let schemeSyncing = false;
+
+        $(document).on('input', 'input[name="scheme_item_disc_amt"]', function () {
+            if (schemeSyncing) return;
+            schemeSyncing = true;
+            let amt = parseFloat($(this).val()) || 0;
+            let base = getPinvTotalBaseCost();
+            if (base > 0 && amt > 0) {
+                let pct = (amt / base) * 100;
+                $('input[name="scheme_item_disc_percent"]').val(pct.toFixed(2));
+            } else if (amt === 0) {
+                $('input[name="scheme_item_disc_percent"]').val('');
+            }
+            schemeSyncing = false;
+            calculateTotals();
+        });
+
+        $(document).on('input', 'input[name="scheme_item_disc_percent"]', function () {
+            if (schemeSyncing) return;
+            schemeSyncing = true;
+            let pct = parseFloat($(this).val()) || 0;
+            let base = getPinvTotalBaseCost();
+            if (base > 0 && pct > 0) {
+                let amt = (base * pct) / 100;
+                $('input[name="scheme_item_disc_amt"]').val(amt.toFixed(2));
+            } else if (pct === 0) {
+                $('input[name="scheme_item_disc_amt"]').val('');
+            }
+            schemeSyncing = false;
+            calculateTotals();
+        });
+
+        function syncSchemePercentFromAmount() {
+            if (schemeSyncing) return;
+            let amt = parseFloat($('input[name="scheme_item_disc_amt"]').val()) || 0;
+            let base = getPinvTotalBaseCost();
+            if (base > 0 && amt > 0) {
+                let pct = (amt / base) * 100;
+                $('input[name="scheme_item_disc_percent"]').val(pct.toFixed(2));
+            }
+        }
+
+        $(document).on('input change', 'input[name="supplier_inv_amount"], input[name="freight"], input[name="round_off"], input[name="other_disc_amt"], input[name="tcs_amount"]', function () {
             calculateTotals();
         });
 
@@ -951,7 +1013,7 @@
                 let $r = $(this);
                 let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
                 let sell = parseFloat($r.find('.pinv-sell').val()) || 0;
-                let itemName = $r.find('.pinv-item-select option:selected').text().trim() || ('Row #' + (idx + 1));
+                let itemName = $r.find('.pinv-item-desc').val() || ('Row #' + (idx + 1));
                 if (cost > 0 && sell <= cost) {
                     priceError = {
                         row: idx + 1,
@@ -977,7 +1039,7 @@
                 let $r = $(this);
                 let sell = parseFloat($r.find('.pinv-sell').val()) || 0;
                 let mrp = parseFloat($r.find('.pinv-mrp').val()) || 0;
-                let itemName = $r.find('.pinv-item-select option:selected').text().trim() || ('Row #' + (idx + 1));
+                let itemName = $r.find('.pinv-item-desc').val() || ('Row #' + (idx + 1));
                 if (mrp > 0 && sell > mrp) {
                     mrpError = {
                         row: idx + 1,
@@ -1018,52 +1080,42 @@
         });
 
         function initPinvItemSelect2($el) {
-            $el.each(function () {
-                let $s = $(this);
-                $s.select2({
-                    theme: 'bootstrap4',
-                    width: '100%',
-                    placeholder: 'Select item',
-                    allowClear: true,
-                    ajax: {
-                        url: '{{ route("purchase.purchase-invoices.item-list") }}',
-                        dataType: 'json',
-                        delay: 250,
-                        data: function (params) {
-                            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-                            return {
-                                search: params.term || '',
-                                branch_id: branchId
-                            };
-                        },
-                        processResults: function (data) {
-                            return {
-                                results: (data.items || []).map(function (it) {
-                                    return {
-                                        id: it.id,
-                                        text: it.name + (it.code ? ' [' + it.code + ']' : ''),
-                                        item: it
-                                    };
-                                })
-                            };
-                        },
-                        cache: true
-                    }
-                }).on('select2:select', function (e) {
-                    let it = e.params?.data?.item;
-                    if (it) {
-                        let $opt = $(this).find('option:selected');
-                        $opt.attr('data-code', it.code || '').data('code', it.code || '');
-                        $opt.attr('data-cost', it.cost_price || 0).data('cost', it.cost_price || 0);
-                        $opt.attr('data-sell', it.sell_price || 0).data('sell', it.sell_price || 0);
-                        $opt.attr('data-mrp', it.mrp || 0).data('mrp', it.mrp || 0);
-                        $opt.attr('data-gst', it.gst_percent || 0).data('gst', it.gst_percent || 0);
-                        $opt.attr('data-batch-expiry', it.batch_expiry_details || 'Not Required').data('batch-expiry', it.batch_expiry_details || 'Not Required');
-                        $opt.attr('data-shelf-life', it.shelf_life_days || '').data('shelf-life', it.shelf_life_days || '');
-                    }
-                });
+            // Item description is now a clean readonly text input
+        }
+
+        function addPinvRowAndOpenSearchModal() {
+            let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
+            let $tbody = $('#pinv-items-body');
+            let $newRow = $(html);
+
+            $tbody.append($newRow);
+            initPinvItemSelect2($newRow.find('.pinv-item-select'));
+            $newRow.find('input').attr('autocomplete', 'off');
+            updateExpiryRequirement($newRow, 'Not Required', 0);
+            rowIndex++;
+            updateRowNumbers();
+            calculateTotals();
+
+            // Immediately trigger the item search modal for the newly added row
+            activeSearchRow = $newRow;
+            $('#pinv-isl-filter-name').val('');
+            $('#pinv-isl-filter-code').val('');
+            $('#pinv-isl-filter-expiry').val('');
+            fetchItemList();
+            islModalOpen = true;
+            $('#pinv-item-search-modal').modal('show');
+            $('#pinv-item-search-modal').one('shown.bs.modal', function () {
+                $('#pinv-isl-filter-name').focus();
             });
         }
+
+        // On Disc Amount field: Tab or Enter advances by creating a new row and opening item search popup
+        $(document).on('keydown', '.pinv-disc-amount', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                e.preventDefault();
+                addPinvRowAndOpenSearchModal();
+            }
+        });
 
         // 5. Add Row
         $('#pinv-add-row').on('click', function () {
@@ -1102,6 +1154,7 @@
             calculateRow($r, 'initial');
             updateExpiryRequirement($r);
         });
+        syncSchemePercentFromAmount();
         checkAmountMatch();
 
         // Form Reset Button Handler

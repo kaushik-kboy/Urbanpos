@@ -55,9 +55,8 @@
                     <strong class="h6 mb-0">{{ $salesBill->bill_number }}</strong>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
-                    <span class="text-muted small d-block">Bill Date</span>
-                    <strong>{{ $salesBill->bill_date->format('d-m-Y') }}</strong>
-                    <small class="text-muted">({{ $salesBill->created_at ? $salesBill->created_at->format('h:i A') : '' }})</small>
+                    <span class="text-muted small d-block">Bill Date & Time</span>
+                    <strong>{{ $salesBill->bill_date->format('d-m-Y h:i A') }}</strong>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <span class="text-muted small d-block">Customer</span>

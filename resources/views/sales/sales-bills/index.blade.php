@@ -91,7 +91,7 @@
                             <td class="font-weight-bold">
                                 <a href="{{ route('sales.sales-bills.show', $bill) }}">{{ $bill->bill_number }}</a>
                             </td>
-                            <td>{{ $bill->bill_date->format('d-m-Y') }}</td>
+                            <td>{{ $bill->bill_date ? $bill->bill_date->format('d-m-Y h:i A') : '' }}</td>
                             <td>{{ $bill->customer?->name }}</td>
                             <td>{{ $bill->branch?->name }}</td>
                             <td>{{ $bill->invoice_type }}</td>

@@ -16,7 +16,7 @@ class PurchaseInvoice extends Model
         'invoice_number', 'invoice_date', 'supplier_id', 'branch_id', 'purchase_order_id',
         'purchase_receipt_note_id', 'grn_number', 'grn_date', 'supplier_inv_no', 'supplier_inv_date', 'supplier_inv_amount',
         'purchase_type', 'c_form', 'item_disc_amount', 'disc_percent', 'disc_amount', 'freight',
-        'round_off', 'scheme_item_disc_amt', 'other_disc_amt', 'total_gst', 'total_cgst',
+        'round_off', 'scheme_item_disc_amt', 'scheme_item_disc_percent', 'other_disc_amt', 'total_gst', 'total_cgst',
         'total_sgst', 'total_igst', 'total_extra_cess',
         'tcs_amount', 'total_qty', 'total_weight', 'total', 'remarks', 'message',
         'status', 'posting_key',

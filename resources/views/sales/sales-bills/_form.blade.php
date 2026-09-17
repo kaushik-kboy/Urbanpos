@@ -24,22 +24,26 @@
     </div>
 @endif
 
-<h5 class="mb-3"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
-<x-select name="customer_id" label="Customer" :options="$customers" :selected="$selectedCust" placeholder="Select a customer" required />
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
+    <button type="button" id="btn-customer-invoices" class="btn btn-outline-info btn-sm font-weight-bold" disabled title="Select a customer first to view their invoice history">
+        <i class="fas fa-file-invoice mr-1"></i> Invoices <span id="badge-cust-invoices-count" class="badge badge-info ml-1 d-none">0</span>
+    </button>
+</div>
 <div class="form-group">
-    <label for="sb-customer-mobile" class="font-weight-bold"><i class="fas fa-phone-alt mr-1 text-primary"></i> Customer Mobile No</label>
-    <div class="input-group">
-        <div class="input-group-prepend">
-            <span class="input-group-text bg-white"><i class="fas fa-mobile-alt text-muted"></i></span>
-        </div>
-        <input type="text" id="sb-customer-mobile" class="form-control" maxlength="10" placeholder="Type 10 digits mobile number to auto-select or add customer" value="{{ optional($bill?->customer)->mobile ?? optional($selectedCust ? \App\Models\Customer::find($selectedCust) : null)->mobile }}" autocomplete="off">
-        <div class="input-group-append">
-            <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary" title="Add Customer Master">
-                <i class="fas fa-user-plus mr-1"></i> Add Customer
-            </button>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
+        <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs font-weight-bold">
+            <i class="fas fa-user-plus mr-1"></i> + New Customer
+        </button>
     </div>
-    <small class="form-text text-muted">10 digits mobile number enter karte hi agar customer exist karta hai to auto-select hoga, nahi to Add Customer popup open ho jayega.</small>
+    <select name="customer_id" id="customer_id" class="form-control select2" required>
+        <option value="">-- Search Customer by Name or Mobile --</option>
+        @foreach ($customers as $id => $name)
+            <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
+        @endforeach
+    </select>
+    <small class="form-text text-muted">Type customer name or 10-digit mobile number to search. If number is not found, "Add Customer" modal will open automatically.</small>
 </div>
 <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-3 shadow-sm align-items-center justify-content-between">
     <div>
@@ -50,7 +54,7 @@
     <span id="sb-loyalty-notice" class="badge badge-success"></span>
 </div>
 <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a branch" required />
-<x-field name="bill_date" label="Bill Date" type="date" :value="optional($bill->bill_date ?? now())->format('Y-m-d')" required />
+<x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" required />
 <x-select name="invoice_type" label="Invoice Type" :options="['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
 <x-select name="delivery_type" label="Delivery Type" :options="['Delivered' => 'Delivered', 'Home Delivery' => 'Home Delivery', 'Pickup' => 'Pickup']" :selected="$bill->delivery_type ?? 'Delivered'" required />
 <x-field name="delivery_time" label="Delivery Time" type="time" :value="$bill->delivery_time ?? ''" />
@@ -543,6 +547,68 @@
                 <div class="tender-hotkey-bar">
                     Press (A) - Cash; (B) - Credit; (C) - Card; (W) - Wallet; (N) - RRN
                 </div>
+<!-- ============================================================
+     CUSTOMER INVOICES HISTORY MODAL — Opens on Invoices button click
+     ============================================================ -->
+<div class="modal fade" id="customer-invoices-modal" tabindex="-1" role="dialog" aria-labelledby="custInvoicesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-info text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="custInvoicesModalLabel">
+                    <i class="fas fa-history mr-2"></i><span id="cim-cust-title">Customer Invoice History</span>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="row mb-2">
+                    <div class="col-md-7">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                            <input type="text" id="cim-filter-input" class="form-control" placeholder="Search by invoice #, date, amount..." autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-5 text-right d-flex align-items-center justify-content-end">
+                        <span id="cim-summary-count" class="badge badge-light border text-muted px-2 py-1 mr-2">0 Invoices</span>
+                        <button type="button" id="cim-btn-refresh" class="btn btn-xs btn-outline-info"><i class="fas fa-sync-alt mr-1"></i> Refresh</button>
+                    </div>
+                </div>
+
+                <div id="cim-loading" class="text-center py-4 d-none">
+                    <i class="fas fa-circle-notch fa-spin fa-2x text-info"></i>
+                    <p class="mt-2 text-muted">Loading customer invoices...</p>
+                </div>
+
+                <div id="cim-empty" class="text-center py-4 d-none">
+                    <i class="fas fa-receipt fa-2x text-muted"></i>
+                    <p class="mt-2 text-muted" id="cim-empty-msg">No invoices found for this customer.</p>
+                </div>
+
+                <div class="table-responsive" id="cim-table-wrap">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="cim-table">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width: 45px;" class="text-center">#</th>
+                                <th style="width: 170px;">Date</th>
+                                <th>Invoice #</th>
+                                <th class="text-right" style="width: 120px;">Amount</th>
+                                <th class="text-center" style="width: 170px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cim-tbody"></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                    <small class="text-muted" id="cim-page-info">Showing 0 to 0</small>
+                    <ul class="pagination pagination-sm mb-0" id="cim-pagination"></ul>
+                </div>
+            </div>
+            <div class="modal-footer py-2 bg-light">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -578,81 +644,79 @@
         const ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
 
         // Customer Select2 with remote AJAX search by name or mobile
-        let $custSelect = $('select[name="customer_id"]');
+        let $custSelect = $('#customer_id');
         if ($custSelect.hasClass('select2-hidden-accessible')) {
             $custSelect.select2('destroy');
         }
+
+        let lastCustSearchTerm = '';
         $custSelect.select2({
             theme: 'bootstrap4',
             width: '100%',
-            placeholder: 'Search customer by name or mobile...',
+            placeholder: '-- Search Customer by Name or Mobile --',
             allowClear: true,
             ajax: {
                 url: '{{ route("sales.sales-bills.customer-search") }}',
                 dataType: 'json',
-                delay: 200,
+                delay: 250,
                 data: function (params) {
-                    return { q: params.term || '' };
+                    lastCustSearchTerm = $.trim(params.term || '');
+                    return { q: lastCustSearchTerm };
                 },
                 processResults: function (data) {
-                    return { results: data.results };
+                    let results = data.results || [];
+                    let cleanMob = lastCustSearchTerm.replace(/[^0-9]/g, '');
+                    if (cleanMob.length === 10 && results.length === 0) {
+                        setTimeout(function () {
+                            $custSelect.select2('close');
+                            openQuickCustomerModal(cleanMob);
+                        }, 200);
+                    }
+                    return { results: results };
                 },
                 cache: true
             }
         });
 
-        // Customer selection syncs Mobile No field
-        $custSelect.on('select2:select', function (e) {
-            let data = e.params?.data;
-            if (data) {
-                if (data.mobile) {
-                    $('#sb-customer-mobile').val(data.mobile);
-                } else if (data.text) {
-                    let match = data.text.match(/\((\d{10})\)/);
-                    if (match) {
-                        $('#sb-customer-mobile').val(match[1]);
+        // If user hits Enter in Select2 search field on a 10-digit number with no results
+        $(document).on('keydown', '.select2-search__field', function (e) {
+            if (e.key === 'Enter') {
+                let term = $.trim($(this).val());
+                let cleanMob = term.replace(/[^0-9]/g, '');
+                if (cleanMob.length === 10) {
+                    let hasResults = $('.select2-results__option:not(.select2-results__message)').length > 0;
+                    if (!hasResults) {
+                        e.preventDefault();
+                        $custSelect.select2('close');
+                        openQuickCustomerModal(cleanMob);
                     }
                 }
             }
         });
+
+        // Customer selected -> fetch loyalty points and customer invoice history
+        $custSelect.on('change select2:select', function () {
+            let custId = $(this).val();
+            if (custId) {
+                fetchCustomerLoyalty(custId);
+                fetchCustomerInvoices(custId);
+                setTimeout(function () {
+                    $('#sb-items-body tr:first .sb-item-code').focus();
+                }, 150);
+            } else {
+                fetchCustomerLoyalty(null);
+                resetCustomerInvoices();
+            }
+        });
         $custSelect.on('select2:clear', function () {
-            $('#sb-customer-mobile').val('');
+            fetchCustomerLoyalty(null);
+            resetCustomerInvoices();
         });
 
-        // Typing mobile number directly auto-searches customer or opens Quick Customer Modal
-        let custSearchDebounce = null;
-        function checkAndHandleCustomerMobile(mob, triggeredByEnter = false) {
-            mob = $.trim(mob).replace(/[^0-9]/g, '').slice(0, 10);
-            if (!mob || (mob.length < 10 && !triggeredByEnter)) return;
-
-            $.getJSON('{{ route("sales.sales-bills.customer-search") }}', { q: mob }, function (data) {
-                if (data && data.results && data.results.length > 0) {
-                    let matched = data.results.find(c => c.mobile === mob) || data.results[0];
-                    if (matched) {
-                        if ($custSelect.find(`option[value="${matched.id}"]`).length === 0) {
-                            let opt = new Option(matched.text, matched.id, true, true);
-                            $custSelect.append(opt);
-                        }
-                        $custSelect.val(matched.id).trigger('change');
-                        $('#sb-customer-mobile').val(matched.mobile || mob);
-                        fetchCustomerLoyalty(matched.id);
-                        setTimeout(function () {
-                            $('#sb-items-body tr:first .sb-item-code').focus();
-                        }, 100);
-                        return;
-                    }
-                }
-
-                // If not found and user has typed 10 digits or pressed Enter
-                if (mob.length === 10 || (triggeredByEnter && mob.length >= 7)) {
-                    openQuickCustomerModal(mob);
-                }
-            });
-        }
-
+        // Quick Customer Modal
         function openQuickCustomerModal(prefillMobile = '') {
             $('#qc-alert').addClass('d-none').text('');
-            $('#qc-mobile').val(prefillMobile || $('#sb-customer-mobile').val());
+            $('#qc-mobile').val(prefillMobile);
             $('#qc-name').val('');
             $('#qc-email').val('');
             $('#qc-address').val('');
@@ -664,29 +728,11 @@
                 } else {
                     $('#qc-mobile').focus();
                 }
-            }, 500);
+            }, 400);
         }
 
         $('#btn-quick-add-customer').on('click', function () {
-            openQuickCustomerModal($('#sb-customer-mobile').val());
-        });
-
-        $('#sb-customer-mobile').on('input', function () {
-            let val = $(this).val().replace(/[^0-9]/g, '').slice(0, 10);
-            $(this).val(val);
-            clearTimeout(custSearchDebounce);
-            if (val.length === 10) {
-                custSearchDebounce = setTimeout(function () {
-                    checkAndHandleCustomerMobile(val, false);
-                }, 300);
-            }
-        });
-
-        $('#sb-customer-mobile').on('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                checkAndHandleCustomerMobile($(this).val(), true);
-            }
+            openQuickCustomerModal();
         });
 
         $('#btn-save-quick-customer').on('click', function () {
@@ -739,9 +785,9 @@
                         let c = res.customer;
                         let opt = new Option(c.text || `${c.name} (${c.mobile})`, c.id, true, true);
                         $custSelect.append(opt).trigger('change');
-                        $('#sb-customer-mobile').val(c.mobile);
                         $('#sb-quick-customer-modal').modal('hide');
                         fetchCustomerLoyalty(c.id);
+                        fetchCustomerInvoices(c.id);
                         setTimeout(function () {
                             $('#sb-items-body tr:first .sb-item-code').focus();
                         }, 200);
@@ -770,19 +816,218 @@
         });
 
         /* ================================================================
-           ITEM SEARCH MODAL — open on direct click of Code/Barcode
+           CUSTOMER INVOICES HISTORY (Task 4)
            ================================================================ */
-        $(document).on('click', '.sb-item-code', function () {
-            activeSearchRow = $(this).closest('tr');
-            let prefill = $.trim($(this).val());
+        let customerInvoicesData = [];
+        let filteredInvoices = [];
+        let cimCurrentPage = 1;
+        const CIM_PAGE_SIZE = 10;
+
+        function resetCustomerInvoices() {
+            customerInvoicesData = [];
+            filteredInvoices = [];
+            $('#badge-cust-invoices-count').addClass('d-none').text('0');
+            $('#btn-customer-invoices').prop('disabled', true).attr('title', 'Select a customer first to view their invoice history');
+        }
+
+        function fetchCustomerInvoices(customerId) {
+            if (!customerId) {
+                resetCustomerInvoices();
+                return;
+            }
+            $.getJSON(`/sales/sales-bills/customer-invoices/${customerId}`, function (res) {
+                if (res && res.invoices) {
+                    customerInvoicesData = res.invoices;
+                    filteredInvoices = [...customerInvoicesData];
+                    let count = customerInvoicesData.length;
+                    $('#badge-cust-invoices-count').removeClass('d-none').text(count);
+                    $('#btn-customer-invoices').prop('disabled', false).attr('title', `Click to view ${count} past invoice(s) for ${res.customer_name}`);
+                    $('#cim-cust-title').text(`Invoices: ${res.customer_name} ${res.customer_mobile ? '(' + res.customer_mobile + ')' : ''}`);
+                }
+            }).fail(function () {
+                resetCustomerInvoices();
+            });
+        }
+
+        $('#btn-customer-invoices').on('click', function () {
+            let custId = $custSelect.val();
+            if (!custId) return;
+            $('#cim-filter-input').val('');
+            filteredInvoices = [...customerInvoicesData];
+            cimCurrentPage = 1;
+            renderCustomerInvoicesPage();
+            $('#customer-invoices-modal').modal('show');
+        });
+
+        $('#cim-btn-refresh').on('click', function () {
+            let custId = $custSelect.val();
+            if (custId) {
+                $('#cim-loading').removeClass('d-none');
+                $('#cim-table-wrap').addClass('d-none');
+                fetchCustomerInvoices(custId);
+                setTimeout(function () {
+                    $('#cim-loading').addClass('d-none');
+                    $('#cim-table-wrap').removeClass('d-none');
+                    filteredInvoices = [...customerInvoicesData];
+                    renderCustomerInvoicesPage();
+                }, 400);
+            }
+        });
+
+        $('#cim-filter-input').on('input', function () {
+            let q = $.trim($(this).val()).toLowerCase();
+            if (!q) {
+                filteredInvoices = [...customerInvoicesData];
+            } else {
+                filteredInvoices = customerInvoicesData.filter(function (inv) {
+                    return (inv.bill_number && inv.bill_number.toLowerCase().includes(q)) ||
+                           (inv.bill_date && inv.bill_date.toLowerCase().includes(q)) ||
+                           (inv.total && inv.total.toString().includes(q)) ||
+                           (inv.invoice_type && inv.invoice_type.toLowerCase().includes(q));
+                });
+            }
+            cimCurrentPage = 1;
+            renderCustomerInvoicesPage();
+        });
+
+        function renderCustomerInvoicesPage() {
+            let total = filteredInvoices.length;
+            $('#cim-summary-count').text(`${total} Invoice${total === 1 ? '' : 's'}`);
+
+            if (total === 0) {
+                $('#cim-empty').removeClass('d-none');
+                $('#cim-table-wrap').addClass('d-none');
+                $('#cim-page-info').text('Showing 0 of 0');
+                $('#cim-pagination').empty();
+                return;
+            }
+
+            $('#cim-empty').addClass('d-none');
+            $('#cim-table-wrap').removeClass('d-none');
+
+            let totalPages = Math.ceil(total / CIM_PAGE_SIZE) || 1;
+            if (cimCurrentPage > totalPages) cimCurrentPage = totalPages;
+            if (cimCurrentPage < 1) cimCurrentPage = 1;
+
+            let start = (cimCurrentPage - 1) * CIM_PAGE_SIZE;
+            let end = Math.min(start + CIM_PAGE_SIZE, total);
+            let pageItems = filteredInvoices.slice(start, end);
+
+            let html = '';
+            pageItems.forEach(function (inv, idx) {
+                let statusBadge = inv.status === 'Cancelled'
+                    ? `<span class="badge badge-danger ml-1">${inv.status}</span>`
+                    : '';
+                html += `
+                    <tr>
+                        <td class="text-center font-weight-bold text-muted">${start + idx + 1}</td>
+                        <td><i class="far fa-calendar-alt mr-1 text-muted"></i>${inv.bill_date}</td>
+                        <td class="font-weight-bold text-primary">${inv.bill_number} ${statusBadge}</td>
+                        <td class="text-right font-weight-bold text-success">₹${parseFloat(inv.total).toFixed(2)}</td>
+                        <td class="text-center text-nowrap">
+                            <a href="${inv.view_url}" target="_blank" class="btn btn-xs btn-outline-info mr-1" title="View Bill">
+                                <i class="fas fa-eye mr-1"></i>View
+                            </a>
+                            <a href="${inv.edit_url}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Edit Bill">
+                                <i class="fas fa-edit mr-1"></i>Edit
+                            </a>
+                            <a href="${inv.print_url}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Print Bill Receipt">
+                                <i class="fas fa-print mr-1"></i>Print
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+            $('#cim-tbody').html(html);
+            $('#cim-page-info').text(`Showing ${start + 1} to ${end} of ${total} entries`);
+
+            // Build pagination
+            let pagHtml = '';
+            if (totalPages > 1) {
+                pagHtml += `<li class="page-item ${cimCurrentPage === 1 ? 'disabled' : ''}"><a class="page-link cim-page-btn" href="#" data-page="${cimCurrentPage - 1}">Prev</a></li>`;
+                for (let p = 1; p <= totalPages; p++) {
+                    if (p === 1 || p === totalPages || (p >= cimCurrentPage - 1 && p <= cimCurrentPage + 1)) {
+                        pagHtml += `<li class="page-item ${p === cimCurrentPage ? 'active' : ''}"><a class="page-link cim-page-btn" href="#" data-page="${p}">${p}</a></li>`;
+                    } else if (p === cimCurrentPage - 2 || p === cimCurrentPage + 2) {
+                        pagHtml += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+                    }
+                }
+                pagHtml += `<li class="page-item ${cimCurrentPage === totalPages ? 'disabled' : ''}"><a class="page-link cim-page-btn" href="#" data-page="${cimCurrentPage + 1}">Next</a></li>`;
+            }
+            $('#cim-pagination').html(pagHtml);
+        }
+
+        $(document).on('click', '.cim-page-btn', function (e) {
+            e.preventDefault();
+            let p = parseInt($(this).data('page'));
+            if (p) {
+                cimCurrentPage = p;
+                renderCustomerInvoicesPage();
+            }
+        });
+
+        // Initialize customer invoices if customer is already selected (e.g. edit mode)
+        if ($custSelect.val()) {
+            fetchCustomerInvoices($custSelect.val());
+        }
+
+        /* ================================================================
+           ITEM SEARCH MODAL — open on Focus or Click of Code/Barcode (Task 2)
+           ================================================================ */
+        function openItemSearchModal($input) {
+            activeSearchRow = $input.closest('tr');
+            let prefill = $.trim($input.val());
             $('#isl-filter-name').val(prefill);
             $('#isl-filter-code').val('');
             $('#isl-filter-expiry').val('');
             fetchItemList();
             $('#sb-item-search-modal').modal('show');
             $('#sb-item-search-modal').one('shown.bs.modal', function () {
-                $('#isl-filter-name').focus();
+                $('#isl-filter-name').focus().select();
             });
+        }
+
+        $(document).on('focus', '.sb-item-code', function () {
+            if (islModalOpen || isSyncing) return;
+            openItemSearchModal($(this));
+        });
+
+        $(document).on('click', '.sb-item-code', function () {
+            if (islModalOpen || isSyncing) return;
+            openItemSearchModal($(this));
+        });
+
+        // Keyboard navigation in Item Search Modal (ArrowUp, ArrowDown, Enter)
+        $('#sb-item-search-modal').on('keydown', function (e) {
+            let $rows = $('#isl-items-body tr.isl-item-row:not(.isl-item-disabled)');
+            if (!$rows.length) return;
+
+            let $current = $rows.filter('.table-primary');
+            let idx = $rows.index($current);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                idx = (idx + 1) >= $rows.length ? 0 : idx + 1;
+                $rows.removeClass('table-primary');
+                let $target = $rows.eq(idx).addClass('table-primary');
+                if ($target[0]) {
+                    $target[0].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                idx = (idx - 1) < 0 ? $rows.length - 1 : idx - 1;
+                $rows.removeClass('table-primary');
+                let $target = $rows.eq(idx).addClass('table-primary');
+                if ($target[0]) {
+                    $target[0].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                let $target = $current.length ? $current : $rows.first();
+                if ($target.length) {
+                    $target.trigger('click');
+                }
+            }
         });
 
 
@@ -915,7 +1160,16 @@
             $tbody.html(html);
             $('#isl-table-wrap').removeClass('d-none');
             $('#isl-count-label').text(items.length + (items.length === 100 ? '+ (showing top 100)' : '') + ' item(s) found');
+            // Auto-highlight top selectable row
+            $tbody.find('tr.isl-item-row:not(.isl-item-disabled)').first().addClass('table-primary');
         }
+
+        $(document).on('mouseenter', '#isl-items-body tr.isl-item-row', function () {
+            if (!$(this).hasClass('isl-item-disabled')) {
+                $('#isl-items-body tr.isl-item-row').removeClass('table-primary');
+                $(this).addClass('table-primary');
+            }
+        });
 
         // Clicking a row or its Select button picks the item
         $(document).on('click', '.isl-item-row, .isl-btn-select', function (e) {
@@ -1181,20 +1435,16 @@
             updateSaveButtonState();
         }
 
-        // Enable/disable Save button based on stock and items validity
+        // Update Save button status title based on stock and items validity
         function updateSaveButtonState() {
             let res = validateStockErrors();
             let $saveBtn = $('button[type="submit"]');
 
             if (res.hasStockError || res.validItemCount === 0) {
                 let reason = res.validItemCount === 0 ? 'Kam se kam 1 item aur proper quantity dalein.' : 'Kuch items ki qty available stock se zyada hai ya invalid hai.';
-                $saveBtn.prop('disabled', true)
-                        .attr('title', reason)
-                        .addClass('btn-secondary').removeClass('btn-primary');
+                $saveBtn.attr('title', reason);
             } else {
-                $saveBtn.prop('disabled', false)
-                        .attr('title', '')
-                        .addClass('btn-primary').removeClass('btn-secondary');
+                $saveBtn.attr('title', '');
             }
         }
 
@@ -1568,23 +1818,45 @@
         // Open tender modal when Save button clicked
         $(document).on('click', 'button[type="submit"]', function (e) {
             let $btn = $(this);
-            if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
-                e.preventDefault();
-                return false;
-            }
-
             let $form = $btn.closest('form');
             if (!$form.length) return;
 
-            // Check stock validation before opening tender modal
-            let res = validateStockErrors();
-            if (res.hasStockError || res.validItemCount === 0) {
+            // Prune empty rows (where no item is selected) if multiple rows exist
+            $('#sb-items-body tr').each(function () {
+                let $r = $(this);
+                let itemId = $r.find('.sb-item-select').val();
+                if (!itemId && $('#sb-items-body tr').length > 1) {
+                    $r.remove();
+                }
+            });
+            updateRowNumbers();
+            calculateTotals();
+
+            // Check if at least 1 valid item with qty > 0 exists
+            let validItems = 0;
+            $('#sb-items-body tr').each(function () {
+                let itemId = $(this).find('.sb-item-select').val();
+                let qty = parseFloat($(this).find('.sb-qty').val()) || 0;
+                if (itemId && qty > 0) {
+                    validItems++;
+                }
+            });
+
+            if (validItems === 0) {
                 e.preventDefault();
-                alert(res.validItemCount === 0 ? 'Kripya kam se kam ek item ki proper quantity dalein.' : 'Kuch items ki quantity available stock se zyada hai ya invalid hai. Pehle theek karein.');
+                alert('Kripya kam se kam ek item select karein aur uski quantity dalein.');
                 return false;
             }
 
-            // Basic HTML5 validity check first
+            // Check customer is selected
+            if (!$custSelect.val()) {
+                e.preventDefault();
+                alert('Kripya customer select karein.');
+                $custSelect.select2('open');
+                return false;
+            }
+
+            // Check basic HTML5 validity
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
                 return;
@@ -1708,6 +1980,34 @@
             if (payments.length === 0 && cashType) {
                 payments.push({ tender_type_id: cashType.id, amount: tenderBillTotal });
             }
+
+            // Balance payments sum to exactly match tenderBillTotal
+            let paySum = payments.reduce((acc, p) => acc + p.amount, 0);
+            paySum = Math.round(paySum * 100) / 100;
+            let diff = Math.round((tenderBillTotal - paySum) * 100) / 100;
+            if (Math.abs(diff) <= 0.05 && diff !== 0 && payments.length > 0) {
+                payments[0].amount = Math.round((payments[0].amount + diff) * 100) / 100;
+            }
+
+            // Prune empty item rows from DOM before form submit
+            $('#sb-items-body tr').each(function () {
+                let $r = $(this);
+                let itemId = $r.find('.sb-item-select').val();
+                if (!itemId) {
+                    $r.remove();
+                }
+            });
+
+            // Re-index remaining rows so indices are contiguous
+            $('#sb-items-body tr').each(function (idx) {
+                let $r = $(this);
+                $r.find('input[name], select[name]').each(function () {
+                    let name = $(this).attr('name');
+                    if (name && name.startsWith('items[')) {
+                        $(this).attr('name', name.replace(/items\[\d+\]/, `items[${idx}]`));
+                    }
+                });
+            });
 
             // Inject hidden payment inputs into form
             let $form = $('form[action*="sales-bills"]').first();

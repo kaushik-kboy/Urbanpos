@@ -188,6 +188,31 @@ class PurchaseReturnController extends Controller
         ]);
     }
 
+    /**
+     * AJAX endpoint: return purchase invoices for a supplier.
+     */
+    public function supplierInvoices(Supplier $supplier)
+    {
+        $invoices = PurchaseInvoice::where('supplier_id', $supplier->id)
+            ->latest('invoice_date')
+            ->get(['id', 'invoice_number', 'invoice_date', 'total'])
+            ->map(fn ($inv) => [
+                'id' => $inv->id,
+                'invoice_number' => $inv->invoice_number,
+                'invoice_date' => $inv->invoice_date?->format('d-m-Y'),
+                'total' => number_format((float) $inv->total, 2),
+            ]);
+
+        return response()->json(['invoices' => $invoices]);
+    }
+
+    public function print(PurchaseReturn $purchaseReturn)
+    {
+        $purchaseReturn->load(['supplier', 'branch', 'purchaseInvoice', 'items.item']);
+
+        return view('purchase.purchase-returns.print', compact('purchaseReturn'));
+    }
+
     private function postStock($createdItems, PurchaseReturn $purchaseReturn): void
     {
         foreach ($createdItems as $itemLine) {

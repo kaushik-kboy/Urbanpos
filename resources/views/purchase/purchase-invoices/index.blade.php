@@ -95,7 +95,9 @@
                             <td>{{ $invoice->branch?->name }}</td>
                             <td>{{ $invoice->purchaseOrder?->po_number }}</td>
                             <td>{{ number_format($invoice->total, 2) }}</td>
-                            <td class="text-right">
+                            <td class="text-right text-nowrap">
+                                <a href="{{ route('purchase.purchase-invoices.show', $invoice) }}" class="btn btn-xs btn-outline-info mr-1" title="View"><i class="fas fa-eye"></i> View</a>
+                                <a href="{{ route('purchase.purchase-invoices.print', $invoice) }}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Print"><i class="fas fa-print"></i> Print</a>
                                 <a href="{{ route('purchase.purchase-invoices.edit', $invoice) }}" class="btn btn-xs btn-outline-secondary" title="Edit"><i class="fas fa-pen"></i> Edit</a>
                             </td>
                         </tr>

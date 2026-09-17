@@ -153,6 +153,13 @@ class StockTransferController extends Controller
         return view('inventory.stock-transfers.show', compact('stockTransfer'));
     }
 
+    public function print(StockTransfer $stockTransfer)
+    {
+        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch']);
+
+        return view('inventory.stock-transfers.print', compact('stockTransfer'));
+    }
+
     public function pendingReceipt(Request $request)
     {
         $branchId = $request->input('branch_id');

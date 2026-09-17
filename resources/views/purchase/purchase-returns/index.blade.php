@@ -106,13 +106,13 @@
                                 @endif
                             </td>
                             <td class="text-right text-nowrap">
-                                <a href="{{ route('purchase.purchase-returns.show', $return) }}" class="btn btn-xs btn-outline-info" title="View Details">
-                                    <i class="fas fa-eye"></i>
+                                <a href="{{ route('purchase.purchase-returns.show', $return) }}" class="btn btn-xs btn-outline-info mr-1" title="View Details">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{{ route('purchase.purchase-returns.print', $return) }}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Print Return Note">
+                                    <i class="fas fa-print"></i> Print
                                 </a>
                                 @if ($return->status !== 'Cancelled')
-                                    <a href="{{ route('purchase.purchase-returns.edit', $return) }}" class="btn btn-xs btn-outline-secondary" title="Edit Return">
-                                        <i class="fas fa-pen"></i>
-                                    </a>
                                     <form action="{{ route('purchase.purchase-returns.destroy', $return) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this purchase return? Stock will be restored and accounting journal reversed.')">
                                         @csrf
                                         @method('DELETE')

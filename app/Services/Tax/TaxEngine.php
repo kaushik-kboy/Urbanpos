@@ -35,6 +35,7 @@ class TaxEngine
         float $extraDeductions = 0.0,
         bool $isInterstate = false,
         ?bool $isTaxInclusive = null,
+        ?float $overrideGstPercent = null,
     ): array {
         $base = $qty * $price;
 
@@ -43,7 +44,7 @@ class TaxEngine
         }
 
         $taxableValue = max(0, $base - $discAmount - $extraDeductions);
-        $gstPercent = (float) ($item->gstTax->percentage ?? 0);
+        $gstPercent = $overrideGstPercent !== null ? $overrideGstPercent : (float) ($item->gstTax->percentage ?? 0);
 
         $inclusive = $isTaxInclusive !== null ? $isTaxInclusive : (bool) $item->tax_inclusive;
 

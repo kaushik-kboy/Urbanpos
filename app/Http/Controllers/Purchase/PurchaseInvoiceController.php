@@ -193,6 +193,20 @@ class PurchaseInvoiceController extends Controller
         return redirect()->route('purchase.purchase-invoices.index')->with('status', "Purchase Invoice {$purchaseInvoice->invoice_number} created successfully.");
     }
 
+    public function show(PurchaseInvoice $purchaseInvoice)
+    {
+        $purchaseInvoice->load(['supplier', 'branch', 'purchaseOrder', 'items.item']);
+
+        return view('purchase.purchase-invoices.show', compact('purchaseInvoice'));
+    }
+
+    public function print(PurchaseInvoice $purchaseInvoice)
+    {
+        $purchaseInvoice->load(['supplier', 'branch', 'purchaseOrder', 'items.item']);
+
+        return view('purchase.purchase-invoices.print', compact('purchaseInvoice'));
+    }
+
     public function edit(PurchaseInvoice $purchaseInvoice)
     {
         $purchaseInvoice->load('items');
@@ -213,7 +227,8 @@ class PurchaseInvoiceController extends Controller
             // Reverse the previous version's stock/ledger effect instead of deleting it.
             $this->stockLedger->reverseByReference(PurchaseInvoice::class, $purchaseInvoice->id);
 
-            $lines = $this->computeLines($data['items'], $data['header']);
+            $purchaseInvoice->loadMissing('items');
+            $lines = $this->computeLines($data['items'], $data['header'], $purchaseInvoice);
             $totals = $this->computeTotals($lines, $data);
 
             $this->assertSupplierInvAmountMatchesTotal($data['header'], $totals);
@@ -603,7 +618,7 @@ class PurchaseInvoiceController extends Controller
         ];
     }
 
-    private function computeLines(array $items, array $header): array
+    private function computeLines(array $items, array $header, ?PurchaseInvoice $existingInvoice = null): array
     {
         $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
         $isInterstate = ($header['purchase_type'] ?? null) === 'Interstate';
@@ -661,12 +676,16 @@ class PurchaseInvoiceController extends Controller
             $allocatedExtraDeductions[$idx] = max(0, $extra);
         }
 
-        return collect($items)->map(function ($line, $idx) use ($itemsById, $isInterstate, $lineBases, $allocatedExtraDeductions) {
+        return collect($items)->map(function ($line, $idx) use ($itemsById, $isInterstate, $lineBases, $allocatedExtraDeductions, $existingInvoice) {
             $qty = (float) $line['qty'];
             $costPrice = (float) $line['cost_price'];
             $item = $itemsById[$line['item_id']];
             $baseInfo = $lineBases[$idx];
             $extraDeduction = $allocatedExtraDeductions[$idx] ?? 0.0;
+
+            // Historical GST rate preservation: if invoice already existed, retain the originally saved rate
+            $existingGst = $existingInvoice?->items?->firstWhere('item_id', $line['item_id'])?->gst_percent;
+            $overrideGst = $existingGst !== null ? (float) $existingGst : null;
 
             $tax = $this->taxEngine->calculate(
                 $qty,
@@ -676,7 +695,8 @@ class PurchaseInvoiceController extends Controller
                 $baseInfo['disc_amount'],
                 $extraDeduction,
                 $isInterstate,
-                isTaxInclusive: false
+                isTaxInclusive: false,
+                overrideGstPercent: $overrideGst
             );
 
             $effectiveDiscPercent = $tax['disc_amount'] > 0 && $baseInfo['base'] > 0
@@ -740,6 +760,7 @@ class PurchaseInvoiceController extends Controller
             'freight' => ['nullable', 'numeric', 'min:0'],
             'round_off' => ['nullable', 'numeric'],
             'scheme_item_disc_amt' => ['nullable', 'numeric', 'min:0'],
+            'scheme_item_disc_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'other_disc_amt' => ['nullable', 'numeric', 'min:0'],
             'total_extra_cess' => ['nullable', 'numeric', 'min:0'],
             'tcs_amount' => ['nullable', 'numeric', 'min:0'],
@@ -756,6 +777,7 @@ class PurchaseInvoiceController extends Controller
         $header['freight'] = (float) ($header['freight'] ?? 0);
         $header['round_off'] = (float) ($header['round_off'] ?? 0);
         $header['scheme_item_disc_amt'] = (float) ($header['scheme_item_disc_amt'] ?? 0);
+        $header['scheme_item_disc_percent'] = (float) ($header['scheme_item_disc_percent'] ?? 0);
         $header['other_disc_amt'] = (float) ($header['other_disc_amt'] ?? 0);
         $header['total_extra_cess'] = (float) ($header['total_extra_cess'] ?? 0);
         $header['tcs_amount'] = (float) ($header['tcs_amount'] ?? 0);

@@ -159,8 +159,11 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
     $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
     Route::get('purchase-receipt-notes/{purchaseReceiptNote}/print', [PurchaseReceiptNoteController::class, 'print'])->name('purchase-receipt-notes.print');
     $gatedResource('purchase-receipt-notes', PurchaseReceiptNoteController::class, 'purchase-receipt-notes');
+    Route::get('purchase-invoices/{purchase_invoice}/print', [PurchaseInvoiceController::class, 'print'])->name('purchase-invoices.print');
     $gatedResource('purchase-invoices', PurchaseInvoiceController::class, 'purchase-invoices');
     Route::get('purchase-returns/invoice-items/{purchaseInvoice}', [PurchaseReturnController::class, 'invoiceItems'])->name('purchase-returns.invoice-items');
+    Route::get('purchase-returns/supplier-invoices/{supplier}', [PurchaseReturnController::class, 'supplierInvoices'])->name('purchase-returns.supplier-invoices');
+    Route::get('purchase-returns/{purchase_return}/print', [PurchaseReturnController::class, 'print'])->name('purchase-returns.print');
     $gatedResource('purchase-returns', PurchaseReturnController::class, 'purchase-returns');
     Route::get('aux/{module}', [PurchaseAuxController::class, 'renderModule'])->name('aux');
 });
@@ -231,6 +234,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
         ->post('stock-transfers/{stockTransfer}/receive', [StockTransferController::class, 'receive'])->name('stock-transfers.receive');
     Route::middleware(['permission:stock-transfers.cancel', 'branch.access'])
         ->post('stock-transfers/{stockTransfer}/cancel', [StockTransferController::class, 'cancel'])->name('stock-transfers.cancel');
+    Route::get('stock-transfers/{stockTransfer}/print', [StockTransferController::class, 'print'])->name('stock-transfers.print');
     Route::resource('stock-transfers', StockTransferController::class)->only(['index', 'create', 'show']);
     Route::middleware(['permission:stock-transfers.create', 'branch.access'])
         ->group(fn () => Route::resource('stock-transfers', StockTransferController::class)->only(['store']));
@@ -241,6 +245,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('sales-bills/lookup-item', [SalesBillController::class, 'lookupItem'])->name('sales-bills.lookup-item');
     Route::get('sales-bills/customer-search', [SalesBillController::class, 'customerSearch'])->name('sales-bills.customer-search');
     Route::get('sales-bills/customer-loyalty/{customer}', [SalesBillController::class, 'customerLoyalty'])->name('sales-bills.customer-loyalty');
+    Route::get('sales-bills/customer-invoices/{customer}', [SalesBillController::class, 'customerInvoices'])->name('sales-bills.customer-invoices');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');
     $gatedResource('sales-orders', SalesOrderController::class, 'sales-orders');
@@ -249,6 +254,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     $gatedResource('sales-bills', SalesBillController::class, 'sales-bills');
     Route::get('sales-returns/customer-bills/{customer}', [SalesReturnController::class, 'customerBills'])->name('sales-returns.customer-bills');
     Route::get('sales-returns/bill-items/{salesBill}', [SalesReturnController::class, 'billItems'])->name('sales-returns.bill-items');
+    Route::get('sales-returns/{salesReturn}/print', [SalesReturnController::class, 'print'])->name('sales-returns.print');
     $gatedResource('sales-returns', SalesReturnController::class, 'sales-returns');
     Route::get('aux/{module}', [SalesAuxController::class, 'renderModule'])->name('aux');
 });

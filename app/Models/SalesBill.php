@@ -22,7 +22,7 @@ class SalesBill extends Model
     ];
 
     protected $casts = [
-        'bill_date' => 'date',
+        'bill_date' => 'datetime',
     ];
 
     public function customer(): BelongsTo
