@@ -412,6 +412,10 @@
             islSelectedIdx = items.length > 0 ? 0 : -1;
         }
 
+        let islModalClosing = false;
+        let itemSelectedInModal = false;
+        let cancellingRow = null;
+
         // Clicking a row or its Select button picks the item
         $(document).on('click', '.pinv-isl-item-row, .pinv-isl-btn-select', function (e) {
             e.stopPropagation();
@@ -420,31 +424,32 @@
             let itemCode = $row.data('code');
 
             let $targetRow = activeSearchRow;
-            pendingFocusExpRow = $targetRow;
-
-            $('#pinv-item-search-modal').modal('hide');
-
             if (! $targetRow || ! itemId) return;
 
-            $targetRow.find('.pinv-item-code').val(itemCode || itemId);
-            processPurchaseItemLookup($targetRow, itemId);
-            activeSearchRow = null;
-        });
+            itemSelectedInModal = true;
+            cancellingRow = null;
+            pendingFocusExpRow = $targetRow;
 
-        // Modal open/close guards
-        let islModalClosing = false;
-        let cancellingRow = null;
+            $targetRow.find('.pinv-item-select').val(itemId);
+            if (itemCode) {
+                $targetRow.find('.pinv-item-code').val(itemCode);
+            }
+
+            processPurchaseItemLookup($targetRow, itemId);
+            $('#pinv-item-search-modal').modal('hide');
+        });
 
         $('#pinv-item-search-modal').on('show.bs.modal', function() {
             islModalOpen = true;
             islModalClosing = false;
+            itemSelectedInModal = false;
+            cancellingRow = null;
         });
 
         $('#pinv-item-search-modal').on('hide.bs.modal', function() {
             islModalOpen = false;
             islModalClosing = true;
-            cancellingRow = null;
-            if (activeSearchRow && activeSearchRow.length) {
+            if (!itemSelectedInModal && activeSearchRow && activeSearchRow.length) {
                 let selectedId = activeSearchRow.find('.pinv-item-select').val();
                 if (!selectedId) {
                     cancellingRow = activeSearchRow;
@@ -455,9 +460,9 @@
         $('#pinv-item-search-modal').on('hidden.bs.modal', function() {
             islModalOpen = false;
             islModalClosing = true;
-            setTimeout(function() { islModalClosing = false; }, 400);
+            setTimeout(function() { islModalClosing = false; }, 350);
 
-            if (cancellingRow && cancellingRow.length) {
+            if (!itemSelectedInModal && cancellingRow && cancellingRow.length) {
                 let totalRows = $('#pinv-items-body tr').length;
                 if (totalRows > 1) {
                     cancellingRow.remove();
@@ -480,6 +485,8 @@
                 return;
             }
 
+            itemSelectedInModal = false;
+            cancellingRow = null;
             activeSearchRow = null;
 
             if (pendingFocusExpRow && pendingFocusExpRow.length) {
@@ -487,7 +494,7 @@
                 pendingFocusExpRow = null;
                 setTimeout(function () {
                     focusExpDateField($target);
-                }, 50);
+                }, 100);
             }
         });
 

@@ -1185,29 +1185,33 @@
             let itemId   = $row.data('id');
             let itemCode = $row.data('code');
 
-            $('#sb-item-search-modal').modal('hide');
-
             if (! activeSearchRow || ! itemId) return;
+
+            sbItemSelectedInModal = true;
+            sbCancellingRow = null;
 
             // Fill code field and trigger the existing lookup (which handles expiry / batch)
             activeSearchRow.find('.sb-item-code').val(itemCode || itemId);
+            activeSearchRow.find('.sb-item-select').val(itemId);
             processItemLookup(null, activeSearchRow, itemId);
-            activeSearchRow = null;
+            $('#sb-item-search-modal').modal('hide');
         });
 
         let sbCancellingRow = null;
+        let sbItemSelectedInModal = false;
 
         // When modal closes, cleanly dismiss and prevent auto-reopen
         $('#sb-item-search-modal').on('show.bs.modal', function () {
             islModalOpen = true;
             islModalClosing = false;
+            sbItemSelectedInModal = false;
+            sbCancellingRow = null;
         });
 
         $('#sb-item-search-modal').on('hide.bs.modal', function () {
             islModalOpen = false;
             islModalClosing = true;
-            sbCancellingRow = null;
-            if (activeSearchRow && activeSearchRow.length) {
+            if (!sbItemSelectedInModal && activeSearchRow && activeSearchRow.length) {
                 let selectedId = activeSearchRow.find('.sb-item-select').val();
                 if (!selectedId) {
                     sbCancellingRow = activeSearchRow;
@@ -1220,9 +1224,9 @@
             islModalClosing = true;
             setTimeout(function () {
                 islModalClosing = false;
-            }, 400);
+            }, 350);
 
-            if (sbCancellingRow && sbCancellingRow.length) {
+            if (!sbItemSelectedInModal && sbCancellingRow && sbCancellingRow.length) {
                 let totalRows = $('#sb-items-body tr').length;
                 if (totalRows > 1) {
                     sbCancellingRow.remove();
@@ -1243,6 +1247,8 @@
                 return;
             }
 
+            sbItemSelectedInModal = false;
+            sbCancellingRow = null;
             activeSearchRow = null;
         });
 

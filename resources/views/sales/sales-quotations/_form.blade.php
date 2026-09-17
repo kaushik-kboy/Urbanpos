@@ -266,15 +266,18 @@ $(function() {
         });
     });
 
+    let sqItemSelectedInModal = false;
+
     $('#sq-item-search-modal').on('show.bs.modal', function () {
         sqModalOpen = true;
         sqModalClosing = false;
+        sqItemSelectedInModal = false;
+        sqCancellingRow = null;
     });
     $('#sq-item-search-modal').on('hide.bs.modal', function () {
         sqModalOpen = false;
         sqModalClosing = true;
-        sqCancellingRow = null;
-        if (sqActiveSearchRow && sqActiveSearchRow.length) {
+        if (!sqItemSelectedInModal && sqActiveSearchRow && sqActiveSearchRow.length) {
             let selectedId = sqActiveSearchRow.find('.sq-item-select').val();
             if (!selectedId) {
                 sqCancellingRow = sqActiveSearchRow;
@@ -284,9 +287,9 @@ $(function() {
     $('#sq-item-search-modal').on('hidden.bs.modal', function () {
         sqModalOpen = false;
         sqModalClosing = true;
-        setTimeout(function () { sqModalClosing = false; }, 400);
+        setTimeout(function () { sqModalClosing = false; }, 350);
 
-        if (sqCancellingRow && sqCancellingRow.length) {
+        if (!sqItemSelectedInModal && sqCancellingRow && sqCancellingRow.length) {
             let totalRows = $('#sq-items-body tr').length;
             if (totalRows > 1) {
                 sqCancellingRow.remove();
@@ -305,6 +308,8 @@ $(function() {
             return;
         }
 
+        sqItemSelectedInModal = false;
+        sqCancellingRow = null;
         sqActiveSearchRow = null;
     });
 
@@ -401,9 +406,11 @@ $(function() {
             gst_percent: $tr.data('gst')
         };
 
-        $('#sq-item-search-modal').modal('hide');
-
         if (!sqActiveSearchRow || !itemData.id) return;
+
+        sqItemSelectedInModal = true;
+        sqCancellingRow = null;
+
         let $row = sqActiveSearchRow;
         $row.find('.sq-item-code').val(itemData.code);
         $row.find('.sq-item-desc').val(itemData.name + (itemData.code ? ' [' + itemData.code + ']' : ''));
@@ -418,7 +425,8 @@ $(function() {
 
         recalcRow($row);
         $row.find('.sq-qty').focus().select();
-        sqActiveSearchRow = null;
+
+        $('#sq-item-search-modal').modal('hide');
     });
 
     $(document).on('input', '.sq-qty, .sq-sell-price, .sq-disc-percent, .sq-disc-amount, .sq-gst-percent', function() {

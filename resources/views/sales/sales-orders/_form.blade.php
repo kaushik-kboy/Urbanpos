@@ -277,15 +277,18 @@ $(function() {
         });
     });
 
+    let soItemSelectedInModal = false;
+
     $('#so-item-search-modal').on('show.bs.modal', function () {
         soModalOpen = true;
         soModalClosing = false;
+        soItemSelectedInModal = false;
+        soCancellingRow = null;
     });
     $('#so-item-search-modal').on('hide.bs.modal', function () {
         soModalOpen = false;
         soModalClosing = true;
-        soCancellingRow = null;
-        if (soActiveSearchRow && soActiveSearchRow.length) {
+        if (!soItemSelectedInModal && soActiveSearchRow && soActiveSearchRow.length) {
             let selectedId = soActiveSearchRow.find('.so-item-select').val();
             if (!selectedId) {
                 soCancellingRow = soActiveSearchRow;
@@ -295,9 +298,9 @@ $(function() {
     $('#so-item-search-modal').on('hidden.bs.modal', function () {
         soModalOpen = false;
         soModalClosing = true;
-        setTimeout(function () { soModalClosing = false; }, 400);
+        setTimeout(function () { soModalClosing = false; }, 350);
 
-        if (soCancellingRow && soCancellingRow.length) {
+        if (!soItemSelectedInModal && soCancellingRow && soCancellingRow.length) {
             let totalRows = $('#so-items-body tr').length;
             if (totalRows > 1) {
                 soCancellingRow.remove();
@@ -316,6 +319,8 @@ $(function() {
             return;
         }
 
+        soItemSelectedInModal = false;
+        soCancellingRow = null;
         soActiveSearchRow = null;
     });
 
@@ -412,9 +417,11 @@ $(function() {
             gst_percent: $tr.data('gst')
         };
 
-        $('#so-item-search-modal').modal('hide');
-
         if (!soActiveSearchRow || !itemData.id) return;
+
+        soItemSelectedInModal = true;
+        soCancellingRow = null;
+
         let $row = soActiveSearchRow;
         $row.find('.so-item-code').val(itemData.code);
         $row.find('.so-item-desc').val(itemData.name + (itemData.code ? ' [' + itemData.code + ']' : ''));
@@ -428,8 +435,9 @@ $(function() {
         $row.find('.so-gst-percent').val(parseFloat(itemData.gst_percent || 0).toFixed(2));
 
         recalcRow($row);
-        $row.find('.so-qty').focus().select();
-        soActiveSearchRow = null;
+        calculateSoTotals();
+
+        $('#so-item-search-modal').modal('hide');
     });
 
     $(document).on('input', '.so-qty, .so-sell-price, .so-disc-percent, .so-disc-amount, .so-gst-percent', function() {

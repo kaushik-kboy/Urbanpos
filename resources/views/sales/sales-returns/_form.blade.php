@@ -397,9 +397,10 @@
             let gst      = $row.data('gst');
             let exp      = $row.data('exp');
 
-            $('#sr-item-search-modal').modal('hide');
-
             if (!srActiveSearchRow || !itemId) return;
+
+            srItemSelectedInModal = true;
+            srCancellingRow = null;
 
             srActiveSearchRow.find('.sr-item-code').val(itemCode || itemId);
             srActiveSearchRow.find('.sr-item-desc').val(itemName + (itemCode ? ' [' + itemCode + ']' : ''));
@@ -413,13 +414,19 @@
 
             // Focus qty
             srActiveSearchRow.find('.sr-qty').val('').focus();
-            srActiveSearchRow = null;
+            $('#sr-item-search-modal').modal('hide');
         });
 
+        let srItemSelectedInModal = false;
+
         // When modal closes, cleanly dismiss
-        $('#sr-item-search-modal').on('hide.bs.modal', function () {
+        $('#sr-item-search-modal').on('show.bs.modal', function () {
+            srItemSelectedInModal = false;
             srCancellingRow = null;
-            if (srActiveSearchRow && srActiveSearchRow.length) {
+        });
+
+        $('#sr-item-search-modal').on('hide.bs.modal', function () {
+            if (!srItemSelectedInModal && srActiveSearchRow && srActiveSearchRow.length) {
                 let selectedId = srActiveSearchRow.find('.sr-item-select').val();
                 if (!selectedId) {
                     srCancellingRow = srActiveSearchRow;
@@ -427,7 +434,7 @@
             }
         });
         $('#sr-item-search-modal').on('hidden.bs.modal', function () {
-            if (srCancellingRow && srCancellingRow.length) {
+            if (!srItemSelectedInModal && srCancellingRow && srCancellingRow.length) {
                 let totalRows = $('#sr-items-body tr').length;
                 if (totalRows > 1) {
                     srCancellingRow.remove();
@@ -445,6 +452,8 @@
                 }, 60);
                 return;
             }
+            srItemSelectedInModal = false;
+            srCancellingRow = null;
             srActiveSearchRow = null;
         });
 
