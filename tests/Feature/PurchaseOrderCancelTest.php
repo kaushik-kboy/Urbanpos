@@ -86,6 +86,7 @@ class PurchaseOrderCancelTest extends TestCase
         $this->post(route('purchase.purchase-invoices.store'), [
             'invoice_date' => '2026-09-16', 'supplier_id' => $supplier->id, 'branch_id' => $branch->id,
             'purchase_order_id' => $po->id, 'purchase_type' => 'Local', 'c_form' => 'No Forms',
+            'supplier_inv_amount' => 500.00,
             'items' => [['item_id' => $item->id, 'qty' => 5, 'cost_price' => 100]],
         ]);
 

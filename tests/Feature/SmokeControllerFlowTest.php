@@ -43,6 +43,7 @@ class SmokeControllerFlowTest extends TestCase
             'branch_id' => $branch->id,
             'purchase_type' => 'Local',
             'c_form' => 'No Forms',
+            'supplier_inv_amount' => 1180.00,
             'items' => [
                 ['item_id' => $item->id, 'qty' => 10, 'cost_price' => 100, 'gst_percent' => 999],
             ],
