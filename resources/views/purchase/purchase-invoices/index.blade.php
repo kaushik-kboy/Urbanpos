@@ -78,6 +78,7 @@
                 <thead>
                     <tr>
                         <th>Invoice No</th>
+                        <th>GRN No</th>
                         <th>Invoice Date</th>
                         <th>Supplier</th>
                         <th>Branch</th>
@@ -89,11 +90,12 @@
                 <tbody>
                     @forelse ($purchaseInvoices as $invoice)
                         <tr>
-                            <td>{{ $invoice->invoice_number }}</td>
+                            <td><strong>{{ $invoice->invoice_number }}</strong></td>
+                            <td><span class="badge badge-light border text-dark font-weight-bold">{{ $invoice->grn_number ?: '-' }}</span></td>
                             <td>{{ $invoice->invoice_date->format('d-m-Y') }}</td>
                             <td>{{ $invoice->supplier?->name }}</td>
                             <td>{{ $invoice->branch?->name }}</td>
-                            <td>{{ $invoice->purchaseOrder?->po_number }}</td>
+                            <td>{{ $invoice->purchaseOrder?->po_number ?: '-' }}</td>
                             <td>{{ number_format($invoice->total, 2) }}</td>
                             <td class="text-right text-nowrap">
                                 <a href="{{ route('purchase.purchase-invoices.show', $invoice) }}" class="btn btn-xs btn-outline-info mr-1" title="View"><i class="fas fa-eye"></i> View</a>
@@ -102,7 +104,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-3">No purchase invoices yet.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-3">No purchase invoices yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
