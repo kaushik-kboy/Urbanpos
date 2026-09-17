@@ -2,8 +2,10 @@
     'tableKey',
     'tableId',
     'buttonClass' => 'btn btn-outline-secondary btn-sm',
-    'buttonText' => 'Columns',
+    'buttonText' => null,
+    'icon' => 'fas fa-cog',
     'showIcon' => true,
+    'title' => 'Customize Columns & Order',
 ])
 
 @php
@@ -23,9 +25,9 @@
             class="{{ $buttonClass }}" 
             data-toggle="modal" 
             data-target="#{{ $modalId }}" 
-            title="Customize Visible Columns & Sequence">
-        @if($showIcon) <i class="fas fa-columns text-primary mr-1"></i> @endif
-        <span>{{ $buttonText }}</span>
+            title="{{ $title }}">
+        @if($showIcon) <i class="{{ $icon }}"></i> @endif
+        @if(!empty($buttonText)) <span class="ml-1">{{ $buttonText }}</span> @endif
     </button>
 
     <div class="modal fade" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-labelledby="{{ $modalId }}Label" aria-hidden="true">

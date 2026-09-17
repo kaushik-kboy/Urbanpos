@@ -49,9 +49,13 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <span class="font-weight-bold text-muted small"><i class="fas fa-users mr-1"></i> Customer List</span>
-            <x-table-column-customizer table-key="reports.customer-master" table-id="customer-master-table" />
+        <div class="card-header py-2">
+            <h3 class="card-title font-weight-bold text-muted small mt-1">
+                <i class="fas fa-users mr-1"></i> Customer List
+            </h3>
+            <div class="card-tools">
+                <x-table-column-customizer table-key="reports.customer-master" table-id="customer-master-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
             <table id="customer-master-table" class="table table-sm table-striped mb-0">

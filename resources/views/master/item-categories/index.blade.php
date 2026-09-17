@@ -14,15 +14,13 @@
     @include('master.partials.import-result')
 
     <div class="card card-primary card-outline">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
-            <div>
-                <x-import-button :import-route="route('master.item-categories.import')" :sample-route="route('master.item-categories.import-sample')" title="Item Category" />
-            </div>
-            <div>
-                <x-table-column-customizer table-key="master.item-categories" table-id="item-categories-table" button-class="btn btn-outline-secondary btn-sm mr-2" />
-                <a href="{{ route('master.item-categories.create') }}" class="btn btn-primary btn-sm">
+        <div class="card-header">
+            <x-import-button :import-route="route('master.item-categories.import')" :sample-route="route('master.item-categories.import-sample')" title="Item Category" />
+            <div class="card-tools float-right d-flex align-items-center">
+                <a href="{{ route('master.item-categories.create') }}" class="btn btn-primary btn-sm mr-2">
                     <i class="fas fa-plus"></i> Add Item Category
                 </a>
+                <x-table-column-customizer table-key="master.item-categories" table-id="item-categories-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
         <div class="card-body p-0">
