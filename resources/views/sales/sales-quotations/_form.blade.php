@@ -248,9 +248,13 @@ $(function() {
     /* ----------------------------------------------------------------
        ITEM SEARCH MODAL — open on click of Code/Barcode or F2
        ---------------------------------------------------------------- */
-    $(document).on('click', '.sq-item-code', function (e) {
+    let sqCancellingRow = null;
+
+    $(document).off('click focus', '.sq-item-code').on('click focus', '.sq-item-code', function (e) {
         if (sqModalOpen || sqModalClosing) return;
-        sqActiveSearchRow = $(this).closest('tr');
+        let $row = $(this).closest('tr');
+        if (e.type === 'focus' && $row.find('.sq-item-select').val()) return;
+        sqActiveSearchRow = $row;
         let prefill = $.trim($(this).val());
         $('#sq-isl-filter-name').val(prefill);
         $('#sq-isl-filter-code').val('');
@@ -269,13 +273,39 @@ $(function() {
     $('#sq-item-search-modal').on('hide.bs.modal', function () {
         sqModalOpen = false;
         sqModalClosing = true;
-        sqActiveSearchRow = null;
+        sqCancellingRow = null;
+        if (sqActiveSearchRow && sqActiveSearchRow.length) {
+            let selectedId = sqActiveSearchRow.find('.sq-item-select').val();
+            if (!selectedId) {
+                sqCancellingRow = sqActiveSearchRow;
+            }
+        }
     });
     $('#sq-item-search-modal').on('hidden.bs.modal', function () {
         sqModalOpen = false;
         sqModalClosing = true;
+        setTimeout(function () { sqModalClosing = false; }, 400);
+
+        if (sqCancellingRow && sqCancellingRow.length) {
+            let totalRows = $('#sq-items-body tr').length;
+            if (totalRows > 1) {
+                sqCancellingRow.remove();
+                updateSqRowNumbers();
+                calculateSqTotals();
+            } else {
+                sqCancellingRow.find('.sq-item-code').val('');
+                sqCancellingRow.find('.sq-item-desc').val('');
+            }
+            sqCancellingRow = null;
+            sqActiveSearchRow = null;
+            setTimeout(function () {
+                let $target = $('#sq-add-row, #freight, button[type=submit]');
+                $target.first().focus();
+            }, 60);
+            return;
+        }
+
         sqActiveSearchRow = null;
-        setTimeout(function () { sqModalClosing = false; }, 500);
     });
 
     $('#sq-isl-filter-name, #sq-isl-filter-code').on('input', function () {

@@ -411,16 +411,40 @@
             }
         });
 
-        // Advance to next row ONLY if it already exists; NEVER spawn unwanted empty rows
+        // Advance to next row ONLY if it already exists; otherwise advance to freight or totals
         function advanceToNextExistingRow($currentRow) {
             let $nextRow = $currentRow.next('tr');
             if ($nextRow.length) {
                 let $code = $nextRow.find('.sb-item-code, .pinv-item-code, .item-code-input');
                 if ($code.length) {
                     $code.focus();
+                    return;
                 }
             }
+            let $freight = $('#freight');
+            if ($freight.length) {
+                $freight.focus().select();
+            }
         }
+
+        // Global smart autofocus: focus first editable input of the form when page loads
+        setTimeout(function () {
+            if (document.activeElement && document.activeElement !== document.body && $(document.activeElement).is('input, select, textarea')) {
+                return;
+            }
+
+            let $form = $('form.card-body, .card form, form').first();
+            if ($form.length) {
+                let $target = $form.find('input:not([type=hidden]):not([readonly]):not([disabled]):visible, select:not([disabled]):visible')
+                    .filter(function () {
+                        return !$(this).closest('.navbar, .main-header, .sidebar, .pos-keyboard-bar, .modal').length;
+                    }).first();
+
+                if ($target.length) {
+                    $target.focus();
+                }
+            }
+        }, 150);
     });
 
 })();

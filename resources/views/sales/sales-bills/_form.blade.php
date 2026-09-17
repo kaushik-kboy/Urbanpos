@@ -993,9 +993,11 @@
             });
         }
 
-        // Open modal on click or F2; do NOT trigger on passive focus
-        $(document).on('click', '.sb-item-code', function () {
+        // Open modal on click or focus; do NOT trigger on passive focus if item already selected
+        $(document).off('click focus', '.sb-item-code').on('click focus', '.sb-item-code', function (e) {
             if (islModalOpen || islModalClosing || isSyncing) return;
+            let $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.sb-item-select').val()) return;
             openItemSearchModal($(this));
         });
 
@@ -1193,6 +1195,8 @@
             activeSearchRow = null;
         });
 
+        let sbCancellingRow = null;
+
         // When modal closes, cleanly dismiss and prevent auto-reopen
         $('#sb-item-search-modal').on('show.bs.modal', function () {
             islModalOpen = true;
@@ -1202,16 +1206,44 @@
         $('#sb-item-search-modal').on('hide.bs.modal', function () {
             islModalOpen = false;
             islModalClosing = true;
-            activeSearchRow = null;
+            sbCancellingRow = null;
+            if (activeSearchRow && activeSearchRow.length) {
+                let selectedId = activeSearchRow.find('.sb-item-select').val();
+                if (!selectedId) {
+                    sbCancellingRow = activeSearchRow;
+                }
+            }
         });
 
         $('#sb-item-search-modal').on('hidden.bs.modal', function () {
             islModalOpen = false;
             islModalClosing = true;
-            activeSearchRow = null;
             setTimeout(function () {
                 islModalClosing = false;
-            }, 500);
+            }, 400);
+
+            if (sbCancellingRow && sbCancellingRow.length) {
+                let totalRows = $('#sb-items-body tr').length;
+                if (totalRows > 1) {
+                    sbCancellingRow.remove();
+                    updateRowNumbers();
+                    calculateTotals();
+                } else {
+                    sbCancellingRow.find('.sb-item-code').val('');
+                    sbCancellingRow.find('.sb-item-desc').val('');
+                }
+                sbCancellingRow = null;
+                activeSearchRow = null;
+                setTimeout(function () {
+                    let $tender = $('#tender-cash-amount, #btn-tender-save, #sb-add-row');
+                    if ($tender.length) {
+                        $tender.first().focus();
+                    }
+                }, 60);
+                return;
+            }
+
+            activeSearchRow = null;
         });
 
 

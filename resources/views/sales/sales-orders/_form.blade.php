@@ -259,9 +259,13 @@ $(function() {
     /* ----------------------------------------------------------------
        ITEM SEARCH MODAL — open on click of Code/Barcode or F2
        ---------------------------------------------------------------- */
-    $(document).on('click', '.so-item-code', function (e) {
+    let soCancellingRow = null;
+
+    $(document).off('click focus', '.so-item-code').on('click focus', '.so-item-code', function (e) {
         if (soModalOpen || soModalClosing) return;
-        soActiveSearchRow = $(this).closest('tr');
+        let $row = $(this).closest('tr');
+        if (e.type === 'focus' && $row.find('.so-item-select').val()) return;
+        soActiveSearchRow = $row;
         let prefill = $.trim($(this).val());
         $('#so-isl-filter-name').val(prefill);
         $('#so-isl-filter-code').val('');
@@ -280,13 +284,39 @@ $(function() {
     $('#so-item-search-modal').on('hide.bs.modal', function () {
         soModalOpen = false;
         soModalClosing = true;
-        soActiveSearchRow = null;
+        soCancellingRow = null;
+        if (soActiveSearchRow && soActiveSearchRow.length) {
+            let selectedId = soActiveSearchRow.find('.so-item-select').val();
+            if (!selectedId) {
+                soCancellingRow = soActiveSearchRow;
+            }
+        }
     });
     $('#so-item-search-modal').on('hidden.bs.modal', function () {
         soModalOpen = false;
         soModalClosing = true;
+        setTimeout(function () { soModalClosing = false; }, 400);
+
+        if (soCancellingRow && soCancellingRow.length) {
+            let totalRows = $('#so-items-body tr').length;
+            if (totalRows > 1) {
+                soCancellingRow.remove();
+                updateSoRowNumbers();
+                calculateSoTotals();
+            } else {
+                soCancellingRow.find('.so-item-code').val('');
+                soCancellingRow.find('.so-item-desc').val('');
+            }
+            soCancellingRow = null;
+            soActiveSearchRow = null;
+            setTimeout(function () {
+                let $target = $('#so-add-row, #freight, button[type=submit]');
+                $target.first().focus();
+            }, 60);
+            return;
+        }
+
         soActiveSearchRow = null;
-        setTimeout(function () { soModalClosing = false; }, 500);
     });
 
     $('#so-isl-filter-name, #so-isl-filter-code').on('input', function () {

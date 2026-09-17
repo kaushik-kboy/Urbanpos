@@ -262,19 +262,25 @@
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL — open on click of Code/Barcode field
            ---------------------------------------------------------------- */
-        $(document).on('click', '.sr-item-code', function () {
+        let srCancellingRow = null;
+
+        $(document).off('click focus', '.sr-item-code').on('click focus', '.sr-item-code', function (e) {
             if ($('#sales_bill_id').val()) {
-                alert('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
+                if (e.type === 'click') {
+                    alert('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
+                }
                 return;
             }
-            srActiveSearchRow = $(this).closest('tr');
+            let $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.sr-item-select').val()) return;
+            srActiveSearchRow = $row;
             let prefill = $.trim($(this).val());
             $('#sr-isl-filter-name').val(prefill);
             $('#sr-isl-filter-code').val('');
             srFetchItemList();
             $('#sr-item-search-modal').modal('show');
             $('#sr-item-search-modal').one('shown.bs.modal', function () {
-                $('#sr-isl-filter-name').focus();
+                $('#sr-isl-filter-name').focus().select();
             });
         });
 
@@ -412,9 +418,33 @@
 
         // When modal closes, cleanly dismiss
         $('#sr-item-search-modal').on('hide.bs.modal', function () {
-            srActiveSearchRow = null;
+            srCancellingRow = null;
+            if (srActiveSearchRow && srActiveSearchRow.length) {
+                let selectedId = srActiveSearchRow.find('.sr-item-select').val();
+                if (!selectedId) {
+                    srCancellingRow = srActiveSearchRow;
+                }
+            }
         });
         $('#sr-item-search-modal').on('hidden.bs.modal', function () {
+            if (srCancellingRow && srCancellingRow.length) {
+                let totalRows = $('#sr-items-body tr').length;
+                if (totalRows > 1) {
+                    srCancellingRow.remove();
+                    updateSrRowNumbers();
+                    calculateSrTotals();
+                } else {
+                    srCancellingRow.find('.sr-item-code').val('');
+                    srCancellingRow.find('.sr-item-desc').val('');
+                }
+                srCancellingRow = null;
+                srActiveSearchRow = null;
+                setTimeout(function () {
+                    let $target = $('#sr-add-row, #freight, button[type=submit]');
+                    $target.first().focus();
+                }, 60);
+                return;
+            }
             srActiveSearchRow = null;
         });
 

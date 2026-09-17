@@ -433,20 +433,55 @@
 
         // Modal open/close guards
         let islModalClosing = false;
+        let cancellingRow = null;
+
         $('#pinv-item-search-modal').on('show.bs.modal', function() {
             islModalOpen = true;
             islModalClosing = false;
         });
+
         $('#pinv-item-search-modal').on('hide.bs.modal', function() {
             islModalOpen = false;
             islModalClosing = true;
-            activeSearchRow = null;
+            cancellingRow = null;
+            if (activeSearchRow && activeSearchRow.length) {
+                let selectedId = activeSearchRow.find('.pinv-item-select').val();
+                if (!selectedId) {
+                    cancellingRow = activeSearchRow;
+                }
+            }
         });
+
         $('#pinv-item-search-modal').on('hidden.bs.modal', function() {
             islModalOpen = false;
             islModalClosing = true;
+            setTimeout(function() { islModalClosing = false; }, 400);
+
+            if (cancellingRow && cancellingRow.length) {
+                let totalRows = $('#pinv-items-body tr').length;
+                if (totalRows > 1) {
+                    cancellingRow.remove();
+                    updateRowNumbers();
+                    calculateTotals();
+                } else {
+                    cancellingRow.find('.pinv-item-code').val('');
+                    cancellingRow.find('.pinv-item-desc').val('');
+                }
+                cancellingRow = null;
+                activeSearchRow = null;
+                setTimeout(function() {
+                    let $freight = $('#freight');
+                    if ($freight.length) {
+                        $freight.focus().select();
+                    } else {
+                        $('#pinv-add-row').focus();
+                    }
+                }, 60);
+                return;
+            }
+
             activeSearchRow = null;
-            setTimeout(function() { islModalClosing = false; }, 500);
+
             if (pendingFocusExpRow && pendingFocusExpRow.length) {
                 let $target = pendingFocusExpRow;
                 pendingFocusExpRow = null;
@@ -456,10 +491,13 @@
             }
         });
 
-        // Open modal on Code/Barcode field CLICK or F2; do NOT trigger on passive focus
-        $(document).off('click', '.pinv-item-code').on('click', '.pinv-item-code', function () {
+        // Open modal on Code/Barcode field CLICK or FOCUS; do not reopen if item already selected
+        $(document).off('click focus', '.pinv-item-code').on('click focus', '.pinv-item-code', function (e) {
             if (islModalOpen || islModalClosing) return;
-            activeSearchRow = $(this).closest('tr');
+            let $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.pinv-item-select').val()) return;
+
+            activeSearchRow = $row;
             let prefill = $.trim($(this).val());
             $('#pinv-isl-filter-name').val(prefill);
             $('#pinv-isl-filter-code').val('');
@@ -468,7 +506,7 @@
             islModalOpen = true;
             $('#pinv-item-search-modal').modal('show');
             $('#pinv-item-search-modal').one('shown.bs.modal', function () {
-                $('#pinv-isl-filter-name').focus();
+                $('#pinv-isl-filter-name').focus().select();
                 if (prefill) fetchItemList();
             });
         });
@@ -1117,11 +1155,26 @@
             });
         }
 
-        // On Disc Amount field: Tab or Enter advances by creating a new row and opening item search popup
-        $(document).on('keydown', '.pinv-disc-amount', function (e) {
-            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+        // On Disc Amount field: Enter key adds new row and opens search modal; Tab key advances to next row or Freight
+        $(document).off('keydown', '.pinv-disc-amount').on('keydown', '.pinv-disc-amount', function (e) {
+            if (e.key === 'Enter') {
                 e.preventDefault();
                 addPinvRowAndOpenSearchModal();
+            } else if (e.key === 'Tab' && !e.shiftKey) {
+                let $currentRow = $(this).closest('tr');
+                let $nextRow = $currentRow.next('tr');
+                if ($nextRow.length) {
+                    e.preventDefault();
+                    $nextRow.find('.pinv-item-code').focus();
+                } else {
+                    e.preventDefault();
+                    let $freight = $('#freight');
+                    if ($freight.length) {
+                        $freight.focus().select();
+                    } else {
+                        $('#pinv-add-row').focus();
+                    }
+                }
             }
         });
 
@@ -1181,6 +1234,14 @@
                 window.location.reload();
             }
         });
+
+        // Global autofocus on the first field of the form
+        setTimeout(function () {
+            let $first = $('#invoice_date');
+            if ($first.length) {
+                $first.focus();
+            }
+        }, 150);
     });
 </script>
 @endpush
