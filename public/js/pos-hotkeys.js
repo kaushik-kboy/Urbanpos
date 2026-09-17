@@ -5,35 +5,46 @@
 (function () {
     'use strict';
 
-    // Normalize shortcut string from event: e.g. "Alt+S", "Ctrl+Shift+P", "F2", "F6"
-    function getEventShortcutString(e) {
-        let parts = [];
-        if (e.ctrlKey) parts.push('Ctrl');
-        if (e.altKey) parts.push('Alt');
-        if (e.shiftKey) parts.push('Shift');
-
-        let key = e.key;
-
-        // Ignore modifier keys alone
-        if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) {
-            return null;
-        }
+    // Normalize shortcut string from event: e.g. "ALT+S", "CTRL+SHIFT+P", "F2", "F6"
+    function getNormalizedKey(e) {
+        let key = e.key || '';
+        let alt = e.altKey;
+        let ctrl = e.ctrlKey;
+        let shift = e.shiftKey;
 
         // Function keys (F1 - F12)
         if (/^F\d{1,2}$/i.test(key)) {
             return key.toUpperCase();
         }
 
-        // Single alphanumeric characters
-        if (key.length === 1) {
-            parts.push(key.toUpperCase());
-            return parts.join('+');
+        // Single letter keys with Alt or Ctrl
+        if (alt || ctrl) {
+            let parts = [];
+            if (ctrl) parts.push('CTRL');
+            if (alt) parts.push('ALT');
+            if (shift) parts.push('SHIFT');
+
+            // Key character (e.g. 's' -> 'S')
+            if (key && key.length === 1 && key !== ' ') {
+                parts.push(key.toUpperCase());
+                return parts.join('+');
+            }
+
+            // Fallback to e.code (e.g. KeyS -> 'S', KeyP -> 'P') for international keyboards
+            if (e.code && e.code.startsWith('Key')) {
+                parts.push(e.code.replace('Key', '').toUpperCase());
+                return parts.join('+');
+            }
         }
 
-        // Special keys
-        if (['Escape', 'Enter', 'Delete', 'Backspace', 'ArrowUp', 'ArrowDown'].includes(key)) {
-            parts.push(key);
-            return parts.join('+');
+        // Escape Key
+        if (key === 'Escape' || e.code === 'Escape') {
+            return 'ESCAPE';
+        }
+
+        // Shift+Delete or Alt+Delete
+        if ((shift || alt) && (key === 'Delete' || e.code === 'Delete' || key === 'Del')) {
+            return (shift ? 'SHIFT' : 'ALT') + '+DELETE';
         }
 
         return null;
@@ -83,63 +94,82 @@
         return lookup;
     }
 
-    // Handle POS Form Actions (F2, F3, F6, etc.)
-    function executeFormAction(actionKey, e) {
+    function navigateTo(targetUrl) {
+        if (!targetUrl) return;
+        let appBase = (window.APP_URL || window.location.origin).replace(/\/+$/, '');
+        let dest = targetUrl.replace(/^\/+/, '');
+        window.location.href = appBase + '/' + dest;
+    }
+
+    // Form / Billing Actions Execution Engine
+    window.posTriggerAction = function (actionKey) {
         let $ = window.jQuery;
+        if (!$) return;
 
         switch (actionKey) {
             case 'search_item': {
-                // Check if search modal is already open
+                // 1. If any modal is currently visible, focus its search input
                 let $openModal = $('.modal.show');
                 if ($openModal.length) {
-                    let $searchInput = $openModal.find('input[type="text"]:visible').first();
+                    let $searchInput = $openModal.find('#isl-filter-name, #pinv-isl-filter-name, #st-isl-filter-name, input[type="text"]:visible').first();
                     if ($searchInput.length) {
                         $searchInput.focus().select();
+                        return;
                     }
-                    return;
                 }
 
-                // Trigger item search in active or last row
+                // 2. On billing/transaction forms, trigger item code focus to open lookup modal
                 let $targetInput = null;
-                // Sales Bill
                 if ($('.sb-item-code').length) {
-                    $targetInput = $(':focus').hasClass('sb-item-code') ? $(':focus') : $('.sb-item-code').filter(function() { return !$(this).val(); }).first();
+                    $targetInput = $(':focus').hasClass('sb-item-code') ? $(':focus') : $('.sb-item-code').filter(function () { return !$(this).val(); }).first();
                     if (!$targetInput.length) $targetInput = $('.sb-item-code').last();
-                }
-                // Purchase Invoice
-                else if ($('.pinv-item-code').length) {
-                    $targetInput = $(':focus').hasClass('pinv-item-code') ? $(':focus') : $('.pinv-item-code').filter(function() { return !$(this).val(); }).first();
+                } else if ($('.pinv-item-code').length) {
+                    $targetInput = $(':focus').hasClass('pinv-item-code') ? $(':focus') : $('.pinv-item-code').filter(function () { return !$(this).val(); }).first();
                     if (!$targetInput.length) $targetInput = $('.pinv-item-code').last();
-                }
-                // Stock Transfer
-                else if ($('.st-item-code').length) {
-                    $targetInput = $(':focus').hasClass('st-item-code') ? $(':focus') : $('.st-item-code').filter(function() { return !$(this).val(); }).first();
+                } else if ($('.st-item-code').length) {
+                    $targetInput = $(':focus').hasClass('st-item-code') ? $(':focus') : $('.st-item-code').filter(function () { return !$(this).val(); }).first();
                     if (!$targetInput.length) $targetInput = $('.st-item-code').last();
+                } else if ($('.item-code-input').length) {
+                    $targetInput = $('.item-code-input').last();
                 }
 
                 if ($targetInput && $targetInput.length) {
                     $targetInput.trigger('focus').trigger('click');
+                } else {
+                    // If on general pages, jump to Item Master
+                    navigateTo('master/items');
                 }
                 break;
             }
 
             case 'new_entry': {
-                // Add new row to current form
-                let $addRowBtn = $('#sb-add-row, #pinv-add-row, #st-add-row, #sq-add-row, #so-add-row, #sr-add-row, [data-action="add-row"]').filter(':visible').first();
+                // Check for Add Row button in current transaction form
+                let $addRowBtn = $('#sb-add-row, #pinv-add-row, #st-add-row, #sq-add-row, #so-add-row, #sr-add-row, #add-row, [data-action="add-row"]').filter(':visible').first();
                 if ($addRowBtn.length) {
                     $addRowBtn.trigger('click');
                     setTimeout(function () {
-                        let $newCode = $('.sb-item-code, .pinv-item-code, .st-item-code').last();
+                        let $newCode = $('.sb-item-code, .pinv-item-code, .st-item-code, .item-code-input').last();
                         if ($newCode.length) {
                             $newCode.focus();
                         }
                     }, 100);
+                    return;
                 }
+
+                // If on a listing table page, find "Create / Add New" button
+                let $createBtn = $('a[href$="/create"], .btn-primary:contains("Add"), .btn-primary:contains("New"), .btn-primary:contains("Create")').filter(':visible').first();
+                if ($createBtn.length && $createBtn.attr('href')) {
+                    window.location.href = $createBtn.attr('href');
+                    return;
+                }
+
+                // Default: open Sales Bill
+                navigateTo('sales/sales-bills/create');
                 break;
             }
 
             case 'edit_entry': {
-                // Focus quantity or rate field of active row
+                // Focus active row editable field
                 let $focused = $(':focus');
                 let $row = $focused.closest('tr');
                 if ($row.length) {
@@ -152,14 +182,14 @@
             }
 
             case 'save_form': {
-                // Save and Tender / Submit Form
+                // Tender button or primary save button
                 let $tenderBtn = $('#btn-tender-save, #btn-tender, #btn-quick-tender').filter(':visible');
                 if ($tenderBtn.length) {
                     $tenderBtn.trigger('click');
                     return;
                 }
 
-                let $submitBtn = $('button[type="submit"]:visible, .btn-save:visible').first();
+                let $submitBtn = $('button[type="submit"]:visible, .btn-save:visible, form .card-footer .btn-primary:visible').first();
                 if ($submitBtn.length) {
                     $submitBtn.trigger('click');
                 }
@@ -167,20 +197,24 @@
             }
 
             case 'view_records': {
-                // View history / index listing
-                let $indexLink = $('a[href*="/sales-bills"], a[href*="/purchase-invoices"], a[href*="/stock-transfers"], .btn-view-records').filter(function() {
-                    let href = $(this).attr('href') || '';
-                    return href.endsWith('/sales-bills') || href.endsWith('/purchase-invoices') || href.endsWith('/stock-transfers');
-                }).first();
-
-                if ($indexLink.length) {
-                    window.location.href = $indexLink.attr('href');
+                // Navigate to listing page of current module
+                let loc = window.location.pathname;
+                if (loc.includes('/sales-bills')) {
+                    navigateTo('sales/sales-bills');
+                } else if (loc.includes('/purchase-invoices')) {
+                    navigateTo('purchase/purchase-invoices');
+                } else if (loc.includes('/stock-transfers')) {
+                    navigateTo('inventory/stock-transfers');
+                } else {
+                    let $indexLink = $('a[href*="/sales-bills"], a[href*="/purchase-invoices"], a[href*="/stock-transfers"]').first();
+                    if ($indexLink.length) {
+                        window.location.href = $indexLink.attr('href');
+                    }
                 }
                 break;
             }
 
             case 'print_form': {
-                // Print active voucher / bill
                 let $printBtn = $('.btn-print, [data-action="print"], a[href*="print"]').filter(':visible').first();
                 if ($printBtn.length) {
                     $printBtn.trigger('click');
@@ -191,7 +225,6 @@
             }
 
             case 'clear_form': {
-                // Reset form
                 let $resetBtn = $('.btn-reset-form, [type="reset"]').filter(':visible').first();
                 if ($resetBtn.length) {
                     if (confirm('Are you sure you want to reset this form? All unsaved data will be cleared.')) {
@@ -202,7 +235,6 @@
             }
 
             case 'close_modal': {
-                // Close open modal or go back
                 let $openModal = $('.modal.show');
                 if ($openModal.length) {
                     $openModal.modal('hide');
@@ -216,31 +248,41 @@
                 }
                 break;
             }
-        }
-    }
 
-    // Global Keydown Handler (Capturing phase for maximum reliability in Chrome)
+            // Global navigation keys mapped directly
+            case 'open_sales_bill': navigateTo('sales/sales-bills/create'); break;
+            case 'open_purchase_invoice': navigateTo('purchase/purchase-invoices/create'); break;
+            case 'open_stock_transfer': navigateTo('inventory/stock-transfers/create'); break;
+            case 'open_customer_master': navigateTo('master/customers'); break;
+            case 'open_item_master': navigateTo('master/items'); break;
+            case 'open_purchase_order': navigateTo('purchase/purchase-orders/create'); break;
+            case 'open_sales_quotation': navigateTo('sales/sales-quotations/create'); break;
+            case 'open_sales_return': navigateTo('sales/sales-returns/create'); break;
+        }
+    };
+
+    // Global Keydown Handler (Capturing phase for 100% interception in Chrome)
     window.addEventListener('keydown', function (e) {
-        let combo = getEventShortcutString(e);
-        if (!combo) return;
+        let keyCombo = getNormalizedKey(e);
+        if (!keyCombo) return;
 
         let lookup = getActiveMappingLookup();
-        let target = lookup[combo];
+        let target = lookup[keyCombo];
 
-        // 1. Function Keys (F1 - F12) interception
-        if (/^F\d{1,2}$/i.test(combo)) {
-            // Suppress browser default for function keys (e.g. F3 search, F6 address bar)
+        // 1. Function Keys (F1 - F12)
+        if (/^F\d{1,2}$/.test(keyCombo)) {
             e.preventDefault();
             e.stopPropagation();
 
-            if (target && target.action_key) {
-                executeFormAction(target.action_key, e);
+            let action = target ? target.action_key : (DEFAULT_ACTIONS[keyCombo] ? DEFAULT_ACTIONS[keyCombo].action_key : null);
+            if (action) {
+                window.posTriggerAction(action);
             }
             return;
         }
 
         // 2. Escape Key (Close Modal / Back)
-        if (combo === 'Escape') {
+        if (keyCombo === 'ESCAPE') {
             let $ = window.jQuery;
             if ($ && $('.modal.show').length) {
                 e.preventDefault();
@@ -251,7 +293,7 @@
         }
 
         // 3. Delete Row via Shift+Delete or Alt+Delete
-        if (combo === 'Shift+Delete' || combo === 'Alt+Delete') {
+        if (keyCombo === 'SHIFT+DELETE' || keyCombo === 'ALT+DELETE') {
             let $ = window.jQuery;
             if ($) {
                 let $activeRow = $(':focus').closest('tr');
@@ -266,16 +308,20 @@
             }
         }
 
-        // 4. Global Navigation Shortcuts (Alt + Key or Ctrl + Shift + Key)
+        // 4. Global Navigation Shortcuts (Alt + Key, Ctrl + Shift + Key)
         if (target && target.target_url) {
             e.preventDefault();
             e.stopPropagation();
+            navigateTo(target.target_url);
+            return;
+        }
 
-            let appBase = (window.APP_URL || '').replace(/\/+$/, '');
-            let dest = target.target_url.replace(/^\/+/, '');
-            let finalUrl = appBase ? appBase + '/' + dest : '/' + dest;
-
-            window.location.href = finalUrl;
+        // Fallback to default navigation
+        if (DEFAULT_ACTIONS[keyCombo] && DEFAULT_ACTIONS[keyCombo].target_url) {
+            e.preventDefault();
+            e.stopPropagation();
+            navigateTo(DEFAULT_ACTIONS[keyCombo].target_url);
+            return;
         }
     }, true);
 
@@ -290,30 +336,23 @@
         // Sales Bills Enter-chaining
         $(document).on('keydown', '#sb-items-body input', function (e) {
             if (e.key !== 'Enter') return;
-            // Ignore enter if search modal is open
             if ($('#sb-item-search-modal').hasClass('show')) return;
 
             let $input = $(this);
             let $row = $input.closest('tr');
 
-            // From Item Code -> Qty (if not empty)
             if ($input.hasClass('sb-item-code')) {
-                // If item is already selected, advance to qty
                 if ($row.find('.sb-item-select').val()) {
                     e.preventDefault();
                     $row.find('.sb-qty').focus().select();
                 }
-            }
-            // From Qty -> Disc % (or Disc Amt)
-            else if ($input.hasClass('sb-qty')) {
+            } else if ($input.hasClass('sb-qty')) {
                 e.preventDefault();
                 let $disc = $row.find('.sb-disc-percent');
                 if ($disc.length) {
                     $disc.focus().select();
                 }
-            }
-            // From Disc % -> Disc Amt or New Row
-            else if ($input.hasClass('sb-disc-percent')) {
+            } else if ($input.hasClass('sb-disc-percent')) {
                 e.preventDefault();
                 let $discAmt = $row.find('.sb-disc-amount');
                 if ($discAmt.length) {
@@ -321,9 +360,7 @@
                 } else {
                     advanceToNextRowOrAdd($row, 'sales');
                 }
-            }
-            // From Disc Amt -> Next Row or Add Row
-            else if ($input.hasClass('sb-disc-amount')) {
+            } else if ($input.hasClass('sb-disc-amount')) {
                 e.preventDefault();
                 advanceToNextRowOrAdd($row, 'sales');
             }
@@ -381,7 +418,6 @@
                 }
             }
 
-            // If no next row, trigger Add Row button
             let $addBtn = moduleType === 'sales' ? $('#sb-add-row') : $('#pinv-add-row');
             if ($addBtn.length) {
                 $addBtn.trigger('click');

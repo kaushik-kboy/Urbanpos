@@ -49,6 +49,10 @@
             @include('adminlte::partials.sidebar.right-sidebar')
         @endif
 
+        @auth
+            <x-pos-keyboard-bar />
+        @endauth
+
     </div>
 @stop
 
