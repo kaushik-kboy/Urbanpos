@@ -77,7 +77,7 @@
 
         {{-- Global Back Button in Top Right Corner --}}
         <li class="nav-item ml-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm d-flex align-items-center my-1" onclick="if(window.history.length > 1){ window.history.back(); } else { window.location.href='{{ url('/') }}'; }" title="Go Back">
+            <button type="button" class="btn btn-sm btn-outline-primary font-weight-bold shadow-sm d-flex align-items-center my-1 mr-2 px-2" onclick="if(window.history.length > 1){ window.history.back(); } else { window.location.href='{{ url('/') }}'; }" title="Go Back">
                 <i class="fas fa-arrow-left mr-1"></i> <span>Back</span>
             </button>
         </li>

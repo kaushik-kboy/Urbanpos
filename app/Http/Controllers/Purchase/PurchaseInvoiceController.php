@@ -34,7 +34,7 @@ class PurchaseInvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder'])->latest('invoice_date');
+        $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder'])->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -131,16 +131,22 @@ class PurchaseInvoiceController extends Controller
             $options['convertedItems'] = $convertedItems;
         }
 
+        $options['nextGrnNumber'] = $this->nextGrnNumber();
+
         return view('purchase.purchase-invoices.create', array_merge($options, [
             'sourceReceiptNote' => $sourceReceiptNote,
             'sourceOrder' => $sourceOrder,
             'convertedItems' => $convertedItems,
+            'nextGrnNumber' => $options['nextGrnNumber'],
         ]));
     }
 
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+        if (empty($data['header']['grn_number'])) {
+            $data['header']['grn_number'] = $this->nextGrnNumber();
+        }
         $this->financialYearGuard->assertOpenForPosting($data['header']['invoice_date']);
 
         if ($data['header']['posting_key'] ?? null) {
@@ -218,7 +224,7 @@ class PurchaseInvoiceController extends Controller
     {
         $purchaseInvoice->assertEditable();
 
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $purchaseInvoice->id);
         $this->financialYearGuard->assertOpenForPosting($data['header']['invoice_date']);
         $oldSupplierId = $purchaseInvoice->supplier_id;
         $oldTotal = (float) $purchaseInvoice->total;
@@ -337,6 +343,17 @@ class PurchaseInvoiceController extends Controller
         $next = (PurchaseInvoice::max('id') ?? 0) + 1;
 
         return 'PINV'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+    }
+
+    private function nextGrnNumber(): string
+    {
+        $maxId = (int) (PurchaseInvoice::max('id') ?? 0);
+        do {
+            $maxId++;
+            $grn = 'GRN'.str_pad((string) $maxId, 6, '0', STR_PAD_LEFT);
+        } while (PurchaseInvoice::where('grn_number', $grn)->exists());
+
+        return $grn;
     }
 
     public function itemList(Request $request)
@@ -742,18 +759,19 @@ class PurchaseInvoiceController extends Controller
         ];
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?int $id = null): array
     {
+        $today = date('Y-m-d');
         $header = $request->validate([
-            'invoice_date' => ['required', 'date'],
+            'invoice_date' => ['required', 'date', "before_or_equal:{$today}"],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
             'purchase_order_id' => ['nullable', 'exists:purchase_orders,id'],
             'purchase_receipt_note_id' => ['nullable', 'exists:purchase_receipt_notes,id'],
             'grn_number' => ['nullable', 'string', 'max:100'],
-            'grn_date' => ['nullable', 'date'],
+            'grn_date' => ['nullable', 'date', "before_or_equal:{$today}"],
             'supplier_inv_no' => ['nullable', 'string', 'max:100'],
-            'supplier_inv_date' => ['nullable', 'date'],
+            'supplier_inv_date' => ['nullable', 'date', "before_or_equal:{$today}"],
             'supplier_inv_amount' => ['nullable', 'numeric', 'min:0'],
             'purchase_type' => ['required', 'in:Local,Interstate'],
             'c_form' => ['required', 'in:Against C-Form,No Forms'],
@@ -768,7 +786,47 @@ class PurchaseInvoiceController extends Controller
             'remarks' => ['nullable', 'string'],
             'message' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
+        ], [
+            'invoice_date.before_or_equal' => 'Future date is not allowed for Invoice Date.',
+            'grn_date.before_or_equal' => 'Future date is not allowed for GRN Date.',
+            'supplier_inv_date.before_or_equal' => 'Future date is not allowed for Supplier Inv Date.',
         ]);
+
+        if (!empty($header['supplier_inv_no'])) {
+            $duplicateSupplierInv = PurchaseInvoice::where('supplier_id', $header['supplier_id'])
+                ->where('supplier_inv_no', $header['supplier_inv_no'])
+                ->when($id, fn ($q) => $q->where('id', '!=', $id))
+                ->exists();
+            if ($duplicateSupplierInv) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'supplier_inv_no' => "Supplier Invoice Number '{$header['supplier_inv_no']}' is already recorded for this supplier.",
+                ]);
+            }
+        }
+
+        if (!empty($header['grn_number'])) {
+            $duplicateGrn = PurchaseInvoice::where('grn_number', $header['grn_number'])
+                ->when($id, fn ($q) => $q->where('id', '!=', $id))
+                ->exists();
+            if ($duplicateGrn) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'grn_number' => "GRN Number '{$header['grn_number']}' already exists. Please use a unique GRN Number.",
+                ]);
+            }
+        }
+
+        if (empty($id) && !empty($header['supplier_inv_amount'])) {
+            $recentDuplicate = PurchaseInvoice::where('supplier_id', $header['supplier_id'])
+                ->when(!empty($header['supplier_inv_no']), fn ($q) => $q->where('supplier_inv_no', $header['supplier_inv_no']))
+                ->where('supplier_inv_amount', $header['supplier_inv_amount'])
+                ->where('created_at', '>=', now()->subSeconds(30))
+                ->exists();
+            if ($recentDuplicate) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'supplier_inv_amount' => 'A matching purchase invoice was just submitted moments ago. Duplicate submission prevented.',
+                ]);
+            }
+        }
 
         $header['invoice_date'] = $this->normalizeDate($header['invoice_date']);
         $header['grn_date'] = $this->normalizeDate($header['grn_date'] ?? null);

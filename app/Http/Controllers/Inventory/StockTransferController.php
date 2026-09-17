@@ -506,12 +506,15 @@ class StockTransferController extends Controller
 
     private function validateData(Request $request): array
     {
+        $today = date('Y-m-d');
         $header = $request->validate([
-            'transfer_date' => ['required', 'date'],
+            'transfer_date' => ['required', 'date', "before_or_equal:{$today}"],
             'from_branch_id' => ['required', 'exists:branches,id', 'different:to_branch_id'],
             'to_branch_id' => ['required', 'exists:branches,id'],
             'remarks' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
+        ], [
+            'transfer_date.before_or_equal' => 'Future date is not allowed for Transfer Date.',
         ]);
 
         $header['transfer_date'] = $this->normalizeDate($header['transfer_date']);

@@ -25,7 +25,7 @@
     </div>
     <div class="col-md-3">
         <label for="transfer_date" class="font-weight-bold">Transfer Date <span class="text-danger">*</span></label>
-        <input type="date" name="transfer_date" id="transfer_date" class="form-control" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('Y-m-d')) }}" required>
+        <input type="date" name="transfer_date" id="transfer_date" class="form-control" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required>
     </div>
     <div class="col-md-3 d-flex align-items-end justify-content-end">
         <div class="text-muted small text-right">
@@ -573,6 +573,14 @@
             initRowSelect2($(this));
         });
         recalcTotals();
+
+        $('#transfer_date').on('change', function () {
+            const today = new Date().toISOString().split('T')[0];
+            if (this.value && this.value > today) {
+                alert('Future date is not allowed for Transfer Date!');
+                this.value = today;
+            }
+        });
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'F2') {

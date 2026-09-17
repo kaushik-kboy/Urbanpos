@@ -15,21 +15,21 @@
         @include('adminlte::partials.common.preloader')
     @endif
 
-    {{-- Content Header --}}
-    @hasSection('content_header')
-        <div class="content-header">
-            <div class="{{ config('adminlte.classes_content_header') ?: $def_container_class }} d-flex justify-content-between align-items-center">
-                <div>
+    {{-- Content Header (Rendered on all pages for consistent top-right Back button) --}}
+    <div class="content-header py-2">
+        <div class="{{ config('adminlte.classes_content_header') ?: $def_container_class }} d-flex justify-content-between align-items-center">
+            <div>
+                @hasSection('content_header')
                     @yield('content_header')
-                </div>
-                <div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm" onclick="if(window.history.length > 1){ window.history.back(); } else { window.location.href='{{ url('/') }}'; }" title="Go Back">
-                        <i class="fas fa-arrow-left mr-1"></i> Back
-                    </button>
-                </div>
+                @endif
+            </div>
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-dark font-weight-bold shadow-sm" onclick="if(window.history.length > 1){ window.history.back(); } else { window.location.href='{{ url('/') }}'; }" title="Go Back">
+                    <i class="fas fa-arrow-left mr-1"></i> Back
+                </button>
             </div>
         </div>
-    @endif
+    </div>
 
     {{-- Main Content --}}
     <div class="content">

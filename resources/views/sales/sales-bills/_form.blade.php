@@ -5,6 +5,7 @@
     $selectedCust = $bill->customer_id ?? ($sourceQuotation->customer_id ?? ($sourceOrder->customer_id ?? ($sourceDeliveryNote->customer_id ?? '')));
     $selectedBranch = $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ($sourceDeliveryNote->branch_id ?? '')));
     $selectedSalesType = $bill->sales_type ?? ($sourceQuotation->sales_type ?? ($sourceOrder->sales_type ?? 'Local'));
+    $billNumberVal = old('bill_number', $bill->bill_number ?? ($nextBillNumber ?? ''));
 @endphp
 
 @if(isset($sourceQuotation))
@@ -30,6 +31,7 @@
         <i class="fas fa-file-invoice mr-1"></i> Invoices <span id="badge-cust-invoices-count" class="badge badge-info ml-1 d-none">0</span>
     </button>
 </div>
+<x-field name="bill_number" label="Bill No" :value="$billNumberVal" readonly />
 <div class="form-group">
     <div class="d-flex justify-content-between align-items-center mb-1">
         <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
@@ -54,7 +56,7 @@
     <span id="sb-loyalty-notice" class="badge badge-success"></span>
 </div>
 <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a branch" required />
-<x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" required />
+<x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" max="{{ now()->format('Y-m-d\TH:i') }}" required />
 <x-select name="invoice_type" label="Invoice Type" :options="['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
 <x-select name="delivery_type" label="Delivery Type" :options="['Delivered' => 'Delivered', 'Home Delivery' => 'Home Delivery', 'Pickup' => 'Pickup']" :selected="$bill->delivery_type ?? 'Delivered'" required />
 <x-field name="delivery_time" label="Delivery Time" type="time" :value="$bill->delivery_time ?? ''" />
@@ -2042,6 +2044,16 @@
             e.preventDefault();
             if (confirm('Are you sure you want to reset this form? All unsaved inputs will be lost.')) {
                 window.location.reload();
+            }
+        });
+
+        // Prevent future dates on bill_date
+        $('#bill_date').on('change', function () {
+            const now = new Date();
+            const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            if (this.value && this.value > localIso) {
+                alert('Future date & time is not allowed for Bill Date!');
+                this.value = localIso;
             }
         });
 

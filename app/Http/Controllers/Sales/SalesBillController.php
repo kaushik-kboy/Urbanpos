@@ -37,7 +37,7 @@ class SalesBillController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesBill::with(['customer', 'branch'])->latest('bill_date');
+        $query = SalesBill::with(['customer', 'branch'])->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -139,6 +139,7 @@ class SalesBillController extends Controller
         }
 
         $options = array_merge($options, $this->formOptions(null, $convertedItems, $sourceCustId));
+        $options['nextBillNumber'] = $this->nextNumber();
 
         return view('sales.sales-bills.create', $options);
     }
@@ -450,9 +451,13 @@ class SalesBillController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (SalesBill::max('id') ?? 0) + 1;
+        $maxId = (int) (SalesBill::max('id') ?? 0);
+        do {
+            $maxId++;
+            $num = 'SB'.str_pad((string) $maxId, 6, '0', STR_PAD_LEFT);
+        } while (SalesBill::where('bill_number', $num)->exists());
 
-        return 'SB'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        return $num;
     }
 
     public function itemList(Request $request)
@@ -902,8 +907,10 @@ class SalesBillController extends Controller
         })->values()->all();
         $request->merge(['items' => $filteredItems]);
 
+        $now = now()->addMinutes(2)->format('Y-m-d H:i:s');
         $header = $request->validate([
-            'bill_date' => ['required', 'date'],
+            'bill_number' => ['nullable', 'string', 'max:100'],
+            'bill_date' => ['required', 'date', "before_or_equal:{$now}"],
             'customer_id' => ['required', 'exists:customers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
             'sales_delivery_note_id' => ['nullable', 'exists:sales_delivery_notes,id'],
@@ -920,7 +927,35 @@ class SalesBillController extends Controller
             'remarks' => ['nullable', 'string'],
             'message' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
+        ], [
+            'bill_date.before_or_equal' => 'Future date and time is not allowed for Bill Date.',
         ]);
+
+        if (!empty($header['bill_number'])) {
+            $duplicateBill = SalesBill::where('bill_number', $header['bill_number'])->exists();
+            if ($duplicateBill) {
+                throw ValidationException::withMessages([
+                    'bill_number' => "Bill Number '{$header['bill_number']}' already exists.",
+                ]);
+            }
+        }
+
+        if ($request->isMethod('post') && !empty($header['customer_id'])) {
+            $recentDuplicate = SalesBill::where('customer_id', $header['customer_id'])
+                ->where('branch_id', $header['branch_id'])
+                ->where('created_at', '>=', now()->subSeconds(30))
+                ->whereHas('items', function ($iq) use ($filteredItems) {
+                    if (!empty($filteredItems[0]['item_id'])) {
+                        $iq->where('item_id', $filteredItems[0]['item_id']);
+                    }
+                })
+                ->exists();
+            if ($recentDuplicate) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'A matching sales bill was just submitted moments ago. Duplicate submission prevented.',
+                ]);
+            }
+        }
 
         $header['bill_date'] = \Illuminate\Support\Carbon::parse($header['bill_date'])->format('Y-m-d H:i:s');
 

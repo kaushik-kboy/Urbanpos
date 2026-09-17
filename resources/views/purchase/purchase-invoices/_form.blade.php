@@ -8,7 +8,7 @@
     $selectedSupplier = old('supplier_id', $inv->supplier_id ?? ($sourceRn->supplier_id ?? ($sourcePo->supplier_id ?? '')));
     $selectedBranch = old('branch_id', $inv->branch_id ?? ($sourceRn->branch_id ?? ($sourcePo->branch_id ?? '')));
     $selectedPo = old('purchase_order_id', $inv->purchase_order_id ?? ($sourceRn->purchase_order_id ?? ($sourcePo->id ?? '')));
-    $grnNumberVal = old('grn_number', $inv->grn_number ?? ($sourceRn->receipt_number ?? ''));
+    $grnNumberVal = old('grn_number', $inv->grn_number ?? ($sourceRn->receipt_number ?? ($nextGrnNumber ?? '')));
     $grnDateVal = old('grn_date', optional($inv->grn_date ?? ($sourceRn->receipt_date ?? now()))->format('Y-m-d'));
     $rnIdVal = old('purchase_receipt_note_id', $inv->purchase_receipt_note_id ?? ($sourceRn->id ?? ''));
 @endphp
@@ -40,16 +40,16 @@
 
 <input type="hidden" name="purchase_receipt_note_id" value="{{ $rnIdVal }}">
 
-<x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" required />
+<x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" required />
 <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$selectedSupplier" placeholder="Select a Supplier" required />
 <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a Branch" required />
 <x-select name="purchase_order_id" label="Purchase Order" :options="$purchaseOrders" :selected="$selectedPo" placeholder="Select PO" />
 <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
 <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'No Forms'" required />
-<x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" />
-<x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" />
+<x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" readonly />
+<x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" max="{{ date('Y-m-d') }}" />
 <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" />
-<x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? now())->format('Y-m-d')" />
+<x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" />
 <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
 <div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">
     <div class="col-sm-3"></div>
@@ -1156,6 +1156,15 @@
         });
         syncSchemePercentFromAmount();
         checkAmountMatch();
+
+        // Prevent future dates on invoice_date, grn_date, supplier_inv_date
+        $('#invoice_date, #grn_date, #supplier_inv_date').on('change', function () {
+            const today = new Date().toISOString().split('T')[0];
+            if (this.value && this.value > today) {
+                alert('Future date is not allowed for ' + ($(this).closest('.form-group').find('label').text().trim().replace('*', '').trim() || 'Date') + '!');
+                this.value = today;
+            }
+        });
 
         // Form Reset Button Handler
         $(document).on('click', '.btn-reset-form', function (e) {
