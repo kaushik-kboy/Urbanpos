@@ -261,6 +261,8 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
 
 Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('form-validations', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'index'])->name('form-validations.index');
+    Route::post('form-validations', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'update'])->name('form-validations.update');
+    Route::post('form-validations/reset', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'reset'])->name('form-validations.reset');
     Route::get('function-keys', [ToolsController::class, 'functionKeysIndex'])->name('function-keys.index');
     Route::post('function-keys', [ToolsController::class, 'functionKeysUpdate'])->name('function-keys.update');
     Route::post('function-keys/reset', [ToolsController::class, 'functionKeysReset'])->name('function-keys.reset');
