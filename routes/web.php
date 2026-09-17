@@ -264,6 +264,9 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('function-keys', [ToolsController::class, 'functionKeysIndex'])->name('function-keys.index');
     Route::post('function-keys', [ToolsController::class, 'functionKeysUpdate'])->name('function-keys.update');
     Route::post('function-keys/reset', [ToolsController::class, 'functionKeysReset'])->name('function-keys.reset');
+    Route::get('table-preferences', [\App\Http\Controllers\UserTablePreferenceController::class, 'get'])->name('table-preferences.get');
+    Route::post('table-preferences', [\App\Http\Controllers\UserTablePreferenceController::class, 'store'])->name('table-preferences.store');
+    Route::post('table-preferences/reset', [\App\Http\Controllers\UserTablePreferenceController::class, 'reset'])->name('table-preferences.reset');
     Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });
 
