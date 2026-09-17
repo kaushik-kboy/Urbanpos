@@ -1155,25 +1155,16 @@
             });
         }
 
-        // On Disc Amount field: Enter key adds new row and opens search modal; Tab key advances to next row or Freight
+        // On Disc Amount field: Tab or Enter creates new row and opens item search popup; if user cancels without selecting an item, that row is automatically deleted and focus moves to Freight!
         $(document).off('keydown', '.pinv-disc-amount').on('keydown', '.pinv-disc-amount', function (e) {
-            if (e.key === 'Enter') {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 e.preventDefault();
-                addPinvRowAndOpenSearchModal();
-            } else if (e.key === 'Tab' && !e.shiftKey) {
                 let $currentRow = $(this).closest('tr');
                 let $nextRow = $currentRow.next('tr');
                 if ($nextRow.length) {
-                    e.preventDefault();
                     $nextRow.find('.pinv-item-code').focus();
                 } else {
-                    e.preventDefault();
-                    let $freight = $('#freight');
-                    if ($freight.length) {
-                        $freight.focus().select();
-                    } else {
-                        $('#pinv-add-row').focus();
-                    }
+                    addPinvRowAndOpenSearchModal();
                 }
             }
         });
