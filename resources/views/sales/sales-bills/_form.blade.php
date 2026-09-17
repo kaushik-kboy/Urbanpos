@@ -629,6 +629,7 @@
     })->values()) !!}
 </script>
 
+<x-pos-keyboard-bar />
 
 @push('js')
 <script>

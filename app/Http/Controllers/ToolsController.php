@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\FunctionKeyMapping;
 
 class ToolsController extends Controller
 {
@@ -161,4 +162,43 @@ class ToolsController extends Controller
 
         return view('common.module-view', $config);
     }
+
+    public function functionKeysIndex()
+    {
+        $mappings = FunctionKeyMapping::orderBy('sort_order')->orderBy('id')->get();
+
+        return view('tools.function-keys', compact('mappings'));
+    }
+
+    public function functionKeysUpdate(Request $request)
+    {
+        $items = $request->input('mappings', []);
+
+        foreach ($items as $id => $data) {
+            $mapping = FunctionKeyMapping::find($id);
+            if ($mapping) {
+                $mapping->update([
+                    'shortcut_combination' => trim($data['shortcut_combination'] ?? $mapping->shortcut_combination),
+                    'is_enabled' => isset($data['is_enabled']) ? true : false,
+                ]);
+            }
+        }
+
+        FunctionKeyMapping::clearCache();
+
+        return redirect()->route('tools.function-keys.index')->with('success', 'Function key mappings updated successfully! New shortcuts are active.');
+    }
+
+    public function functionKeysReset()
+    {
+        \Illuminate\Support\Facades\Artisan::call('db:seed', [
+            '--class' => 'FunctionKeyMappingSeeder',
+            '--force' => true,
+        ]);
+
+        FunctionKeyMapping::clearCache();
+
+        return redirect()->route('tools.function-keys.index')->with('success', 'Function key mappings reset to default ERP settings.');
+    }
 }
+

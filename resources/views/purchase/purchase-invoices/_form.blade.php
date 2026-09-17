@@ -223,6 +223,8 @@
     </div>
 </div>
 
+<x-pos-keyboard-bar />
+
 @push('js')
 <script>
     $(document).ready(function () {

@@ -183,6 +183,8 @@
     @include('inventory.stock-transfers._item-row', ['index' => '__INDEX__', 'line' => null])
 </template>
 
+<x-pos-keyboard-bar />
+
 @push('css')
 <style>
     .select2-container .select2-selection--single { height: 31px !important; border-color: #ced4da !important; font-size: 0.875rem; }
