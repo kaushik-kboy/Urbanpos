@@ -22,7 +22,7 @@
     @endif
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <form method="GET" class="form-inline">
                 <label class="mr-2 font-weight-bold">Location:</label>
                 <select name="branch_id" class="form-control form-control-sm mr-3">
@@ -44,11 +44,14 @@
                     <i class="fas fa-filter mr-1"></i> Filter
                 </button>
             </form>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="inventory.stock-update-approval" table-id="stockUpdateApprovalTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
 
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover table-striped mb-0">
+                <table class="table table-hover table-striped mb-0" id="stockUpdateApprovalTable">
                     <thead class="bg-light">
                         <tr>
                             <th style="width: 140px;">Update No</th>

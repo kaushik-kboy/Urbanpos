@@ -16,12 +16,15 @@
     <div class="card card-primary card-outline">
         <div class="card-header">
             <x-import-button :import-route="route('master.breeds.import')" :sample-route="route('master.breeds.import-sample')" title="Breed" />
-            <a href="{{ route('master.breeds.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add Breed
-            </a>
+            <div class="card-tools float-right d-flex align-items-center">
+                <a href="{{ route('master.breeds.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Breed
+                </a>
+                <x-table-column-customizer table-key="master.breeds" table-id="breeds-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table id="breeds-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Breed Name</th>

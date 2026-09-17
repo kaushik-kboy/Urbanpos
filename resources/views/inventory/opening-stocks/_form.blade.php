@@ -255,12 +255,54 @@
 
         let osModalOpen = false;
         let osModalClosing = false;
+        let osCancellingRow = null;
+        let osItemSelectedInModal = false;
 
-        $('#item-search-modal').on('show.bs.modal', function () { osModalOpen = true; });
+        $('#item-search-modal').on('show.bs.modal', function () {
+            osModalOpen = true;
+            osModalClosing = false;
+            osItemSelectedInModal = false;
+            osCancellingRow = null;
+        });
+
+        $('#item-search-modal').on('hide.bs.modal', function () {
+            osModalOpen = false;
+            osModalClosing = true;
+            if (!osItemSelectedInModal && activeTargetRow && activeTargetRow.length) {
+                let selectedId = activeTargetRow.find('.item-select').val();
+                if (!selectedId) {
+                    osCancellingRow = activeTargetRow;
+                }
+            }
+        });
+
         $('#item-search-modal').on('hidden.bs.modal', function () {
             osModalOpen = false;
             osModalClosing = true;
             setTimeout(function () { osModalClosing = false; }, 350);
+
+            if (!osItemSelectedInModal && osCancellingRow && osCancellingRow.length) {
+                let totalRows = $('#items-body tr.item-row').length;
+                if (totalRows > 1) {
+                    osCancellingRow.remove();
+                    reindexSno();
+                    recalcTotals();
+                } else {
+                    osCancellingRow.find('.item-code-input').val('');
+                    osCancellingRow.find('.item-select').val('').trigger('change');
+                }
+                osCancellingRow = null;
+                activeTargetRow = null;
+                setTimeout(function () {
+                    let $target = $('#add-row, #remarks, button[type=submit]');
+                    $target.first().focus();
+                }, 60);
+                return;
+            }
+
+            osItemSelectedInModal = false;
+            osCancellingRow = null;
+            activeTargetRow = null;
         });
 
         // Open item search modal popup
@@ -407,6 +449,8 @@
             e.stopPropagation();
             const item = $(this).closest('tr').data('item');
             if (item && activeTargetRow) {
+                osItemSelectedInModal = true;
+                osCancellingRow = null;
                 applyItemToRow(activeTargetRow, item);
                 $('#item-search-modal').modal('hide');
             }
@@ -420,6 +464,8 @@
         $('#modal-items-body').on('dblclick', 'tr.modal-item-result-row', function () {
             const item = $(this).data('item');
             if (item && activeTargetRow) {
+                osItemSelectedInModal = true;
+                osCancellingRow = null;
                 applyItemToRow(activeTargetRow, item);
                 $('#item-search-modal').modal('hide');
             }
@@ -449,6 +495,8 @@
                 if ($active.length) {
                     const item = $active.data('item');
                     if (item && activeTargetRow) {
+                        osItemSelectedInModal = true;
+                        osCancellingRow = null;
                         applyItemToRow(activeTargetRow, item);
                         $('#item-search-modal').modal('hide');
                     }
@@ -637,10 +685,29 @@
         }
 
         // Trigger item search modal on click or focus of .item-code-input
-        $('#items-body').on('click focus', '.item-code-input', function () {
+        $('#items-body').off('click focus', '.item-code-input').on('click focus', '.item-code-input', function (e) {
             if (osModalOpen || osModalClosing) return;
             const $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.item-select').val()) return;
             openItemModal($row, $(this).val());
+        });
+
+        $(document).off('keydown', '.item-gst-percent, .item-scheme-others, .item-scheme-amount').on('keydown', '.item-gst-percent, .item-scheme-others, .item-scheme-amount', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr.item-row');
+                let $nextRow = $currentRow.next('tr.item-row');
+                if ($nextRow.length) {
+                    e.preventDefault();
+                    $nextRow.find('.item-code-input').focus();
+                } else {
+                    e.preventDefault();
+                    $('#add-row').trigger('click');
+                    let $newRow = $('#items-body tr.item-row').last();
+                    setTimeout(function () {
+                        $newRow.find('.item-code-input').focus();
+                    }, 60);
+                }
+            }
         });
 
         // Event listeners on items-body

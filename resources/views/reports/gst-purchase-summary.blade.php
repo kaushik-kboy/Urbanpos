@@ -8,11 +8,17 @@
 
 @section('content')
     <div class="card card-primary card-outline">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-file-invoice-dollar mr-1"></i> ITC Summary</h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="reports.gst-purchase-summary" table-id="gst-purchase-summary-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body">
             @include('reports._date-branch-filter')
 
             <div class="table-responsive">
-                <table class="table table-sm table-striped table-hover">
+                <table id="gst-purchase-summary-table" class="table table-sm table-striped table-hover">
                     <thead class="thead-light">
                         <tr>
                             <th>HSN Code</th>

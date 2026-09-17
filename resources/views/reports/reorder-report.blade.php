@@ -96,6 +96,12 @@
 
     {{-- Data Table --}}
     <div class="card card-outline card-danger">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-boxes mr-1"></i> Low Stock Items</h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="reports.reorder-report" table-id="reorderTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body p-0">
             <table class="table table-sm table-striped table-hover mb-0" id="reorderTable">
                 <thead class="thead-dark">

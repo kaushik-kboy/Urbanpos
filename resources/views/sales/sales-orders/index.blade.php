@@ -62,14 +62,17 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <h3 class="card-title font-weight-bold"><i class="fas fa-list mr-1"></i> Sales Orders List</h3>
-            <a href="{{ route('sales.sales-orders.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus mr-1"></i> New Sales Order
-            </a>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Sales Orders List</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('sales.sales-orders.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus mr-1"></i> New Sales Order
+                </a>
+                <x-table-column-customizer table-key="sales.sales-orders" table-id="salesOrdersTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped table-hover mb-0">
+            <table class="table table-striped table-hover mb-0" id="salesOrdersTable">
                 <thead>
                     <tr>
                         <th>Order No</th>

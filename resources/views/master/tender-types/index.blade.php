@@ -16,12 +16,15 @@
     <div class="card card-primary card-outline">
         <div class="card-header">
             <x-import-button :import-route="route('master.tender-types.import')" :sample-route="route('master.tender-types.import-sample')" title="Tender Type" />
-            <a href="{{ route('master.tender-types.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add Tender Type
-            </a>
+            <div class="card-tools float-right d-flex align-items-center">
+                <a href="{{ route('master.tender-types.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Tender Type
+                </a>
+                <x-table-column-customizer table-key="master.tender-types" table-id="tender-types-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table id="tender-types-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>

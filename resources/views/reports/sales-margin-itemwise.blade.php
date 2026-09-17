@@ -123,11 +123,14 @@
 
     {{-- Data Table --}}
     <div class="card card-outline card-success">
-        <div class="card-header">
-            <h3 class="card-title">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0">
                 <i class="fas fa-table mr-1"></i> Itemwise Detail
                 <span class="badge badge-secondary ml-2">{{ $lines->count() }} lines</span>
             </h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="reports.sales-margin-itemwise" table-id="marginTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">

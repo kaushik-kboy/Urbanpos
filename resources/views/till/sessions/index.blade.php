@@ -72,13 +72,17 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <a href="{{ route('till.sessions.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-door-open"></i> Open Till
-            </a>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-cash-register mr-1"></i> Till Sessions</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('till.sessions.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-door-open"></i> Open Till
+                </a>
+                <x-table-column-customizer table-key="till.sessions" table-id="tillSessionsTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table class="table table-striped mb-0" id="tillSessionsTable">
                 <thead>
                     <tr>
                         <th>Register</th>

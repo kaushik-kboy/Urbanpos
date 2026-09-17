@@ -102,6 +102,12 @@
 
     {{-- Data Table --}}
     <div class="card card-outline card-info">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-list mr-1"></i> Quotations & Orders</h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="reports.quotation-order-summary" table-id="qoTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body p-0">
             <table class="table table-sm table-striped table-hover mb-0" id="qoTable">
                 <thead class="thead-dark">

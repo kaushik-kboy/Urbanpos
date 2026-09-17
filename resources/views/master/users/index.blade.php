@@ -16,9 +16,12 @@
 
     <div class="card card-primary card-outline">
         <div class="card-header">
-            <a href="{{ route('master.users.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add User
-            </a>
+            <div class="card-tools float-right d-flex align-items-center">
+                <a href="{{ route('master.users.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add User
+                </a>
+                <x-table-column-customizer table-key="master.users" table-id="users-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.users.index') }}" class="row align-items-end">
@@ -57,7 +60,7 @@
             </form>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table id="users-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>

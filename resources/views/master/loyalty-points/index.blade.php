@@ -113,20 +113,23 @@
                     <h5 class="card-title font-weight-bold mb-0">
                         <i class="fas fa-history text-secondary mr-1"></i>Adjustment History
                     </h5>
-                    <form method="GET" action="{{ route('master.loyalty-points.index') }}" class="form-inline mb-0">
-                        <select name="customer_id" class="form-control form-control-sm mr-1" onchange="this.form.submit()">
-                            <option value="">All Customers</option>
-                            @foreach($customers as $c)
-                                <option value="{{ $c->id }}" {{ request('customer_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
-                            @endforeach
-                        </select>
-                        @if(request('customer_id'))
-                            <a href="{{ route('master.loyalty-points.index') }}" class="btn btn-xs btn-default"><i class="fas fa-times"></i></a>
-                        @endif
-                    </form>
+                    <div class="d-flex align-items-center">
+                        <form method="GET" action="{{ route('master.loyalty-points.index') }}" class="form-inline mb-0 mr-2">
+                            <select name="customer_id" class="form-control form-control-sm mr-1" onchange="this.form.submit()">
+                                <option value="">All Customers</option>
+                                @foreach($customers as $c)
+                                    <option value="{{ $c->id }}" {{ request('customer_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                                @endforeach
+                            </select>
+                            @if(request('customer_id'))
+                                <a href="{{ route('master.loyalty-points.index') }}" class="btn btn-xs btn-default"><i class="fas fa-times"></i></a>
+                            @endif
+                        </form>
+                        <x-table-column-customizer table-key="master.loyalty-points" table-id="loyalty-points-table" button-class="btn btn-sm btn-light border text-secondary" />
+                    </div>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover table-sm table-striped mb-0">
+                    <table id="loyalty-points-table" class="table table-hover table-sm table-striped mb-0">
                         <thead class="bg-dark text-white">
                             <tr>
                                 <th style="width: 40px;">#</th>

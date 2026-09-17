@@ -241,12 +241,54 @@
 
         let damageModalOpen = false;
         let damageModalClosing = false;
+        let damageCancellingRow = null;
+        let damageItemSelectedInModal = false;
 
-        $('#item-search-modal').on('show.bs.modal', function () { damageModalOpen = true; });
+        $('#item-search-modal').on('show.bs.modal', function () {
+            damageModalOpen = true;
+            damageModalClosing = false;
+            damageItemSelectedInModal = false;
+            damageCancellingRow = null;
+        });
+
+        $('#item-search-modal').on('hide.bs.modal', function () {
+            damageModalOpen = false;
+            damageModalClosing = true;
+            if (!damageItemSelectedInModal && activeTargetRow && activeTargetRow.length) {
+                let selectedId = activeTargetRow.find('.item-id-hidden').val();
+                if (!selectedId) {
+                    damageCancellingRow = activeTargetRow;
+                }
+            }
+        });
+
         $('#item-search-modal').on('hidden.bs.modal', function () {
             damageModalOpen = false;
             damageModalClosing = true;
             setTimeout(function () { damageModalClosing = false; }, 350);
+
+            if (!damageItemSelectedInModal && damageCancellingRow && damageCancellingRow.length) {
+                let totalRows = $('#items-body tr.item-row').length;
+                if (totalRows > 1) {
+                    damageCancellingRow.remove();
+                    reindexRows();
+                    recalcTotals();
+                } else {
+                    damageCancellingRow.find('.item-code-input').val('');
+                    damageCancellingRow.find('.item-id-hidden').val('');
+                }
+                damageCancellingRow = null;
+                activeTargetRow = null;
+                setTimeout(function () {
+                    let $target = $('#add-row, #remarks, button[type=submit]');
+                    $target.first().focus();
+                }, 60);
+                return;
+            }
+
+            damageItemSelectedInModal = false;
+            damageCancellingRow = null;
+            activeTargetRow = null;
         });
 
         // Open item search modal popup
@@ -395,6 +437,8 @@
             e.stopPropagation();
             const item = $(this).closest('tr').data('item');
             if (item && activeTargetRow) {
+                damageItemSelectedInModal = true;
+                damageCancellingRow = null;
                 applyItemToRow(activeTargetRow, item);
                 $('#item-search-modal').modal('hide');
             }
@@ -408,6 +452,8 @@
         $('#modal-items-body').on('dblclick', 'tr.modal-item-result-row', function () {
             const item = $(this).data('item');
             if (item && activeTargetRow) {
+                damageItemSelectedInModal = true;
+                damageCancellingRow = null;
                 applyItemToRow(activeTargetRow, item);
                 $('#item-search-modal').modal('hide');
             }
@@ -437,6 +483,8 @@
                 if ($active.length) {
                     const item = $active.data('item');
                     if (item && activeTargetRow) {
+                        damageItemSelectedInModal = true;
+                        damageCancellingRow = null;
                         applyItemToRow(activeTargetRow, item);
                         $('#item-search-modal').modal('hide');
                     }
@@ -619,10 +667,29 @@
         });
 
         // Open modal on item code click or focus
-        $('#items-body').on('click focus', '.item-code-input', function () {
+        $('#items-body').off('click focus', '.item-code-input').on('click focus', '.item-code-input', function (e) {
             if (damageModalOpen || damageModalClosing) return;
             const $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.item-id-hidden').val()) return;
             openItemModal($row, $(this).val());
+        });
+
+        $(document).off('keydown', '.item-gst-percent').on('keydown', '.item-gst-percent', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr.item-row');
+                let $nextRow = $currentRow.next('tr.item-row');
+                if ($nextRow.length) {
+                    e.preventDefault();
+                    $nextRow.find('.item-code-input').focus();
+                } else {
+                    e.preventDefault();
+                    $('#add-row').trigger('click');
+                    let $newRow = $('#items-body tr.item-row').last();
+                    setTimeout(function () {
+                        $newRow.find('.item-code-input').focus();
+                    }, 60);
+                }
+            }
         });
 
         // Code input blur / enter

@@ -1773,12 +1773,15 @@
             }
         });
 
-        $(document).on('keydown', '.sb-disc-amount', function (e) {
+        $(document).off('keydown', '.sb-disc-amount').on('keydown', '.sb-disc-amount', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $nextRow = $(this).closest('tr').next('tr');
                 if ($nextRow.length) {
                     e.preventDefault();
                     $nextRow.find('.sb-item-code').focus();
+                } else {
+                    e.preventDefault();
+                    $('#sb-add-row').trigger('click');
                 }
             }
         });

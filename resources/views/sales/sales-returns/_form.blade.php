@@ -549,6 +549,20 @@
             }
         });
 
+        $(document).off('keydown', '.sr-disc-amount, .sr-gst-percent').on('keydown', '.sr-disc-amount, .sr-gst-percent', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr');
+                let $nextRow = $currentRow.next('tr');
+                if ($nextRow.length) {
+                    e.preventDefault();
+                    $nextRow.find('.sr-item-code').focus();
+                } else {
+                    e.preventDefault();
+                    $('#sr-add-row').trigger('click');
+                }
+            }
+        });
+
         // Cap return quantity to original bill quantity
         $(document).on('input change', '.sr-qty', function () {
             let maxQty = parseFloat($(this).attr('data-original-qty') || $(this).attr('max'));

@@ -105,10 +105,11 @@
                     <span class="badge badge-light border ml-1 font-weight-normal">{{ number_format($rows->total()) }} total</span>
                 @endif
             </h6>
-            <div class="card-tools">
-                <button type="button" class="btn btn-xs btn-outline-success mr-1 shadow-sm" onclick="window.print()">
+            <div class="card-tools d-flex align-items-center">
+                <button type="button" class="btn btn-xs btn-outline-success mr-2 shadow-sm" onclick="window.print()">
                     <i class="fas fa-file-excel mr-1"></i> Print / Export
                 </button>
+                <x-table-column-customizer :table-key="'reports.generic.' . ($slug ?? 'default')" table-id="reportDataTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
 

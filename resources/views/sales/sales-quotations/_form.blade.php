@@ -236,6 +236,20 @@ $(function() {
         $newRow.find('.sq-item-code').focus();
     });
 
+    $(document).off('keydown', '.sq-disc-amount, .sq-gst-percent').on('keydown', '.sq-disc-amount, .sq-gst-percent', function (e) {
+        if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+            let $currentRow = $(this).closest('tr');
+            let $nextRow = $currentRow.next('tr');
+            if ($nextRow.length) {
+                e.preventDefault();
+                $nextRow.find('.sq-item-code').focus();
+            } else {
+                e.preventDefault();
+                $('#sq-add-row-btn').trigger('click');
+            }
+        }
+    });
+
     $(document).on('click', '.sq-remove-row', function() {
         if ($('#sq-items-body tr').length > 1) {
             $(this).closest('tr').remove();

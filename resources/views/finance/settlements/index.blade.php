@@ -70,11 +70,14 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <h3 class="card-title font-weight-bold"><i class="fas fa-list mr-1"></i> Settlements History</h3>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Settlements History</h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="finance.settlements" table-id="settlementsTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped table-hover mb-0">
+            <table class="table table-striped table-hover mb-0" id="settlementsTable">
                 <thead>
                     <tr>
                         <th>Settlement No</th>

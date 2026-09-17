@@ -49,8 +49,14 @@
     </div>
 
     <div class="card card-primary card-outline">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0">Items</h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="reports.item-master" table-id="itemMasterReportTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-sm table-striped table-hover mb-0">
+            <table class="table table-sm table-striped table-hover mb-0" id="itemMasterReportTable">
                 <thead class="thead-light">
                     <tr>
                         <th>Code</th>

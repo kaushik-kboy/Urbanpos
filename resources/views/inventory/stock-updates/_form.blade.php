@@ -155,12 +155,35 @@
             btn.closest('tr').remove();
         });
 
+        let suCancellingRow = null;
+        let suItemSelectedInModal = false;
+
+        $(document).off('keydown', '.su-physical-qty').on('keydown', '.su-physical-qty', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr');
+                let $nextRow = $currentRow.next('tr');
+                if ($nextRow.length) {
+                    e.preventDefault();
+                    $nextRow.find('.su-item-code').focus();
+                } else {
+                    e.preventDefault();
+                    $('#su-add-row').trigger('click');
+                    let $newRow = $('#items-body tr').last();
+                    setTimeout(function () {
+                        $newRow.find('.su-item-code').focus();
+                    }, 60);
+                }
+            }
+        });
+
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
            ---------------------------------------------------------------- */
-        $(document).on('click focus', '.su-item-code', function (e) {
+        $(document).off('click focus', '.su-item-code').on('click focus', '.su-item-code', function (e) {
             if (suModalOpen || suModalClosing) return;
-            suActiveSearchRow = $(this).closest('tr');
+            let $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.su-item-id').val()) return;
+            suActiveSearchRow = $row;
             let prefill = $.trim($(this).val());
             $('#su-isl-filter-name').val(prefill);
             $('#su-isl-filter-code').val('');
@@ -186,11 +209,49 @@
             });
         });
 
-        $('#su-item-search-modal').on('show.bs.modal', function () { suModalOpen = true; });
+        $('#su-item-search-modal').on('show.bs.modal', function () {
+            suModalOpen = true;
+            suModalClosing = false;
+            suItemSelectedInModal = false;
+            suCancellingRow = null;
+        });
+
+        $('#su-item-search-modal').on('hide.bs.modal', function () {
+            suModalOpen = false;
+            suModalClosing = true;
+            if (!suItemSelectedInModal && suActiveSearchRow && suActiveSearchRow.length) {
+                let selectedId = suActiveSearchRow.find('.su-item-id').val();
+                if (!selectedId) {
+                    suCancellingRow = suActiveSearchRow;
+                }
+            }
+        });
+
         $('#su-item-search-modal').on('hidden.bs.modal', function () {
             suModalOpen = false;
             suModalClosing = true;
             setTimeout(function () { suModalClosing = false; }, 350);
+
+            if (!suItemSelectedInModal && suCancellingRow && suCancellingRow.length) {
+                let totalRows = $('#items-body tr').length;
+                if (totalRows > 1) {
+                    suCancellingRow.remove();
+                } else {
+                    suCancellingRow.find('.su-item-code').val('');
+                    suCancellingRow.find('.su-item-desc').val('');
+                }
+                suCancellingRow = null;
+                suActiveSearchRow = null;
+                setTimeout(function () {
+                    let $target = $('#su-add-row, #remarks, button[type=submit]');
+                    $target.first().focus();
+                }, 60);
+                return;
+            }
+
+            suItemSelectedInModal = false;
+            suCancellingRow = null;
+            suActiveSearchRow = null;
         });
 
         $('#su-isl-filter-name, #su-isl-filter-code').on('input', function () {
@@ -285,9 +346,10 @@
                 mrp: $tr.data('mrp')
             };
 
-            $('#su-item-search-modal').modal('hide');
-
             if (!suActiveSearchRow || !itemData.id) return;
+            suItemSelectedInModal = true;
+            suCancellingRow = null;
+
             let $row = suActiveSearchRow;
             $row.find('.su-item-code').val(itemData.code);
             $row.find('.su-item-desc').val(itemData.name);
@@ -301,11 +363,11 @@
                 $row.find('.su-mrp').val(parseFloat(itemData.mrp).toFixed(2));
             }
 
+            $('#su-item-search-modal').modal('hide');
+
             setTimeout(function () {
                 $row.find('.su-physical-qty').focus().select();
             }, 100);
-
-            suActiveSearchRow = null;
         });
 
         // Direct Code typing and Enter/Blur lookup

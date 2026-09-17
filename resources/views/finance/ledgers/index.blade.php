@@ -44,13 +44,17 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <a href="{{ route('finance.ledgers.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> New Ledger
-            </a>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-book mr-1"></i> Ledgers</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('finance.ledgers.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> New Ledger
+                </a>
+                <x-table-column-customizer table-key="finance.ledgers" table-id="ledgersTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-sm table-striped mb-0">
+            <table class="table table-sm table-striped mb-0" id="ledgersTable">
                 <thead>
                     <tr>
                         <th>Ledger Name</th>

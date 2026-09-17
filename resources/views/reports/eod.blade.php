@@ -45,8 +45,11 @@
                 </div>
             </div>
 
-            <h5 class="mt-3">Till Sessions in This Period</h5>
-            <table class="table table-sm table-striped">
+            <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+                <h5 class="mb-0 font-weight-bold">Till Sessions in This Period</h5>
+                <x-table-column-customizer table-key="reports.eod-sessions" table-id="eodTillSessionsTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+            <table class="table table-sm table-striped" id="eodTillSessionsTable">
                 <thead><tr><th>Register</th><th>Opened</th><th>Status</th><th class="text-right">Variance</th></tr></thead>
                 <tbody>
                     @forelse ($tillSessions as $session)

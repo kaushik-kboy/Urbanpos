@@ -13,12 +13,15 @@
 
     <div class="card card-primary card-outline">
         <div class="card-header">
-            <a href="{{ route('master.financial-years.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add Financial Year
-            </a>
+            <div class="card-tools float-right d-flex align-items-center">
+                <a href="{{ route('master.financial-years.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Financial Year
+                </a>
+                <x-table-column-customizer table-key="master.financial-years" table-id="financial-years-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table id="financial-years-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>

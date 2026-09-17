@@ -16,9 +16,12 @@
     <div class="card card-primary card-outline">
         <div class="card-header">
             <x-import-button :import-route="route('master.suppliers.import')" :sample-route="route('master.suppliers.import-sample')" title="Supplier" />
-            <a href="{{ route('master.suppliers.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add Supplier
-            </a>
+            <div class="card-tools float-right d-flex align-items-center">
+                <a href="{{ route('master.suppliers.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Supplier
+                </a>
+                <x-table-column-customizer table-key="master.suppliers" table-id="suppliers-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.suppliers.index') }}" class="row align-items-end">
@@ -63,7 +66,7 @@
             </form>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table id="suppliers-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th style="width: 80px;">ID</th>

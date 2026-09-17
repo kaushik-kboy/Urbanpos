@@ -53,9 +53,11 @@
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
                     <a href="{{ route('reports.sales-return-summary') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
                 </div>
-            </form>
-
-            <table class="table table-sm table-striped">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0 font-weight-bold text-muted">Records</h5>
+                <x-table-column-customizer table-key="reports.sales-return-summary" table-id="salesReturnTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+            <table class="table table-sm table-striped" id="salesReturnTable">
                 <thead>
                     <tr>
                         <th>Branch</th>

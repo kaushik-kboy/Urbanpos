@@ -247,6 +247,20 @@ $(function() {
         $newRow.find('.so-item-code').focus();
     });
 
+    $(document).off('keydown', '.so-disc-amount, .so-gst-percent').on('keydown', '.so-disc-amount, .so-gst-percent', function (e) {
+        if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+            let $currentRow = $(this).closest('tr');
+            let $nextRow = $currentRow.next('tr');
+            if ($nextRow.length) {
+                e.preventDefault();
+                $nextRow.find('.so-item-code').focus();
+            } else {
+                e.preventDefault();
+                $('#so-add-row-btn').trigger('click');
+            }
+        }
+    });
+
     $(document).on('click', '.so-remove-row', function() {
         if ($('#so-items-body tr').length > 1) {
             $(this).closest('tr').remove();

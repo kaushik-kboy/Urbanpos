@@ -322,12 +322,32 @@
 
         document.getElementById('round_off')?.addEventListener('input', recalculateAll);
 
+        $(document).off('keydown', '.pr-disc-amount, .pr-gst-percent').on('keydown', '.pr-disc-amount, .pr-gst-percent', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr');
+                let $nextRow = $currentRow.next('tr.pr-item-row');
+                if ($nextRow.length) {
+                    e.preventDefault();
+                    $nextRow.find('.pr-item-code').focus();
+                } else {
+                    e.preventDefault();
+                    $('#pr-add-row').trigger('click');
+                    let $newRow = $('#pr-items-body tr.pr-item-row').last();
+                    setTimeout(function () {
+                        $newRow.find('.pr-item-code').focus();
+                    }, 60);
+                }
+            }
+        });
+
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
            ---------------------------------------------------------------- */
-        $(document).on('click focus', '.pr-item-code', function (e) {
+        $(document).off('click focus', '.pr-item-code').on('click focus', '.pr-item-code', function (e) {
             if (prModalOpen || prModalClosing) return;
-            prActiveSearchRow = $(this).closest('tr');
+            let $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.pr-item-id').val()) return;
+            prActiveSearchRow = $row;
             let prefill = $.trim($(this).val());
             $('#pr-isl-filter-name').val(prefill);
             $('#pr-isl-filter-code').val('');
@@ -353,11 +373,50 @@
             });
         });
 
-        $('#pr-item-search-modal').on('show.bs.modal', function () { prModalOpen = true; });
+        $('#pr-item-search-modal').on('show.bs.modal', function () {
+            prModalOpen = true;
+            prModalClosing = false;
+            prItemSelectedInModal = false;
+            prCancellingRow = null;
+        });
+
+        $('#pr-item-search-modal').on('hide.bs.modal', function () {
+            prModalOpen = false;
+            prModalClosing = true;
+            if (!prItemSelectedInModal && prActiveSearchRow && prActiveSearchRow.length) {
+                let selectedId = prActiveSearchRow.find('.pr-item-id').val();
+                if (!selectedId) {
+                    prCancellingRow = prActiveSearchRow;
+                }
+            }
+        });
+
         $('#pr-item-search-modal').on('hidden.bs.modal', function () {
             prModalOpen = false;
             prModalClosing = true;
             setTimeout(function () { prModalClosing = false; }, 350);
+
+            if (!prItemSelectedInModal && prCancellingRow && prCancellingRow.length) {
+                let totalRows = $('#pr-items-body tr.pr-item-row').length;
+                if (totalRows > 1) {
+                    prCancellingRow.remove();
+                    recalculateAll();
+                } else {
+                    prCancellingRow.find('.pr-item-code').val('');
+                    prCancellingRow.find('.pr-item-desc').val('');
+                }
+                prCancellingRow = null;
+                prActiveSearchRow = null;
+                setTimeout(function () {
+                    let $target = $('#pr-add-row, #remarks, button[type=submit]');
+                    $target.first().focus();
+                }, 60);
+                return;
+            }
+
+            prItemSelectedInModal = false;
+            prCancellingRow = null;
+            prActiveSearchRow = null;
         });
 
         $('#pr-isl-filter-name, #pr-isl-filter-code').on('input', function () {
@@ -425,7 +484,8 @@
                             <td class="align-middle text-right text-success">${sellDisplay}</td>
                             <td class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
                             <td class="align-middle text-center">
-                                <button type="button" class="btn btn-success btn-xs px-2 pr-isl-btn-select">
+                                <button type="button" class="btn btn-success btn-xs px-2 pr-isl-btn-select"
+                                    data-id="${it.id}">
                                     <i class="fas fa-check mr-1"></i>Select
                                 </button>
                             </td>
@@ -451,9 +511,10 @@
                 gst_percent: $tr.data('gst')
             };
 
-            $('#pr-item-search-modal').modal('hide');
-
             if (!prActiveSearchRow || !itemData.id) return;
+            prItemSelectedInModal = true;
+            prCancellingRow = null;
+
             let $row = prActiveSearchRow;
             $row.find('.pr-item-code').val(itemData.code);
             $row.find('.pr-item-desc').val(itemData.name);
@@ -469,6 +530,7 @@
 
             recalculateAll();
 
+            $('#pr-item-search-modal').modal('hide');
             setTimeout(function () {
                 $row.find('.pr-qty').focus().select();
             }, 100);

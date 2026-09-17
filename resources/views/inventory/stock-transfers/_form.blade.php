@@ -446,6 +446,9 @@
             fetchItemList();
         });
 
+        let stCancellingRow = null;
+        let stItemSelectedInModal = false;
+
         // Clicking row or Select button picks item (unless out of stock)
         $(document).on('click', '.st-isl-item-row, .st-isl-btn-select', function (e) {
             e.stopPropagation();
@@ -459,32 +462,66 @@
                 return false;
             }
             if (item && activeTargetRow) {
+                stItemSelectedInModal = true;
+                stCancellingRow = null;
                 applyItemToRow(activeTargetRow, item);
                 $('#st-item-search-modal').modal('hide');
-                activeTargetRow = null;
             }
         });
 
         $('#st-item-search-modal').on('show.bs.modal', function() {
             stModalOpen = true;
             stModalClosing = false;
+            stItemSelectedInModal = false;
+            stCancellingRow = null;
         });
+
         $('#st-item-search-modal').on('hide.bs.modal', function() {
             stModalOpen = false;
             stModalClosing = true;
-            activeTargetRow = null;
+            if (!stItemSelectedInModal && activeTargetRow && activeTargetRow.length) {
+                let selectedId = activeTargetRow.find('.item-id-input').val();
+                if (!selectedId) {
+                    stCancellingRow = activeTargetRow;
+                }
+            }
         });
+
         $('#st-item-search-modal').on('hidden.bs.modal', function() {
             stModalOpen = false;
             stModalClosing = true;
+            setTimeout(function() { stModalClosing = false; }, 350);
+
+            if (!stItemSelectedInModal && stCancellingRow && stCancellingRow.length) {
+                let totalRows = $('#items-table tbody tr.item-row').length;
+                if (totalRows > 1) {
+                    stCancellingRow.remove();
+                    renumberRows();
+                    recalcTotals();
+                } else {
+                    stCancellingRow.find('.item-code-input').val('');
+                    stCancellingRow.find('.item-desc-input').val('');
+                }
+                stCancellingRow = null;
+                activeTargetRow = null;
+                setTimeout(function () {
+                    let $target = $('#remarks, button[type=submit], #add-row');
+                    $target.first().focus();
+                }, 60);
+                return;
+            }
+
+            stItemSelectedInModal = false;
+            stCancellingRow = null;
             activeTargetRow = null;
-            setTimeout(function() { stModalClosing = false; }, 500);
         });
 
-        // Trigger item search modal on click or F2; do NOT trigger on passive focus
-        $(document).off('click', '.item-code-input').on('click', '.item-code-input', function () {
+        // Trigger item search modal on click or focus; do NOT trigger on passive focus if item already selected
+        $(document).off('click focus', '.item-code-input').on('click focus', '.item-code-input', function (e) {
             if (stModalOpen || stModalClosing) return;
-            openItemModal($(this).closest('tr'), $(this).val());
+            let $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.item-id-input').val()) return;
+            openItemModal($row, $(this).val());
         });
 
         function initRowSelect2($row) {

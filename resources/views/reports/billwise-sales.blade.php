@@ -8,6 +8,12 @@
 
 @section('content')
     <div class="card card-primary card-outline">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-file-invoice mr-1"></i> Sales Detail</h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="reports.billwise-sales" table-id="billwise-sales-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body">
             <form method="GET" action="{{ route('reports.billwise-sales') }}" class="row align-items-end mb-3">
                 <div class="col-md-3 col-sm-6 mb-2">
@@ -55,7 +61,7 @@
                 </div>
             </form>
 
-            <table class="table table-sm table-striped">
+            <table id="billwise-sales-table" class="table table-sm table-striped">
                 <thead>
                     <tr>
                         <th>Bill Date</th>

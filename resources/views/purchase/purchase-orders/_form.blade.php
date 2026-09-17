@@ -425,6 +425,9 @@
             $row.find('.po-qty').focus();
         }
 
+        let poCancellingRow = null;
+        let poItemSelectedInModal = false;
+
         // Clicking row or select button in modal
         $(document).on('click', '.po-isl-item-row, .po-isl-btn-select', function (e) {
             e.stopPropagation();
@@ -439,17 +442,19 @@
                 gst_percent: $tr.data('gst')
             };
 
-            $('#po-item-search-modal').modal('hide');
-
             if (!activeSearchRow || !itemData.id) return;
+            poItemSelectedInModal = true;
+            poCancellingRow = null;
             populatePoRow(activeSearchRow, itemData);
-            activeSearchRow = null;
+            $('#po-item-search-modal').modal('hide');
         });
 
         // Open modal on Code/Barcode field click or focus
-        $(document).on('click focus', '.po-item-code', function (e) {
+        $(document).off('click focus', '.po-item-code').on('click focus', '.po-item-code', function (e) {
             if (islModalOpen || islModalClosing) return;
-            activeSearchRow = $(this).closest('tr');
+            let $row = $(this).closest('tr');
+            if (e.type === 'focus' && $row.find('.po-item-select').val()) return;
+            activeSearchRow = $row;
             let prefill = $.trim($(this).val());
             $('#po-isl-filter-name').val(prefill);
             $('#po-isl-filter-code').val('');
@@ -463,11 +468,51 @@
             });
         });
 
-        $('#po-item-search-modal').on('show.bs.modal', function () { islModalOpen = true; });
+        $('#po-item-search-modal').on('show.bs.modal', function () {
+            islModalOpen = true;
+            islModalClosing = false;
+            poItemSelectedInModal = false;
+            poCancellingRow = null;
+        });
+
+        $('#po-item-search-modal').on('hide.bs.modal', function () {
+            islModalOpen = false;
+            islModalClosing = true;
+            if (!poItemSelectedInModal && activeSearchRow && activeSearchRow.length) {
+                let selectedId = activeSearchRow.find('.po-item-select').val();
+                if (!selectedId) {
+                    poCancellingRow = activeSearchRow;
+                }
+            }
+        });
+
         $('#po-item-search-modal').on('hidden.bs.modal', function () {
             islModalOpen = false;
             islModalClosing = true;
             setTimeout(function () { islModalClosing = false; }, 350);
+
+            if (!poItemSelectedInModal && poCancellingRow && poCancellingRow.length) {
+                let totalRows = $('#po-items-body tr').length;
+                if (totalRows > 1) {
+                    poCancellingRow.remove();
+                    updateRowNumbers();
+                    calculatePoTotals();
+                } else {
+                    poCancellingRow.find('.po-item-code').val('');
+                    poCancellingRow.find('.po-item-desc').val('');
+                }
+                poCancellingRow = null;
+                activeSearchRow = null;
+                setTimeout(function () {
+                    let $target = $('#po-add-row, #freight, button[type=submit]');
+                    $target.first().focus();
+                }, 60);
+                return;
+            }
+
+            poItemSelectedInModal = false;
+            poCancellingRow = null;
+            activeSearchRow = null;
         });
 
         // Barcode / Code direct typing and Enter/Blur

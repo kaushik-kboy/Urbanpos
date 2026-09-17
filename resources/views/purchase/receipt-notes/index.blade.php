@@ -72,8 +72,14 @@
     </div>
 
     <div class="card card-primary card-outline">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Goods Receipt Notes</h3>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="purchase.receipt-notes" table-id="receiptNotesTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-hover table-striped mb-0">
+            <table class="table table-hover table-striped mb-0" id="receiptNotesTable">
                 <thead class="thead-light">
                     <tr>
                         <th>GRN No</th>

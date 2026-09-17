@@ -66,14 +66,17 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <h3 class="card-title font-weight-bold"><i class="fas fa-list mr-1"></i> Sales Bills List</h3>
-            <a href="{{ route('sales.sales-bills.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add Sales Bill
-            </a>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Sales Bills List</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('sales.sales-bills.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Sales Bill
+                </a>
+                <x-table-column-customizer table-key="sales.sales-bills" table-id="salesBillsTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table class="table table-striped mb-0" id="salesBillsTable">
                 <thead>
                     <tr>
                         <th>Bill No</th>

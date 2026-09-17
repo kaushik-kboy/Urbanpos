@@ -16,9 +16,12 @@
     <div class="card card-primary card-outline">
         <div class="card-header">
             <x-import-button :import-route="route('master.item-category-values.import')" :sample-route="route('master.item-category-values.import-sample')" title="Item Category Value" />
-            <a href="{{ route('master.item-category-values.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add Item Category Value
-            </a>
+            <div class="card-tools float-right d-flex align-items-center">
+                <a href="{{ route('master.item-category-values.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Item Category Value
+                </a>
+                <x-table-column-customizer table-key="master.item-category-values" table-id="item-category-values-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.item-category-values.index') }}" class="form-row align-items-center">
@@ -58,7 +61,7 @@
             </form>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table id="item-category-values-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Name</th>

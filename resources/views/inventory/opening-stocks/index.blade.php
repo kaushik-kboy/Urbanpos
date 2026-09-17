@@ -46,13 +46,17 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <a href="{{ route('inventory.opening-stocks.create') }}" class="btn btn-primary btn-sm float-right">
-                <i class="fas fa-plus"></i> Add Opening Stock
-            </a>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Opening Stocks</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('inventory.opening-stocks.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Opening Stock
+                </a>
+                <x-table-column-customizer table-key="inventory.opening-stocks" table-id="openingStocksTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <table class="table table-striped mb-0" id="openingStocksTable">
                 <thead>
                     <tr>
                         <th>Entry No</th>

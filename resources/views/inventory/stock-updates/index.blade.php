@@ -170,9 +170,15 @@
 
     {{-- Main Listing Table --}}
     <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+            <h6 class="m-0 font-weight-bold text-dark"><i class="fas fa-list mr-1 text-primary"></i> Stock Update Items</h6>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="inventory.stock-updates" table-id="stockUpdatesTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm table-hover table-striped table-bordered mb-0">
+                <table class="table table-sm table-hover table-striped table-bordered mb-0" id="stockUpdatesTable">
                     <thead class="thead-dark text-nowrap">
                         <tr class="text-center align-middle" style="font-size: 0.88rem;">
                             <th style="width: 50px;">S.No</th>

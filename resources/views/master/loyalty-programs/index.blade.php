@@ -30,7 +30,7 @@
     @endif
 
     <div class="card card-outline card-primary shadow-sm">
-        <div class="card-header bg-light py-2">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
             <form method="GET" action="{{ route('master.loyalty-programs.index') }}" class="form-inline">
                 <input type="text" name="search" class="form-control form-control-sm mr-2" placeholder="Search program name…" value="{{ request('search') }}">
                 <select name="status" class="form-control form-control-sm mr-2">
@@ -41,9 +41,12 @@
                 <button type="submit" class="btn btn-sm btn-primary mr-1"><i class="fas fa-filter mr-1"></i>Filter</button>
                 <a href="{{ route('master.loyalty-programs.index') }}" class="btn btn-sm btn-default"><i class="fas fa-times mr-1"></i>Reset</a>
             </form>
+            <div class="card-tools ml-auto">
+                <x-table-column-customizer table-key="master.loyalty-programs" table-id="loyalty-programs-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
         </div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-hover table-striped mb-0">
+            <table id="loyalty-programs-table" class="table table-hover table-striped mb-0">
                 <thead class="bg-dark text-white">
                     <tr>
                         <th style="width: 50px;">#</th>

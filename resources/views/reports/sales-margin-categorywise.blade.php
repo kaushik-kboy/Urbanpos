@@ -75,7 +75,12 @@
         {{-- Category Table --}}
         <div class="col-lg-6 mb-3">
             <div class="card card-outline card-primary h-100">
-                <div class="card-header"><h3 class="card-title">Category Breakdown</h3></div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Category Breakdown</h3>
+                    <div class="card-tools ml-auto">
+                        <x-table-column-customizer table-key="reports.sales-margin-categorywise" table-id="catTable" button-class="btn btn-sm btn-light border text-secondary" />
+                    </div>
+                </div>
                 <div class="card-body p-0">
                     <table class="table table-sm table-striped mb-0" id="catTable">
                         <thead class="thead-dark">

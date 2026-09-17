@@ -57,8 +57,12 @@
             <input type="hidden" name="branch_id" value="{{ $branchId }}">
 
             <div class="card-body p-0">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom bg-light">
+                    <span class="text-muted small font-weight-bold">Items Listing</span>
+                    <x-table-column-customizer table-key="inventory.change-selling" table-id="changeSellingTable" button-class="btn btn-sm btn-light border text-secondary" />
+                </div>
                 <div class="table-responsive">
-                    <table class="table table-sm table-striped table-hover mb-0">
+                    <table class="table table-sm table-striped table-hover mb-0" id="changeSellingTable">
                         <thead class="bg-white">
                             <tr>
                                 <th>#</th>

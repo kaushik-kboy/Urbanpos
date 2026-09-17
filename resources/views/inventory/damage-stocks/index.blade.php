@@ -122,8 +122,9 @@
                     <span class="badge badge-info ml-1">{{ request('wastage_type') }}</span>
                 @endif
             </h6>
-            <div class="card-tools">
-                <span class="text-muted small">Showing {{ $damageStocks->firstItem() ?? 0 }} - {{ $damageStocks->lastItem() ?? 0 }} of {{ $damageStocks->total() }}</span>
+            <div class="card-tools d-flex align-items-center">
+                <span class="text-muted small mr-2">Showing {{ $damageStocks->firstItem() ?? 0 }} - {{ $damageStocks->lastItem() ?? 0 }} of {{ $damageStocks->total() }}</span>
+                <x-table-column-customizer table-key="inventory.damage-stocks" table-id="damage-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
         <div class="card-body p-0">
