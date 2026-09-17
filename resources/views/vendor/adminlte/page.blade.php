@@ -64,6 +64,6 @@
         window.POS_HOTKEYS = @json(\App\Models\FunctionKeyMapping::getActiveMappings());
         window.APP_URL = "{{ url('/') }}";
     </script>
-    <script src="{{ asset('js/pos-hotkeys.js') }}"></script>
+    <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ time() }}"></script>
     @endauth
 @stop

@@ -8,6 +8,7 @@
     // Normalize shortcut string from event: e.g. "ALT+S", "CTRL+SHIFT+P", "F2", "F6"
     function getNormalizedKey(e) {
         let key = e.key || '';
+        let code = e.code || '';
         let alt = e.altKey;
         let ctrl = e.ctrlKey;
         let shift = e.shiftKey;
@@ -17,8 +18,8 @@
             return key.toUpperCase();
         }
 
-        // Single letter keys with Alt or Ctrl
-        if (alt || ctrl) {
+        // Single letter keys with Alt or Ctrl+Shift
+        if (alt || (ctrl && shift)) {
             let parts = [];
             if (ctrl) parts.push('CTRL');
             if (alt) parts.push('ALT');
@@ -30,20 +31,20 @@
                 return parts.join('+');
             }
 
-            // Fallback to e.code (e.g. KeyS -> 'S', KeyP -> 'P') for international keyboards
-            if (e.code && e.code.startsWith('Key')) {
-                parts.push(e.code.replace('Key', '').toUpperCase());
+            // Fallback to e.code (e.g. KeyS -> 'S', KeyP -> 'P')
+            if (code && code.startsWith('Key')) {
+                parts.push(code.replace('Key', '').toUpperCase());
                 return parts.join('+');
             }
         }
 
         // Escape Key
-        if (key === 'Escape' || e.code === 'Escape') {
+        if (key === 'Escape' || code === 'Escape') {
             return 'ESCAPE';
         }
 
         // Shift+Delete or Alt+Delete
-        if ((shift || alt) && (key === 'Delete' || e.code === 'Delete' || key === 'Del')) {
+        if ((shift || alt) && (key === 'Delete' || code === 'Delete' || key === 'Del')) {
             return (shift ? 'SHIFT' : 'ALT') + '+DELETE';
         }
 
@@ -60,6 +61,9 @@
         'ALT+O': { action_key: 'open_purchase_order', target_url: 'purchase/purchase-orders/create' },
         'ALT+Q': { action_key: 'open_sales_quotation', target_url: 'sales/sales-quotations/create' },
         'ALT+R': { action_key: 'open_sales_return', target_url: 'sales/sales-returns/create' },
+        'CTRL+SHIFT+S': { action_key: 'open_sales_bill', target_url: 'sales/sales-bills/create' },
+        'CTRL+SHIFT+P': { action_key: 'open_purchase_invoice', target_url: 'purchase/purchase-invoices/create' },
+        'CTRL+SHIFT+T': { action_key: 'open_stock_transfer', target_url: 'inventory/stock-transfers/create' },
         'F2': { action_key: 'search_item' },
         'F3': { action_key: 'new_entry' },
         'F4': { action_key: 'edit_entry' },
@@ -98,7 +102,8 @@
         if (!targetUrl) return;
         let appBase = (window.APP_URL || window.location.origin).replace(/\/+$/, '');
         let dest = targetUrl.replace(/^\/+/, '');
-        window.location.href = appBase + '/' + dest;
+        let finalUrl = appBase + '/' + dest;
+        window.location.assign(finalUrl);
     }
 
     // Form / Billing Actions Execution Engine
@@ -108,7 +113,7 @@
 
         switch (actionKey) {
             case 'search_item': {
-                // 1. If any modal is currently visible, focus its search input
+                // 1. If search modal is already open, focus its search input
                 let $openModal = $('.modal.show');
                 if ($openModal.length) {
                     let $searchInput = $openModal.find('#isl-filter-name, #pinv-isl-filter-name, #st-isl-filter-name, input[type="text"]:visible').first();
@@ -118,7 +123,7 @@
                     }
                 }
 
-                // 2. On billing/transaction forms, trigger item code focus to open lookup modal
+                // 2. Open item lookup modal on the active or last item row
                 let $targetInput = null;
                 if ($('.sb-item-code').length) {
                     $targetInput = $(':focus').hasClass('sb-item-code') ? $(':focus') : $('.sb-item-code').filter(function () { return !$(this).val(); }).first();
@@ -126,24 +131,26 @@
                 } else if ($('.pinv-item-code').length) {
                     $targetInput = $(':focus').hasClass('pinv-item-code') ? $(':focus') : $('.pinv-item-code').filter(function () { return !$(this).val(); }).first();
                     if (!$targetInput.length) $targetInput = $('.pinv-item-code').last();
-                } else if ($('.st-item-code').length) {
-                    $targetInput = $(':focus').hasClass('st-item-code') ? $(':focus') : $('.st-item-code').filter(function () { return !$(this).val(); }).first();
-                    if (!$targetInput.length) $targetInput = $('.st-item-code').last();
-                } else if ($('.item-code-input').length) {
-                    $targetInput = $('.item-code-input').last();
+                } else if ($('.st-item-code, .item-code-input').length) {
+                    $targetInput = $(':focus').hasClass('st-item-code') ? $(':focus') : $('.st-item-code, .item-code-input').last();
+                } else if ($('.sq-item-code').length) {
+                    $targetInput = $('.sq-item-code').last();
+                } else if ($('.so-item-code').length) {
+                    $targetInput = $('.so-item-code').last();
+                } else if ($('.sr-item-code').length) {
+                    $targetInput = $('.sr-item-code').last();
                 }
 
                 if ($targetInput && $targetInput.length) {
-                    $targetInput.trigger('focus').trigger('click');
+                    $targetInput.trigger('click');
                 } else {
-                    // If on general pages, jump to Item Master
                     navigateTo('master/items');
                 }
                 break;
             }
 
             case 'new_entry': {
-                // Check for Add Row button in current transaction form
+                // Add new row when explicitly requested via F3 or button
                 let $addRowBtn = $('#sb-add-row, #pinv-add-row, #st-add-row, #sq-add-row, #so-add-row, #sr-add-row, #add-row, [data-action="add-row"]').filter(':visible').first();
                 if ($addRowBtn.length) {
                     $addRowBtn.trigger('click');
@@ -152,7 +159,7 @@
                         if ($newCode.length) {
                             $newCode.focus();
                         }
-                    }, 100);
+                    }, 80);
                     return;
                 }
 
@@ -169,7 +176,6 @@
             }
 
             case 'edit_entry': {
-                // Focus active row editable field
                 let $focused = $(':focus');
                 let $row = $focused.closest('tr');
                 if ($row.length) {
@@ -182,7 +188,6 @@
             }
 
             case 'save_form': {
-                // Tender button or primary save button
                 let $tenderBtn = $('#btn-tender-save, #btn-tender, #btn-quick-tender').filter(':visible');
                 if ($tenderBtn.length) {
                     $tenderBtn.trigger('click');
@@ -197,7 +202,6 @@
             }
 
             case 'view_records': {
-                // Navigate to listing page of current module
                 let loc = window.location.pathname;
                 if (loc.includes('/sales-bills')) {
                     navigateTo('sales/sales-bills');
@@ -272,7 +276,7 @@
         // 1. Function Keys (F1 - F12)
         if (/^F\d{1,2}$/.test(keyCombo)) {
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
 
             let action = target ? target.action_key : (DEFAULT_ACTIONS[keyCombo] ? DEFAULT_ACTIONS[keyCombo].action_key : null);
             if (action) {
@@ -286,7 +290,7 @@
             let $ = window.jQuery;
             if ($ && $('.modal.show').length) {
                 e.preventDefault();
-                e.stopPropagation();
+                e.stopImmediatePropagation();
                 $('.modal.show').modal('hide');
                 return;
             }
@@ -301,6 +305,7 @@
                     let $removeBtn = $activeRow.find('.sb-remove-row, .pinv-remove-row, .st-remove-row, .btn-remove-row');
                     if ($removeBtn.length) {
                         e.preventDefault();
+                        e.stopImmediatePropagation();
                         $removeBtn.trigger('click');
                         return;
                     }
@@ -311,29 +316,28 @@
         // 4. Global Navigation Shortcuts (Alt + Key, Ctrl + Shift + Key)
         if (target && target.target_url) {
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             navigateTo(target.target_url);
             return;
         }
 
-        // Fallback to default navigation
+        // Direct fallback navigation
         if (DEFAULT_ACTIONS[keyCombo] && DEFAULT_ACTIONS[keyCombo].target_url) {
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             navigateTo(DEFAULT_ACTIONS[keyCombo].target_url);
             return;
         }
     }, true);
 
     // =========================================================================
-    // Tab-less Enter Key Billing Navigation (Pure Enter Chain)
-    // Barcode -> Enter -> Qty -> Enter -> Disc % -> Enter -> Auto New Row & Focus
+    // Tab-less Enter Key Navigation inside billing rows
     // =========================================================================
     document.addEventListener('DOMContentLoaded', function () {
         let $ = window.jQuery;
         if (!$) return;
 
-        // Sales Bills Enter-chaining
+        // Sales Bills Enter-chaining (focus only next field; NEVER auto-add empty row or force modal)
         $(document).on('keydown', '#sb-items-body input', function (e) {
             if (e.key !== 'Enter') return;
             if ($('#sb-item-search-modal').hasClass('show')) return;
@@ -358,11 +362,11 @@
                 if ($discAmt.length) {
                     $discAmt.focus().select();
                 } else {
-                    advanceToNextRowOrAdd($row, 'sales');
+                    advanceToNextExistingRow($row);
                 }
             } else if ($input.hasClass('sb-disc-amount')) {
                 e.preventDefault();
-                advanceToNextRowOrAdd($row, 'sales');
+                advanceToNextExistingRow($row);
             }
         });
 
@@ -399,35 +403,22 @@
                 if ($disc.length) {
                     $disc.focus().select();
                 } else {
-                    advanceToNextRowOrAdd($row, 'purchase');
+                    advanceToNextExistingRow($row);
                 }
             } else if ($input.hasClass('pinv-disc-percent') || $input.hasClass('pinv-disc-amount')) {
                 e.preventDefault();
-                advanceToNextRowOrAdd($row, 'purchase');
+                advanceToNextExistingRow($row);
             }
         });
 
-        function advanceToNextRowOrAdd($currentRow, moduleType) {
+        // Advance to next row ONLY if it already exists; NEVER spawn unwanted empty rows
+        function advanceToNextExistingRow($currentRow) {
             let $nextRow = $currentRow.next('tr');
-
             if ($nextRow.length) {
-                let $code = $nextRow.find('.sb-item-code, .pinv-item-code');
+                let $code = $nextRow.find('.sb-item-code, .pinv-item-code, .item-code-input');
                 if ($code.length) {
-                    $code.focus().select();
-                    return;
+                    $code.focus();
                 }
-            }
-
-            let $addBtn = moduleType === 'sales' ? $('#sb-add-row') : $('#pinv-add-row');
-            if ($addBtn.length) {
-                $addBtn.trigger('click');
-                setTimeout(function () {
-                    let $newRow = moduleType === 'sales' ? $('#sb-items-body tr:last-child') : $('#pinv-items-body tr:last-child');
-                    let $code = $newRow.find('.sb-item-code, .pinv-item-code');
-                    if ($code.length) {
-                        $code.focus().select();
-                    }
-                }, 80);
             }
         }
     });

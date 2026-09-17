@@ -465,15 +465,24 @@
             }
         });
 
-        $('#st-item-search-modal').on('show.bs.modal', function() { stModalOpen = true; });
+        $('#st-item-search-modal').on('show.bs.modal', function() {
+            stModalOpen = true;
+            stModalClosing = false;
+        });
+        $('#st-item-search-modal').on('hide.bs.modal', function() {
+            stModalOpen = false;
+            stModalClosing = true;
+            activeTargetRow = null;
+        });
         $('#st-item-search-modal').on('hidden.bs.modal', function() {
             stModalOpen = false;
             stModalClosing = true;
-            setTimeout(function() { stModalClosing = false; }, 350);
+            activeTargetRow = null;
+            setTimeout(function() { stModalClosing = false; }, 500);
         });
 
-        // Trigger item search modal on click or focus of .item-code-input
-        $(document).off('click focus', '.item-code-input').on('click focus', '.item-code-input', function () {
+        // Trigger item search modal on click or F2; do NOT trigger on passive focus
+        $(document).off('click', '.item-code-input').on('click', '.item-code-input', function () {
             if (stModalOpen || stModalClosing) return;
             openItemModal($(this).closest('tr'), $(this).val());
         });

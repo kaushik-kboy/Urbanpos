@@ -975,26 +975,27 @@
         /* ================================================================
            ITEM SEARCH MODAL — open on Focus or Click of Code/Barcode (Task 2)
            ================================================================ */
+        let islModalOpen = false;
+        let islModalClosing = false;
+
         function openItemSearchModal($input) {
+            if (islModalOpen || islModalClosing || isSyncing) return;
             activeSearchRow = $input.closest('tr');
             let prefill = $.trim($input.val());
             $('#isl-filter-name').val(prefill);
             $('#isl-filter-code').val('');
             $('#isl-filter-expiry').val('');
             fetchItemList();
+            islModalOpen = true;
             $('#sb-item-search-modal').modal('show');
             $('#sb-item-search-modal').one('shown.bs.modal', function () {
                 $('#isl-filter-name').focus().select();
             });
         }
 
-        $(document).on('focus', '.sb-item-code', function () {
-            if (islModalOpen || isSyncing) return;
-            openItemSearchModal($(this));
-        });
-
+        // Open modal on click or F2; do NOT trigger on passive focus
         $(document).on('click', '.sb-item-code', function () {
-            if (islModalOpen || isSyncing) return;
+            if (islModalOpen || islModalClosing || isSyncing) return;
             openItemSearchModal($(this));
         });
 
@@ -1192,23 +1193,25 @@
             activeSearchRow = null;
         });
 
-        // When modal closes without selection, put focus back on code field
-        $('#sb-item-search-modal').on('hidden.bs.modal', function () {
-            if (activeSearchRow) {
-                let $target = activeSearchRow.find('.sb-item-code');
-                setTimeout(function() {
-                    $target.focus();
-                }, 50);
-            }
+        // When modal closes, cleanly dismiss and prevent auto-reopen
+        $('#sb-item-search-modal').on('show.bs.modal', function () {
+            islModalOpen = true;
+            islModalClosing = false;
         });
 
-        // Prevent the code field focus from re-opening the modal if modal is being closed
-        let islModalOpen = false;
-        $('#sb-item-search-modal').on('show.bs.modal', function() { islModalOpen = true; });
-        $('#sb-item-search-modal').on('hidden.bs.modal', function() {
+        $('#sb-item-search-modal').on('hide.bs.modal', function () {
             islModalOpen = false;
-            // Brief delay so focus event from modal close doesn't retrigger
-            setTimeout(function() { islModalOpen = false; }, 300);
+            islModalClosing = true;
+            activeSearchRow = null;
+        });
+
+        $('#sb-item-search-modal').on('hidden.bs.modal', function () {
+            islModalOpen = false;
+            islModalClosing = true;
+            activeSearchRow = null;
+            setTimeout(function () {
+                islModalClosing = false;
+            }, 500);
         });
 
 
@@ -1717,21 +1720,7 @@
             $newRow.find('.sb-item-code').focus();
         });
 
-        function addNewRowAndOpenModal() {
-            $('#sb-add-row').trigger('click');
-            let $newRow = $('#sb-items-body tr:last');
-            activeSearchRow = $newRow;
-            $('#isl-filter-name').val('');
-            $('#isl-filter-code').val('');
-            $('#isl-filter-expiry').val('');
-            fetchItemList();
-            $('#sb-item-search-modal').modal('show');
-            $('#sb-item-search-modal').one('shown.bs.modal', function () {
-                $('#isl-filter-name').focus();
-            });
-        }
-
-        // Fast POS keyboard flow: Qty -> Disc % -> Disc Amt -> Auto Add Row + Open Modal
+        // Fast POS keyboard flow: Qty -> Disc % -> Disc Amt -> next row (if exists)
         $(document).on('keydown', '.sb-qty', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1748,8 +1737,11 @@
 
         $(document).on('keydown', '.sb-disc-amount', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
-                e.preventDefault();
-                addNewRowAndOpenModal();
+                let $nextRow = $(this).closest('tr').next('tr');
+                if ($nextRow.length) {
+                    e.preventDefault();
+                    $nextRow.find('.sb-item-code').focus();
+                }
             }
         });
 

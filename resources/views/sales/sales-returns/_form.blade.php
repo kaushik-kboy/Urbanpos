@@ -410,12 +410,12 @@
             srActiveSearchRow = null;
         });
 
-        // When modal closes without selection, refocus code field
+        // When modal closes, cleanly dismiss
+        $('#sr-item-search-modal').on('hide.bs.modal', function () {
+            srActiveSearchRow = null;
+        });
         $('#sr-item-search-modal').on('hidden.bs.modal', function () {
-            if (srActiveSearchRow) {
-                let $target = srActiveSearchRow.find('.sr-item-code');
-                setTimeout(function () { $target.focus(); }, 50);
-            }
+            srActiveSearchRow = null;
         });
 
         function recalculateRow(row) {

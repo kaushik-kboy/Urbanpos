@@ -246,9 +246,9 @@ $(function() {
     });
 
     /* ----------------------------------------------------------------
-       ITEM SEARCH MODAL — open on click or focus/tab of Code/Barcode
+       ITEM SEARCH MODAL — open on click of Code/Barcode or F2
        ---------------------------------------------------------------- */
-    $(document).on('click focus', '.sq-item-code', function (e) {
+    $(document).on('click', '.sq-item-code', function (e) {
         if (sqModalOpen || sqModalClosing) return;
         sqActiveSearchRow = $(this).closest('tr');
         let prefill = $.trim($(this).val());
@@ -262,11 +262,20 @@ $(function() {
         });
     });
 
-    $('#sq-item-search-modal').on('show.bs.modal', function () { sqModalOpen = true; });
+    $('#sq-item-search-modal').on('show.bs.modal', function () {
+        sqModalOpen = true;
+        sqModalClosing = false;
+    });
+    $('#sq-item-search-modal').on('hide.bs.modal', function () {
+        sqModalOpen = false;
+        sqModalClosing = true;
+        sqActiveSearchRow = null;
+    });
     $('#sq-item-search-modal').on('hidden.bs.modal', function () {
         sqModalOpen = false;
         sqModalClosing = true;
-        setTimeout(function () { sqModalClosing = false; }, 350);
+        sqActiveSearchRow = null;
+        setTimeout(function () { sqModalClosing = false; }, 500);
     });
 
     $('#sq-isl-filter-name, #sq-isl-filter-code').on('input', function () {

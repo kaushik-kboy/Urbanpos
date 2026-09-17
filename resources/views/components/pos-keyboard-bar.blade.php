@@ -36,10 +36,12 @@
 
     <div class="d-none d-lg-flex align-items-center flex-shrink-0 ml-3" style="gap: 5px; font-size: 0.75rem;">
         <span class="text-muted mr-1">Jump:</span>
-        <a href="{{ url('sales/sales-bills/create') }}" class="badge badge-dark border border-secondary text-white px-2 py-1" title="Sales Bill"><kbd class="bg-primary text-white">Alt+S</kbd> Sales</a>
-        <a href="{{ url('purchase/purchase-invoices/create') }}" class="badge badge-dark border border-secondary text-white px-2 py-1" title="Purchase Invoice"><kbd class="bg-info text-white">Alt+P</kbd> Purchase</a>
-        <a href="{{ url('inventory/stock-transfers/create') }}" class="badge badge-dark border border-secondary text-white px-2 py-1" title="Stock Transfer"><kbd class="bg-secondary text-white">Alt+T</kbd> Transfer</a>
-        <a href="{{ url('tools/function-keys') }}" class="badge badge-dark border border-secondary text-warning px-2 py-1" title="Configure Shortcuts"><i class="fas fa-cog"></i> Config</a>
+        <a href="{{ url('sales/sales-bills/create') }}" accesskey="s" class="badge badge-dark border border-secondary text-white px-2 py-1" title="Sales Bill (Alt+S)"><kbd class="bg-primary text-white">Alt+S</kbd> Sales</a>
+        <a href="{{ url('purchase/purchase-invoices/create') }}" accesskey="p" class="badge badge-dark border border-secondary text-white px-2 py-1" title="Purchase Invoice (Alt+P)"><kbd class="bg-info text-white">Alt+P</kbd> Purchase</a>
+        <a href="{{ url('inventory/stock-transfers/create') }}" accesskey="t" class="badge badge-dark border border-secondary text-white px-2 py-1" title="Stock Transfer (Alt+T)"><kbd class="bg-secondary text-white">Alt+T</kbd> Transfer</a>
+        <a href="{{ url('master/customers') }}" accesskey="c" class="badge badge-dark border border-secondary text-white px-2 py-1 d-none d-xl-inline-block" title="Customer Master (Alt+C)"><kbd class="bg-success text-white">Alt+C</kbd> Cust</a>
+        <a href="{{ url('master/items') }}" accesskey="i" class="badge badge-dark border border-secondary text-white px-2 py-1 d-none d-xl-inline-block" title="Item Master (Alt+I)"><kbd class="bg-secondary text-white">Alt+I</kbd> Items</a>
+        <a href="{{ url('tools/function-keys') }}" accesskey="k" class="badge badge-dark border border-secondary text-warning px-2 py-1" title="Configure Shortcuts (Alt+K)"><i class="fas fa-cog"></i> Config</a>
     </div>
 </div>
 

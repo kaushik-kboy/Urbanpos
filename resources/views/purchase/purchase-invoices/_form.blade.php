@@ -432,25 +432,33 @@
         });
 
         // Modal open/close guards
-        $('#pinv-item-search-modal').on('show.bs.modal', function() { islModalOpen = true; });
+        let islModalClosing = false;
+        $('#pinv-item-search-modal').on('show.bs.modal', function() {
+            islModalOpen = true;
+            islModalClosing = false;
+        });
+        $('#pinv-item-search-modal').on('hide.bs.modal', function() {
+            islModalOpen = false;
+            islModalClosing = true;
+            activeSearchRow = null;
+        });
         $('#pinv-item-search-modal').on('hidden.bs.modal', function() {
             islModalOpen = false;
-            setTimeout(function() { islModalOpen = false; }, 300);
+            islModalClosing = true;
+            activeSearchRow = null;
+            setTimeout(function() { islModalClosing = false; }, 500);
             if (pendingFocusExpRow && pendingFocusExpRow.length) {
                 let $target = pendingFocusExpRow;
                 pendingFocusExpRow = null;
                 setTimeout(function () {
                     focusExpDateField($target);
                 }, 50);
-                setTimeout(function () {
-                    focusExpDateField($target);
-                }, 150);
             }
         });
 
-        // Open modal on Code/Barcode field focus
-        $(document).off('focus', '.pinv-item-code').on('focus', '.pinv-item-code', function () {
-            if (islModalOpen) return;
+        // Open modal on Code/Barcode field CLICK or F2; do NOT trigger on passive focus
+        $(document).off('click', '.pinv-item-code').on('click', '.pinv-item-code', function () {
+            if (islModalOpen || islModalClosing) return;
             activeSearchRow = $(this).closest('tr');
             let prefill = $.trim($(this).val());
             $('#pinv-isl-filter-name').val(prefill);
