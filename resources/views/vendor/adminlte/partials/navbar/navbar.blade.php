@@ -25,7 +25,18 @@
         @auth
             @php
                 $user = auth()->user();
-                $activeBranchId = session('active_branch_id');
+                $reqBranch = request('branch_id');
+                if ($reqBranch !== null) {
+                    if ($reqBranch === 'all' || $reqBranch === '' || $reqBranch === '0') {
+                        $activeBranchId = 'all';
+                        session()->forget('active_branch_id');
+                    } else {
+                        $activeBranchId = (int) $reqBranch;
+                        session(['active_branch_id' => (int) $reqBranch]);
+                    }
+                } else {
+                    $activeBranchId = session('active_branch_id');
+                }
                 $branches = \App\Models\Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
             @endphp
             <li class="nav-item d-flex align-items-center mr-2" id="top-navbar-branch-wrapper">

@@ -26,9 +26,9 @@
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>
                     <select name="branch_id" class="form-control form-control-sm">
-                        <option value="">All Branches</option>
+                        <option value="" {{ empty($branchId) ? 'selected' : '' }}>All Branches</option>
                         @foreach ($branches as $bId => $bName)
-                            <option value="{{ $bId }}" {{ request('branch_id') == $bId ? 'selected' : '' }}>{{ $bName }}</option>
+                            <option value="{{ $bId }}" @selected((string) ($branchId ?? '') === (string) $bId)>{{ $bName }}</option>
                         @endforeach
                     </select>
                 </div>

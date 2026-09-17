@@ -155,7 +155,7 @@ class ReportController extends Controller
 
     public function currentStock(Request $request)
     {
-        $branchId = $request->input('branch_id');
+        $branchId = $this->resolveBranchId($request);
         $brandId = $request->input('brand_id');
         $categoryValueId = $request->input('category_value_id');
         $search = $request->input('search');
@@ -241,8 +241,9 @@ class ReportController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
+        $branchId = $this->resolveBranchId($request);
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
         }
 
         if ($request->filled('status')) {
@@ -253,7 +254,7 @@ class ReportController extends Controller
         $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
-        return view('reports.customer-master', compact('customers', 'categories', 'branches'));
+        return view('reports.customer-master', compact('customers', 'categories', 'branches', 'branchId'));
     }
 
     public function customerPetDetails(Request $request)
@@ -791,7 +792,7 @@ class ReportController extends Controller
      */
     public function reorderReport(Request $request)
     {
-        $branchId        = $request->input('branch_id');
+        $branchId        = $this->resolveBranchId($request);
         $brandId         = $request->input('brand_id');
         $categoryValueId = $request->input('category_value_id');
         $stockStatus     = $request->input('stock_status'); // 'out' | 'low'
@@ -860,11 +861,29 @@ class ReportController extends Controller
         ]));
     }
 
+    private function resolveBranchId(Request $request): ?int
+    {
+        if ($request->has('branch_id')) {
+            $val = $request->input('branch_id');
+            if ($val === 'all' || empty($val) || $val === '0') {
+                return null;
+            }
+            return (int) $val;
+        }
+
+        $sessionBranch = session('active_branch_id');
+        if ($sessionBranch && $sessionBranch !== 'all') {
+            return (int) $sessionBranch;
+        }
+
+        return null;
+    }
+
     private function dateAndBranchFilter(Request $request): array
     {
         $from = $request->input('from', now()->startOfMonth()->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
-        $branchId = $request->input('branch_id');
+        $branchId = $this->resolveBranchId($request);
 
         return [$from, $to, $branchId];
     }

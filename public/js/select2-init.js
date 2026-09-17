@@ -240,12 +240,12 @@ $(document).ready(function () {
     // =========================================================================
     var $navSelect = $('#top-navbar-branch-select');
     var navSelectedVal = $navSelect.length ? $navSelect.val() : null;
-    var activeBranchId = (navSelectedVal && navSelectedVal !== 'all')
-        ? String(navSelectedVal)
-        : (localStorage.getItem('urbanpos_active_branch_id') || '3');
+    var activeBranchId = (navSelectedVal !== null)
+        ? (navSelectedVal === 'all' ? null : String(navSelectedVal))
+        : localStorage.getItem('urbanpos_active_branch_id');
 
     // Keep localStorage in sync with currently rendered navbar select
-    if (navSelectedVal) {
+    if (navSelectedVal !== null) {
         if (navSelectedVal === 'all') {
             localStorage.removeItem('urbanpos_active_branch_id');
         } else {
@@ -254,14 +254,19 @@ $(document).ready(function () {
     }
 
     function syncBranchAcrossApp(branchId, triggerReload) {
-        if (!branchId) return;
-        var val = String(branchId);
+        var val = (!branchId || branchId === 'all' || branchId === '0') ? 'all' : String(branchId);
 
         if (val === 'all') {
             localStorage.removeItem('urbanpos_active_branch_id');
+            activeBranchId = null;
         } else {
             localStorage.setItem('urbanpos_active_branch_id', val);
             activeBranchId = val;
+        }
+
+        // Keep top navbar select in sync immediately
+        if ($('#top-navbar-branch-select').length && $('#top-navbar-branch-select').val() !== val) {
+            $('#top-navbar-branch-select').val(val);
         }
 
         // Sync to server session via AJAX
@@ -299,10 +304,15 @@ $(document).ready(function () {
         }
     }
 
-    // Auto-apply active branch to all unselected branch dropdowns on page load
+    // Auto-apply active branch to all unselected branch dropdowns on page load (transaction/entry forms only)
     function applyActiveBranchToForm(context) {
         var $scope = context ? $(context) : $(document);
-        $scope.find('select[name="branch_id"], select[name="from_branch_id"]').each(function () {
+        if (!activeBranchId || activeBranchId === 'all') {
+            return;
+        }
+
+        // Only target transaction / data-entry forms (POST forms or modal inputs), NEVER GET filter/search forms
+        $scope.find('form:not([method="GET"]) select[name="branch_id"], form:not([method="GET"]) select[name="from_branch_id"], .modal select[name="branch_id"]').each(function () {
             var $sel = $(this);
             var currentVal = $sel.val();
             // If empty or placeholder selected, auto-select active branch (e.g. Motera)
@@ -324,16 +334,35 @@ $(document).ready(function () {
         applyActiveBranchToForm(this);
     });
 
-    // When user changes top navbar branch -> sync and immediately refresh page with new branch!
+    // When user changes top navbar branch -> sync and immediately refresh/redirect page
     $(document).on('change', '#top-navbar-branch-select', function () {
-        syncBranchAcrossApp($(this).val(), true);
+        var selectedVal = $(this).val();
+        try {
+            var url = new URL(window.location.href);
+            if (url.searchParams.has('branch_id')) {
+                if (selectedVal === 'all' || !selectedVal) {
+                    url.searchParams.delete('branch_id');
+                } else {
+                    url.searchParams.set('branch_id', selectedVal);
+                }
+                syncBranchAcrossApp(selectedVal, false);
+                setTimeout(function () {
+                    window.location.href = url.toString();
+                }, 100);
+                return;
+            }
+        } catch (e) {}
+
+        syncBranchAcrossApp(selectedVal, true);
     });
 
-    // When user changes branch in ANY form on the page
-    $(document).on('change', 'select[name="branch_id"], select[name="from_branch_id"]', function (e) {
+    // When user changes branch in ANY form on the page (excluding top navbar)
+    $(document).on('change', 'select[name="branch_id"]:not(#top-navbar-branch-select), select[name="from_branch_id"]', function (e) {
         var val = $(this).val();
-        if (val && val !== '' && val !== activeBranchId) {
-            syncBranchAcrossApp(val, false);
+        var targetVal = (!val || val === 'all' || val === '0') ? 'all' : String(val);
+        var currentActive = activeBranchId || 'all';
+        if (targetVal !== currentActive) {
+            syncBranchAcrossApp(targetVal, false);
         }
     });
 
