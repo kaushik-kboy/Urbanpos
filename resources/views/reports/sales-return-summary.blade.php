@@ -62,11 +62,12 @@
             <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-undo mr-1"></i> Returns</h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
-                <x-table-column-customizer table-key="reports.sales-return-summary" table-id="salesReturnTable" button-class="btn btn-sm btn-light border text-secondary" />
+                <button type="button" onclick="exportTableToCSV('sales-return-table', 'sales-return-summary-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
+                <x-table-column-customizer table-key="reports.sales-return-summary" table-id="sales-return-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
         <div class="card-body">
-            <table class="table table-sm table-striped" id="salesReturnTable">
+            <table class="table table-sm table-striped" id="sales-return-table">
                 <thead>
                     <tr>
                         <th>Branch</th>

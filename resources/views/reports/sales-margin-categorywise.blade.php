@@ -75,6 +75,7 @@
                     <h3 class="card-title mb-0">Category Breakdown</h3>
                     <div class="card-tools d-flex align-items-center ml-auto">
                         <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                        <button type="button" onclick="exportTableToCSV('catTable', 'sales-margin-categorywise-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
                         <x-table-column-customizer table-key="reports.sales-margin-categorywise" table-id="catTable" button-class="btn btn-sm btn-light border text-secondary" />
                     </div>
                 </div>

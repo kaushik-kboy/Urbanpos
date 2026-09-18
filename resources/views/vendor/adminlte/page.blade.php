@@ -67,6 +67,41 @@
     <script>
         window.POS_HOTKEYS = @json(\App\Models\FunctionKeyMapping::getActiveMappings());
         window.APP_URL = "{{ url('/') }}";
+        window.exportTableToCSV = function(tableId, filename) {
+            var table = document.getElementById(tableId);
+            if (!table) {
+                table = document.querySelector('.card-body table') || document.querySelector('table');
+            }
+            if (!table) {
+                alert('No table data found to export.');
+                return;
+            }
+            var csv = [];
+            var rows = table.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var row = [];
+                var cols = rows[i].querySelectorAll('td, th');
+                for (var j = 0; j < cols.length; j++) {
+                    var col = cols[j];
+                    var text = col.innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/"/g, '""').trim();
+                    if (j === cols.length - 1 && (text.toLowerCase() === 'action' || text.toLowerCase() === 'actions' || col.querySelector('.btn-group, .btn-xs, .btn-sm, a.btn'))) {
+                        continue;
+                    }
+                    row.push('"' + text + '"');
+                }
+                if (row.length > 0) {
+                    csv.push(row.join(','));
+                }
+            }
+            var blob = new Blob(['\uFEFF' + csv.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            var cleanName = (filename || 'report').replace(/\.csv$/i, '') + '.csv';
+            link.download = cleanName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
     </script>
     <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/pos-latency-monitor.js') }}?v={{ time() }}"></script>

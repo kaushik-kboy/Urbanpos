@@ -128,6 +128,7 @@
             </h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                <button type="button" onclick="exportTableToCSV('marginTable', 'sales-margin-itemwise-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
                 <x-table-column-customizer table-key="reports.sales-margin-itemwise" table-id="marginTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

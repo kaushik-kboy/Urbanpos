@@ -414,7 +414,11 @@ class DynamicReportService
                         '₹ ' . number_format($item->total - $item->total_gst, 2),
                         '₹ ' . number_format($item->total_gst, 2),
                         '<strong>₹ ' . number_format($item->total, 2) . '</strong>',
-                        '<span class="badge badge-success">' . e($item->status ?: 'Completed') . '</span>'
+                        '<span class="badge badge-success">' . e($item->status ?: 'Completed') . '</span>',
+                        '<div class="text-nowrap text-center">
+                            <a href="' . route('purchase.purchase-invoices.show', $item->id) . '" class="btn btn-xs btn-info" title="View Invoice" target="_blank"><i class="fas fa-eye"></i> View</a>
+                            <a href="' . route('purchase.purchase-invoices.print', $item->id) . '" class="btn btn-xs btn-secondary ml-1" title="Print Invoice" target="_blank"><i class="fas fa-print"></i> Print</a>
+                        </div>'
                     ]
                 ]);
                 $totalSum = PurchaseInvoice::whereBetween('invoice_date', [$from, $to])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total');
@@ -422,8 +426,8 @@ class DynamicReportService
                 return [
                     'title' => 'Purchase Invoice Summary Report',
                     'subtitle' => 'Consolidated list of purchase invoices, vendor bills, taxable amounts, and GST ITC',
-                    'columns' => ['#', 'Invoice No', 'Vendor Bill No', 'Date', 'Supplier', 'Branch', 'Total Qty', 'Taxable Amt', 'GST Tax', 'Net Amount', 'Status'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-center', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
+                    'columns' => ['#', 'Invoice No', 'Vendor Bill No', 'Date', 'Supplier', 'Branch', 'Total Qty', 'Taxable Amt', 'GST Tax', 'Net Amount', 'Status', 'Action'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-center', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
                         ['label' => 'Total Purchase Value', 'value' => '₹ ' . number_format($totalSum, 2), 'icon' => 'fas fa-rupee-sign', 'color' => 'success'],
@@ -443,7 +447,7 @@ class DynamicReportService
                     ->whereBetween('purchase_orders.po_date', [$from, $to])
                     ->when($branchId, fn ($q) => $q->where('purchase_orders.branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where('purchase_orders.po_number', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%"))
-                    ->selectRaw("purchase_orders.po_number, purchase_orders.po_date, suppliers.name as supplier_name, branches.name as branch_name, items.item_code, items.name as item_name, purchase_order_items.qty, purchase_order_items.cost_price, purchase_order_items.gst_tax_amount, purchase_order_items.net_amount")
+                    ->selectRaw("purchase_orders.id as po_id, purchase_orders.po_number, purchase_orders.po_date, suppliers.name as supplier_name, branches.name as branch_name, items.item_code, items.name as item_name, purchase_order_items.qty, purchase_order_items.cost_price, purchase_order_items.gst_tax_amount, purchase_order_items.net_amount")
                     ->orderBy('purchase_orders.po_date', 'desc');
                 $paginator = $query->paginate(50)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
@@ -456,14 +460,18 @@ class DynamicReportService
                         number_format($item->qty),
                         '₹ ' . number_format($item->cost_price, 2),
                         '₹ ' . number_format($item->gst_tax_amount, 2),
-                        '<strong>₹ ' . number_format($item->net_amount, 2) . '</strong>'
+                        '<strong>₹ ' . number_format($item->net_amount, 2) . '</strong>',
+                        '<div class="text-nowrap text-center">
+                            <a href="' . route('purchase.purchase-orders.show', $item->po_id) . '" class="btn btn-xs btn-info" title="View Purchase Order" target="_blank"><i class="fas fa-eye"></i> View</a>
+                            <a href="' . route('purchase.purchase-orders.print', $item->po_id) . '" class="btn btn-xs btn-secondary ml-1" title="Print PO" target="_blank"><i class="fas fa-print"></i> Print</a>
+                        </div>'
                     ]
                 ]);
                 return [
                     'title' => 'Purchase Order Details Report',
                     'subtitle' => 'Line-item breakdown of purchase orders placed with suppliers',
-                    'columns' => ['#', 'PO Number', 'PO Date', 'Supplier', 'Item Code', 'Item Description', 'Order Qty', 'Rate', 'GST Tax', 'Net Amount'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right'],
+                    'columns' => ['#', 'PO Number', 'PO Date', 'Supplier', 'Item Code', 'Item Description', 'Order Qty', 'Rate', 'GST Tax', 'Net Amount', 'Action'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
                         ['label' => 'Total Line Items', 'value' => $paginator->total(), 'icon' => 'fas fa-list', 'color' => 'primary'],
@@ -723,15 +731,19 @@ class DynamicReportService
                         '₹ ' . number_format($item->disc_amount, 2),
                         '₹ ' . number_format($item->total_gst, 2),
                         '<strong>₹ ' . number_format($item->total, 2) . '</strong>',
-                        '<span class="badge badge-success">' . e($item->status ?: 'Completed') . '</span>'
+                        '<span class="badge badge-success">' . e($item->status ?: 'Completed') . '</span>',
+                        '<div class="text-nowrap text-center">
+                            <a href="' . route('sales.sales-bills.show', $item->id) . '" class="btn btn-xs btn-info" title="View Bill" target="_blank"><i class="fas fa-eye"></i> View</a>
+                            <a href="' . route('sales.sales-bills.receipt', $item->id) . '" class="btn btn-xs btn-secondary ml-1" title="Print Receipt" target="_blank"><i class="fas fa-print"></i> Print</a>
+                        </div>'
                     ]
                 ]);
                 $totalSum = SalesBill::whereBetween('bill_date', [$from, $to])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total');
                 return [
                     'title' => 'Daily Sales [Bill No Wise] Report',
                     'subtitle' => 'Detailed bill-level sales register including customer particulars, taxes, and amounts',
-                    'columns' => ['#', 'Bill Number', 'Bill Date & Time', 'Customer Name', 'Mobile', 'Branch', 'Items Qty', 'Discount', 'GST Tax', 'Net Total', 'Status'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
+                    'columns' => ['#', 'Bill Number', 'Bill Date & Time', 'Customer Name', 'Mobile', 'Branch', 'Items Qty', 'Discount', 'GST Tax', 'Net Total', 'Status', 'Action'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
                         ['label' => 'Period Sales Total', 'value' => '₹ ' . number_format($totalSum, 2), 'icon' => 'fas fa-rupee-sign', 'color' => 'success'],

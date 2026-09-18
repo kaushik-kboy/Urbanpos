@@ -99,17 +99,20 @@
     {{-- Report Data Card --}}
     <div class="card card-outline card-secondary shadow-sm">
         <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold text-dark">
+            <h5 class="card-title font-weight-bold text-dark mb-0">
                 <i class="fas fa-table mr-1 text-primary"></i> Data Records
                 @if (isset($rows) && method_exists($rows, 'total'))
                     <span class="badge badge-light border ml-1 font-weight-normal">{{ number_format($rows->total()) }} total</span>
                 @endif
-            </h6>
-            <div class="card-tools d-flex align-items-center">
-                <button type="button" class="btn btn-xs btn-outline-success mr-2 shadow-sm" onclick="window.print()">
-                    <i class="fas fa-file-excel mr-1"></i> Print / Export
+            </h5>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary mr-2 shadow-sm" onclick="window.print()">
+                    <i class="fas fa-print mr-1"></i> Print
                 </button>
-                <x-table-column-customizer :table-key="'reports.generic.' . ($slug ?? 'default')" table-id="reportDataTable" button-class="btn btn-sm btn-light border text-secondary" />
+                <button type="button" class="btn btn-sm btn-outline-success mr-2 shadow-sm" onclick="exportTableToCSV('reportDataTable', '{{ $module ?? 'report' }}')">
+                    <i class="fas fa-file-csv mr-1"></i> Export CSV
+                </button>
+                <x-table-column-customizer :table-key="'reports.generic.' . ($module ?? $slug ?? 'default')" table-id="reportDataTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
 
@@ -188,6 +191,9 @@
 
 @section('css')
     <style>
+        .card-header::after {
+            display: none !important;
+        }
         @media print {
             .main-sidebar, .main-header, .card-header .card-tools, .card-body form, .card-footer, .breadcrumb, .btn {
                 display: none !important;

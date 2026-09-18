@@ -62,11 +62,12 @@
             <h3 class="card-title font-weight-bold mb-0">Stock Transfers</h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
-                <x-table-column-customizer table-key="reports.stock-transfer-summary" table-id="stockTransferTable" button-class="btn btn-sm btn-light border text-secondary" />
+                <button type="button" onclick="exportTableToCSV('stockTransferReportTable', 'stock-transfer-summary-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
+                <x-table-column-customizer table-key="reports.stock-transfer-summary" table-id="stockTransferReportTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-sm table-striped table-hover mb-0" id="stockTransferTable">
+            <table class="table table-sm table-striped table-hover mb-0" id="stockTransferReportTable">
                 <thead class="thead-light">
                     <tr>
                         <th>Transfer Number</th>

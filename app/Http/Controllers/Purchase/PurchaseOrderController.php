@@ -128,6 +128,20 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase.purchase-orders.index')->with('status', "Purchase Order {$purchaseOrder->po_number} created successfully.");
     }
 
+    public function show(PurchaseOrder $purchaseOrder)
+    {
+        $purchaseOrder->load(['supplier', 'branch', 'items.item']);
+
+        return view('purchase.purchase-orders.show', compact('purchaseOrder'));
+    }
+
+    public function print(PurchaseOrder $purchaseOrder)
+    {
+        $purchaseOrder->load(['supplier', 'branch', 'items.item']);
+
+        return view('purchase.purchase-orders.print', compact('purchaseOrder'));
+    }
+
     public function edit(PurchaseOrder $purchaseOrder)
     {
         $purchaseOrder->load('items');
