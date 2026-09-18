@@ -13,6 +13,9 @@
             </p>
         </div>
         <div>
+            <a href="{{ route('tools.system-error-logs.index') }}" class="btn btn-outline-danger shadow-sm font-weight-bold mr-2">
+                <i class="fas fa-bug mr-1"></i> System Error Logs
+            </a>
             <button type="button" id="btn-run-diagnostics" class="btn btn-primary shadow-sm font-weight-bold">
                 <i class="fas fa-play-circle mr-1"></i> Run Live Diagnostics
             </button>

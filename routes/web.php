@@ -286,6 +286,13 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::post('system-health/backup', [\App\Http\Controllers\Tools\SystemHealthController::class, 'createBackup'])->name('system-health.backup.create');
     Route::get('system-health/backup/download/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'downloadBackup'])->name('system-health.backup.download');
     Route::delete('system-health/backup/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'deleteBackup'])->name('system-health.backup.delete');
+
+    // System Error & Exception Hub (Module-wise & Date-wise)
+    Route::get('system-error-logs', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'index'])->name('system-error-logs.index');
+    Route::get('system-error-logs/export', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'export'])->name('system-error-logs.export');
+    Route::get('system-error-logs/{id}', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'show'])->name('system-error-logs.show');
+    Route::post('system-error-logs/{id}/resolve', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'resolve'])->name('system-error-logs.resolve');
+    Route::post('system-error-logs/clear-old', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'clearOld'])->name('system-error-logs.clear-old');
     Route::get('eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'toolsIndex'])->name('eway-update');
     Route::post('eway-bulk-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadBulkJson'])->name('eway-bulk-json');
     

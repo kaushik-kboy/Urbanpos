@@ -19,5 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->report(function (\Throwable $e) {
+            try {
+                app(\App\Services\System\ErrorLoggerService::class)->capture($e, request());
+            } catch (\Throwable $ignored) {
+                // Fail-safe: ignore
+            }
+        });
     })->create();

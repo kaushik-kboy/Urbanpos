@@ -972,6 +972,18 @@ return [
                     'icon' => 'fas fa-fw fa-database',
                 ],
                 [
+                    'text' => 'System Error Logs',
+                    'url' => 'tools/system-error-logs',
+                    'icon' => 'fas fa-fw fa-bug text-danger',
+                    'active' => ['tools/system-error-logs*'],
+                ],
+                [
+                    'text' => 'System Health & Monitor',
+                    'url' => 'tools/system-health',
+                    'icon' => 'fas fa-fw fa-heartbeat text-success',
+                    'active' => ['tools/system-health*'],
+                ],
+                [
                     'text' => 'Manage Subscription',
                     'url' => 'tools/manage-subscription',
                     'icon' => 'fas fa-fw fa-certificate',
