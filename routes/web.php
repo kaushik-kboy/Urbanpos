@@ -248,6 +248,8 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('sales-bills/customer-loyalty/{customer}', [SalesBillController::class, 'customerLoyalty'])->name('sales-bills.customer-loyalty');
     Route::get('sales-bills/customer-invoices/{customer}', [SalesBillController::class, 'customerInvoices'])->name('sales-bills.customer-invoices');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
+    Route::get('sales-bills/{salesBill}/eway-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadJson'])->name('sales-bills.eway-json');
+    Route::post('sales-bills/{salesBill}/eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'updateDetails'])->name('sales-bills.eway-update');
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');
     $gatedResource('sales-orders', SalesOrderController::class, 'sales-orders');
     Route::get('delivery-notes/{deliveryNote}/print', [SalesDeliveryNoteController::class, 'print'])->name('delivery-notes.print');
@@ -284,6 +286,26 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::post('system-health/backup', [\App\Http\Controllers\Tools\SystemHealthController::class, 'createBackup'])->name('system-health.backup.create');
     Route::get('system-health/backup/download/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'downloadBackup'])->name('system-health.backup.download');
     Route::delete('system-health/backup/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'deleteBackup'])->name('system-health.backup.delete');
+    Route::get('eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'toolsIndex'])->name('eway-update');
+    Route::post('eway-bulk-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadBulkJson'])->name('eway-bulk-json');
+    
+    // GST E-Filing & E-Invoice Integration Hub (from video 6.mp4)
+    Route::get('integrations-gst', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('integrations-gst');
+    Route::get('einvoice/details/{salesBill}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'billDetails'])->name('einvoice.details');
+    Route::post('einvoice/generate-irn', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'generateIrn'])->name('einvoice.generate-irn');
+    Route::post('einvoice/export-json', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportJson'])->name('einvoice.export-json');
+    Route::get('einvoice/download-errors', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'downloadErrors'])->name('einvoice.download-errors');
+    Route::post('einvoice/settings', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'updateSettings'])->name('einvoice.settings');
+
+    // GSTR Returns Specific Actions (GSTR-1, GSTR-3B, GSTR-9, GSTR-2A, GSTR-2B)
+    Route::get('gst/gstr-1', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1View'])->name('gst.gstr-1.page');
+    Route::get('gst/gstr-1/{section}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1SectionView'])->name('gst.gstr-1.section');
+    Route::get('gst/gstr-1-details', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1Details'])->name('gst.gstr-1');
+    Route::get('gst/gstr-3b-details', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr3bDetails'])->name('gst.gstr-3b');
+    Route::post('gst/gstr-9-sync', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr9Sync'])->name('gst.gstr-9-sync');
+    Route::post('gst/gstr-2-upload', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'uploadGstr2'])->name('gst.gstr-2-upload');
+    Route::get('gst/gstr-2-download', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'downloadGstr2'])->name('gst.gstr-2-download');
+
     Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });
 

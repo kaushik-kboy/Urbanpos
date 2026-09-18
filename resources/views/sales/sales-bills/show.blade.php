@@ -15,6 +15,12 @@
             @endif
         </h1>
         <div>
+            <a href="{{ route('sales.sales-bills.eway-json', $salesBill) }}" class="btn btn-warning btn-sm mr-1 shadow-sm font-weight-bold" title="Download Official NIC JSON for ewaybillgst.gov.in">
+                <i class="fas fa-file-code mr-1"></i> E-Way JSON
+            </a>
+            <button type="button" class="btn btn-info btn-sm mr-1 shadow-sm font-weight-bold" data-toggle="modal" data-target="#ewayModal" title="Update E-Way Bill Number and Transport Details">
+                <i class="fas fa-truck mr-1"></i> {{ $salesBill->hasEwayBill() ? 'E-Way #' . $salesBill->eway_bill_no : 'Update E-Way' }}
+            </button>
             <a href="{{ route('sales.sales-bills.receipt', $salesBill) }}" target="_blank" class="btn btn-success btn-sm mr-1 shadow-sm">
                 <i class="fas fa-receipt mr-1"></i> Thermal Receipt (80mm)
             </a>
@@ -93,6 +99,68 @@
             @endif
         </div>
     </div>
+
+    {{-- Government E-Invoice (IRN) Banner / Card --}}
+    @if ($salesBill->hasIrn())
+        <div class="card card-outline card-success shadow-sm mb-3">
+            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                <h5 class="card-title font-weight-bold mb-0 text-success">
+                    <i class="fas fa-check-circle mr-1"></i> Government E-Invoice (IRN Generated &amp; Signed)
+                </h5>
+                <span class="badge badge-success px-2 py-1">IRP Acknowledged</span>
+            </div>
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-9">
+                        <div class="mb-2">
+                            <span class="text-muted small d-block font-weight-bold">INVOICE REFERENCE NUMBER (IRN - 64 CHARACTERS):</span>
+                            <code class="text-dark font-weight-bold" style="word-break: break-all; font-size: 13px;">{{ $salesBill->irn }}</code>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4">
+                                <span class="text-muted small d-block">Ack Number:</span>
+                                <strong>{{ $salesBill->ack_no ?? 'N/A' }}</strong>
+                            </div>
+                            <div class="col-sm-4">
+                                <span class="text-muted small d-block">Ack Date:</span>
+                                <strong>{{ $salesBill->ack_date ? $salesBill->ack_date->format('d-m-Y h:i A') : 'N/A' }}</strong>
+                            </div>
+                            <div class="col-sm-4">
+                                <span class="text-muted small d-block">Status:</span>
+                                <span class="badge badge-success px-2">COMPLETED</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-center border-left">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data={{ urlencode($salesBill->irn) }}" alt="Govt QR Code" class="img-thumbnail" style="width: 100px; height: 100px;">
+                        <span class="d-block small text-muted mt-1">Official Govt QR</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @elseif ($salesBill->einvoice_status === 'Failed')
+        <div class="alert alert-danger shadow-sm mb-3 py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    <strong>Govt E-Invoice Upload Failed:</strong> {{ $salesBill->einvoice_error ?? 'Validation error at portal schema check.' }}
+                </div>
+                <a href="{{ route('tools.integrations-gst', ['tab' => 'failed', 'search' => $salesBill->bill_number]) }}" class="btn btn-outline-danger btn-sm">
+                    Resolve in E-Filing Hub
+                </a>
+            </div>
+        </div>
+    @elseif ($salesBill->total >= 50000 || !empty($salesBill->customer?->gst_no))
+        <div class="alert alert-warning shadow-sm mb-3 py-2 d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-clock mr-1"></i>
+                <strong>Govt E-Invoice Pending:</strong> This invoice exceeds ₹50,000 / B2B threshold and is queued for Government IRN generation.
+            </div>
+            <a href="{{ route('tools.integrations-gst', ['tab' => 'pending', 'search' => $salesBill->bill_number]) }}" class="btn btn-primary btn-sm">
+                Open in GST E-Filing Hub
+            </a>
+        </div>
+    @endif
 
     {{-- Items Table Card --}}
     <div class="card card-outline card-primary shadow-sm mb-3">
@@ -238,6 +306,185 @@
                         <span class="h4 font-weight-bold text-success mb-0">₹{{ number_format($salesBill->total, 2) }}</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- E-Way Bill & Transport Logistics Card --}}
+    <div class="card card-outline {{ $salesBill->hasEwayBill() ? 'card-success' : ($salesBill->requiresEwayBill() ? 'card-warning' : 'card-secondary') }} shadow-sm mb-4">
+        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+            <h5 class="card-title font-weight-bold mb-0 text-dark">
+                <i class="fas fa-truck mr-1 text-primary"></i> Government E-Way Bill & Transport Details (Part-A & Part-B)
+            </h5>
+            <div>
+                @if ($salesBill->hasEwayBill())
+                    <span class="badge badge-success px-3 py-1 font-weight-bold"><i class="fas fa-check-circle mr-1"></i> E-Way Bill Generated</span>
+                @elseif ($salesBill->requiresEwayBill())
+                    <span class="badge badge-warning px-3 py-1 font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i> E-Way Bill Required (> ₹50,000)</span>
+                @else
+                    <span class="badge badge-light border text-muted px-2 py-1">Optional for Local Retail</span>
+                @endif
+                <button type="button" class="btn btn-primary btn-xs ml-2 shadow-sm" data-toggle="modal" data-target="#ewayModal">
+                    <i class="fas fa-edit mr-1"></i> Edit Transport Info
+                </button>
+            </div>
+        </div>
+        <div class="card-body py-3">
+            <div class="row">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <span class="text-muted small d-block font-weight-bold">E-Way Bill Number</span>
+                    @if ($salesBill->hasEwayBill())
+                        <span class="h5 text-success font-weight-bold"><i class="fas fa-id-card mr-1"></i> {{ $salesBill->eway_bill_no }}</span>
+                    @else
+                        <span class="text-warning font-weight-bold"><i class="fas fa-clock mr-1"></i> Not Generated Yet</span>
+                    @endif
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <span class="text-muted small d-block font-weight-bold">E-Way Bill Validity</span>
+                    @if ($salesBill->eway_valid_until)
+                        <strong><i class="far fa-calendar-alt text-info mr-1"></i> {{ $salesBill->eway_valid_until->format('d-m-Y h:i A') }}</strong>
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <span class="text-muted small d-block font-weight-bold">Vehicle Number</span>
+                    @if ($salesBill->vehicle_no)
+                        <span class="badge badge-secondary px-2 py-1 font-weight-bold text-uppercase" style="font-size: 14px; letter-spacing: 1px;">
+                            <i class="fas fa-car mr-1"></i> {{ $salesBill->vehicle_no }}
+                        </span>
+                        <small class="text-muted d-block mt-1">Type: {{ $salesBill->vehicle_type === 'O' ? 'Over Dimensional' : 'Regular' }}</small>
+                    @else
+                        <span class="text-muted">Not Specified</span>
+                    @endif
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <span class="text-muted small d-block font-weight-bold">Transporter</span>
+                    @if ($salesBill->transporter_name)
+                        <strong>{{ $salesBill->transporter_name }}</strong>
+                        @if ($salesBill->transporter_id)
+                            <small class="text-muted d-block">ID/GSTIN: {{ $salesBill->transporter_id }}</small>
+                        @endif
+                    @else
+                        <span class="text-muted">Self / Not Specified</span>
+                    @endif
+                </div>
+            </div>
+
+            <hr class="my-2">
+
+            <div class="row pt-2 text-muted small">
+                <div class="col-md-3 col-sm-6">
+                    <strong>Transport Mode:</strong>
+                    @php
+                        $modes = ['1' => 'Road', '2' => 'Rail', '3' => 'Air', '4' => 'Ship'];
+                    @endphp
+                    {{ $modes[$salesBill->transport_mode ?? '1'] ?? 'Road' }}
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <strong>Distance:</strong> {{ $salesBill->transport_distance ? $salesBill->transport_distance . ' KM' : 'Approx 20 KM' }}
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <strong>Doc / LR No:</strong> {{ $salesBill->transport_doc_no ?: 'None' }}
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <strong>Doc Date:</strong> {{ $salesBill->transport_doc_date ? $salesBill->transport_doc_date->format('d-m-Y') : 'None' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- E-Way Bill Update Modal --}}
+    <div class="modal fade" id="ewayModal" tabindex="-1" role="dialog" aria-labelledby="ewayModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <form action="{{ route('sales.sales-bills.eway-update', $salesBill) }}" method="POST">
+                    @csrf
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title font-weight-bold" id="ewayModalLabel">
+                            <i class="fas fa-truck mr-2 text-warning"></i> Government E-Way Bill & Logistics Details
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info py-2 small mb-3">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            <strong>Workflow:</strong> 1) Click <strong>"E-Way JSON"</strong> button to download official JSON. 2) Upload it on <strong><a href="https://ewaybillgst.gov.in" target="_blank" class="text-dark font-weight-bold text-underline">ewaybillgst.gov.in</a></strong>. 3) Copy the 12-digit E-Way Bill Number below and click Save.
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold small text-dark">12-Digit E-Way Bill Number (EWB No)</label>
+                                <input type="text" name="eway_bill_no" class="form-control" value="{{ old('eway_bill_no', $salesBill->eway_bill_no) }}" placeholder="e.g. 101234567890" maxlength="25">
+                                <small class="text-muted">Issued by National Informatics Centre (NIC) portal</small>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold small text-dark">Valid Until (Expiry Date & Time)</label>
+                                <input type="datetime-local" name="eway_valid_until" class="form-control" value="{{ old('eway_valid_until', $salesBill->eway_valid_until ? $salesBill->eway_valid_until->format('Y-m-d\TH:i') : '') }}">
+                            </div>
+                        </div>
+
+                        <hr class="my-3">
+                        <h6 class="font-weight-bold text-secondary mb-3"><i class="fas fa-shipping-fast mr-1"></i> Part-B Transport Details</h6>
+
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold small text-dark">Vehicle Number</label>
+                                <input type="text" name="vehicle_no" class="form-control text-uppercase" value="{{ old('vehicle_no', $salesBill->vehicle_no) }}" placeholder="e.g. MH 12 AB 1234">
+                            </div>
+                            <div class="col-md-3 form-group">
+                                <label class="font-weight-bold small text-dark">Vehicle Type</label>
+                                <select name="vehicle_type" class="form-control">
+                                    <option value="R" {{ $salesBill->vehicle_type === 'R' ? 'selected' : '' }}>Regular</option>
+                                    <option value="O" {{ $salesBill->vehicle_type === 'O' ? 'selected' : '' }}>Over Dimensional (ODC)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 form-group">
+                                <label class="font-weight-bold small text-dark">Distance (in KM)</label>
+                                <input type="number" name="transport_distance" class="form-control" value="{{ old('transport_distance', $salesBill->transport_distance ?: 20) }}" min="1" max="4000">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold small text-dark">Transporter Name</label>
+                                <input type="text" name="transporter_name" class="form-control" value="{{ old('transporter_name', $salesBill->transporter_name) }}" placeholder="e.g. VRL Logistics, SafeXpress, etc.">
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold small text-dark">Transporter ID / GSTIN / TRANSIN</label>
+                                <input type="text" name="transporter_id" class="form-control text-uppercase" value="{{ old('transporter_id', $salesBill->transporter_id) }}" placeholder="15-digit GSTIN or Transporter ID">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 form-group">
+                                <label class="font-weight-bold small text-dark">Mode of Transport</label>
+                                <select name="transport_mode" class="form-control">
+                                    <option value="1" {{ ($salesBill->transport_mode ?? '1') == '1' ? 'selected' : '' }}>1 - Road</option>
+                                    <option value="2" {{ ($salesBill->transport_mode ?? '1') == '2' ? 'selected' : '' }}>2 - Rail</option>
+                                    <option value="3" {{ ($salesBill->transport_mode ?? '1') == '3' ? 'selected' : '' }}>3 - Air</option>
+                                    <option value="4" {{ ($salesBill->transport_mode ?? '1') == '4' ? 'selected' : '' }}>4 - Ship</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="font-weight-bold small text-dark">Doc / LR / Bilty Number</label>
+                                <input type="text" name="transport_doc_no" class="form-control" value="{{ old('transport_doc_no', $salesBill->transport_doc_no) }}" placeholder="e.g. LR-98765">
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="font-weight-bold small text-dark">Doc / LR Date</label>
+                                <input type="date" name="transport_doc_date" class="form-control" value="{{ old('transport_doc_date', $salesBill->transport_doc_date ? $salesBill->transport_doc_date->format('Y-m-d') : '') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success font-weight-bold px-4">
+                            <i class="fas fa-save mr-1"></i> Save E-Way Bill Details
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

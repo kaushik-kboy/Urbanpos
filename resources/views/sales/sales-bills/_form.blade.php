@@ -32,7 +32,24 @@
     </button>
 </div>
 <input type="hidden" name="posting_key" id="sb-posting-key" value="{{ old('posting_key', (string) \Illuminate\Support\Str::uuid()) }}">
-<x-field name="bill_number" label="Bill No" :value="$billNumberVal" readonly />
+@if(!empty($bill?->id))
+    <x-field name="bill_number" label="Bill No" :value="$bill->bill_number" readonly />
+@else
+    <div class="form-group">
+        <label class="font-weight-bold">Bill No</label>
+        <div class="input-group">
+            <input type="text" name="bill_number" class="form-control font-weight-bold bg-light" value="{{ old('bill_number', '') }}" placeholder="Auto-Generated on Save (Continuous Sequence)" readonly>
+            <div class="input-group-append">
+                <span class="input-group-text bg-white text-muted small">
+                    <i class="fas fa-lock mr-1 text-secondary"></i> Assigned on Save
+                </span>
+            </div>
+        </div>
+        <small class="form-text text-muted">
+            <i class="fas fa-check-circle text-success mr-1"></i> Single continuous sequence: Automatically allotted at commit time without counter collision.
+        </small>
+    </div>
+@endif
 <div class="form-group">
     <div class="d-flex justify-content-between align-items-center mb-1">
         <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>

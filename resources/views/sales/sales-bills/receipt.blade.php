@@ -143,6 +143,25 @@
             font-weight: bold;
         }
 
+        .eway-receipt-box {
+            border: 1px dashed #000;
+            padding: 5px 6px;
+            margin: 6px 0;
+            font-size: 10px;
+            text-align: left;
+            background: #fafafa;
+        }
+
+        .eway-receipt-box .title {
+            font-weight: 900;
+            text-align: center;
+            border-bottom: 1px dashed #444;
+            padding-bottom: 2px;
+            margin-bottom: 3px;
+            letter-spacing: 0.5px;
+            font-size: 10.5px;
+        }
+
         .footer-note {
             font-size: 10px;
             margin-top: 6px;
@@ -348,6 +367,50 @@
                     <td class="text-right font-bold">{{ $salesBill->payment_type }}</td>
                 </tr>
             </table>
+            <div class="divider"></div>
+        @endif
+
+        {{-- E-Way Bill Section if available --}}
+        @if ($salesBill->hasEwayBill() || $salesBill->vehicle_no)
+            <div class="eway-receipt-box">
+                <div class="title">*** GOVERNMENT E-WAY BILL ***</div>
+                @if ($salesBill->eway_bill_no)
+                    <div><strong>EWB NO:</strong> {{ $salesBill->eway_bill_no }}</div>
+                @endif
+                @if ($salesBill->eway_valid_until)
+                    <div><strong>VALID TILL:</strong> {{ $salesBill->eway_valid_until->format('d/m/Y h:i A') }}</div>
+                @endif
+                @if ($salesBill->vehicle_no)
+                    <div><strong>VEHICLE:</strong> {{ strtoupper($salesBill->vehicle_no) }} ({{ $salesBill->vehicle_type === 'O' ? 'ODC' : 'REG' }})</div>
+                @endif
+                @if ($salesBill->transporter_name)
+                    <div><strong>TRANSPORTER:</strong> {{ $salesBill->transporter_name }}</div>
+                @endif
+                @if ($salesBill->transport_doc_no)
+                    <div><strong>LR/BILTY:</strong> {{ $salesBill->transport_doc_no }}</div>
+                @endif
+            </div>
+            <div class="divider"></div>
+        @endif
+
+        {{-- Government E-Invoice (IRN) Section if available --}}
+        @if ($salesBill->hasIrn())
+            <div class="eway-receipt-box" style="word-break: break-all;">
+                <div class="title">*** GOVERNMENT E-INVOICE (IRN) ***</div>
+                <div style="font-size: 9px; line-height: 1.2; margin-bottom: 2px;">
+                    <strong>IRN:</strong> {{ $salesBill->irn }}
+                </div>
+                @if ($salesBill->ack_no)
+                    <div><strong>ACK NO:</strong> {{ $salesBill->ack_no }}</div>
+                @endif
+                @if ($salesBill->ack_date)
+                    <div><strong>ACK DATE:</strong> {{ $salesBill->ack_date->format('d/m/Y h:i A') }}</div>
+                @endif
+                <div style="text-align: center; margin-top: 4px;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data={{ urlencode($salesBill->irn) }}" alt="Govt QR" style="width: 80px; height: 80px;" />
+                    <div style="font-size: 8px; color: #555;">(Govt Signed Digital IRN)</div>
+                </div>
+            </div>
             <div class="divider"></div>
         @endif
 

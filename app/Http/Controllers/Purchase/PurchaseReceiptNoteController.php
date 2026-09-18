@@ -290,9 +290,13 @@ class PurchaseReceiptNoteController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (PurchaseReceiptNote::max('id') ?? 0) + 1;
+        $maxId = (int) (PurchaseReceiptNote::max('id') ?? 0);
+        do {
+            $maxId++;
+            $num = 'GRN'.str_pad((string) $maxId, 5, '0', STR_PAD_LEFT);
+        } while (PurchaseReceiptNote::where('receipt_number', $num)->exists());
 
-        return 'GRN'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        return $num;
     }
 
     private function formOptions(): array

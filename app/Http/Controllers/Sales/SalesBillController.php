@@ -282,7 +282,26 @@ class SalesBillController extends Controller
             optional($lock)->release();
         }
 
-        return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$salesBill->bill_number} created successfully.");
+        $einvoiceNotice = '';
+        try {
+            $gstSetting = \App\Models\GstSetting::current();
+            if ($gstSetting->auto_upload_enabled) {
+                $threshold = (float) ($gstSetting->auto_upload_threshold ?: 50000);
+                $isB2b = !empty($salesBill->customer?->gst_no);
+                if ((float) $salesBill->total >= $threshold || $isB2b) {
+                    $einvResult = app(\App\Services\GST\EInvoiceService::class)->uploadToGovernment($salesBill);
+                    if ($einvResult['success']) {
+                        $einvoiceNotice = ' | Govt E-Invoice IRN generated automatically!';
+                    } else {
+                        $einvoiceNotice = ' | Govt E-Invoice flagged in Failed tab: ' . ($einvResult['error'] ?? 'Check details');
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Auto E-Invoice exception for bill {$salesBill->bill_number}: " . $e->getMessage());
+        }
+
+        return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}");
     }
 
     public function edit(SalesBill $salesBill)
@@ -507,13 +526,30 @@ class SalesBillController extends Controller
 
     private function nextNumber(): string
     {
-        $maxId = (int) (SalesBill::max('id') ?? 0);
-        do {
-            $maxId++;
-            $num = 'SB'.str_pad((string) $maxId, 6, '0', STR_PAD_LEFT);
-        } while (SalesBill::where('bill_number', $num)->exists());
+        return \Illuminate\Support\Facades\Cache::lock('sales_bill_number_seq_lock', 10)->block(5, function () {
+            // 1. Detect if active database uses a business prefix pattern (e.g. CO-225-38118)
+            $latest = SalesBill::orderBy('id', 'desc')->first();
+            if ($latest && preg_match('/^(.*?)(\d+)$/', $latest->bill_number, $matches)) {
+                $prefix = $matches[1];
+                $lastSeq = (int) $matches[2];
+                $padding = strlen($matches[2]);
+                do {
+                    $lastSeq++;
+                    $candidate = $prefix . str_pad((string) $lastSeq, $padding, '0', STR_PAD_LEFT);
+                } while (SalesBill::where('bill_number', $candidate)->exists());
 
-        return $num;
+                return $candidate;
+            }
+
+            // 2. Standard fallback continuous sequence
+            $maxId = (int) (SalesBill::max('id') ?? 0);
+            do {
+                $maxId++;
+                $num = 'SB' . str_pad((string) $maxId, 6, '0', STR_PAD_LEFT);
+            } while (SalesBill::where('bill_number', $num)->exists());
+
+            return $num;
+        });
     }
 
     public function itemList(Request $request)
@@ -997,15 +1033,26 @@ class SalesBillController extends Controller
         $configs = $dynamicService->getConfigsForModule('sales_bills');
 
         if (!empty($header['bill_number']) && ($configs['bill_number']->is_unique ?? true)) {
-            $duplicateBill = SalesBill::where('bill_number', $header['bill_number'])->exists();
-            if ($duplicateBill) {
-                $msg = !empty($configs['bill_number']->custom_error_message)
-                    ? $configs['bill_number']->custom_error_message
-                    : "Bill Number '{$header['bill_number']}' already exists.";
-                throw ValidationException::withMessages([
-                    'bill_number' => $msg,
-                ]);
+            // On PUT/PATCH (edit), enforce strict uniqueness excluding current record
+            if ($request->isMethod('put') || $request->isMethod('patch')) {
+                $currentBill = $request->route('sales_bill');
+                $currentId = is_object($currentBill) ? $currentBill->id : (int)$currentBill;
+                $duplicateBill = SalesBill::where('bill_number', $header['bill_number'])
+                    ->when($currentId, fn($q) => $q->where('id', '!=', $currentId))
+                    ->exists();
+
+                if ($duplicateBill) {
+                    $msg = !empty($configs['bill_number']->custom_error_message)
+                        ? $configs['bill_number']->custom_error_message
+                        : "Bill Number '{$header['bill_number']}' already exists.";
+                    throw ValidationException::withMessages([
+                        'bill_number' => $msg,
+                    ]);
+                }
             }
+            // Note: On POST (new bill creation), store() assigns the final guaranteed unique
+            // number via atomic nextNumber(). If the readonly preview was loaded by multiple
+            // counters simultaneously, we do not reject the cashier's sale here.
         }
 
         if ($request->isMethod('post') && !empty($header['customer_id'])) {
