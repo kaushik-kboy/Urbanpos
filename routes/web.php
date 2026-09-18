@@ -294,6 +294,11 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::post('system-error-logs/{id}/resolve', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'resolve'])->name('system-error-logs.resolve');
     Route::post('system-error-logs/clear-old', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'clearOld'])->name('system-error-logs.clear-old');
     Route::post('client-error-logs', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'logClientError'])->name('client-error-logs');
+
+    // POS Feature Health Check (Self-Test Dashboard)
+    Route::get('pos-health-check', function () {
+        return view('tools.pos-health-check.index');
+    })->name('pos-health-check');
     Route::get('eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'toolsIndex'])->name('eway-update');
     Route::post('eway-bulk-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadBulkJson'])->name('eway-bulk-json');
     

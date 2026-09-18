@@ -2213,17 +2213,21 @@
                         let discAmt = $r.find('.sb-disc-amount').val();
 
                         if (itemId || itemCode || (parseFloat(qty) > 0)) {
+                            let stockVal = $r.find('.sb-item-stock-val').val();
+                            let parsedQty = parseFloat(qty) || 1;
+                            if (parsedQty <= 0) parsedQty = 1; // Never save negative or zero qty in draft
                             items.push({
                                 item_id: itemId,
                                 item_code: itemCode,
                                 item_desc: itemDesc,
-                                qty: qty,
+                                qty: parsedQty,
                                 sell_price: sell,
                                 mrp: mrp,
                                 exp_date: exp,
                                 gst_percent: gst,
                                 disc_percent: discPerc,
-                                disc_amount: discAmt
+                                disc_amount: discAmt,
+                                stock_val: stockVal || '' // Save stock so validation works on restore
                             });
                         }
                     });
@@ -2290,16 +2294,33 @@
                 draft.items.forEach(function (it, idx) {
                     let html = $('#sb-row-template').html().replaceAll('__INDEX__', idx);
                     let $newRow = $(html);
+
+                    // Restore item fields
                     $newRow.find('.sb-item-select').val(it.item_id);
                     $newRow.find('.sb-item-code').val(it.item_code);
                     $newRow.find('.sb-item-desc').val(it.item_desc);
-                    $newRow.find('.sb-qty').val(it.qty);
+
+                    // Ensure qty is always a positive number (never negative)
+                    let restoredQty = parseFloat(it.qty) || 1;
+                    if (restoredQty <= 0) restoredQty = 1;
+                    $newRow.find('.sb-qty').val(restoredQty);
+
                     $newRow.find('.sb-sell-price').val(it.sell_price);
                     $newRow.find('.sb-mrp').val(it.mrp);
                     $newRow.find('.sb-exp-date').val(it.exp_date);
                     $newRow.find('.sb-gst-percent').val(it.gst_percent);
                     $newRow.find('.sb-disc-percent').val(it.disc_percent);
                     $newRow.find('.sb-disc-amount').val(it.disc_amount);
+
+                    // Restore stock_val so that stock validation doesn't flag as over-stock
+                    if (it.stock_val !== undefined && it.stock_val !== '') {
+                        $newRow.find('.sb-item-stock-val').val(it.stock_val);
+                        $newRow.attr('data-stock', it.stock_val);
+                    } else {
+                        // If no saved stock, set a large safe value to avoid false invalid state
+                        $newRow.find('.sb-item-stock-val').val('9999');
+                        $newRow.attr('data-stock', '9999');
+                    }
 
                     $tbody.append($newRow);
                     calculateRow($newRow, 'base');
@@ -2309,7 +2330,24 @@
                 updateRowNumbers();
                 calculateTotals();
 
+                // Focus first qty field for cashier convenience
+                setTimeout(function() {
+                    $('#sb-items-body tr:first .sb-qty').focus().select();
+                }, 200);
+
                 $('#sb-draft-recovery-alert').addClass('d-none').removeClass('d-flex');
+
+                // Trigger background stock refresh for restored items
+                setTimeout(function() {
+                    $('#sb-items-body tr').each(function() {
+                        let $r = $(this);
+                        let itemId = $r.find('.sb-item-select').val();
+                        if (itemId && !$r.find('.sb-item-stock-val').val()) {
+                            // Only refresh if stock wasn't in draft
+                            processItemLookup(null, $r, itemId);
+                        }
+                    });
+                }, 500);
             } catch (err) {
                 alert('Could not restore draft: ' + err);
             }
