@@ -3,12 +3,7 @@
 @section('title', 'Sales Margin by Category')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-chart-bar mr-2 text-primary"></i> Sales Margin by Category</h1>
-        <a href="{{ route('reports.index', ['group' => 'sales']) }}" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-arrow-left mr-1"></i> Back to Reports
-        </a>
-    </div>
+    <h1>Sales Margin by Category</h1>
 @stop
 
 @section('content')
@@ -78,7 +73,8 @@
             <div class="card card-outline card-primary h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h3 class="card-title mb-0">Category Breakdown</h3>
-                    <div class="card-tools ml-auto">
+                    <div class="card-tools d-flex align-items-center ml-auto">
+                        <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
                         <x-table-column-customizer table-key="reports.sales-margin-categorywise" table-id="catTable" button-class="btn btn-sm btn-light border text-secondary" />
                     </div>
                 </div>

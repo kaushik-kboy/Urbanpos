@@ -38,7 +38,7 @@
         <x-field name="phone" label="Phone" :value="$c->phone ?? ''" />
         <x-field name="email" label="Email" type="email" :value="$c->email ?? ''" />
         <x-textarea name="remarks" label="Remarks" :value="$c->remarks ?? ''" />
-        <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" />
+        <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
         <x-field name="aadhar_no" label="Aadhar No" :value="$c->aadhar_no ?? ''" />
         <x-field name="pan_no" label="Pan No" :value="$c->pan_no ?? ''" />
     </div>

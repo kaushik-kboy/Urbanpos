@@ -3,7 +3,7 @@
 @section('title', 'Sales Quotations')
 
 @section('content_header')
-    <h1 class="m-0 text-dark"><i class="fas fa-file-signature mr-2 text-primary"></i>Sales Quotations</h1>
+    <h1>Sales Quotations</h1>
 @stop
 
 @section('content')
@@ -14,29 +14,23 @@
         </div>
     @endif
 
-    <div class="card card-outline card-secondary mb-3">
-        <div class="card-header py-2">
-            <h3 class="card-title text-muted text-sm"><i class="fas fa-filter mr-1"></i> Filter Quotations</h3>
-            <div class="card-tools">
-                <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
-            </div>
-        </div>
-        <div class="card-body py-2">
+    <div class="card card-default mb-3 shadow-none border">
+        <div class="card-body p-3">
             <form method="GET" action="{{ route('sales.sales-quotations.index') }}" class="row align-items-end">
-                <div class="col-md-3 form-group mb-2">
-                    <label class="text-xs text-muted mb-1">Search Quotation / Customer</label>
-                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search number or customer..." value="{{ request('search') }}">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Quotation No / Customer..." value="{{ request('search') }}">
                 </div>
-                <div class="col-md-2 form-group mb-2">
-                    <label class="text-xs text-muted mb-1">Date From</label>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">From Date</label>
                     <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
                 </div>
-                <div class="col-md-2 form-group mb-2">
-                    <label class="text-xs text-muted mb-1">Date To</label>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">To Date</label>
                     <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
                 </div>
-                <div class="col-md-2 form-group mb-2">
-                    <label class="text-xs text-muted mb-1">Customer</label>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Customer</label>
                     <select name="customer_id" class="form-control form-control-sm select2">
                         <option value="">All Customers</option>
                         @foreach ($customers as $id => $name)
@@ -44,8 +38,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-1 form-group mb-2">
-                    <label class="text-xs text-muted mb-1">Status</label>
+                <div class="col-md-1 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Status</label>
                     <select name="status" class="form-control form-control-sm">
                         <option value="">All</option>
                         @foreach ($statuses as $st)
@@ -53,9 +47,9 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2 form-group mb-2 text-right">
-                    <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fas fa-search mr-1"></i> Filter</button>
-                    <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-outline-secondary btn-sm ml-1 px-3">Reset</a>
+                <div class="col-md-2 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply Filter</button>
+                    <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
                 </div>
             </form>
         </div>

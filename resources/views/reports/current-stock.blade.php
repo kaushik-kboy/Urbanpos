@@ -10,7 +10,8 @@
     <div class="card card-primary card-outline">
         <div class="card-header py-2 d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-boxes mr-1"></i> Stock List</h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
                 <x-table-column-customizer table-key="reports.current-stock" table-id="current-stock-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

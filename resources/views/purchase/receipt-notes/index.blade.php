@@ -3,14 +3,7 @@
 @section('title', 'Goods Receipt Notes (GRN)')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1>Goods Receipt Notes (GRN)</h1>
-        <div>
-            <a href="{{ route('purchase.purchase-receipt-notes.create') }}" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> New Receipt Note
-            </a>
-        </div>
-    </div>
+    <h1>Goods Receipt Notes (GRN)</h1>
 @stop
 
 @section('content')
@@ -74,7 +67,10 @@
     <div class="card card-primary card-outline">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Goods Receipt Notes</h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('purchase.purchase-receipt-notes.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Receipt Note
+                </a>
                 <x-table-column-customizer table-key="purchase.receipt-notes" table-id="receiptNotesTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

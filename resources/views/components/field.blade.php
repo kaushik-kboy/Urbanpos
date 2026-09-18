@@ -1,4 +1,4 @@
-@props(['name', 'label', 'type' => 'text', 'value' => null, 'col' => 6, 'step' => null, 'required' => false])
+@props(['name', 'label', 'type' => 'text', 'value' => null, 'col' => 6, 'step' => null, 'required' => false, 'hint' => null])
 
 @php
     $computedValue = old($name, $value);
@@ -26,6 +26,9 @@
         @error($name)
             <span class="invalid-feedback d-block">{{ $message }}</span>
         @enderror
+        @if($hint)
+            <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>{{ $hint }}</small>
+        @endif
     </div>
 </div>
 

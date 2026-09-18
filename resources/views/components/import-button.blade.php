@@ -1,9 +1,9 @@
-@props(['importRoute', 'sampleRoute', 'title'])
+@props(['importRoute', 'sampleRoute', 'title', 'buttonClass' => 'btn btn-outline-info btn-sm'])
 
 @php $modalId = 'import-modal-'.\Illuminate\Support\Str::slug($title); @endphp
 
-<button type="button" class="btn btn-outline-primary btn-sm float-right mr-2" data-toggle="modal" data-target="#{{ $modalId }}">
-    <i class="fas fa-file-import"></i> Import
+<button type="button" class="{{ $buttonClass }}" data-toggle="modal" data-target="#{{ $modalId }}" title="Import {{ $title }}">
+    <i class="fas fa-file-import mr-1"></i> Import
 </button>
 
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-hidden="true">

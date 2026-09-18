@@ -14,13 +14,14 @@
     @include('master.partials.import-result')
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <x-import-button :import-route="route('master.brands.import')" :sample-route="route('master.brands.import-sample')" title="Brand" />
-            <div class="card-tools float-right d-flex align-items-center">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-tags mr-1"></i> Brand List</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
                 <a href="{{ route('master.brands.create') }}" class="btn btn-primary btn-sm mr-2">
-                    <i class="fas fa-plus"></i> Add Brand
+                    <i class="fas fa-plus mr-1"></i> Add Brand
                 </a>
-                <x-table-column-customizer table-key="master.brands" table-id="brands-table" button-class="btn btn-sm btn-light border text-secondary" />
+                <x-table-column-customizer table-key="master.brands" table-id="brands-table" button-class="btn btn-sm btn-outline-secondary mr-2" />
+                <x-import-button :import-route="route('master.brands.import')" :sample-route="route('master.brands.import-sample')" title="Brand" />
             </div>
         </div>
         <div class="card-body p-0">

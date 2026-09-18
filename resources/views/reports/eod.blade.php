@@ -8,6 +8,13 @@
 
 @section('content')
     <div class="card card-primary card-outline">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-cash-register mr-1"></i> EOD Summary</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                <x-table-column-customizer table-key="reports.eod-sessions" table-id="eodTillSessionsTable" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
         <div class="card-body">
             @include('reports._date-branch-filter')
 
@@ -45,10 +52,7 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-                <h5 class="mb-0 font-weight-bold">Till Sessions in This Period</h5>
-                <x-table-column-customizer table-key="reports.eod-sessions" table-id="eodTillSessionsTable" button-class="btn btn-sm btn-light border text-secondary" />
-            </div>
+            <h5 class="mb-2 font-weight-bold">Till Sessions in This Period</h5>
             <table class="table table-sm table-striped" id="eodTillSessionsTable">
                 <thead><tr><th>Register</th><th>Opened</th><th>Status</th><th class="text-right">Variance</th></tr></thead>
                 <tbody>

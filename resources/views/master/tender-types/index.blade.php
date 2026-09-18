@@ -14,13 +14,14 @@
     @include('master.partials.import-result')
 
     <div class="card card-primary card-outline">
-        <div class="card-header">
-            <x-import-button :import-route="route('master.tender-types.import')" :sample-route="route('master.tender-types.import-sample')" title="Tender Type" />
-            <div class="card-tools float-right d-flex align-items-center">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-money-check-alt mr-1"></i> Tender Type List</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
                 <a href="{{ route('master.tender-types.create') }}" class="btn btn-primary btn-sm mr-2">
-                    <i class="fas fa-plus"></i> Add Tender Type
+                    <i class="fas fa-plus mr-1"></i> Add Tender Type
                 </a>
-                <x-table-column-customizer table-key="master.tender-types" table-id="tender-types-table" button-class="btn btn-sm btn-light border text-secondary" />
+                <x-table-column-customizer table-key="master.tender-types" table-id="tender-types-table" button-class="btn btn-sm btn-outline-secondary mr-2" />
+                <x-import-button :import-route="route('master.tender-types.import')" :sample-route="route('master.tender-types.import-sample')" title="Tender Type" />
             </div>
         </div>
         <div class="card-body p-0">

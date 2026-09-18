@@ -43,7 +43,8 @@
     <div class="card card-primary card-outline">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold mb-0">Customer Pet Details</h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
                 <x-table-column-customizer table-key="reports.customer-pet-details" table-id="customerPetDetailsTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

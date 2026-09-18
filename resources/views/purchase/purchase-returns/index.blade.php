@@ -3,12 +3,7 @@
 @section('title', 'Purchase Returns')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-undo-alt mr-2 text-warning"></i>Purchase Returns</h1>
-        <a href="{{ route('purchase.purchase-returns.create') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus mr-1"></i> New Purchase Return
-        </a>
-    </div>
+    <h1>Purchase Returns</h1>
 @stop
 
 @section('content')
@@ -66,7 +61,10 @@
             <h3 class="card-title font-weight-bold text-dark mb-0">
                 <i class="fas fa-list mr-1 text-primary"></i> Purchase Returns List
             </h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('purchase.purchase-returns.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Purchase Return
+                </a>
                 <x-table-column-customizer table-key="purchase.purchase-returns" table-id="purchaseReturnsTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

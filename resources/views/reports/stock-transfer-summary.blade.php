@@ -52,7 +52,6 @@
                 <div class="col-md-3 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
                     <a href="{{ route('reports.stock-transfer-summary') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
-                    <button type="button" class="btn btn-outline-info btn-sm font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
                 </div>
             </form>
         </div>
@@ -61,7 +60,8 @@
     <div class="card card-primary card-outline">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold mb-0">Stock Transfers</h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
                 <x-table-column-customizer table-key="reports.stock-transfer-summary" table-id="stockTransferTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

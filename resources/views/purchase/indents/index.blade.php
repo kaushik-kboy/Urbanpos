@@ -3,12 +3,7 @@
 @section('title', 'Purchase Indents')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1>Purchase Indents (Requisitions)</h1>
-        <a href="{{ route('purchase.purchase-indents.create') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus-circle mr-1"></i> Raise Indent
-        </a>
-    </div>
+    <h1>Purchase Indents</h1>
 @stop
 
 @section('content')
@@ -80,7 +75,10 @@
     <div class="card card-primary card-outline">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Purchase Indents</h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('purchase.purchase-indents.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Indent
+                </a>
                 <x-table-column-customizer table-key="purchase.indents" table-id="indentsTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

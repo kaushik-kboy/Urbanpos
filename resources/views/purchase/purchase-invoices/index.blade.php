@@ -3,7 +3,7 @@
 @section('title', 'Purchase Invoices')
 
 @section('content_header')
-    <h1>Purchase Invoice</h1>
+    <h1>Purchase Invoices</h1>
 @stop
 
 @section('content')

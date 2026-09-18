@@ -43,6 +43,24 @@
 
     <div class="tab-pane" id="tab-gst">
         <x-select name="gst_tax_id" label="GST Tax" :options="$gstTaxes" :selected="$i->gst_tax_id ?? ''" placeholder="Select a GST tax" />
-        <x-field name="hsn_code" label="HSN Code (8 digits)" :value="$i->hsn_code ?? ''" maxlength="8" pattern="\d{8}" title="HSN Code must be exactly 8 digits" placeholder="e.g. 12345678" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8);" />
+        <x-field name="hsn_code" label="HSN Code" :value="$i->hsn_code ?? ''" maxlength="8" pattern="\d{8}" title="HSN Code must be exactly 8 digits" placeholder="e.g. 12345678" hint="Must be exactly 8 digits (numeric). Format: XXXXXXXX" id="hsn_code_input" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8); document.getElementById('hsn-len').textContent = this.value.length + '/8'; document.getElementById('hsn-len').className = this.value.length === 8 ? 'badge badge-success ml-2' : 'badge badge-secondary ml-2';" />
+        <div class="form-group row mt-n2 mb-2">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-6">
+                <span id="hsn-len" class="badge badge-secondary">0/8</span>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var hsn = document.getElementById('hsn_code_input');
+    var lenBadge = document.getElementById('hsn-len');
+    if (hsn && lenBadge) {
+        var len = hsn.value.length;
+        lenBadge.textContent = len + '/8';
+        lenBadge.className = len === 8 ? 'badge badge-success ml-2' : 'badge badge-secondary ml-2';
+    }
+});
+</script>

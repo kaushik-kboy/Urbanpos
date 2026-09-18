@@ -3,17 +3,7 @@
 @section('title', 'Sales Delivery Notes (Challans)')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="m-0 text-dark font-weight-bold"><i class="fas fa-truck text-primary mr-2"></i>Sales Delivery Notes</h1>
-            <small class="text-muted">Outward goods dispatch and transport challans prior to billing</small>
-        </div>
-        <div>
-            <a href="{{ route('sales.delivery-notes.create') }}" class="btn btn-primary btn-sm shadow-sm">
-                <i class="fas fa-plus mr-1"></i> New Delivery Note
-            </a>
-        </div>
-    </div>
+    <h1>Sales Delivery Notes</h1>
 @stop
 
 @section('content')
@@ -88,7 +78,10 @@
     <div class="card card-primary card-outline shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Delivery Notes</h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ route('sales.delivery-notes.create') }}" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-plus"></i> Add Delivery Note
+                </a>
                 <x-table-column-customizer table-key="sales.delivery-notes" table-id="deliveryNotesTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

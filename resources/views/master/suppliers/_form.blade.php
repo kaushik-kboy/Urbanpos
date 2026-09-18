@@ -33,7 +33,7 @@
         <x-field name="mobile" label="Main Mobile" :value="$s->mobile ?? ''" />
         <x-field name="aadhar_no" label="Aadhar No" :value="$s->aadhar_no ?? ''" />
         <x-field name="pan_no" label="Pan No" :value="$s->pan_no ?? ''" />
-        <x-field name="gst_no" label="GST No" :value="$s->gst_no ?? ''" />
+        <x-field name="gst_no" label="GST No" :value="$s->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
     </div>
 
     <!-- Multiple Contacts Tab -->

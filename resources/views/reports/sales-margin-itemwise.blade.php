@@ -3,12 +3,7 @@
 @section('title', 'Sales Item Margin Report')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-chart-line mr-2 text-success"></i> Sales Item Margin Report</h1>
-        <a href="{{ route('reports.index', ['group' => 'sales']) }}" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-arrow-left mr-1"></i> Back to Reports
-        </a>
-    </div>
+    <h1>Sales Item Margin Report</h1>
 @stop
 
 @section('content')
@@ -131,7 +126,8 @@
                 <i class="fas fa-table mr-1"></i> Itemwise Detail
                 <span class="badge badge-secondary ml-2">{{ $lines->count() }} lines</span>
             </h3>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
                 <x-table-column-customizer table-key="reports.sales-margin-itemwise" table-id="marginTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

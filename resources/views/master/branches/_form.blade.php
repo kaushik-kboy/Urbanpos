@@ -37,7 +37,7 @@
     </div>
 
     <div class="tab-pane" id="tab-gst">
-        <x-field name="gst_no" label="GST No" :value="$b->gst_no ?? ''" />
+        <x-field name="gst_no" label="GST No" :value="$b->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
         <x-field name="pan_no" label="Pan No" :value="$b->pan_no ?? ''" />
         <x-select name="gst_type" label="GST Type" :options="['Regular' => 'Regular', 'Composite' => 'Composite', 'Un Register' => 'Un Register']" :selected="$b->gst_type ?? 'Regular'" />
         <x-select name="gst_filing" label="GST Filing" :options="['Monthly' => 'Monthly', 'Quarterly' => 'Quarterly']" :selected="$b->gst_filing ?? 'Monthly'" />

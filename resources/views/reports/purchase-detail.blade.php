@@ -7,15 +7,9 @@
 @stop
 
 @section('content')
-    <div class="card card-primary card-outline">
-        <div class="card-header py-2 d-flex justify-content-between align-items-center">
-            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-shopping-bag mr-1"></i> Purchase Invoices</h3>
-            <div class="card-tools ml-auto">
-                <x-table-column-customizer table-key="reports.purchase-detail" table-id="purchase-detail-table" button-class="btn btn-sm btn-light border text-secondary" />
-            </div>
-        </div>
-        <div class="card-body">
-            <form method="GET" action="{{ route('reports.purchase-detail') }}" class="row align-items-end mb-3">
+    <div class="card card-default mb-3 shadow-none border">
+        <div class="card-body p-3">
+            <form method="GET" action="{{ route('reports.purchase-detail') }}" class="row align-items-end">
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Inv No, Supplier Inv No, Supplier...">
@@ -57,10 +51,21 @@
                 </div>
                 <div class="col-md-4 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                    <a href="{{ route('reports.purchase-detail') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
-                    <button type="button" class="btn btn-outline-info btn-sm font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
+                    <a href="{{ route('reports.purchase-detail') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div class="card card-primary card-outline">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-shopping-bag mr-1"></i> Purchase Invoices</h3>
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                <x-table-column-customizer table-key="reports.purchase-detail" table-id="purchase-detail-table" button-class="btn btn-sm btn-light border text-secondary" />
+            </div>
+        </div>
+        <div class="card-body">
 
             <table id="purchase-detail-table" class="table table-sm table-striped">
                 <thead>
