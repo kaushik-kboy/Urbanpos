@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tools;
 
 use App\Http\Controllers\Controller;
 use App\Models\SalesBill;
+use App\Services\Backup\DatabaseBackupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -16,14 +17,16 @@ class SystemHealthController extends Controller
     /**
      * Display the System Health & Monitoring Dashboard.
      */
-    public function index(): View
+    public function index(DatabaseBackupService $backupService): View
     {
         $metrics = $this->collectHealthMetrics();
         $recentHeartbeats = $this->getRecentHeartbeats(15);
+        $backups = $backupService->listBackups();
 
         return view('tools.system-health', [
             'metrics' => $metrics,
             'recentHeartbeats' => $recentHeartbeats,
+            'backups' => $backups,
         ]);
     }
 
@@ -42,6 +45,60 @@ class SystemHealthController extends Controller
             'status' => $metrics['overall_healthy'] ? 'HEALTHY' : 'NEEDS_ATTENTION',
             'timestamp' => now()->format('d M Y, h:i:s A'),
             'metrics' => $metrics,
+        ]);
+    }
+
+    /**
+     * Create on-demand database backup snapshot via AJAX.
+     */
+    public function createBackup(Request $request, DatabaseBackupService $backupService): JsonResponse
+    {
+        try {
+            $result = $backupService->createBackup('manual_ui');
+            return response()->json([
+                'success' => true,
+                'message' => 'Database snapshot created successfully!',
+                'backup' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Backup failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Download a database backup snapshot safely.
+     */
+    public function downloadBackup(string $filename, DatabaseBackupService $backupService)
+    {
+        $path = $backupService->getSecureBackupPath($filename);
+        if (!$path) {
+            abort(404, 'Backup archive not found or invalid filename.');
+        }
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/gzip',
+        ]);
+    }
+
+    /**
+     * Delete a database backup snapshot safely.
+     */
+    public function deleteBackup(string $filename, DatabaseBackupService $backupService): JsonResponse
+    {
+        $deleted = $backupService->deleteBackup($filename);
+        if (!$deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Backup archive could not be deleted or does not exist.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Backup archive deleted successfully.',
         ]);
     }
 

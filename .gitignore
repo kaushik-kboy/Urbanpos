@@ -29,3 +29,6 @@ deploy.bat
 video/
 scratch/
 data_files/
+/storage/app/backups/*
+!/storage/app/backups/.gitignore
+

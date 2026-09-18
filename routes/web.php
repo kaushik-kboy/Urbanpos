@@ -271,6 +271,9 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::post('table-preferences/reset', [\App\Http\Controllers\UserTablePreferenceController::class, 'reset'])->name('table-preferences.reset');
     Route::get('system-health', [\App\Http\Controllers\Tools\SystemHealthController::class, 'index'])->name('system-health.index');
     Route::post('system-health/run', [\App\Http\Controllers\Tools\SystemHealthController::class, 'runDiagnostics'])->name('system-health.run');
+    Route::post('system-health/backup', [\App\Http\Controllers\Tools\SystemHealthController::class, 'createBackup'])->name('system-health.backup.create');
+    Route::get('system-health/backup/download/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'downloadBackup'])->name('system-health.backup.download');
+    Route::delete('system-health/backup/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'deleteBackup'])->name('system-health.backup.delete');
     Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });
 

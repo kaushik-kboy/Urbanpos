@@ -217,11 +217,95 @@
             </div>
         </div>
     </div>
+
+    {{-- Full-Width Row: Database Snapshots & Disaster Recovery --}}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm border-top border-info">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 flex-wrap">
+                    <div>
+                        <h5 class="card-title font-weight-bold text-dark mb-0">
+                            <i class="fas fa-database text-info mr-1"></i> Database Snapshots & Disaster Recovery
+                        </h5>
+                        <p class="text-muted text-xs mb-0 mt-1">
+                            Pure-PHP streaming Gzip engine with automatic 14-day rotation and 1-click downloads.
+                        </p>
+                    </div>
+                    <div>
+                        <button type="button" id="btn-create-backup" class="btn btn-sm btn-success font-weight-bold shadow-sm">
+                            <i class="fas fa-plus-circle mr-1"></i> Create Instant Snapshot
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle mb-0" id="backups-table">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Snapshot Archive</th>
+                                    <th>Compressed Size</th>
+                                    <th>Created At (IST)</th>
+                                    <th>Retention Age</th>
+                                    <th>Format & Status</th>
+                                    <th class="text-right pr-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backups-table-body">
+                                @forelse($backups as $backup)
+                                    <tr id="row-backup-{{ md5($backup['filename']) }}">
+                                        <td class="font-weight-bold text-dark">
+                                            <i class="fas fa-file-archive text-warning mr-1"></i>
+                                            {{ $backup['filename'] }}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-light border font-weight-bold">{{ $backup['size_human'] }}</span>
+                                        </td>
+                                        <td>
+                                            <i class="far fa-clock text-muted mr-1"></i>
+                                            {{ \Carbon\Carbon::parse($backup['timestamp'])->format('d M Y, h:i:s A') }}
+                                        </td>
+                                        <td>
+                                            @if($backup['age_days'] < 1)
+                                                <span class="badge badge-success">Today</span>
+                                            @else
+                                                <span class="badge badge-info">{{ $backup['age_days'] }} days old</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-secondary">GZIP / SQL</span>
+                                            <span class="badge badge-success"><i class="fas fa-shield-alt mr-1"></i>Protected</span>
+                                        </td>
+                                        <td class="text-right pr-4">
+                                            <a href="{{ route('tools.system-health.backup.download', $backup['filename']) }}" class="btn btn-xs btn-outline-primary shadow-xs mr-1">
+                                                <i class="fas fa-download mr-1"></i> Download
+                                            </a>
+                                            <button type="button" class="btn btn-xs btn-outline-danger shadow-xs btn-delete-backup" data-filename="{{ $backup['filename'] }}" title="Delete snapshot">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr id="no-backups-row">
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="fas fa-archive fa-2x mb-2 text-muted"></i>
+                                            <div>No backup snapshots found yet.</div>
+                                            <div class="text-xs">Click "Create Instant Snapshot" to generate an immediate database archive.</div>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('js')
 <script>
 $(document).ready(function () {
+    // 1. Live Diagnostics Check
     $('#btn-run-diagnostics').on('click', function () {
         const btn = $(this);
         const originalHtml = btn.html();
@@ -239,7 +323,6 @@ $(document).ready(function () {
                     $('#last-verified-tag').text('Last verified: ' + res.timestamp);
                     $('#card-db-latency').html(res.metrics.database.latency_ms + ' <small class="text-muted font-weight-normal">ms</small>');
                     
-                    // Simple bootstrap alert feedback
                     const alertHtml = `
                         <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
                             <i class="fas fa-check-circle mr-2"></i> <strong>System Diagnostic Passed!</strong> All database, storage, and application subsystems are 100% operational.
@@ -255,6 +338,74 @@ $(document).ready(function () {
             error: function () {
                 btn.prop('disabled', false).html(originalHtml);
                 alert('Diagnostic execution failed. Please check network connection.');
+            }
+        });
+    });
+
+    // 2. Instant Backup Snapshot Trigger
+    $('#btn-create-backup').on('click', function () {
+        const btn = $(this);
+        const originalHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating Snapshot...');
+
+        $.ajax({
+            url: '{{ route("tools.system-health.backup.create") }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function (res) {
+                btn.prop('disabled', false).html(originalHtml);
+                if (res.success) {
+                    const alertHtml = `
+                        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                            <i class="fas fa-check-circle mr-2"></i> <strong>Snapshot Created!</strong> ${res.message} File: <code>${res.backup.filename}</code> (${res.backup.size_human}, ${res.backup.duration_sec}s).
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    `;
+                    $('.content').prepend(alertHtml);
+                    setTimeout(() => { window.location.reload(); }, 1500);
+                } else {
+                    alert('Backup error: ' + res.message);
+                }
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false).html(originalHtml);
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Backup generation failed.';
+                alert(msg);
+            }
+        });
+    });
+
+    // 3. Delete Backup Snapshot Handler
+    $(document).on('click', '.btn-delete-backup', function () {
+        const filename = $(this).data('filename');
+        if (!confirm(`Are you sure you want to permanently delete backup "${filename}"?`)) {
+            return;
+        }
+
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+        $.ajax({
+            url: '{{ url("tools/system-health/backup") }}/' + encodeURIComponent(filename),
+            type: 'DELETE',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function (res) {
+                if (res.success) {
+                    window.location.reload();
+                } else {
+                    alert('Delete failed: ' + res.message);
+                    btn.prop('disabled', false).html('<i class="fas fa-trash-alt"></i>');
+                }
+            },
+            error: function () {
+                alert('Failed to delete snapshot archive.');
+                btn.prop('disabled', false).html('<i class="fas fa-trash-alt"></i>');
             }
         });
     });
