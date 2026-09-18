@@ -45,6 +45,14 @@ class ErrorLoggerService
             $module = $this->detectModule($path, $e);
             $errorType = class_basename($e);
             $message = $e->getMessage() ?: ('Unhandled ' . $errorType);
+
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                $validationErrors = $e->validator->errors()->all();
+                if (!empty($validationErrors)) {
+                    $message = 'Validation Error: ' . implode(' | ', $validationErrors);
+                }
+            }
+
             $file = $e->getFile();
             $line = $e->getLine();
 

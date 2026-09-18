@@ -26,4 +26,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 // Fail-safe: ignore
             }
         });
+
+        // Intercept validation failures so form breaks are visible in System Error Logs
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+            try {
+                app(\App\Services\System\ErrorLoggerService::class)->capture($e, $request);
+            } catch (\Throwable $ignored) {
+                // Fail-safe: ignore
+            }
+            return null; // Let default redirect-back-with-errors proceed
+        });
     })->create();

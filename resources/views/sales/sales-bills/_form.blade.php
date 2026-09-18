@@ -57,7 +57,7 @@
             <i class="fas fa-user-plus mr-1"></i> + New Customer
         </button>
     </div>
-    <select name="customer_id" id="customer_id" class="form-control select2" required>
+    <select name="customer_id" id="customer_id" class="form-control select2">
         <option value="">-- Search Customer by Name or Mobile --</option>
         @foreach ($customers as $id => $name)
             <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
@@ -308,7 +308,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text"><i class="fas fa-phone-alt"></i></span>
                         </div>
-                        <input type="text" id="qc-mobile" class="form-control font-weight-bold" maxlength="10" placeholder="10 Digits Mobile No" required>
+                        <input type="text" id="qc-mobile" class="form-control font-weight-bold" maxlength="10" placeholder="10 Digits Mobile No">
                     </div>
                 </div>
                 <div class="form-group mb-2">
@@ -317,7 +317,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text"><i class="fas fa-user"></i></span>
                         </div>
-                        <input type="text" id="qc-name" class="form-control font-weight-bold" placeholder="Enter Full Name" required autocomplete="off">
+                        <input type="text" id="qc-name" class="form-control font-weight-bold" placeholder="Enter Full Name" autocomplete="off">
                     </div>
                 </div>
                 <div class="row">
@@ -1921,10 +1921,18 @@
                 return false;
             }
 
-            // Check basic HTML5 validity
-            if (!$form[0].checkValidity()) {
-                $form[0].reportValidity();
-                return;
+            // Check branch is selected
+            if (!$('select[name="branch_id"]').val()) {
+                e.preventDefault();
+                alert('Kripya branch select karein.');
+                return false;
+            }
+
+            // Check bill date
+            if (!$('input[name="bill_date"]').val()) {
+                e.preventDefault();
+                alert('Kripya bill date select karein.');
+                return false;
             }
 
             e.preventDefault();
@@ -2075,7 +2083,7 @@
             });
 
             // Inject hidden payment inputs into form
-            let $form = $('form[action*="sales-bills"]').first();
+            let $form = $('#sales-bill-form').length ? $('#sales-bill-form') : $('form[action*="sales-bills"]').first();
             $form.find('input[name^="payments"]').remove();
 
             payments.forEach(function (p, i) {
