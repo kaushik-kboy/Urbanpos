@@ -19,13 +19,18 @@ return new class extends Migration
 
     public function up(): void
     {
-        $list = implode(',', array_map(fn ($v) => "'{$v}'", self::NEW_VALUES));
-        DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        // MODIFY ENUM is MySQL/MariaDB only — SQLite (used in testing) uses TEXT and doesn't support this syntax.
+        if (DB::getDriverName() !== 'sqlite') {
+            $list = implode(',', array_map(fn ($v) => "'{$v}'", self::NEW_VALUES));
+            DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        }
     }
 
     public function down(): void
     {
-        $list = implode(',', array_map(fn ($v) => "'{$v}'", self::OLD_VALUES));
-        DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            $list = implode(',', array_map(fn ($v) => "'{$v}'", self::OLD_VALUES));
+            DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        }
     }
 };

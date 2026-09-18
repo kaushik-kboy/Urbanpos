@@ -13,17 +13,20 @@ use App\Models\TillSession;
 use App\Models\User;
 use App\Models\UserTablePreference;
 use App\Services\Tax\TaxEngine;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
  * High-speed core POS regression test suite.
  * Run in < 5 seconds to verify that critical business calculations,
  * stock balances, column preferences, and till cash logic remain intact.
+ *
+ * Uses RefreshDatabase to run migrations on in-memory SQLite (works on CI and local).
  */
 class CorePosRegressionTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $user;
     private Branch $branch;
@@ -33,6 +36,10 @@ class CorePosRegressionTest extends TestCase
         parent::setUp();
 
         $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
+        // RefreshDatabase wipes seeder-created roles; recreate Owner role for tests
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
 
         $this->branch = Branch::firstOrCreate(
             ['id' => 1],

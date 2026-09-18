@@ -23,8 +23,11 @@ return new class extends Migration
     public function up(): void
     {
         // Add SALES_DELIVERY to stock_ledger movement_type enum
-        $list = implode(',', array_map(fn ($v) => "'{$v}'", self::NEW_STOCK_LEDGER_ENUM));
-        DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        // MODIFY ENUM is MySQL/MariaDB only — SQLite (used in CI testing) doesn't support this syntax
+        if (DB::getDriverName() !== 'sqlite') {
+            $list = implode(',', array_map(fn ($v) => "'{$v}'", self::NEW_STOCK_LEDGER_ENUM));
+            DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        }
 
         Schema::create('sales_delivery_notes', function (Blueprint $table) {
             $table->id();
@@ -101,7 +104,9 @@ return new class extends Migration
         Schema::dropIfExists('sales_delivery_notes');
 
         // Revert stock_ledger movement_type enum
-        $list = implode(',', array_map(fn ($v) => "'{$v}'", self::OLD_STOCK_LEDGER_ENUM));
-        DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            $list = implode(',', array_map(fn ($v) => "'{$v}'", self::OLD_STOCK_LEDGER_ENUM));
+            DB::statement("ALTER TABLE stock_ledger MODIFY movement_type ENUM({$list}) NOT NULL");
+        }
     }
 };
