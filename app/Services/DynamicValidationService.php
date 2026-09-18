@@ -94,6 +94,7 @@ class DynamicValidationService
                     $messages["{$fieldName}.required"] = $msg;
                     $messages["{$fieldName}.before_or_equal"] = $msg;
                     $messages["{$fieldName}.unique"] = $msg;
+                    $messages["{$fieldName}.regex"] = $msg;
                 }
             }
         } catch (\Throwable $e) {

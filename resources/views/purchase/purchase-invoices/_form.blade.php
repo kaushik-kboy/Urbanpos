@@ -48,7 +48,7 @@
 <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'No Forms'" required />
 <x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" readonly />
 <x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" max="{{ date('Y-m-d') }}" />
-<x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" />
+<x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase();" placeholder="e.g. INV-2026-001" />
 <x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" />
 <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
 <div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">

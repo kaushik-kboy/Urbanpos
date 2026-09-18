@@ -51,7 +51,8 @@
                 </div>
                 <div class="col-md-3 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                    <a href="{{ route('reports.stock-transfer-summary') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('reports.stock-transfer-summary') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
+                    <button type="button" class="btn btn-outline-info btn-sm font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
                 </div>
             </form>
         </div>
@@ -76,6 +77,7 @@
                         <th>Dispatched At</th>
                         <th>Received At</th>
                         <th class="text-center">Status</th>
+                        <th class="text-center" style="width: 130px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -93,9 +95,17 @@
                                     {{ $transfer->status }}
                                 </span>
                             </td>
+                            <td class="text-center text-nowrap">
+                                <a href="{{ route('inventory.stock-transfers.show', $transfer->id) }}" class="btn btn-xs btn-info" title="View Transfer" target="_blank">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{{ route('inventory.stock-transfers.print', $transfer->id) }}" class="btn btn-xs btn-secondary ml-1" title="Print Transfer Note" target="_blank">
+                                    <i class="fas fa-print"></i> Print
+                                </a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-4">No stock transfers in this period.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-4">No stock transfers in this period.</td></tr>
                     @endforelse
                 </tbody>
             </table>

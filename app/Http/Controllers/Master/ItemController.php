@@ -112,7 +112,7 @@ class ItemController extends Controller
             ? ['nullable', 'string', 'max:100', 'unique:items,ean_upc_code,'.$item->id]
             : ['nullable', 'string', 'max:100', 'unique:items,ean_upc_code'];
 
-        return $request->validate([
+        $rules = [
             // General
             'ean_upc_code' => $eanRule,
             'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('items', 'name')->ignore($item?->id)],
@@ -143,8 +143,16 @@ class ItemController extends Controller
 
             // GST
             'gst_tax_id' => ['nullable', 'exists:gst_taxes,id'],
-            'hsn_code' => ['nullable', 'string', 'max:20'],
-        ]);
+            'hsn_code' => ['nullable', 'regex:/^\d{8}$/'],
+        ];
+
+        $messages = [
+            'hsn_code.regex' => 'HSN Code must be exactly 8 digits.',
+        ];
+
+        app(\App\Services\DynamicValidationService::class)->applyTo('items', $rules, $messages);
+
+        return $request->validate($rules, $messages);
     }
 
     protected function importModel(): string

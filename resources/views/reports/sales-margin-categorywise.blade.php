@@ -29,6 +29,7 @@
                 <button type="submit" class="btn btn-sm btn-primary mr-2"><i class="fas fa-search mr-1"></i> Apply</button>
                 <a href="{{ route('reports.sales-margin-category') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 <button type="button" id="csvExport" class="btn btn-sm btn-outline-info ml-2"><i class="fas fa-file-csv mr-1"></i> CSV</button>
+                <button type="button" class="btn btn-sm btn-outline-primary ml-2 font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
             </form>
         </div>
     </div>

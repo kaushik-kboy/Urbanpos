@@ -57,7 +57,8 @@
                 </div>
                 <div class="col-md-4 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                    <a href="{{ route('reports.billwise-sales') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('reports.billwise-sales') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
+                    <button type="button" class="btn btn-outline-info btn-sm font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
                 </div>
             </form>
 
@@ -72,6 +73,7 @@
                         <th class="text-right">MRP</th>
                         <th class="text-right">Net Amount</th>
                         <th>Branch</th>
+                        <th class="text-center" style="width: 130px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -86,11 +88,19 @@
                                 <td class="text-right">{{ number_format($line->mrp, 2) }}</td>
                                 <td class="text-right">{{ number_format($line->net_amount, 2) }}</td>
                                 <td>{{ $bill->branch?->name }}</td>
+                                <td class="text-center text-nowrap">
+                                    <a href="{{ route('sales.sales-bills.show', $bill->id) }}" class="btn btn-xs btn-info" title="View Bill" target="_blank">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="{{ route('sales.sales-bills.receipt', $bill->id) }}" class="btn btn-xs btn-secondary ml-1" title="Print Receipt" target="_blank">
+                                        <i class="fas fa-print"></i> Print
+                                    </a>
+                                </td>
                             </tr>
                         @empty
                         @endforelse
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-3">No sales in this period.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-3">No sales in this period.</td></tr>
                     @endforelse
                 </tbody>
             </table>

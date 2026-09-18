@@ -761,6 +761,13 @@ class PurchaseInvoiceController extends Controller
 
     private function validateData(Request $request, ?int $id = null): array
     {
+        if ($request->filled('supplier_inv_no')) {
+            $request->merge(['supplier_inv_no' => strtoupper(trim((string) $request->input('supplier_inv_no')))]);
+        }
+        if ($request->filled('invoice_number')) {
+            $request->merge(['invoice_number' => strtoupper(trim((string) $request->input('invoice_number')))]);
+        }
+
         $today = date('Y-m-d');
         $headerRules = [
             'invoice_date' => ['required', 'date', "before_or_equal:{$today}"],
@@ -799,6 +806,13 @@ class PurchaseInvoiceController extends Controller
         $dynamicService->applyTo('purchase_invoices', $headerRules, $headerMessages);
 
         $header = $request->validate($headerRules, $headerMessages);
+
+        if (!empty($header['supplier_inv_no'])) {
+            $header['supplier_inv_no'] = strtoupper(trim($header['supplier_inv_no']));
+        }
+        if (!empty($header['invoice_number'])) {
+            $header['invoice_number'] = strtoupper(trim($header['invoice_number']));
+        }
 
         $configs = $dynamicService->getConfigsForModule('purchase_invoices');
 

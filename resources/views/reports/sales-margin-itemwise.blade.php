@@ -85,6 +85,9 @@
                         <button type="button" id="csvExport" class="btn btn-sm btn-outline-info ml-2">
                             <i class="fas fa-file-csv mr-1"></i> Export CSV
                         </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary ml-2 font-weight-bold" onclick="window.print()">
+                            <i class="fas fa-print mr-1"></i> Print Report
+                        </button>
                     </div>
                 </div>
             </form>

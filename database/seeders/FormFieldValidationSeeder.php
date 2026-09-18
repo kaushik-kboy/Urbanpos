@@ -894,6 +894,18 @@ class FormFieldValidationSeeder extends Seeder
                 'block_future_date' => false,
                 'sort_order' => 7,
             ],
+            [
+                'module_key' => 'items',
+                'field_name' => 'hsn_code',
+                'field_label' => 'HSN Code (8 Digits)',
+                'field_type' => 'text',
+                'is_required' => false,
+                'is_readonly' => false,
+                'block_future_date' => false,
+                'is_unique' => false,
+                'custom_error_message' => 'HSN Code must be exactly 8 digits.',
+                'sort_order' => 8,
+            ],
 
             // Branch Master
             [

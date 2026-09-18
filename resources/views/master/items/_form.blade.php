@@ -43,6 +43,6 @@
 
     <div class="tab-pane" id="tab-gst">
         <x-select name="gst_tax_id" label="GST Tax" :options="$gstTaxes" :selected="$i->gst_tax_id ?? ''" placeholder="Select a GST tax" />
-        <x-field name="hsn_code" label="HSN Code" :value="$i->hsn_code ?? ''" />
+        <x-field name="hsn_code" label="HSN Code (8 digits)" :value="$i->hsn_code ?? ''" maxlength="8" pattern="\d{8}" title="HSN Code must be exactly 8 digits" placeholder="e.g. 12345678" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8);" />
     </div>
 </div>

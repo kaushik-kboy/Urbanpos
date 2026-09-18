@@ -51,8 +51,10 @@
                 </div>
                 <div class="col-md-4 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                    <a href="{{ route('reports.sales-return-summary') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('reports.sales-return-summary') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
+                    <button type="button" class="btn btn-outline-info btn-sm font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
                 </div>
+            </form>
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h5 class="mb-0 font-weight-bold text-muted">Records</h5>
                 <x-table-column-customizer table-key="reports.sales-return-summary" table-id="salesReturnTable" button-class="btn btn-sm btn-light border text-secondary" />
@@ -67,6 +69,7 @@
                         <th>Bill No</th>
                         <th>Return Mode</th>
                         <th class="text-right">Return Amount</th>
+                        <th class="text-center" style="width: 130px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -79,9 +82,17 @@
                             <td>{{ $return->salesBill?->bill_number }}</td>
                             <td>{{ $return->return_mode }}</td>
                             <td class="text-right">{{ number_format($return->total, 2) }}</td>
+                            <td class="text-center text-nowrap">
+                                <a href="{{ route('sales.sales-returns.show', $return->id) }}" class="btn btn-xs btn-info" title="View Return" target="_blank">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{{ route('sales.sales-returns.print', $return->id) }}" class="btn btn-xs btn-secondary ml-1" title="Print Return" target="_blank">
+                                    <i class="fas fa-print"></i> Print
+                                </a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-3">No returns in this period.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-3">No returns in this period.</td></tr>
                     @endforelse
                 </tbody>
                 @if ($returns->isNotEmpty())
@@ -89,6 +100,7 @@
                         <tr class="font-weight-bold">
                             <td colspan="6">NetTotal</td>
                             <td class="text-right">{{ number_format($returns->sum('total'), 2) }}</td>
+                            <td></td>
                         </tr>
                     </tfoot>
                 @endif
