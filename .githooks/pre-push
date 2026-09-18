@@ -35,6 +35,22 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
     exit 1
 fi
 
+# 3. Run Frontend & Keyboard/Modal Automated Tests (if vitest installed)
+if [ -f "./node_modules/.bin/vitest" ] || [ -d "./node_modules/vitest" ]; then
+    echo ">> Running Frontend & Keyboard/Modal Test Suite (npm run test:frontend)..."
+    npm run test:frontend
+    FRONTEND_EXIT_CODE=$?
+    if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
+        echo ""
+        echo "=========================================================="
+        echo "❌ PUSH BLOCKED: Frontend / Keyboard / Modal Tests Failed!"
+        echo "A recent change broke keyboard shortcuts or modal lifecycle."
+        echo "=========================================================="
+        echo ""
+        exit 1
+    fi
+fi
+
 echo ""
 echo "=========================================================="
 echo " ✅ All Pre-Push Checks Passed (100% Green). Proceeding with push."

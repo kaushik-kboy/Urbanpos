@@ -60,6 +60,9 @@
         ],
         "setup-hooks": [
             "git config core.hooksPath .githooks"
+        ],
+        "test-frontend": [
+            "npm run test:frontend"
         ]
     },
     "extra": {
