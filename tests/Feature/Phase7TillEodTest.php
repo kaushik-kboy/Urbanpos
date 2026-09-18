@@ -170,6 +170,7 @@ class Phase7TillEodTest extends TestCase
         $item = Item::create(['name' => 'Mismatch Item', 'allow_negative_stock' => true]);
         $cashTender = TenderType::create(['name' => 'Cash', 'type' => 'Cash']);
 
+        $initialCount = SalesBill::count();
         $response = $this->post(route('sales.sales-bills.store'), [
             'bill_date' => '2026-09-16', 'customer_id' => $customer->id, 'branch_id' => $branch->id,
             'invoice_type' => 'Tax Invoice', 'delivery_type' => 'Counter', 'sales_type' => 'Local',
@@ -178,7 +179,7 @@ class Phase7TillEodTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('payments');
-        $this->assertEquals(0, SalesBill::count(), 'A mismatched payment split must block the sale from being created at all.');
+        $this->assertEquals($initialCount, SalesBill::count(), 'A mismatched payment split must block the sale from being created at all.');
     }
 
     public function test_eod_report_aggregates_match_a_hand_built_scenario(): void

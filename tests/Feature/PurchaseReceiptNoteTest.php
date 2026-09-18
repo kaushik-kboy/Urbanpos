@@ -37,7 +37,7 @@ class PurchaseReceiptNoteTest extends TestCase
             ['name' => 'Main Branch', 'code' => 'MAIN', 'state' => 'Gujarat']
         );
 
-        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%']);
+        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%', 'description' => 'GST 18%', 'status' => true]);
 
         $this->item = Item::firstOrCreate(
             ['item_code' => 'GRN-TEST-001'],

@@ -25,7 +25,8 @@ class Phase5ReportsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->owner = User::whereHas('roles', fn ($q) => $q->where('name', 'Owner'))->firstOrFail();
+        $this->owner = User::whereHas('roles', fn ($q) => $q->where('name', 'Owner'))->first()
+            ?? tap(User::factory()->create(), fn ($u) => $u->assignRole('Owner'));
         $this->actingAs($this->owner);
     }
 

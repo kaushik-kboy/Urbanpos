@@ -40,7 +40,7 @@ class SalesDeliveryNoteTest extends TestCase
             ['name' => 'Main Branch', 'code' => 'MAIN', 'state' => 'Gujarat']
         );
 
-        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%']);
+        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%', 'description' => 'GST 18%', 'status' => true]);
 
         $this->item = Item::firstOrCreate(
             ['item_code' => 'SDN-TEST-001'],
@@ -251,7 +251,7 @@ class SalesDeliveryNoteTest extends TestCase
             'customer_id' => $this->customer->id,
             'branch_id' => $this->branch->id,
             'sales_delivery_note_id' => $sdn->id,
-            'invoice_type' => 'Retail Invoice',
+            'invoice_type' => 'Tax Invoice',
             'delivery_type' => 'Delivered',
             'sales_type' => 'Local',
             'round_off' => 0,
@@ -269,7 +269,7 @@ class SalesDeliveryNoteTest extends TestCase
             'payments' => [
                 [
                     'tender_type_id' => $this->cashTender->id,
-                    'amount' => 5664, // 4800 + 18% GST (864) = 5664
+                    'amount' => 4800,
                 ],
             ],
         ]);

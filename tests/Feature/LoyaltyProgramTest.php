@@ -80,7 +80,7 @@ class LoyaltyProgramTest extends TestCase
         );
         $this->nonLoyaltyCustomer->update(['customer_category_id' => $this->nonLoyaltyCategory->id]);
 
-        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%']);
+        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%', 'description' => 'GST 18%', 'status' => true]);
 
         $this->item = Item::firstOrCreate(
             ['item_code' => 'LOYAL-ITEM-001'],

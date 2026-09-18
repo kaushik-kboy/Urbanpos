@@ -125,6 +125,7 @@ class Phase5FixesTest extends TestCase
             'purchase_type' => 'Local',
             'c_form' => 'No Forms',
             'items' => [['item_id' => $item->id, 'qty' => 1, 'cost_price' => 500]],
+            'supplier_inv_amount' => 500,
         ]);
 
         $response->assertSessionHasErrors('credit_limit');

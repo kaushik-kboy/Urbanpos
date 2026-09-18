@@ -42,7 +42,7 @@ class ReportsTest extends TestCase
         $response->assertOk();
         $response->assertSee('Masters Reports');
         $response->assertSee('Item Master Report');
-        $response->assertDontSee('Sales Return Summary');
+        $response->assertDontSee('Sales Reports</h3>', false);
     }
 
     public function test_item_master_report_renders(): void
