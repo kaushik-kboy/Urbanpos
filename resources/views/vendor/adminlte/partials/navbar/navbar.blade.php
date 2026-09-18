@@ -56,6 +56,12 @@
                     </select>
                 @endif
             </li>
+            <li class="nav-item d-flex align-items-center mr-2" id="top-navbar-health-wrapper">
+                <a href="{{ route('tools.system-health.index') }}" class="badge badge-success px-2 py-1 font-weight-bold text-white shadow-sm d-flex align-items-center text-decoration-none" title="Live System Health & 24/7 Monitor (Click to View Diagnostics)" style="font-size: 0.82rem; height: calc(1.5em + .5rem + 2px);">
+                    <span class="mr-1 text-white" style="animation: pulse 1.5s infinite; font-size: 0.7rem;">&#9679;</span>
+                    <i class="fas fa-heartbeat mr-1"></i> 100% Healthy
+                </a>
+            </li>
         @endauth
 
         {{-- Configured right links --}}
