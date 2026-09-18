@@ -31,6 +31,7 @@
         <i class="fas fa-file-invoice mr-1"></i> Invoices <span id="badge-cust-invoices-count" class="badge badge-info ml-1 d-none">0</span>
     </button>
 </div>
+<input type="hidden" name="posting_key" id="sb-posting-key" value="{{ old('posting_key', (string) \Illuminate\Support\Str::uuid()) }}">
 <x-field name="bill_number" label="Bill No" :value="$billNumberVal" readonly />
 <div class="form-group">
     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -630,6 +631,7 @@
 </script>
 
 @push('js')
+<script src="{{ asset('js/pos-scan-guard.js') }}?v={{ time() }}"></script>
 <script>
     $(document).ready(function () {
         function formatDigits(num) {
@@ -1701,6 +1703,14 @@
             let query = $.trim($input.val());
             if (!query) return;
 
+            // Barcode Gun Rapid Double-Scan Filter (< 400ms hardware bounce guard)
+            if (window.PosScanGuard) {
+                let scanCheck = window.PosScanGuard.filterScan(query);
+                if (!scanCheck.allowed) {
+                    return; // Ignore duplicate bounce
+                }
+            }
+
             let $row = $input.closest('tr');
             processItemLookup(query, $row, null);
         });
@@ -2055,7 +2065,11 @@
                 $form.append(`<input type="hidden" name="payments[${i}][amount]" value="${p.amount}">`);
             });
 
-            // Use native form submit
+            // Use native form submit with double-submission lock
+            if (window.PosScanGuard) {
+                window.PosScanGuard.lockSubmission($('#tender-ok-btn')[0]);
+            }
+
             let submitted = false;
             function doSubmit() {
                 if (!submitted) {

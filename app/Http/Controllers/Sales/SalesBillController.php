@@ -149,20 +149,48 @@ class SalesBillController extends Controller
         $data = $this->validateData($request);
         $this->financialYearGuard->assertOpenForPosting($data['header']['bill_date']);
 
-        if ($data['header']['posting_key'] ?? null) {
-            $existing = SalesBill::where('posting_key', $data['header']['posting_key'])->first();
+        $postingKey = $data['header']['posting_key'] ?? null;
+        if ($postingKey) {
+            $existing = SalesBill::where('posting_key', $postingKey)->first();
             if ($existing) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'id' => $existing->id,
+                        'bill_number' => $existing->bill_number,
+                        'duplicate_prevented' => true,
+                    ]);
+                }
                 return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$existing->bill_number} created successfully.");
             }
         }
 
-        $salesBill = DB::transaction(function () use ($data, $request) {
-            $lines = $this->computeLines($data['items'], $data['header']);
-            
-            // If converted from delivery note, physical stock was already deducted at dispatch
-            if (empty($data['header']['sales_delivery_note_id'])) {
-                $this->assertStockAvailable($lines, $data['header']['branch_id']);
+        $lock = $postingKey ? \Illuminate\Support\Facades\Cache::lock('pos_bill_lock_' . md5($postingKey), 10) : null;
+        try {
+            if ($lock) {
+                $lock->block(5);
+                // Re-check after acquiring lock in case concurrent process completed
+                $existing = SalesBill::where('posting_key', $postingKey)->first();
+                if ($existing) {
+                    if ($request->wantsJson()) {
+                        return response()->json([
+                            'success' => true,
+                            'id' => $existing->id,
+                            'bill_number' => $existing->bill_number,
+                            'duplicate_prevented' => true,
+                        ]);
+                    }
+                    return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$existing->bill_number} created successfully.");
+                }
             }
+
+            $salesBill = DB::transaction(function () use ($data, $request) {
+                $lines = $this->computeLines($data['items'], $data['header']);
+                
+                // If converted from delivery note, physical stock was already deducted at dispatch
+                if (empty($data['header']['sales_delivery_note_id'])) {
+                    $this->assertStockAvailable($lines, $data['header']['branch_id']);
+                }
 
             $totals = $this->computeTotals($lines, $data);
 
@@ -225,6 +253,9 @@ class SalesBillController extends Controller
 
             return $salesBill;
         });
+        } finally {
+            optional($lock)->release();
+        }
 
         return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$salesBill->bill_number} created successfully.");
     }
