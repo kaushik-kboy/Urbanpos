@@ -259,6 +259,13 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('aux/{module}', [SalesAuxController::class, 'renderModule'])->name('aux');
 });
 
+Route::middleware('auth')->get('pos-ping', function () {
+    return response()->json([
+        'status' => 'pong',
+        'server_time' => microtime(true),
+    ]);
+})->name('pos.ping');
+
 Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('form-validations', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'index'])->name('form-validations.index');
     Route::post('form-validations', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'update'])->name('form-validations.update');

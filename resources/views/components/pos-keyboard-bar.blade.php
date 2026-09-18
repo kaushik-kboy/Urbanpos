@@ -1,7 +1,11 @@
 <div class="pos-keyboard-bar py-1 px-3 bg-dark text-white border-top shadow-lg" style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1035; font-size: 0.8rem; display: flex !important; align-items: center; justify-content: space-between; flex-wrap: nowrap; overflow-x: auto; user-select: none;">
     <div class="d-flex align-items-center flex-shrink-0 mr-3">
         <span class="badge badge-warning text-dark font-weight-bold mr-2"><i class="fas fa-keyboard mr-1"></i> SHORTCUTS</span>
-        <span class="text-muted d-none d-md-inline" style="font-size: 0.75rem;">Mouse-Free POS</span>
+        <span class="text-muted d-none d-md-inline mr-2" style="font-size: 0.75rem;">Mouse-Free POS</span>
+        <span id="pos-latency-indicator" class="badge badge-dark border border-secondary text-white px-2 py-1 cursor-pointer" style="cursor: pointer;" title="Server ping &amp; latency monitor (Click to test)">
+            <span id="pos-latency-dot" class="pos-dot pos-dot-green mr-1"></span>
+            <span id="pos-latency-text"><span id="pos-latency-val">...</span>ms</span>
+        </span>
     </div>
 
     <div class="d-flex align-items-center flex-nowrap" style="gap: 6px;">

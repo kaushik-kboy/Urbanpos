@@ -27,6 +27,10 @@
             @include('adminlte::partials.navbar.navbar')
         @endif
 
+        @auth
+            <x-pos-latency-banner />
+        @endauth
+
         {{-- Left Main Sidebar --}}
         @if(!$layoutHelper->isLayoutTopnavEnabled())
             @include('adminlte::partials.sidebar.left-sidebar')
@@ -65,5 +69,6 @@
         window.APP_URL = "{{ url('/') }}";
     </script>
     <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/pos-latency-monitor.js') }}?v={{ time() }}"></script>
     @endauth
 @stop
