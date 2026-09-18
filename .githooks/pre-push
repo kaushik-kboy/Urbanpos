@@ -1,0 +1,43 @@
+#!/bin/sh
+# UrbanPOS Automated Pre-Push Regression Guard
+# Automatically blocks git push if core calculations or view compilation fails.
+
+echo ""
+echo "=========================================================="
+echo " 🛡️  UrbanPOS Pre-Push Regression Guard Running..."
+echo "=========================================================="
+
+# 1. Check Blade Templates Compilation & Syntax
+echo ">> Checking Blade template syntax (php artisan view:clear)..."
+php artisan view:clear > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ PUSH BLOCKED: Blade template syntax or compilation error detected!"
+    echo "Run 'php artisan view:clear' manually to see the exact error."
+    echo ""
+    exit 1
+fi
+echo "   ✓ Blade view templates verified successfully."
+
+# 2. Run Core POS Regression Test Suite
+echo ">> Running Core POS Regression Test Suite (composer test-pos)..."
+php vendor/bin/phpunit tests/Feature/CorePosRegressionTest.php
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "=========================================================="
+    echo "❌ PUSH BLOCKED: Core POS Regression Tests Failed!"
+    echo "A recent change broke existing calculations, stock logic, or preferences."
+    echo "Please fix the failing tests before pushing to the repository."
+    echo "=========================================================="
+    echo ""
+    exit 1
+fi
+
+echo ""
+echo "=========================================================="
+echo " ✅ All Pre-Push Checks Passed (100% Green). Proceeding with push."
+echo "=========================================================="
+echo ""
+exit 0

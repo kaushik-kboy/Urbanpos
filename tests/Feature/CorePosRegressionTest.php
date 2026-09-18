@@ -32,6 +32,8 @@ class CorePosRegressionTest extends TestCase
     {
         parent::setUp();
 
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
         $this->branch = Branch::firstOrCreate(
             ['id' => 1],
             ['name' => 'Main POS Branch', 'code' => 'MAIN', 'state' => 'Maharashtra']

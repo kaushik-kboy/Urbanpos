@@ -57,6 +57,9 @@
         ],
         "test-pos": [
             "@php vendor/bin/phpunit tests/Feature/CorePosRegressionTest.php"
+        ],
+        "setup-hooks": [
+            "git config core.hooksPath .githooks"
         ]
     },
     "extra": {
