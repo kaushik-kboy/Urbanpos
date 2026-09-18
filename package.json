@@ -4,7 +4,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:frontend": "vitest run"
+        "test:frontend": "vitest run --pool=threads"
     },
     "devDependencies": {
         "@popperjs/core": "^2.11.6",
