@@ -1056,19 +1056,29 @@ class SalesBillController extends Controller
         }
 
         if ($request->isMethod('post') && !empty($header['customer_id'])) {
-            $recentDuplicate = SalesBill::where('customer_id', $header['customer_id'])
-                ->where('branch_id', $header['branch_id'])
-                ->where('created_at', '>=', now()->subSeconds(30))
-                ->whereHas('items', function ($iq) use ($filteredItems) {
-                    if (!empty($filteredItems[0]['item_id'])) {
-                        $iq->where('item_id', $filteredItems[0]['item_id']);
-                    }
-                })
-                ->exists();
-            if ($recentDuplicate) {
-                throw ValidationException::withMessages([
-                    'customer_id' => 'A matching sales bill was just submitted moments ago. Duplicate submission prevented.',
-                ]);
+            $cust = Customer::find($header['customer_id']);
+            $isWalkIn = $cust && (
+                stripos($cust->name, 'walk') !== false ||
+                stripos($cust->name, 'cash') !== false ||
+                stripos($cust->name, 'retail') !== false ||
+                empty($cust->mobile)
+            );
+
+            if (! $isWalkIn) {
+                $recentDuplicate = SalesBill::where('customer_id', $header['customer_id'])
+                    ->where('branch_id', $header['branch_id'])
+                    ->where('created_at', '>=', now()->subSeconds(10))
+                    ->whereHas('items', function ($iq) use ($filteredItems) {
+                        if (!empty($filteredItems[0]['item_id'])) {
+                            $iq->where('item_id', $filteredItems[0]['item_id']);
+                        }
+                    })
+                    ->exists();
+                if ($recentDuplicate) {
+                    throw ValidationException::withMessages([
+                        'customer_id' => 'A matching sales bill was just submitted moments ago. Duplicate submission prevented.',
+                    ]);
+                }
             }
         }
 
