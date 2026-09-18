@@ -247,4 +247,41 @@ class SystemErrorLogController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
+
+    /**
+     * Ingest client-side JavaScript error telemetry.
+     */
+    public function logClientError(Request $request): JsonResponse
+    {
+        $message = substr((string)$request->input('message', 'Client JavaScript Error'), 0, 1000);
+        $file = substr((string)$request->input('file', 'browser/script.js'), 0, 500);
+        $line = (int) $request->input('line', 0);
+        $url = substr((string)$request->input('url', $request->fullUrl()), 0, 950);
+        $stack = substr((string)$request->input('stack', ''), 0, 50000);
+        $extra = $request->input('extra', []);
+
+        $logger = app(\App\Services\System\ErrorLoggerService::class);
+        $path = parse_url($url, PHP_URL_PATH) ?? '';
+        $module = $logger->detectModule($path, new \Exception($message));
+
+        SystemErrorLog::create([
+            'module'       => $module,
+            'error_type'   => 'ClientJavaScriptError',
+            'message'      => $message,
+            'file'         => $file,
+            'line'         => $line,
+            'url'          => $url,
+            'method'       => 'BROWSER',
+            'user_id'      => Auth::id(),
+            'user_name'    => Auth::user()?->name ?? 'Cashier / Client',
+            'branch_id'    => session('active_branch_id') ?? Auth::user()?->branch_id,
+            'request_data' => !empty($extra) ? $extra : null,
+            'stack_trace'  => $stack ?: 'Client Browser JS Trace',
+            'ip_address'   => $request->ip(),
+            'user_agent'   => substr($request->userAgent() ?? '', 0, 490),
+            'status'       => 'Unresolved',
+        ]);
+
+        return response()->json(['success' => true]);
+    }
 }

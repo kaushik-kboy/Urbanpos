@@ -293,6 +293,7 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('system-error-logs/{id}', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'show'])->name('system-error-logs.show');
     Route::post('system-error-logs/{id}/resolve', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'resolve'])->name('system-error-logs.resolve');
     Route::post('system-error-logs/clear-old', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'clearOld'])->name('system-error-logs.clear-old');
+    Route::post('client-error-logs', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'logClientError'])->name('client-error-logs');
     Route::get('eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'toolsIndex'])->name('eway-update');
     Route::post('eway-bulk-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadBulkJson'])->name('eway-bulk-json');
     

@@ -162,4 +162,25 @@ class SystemErrorLogTest extends TestCase
         $response->assertOk();
         $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
     }
+
+    public function test_client_side_javascript_telemetry_logs_into_database(): void
+    {
+        $response = $this->actingAs($this->user)->postJson(route('tools.client-error-logs'), [
+            'message' => 'Uncaught TypeError: Cannot read properties of undefined',
+            'file' => 'https://pos.indianpetcompany.com/js/custom-script.js',
+            'line' => 142,
+            'url' => 'https://pos.indianpetcompany.com/sales/sales-bills/create',
+            'stack' => 'TypeError: Cannot read properties\n    at pos.js:142',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('system_error_logs', [
+            'module' => 'SalesBill',
+            'error_type' => 'ClientJavaScriptError',
+            'line' => 142,
+            'method' => 'BROWSER',
+        ]);
+    }
 }

@@ -90,6 +90,24 @@
     </div>
 </div>
 
+{{-- Unsaved Bill Draft Recovery Alert Banner --}}
+@if(empty($bill?->id))
+<div id="sb-draft-recovery-alert" class="alert alert-warning py-2 px-3 mb-3 shadow-sm d-none align-items-center justify-content-between">
+    <div>
+        <i class="fas fa-history mr-2 text-dark"></i>
+        <strong>Unsaved Bill Draft Found!</strong> You have an unsaved draft from <span id="sb-draft-saved-time" class="font-weight-bold text-dark"></span> containing <span id="sb-draft-item-count" class="badge badge-dark">0</span> item(s).
+    </div>
+    <div>
+        <button type="button" class="btn btn-success btn-xs font-weight-bold px-3 py-1 shadow-sm mr-2" id="btn-restore-bill-draft">
+            <i class="fas fa-undo mr-1"></i> Restore Bill
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-xs px-2" id="btn-discard-bill-draft">
+            <i class="fas fa-trash-alt mr-1"></i> Discard Draft
+        </button>
+    </div>
+</div>
+@endif
+
 <div class="table-responsive">
     <table class="table table-sm table-bordered" id="sb-items-table">
         <thead class="bg-light">
@@ -2161,6 +2179,155 @@
         if ($('select[name="customer_id"]').val()) {
             fetchCustomerLoyalty($('select[name="customer_id"]').val());
         }
+
+        /* ================================================================
+           AUTO-DRAFT & INSTANT BILL RECOVERY (Zero Data Loss Architecture)
+           ================================================================ */
+        const DRAFT_KEY = 'urbanpos_sales_bill_draft_v1';
+        let draftDebounceTimer = null;
+
+        function saveBillDraft() {
+            @if(!empty($bill?->id))
+                return; // Only active for new bills (not historical edits)
+            @endif
+
+            clearTimeout(draftDebounceTimer);
+            draftDebounceTimer = setTimeout(function () {
+                try {
+                    let items = [];
+                    $('#sb-items-body tr').each(function () {
+                        let $r = $(this);
+                        let itemId = $r.find('.sb-item-select').val();
+                        let itemCode = $r.find('.sb-item-code').val();
+                        let itemDesc = $r.find('.sb-item-desc').val();
+                        let qty = $r.find('.sb-qty').val();
+                        let sell = $r.find('.sb-sell-price').val();
+                        let mrp = $r.find('.sb-mrp').val();
+                        let exp = $r.find('.sb-exp-date').val();
+                        let gst = $r.find('.sb-gst-percent').val();
+                        let discPerc = $r.find('.sb-disc-percent').val();
+                        let discAmt = $r.find('.sb-disc-amount').val();
+
+                        if (itemId || itemCode || (parseFloat(qty) > 0)) {
+                            items.push({
+                                item_id: itemId,
+                                item_code: itemCode,
+                                item_desc: itemDesc,
+                                qty: qty,
+                                sell_price: sell,
+                                mrp: mrp,
+                                exp_date: exp,
+                                gst_percent: gst,
+                                disc_percent: discPerc,
+                                disc_amount: discAmt
+                            });
+                        }
+                    });
+
+                    if (items.length > 0) {
+                        let draft = {
+                            saved_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            timestamp: Date.now(),
+                            customer_id: $custSelect.val(),
+                            customer_text: $custSelect.find('option:selected').text(),
+                            branch_id: $('select[name="branch_id"]').val(),
+                            invoice_type: $('select[name="invoice_type"]').val(),
+                            delivery_type: $('select[name="delivery_type"]').val(),
+                            sales_type: $('select[name="sales_type"]').val(),
+                            items: items
+                        };
+                        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+                    }
+                } catch (e) {}
+            }, 400);
+        }
+
+        // On load: check if an uncommitted draft exists
+        @if(empty($bill?->id))
+        try {
+            let rawDraft = localStorage.getItem(DRAFT_KEY);
+            if (rawDraft) {
+                let draft = JSON.parse(rawDraft);
+                if (draft && draft.items && draft.items.length > 0) {
+                    $('#sb-draft-saved-time').text(draft.saved_at || 'earlier today');
+                    $('#sb-draft-item-count').text(draft.items.length);
+                    $('#sb-draft-recovery-alert').removeClass('d-none').addClass('d-flex');
+                }
+            }
+        } catch (e) {}
+
+        // Restore draft button
+        $('#btn-restore-bill-draft').on('click', function () {
+            try {
+                let rawDraft = localStorage.getItem(DRAFT_KEY);
+                if (!rawDraft) return;
+                let draft = JSON.parse(rawDraft);
+                if (!draft || !draft.items || !draft.items.length) return;
+
+                if (draft.customer_id) {
+                    if (!$custSelect.find(`option[value="${draft.customer_id}"]`).length) {
+                        let opt = new Option(draft.customer_text || 'Customer', draft.customer_id, true, true);
+                        $custSelect.append(opt);
+                    }
+                    $custSelect.val(draft.customer_id).trigger('change');
+                }
+                if (draft.branch_id) $('select[name="branch_id"]').val(draft.branch_id).trigger('change');
+                if (draft.invoice_type) $('select[name="invoice_type"]').val(draft.invoice_type);
+                if (draft.delivery_type) $('select[name="delivery_type"]').val(draft.delivery_type);
+                if (draft.sales_type) $('select[name="sales_type"]').val(draft.sales_type);
+
+                let $tbody = $('#sb-items-body');
+                $tbody.empty();
+
+                draft.items.forEach(function (it, idx) {
+                    let html = $('#sb-row-template').html().replaceAll('__INDEX__', idx);
+                    let $newRow = $(html);
+                    $newRow.find('.sb-item-select').val(it.item_id);
+                    $newRow.find('.sb-item-code').val(it.item_code);
+                    $newRow.find('.sb-item-desc').val(it.item_desc);
+                    $newRow.find('.sb-qty').val(it.qty);
+                    $newRow.find('.sb-sell-price').val(it.sell_price);
+                    $newRow.find('.sb-mrp').val(it.mrp);
+                    $newRow.find('.sb-exp-date').val(it.exp_date);
+                    $newRow.find('.sb-gst-percent').val(it.gst_percent);
+                    $newRow.find('.sb-disc-percent').val(it.disc_percent);
+                    $newRow.find('.sb-disc-amount').val(it.disc_amount);
+
+                    $tbody.append($newRow);
+                    calculateRow($newRow, 'base');
+                });
+
+                rowIndex = draft.items.length;
+                updateRowNumbers();
+                calculateTotals();
+
+                $('#sb-draft-recovery-alert').addClass('d-none').removeClass('d-flex');
+            } catch (err) {
+                alert('Could not restore draft: ' + err);
+            }
+        });
+
+        // Discard draft button
+        $('#btn-discard-bill-draft').on('click', function () {
+            if (confirm('Discard this saved bill draft?')) {
+                localStorage.removeItem(DRAFT_KEY);
+                $('#sb-draft-recovery-alert').addClass('d-none').removeClass('d-flex');
+            }
+        });
+        @endif
+
+        // Trigger draft saving on changes
+        $(document).on('input change', '#sb-items-body input, #sb-items-body select, select[name="customer_id"]', function () {
+            saveBillDraft();
+        });
+
+        // Clear draft upon successful submit or manual reset
+        $(document).on('submit', '#sales-bill-form, form[action*="sales-bills"]', function () {
+            localStorage.removeItem(DRAFT_KEY);
+        });
+        $(document).on('click', '.btn-reset-form', function () {
+            localStorage.removeItem(DRAFT_KEY);
+        });
 
     });
 </script>
