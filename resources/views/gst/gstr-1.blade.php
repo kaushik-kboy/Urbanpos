@@ -332,7 +332,6 @@
             </div>
         </div>
     </div>
-</div>
 
 {{-- Detail Modal when clicking any card --}}
 <div class="modal fade" id="gstr1CardModal" tabindex="-1" role="dialog" aria-hidden="true">

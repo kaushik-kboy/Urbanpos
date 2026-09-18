@@ -126,4 +126,15 @@ class SalesBillIdempotencyTest extends TestCase
         $this->assertCount(1, $afterSecondBills, 'Second duplicate submission MUST NOT create a second bill in database.');
         $this->assertEquals($createdBillId, $afterSecondBills->first()->id, 'Must reference the already created bill.');
     }
+
+    public function test_create_sales_bill_view_renders_save_and_reset_buttons(): void
+    {
+        $response = $this->actingAs($this->cashier)->get(route('sales.sales-bills.create'));
+
+        $response->assertOk();
+        $response->assertSee('Create Sales Bill');
+        $response->assertSee('<button type="submit" class="btn btn-primary">Save</button>', false);
+        $response->assertSee('btn-reset-form');
+        $response->assertSee('Cancel');
+    }
 }

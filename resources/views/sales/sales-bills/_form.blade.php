@@ -567,6 +567,10 @@
                 <div class="tender-hotkey-bar">
                     Press (A) - Cash; (B) - Credit; (C) - Card; (W) - Wallet; (N) - RRN
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- ============================================================
      CUSTOMER INVOICES HISTORY MODAL — Opens on Invoices button click
      ============================================================ -->
