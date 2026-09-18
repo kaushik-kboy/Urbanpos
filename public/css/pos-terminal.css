@@ -1,0 +1,451 @@
+/* UrbanPOS Modern High-Speed Retail Terminal Styles */
+:root {
+    --pos-bg: #f3f4f6;
+    --pos-header-bg: #1e293b;
+    --pos-card-bg: #ffffff;
+    --pos-primary: #2563eb;
+    --pos-primary-hover: #1d4ed8;
+    --pos-success: #10b981;
+    --pos-success-hover: #059669;
+    --pos-accent: #0f766e;
+    --pos-border: #e2e8f0;
+    --pos-text-main: #0f172a;
+    --pos-text-muted: #64748b;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--pos-bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--pos-text-main);
+    overflow: hidden; /* Prevent full-page scroll on POS counter */
+    user-select: none;
+}
+
+/* POS Screen Shell */
+.pos-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Top Navigation Bar */
+.pos-navbar {
+    height: 52px;
+    background: var(--pos-header-bg);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.pos-brand {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    color: #38bdf8;
+}
+
+.pos-brand i {
+    color: #10b981;
+}
+
+.pos-meta-item {
+    font-size: 0.82rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Main Split Screen (2-Pane Kiosk Layout) */
+.pos-workspace {
+    flex: 1;
+    display: flex;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+}
+
+/* Left Pane (Cart & Scanner) - 68% */
+.pos-left-pane {
+    flex: 68;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-right: 1px solid var(--pos-border);
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Barcode Scanner Bar */
+.pos-scan-bar {
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--pos-border);
+}
+
+.pos-scanner-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.pos-scanner-icon {
+    position: absolute;
+    left: 14px;
+    color: #64748b;
+    font-size: 1.2rem;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.pos-scanner-input {
+    height: 48px;
+    padding-left: 46px;
+    padding-right: 100px;
+    font-size: 1.05rem;
+    font-weight: 500;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    width: 100%;
+    transition: all 0.2s ease;
+    background: #ffffff;
+}
+
+.pos-scanner-input:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.pos-scanner-tag {
+    position: absolute;
+    right: 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: #e2e8f0;
+    color: #475569;
+    padding: 3px 7px;
+    border-radius: 4px;
+}
+
+/* Cart Table Container */
+.pos-cart-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    position: relative;
+}
+
+.pos-cart-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: collapse;
+}
+
+.pos-cart-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 12px;
+    border-bottom: 2px solid var(--pos-border);
+    z-index: 5;
+}
+
+.pos-cart-table tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+}
+
+.pos-cart-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.pos-cart-table td {
+    padding: 8px 12px;
+    vertical-align: middle;
+    font-size: 0.92rem;
+}
+
+/* Quantity Touch Controller */
+.pos-qty-control {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    overflow: hidden;
+}
+
+.pos-qty-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    color: #334155;
+    transition: background 0.1s;
+}
+
+.pos-qty-btn:hover {
+    background: #e2e8f0;
+}
+
+.pos-qty-btn:active {
+    background: #cbd5e1;
+}
+
+.pos-qty-input {
+    width: 44px;
+    height: 32px;
+    text-align: center;
+    border: none;
+    background: transparent;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #0f172a;
+    outline: none;
+}
+
+/* Bottom Quick Action Bar on Left Pane */
+.pos-action-bar {
+    height: 56px;
+    background: #f8fafc;
+    border-top: 1px solid var(--pos-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
+/* Right Pane (Cashier Checkout Station) - 32% */
+.pos-right-pane {
+    flex: 32;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    height: 100%;
+    overflow-y: auto;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+/* Customer Card */
+.pos-customer-card {
+    background: #f8fafc;
+    border: 1px solid var(--pos-border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+/* Order Summary Box */
+.pos-summary-card {
+    background: #f8fafc;
+    border: 1px solid var(--pos-border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.pos-summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    color: var(--pos-text-muted);
+    margin-bottom: 6px;
+}
+
+.pos-summary-line.bold {
+    color: var(--pos-text-main);
+    font-weight: 700;
+}
+
+/* Grand Total LED Display Card */
+.pos-total-display {
+    background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+    color: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
+}
+
+.pos-total-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.9;
+    font-weight: 600;
+}
+
+.pos-total-amount {
+    font-size: 2.3rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-top: 2px;
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Tender Modes Pills */
+.pos-tender-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.pos-tender-btn {
+    padding: 10px 6px;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+    background: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #334155;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.15s ease;
+}
+
+.pos-tender-btn i {
+    font-size: 1.2rem;
+    margin-bottom: 4px;
+}
+
+.pos-tender-btn.active {
+    border-color: #10b981;
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+/* Cash Denomination Chips */
+.pos-cash-chips {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.pos-cash-chip {
+    flex: 1;
+    min-width: 55px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 4px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.pos-cash-chip:hover {
+    background: #e2e8f0;
+}
+
+/* Giant Pay Button */
+.pos-pay-btn {
+    width: 100%;
+    height: 54px;
+    background: #10b981;
+    border: none;
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+    margin-top: auto;
+}
+
+.pos-pay-btn:hover {
+    background: #059669;
+}
+
+.pos-pay-btn:active {
+    transform: scale(0.99);
+}
+
+.pos-pay-btn:disabled {
+    background: #94a3b8;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* Empty Cart State */
+.pos-empty-cart {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    padding: 40px;
+    text-align: center;
+}
+
+.pos-empty-cart i {
+    font-size: 3.5rem;
+    margin-bottom: 14px;
+    opacity: 0.4;
+}
+
+/* Live Search Suggestions Dropdown */
+.pos-search-results {
+    position: absolute;
+    top: 60px;
+    left: 16px;
+    right: 16px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border: 1px solid var(--pos-border);
+    max-height: 380px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.pos-search-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.pos-search-item:hover, .pos-search-item.active {
+    background-color: #f1f5f9;
+}

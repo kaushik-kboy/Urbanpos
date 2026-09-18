@@ -260,6 +260,8 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('aux/{module}', [SalesAuxController::class, 'renderModule'])->name('aux');
 });
 
+Route::middleware('auth')->get('pos', [\App\Http\Controllers\Sales\SalesBillController::class, 'posTerminal'])->name('pos.terminal');
+
 Route::middleware('auth')->get('pos-ping', function () {
     return response()->json([
         'status' => 'pong',

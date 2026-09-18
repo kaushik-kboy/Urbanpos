@@ -306,6 +306,12 @@ return [
             'topnav_right' => true,
         ],
         [
+            'text' => 'POS Terminal',
+            'url' => 'pos',
+            'icon' => 'fas fa-cash-register text-success',
+            'topnav_right' => true,
+        ],
+        [
             'type' => 'fullscreen-widget',
             'topnav_right' => true,
         ],

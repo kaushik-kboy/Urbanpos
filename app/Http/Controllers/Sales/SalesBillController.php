@@ -92,6 +92,31 @@ class SalesBillController extends Controller
         return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes'));
     }
 
+    public function posTerminal(Request $request)
+    {
+        $options = $this->formOptions();
+        $options['nextBillNumber'] = $this->nextNumber();
+        $options['activeTillSession'] = \App\Models\TillSession::where('user_id', auth()->id())
+            ->where('status', 'Open')
+            ->latest()
+            ->first();
+
+        // Default or walk-in customer detection
+        $walkInCust = Customer::where('status', true)
+            ->where(function ($q) {
+                $q->where('name', 'like', '%walk%')
+                  ->orWhere('name', 'like', '%cash%')
+                  ->orWhere('name', 'like', '%retail%');
+            })->first();
+
+        if ($walkInCust && !isset($options['customers'][$walkInCust->id])) {
+            $options['customers']->put($walkInCust->id, $walkInCust->name);
+        }
+        $options['defaultCustomerId'] = $walkInCust?->id ?? ($options['customers']->keys()->first() ?? null);
+
+        return view('pos.terminal', $options);
+    }
+
     public function create(Request $request)
     {
         $options = [];

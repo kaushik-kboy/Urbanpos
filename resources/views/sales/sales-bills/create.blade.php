@@ -3,7 +3,12 @@
 @section('title', 'Add Sales Bill')
 
 @section('content_header')
-    <h1>Create Sales Bill</h1>
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="m-0 font-weight-bold text-dark">Create Sales Bill</h1>
+        <a href="{{ route('pos.terminal') }}" class="btn btn-success font-weight-bold shadow-sm">
+            <i class="fas fa-cash-register mr-1"></i> Launch Modern POS Terminal View
+        </a>
+    </div>
 @stop
 
 @section('content')
