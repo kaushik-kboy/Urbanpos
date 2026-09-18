@@ -1601,6 +1601,7 @@
 
             $('#sb-batch-modal').modal('hide');
             calculateRow(activeModalRow, 'base');
+            saveBillDraft(); // Save draft after batch is applied
             setTimeout(() => activeModalRow.find('.sb-qty').focus().select(), 100);
         }
 
@@ -1712,14 +1713,17 @@
                         }
                         $batchWrap.addClass('d-none');
                         calculateRow($row, 'base');
+                        saveBillDraft();
                         setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
                     } else if (batches.length > 1) {
                         // Multiple batches exist: show button and pop up selection modal!
                         $batchWrap.removeClass('d-none');
                         showBatchModal($row, item, batches);
+                        // Draft will be saved when user picks batch from modal
                     } else {
                         $batchWrap.addClass('d-none');
                         calculateRow($row, 'base');
+                        saveBillDraft();
                         setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
                     }
 
@@ -2242,19 +2246,23 @@
             }, 400);
         }
 
-        // On load: check if an uncommitted draft exists
+        // On load: check if an uncommitted draft exists (slight delay to ensure DOM is ready)
         @if(empty($bill?->id))
-        try {
-            let rawDraft = localStorage.getItem(DRAFT_KEY);
-            if (rawDraft) {
-                let draft = JSON.parse(rawDraft);
-                if (draft && draft.items && draft.items.length > 0) {
-                    $('#sb-draft-saved-time').text(draft.saved_at || 'earlier today');
-                    $('#sb-draft-item-count').text(draft.items.length);
-                    $('#sb-draft-recovery-alert').removeClass('d-none').addClass('d-flex');
+        setTimeout(function() {
+            try {
+                let rawDraft = localStorage.getItem(DRAFT_KEY);
+                if (rawDraft) {
+                    let draft = JSON.parse(rawDraft);
+                    if (draft && draft.items && draft.items.length > 0) {
+                        $('#sb-draft-saved-time').text(draft.saved_at || 'earlier today');
+                        $('#sb-draft-item-count').text(draft.items.length);
+                        $('#sb-draft-recovery-alert').removeClass('d-none').addClass('d-flex');
+                    }
                 }
+            } catch (e) {
+                console.warn('[UrbanPOS Draft] Error reading draft:', e);
             }
-        } catch (e) {}
+        }, 300);
 
         // Restore draft button
         $('#btn-restore-bill-draft').on('click', function () {
@@ -2316,8 +2324,8 @@
         });
         @endif
 
-        // Trigger draft saving on changes
-        $(document).on('input change', '#sb-items-body input, #sb-items-body select, select[name="customer_id"]', function () {
+        // Trigger draft saving on any input changes (qty, discount, price, customer, etc.)
+        $(document).on('input change', '#sb-items-body input, #sb-items-body select, select[name="customer_id"], select[name="branch_id"]', function () {
             saveBillDraft();
         });
 
