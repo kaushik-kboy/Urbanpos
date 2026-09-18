@@ -63,7 +63,7 @@ class ItemController extends Controller
 
     public function store(Request $request)
     {
-        $data = $this->validateData($request);
+        $data = $this->sanitizeItemData($this->validateData($request));
         Item::create($data);
 
         return redirect()->route('master.items.index')->with('status', 'Item created successfully.');
@@ -76,10 +76,44 @@ class ItemController extends Controller
 
     public function update(Request $request, Item $item)
     {
-        $data = $this->validateData($request, $item);
+        $data = $this->sanitizeItemData($this->validateData($request, $item));
         $item->update($data);
 
         return redirect()->route('master.items.index')->with('status', 'Item updated successfully.');
+    }
+
+    private function sanitizeItemData(array $data): array
+    {
+        $cost = $data['cost_price'] ?? null;
+        $landing = $data['landing_cost'] ?? null;
+        $sell = $data['sell_price'] ?? null;
+        $mrp = $data['mrp'] ?? null;
+
+        $data['cost_price'] = ($cost !== null && $cost !== '') ? $cost : (($landing !== null && $landing !== '') ? $landing : 0);
+        $data['landing_cost'] = ($landing !== null && $landing !== '') ? $landing : (($cost !== null && $cost !== '') ? $cost : 0);
+        $data['sell_price'] = ($sell !== null && $sell !== '') ? $sell : (($mrp !== null && $mrp !== '') ? $mrp : 0);
+        $data['mrp'] = ($mrp !== null && $mrp !== '') ? $mrp : (($sell !== null && $sell !== '') ? $sell : 0);
+
+        if (!isset($data['product_type']) || empty($data['product_type'])) {
+            $data['product_type'] = 'Standard';
+        }
+        if (!isset($data['status'])) {
+            $data['status'] = true;
+        }
+        if (!isset($data['store_pickup'])) {
+            $data['store_pickup'] = false;
+        }
+        if (!isset($data['tax_inclusive'])) {
+            $data['tax_inclusive'] = false;
+        }
+        if (!isset($data['batch_expiry_details']) || empty($data['batch_expiry_details'])) {
+            $data['batch_expiry_details'] = 'Not Required';
+        }
+        if (!isset($data['allow_negative_stock'])) {
+            $data['allow_negative_stock'] = false;
+        }
+
+        return $data;
     }
 
     public function destroy(Item $item)

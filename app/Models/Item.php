@@ -29,6 +29,36 @@ class Item extends Model
         'allow_negative_stock' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Item $item) {
+            // If cost_price is null/empty, fallback to landing_cost or 0
+            if ($item->cost_price === null || $item->cost_price === '') {
+                $item->cost_price = ($item->landing_cost !== null && $item->landing_cost !== '') ? $item->landing_cost : 0;
+            }
+            // If landing_cost is null/empty, fallback to cost_price or 0
+            if ($item->landing_cost === null || $item->landing_cost === '') {
+                $item->landing_cost = ($item->cost_price !== null && $item->cost_price !== '') ? $item->cost_price : 0;
+            }
+            // If sell_price is null/empty, fallback to mrp or 0
+            if ($item->sell_price === null || $item->sell_price === '') {
+                $item->sell_price = ($item->mrp !== null && $item->mrp !== '') ? $item->mrp : 0;
+            }
+            // If mrp is null/empty, fallback to sell_price or 0
+            if ($item->mrp === null || $item->mrp === '') {
+                $item->mrp = ($item->sell_price !== null && $item->sell_price !== '') ? $item->sell_price : 0;
+            }
+
+            // Fallbacks for enum / boolean fields
+            $item->product_type = $item->product_type ?: 'Standard';
+            $item->status = $item->status ?? true;
+            $item->store_pickup = $item->store_pickup ?? false;
+            $item->tax_inclusive = $item->tax_inclusive ?? false;
+            $item->batch_expiry_details = $item->batch_expiry_details ?: 'Not Required';
+            $item->allow_negative_stock = $item->allow_negative_stock ?? false;
+        });
+    }
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);

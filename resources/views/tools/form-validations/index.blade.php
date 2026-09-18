@@ -103,6 +103,10 @@
                         @forelse($fields as $field)
                             @php
                                 $isDateField = in_array($field->field_type, ['date', 'datetime'], true);
+                                $isProtectedCore = in_array($field->field_name, [
+                                    'name', 'branch_id', 'supplier_id', 'customer_id', 'from_branch_id', 'to_branch_id',
+                                    'bill_number', 'invoice_number', 'po_number', 'item_code', 'code'
+                                ], true);
                             @endphp
                             <tr>
                                 <td>
@@ -113,12 +117,23 @@
 
                                 {{-- Required Toggle --}}
                                 <td class="text-center align-middle">
-                                    <div class="custom-control custom-switch d-inline-block">
-                                        <input type="checkbox" class="custom-control-input" id="req_{{ $field->id }}"
-                                               name="fields[{{ $field->id }}][is_required]" value="1"
-                                               {{ $field->is_required ? 'checked' : '' }}>
-                                        <label class="custom-control-label" for="req_{{ $field->id }}"></label>
-                                    </div>
+                                    @if($isProtectedCore)
+                                        <div class="custom-control custom-switch d-inline-block" title="System-critical identifier (Required by Database Schema)">
+                                            <input type="checkbox" class="custom-control-input" id="req_{{ $field->id }}"
+                                                   name="fields[{{ $field->id }}][is_required]" value="1"
+                                                   checked disabled>
+                                            <input type="hidden" name="fields[{{ $field->id }}][is_required]" value="1">
+                                            <label class="custom-control-label" for="req_{{ $field->id }}"></label>
+                                        </div>
+                                        <br><span class="badge badge-secondary" style="font-size: 9px;"><i class="fas fa-lock mr-1"></i>Core</span>
+                                    @else
+                                        <div class="custom-control custom-switch d-inline-block">
+                                            <input type="checkbox" class="custom-control-input" id="req_{{ $field->id }}"
+                                                   name="fields[{{ $field->id }}][is_required]" value="1"
+                                                   {{ $field->is_required ? 'checked' : '' }}>
+                                            <label class="custom-control-label" for="req_{{ $field->id }}"></label>
+                                        </div>
+                                    @endif
                                 </td>
 
                                 {{-- Block Future Date Toggle --}}

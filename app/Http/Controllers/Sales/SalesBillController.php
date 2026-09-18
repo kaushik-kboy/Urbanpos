@@ -308,6 +308,14 @@ class SalesBillController extends Controller
     {
         $salesBill->load(['items.item.gstTax', 'customer']);
 
+        $branchId = (int) $salesBill->branch_id;
+        foreach ($salesBill->items as $billItem) {
+            $currentStock = (float) (\App\Models\ItemStock::where('item_id', $billItem->item_id)
+                ->where('branch_id', $branchId)
+                ->value('quantity') ?? 0);
+            $billItem->stock = $currentStock + (float) $billItem->qty;
+        }
+
         return view('sales.sales-bills.edit', array_merge(['salesBill' => $salesBill], $this->formOptions($salesBill, $salesBill->items, $salesBill->customer_id)));
     }
 
@@ -770,6 +778,13 @@ class SalesBillController extends Controller
             ->where('branch_id', $branchId)
             ->value('quantity') ?? 0);
 
+        if ($salesBillId = $request->input('sales_bill_id')) {
+            $alreadyInBill = (float) (\App\Models\SalesBillItem::where('sales_bill_id', $salesBillId)
+                ->where('item_id', $item->id)
+                ->value('qty') ?? 0);
+            $stock += $alreadyInBill;
+        }
+
         // Fetch purchase batches directly from PurchaseInvoiceItem (purchase se)
         // Check for selected branch first
         $piItems = \App\Models\PurchaseInvoiceItem::with('purchaseInvoice')
@@ -859,6 +874,7 @@ class SalesBillController extends Controller
                 'stock' => $stock,
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
                 'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
+                'allow_negative_stock' => (bool) ($item->allow_negative_stock ?? false),
             ],
             'batches' => $batches,
         ]);
@@ -911,7 +927,7 @@ class SalesBillController extends Controller
         $existingItemIds = collect($salesBill?->items ?? ($convertedItems ?? []))->pluck('item_id')->filter()->unique();
         $items = $existingItemIds->isNotEmpty()
             ? Item::whereIn('id', $existingItemIds)->with('gstTax:id,percentage')->get([
-                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details'
+                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details', 'allow_negative_stock'
             ])
             : collect();
 

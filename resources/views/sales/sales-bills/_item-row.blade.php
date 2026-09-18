@@ -24,7 +24,7 @@
         $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
     }
 @endphp
-<tr data-stock="{{ $line->stock ?? 0 }}">
+<tr data-stock="{{ $line->stock ?? 0 }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
     <td class="text-center align-middle font-weight-bold sb-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     <td style="min-width: 110px;">
         <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode">

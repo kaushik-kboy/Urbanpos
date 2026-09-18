@@ -57,8 +57,24 @@ class DynamicValidationService
                         array_unshift($ruleList, 'required');
                     }
                 } else {
-                    // Do not mark core foreign keys nullable if database schema forbids null
-                    $protectedKeys = ['branch_id', 'supplier_id', 'customer_id', 'from_branch_id', 'to_branch_id'];
+                    // Core structural identity and foreign keys that must never be stripped of 'required'
+                    // to prevent MySQL 1048 Not Null constraint violations
+                    $protectedKeys = [
+                        'name',
+                        'item_code',
+                        'code',
+                        'branch_id',
+                        'supplier_id',
+                        'customer_id',
+                        'from_branch_id',
+                        'to_branch_id',
+                        'bill_number',
+                        'invoice_number',
+                        'po_number',
+                        'return_number',
+                        'indent_number',
+                        'receipt_number',
+                    ];
                     if (!in_array($fieldName, $protectedKeys, true)) {
                         $ruleList = array_values(array_filter($ruleList, fn ($r) => $r !== 'required'));
                         if (!in_array('nullable', $ruleList, true)) {

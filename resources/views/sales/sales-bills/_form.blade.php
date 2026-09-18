@@ -1375,7 +1375,10 @@
             // Strict stock validation: check TOTAL qty across ALL rows for the same item
             let $qtyInput = $row.find('.sb-qty');
             let itemId = $row.find('.sb-item-select').val();
-            if (stock >= 0 && itemId && qty > 0) {
+            let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
+                                  ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
+
+            if (!isAllowNegative && stock >= 0 && itemId && qty > 0) {
                 let totalForItem = 0;
                 $('#sb-items-body tr').each(function () {
                     if ($(this).find('.sb-item-select').val() === itemId) {
@@ -1393,7 +1396,7 @@
                         }
                     }
                 });
-                if (totalForItem > stock && !$qtyInput.data('stock-alerted')) {
+                if (source !== 'initial' && totalForItem > stock && !$qtyInput.data('stock-alerted')) {
                     $qtyInput.data('stock-alerted', true);
                     alert('Stock is only ' + formatDigits(stock) + '. Quantity (' + formatDigits(totalForItem) + ') cannot exceed available stock!');
                 } else if (totalForItem <= stock) {
@@ -1438,8 +1441,10 @@
                 if (itemId) {
                     let totalQty = itemTotals[itemId] || 0;
                     let stock = itemStocks[itemId] !== undefined ? itemStocks[itemId] : null;
+                    let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
+                                          ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
 
-                    if (stock !== null && stock >= 0 && totalQty > stock) {
+                    if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
                         hasStockError = true;
@@ -1647,7 +1652,11 @@
             let $gst = $row.find('.sb-gst-percent');
             let $batchWrap = $row.find('.sb-batch-btn-wrap');
 
+            let billId = '{{ $bill->id ?? "" }}';
             let params = { branch_id: branchId };
+            if (billId) {
+                params.sales_bill_id = billId;
+            }
             if (itemId) {
                 params.item_id = itemId;
             } else if (query) {
@@ -1678,6 +1687,10 @@
                     let stockNum = item.stock ? parseFloat(item.stock) : 0;
                     $row.attr('data-stock', stockNum);
                     $row.find('.sb-item-stock-val').val(stockNum);
+                    if (item.allow_negative_stock !== undefined) {
+                        $row.attr('data-allow-negative-stock', item.allow_negative_stock ? '1' : '0');
+                        $row.data('allow-negative-stock', item.allow_negative_stock ? 1 : 0);
+                    }
 
                     // Set Sell Price, MRP, GST %
                     if (item.sell_price > 0 && (!$sell.val() || parseFloat($sell.val()) === 0)) {
