@@ -4,8 +4,21 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($transfer?->items ?? collect());
 @endphp
 
-<div class="row mb-3">
-    <div class="col-md-3">
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center">
+        <h6 class="font-weight-bold text-dark mb-0 mr-2"><i class="fas fa-dolly-flatbed text-primary mr-1"></i> Transfer Details</h6>
+        <span class="badge badge-primary p-1 mr-1">F2: Search</span>
+        <span class="badge badge-success p-1">F6: Dispatch</span>
+    </div>
+    <x-form-layout-customizer
+        form-key="stock_transfers.header"
+        container-id="st-header-fields-grid"
+        title="Customize Stock Transfer Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="st-header-fields-grid">
+    <div class="field-wrapper col-md-4" data-field="from_branch_id" data-label="From Branch" data-default-order="1" data-core="1">
         <label for="from_branch_id" class="font-weight-bold">From Branch <span class="text-danger">*</span></label>
         <select name="from_branch_id" id="from_branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
@@ -14,7 +27,7 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-3">
+    <div class="field-wrapper col-md-4" data-field="to_branch_id" data-label="To Branch" data-default-order="2" data-core="1">
         <label for="to_branch_id" class="font-weight-bold">To Branch <span class="text-danger">*</span></label>
         <select name="to_branch_id" id="to_branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
@@ -23,15 +36,9 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-3">
+    <div class="field-wrapper col-md-4" data-field="transfer_date" data-label="Transfer Date" data-default-order="3" data-core="1">
         <label for="transfer_date" class="font-weight-bold">Transfer Date <span class="text-danger">*</span></label>
         <input type="date" name="transfer_date" id="transfer_date" class="form-control" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required>
-    </div>
-    <div class="col-md-3 d-flex align-items-end justify-content-end">
-        <div class="text-muted small text-right">
-            <span class="badge badge-primary p-1 mr-1">F2: Search Popup</span>
-            <span class="badge badge-success p-1">F6: Dispatch</span>
-        </div>
     </div>
 </div>
 

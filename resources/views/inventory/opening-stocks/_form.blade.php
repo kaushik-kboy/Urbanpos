@@ -4,8 +4,23 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($entry?->items ?? collect());
 @endphp
 
-<div class="row mb-3">
-    <div class="col-md-4">
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center">
+        <h6 class="font-weight-bold text-dark mb-0 mr-2"><i class="fas fa-boxes text-primary mr-1"></i> Opening Stock Header</h6>
+        <div class="text-muted small">
+            <span class="badge badge-primary p-1 mr-1">F2: Search</span>
+            <span class="badge badge-success p-1 mr-1">F6: Save</span>
+        </div>
+    </div>
+    <x-form-layout-customizer
+        form-key="opening_stocks.header"
+        container-id="os-header-fields-grid"
+        title="Customize Opening Stock Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="os-header-fields-grid">
+    <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Location / Branch" data-default-order="1" data-core="1">
         <label for="branch_id" class="font-weight-bold">Location / Branch <span class="text-danger">*</span></label>
         <select name="branch_id" id="branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
@@ -14,19 +29,9 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-3">
+    <div class="field-wrapper col-md-6" data-field="entry_date" data-label="Entry Date" data-default-order="2" data-core="1">
         <label for="entry_date" class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>
         <input type="date" name="entry_date" id="entry_date" class="form-control" value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" required>
-    </div>
-    <div class="col-md-5 d-flex align-items-end justify-content-end">
-        <div class="text-muted small text-right">
-            <span class="badge badge-primary p-1 mr-1">F2: Search Popup</span>
-            <span class="badge badge-info p-1 mr-1">F5: New</span>
-            <span class="badge badge-success p-1 mr-1">F6: Save</span>
-            <span class="badge badge-secondary p-1 mr-1">F7: View</span>
-            <span class="badge badge-warning p-1 mr-1">F9: Clear</span>
-            <span class="badge badge-dark p-1">F10: Close</span>
-        </div>
     </div>
 </div>
 

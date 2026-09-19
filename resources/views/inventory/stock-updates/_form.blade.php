@@ -4,9 +4,23 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($entry?->items ?? collect());
 @endphp
 
-<h5 class="mb-3 font-weight-bold"><i class="fas fa-file-alt mr-1 text-primary"></i> General Information</h5>
-<x-select name="branch_id" label="Location" :options="$branches" :selected="old('branch_id', $entry->branch_id ?? '')" placeholder="Select a branch" required />
-<x-field name="entry_date" label="Date" type="date" :value="old('entry_date', optional($entry->entry_date ?? now())->format('Y-m-d'))" required />
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0 font-weight-bold"><i class="fas fa-file-alt mr-1 text-primary"></i> General Information</h5>
+    <x-form-layout-customizer
+        form-key="stock_updates.header"
+        container-id="su-header-fields-grid"
+        title="Customize Stock Update Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="su-header-fields-grid">
+    <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Location" data-default-order="1" data-core="1">
+        <x-select name="branch_id" label="Location" :options="$branches" :selected="old('branch_id', $entry->branch_id ?? '')" placeholder="Select a branch" required />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="entry_date" data-label="Date" data-default-order="2" data-core="1">
+        <x-field name="entry_date" label="Date" type="date" :value="old('entry_date', optional($entry->entry_date ?? now())->format('Y-m-d'))" required />
+    </div>
+</div>
 
 <hr>
 <div class="d-flex justify-content-between align-items-center mb-3">

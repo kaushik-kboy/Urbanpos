@@ -4,8 +4,23 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($entry?->items ?? collect());
 @endphp
 
-<div class="row mb-3">
-    <div class="col-md-4">
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center">
+        <h6 class="font-weight-bold text-dark mb-0 mr-2"><i class="fas fa-boxes-alt text-danger mr-1"></i> Damage / Wastage Header</h6>
+        <div class="text-muted small">
+            <span class="badge badge-danger p-1 mr-1">F2: Search</span>
+            <span class="badge badge-primary p-1">F5: Add Row</span>
+        </div>
+    </div>
+    <x-form-layout-customizer
+        form-key="damage_stocks.header"
+        container-id="ds-header-fields-grid"
+        title="Customize Damage Stock Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="ds-header-fields-grid">
+    <div class="field-wrapper col-md-4" data-field="branch_id" data-label="Location / Branch" data-default-order="1" data-core="1">
         <label for="branch_id" class="font-weight-bold">Location / Branch <span class="text-danger">*</span></label>
         <select name="branch_id" id="branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
@@ -14,24 +29,18 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-3">
+    <div class="field-wrapper col-md-4" data-field="entry_date" data-label="Entry Date" data-default-order="2" data-core="1">
         <label for="entry_date" class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>
         <input type="date" name="entry_date" id="entry_date" class="form-control" 
                value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" required>
     </div>
-    <div class="col-md-3">
+    <div class="field-wrapper col-md-4" data-field="wastage_type" data-label="Wastage Type" data-default-order="3" data-core="1">
         <label for="wastage_type" class="font-weight-bold">Wastage Type <span class="text-danger">*</span></label>
         <select name="wastage_type" id="wastage_type" class="form-control select2" required>
             <option value="Damage" @selected(($entry->wastage_type ?? old('wastage_type', 'Damage')) === 'Damage')>Damage</option>
             <option value="Wastage" @selected(($entry->wastage_type ?? old('wastage_type')) === 'Wastage')>Wastage</option>
             <option value="Theft" @selected(($entry->wastage_type ?? old('wastage_type')) === 'Theft')>Theft</option>
         </select>
-    </div>
-    <div class="col-md-2 d-flex align-items-end justify-content-end">
-        <div class="text-muted small text-right">
-            <span class="badge badge-danger p-1 mr-1">F2: Search Popup</span>
-            <span class="badge badge-primary p-1">F5: Add Row</span>
-        </div>
     </div>
 </div>
 

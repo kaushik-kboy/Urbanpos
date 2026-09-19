@@ -202,4 +202,54 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="supplier_id"', false);
     }
+
+    public function test_stock_transfer_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('inventory.stock-transfers.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('st-header-fields-grid');
+        $response->assertSee('data-field="from_branch_id"', false);
+        $response->assertSee('data-field="to_branch_id"', false);
+        $response->assertSee('data-field="transfer_date"', false);
+    }
+
+    public function test_opening_stock_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('inventory.opening-stocks.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('os-header-fields-grid');
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="entry_date"', false);
+    }
+
+    public function test_damage_stock_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('inventory.damage-stocks.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('ds-header-fields-grid');
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="entry_date"', false);
+        $response->assertSee('data-field="wastage_type"', false);
+    }
+
+    public function test_stock_update_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('inventory.stock-updates.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('su-header-fields-grid');
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="entry_date"', false);
+    }
 }
