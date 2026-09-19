@@ -67,11 +67,11 @@
 
     <div class="tab-pane" id="tab-gst">
         <x-select name="gst_tax_id" label="GST Tax" :options="$gstTaxes" :selected="$i->gst_tax_id ?? ''" placeholder="Select a GST tax" />
-        <x-field name="hsn_code" label="HSN Code" :value="$i->hsn_code ?? ''" maxlength="8" pattern="\d{8}" title="HSN Code must be exactly 8 digits" placeholder="e.g. 12345678" hint="Must be exactly 8 digits (numeric). Format: XXXXXXXX" id="hsn_code_input" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8); document.getElementById('hsn-len').textContent = this.value.length + '/8'; document.getElementById('hsn-len').className = this.value.length === 8 ? 'badge badge-success ml-2' : 'badge badge-secondary ml-2';" />
+        <x-field name="hsn_code" label="HSN Code" :value="$i->hsn_code ?? ''" maxlength="8" pattern="\d{4,8}" title="HSN Code must be 4 to 8 digits" placeholder="e.g. 1234 or 12345678" hint="Must be 4 to 8 digits (numeric). Format: 4 to 8 digits" id="hsn_code_input" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8); document.getElementById('hsn-len').textContent = this.value.length + '/8'; document.getElementById('hsn-len').className = (this.value.length >= 4 && this.value.length <= 8) ? 'badge badge-success ml-2' : (this.value.length === 0 ? 'badge badge-secondary ml-2' : 'badge badge-warning ml-2');" />
         <div class="form-group row mt-n2 mb-2">
             <div class="col-sm-3"></div>
             <div class="col-sm-6">
-                <span id="hsn-len" class="badge badge-secondary">0/8</span>
+                <span id="hsn-len" class="badge {{ !empty($i->hsn_code) && strlen($i->hsn_code) >= 4 ? 'badge-success' : 'badge-secondary' }}">{{ strlen($i->hsn_code ?? '') }}/8</span>
             </div>
         </div>
     </div>

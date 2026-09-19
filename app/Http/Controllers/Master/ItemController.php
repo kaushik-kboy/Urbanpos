@@ -75,6 +75,40 @@ class ItemController extends Controller
                 $item->name = $copyName;
                 $item->ean_upc_code = Item::generateUniqueEanUpc();
                 $item->item_code = null;
+
+                // Ensure referenced foreign keys are still valid
+                if ($item->brand_id && !Brand::where('id', $item->brand_id)->exists()) {
+                    $item->brand_id = null;
+                }
+                if ($item->supplier_id && !Supplier::where('id', $item->supplier_id)->exists()) {
+                    $item->supplier_id = null;
+                }
+                if ($item->department_value_id && !ItemCategoryValue::where('id', $item->department_value_id)->exists()) {
+                    $item->department_value_id = null;
+                }
+                if ($item->category_value_id && !ItemCategoryValue::where('id', $item->category_value_id)->exists()) {
+                    $item->category_value_id = null;
+                }
+                if ($item->brand_value_id && !ItemCategoryValue::where('id', $item->brand_value_id)->exists()) {
+                    $item->brand_value_id = null;
+                }
+                if ($item->gst_tax_id && !GstTax::where('id', $item->gst_tax_id)->exists()) {
+                    $item->gst_tax_id = null;
+                }
+
+                // Clean HSN code if it doesn't match numeric 4-8 digits
+                if ($item->hsn_code) {
+                    $cleanedHsn = preg_replace('/\D/', '', (string)$item->hsn_code);
+                    $item->hsn_code = (strlen($cleanedHsn) >= 4 && strlen($cleanedHsn) <= 8) ? $cleanedHsn : null;
+                }
+
+                // Ensure enum attributes are valid
+                if (!in_array($item->product_type, ['Standard', 'Serialized', 'Service Component', 'Gift Voucher'])) {
+                    $item->product_type = 'Standard';
+                }
+                if (!in_array($item->batch_expiry_details, ['Not Required', 'Optional', 'Mandatory', 'Days', 'Month'])) {
+                    $item->batch_expiry_details = 'Not Required';
+                }
             }
         }
 
@@ -247,11 +281,11 @@ class ItemController extends Controller
 
             // GST
             'gst_tax_id' => ['nullable', 'exists:gst_taxes,id'],
-            'hsn_code' => ['nullable', 'regex:/^\d{8}$/'],
+            'hsn_code' => ['nullable', 'regex:/^\d{4,8}$/'],
         ];
 
         $messages = [
-            'hsn_code.regex' => 'HSN Code must be exactly 8 digits.',
+            'hsn_code.regex' => 'HSN Code must be between 4 and 8 digits (numeric).',
         ];
 
         app(\App\Services\DynamicValidationService::class)->applyTo('items', $rules, $messages);
