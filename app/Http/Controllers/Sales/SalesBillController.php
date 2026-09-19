@@ -516,7 +516,7 @@ class SalesBillController extends Controller
 
         foreach ($totalQtyByItem as $itemId => $totalRequested) {
             $item = Item::find($itemId);
-            if ($item->allow_negative_stock) {
+            if (! $item) {
                 continue;
             }
 
@@ -524,7 +524,7 @@ class SalesBillController extends Controller
                 ->where('branch_id', $branchId)
                 ->value('quantity') ?? 0);
 
-            if ($totalRequested > $available) {
+            if (round($totalRequested, 4) > round($available, 4)) {
                 throw ValidationException::withMessages([
                     'items' => "Insufficient stock for \"{$item->name}\": available {$available}, requested {$totalRequested} (across all rows).",
                 ]);

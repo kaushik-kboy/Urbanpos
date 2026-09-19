@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\DamageStock;
 use App\Models\Item;
+use App\Models\ItemStock;
 use App\Services\Accounting\FinancialYearGuard;
 use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DamageStockController extends Controller
 {
@@ -128,6 +130,8 @@ class DamageStockController extends Controller
                 return redirect()->route('inventory.damage-stocks.index')->with('status', "Damage Stock {$existing->damage_number} created successfully.");
             }
         }
+
+        $this->assertStockAvailable($data['items'], (int) $data['header']['branch_id']);
 
         $damageStock = DB::transaction(function () use ($data) {
             $lines = $this->computeLines($data['items']);
@@ -385,5 +389,28 @@ class DamageStockController extends Controller
         ]);
 
         return ['header' => $header, 'items' => $validated['items']];
+    }
+
+    private function assertStockAvailable(array $items, int $branchId): void
+    {
+        $totalQtyByItem = [];
+        foreach ($items as $line) {
+            $itemId = (int) $line['item_id'];
+            $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
+        }
+
+        foreach ($totalQtyByItem as $itemId => $totalRequested) {
+            $item = Item::find($itemId);
+            if (! $item) {
+                continue;
+            }
+
+            $available = (float) (ItemStock::where('item_id', $itemId)->where('branch_id', $branchId)->value('quantity') ?? 0);
+            if (round($totalRequested, 4) > round($available, 4)) {
+                throw ValidationException::withMessages([
+                    'items' => "Insufficient stock for \"{$item->name}\" at branch: available {$available}, requested {$totalRequested}.",
+                ]);
+            }
+        }
     }
 }

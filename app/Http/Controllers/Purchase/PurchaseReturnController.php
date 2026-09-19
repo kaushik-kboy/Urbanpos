@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Item;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceItem;
+use App\Models\ItemStock;
 use App\Models\PurchaseReturn;
 use App\Models\Supplier;
 use App\Services\Accounting\FinancialYearGuard;
@@ -86,6 +87,8 @@ class PurchaseReturnController extends Controller
                     ->with('status', "Purchase Return {$existing->return_number} created successfully.");
             }
         }
+
+        $this->assertStockAvailable($data['items'], (int) $data['header']['branch_id']);
 
         $purchaseReturn = DB::transaction(function () use ($data) {
             $lines = $this->computeLines($data['items'], $data['header']);
@@ -549,5 +552,28 @@ class PurchaseReturnController extends Controller
         }
 
         return ['header' => $header, 'items' => $validated['items']];
+    }
+
+    private function assertStockAvailable(array $items, int $branchId): void
+    {
+        $totalQtyByItem = [];
+        foreach ($items as $line) {
+            $itemId = (int) $line['item_id'];
+            $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
+        }
+
+        foreach ($totalQtyByItem as $itemId => $totalRequested) {
+            $item = Item::find($itemId);
+            if (! $item) {
+                continue;
+            }
+
+            $available = (float) (ItemStock::where('item_id', $itemId)->where('branch_id', $branchId)->value('quantity') ?? 0);
+            if (round($totalRequested, 4) > round($available, 4)) {
+                throw ValidationException::withMessages([
+                    'items' => "Insufficient stock for \"{$item->name}\" at branch: available {$available}, requested {$totalRequested}.",
+                ]);
+            }
+        }
     }
 }

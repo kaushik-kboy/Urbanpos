@@ -2,10 +2,12 @@
 
 namespace App\Services\Inventory;
 
+use App\Models\Item;
 use App\Models\ItemStock;
 use App\Models\StockLedger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The single writer for stock quantity/value movement. Every controller that changes
@@ -73,7 +75,14 @@ class StockLedgerService
                 $costUsed = $incomingCost;
             } else {
                 $qtyOutAbs = abs($qtyDelta);
-                $newQty = $oldQty - $qtyOutAbs;
+                if (round($oldQty, 4) < round($qtyOutAbs, 4)) {
+                    $item = Item::find($itemId);
+                    $itemName = $item ? $item->name : "Item #{$itemId}";
+                    throw ValidationException::withMessages([
+                        'stock' => "Stock cannot be negative for \"{$itemName}\". Available: {$oldQty}, attempted to deduct: {$qtyOutAbs}.",
+                    ]);
+                }
+                $newQty = max(0.0, round($oldQty - $qtyOutAbs, 4));
                 $newAvgCost = $oldAvgCost; // outgoing movements never change the average
 
                 $qtyIn = 0.0;

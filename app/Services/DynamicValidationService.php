@@ -108,7 +108,17 @@ class DynamicValidationService
                     $alias = $this->fieldAliases[$fieldName] ?? null;
                     if ($alias && isset($rules[$alias])) {
                         $targetField = $alias;
+                    } elseif (isset($rules["items.*.{$fieldName}"])) {
+                        $targetField = "items.*.{$fieldName}";
+                    } elseif ($alias && isset($rules["items.*.{$alias}"])) {
+                        $targetField = "items.*.{$alias}";
                     } else {
+                        // Line-item / grid fields should not be dynamically injected into a header-only rules array
+                        $lineItemFields = ['item_code', 'item_name', 'available', 'qty', 'exp_date', 'barcode', 'description'];
+                        if (in_array($fieldName, $lineItemFields, true)) {
+                            continue;
+                        }
+
                         // If not in base rules but configured as required, add it dynamically
                         if ($config->is_required) {
                             $rules[$targetField] = ['required'];

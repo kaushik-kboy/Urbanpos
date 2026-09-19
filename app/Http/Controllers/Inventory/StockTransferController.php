@@ -163,17 +163,34 @@ class StockTransferController extends Controller
     public function pendingReceipt(Request $request)
     {
         $branchId = $request->input('branch_id');
+        $status = $request->input('status', 'Dispatched');
 
-        $stockTransfers = StockTransfer::with(['fromBranch', 'toBranch'])
-            ->where('status', 'Dispatched')
-            ->when($branchId, fn ($q) => $q->where('to_branch_id', $branchId))
-            ->latest('transfer_date')
-            ->paginate(20)
-            ->withQueryString();
+        $query = StockTransfer::with(['fromBranch', 'toBranch'])
+            ->when($branchId, fn ($q) => $q->where('to_branch_id', $branchId));
 
+        if ($status && $status !== 'All') {
+            $query->where('status', $status);
+        }
+
+        $stockTransfers = $query->latest('transfer_date')->latest('id')->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
-        return view('inventory.stock-transfers.pending-receipt', compact('stockTransfers', 'branches', 'branchId'));
+        $baseCountQuery = StockTransfer::query()
+            ->when($branchId, fn ($q) => $q->where('to_branch_id', $branchId));
+
+        $pendingCount = (clone $baseCountQuery)->where('status', 'Dispatched')->count();
+        $receivedCount = (clone $baseCountQuery)->where('status', 'Received')->count();
+        $allCount = (clone $baseCountQuery)->count();
+
+        return view('inventory.stock-transfers.pending-receipt', compact(
+            'stockTransfers',
+            'branches',
+            'branchId',
+            'status',
+            'pendingCount',
+            'receivedCount',
+            'allCount'
+        ));
     }
 
     public function receiveForm(StockTransfer $stockTransfer)
@@ -253,16 +270,22 @@ class StockTransferController extends Controller
 
     private function assertStockAvailable(array $items, int $fromBranchId): void
     {
+        $totalQtyByItem = [];
         foreach ($items as $line) {
-            $item = Item::find($line['item_id']);
-            if (! $item || $item->allow_negative_stock) {
+            $itemId = (int) $line['item_id'];
+            $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
+        }
+
+        foreach ($totalQtyByItem as $itemId => $totalRequested) {
+            $item = Item::find($itemId);
+            if (! $item) {
                 continue;
             }
 
-            $available = (float) (ItemStock::where('item_id', $line['item_id'])->where('branch_id', $fromBranchId)->value('quantity') ?? 0);
-            if ((float) $line['qty'] > $available) {
+            $available = (float) (ItemStock::where('item_id', $itemId)->where('branch_id', $fromBranchId)->value('quantity') ?? 0);
+            if (round($totalRequested, 4) > round($available, 4)) {
                 throw ValidationException::withMessages([
-                    'items' => "Insufficient stock for \"{$item->name}\" at source branch: available {$available}, requested {$line['qty']}.",
+                    'items' => "Insufficient stock for \"{$item->name}\" at source branch: available {$available}, requested {$totalRequested}.",
                 ]);
             }
         }
