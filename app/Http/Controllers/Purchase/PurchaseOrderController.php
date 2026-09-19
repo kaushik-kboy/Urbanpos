@@ -276,17 +276,26 @@ class PurchaseOrderController extends Controller
     private function computeTotals(array $lines, array $data): array
     {
         $collection = collect($lines);
-        $freight = (float) ($data['header']['freight'] ?? 0);
-        $roundOff = (float) ($data['header']['round_off'] ?? 0);
-        $otherDiscAmt = (float) ($data['header']['other_disc_amt'] ?? 0);
-        $schemeDiscAmt = (float) ($data['header']['scheme_item_disc_amt'] ?? 0);
+        $freight      = (float) ($data['header']['freight']              ?? 0);
+        $roundOff     = (float) ($data['header']['round_off']            ?? 0);
+        $otherDiscAmt = (float) ($data['header']['other_disc_amt']       ?? 0);
+        $schemeDiscAmt= (float) ($data['header']['scheme_item_disc_amt'] ?? 0);
+        $totalExtCess = (float) ($data['header']['total_extra_cess']     ?? 0);
+        $totalWeight  = (float) ($data['header']['total_weight']         ?? 0);
 
         return [
-            'item_disc_amount' => $collection->sum('disc_amount'),
-            'disc_amount' => $collection->sum('disc_amount'),
-            'total_gst' => $collection->sum('gst_tax_amount'),
-            'total_qty' => $collection->sum('qty') + $collection->sum('free_qty'),
-            'total' => round($collection->sum('net_amount') + $freight + $roundOff - $otherDiscAmt - $schemeDiscAmt, 2),
+            'item_disc_amount'     => round($collection->sum('disc_amount'), 2),
+            'disc_amount'         => round($collection->sum('disc_amount'), 2),
+            'total_gst'           => round($collection->sum('gst_tax_amount'), 2),
+            'total_qty'           => $collection->sum('qty') + $collection->sum('free_qty'),
+            'total'               => round($collection->sum('net_amount') + $freight + $roundOff - $otherDiscAmt - $schemeDiscAmt, 2),
+            // Normalize nullable numeric fields to 0 so MySQL strict mode doesn't reject null
+            'freight'             => $freight,
+            'round_off'           => $roundOff,
+            'other_disc_amt'      => $otherDiscAmt,
+            'scheme_item_disc_amt'=> $schemeDiscAmt,
+            'total_extra_cess'    => $totalExtCess,
+            'total_weight'        => $totalWeight,
         ];
     }
 
