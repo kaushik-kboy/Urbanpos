@@ -59,6 +59,21 @@ class Item extends Model
         });
     }
 
+    public static function generateUniqueEanUpc(): string
+    {
+        do {
+            $digits = '890' . str_pad((string) random_int(0, 999999999), 9, '0', STR_PAD_LEFT);
+            $sum = 0;
+            for ($i = 0; $i < 12; $i++) {
+                $sum += (int)$digits[$i] * ($i % 2 === 0 ? 1 : 3);
+            }
+            $checkDigit = (10 - ($sum % 10)) % 10;
+            $code = $digits . $checkDigit;
+        } while (self::where('ean_upc_code', $code)->exists());
+
+        return $code;
+    }
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);

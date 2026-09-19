@@ -358,7 +358,8 @@ class PurchaseInvoiceController extends Controller
 
     public function itemList(Request $request)
     {
-        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $defaultBranchId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?: 0));
+        $branchId = (int) ($request->input('branch_id') ?: $defaultBranchId);
         $search   = trim((string) $request->input('search', ''));
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));
@@ -431,9 +432,12 @@ class PurchaseInvoiceController extends Controller
                 i.id,
                 i.name,
                 COALESCE(i.item_code, '')  AS item_code,
-                COALESCE(i.ean_upc_code, '') AS ean_upc_code,
-                COALESCE(st.quantity, 0)   AS qty,
                 COALESCE(
+                    NULLIF(st.quantity, 0),
+                    (SELECT NULLIF(SUM(ist.quantity), 0) FROM item_stocks ist WHERE ist.item_id = i.id),
+                    (SELECT NULLIF(SUM(cs.closing_stock), 0) FROM closing_stocks cs WHERE cs.item_id = i.id),
+                    0
+                )                          AS qty,
                     NULLIF(ei.cost_price, 0),
                     NULLIF(i.cost_price, 0),
                     0
@@ -545,7 +549,8 @@ class PurchaseInvoiceController extends Controller
     {
         $itemId = $request->input('item_id');
         $query  = trim((string) $request->input('query', ''));
-        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $defaultBranchId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?: 0));
+        $branchId = (int) ($request->input('branch_id') ?: $defaultBranchId);
 
         $item = null;
         if (! empty($itemId)) {
@@ -570,7 +575,16 @@ class PurchaseInvoiceController extends Controller
             return response()->json(null);
         }
 
-        $stock = (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0);
+        $stock = 0;
+        if ($branchId > 0) {
+            $stock = (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0);
+        }
+        if ($stock <= 0) {
+            $stock = (float) (ItemStock::where('item_id', $item->id)->sum('quantity') ?? 0);
+        }
+        if ($stock <= 0) {
+            $stock = (float) (DB::table('closing_stocks')->where('item_id', $item->id)->sum('closing_stock') ?? 0);
+        }
 
         // Check if there is recent purchase invoice exp_date
         $lastExp = DB::table('purchase_invoice_items as pii')
@@ -590,6 +604,7 @@ class PurchaseInvoiceController extends Controller
             'sell_price'              => (float) ($item->sell_price ?? 0),
             'mrp'                     => (float) ($item->mrp ?? 0),
             'stock'                   => $stock,
+            'qty'                     => $stock,
             'exp_date'                => $lastExp ? \Carbon\Carbon::parse($lastExp)->format('Y-m-d') : null,
             'gst_percent'             => (float) ($item->gstTax?->percentage ?? 0),
             'batch_expiry_details'    => $item->batch_expiry_details ?? 'Not Required',

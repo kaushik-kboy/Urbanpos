@@ -48,8 +48,16 @@
         @php
             $itemStockVal = 0;
             if ($itemId) {
-                $bId = $branchId ?? (isset($po) ? $po->branch_id : session('active_branch_id', auth()->user()?->branch_id ?? 3));
-                $itemStockVal = (float) (\App\Models\ItemStock::where('item_id', $itemId)->where('branch_id', $bId)->value('quantity') ?? 0);
+                $bId = $branchId ?? (isset($po) ? $po->branch_id : (session('active_branch_id') ?: auth()->user()?->branch_id));
+                if ($bId) {
+                    $itemStockVal = (float) (\App\Models\ItemStock::where('item_id', $itemId)->where('branch_id', $bId)->value('quantity') ?? 0);
+                }
+                if ($itemStockVal <= 0) {
+                    $itemStockVal = (float) (\App\Models\ItemStock::where('item_id', $itemId)->sum('quantity') ?? 0);
+                }
+                if ($itemStockVal <= 0) {
+                    $itemStockVal = (float) (\Illuminate\Support\Facades\DB::table('closing_stocks')->where('item_id', $itemId)->sum('closing_stock') ?? 0);
+                }
             }
         @endphp
         <input type="text"

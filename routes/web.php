@@ -105,6 +105,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         'gst-taxes' => GstTaxController::class,
     ];
 
+    Route::get('items/generate-barcode', [ItemController::class, 'generateBarcode'])->name('items.generate-barcode');
+
     foreach ($masterResources as $uri => $controller) {
         $gatedResource($uri, $controller, $uri);
         Route::middleware(['permission:'.$uri.'.create', 'branch.access'])

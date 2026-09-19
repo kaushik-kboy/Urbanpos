@@ -58,6 +58,17 @@ class SupplierController extends Controller
         $supplier = Supplier::create($data);
         $this->syncContacts($request, $supplier);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Supplier created successfully.',
+                'data' => [
+                    'id' => $supplier->id,
+                    'name' => $supplier->name,
+                ],
+            ]);
+        }
+
         return redirect()->route('master.suppliers.index')->with('status', 'Supplier created successfully.');
     }
 
@@ -142,6 +153,18 @@ class SupplierController extends Controller
 
     private function validateData(Request $request, ?Supplier $supplier = null): array
     {
+        $request->merge([
+            'currency' => $request->input('currency') ?: 'INR',
+            'purchase_type' => $request->input('purchase_type') ?: 'Local',
+            'purchase_mode' => $request->input('purchase_mode') ?: 'Credit',
+            'credit_limit' => ($request->input('credit_limit') !== null && $request->input('credit_limit') !== '') ? $request->input('credit_limit') : 0,
+            'credit_balance' => ($request->input('credit_balance') !== null && $request->input('credit_balance') !== '') ? $request->input('credit_balance') : 0,
+            'credit_days' => ($request->input('credit_days') !== null && $request->input('credit_days') !== '') ? $request->input('credit_days') : 0,
+            'status' => ($request->input('status') !== null && $request->input('status') !== '') ? $request->input('status') : 1,
+            'gst_type' => $request->input('gst_type') ?: 'Regular',
+            'mail_type' => $request->input('mail_type') ?: 'None',
+        ]);
+
         return $request->validate([
             'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('suppliers', 'name')->ignore($supplier?->id)],
             'currency' => ['required', 'string', 'max:10'],

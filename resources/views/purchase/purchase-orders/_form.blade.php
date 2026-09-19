@@ -19,7 +19,7 @@
 
 <h5 class="mb-3"><i class="fas fa-file-invoice mr-1 text-primary"></i> Header</h5>
 <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$po->supplier_id ?? ''" placeholder="Select a supplier" required />
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$po->branch_id ?? ($indent->branch_id ?? '')" placeholder="Select a branch" required />
+<x-select name="branch_id" label="Branch" :options="$branches" :selected="$po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? ''))))" placeholder="Select a branch" required />
 <x-field name="po_date" label="PO Date" type="date" :value="optional($po->po_date ?? now())->format('Y-m-d')" required />
 <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$po->purchase_type ?? 'Local'" required />
 <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$po->c_form ?? 'Against C-Form'" required />
@@ -223,6 +223,11 @@
         const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
         const LOOKUP_URL = '{{ route("purchase.purchase-invoices.lookup-item") }}';
 
+        $('select[name="branch_id"]').on('change', function () {
+            islCache = {};
+            islLastKey = null;
+        });
+
         function updateRowNumbers() {
             $('#po-items-body tr').each(function (idx) {
                 $(this).find('.po-sr-no').text(idx + 1);
@@ -254,7 +259,7 @@
         }
 
         function fetchItemList() {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || '';
             let srch     = $.trim($('#po-isl-filter-name').val());
             let code     = $.trim($('#po-isl-filter-code').val());
             let expiry   = $.trim($('#po-isl-filter-expiry').val());
@@ -331,6 +336,7 @@
                         data-cost="${it.cost_price || 0}"
                         data-sell="${it.sell_price || 0}"
                         data-mrp="${it.mrp || 0}"
+                        data-stock="${it.qty || 0}"
                         data-gst="${it.gst_percent || 0}">
                         <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
                         <td class="align-middle font-weight-bold text-dark">${it.name}</td>
@@ -342,7 +348,7 @@
                         <td class="align-middle text-center">${expBadge}</td>
                         <td class="align-middle text-center">
                             <button type="button" class="btn btn-success btn-xs px-2 po-isl-btn-select"
-                                data-id="${it.id}" data-code="${it.code}">
+                                data-id="${it.id}" data-code="${it.code}" data-stock="${it.qty || 0}">
                                 <i class="fas fa-check mr-1"></i>Select
                             </button>
                         </td>
@@ -422,11 +428,14 @@
             }
 
             calculatePoRow($row);
-            $row.find('.po-qty').focus();
+            setTimeout(function () {
+                $row.find('.po-qty').focus().select();
+            }, 20);
         }
 
         let poCancellingRow = null;
         let poItemSelectedInModal = false;
+        let pendingFocusQtyRow = null;
 
         // Clicking row or select button in modal
         $(document).on('click', '.po-isl-item-row, .po-isl-btn-select', function (e) {
@@ -439,13 +448,16 @@
                 cost_price: $tr.data('cost'),
                 sell_price: $tr.data('sell'),
                 mrp: $tr.data('mrp'),
+                stock: $tr.data('stock'),
                 gst_percent: $tr.data('gst')
             };
 
             if (!activeSearchRow || !itemData.id) return;
             poItemSelectedInModal = true;
             poCancellingRow = null;
-            populatePoRow(activeSearchRow, itemData);
+            let $targetRow = activeSearchRow;
+            pendingFocusQtyRow = $targetRow;
+            populatePoRow($targetRow, itemData);
             $('#po-item-search-modal').modal('hide');
         });
 
@@ -503,11 +515,33 @@
                 }
                 poCancellingRow = null;
                 activeSearchRow = null;
+                pendingFocusQtyRow = null;
                 setTimeout(function () {
                     let $target = $('#po-add-row, #freight, button[type=submit]');
                     $target.first().focus();
                 }, 60);
                 return;
+            }
+
+            if (pendingFocusQtyRow && pendingFocusQtyRow.length) {
+                let $target = pendingFocusQtyRow;
+                pendingFocusQtyRow = null;
+                setTimeout(function () {
+                    let $qty = $target.find('.po-qty');
+                    $qty.focus().select();
+                }, 50);
+                setTimeout(function () {
+                    let $qty = $target.find('.po-qty');
+                    if (document.activeElement !== $qty[0]) {
+                        $qty.focus().select();
+                    }
+                }, 150);
+                setTimeout(function () {
+                    let $qty = $target.find('.po-qty');
+                    if (document.activeElement !== $qty[0]) {
+                        $qty.focus().select();
+                    }
+                }, 300);
             }
 
             poItemSelectedInModal = false;
@@ -526,11 +560,14 @@
             if (!query) return;
 
             let currentId = $row.find('.po-item-select').val();
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || '';
 
             $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (data) {
                 if (data && data.id) {
                     populatePoRow($row, data);
+                    setTimeout(function () {
+                        $row.find('.po-qty').focus().select();
+                    }, 50);
                 }
             });
         });

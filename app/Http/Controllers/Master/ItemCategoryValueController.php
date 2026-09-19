@@ -46,7 +46,19 @@ class ItemCategoryValueController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
-        ItemCategoryValue::create($data);
+        $val = ItemCategoryValue::create($data);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Category value created successfully.',
+                'data' => [
+                    'id' => $val->id,
+                    'name' => $val->name,
+                    'item_category_id' => $val->item_category_id,
+                ],
+            ]);
+        }
 
         return redirect()->route('master.item-category-values.index')->with('status', 'Item category value created successfully.');
     }
@@ -73,6 +85,12 @@ class ItemCategoryValueController extends Controller
 
     private function validateData(Request $request, ?ItemCategoryValue $itemCategoryValue = null): array
     {
+        $request->merge([
+            'show_in_webstore' => $request->input('show_in_webstore', 0),
+            'status' => $request->input('status', 1),
+            'sellquick_applicable' => $request->input('sellquick_applicable', 0),
+        ]);
+
         return $request->validate([
             'item_category_id' => ['required', 'exists:item_categories,id'],
             'name' => [

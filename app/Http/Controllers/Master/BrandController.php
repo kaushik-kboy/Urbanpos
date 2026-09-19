@@ -30,7 +30,18 @@ class BrandController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
-        Brand::create($data);
+        $brand = Brand::create($data);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Brand created successfully.',
+                'data' => [
+                    'id' => $brand->id,
+                    'name' => $brand->name,
+                ],
+            ]);
+        }
 
         return redirect()->route('master.brands.index')->with('status', 'Brand created successfully.');
     }
@@ -55,6 +66,10 @@ class BrandController extends Controller
 
     private function validateData(Request $request, ?Brand $brand = null): array
     {
+        if (! $request->has('status') || $request->input('status') === null) {
+            $request->merge(['status' => 1]);
+        }
+
         return $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('brands', 'name')->ignore($brand?->id)],
             'prefix' => ['nullable', 'string', 'max:50'],

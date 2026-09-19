@@ -97,8 +97,9 @@
                             <td>{{ number_format($item->sell_price, 2) }}</td>
                             <td>{{ $item->supplier?->name }}</td>
                             <td>{{ $item->updated_at->format('d-m-Y H:i') }}</td>
-                            <td class="text-right">
-                                <a href="{{ route('master.items.edit', $item) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
+                            <td class="text-right text-nowrap">
+                                <a href="{{ route('master.items.create', ['copy_from' => $item->id]) }}" class="btn btn-xs btn-outline-primary mr-1" title="Copy Item (New Unique Barcode)"><i class="fas fa-copy"></i></a>
+                                <a href="{{ route('master.items.edit', $item) }}" class="btn btn-xs btn-outline-secondary" title="Edit Item"><i class="fas fa-pen"></i></a>
                             </td>
                         </tr>
                     @empty

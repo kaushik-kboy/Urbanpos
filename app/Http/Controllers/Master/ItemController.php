@@ -51,14 +51,32 @@ class ItemController extends Controller
         $items = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $brands = Brand::orderBy('name')->pluck('name', 'id');
-        $categories = $this->categoryValues('CATEGORY');
+        $categories = $this->categoryValues(['CATEGORY', 'Category', 'category', 'Categories', 'CAT'], 'CATEGORY')['values'];
 
         return view('master.items.index', compact('items', 'suppliers', 'brands', 'categories'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('master.items.create', $this->formOptions());
+        $item = null;
+        if ($request->filled('copy_from')) {
+            $source = Item::find($request->input('copy_from'));
+            if ($source) {
+                $item = $source->replicate();
+                $item->name = $source->name . ' (Copy)';
+                $item->ean_upc_code = Item::generateUniqueEanUpc();
+            }
+        }
+
+        return view('master.items.create', array_merge(['item' => $item], $this->formOptions()));
+    }
+
+    public function generateBarcode()
+    {
+        return response()->json([
+            'success' => true,
+            'barcode' => Item::generateUniqueEanUpc(),
+        ]);
     }
 
     public function store(Request $request)
@@ -123,21 +141,51 @@ class ItemController extends Controller
 
     private function formOptions(): array
     {
+        $dept = $this->categoryValues(['DEPARTMENT', 'Department', 'department', 'Departments', 'Dept', 'DEPT'], 'DEPARTMENT');
+        $cat = $this->categoryValues(['CATEGORY', 'Category', 'category', 'Categories', 'CAT'], 'CATEGORY');
+        $brandVal = $this->categoryValues(['Brands', 'Brand', 'brands', 'brand', 'BRANDS'], 'Brands');
+
         return [
             'brands' => Brand::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'gstTaxes' => GstTax::where('status', true)->orderBy('description')->pluck('description', 'id'),
-            'departmentValues' => $this->categoryValues('DEPARTMENT'),
-            'categoryValues' => $this->categoryValues('CATEGORY'),
-            'brandValues' => $this->categoryValues('Brands'),
+            'departmentValues' => $dept['values'],
+            'categoryValues' => $cat['values'],
+            'brandValues' => $brandVal['values'],
+            'deptHeadId' => $dept['head_id'],
+            'catHeadId' => $cat['head_id'],
+            'brandHeadId' => $brandVal['head_id'],
         ];
     }
 
-    private function categoryValues(string $headName)
+    private function categoryValues(array $aliases, string $defaultName): array
     {
-        $head = ItemCategory::where('name', $headName)->first();
+        $heads = ItemCategory::where(function ($query) use ($aliases) {
+            foreach ($aliases as $alias) {
+                $query->orWhere('name', 'like', $alias);
+            }
+        })->get();
 
-        return $head ? $head->values()->where('status', true)->orderBy('name')->pluck('name', 'id') : collect();
+        if ($heads->isEmpty()) {
+            $head = ItemCategory::firstOrCreate(
+                ['name' => $defaultName],
+                ['is_mandatory' => false, 'status' => true]
+            );
+            $heads = collect([$head]);
+        }
+
+        $headIds = $heads->pluck('id');
+        $values = ItemCategoryValue::whereIn('item_category_id', $headIds)
+            ->where(function ($q) {
+                $q->where('status', true)->orWhere('status', 1);
+            })
+            ->orderBy('name')
+            ->pluck('name', 'id');
+
+        return [
+            'values' => $values,
+            'head_id' => $heads->first()->id,
+        ];
     }
 
     private function validateData(Request $request, ?Item $item = null): array
