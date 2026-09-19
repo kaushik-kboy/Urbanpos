@@ -74,7 +74,7 @@ class BranchController extends Controller
 
     private function validateData(Request $request, ?Branch $branch = null): array
     {
-        return $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('branches', 'name')->ignore($branch?->id)],
             'address_line1' => ['nullable', 'string', 'max:255'],
             'address_line2' => ['nullable', 'string', 'max:255'],
@@ -103,7 +103,12 @@ class BranchController extends Controller
             'gst_type' => ['required', 'in:Regular,Composite,Un Register'],
             'gst_filing' => ['required', 'in:Monthly,Quarterly'],
             'status' => ['required', 'boolean'],
-        ]);
+        ];
+
+        $messages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('branches', $rules, $messages, $branch?->id);
+
+        return $request->validate($rules, $messages);
     }
 
     protected function importModel(): string

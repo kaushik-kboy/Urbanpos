@@ -30,10 +30,36 @@ class DynamicValidationService
         });
     }
 
+    private array $moduleTables = [
+        'suppliers' => 'suppliers',
+        'customers' => 'customers',
+        'items' => 'items',
+        'branches' => 'branches',
+        'purchase_invoices' => 'purchase_invoices',
+        'purchase_orders' => 'purchase_orders',
+        'purchase_receipt_notes' => 'purchase_receipt_notes',
+        'purchase_indents' => 'purchase_indents',
+        'purchase_returns' => 'purchase_returns',
+        'sales_bills' => 'sales_bills',
+        'sales_returns' => 'sales_returns',
+        'sales_quotations' => 'sales_quotations',
+        'sales_orders' => 'sales_orders',
+        'sales_delivery_notes' => 'sales_delivery_notes',
+        'stock_transfers' => 'stock_transfers',
+        'opening_stocks' => 'opening_stocks',
+        'damage_stocks' => 'damage_stocks',
+        'stock_updates' => 'stock_updates',
+    ];
+
+    private array $fieldAliases = [
+        'gstin' => 'gst_no',
+        'gst_no' => 'gstin',
+    ];
+
     /**
      * Dynamically apply rules and custom messages to Laravel validation arrays.
      */
-    public function applyTo(string $moduleKey, array &$rules, array &$messages): void
+    public function applyTo(string $moduleKey, array &$rules, array &$messages, mixed $ignoreId = null): void
     {
         try {
             $configs = $this->getConfigsForModule($moduleKey);
@@ -42,13 +68,19 @@ class DynamicValidationService
             }
 
             foreach ($configs as $fieldName => $config) {
-                if (!isset($rules[$fieldName])) {
-                    continue;
+                $targetField = $fieldName;
+                if (!isset($rules[$targetField])) {
+                    $alias = $this->fieldAliases[$fieldName] ?? null;
+                    if ($alias && isset($rules[$alias])) {
+                        $targetField = $alias;
+                    } else {
+                        continue;
+                    }
                 }
 
-                $ruleList = is_array($rules[$fieldName])
-                    ? $rules[$fieldName]
-                    : explode('|', $rules[$fieldName]);
+                $ruleList = is_array($rules[$targetField])
+                    ? $rules[$targetField]
+                    : explode('|', $rules[$targetField]);
 
                 // 1. Handle Required / Nullable toggle
                 if ($config->is_required) {
@@ -75,7 +107,7 @@ class DynamicValidationService
                         'indent_number',
                         'receipt_number',
                     ];
-                    if (!in_array($fieldName, $protectedKeys, true)) {
+                    if (!in_array($targetField, $protectedKeys, true)) {
                         $ruleList = array_values(array_filter($ruleList, fn ($r) => $r !== 'required'));
                         if (!in_array('nullable', $ruleList, true)) {
                             array_unshift($ruleList, 'nullable');
@@ -102,15 +134,32 @@ class DynamicValidationService
                     }));
                 }
 
-                $rules[$fieldName] = $ruleList;
+                // 3. Handle Unique Check toggle
+                if ($config->is_unique) {
+                    $table = $this->moduleTables[$moduleKey] ?? $moduleKey;
+                    $column = $targetField;
 
-                // 3. Handle Custom Error Message
+                    // Strip any existing unique rules to avoid duplicates
+                    $ruleList = array_values(array_filter($ruleList, function ($r) {
+                        return !($r instanceof \Illuminate\Validation\Rules\Unique) && !str_starts_with((string) $r, 'unique');
+                    }));
+
+                    $uniqueRule = \Illuminate\Validation\Rule::unique($table, $column);
+                    if ($ignoreId) {
+                        $uniqueRule->ignore($ignoreId);
+                    }
+                    $ruleList[] = $uniqueRule;
+                }
+
+                $rules[$targetField] = $ruleList;
+
+                // 4. Handle Custom Error Message
                 if (!empty($config->custom_error_message)) {
                     $msg = trim($config->custom_error_message);
-                    $messages["{$fieldName}.required"] = $msg;
-                    $messages["{$fieldName}.before_or_equal"] = $msg;
-                    $messages["{$fieldName}.unique"] = $msg;
-                    $messages["{$fieldName}.regex"] = $msg;
+                    $messages["{$targetField}.required"] = $msg;
+                    $messages["{$targetField}.before_or_equal"] = $msg;
+                    $messages["{$targetField}.unique"] = $msg;
+                    $messages["{$targetField}.regex"] = $msg;
                 }
             }
         } catch (\Throwable $e) {

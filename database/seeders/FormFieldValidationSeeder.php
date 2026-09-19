@@ -770,7 +770,7 @@ class FormFieldValidationSeeder extends Seeder
             ],
             [
                 'module_key' => 'customers',
-                'field_name' => 'gstin',
+                'field_name' => 'gst_no',
                 'field_label' => 'GSTIN',
                 'field_type' => 'text',
                 'is_required' => false,
@@ -808,7 +808,7 @@ class FormFieldValidationSeeder extends Seeder
             ],
             [
                 'module_key' => 'suppliers',
-                'field_name' => 'gstin',
+                'field_name' => 'gst_no',
                 'field_label' => 'GSTIN',
                 'field_type' => 'text',
                 'is_required' => false,
@@ -952,7 +952,7 @@ class FormFieldValidationSeeder extends Seeder
             ],
             [
                 'module_key' => 'branches',
-                'field_name' => 'gstin',
+                'field_name' => 'gst_no',
                 'field_label' => 'GSTIN',
                 'field_type' => 'text',
                 'is_required' => false,

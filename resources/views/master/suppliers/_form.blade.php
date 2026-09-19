@@ -179,5 +179,24 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+
+    // Auto-detect and badge tabs containing validation errors
+    var $firstInvalidTab = null;
+    $('.tab-pane').each(function () {
+        var $pane = $(this);
+        if ($pane.find('.is-invalid, .text-danger.small:not(:empty), .invalid-feedback:not(:empty)').length > 0) {
+            var tabId = $pane.attr('id');
+            var $tabLink = $('a[href="#' + tabId + '"]');
+            if ($tabLink.length && !$tabLink.find('.badge-danger').length) {
+                $tabLink.append(' <span class="badge badge-danger">!</span>');
+            }
+            if (!$firstInvalidTab) {
+                $firstInvalidTab = $tabLink;
+            }
+        }
+    });
+    if ($firstInvalidTab) {
+        $firstInvalidTab.tab('show');
+    }
 });
 </script>

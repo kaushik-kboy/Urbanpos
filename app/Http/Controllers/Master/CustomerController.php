@@ -175,7 +175,7 @@ class CustomerController extends Controller
 
     private function validateData(Request $request, ?Customer $customer = null): array
     {
-        return $request->validate([
+        $rules = [
             // General
             'title' => ['nullable', 'in:Mr,Ms,Mrs,M/s,Dr'],
             'name' => ['required', 'string', 'max:255'],
@@ -213,11 +213,17 @@ class CustomerController extends Controller
             'gender' => ['nullable', 'in:Male,Female'],
             'exempted_reason' => ['nullable', 'string', 'max:255'],
             'customer_type' => ['required', 'in:RETAIL INVOICE,TAX INVOICE,EXEMPTED,E-COMMERCE'],
-        ], [
+        ];
+
+        $messages = [
             'mobile.required' => 'Customer mobile number is required.',
             'mobile.digits' => 'Customer mobile number must be exactly 10 digits.',
             'mobile.unique' => 'A customer with this mobile number already exists.',
-        ]);
+        ];
+
+        app(\App\Services\DynamicValidationService::class)->applyTo('customers', $rules, $messages, $customer?->id);
+
+        return $request->validate($rules, $messages);
     }
 
     protected function importModel(): string

@@ -171,7 +171,7 @@ class SupplierController extends Controller
             }
         }
 
-        return $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('suppliers', 'name')->ignore($supplier?->id)],
             'currency' => ['required', 'string', 'max:10'],
             'purchase_type' => ['required', 'in:Local,Interstate,Import'],
@@ -193,7 +193,12 @@ class SupplierController extends Controller
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
             'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
-        ]);
+        ];
+
+        $messages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('suppliers', $rules, $messages, $supplier?->id);
+
+        return $request->validate($rules, $messages);
     }
 
     protected function importModel(): string
