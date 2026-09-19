@@ -479,4 +479,29 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('loyalty-info-fields-grid');
         $response->assertSee('data-field="name"', false);
     }
+
+    public function test_store_normalizes_string_booleans_and_integers(): void
+    {
+        // When sent via raw form-urlencoded / string booleans from browser
+        $payload = [
+            'form_key' => 'sales_bills.header',
+            'preferences' => [
+                ['field' => 'customer_id', 'order' => '1', 'grid_col' => 'col-md-6', 'visible' => 'true'],
+                ['field' => 'bill_date', 'order' => '2', 'grid_col' => 'col-md-6', 'visible' => 'false'],
+            ],
+        ];
+
+        $response = $this->actingAs($this->user)
+            ->post(route('tools.form-preferences.store'), $payload);
+
+        $response->assertOk();
+        $response->assertJsonPath('status', 'success');
+
+        $saved = UserFormPreference::getForUser($this->user->id, 'sales_bills.header');
+        $this->assertNotNull($saved);
+        $this->assertTrue($saved[0]['visible']);
+        $this->assertFalse($saved[1]['visible']);
+        $this->assertSame(1, $saved[0]['order']);
+        $this->assertSame(2, $saved[1]['order']);
+    }
 }

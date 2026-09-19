@@ -27,6 +27,21 @@ class UserFormPreferenceController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Normalize boolean and integer fields if sent via standard form-encoding (strings 'true'/'false')
+        if ($request->has('preferences') && is_array($request->input('preferences'))) {
+            $prefs = $request->input('preferences');
+            foreach ($prefs as &$p) {
+                if (isset($p['visible'])) {
+                    $p['visible'] = filter_var($p['visible'], FILTER_VALIDATE_BOOLEAN);
+                }
+                if (isset($p['order'])) {
+                    $p['order'] = (int) $p['order'];
+                }
+            }
+            unset($p);
+            $request->merge(['preferences' => $prefs]);
+        }
+
         $validated = $request->validate([
             'form_key' => 'required|string|max:100',
             'preferences' => 'required|array',

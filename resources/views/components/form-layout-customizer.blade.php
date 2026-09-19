@@ -318,11 +318,16 @@
             $.ajax({
                 url: '{{ route("tools.form-preferences.store") }}',
                 method: 'POST',
-                data: {
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                data: JSON.stringify({
                     _token: '{{ csrf_token() }}',
                     form_key: formKey,
                     preferences: updatedPrefs
-                },
+                }),
                 success: function(resp) {
                     applyLayoutToDOM();
                     $wrapper.attr('data-saved-prefs', JSON.stringify(updatedPrefs));
@@ -330,7 +335,11 @@
                     $modal.modal('hide');
                 },
                 error: function(xhr) {
-                    alert('Failed to save layout preferences. Please try again.');
+                    let msg = 'Failed to save layout preferences. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
                     $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Layout');
                 }
             });
@@ -349,10 +358,15 @@
             $.ajax({
                 url: '{{ route("tools.form-preferences.reset") }}',
                 method: 'POST',
-                data: {
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                data: JSON.stringify({
                     _token: '{{ csrf_token() }}',
                     form_key: formKey
-                },
+                }),
                 success: function(resp) {
                     // Revert in-memory metadata
                     fieldsMeta.forEach(function(f) {
@@ -367,7 +381,11 @@
                     $modal.modal('hide');
                 },
                 error: function(xhr) {
-                    alert('Failed to reset form layout.');
+                    let msg = 'Failed to reset form layout.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
                     $btn.prop('disabled', false);
                 }
             });
