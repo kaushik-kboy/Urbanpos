@@ -27,59 +27,100 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
-    <button type="button" id="btn-customer-invoices" class="btn btn-outline-info btn-sm font-weight-bold" disabled title="Select a customer first to view their invoice history">
-        <i class="fas fa-file-invoice mr-1"></i> Invoices <span id="badge-cust-invoices-count" class="badge badge-info ml-1 d-none">0</span>
-    </button>
-</div>
-<input type="hidden" name="posting_key" id="sb-posting-key" value="{{ old('posting_key', (string) \Illuminate\Support\Str::uuid()) }}">
-@if(!empty($bill?->id))
-    <x-field name="bill_number" label="Bill No" :value="$bill->bill_number" readonly />
-@else
-    <div class="form-group">
-        <label class="font-weight-bold">Bill No</label>
-        <div class="input-group">
-            <input type="text" name="bill_number" class="form-control font-weight-bold bg-light" value="{{ old('bill_number', '') }}" placeholder="Auto-Generated on Save (Continuous Sequence)" readonly>
-            <div class="input-group-append">
-                <span class="input-group-text bg-white text-muted small">
-                    <i class="fas fa-lock mr-1 text-secondary"></i> Assigned on Save
-                </span>
-            </div>
-        </div>
-        <small class="form-text text-muted">
-            <i class="fas fa-check-circle text-success mr-1"></i> Single continuous sequence: Automatically allotted at commit time without counter collision.
-        </small>
-    </div>
-@endif
-<div class="form-group">
-    <div class="d-flex justify-content-between align-items-center mb-1">
-        <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
-        <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs font-weight-bold">
-            <i class="fas fa-user-plus mr-1"></i> + New Customer
+    <div class="d-flex align-items-center">
+        <x-form-layout-customizer 
+            form-key="sales_bills.header" 
+            container-id="sb-header-fields-grid" 
+            button-text="Customize Layout" 
+            button-class="btn btn-outline-primary btn-xs font-weight-bold mr-2 shadow-sm" />
+        <button type="button" id="btn-customer-invoices" class="btn btn-outline-info btn-sm font-weight-bold" disabled title="Select a customer first to view their invoice history">
+            <i class="fas fa-file-invoice mr-1"></i> Invoices <span id="badge-cust-invoices-count" class="badge badge-info ml-1 d-none">0</span>
         </button>
     </div>
-    <select name="customer_id" id="customer_id" class="form-control select2">
-        <option value="">-- Search Customer by Name or Mobile --</option>
-        @foreach ($customers as $id => $name)
-            <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
-        @endforeach
-    </select>
-    <small class="form-text text-muted">Type customer name or 10-digit mobile number to search. If number is not found, "Add Customer" modal will open automatically.</small>
 </div>
-<div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-3 shadow-sm align-items-center justify-content-between">
-    <div>
-        <i class="fas fa-coins text-warning mr-1"></i>
-        <strong>Loyalty Points:</strong> <span id="sb-loyalty-pts" class="text-primary font-weight-bold">0.00</span> pts
-        <span class="text-muted">(≈ ₹<span id="sb-loyalty-val">0.00</span>)</span>
+<input type="hidden" name="posting_key" id="sb-posting-key" value="{{ old('posting_key', (string) \Illuminate\Support\Str::uuid()) }}">
+
+<div class="row g-2 form-fields-grid" id="sb-header-fields-grid">
+    {{-- Bill Number --}}
+    <div class="field-wrapper col-md-4" data-field="bill_number" data-default-order="1">
+        @if(!empty($bill?->id))
+            <x-field name="bill_number" label="Bill No" :value="$bill->bill_number" readonly />
+        @else
+            <div class="form-group mb-2">
+                <label class="font-weight-bold">Bill No</label>
+                <div class="input-group">
+                    <input type="text" name="bill_number" class="form-control font-weight-bold bg-light" value="{{ old('bill_number', '') }}" placeholder="Auto-Generated on Save" readonly>
+                    <div class="input-group-append">
+                        <span class="input-group-text bg-white text-muted small">
+                            <i class="fas fa-lock mr-1 text-secondary"></i> Assigned on Save
+                        </span>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
-    <span id="sb-loyalty-notice" class="badge badge-success"></span>
+
+    {{-- Customer --}}
+    <div class="field-wrapper col-md-8" data-field="customer_id" data-default-order="2" data-core="1">
+        <div class="form-group mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
+                <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs font-weight-bold">
+                    <i class="fas fa-user-plus mr-1"></i> + New Customer
+                </button>
+            </div>
+            <select name="customer_id" id="customer_id" class="form-control select2">
+                <option value="">-- Search Customer by Name or Mobile --</option>
+                @foreach ($customers as $id => $name)
+                    <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-2 shadow-sm align-items-center justify-content-between">
+            <div>
+                <i class="fas fa-coins text-warning mr-1"></i>
+                <strong>Loyalty Points:</strong> <span id="sb-loyalty-pts" class="text-primary font-weight-bold">0.00</span> pts
+                <span class="text-muted">(≈ ₹<span id="sb-loyalty-val">0.00</span>)</span>
+            </div>
+            <span id="sb-loyalty-notice" class="badge badge-success"></span>
+        </div>
+    </div>
+
+    {{-- Branch --}}
+    <div class="field-wrapper col-md-4" data-field="branch_id" data-default-order="3" data-core="1">
+        <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a branch" required />
+    </div>
+
+    {{-- Bill Date & Time --}}
+    <div class="field-wrapper col-md-4" data-field="bill_date" data-default-order="4" data-core="1">
+        <x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" max="{{ now()->format('Y-m-d\TH:i') }}" required />
+    </div>
+
+    {{-- Invoice Type --}}
+    <div class="field-wrapper col-md-4" data-field="invoice_type" data-default-order="5">
+        <x-select name="invoice_type" label="Invoice Type" :options="['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
+    </div>
+
+    {{-- Delivery Type --}}
+    <div class="field-wrapper col-md-4" data-field="delivery_type" data-default-order="6">
+        <x-select name="delivery_type" label="Delivery Type" :options="['Delivered' => 'Delivered', 'Home Delivery' => 'Home Delivery', 'Pickup' => 'Pickup']" :selected="$bill->delivery_type ?? 'Delivered'" required />
+    </div>
+
+    {{-- Delivery Time --}}
+    <div class="field-wrapper col-md-4" data-field="delivery_time" data-default-order="7">
+        <x-field name="delivery_time" label="Delivery Time" type="time" :value="$bill->delivery_time ?? ''" />
+    </div>
+
+    {{-- Sales Type --}}
+    <div class="field-wrapper col-md-4" data-field="sales_type" data-default-order="8">
+        <x-select name="sales_type" label="Sales Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$selectedSalesType" required />
+    </div>
+
+    {{-- Payment Type --}}
+    <div class="field-wrapper col-md-4" data-field="payment_type" data-default-order="9">
+        <x-field name="payment_type" label="Payment Type" :value="$bill->payment_type ?? 'None'" />
+    </div>
 </div>
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a branch" required />
-<x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" max="{{ now()->format('Y-m-d\TH:i') }}" required />
-<x-select name="invoice_type" label="Invoice Type" :options="['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
-<x-select name="delivery_type" label="Delivery Type" :options="['Delivered' => 'Delivered', 'Home Delivery' => 'Home Delivery', 'Pickup' => 'Pickup']" :selected="$bill->delivery_type ?? 'Delivered'" required />
-<x-field name="delivery_time" label="Delivery Time" type="time" :value="$bill->delivery_time ?? ''" />
-<x-select name="sales_type" label="Sales Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$selectedSalesType" required />
-<x-field name="payment_type" label="Payment Type" :value="$bill->payment_type ?? 'None'" />
 
 <hr>
 <div class="d-flex justify-content-between align-items-center mb-3">

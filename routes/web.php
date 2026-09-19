@@ -285,6 +285,9 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('table-preferences', [\App\Http\Controllers\UserTablePreferenceController::class, 'get'])->name('table-preferences.get');
     Route::post('table-preferences', [\App\Http\Controllers\UserTablePreferenceController::class, 'store'])->name('table-preferences.store');
     Route::post('table-preferences/reset', [\App\Http\Controllers\UserTablePreferenceController::class, 'reset'])->name('table-preferences.reset');
+    Route::get('form-preferences', [\App\Http\Controllers\UserFormPreferenceController::class, 'get'])->name('form-preferences.get');
+    Route::post('form-preferences', [\App\Http\Controllers\UserFormPreferenceController::class, 'store'])->name('form-preferences.store');
+    Route::post('form-preferences/reset', [\App\Http\Controllers\UserFormPreferenceController::class, 'reset'])->name('form-preferences.reset');
     Route::get('system-health', [\App\Http\Controllers\Tools\SystemHealthController::class, 'index'])->name('system-health.index');
     Route::post('system-health/run', [\App\Http\Controllers\Tools\SystemHealthController::class, 'runDiagnostics'])->name('system-health.run');
     Route::post('system-health/backup', [\App\Http\Controllers\Tools\SystemHealthController::class, 'createBackup'])->name('system-health.backup.create');
