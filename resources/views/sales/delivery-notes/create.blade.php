@@ -125,6 +125,7 @@
                     <thead class="thead-light">
                         <tr class="text-center">
                             <th style="width: 40px;">#</th>
+                            <th style="width: 155px;">Code / Barcode</th>
                             <th style="min-width: 250px;">Item Description</th>
                             <th style="width: 110px;">Ordered Qty</th>
                             <th style="width: 130px;">Dispatched Qty <span class="text-danger">*</span></th>
@@ -146,6 +147,9 @@
                             @php
                                 $r = is_array($row) ? (object) $row : $row;
                                 $itemId = $r->item_id ?? '';
+                                $itemObj = isset($r->item) && is_object($r->item) ? $r->item : ($itemId ? \App\Models\Item::find($itemId) : null);
+                                $displayCode = $itemObj?->ean_upc_code ?: ($itemObj?->item_code ?? '');
+                                $displayName = $itemObj ? ($itemObj->name . ($itemObj->ean_upc_code ? ' [Code: ' . $itemObj->ean_upc_code . ']' : '')) : '';
                                 $soItemId = $r->sales_order_item_id ?? '';
                                 $ordered = $r->ordered_qty ?? 0;
                                 $dispatched = $r->dispatched_qty ?? '';
@@ -156,16 +160,24 @@
                             @endphp
                             <tr class="sdn-item-row" data-index="{{ $idx }}">
                                 <td class="text-center align-middle row-number">{{ $idx + 1 }}</td>
+                                <td style="min-width: 145px;">
+                                    <input type="text" 
+                                           class="form-control form-control-sm sdn-item-code" 
+                                           value="{{ $displayCode }}" 
+                                           placeholder="Code / Barcode" 
+                                           autocomplete="off"
+                                           title="Enter code or click/tab to search">
+                                </td>
                                 <td>
                                     <input type="hidden" name="items[{{ $idx }}][sales_order_item_id]" value="{{ $soItemId }}">
-                                    <select name="items[{{ $idx }}][item_id]" class="form-control form-control-sm select2 item-select" required>
-                                        <option value="">-- Select Item --</option>
-                                        @foreach ($items as $itm)
-                                            <option value="{{ $itm->id }}" data-price="{{ $itm->sell_price }}" data-mrp="{{ $itm->mrp }}" {{ $itemId == $itm->id ? 'selected' : '' }}>
-                                                {{ $itm->item_code ? '['.$itm->item_code.'] ' : '' }}{{ $itm->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-select sdn-item-id" value="{{ $itemId }}" required>
+                                    <input type="text" 
+                                           class="form-control form-control-sm sdn-item-desc bg-light font-weight-bold text-truncate" 
+                                           readonly 
+                                           tabindex="-1"
+                                           value="{{ $displayName }}" 
+                                           placeholder="Product Description (auto-filled)"
+                                           title="Product description (auto-filled on code entry)">
                                 </td>
                                 <td>
                                     <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
@@ -194,7 +206,7 @@
                     </tbody>
                     <tfoot class="bg-light font-weight-bold">
                         <tr>
-                            <th colspan="2" class="text-right align-middle">Totals:</th>
+                            <th colspan="3" class="text-right align-middle">Totals:</th>
                             <th class="text-right align-middle" id="summary-ordered">0.00</th>
                             <th class="text-right align-middle text-primary" id="summary-dispatched">0.00</th>
                             <th colspan="4" class="text-right align-middle">Total Challan Value:</th>
@@ -228,16 +240,24 @@
     <template id="row-template">
         <tr class="sdn-item-row" data-index="__INDEX__">
             <td class="text-center align-middle row-number">__NUM__</td>
+            <td style="min-width: 145px;">
+                <input type="text" 
+                       class="form-control form-control-sm sdn-item-code" 
+                       value="" 
+                       placeholder="Code / Barcode" 
+                       autocomplete="off"
+                       title="Enter code or click/tab to search">
+            </td>
             <td>
                 <input type="hidden" name="items[__INDEX__][sales_order_item_id]" value="">
-                <select name="items[__INDEX__][item_id]" class="form-control form-control-sm select2 item-select" required>
-                    <option value="">-- Select Item --</option>
-                    @foreach ($items as $itm)
-                        <option value="{{ $itm->id }}" data-price="{{ $itm->sell_price }}" data-mrp="{{ $itm->mrp }}">
-                            {{ $itm->item_code ? '['.$itm->item_code.'] ' : '' }}{{ $itm->name }}
-                        </option>
-                    @endforeach
-                </select>
+                <input type="hidden" name="items[__INDEX__][item_id]" class="item-select sdn-item-id" value="" required>
+                <input type="text" 
+                       class="form-control form-control-sm sdn-item-desc bg-light font-weight-bold text-truncate" 
+                       readonly 
+                       tabindex="-1"
+                       value="" 
+                       placeholder="Product Description (auto-filled)"
+                       title="Product description (auto-filled on code entry)">
             </td>
             <td>
                 <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
@@ -263,14 +283,102 @@
             </td>
         </tr>
     </template>
+
+    {{-- ================================================================ --}}
+    {{-- ITEM SEARCH MODAL (Standard popup)                               --}}
+    {{-- ================================================================ --}}
+    <div class="modal fade" id="sdn-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="sdnItemSearchModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h5 class="modal-title font-weight-bold" id="sdnItemSearchModalLabel">
+                        <i class="fas fa-search mr-2"></i> Select Item
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-light"><i class="fas fa-font text-muted"></i></span>
+                                </div>
+                                <input type="text" id="sdn-isl-filter-name" class="form-control" placeholder="Search by item name..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-light"><i class="fas fa-barcode text-muted"></i></span>
+                                </div>
+                                <input type="text" id="sdn-isl-filter-code" class="form-control font-weight-bold" placeholder="Filter by Code / Barcode..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" id="sdn-isl-btn-clear" class="btn btn-outline-secondary btn-block">
+                                <i class="fas fa-times mr-1"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted" id="sdn-isl-status">Type to search items...</small>
+                        <small class="text-muted"><kbd>↑</kbd> <kbd>↓</kbd> to navigate, <kbd>Enter</kbd> to select, <kbd>Esc</kbd> to close</small>
+                    </div>
+
+                    <div id="sdn-isl-loading" class="text-center py-4 d-none">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-muted mb-0">Searching products…</p>
+                    </div>
+
+                    <div id="sdn-isl-no-results" class="text-center py-4 text-muted">
+                        <i class="fas fa-keyboard fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">Start typing to search items…</p>
+                    </div>
+
+                    <div id="sdn-isl-table-wrap" class="table-responsive d-none" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-sm table-striped mb-0">
+                            <thead class="thead-dark sticky-top">
+                                <tr>
+                                    <th style="width: 45px;" class="text-center">#</th>
+                                    <th>Item Name</th>
+                                    <th style="width: 140px;" class="text-center">Code / Barcode</th>
+                                    <th style="width: 90px;" class="text-center">Current Stock</th>
+                                    <th style="width: 100px;" class="text-right">Sell Price</th>
+                                    <th style="width: 100px;" class="text-right">MRP</th>
+                                    <th style="width: 90px;" class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sdn-isl-items-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 justify-content-between bg-light">
+                    <span class="text-muted small" id="sdn-isl-count-label"></span>
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('js')
 <script>
 $(function () {
+    const ISL_URL = "{{ route('sales.sales-bills.item-list') }}";
+    const LOOKUP_URL = "{{ route('sales.sales-bills.lookup-item') }}";
+
     $('.select2').select2({ theme: 'bootstrap4', width: '100%' });
 
     let rowIndex = {{ max(1, count($rowsToRender)) }};
+    let sdnActiveSearchRow = null;
+    let sdnModalOpen = false;
+    let sdnModalClosing = false;
+    let sdnCancellingRow = null;
+    let sdnItemSelectedInModal = false;
+    let sdnDebounce = null;
 
     function recalculate() {
         let totOrdered = 0;
@@ -302,21 +410,261 @@ $(function () {
         recalculate();
     });
 
-    // Item selection autofill
-    $(document).on('change', '.item-select', function () {
-        let opt = $(this).find(':selected');
-        let row = $(this).closest('tr');
-        if (opt.val()) {
-            let prc = parseFloat(opt.data('price')) || 0;
-            let mrp = parseFloat(opt.data('mrp')) || 0;
-            if (!row.find('.row-price').val() || parseFloat(row.find('.row-price').val()) === 0) {
-                row.find('.row-price').val(prc.toFixed(2));
-            }
-            if (!row.find('.row-mrp').val() || parseFloat(row.find('.row-mrp').val()) === 0) {
-                row.find('.row-mrp').val(mrp.toFixed(2));
+    // Modal open function
+    function openSdnItemModal($row, prefill) {
+        if (sdnModalOpen || sdnModalClosing) return;
+        sdnActiveSearchRow = $row;
+        sdnItemSelectedInModal = false;
+        sdnCancellingRow = null;
+
+        let initial = $.trim(prefill !== undefined ? prefill : ($row.find('.sdn-item-code').val() || ''));
+        $('#sdn-isl-filter-name').val(initial);
+        $('#sdn-isl-filter-code').val('');
+        fetchSdnItemList();
+
+        sdnModalOpen = true;
+        $('#sdn-item-search-modal').modal('show');
+        $('#sdn-item-search-modal').one('shown.bs.modal', function () {
+            $('#sdn-isl-filter-name').focus().select();
+        });
+    }
+
+    // Trigger modal on click or focus of .sdn-item-code (Tab key or Click)
+    $(document).off('click focus', '.sdn-item-code').on('click focus', '.sdn-item-code', function (e) {
+        if (sdnModalOpen || sdnModalClosing) return;
+        let $row = $(this).closest('tr');
+        if (e.type === 'focus' && $row.find('.sdn-item-id').val()) return;
+        openSdnItemModal($row, $(this).val());
+    });
+
+    // Handle modal hide / cancel empty rows gracefully
+    $('#sdn-item-search-modal').on('hide.bs.modal', function () {
+        sdnModalOpen = false;
+        sdnModalClosing = true;
+        if (!sdnItemSelectedInModal && sdnActiveSearchRow && sdnActiveSearchRow.length) {
+            let selectedId = sdnActiveSearchRow.find('.sdn-item-id').val();
+            if (!selectedId) {
+                sdnCancellingRow = sdnActiveSearchRow;
             }
         }
+    });
+
+    $('#sdn-item-search-modal').on('hidden.bs.modal', function () {
+        sdnModalOpen = false;
+        sdnModalClosing = true;
+        setTimeout(function () { sdnModalClosing = false; }, 350);
+
+        if (!sdnItemSelectedInModal && sdnCancellingRow && sdnCancellingRow.length) {
+            let totalRows = $('#sdn-items-body tr.sdn-item-row').length;
+            if (totalRows > 1) {
+                sdnCancellingRow.remove();
+                recalculate();
+            } else {
+                sdnCancellingRow.find('.sdn-item-code').val('');
+                sdnCancellingRow.find('.sdn-item-desc').val('');
+                sdnCancellingRow.find('.sdn-item-id').val('');
+            }
+            sdnCancellingRow = null;
+            sdnActiveSearchRow = null;
+            setTimeout(function () {
+                $('#add-row-btn, #remarks, #submit-btn').first().focus();
+            }, 60);
+            return;
+        }
+
+        sdnItemSelectedInModal = false;
+        sdnCancellingRow = null;
+        sdnActiveSearchRow = null;
+    });
+
+    // Filter typing
+    $('#sdn-isl-filter-name, #sdn-isl-filter-code').on('input', function () {
+        clearTimeout(sdnDebounce);
+        sdnDebounce = setTimeout(fetchSdnItemList, 300);
+    });
+
+    $('#sdn-isl-btn-clear').on('click', function () {
+        $('#sdn-isl-filter-name, #sdn-isl-filter-code').val('');
+        fetchSdnItemList();
+    });
+
+    // Fetch items from backend
+    function fetchSdnItemList() {
+        let branchId = $('select[name="branch_id"]').val() || 3;
+        let srch = $.trim($('#sdn-isl-filter-name').val());
+        let code = $.trim($('#sdn-isl-filter-code').val());
+
+        if (!srch && !code) {
+            $('#sdn-isl-loading').addClass('d-none');
+            $('#sdn-isl-table-wrap').addClass('d-none');
+            $('#sdn-isl-items-body').empty();
+            $('#sdn-isl-no-results').removeClass('d-none').html(
+                '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
+            );
+            $('#sdn-isl-count-label').text('');
+            return;
+        }
+
+        $('#sdn-isl-loading').removeClass('d-none');
+        $('#sdn-isl-no-results').addClass('d-none');
+        $('#sdn-isl-table-wrap').addClass('d-none');
+
+        $.getJSON(ISL_URL, { branch_id: branchId, search: srch, code: code }, function (res) {
+            $('#sdn-isl-loading').addClass('d-none');
+            let items = res.items || [];
+            let $tbody = $('#sdn-isl-items-body').empty();
+
+            if (items.length === 0) {
+                $('#sdn-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-inbox fa-2x text-muted"></i><p class="mt-2 text-muted">No items found.</p>'
+                );
+                $('#sdn-isl-count-label').text('');
+                return;
+            }
+
+            let html = '';
+            items.forEach(function (it, idx) {
+                let codeBadge = it.code ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>` : '—';
+                let sellDisplay = it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—';
+                let mrpDisplay = it.mrp > 0 ? '₹' + parseFloat(it.mrp).toFixed(2) : '—';
+                let stockClass = it.qty <= 0 ? 'text-danger' : 'text-primary font-weight-bold';
+
+                html += `
+                    <tr class="sdn-isl-item-row" style="cursor:pointer;"
+                        data-id="${it.id}"
+                        data-code="${it.code || ''}"
+                        data-name="${it.name}"
+                        data-qty="${it.qty || 0}"
+                        data-sell="${it.sell_price || 0}"
+                        data-mrp="${it.mrp || 0}">
+                        <td class="align-middle text-center text-muted">${idx + 1}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td class="align-middle text-center">${codeBadge}</td>
+                        <td class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(3)}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
+                        <td class="align-middle text-center">
+                            <button type="button" class="btn btn-success btn-xs px-2 sdn-isl-btn-select">
+                                <i class="fas fa-check mr-1"></i>Select
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+
+            $tbody.html(html);
+            $('#sdn-isl-table-wrap').removeClass('d-none');
+            $('#sdn-isl-count-label').text(items.length + ' item(s) found');
+            $tbody.find('tr.sdn-isl-item-row').first().addClass('table-primary');
+        }).fail(function () {
+            $('#sdn-isl-loading').addClass('d-none');
+        });
+    }
+
+    // Apply selected item to target row
+    function applyItemToSdnRow($row, item) {
+        if (!$row || !$row.length || !item || !item.id) return;
+
+        sdnItemSelectedInModal = true;
+        sdnCancellingRow = null;
+
+        $row.find('.sdn-item-id').val(item.id);
+        $row.find('.sdn-item-desc').val(item.name || item.text || '');
+        $row.find('.sdn-item-code').val(item.code || item.barcode || item.item_code || '');
+
+        let sellPrice = parseFloat(item.sell_price || 0);
+        let mrp = parseFloat(item.mrp || 0);
+
+        if (sellPrice > 0 || !$row.find('.row-price').val() || parseFloat($row.find('.row-price').val()) === 0) {
+            $row.find('.row-price').val(sellPrice.toFixed(2));
+        }
+        if (mrp > 0 || !$row.find('.row-mrp').val() || parseFloat($row.find('.row-mrp').val()) === 0) {
+            $row.find('.row-mrp').val(mrp.toFixed(2));
+        }
+
+        let $disp = $row.find('.row-dispatched');
+        if (!$disp.val() || parseFloat($disp.val()) <= 0) {
+            $disp.val(1);
+        }
+
         recalculate();
+        $('#sdn-item-search-modal').modal('hide');
+
+        setTimeout(function () {
+            $disp.focus().select();
+        }, 100);
+    }
+
+    // Selection from modal click
+    $(document).on('click', '.sdn-isl-item-row, .sdn-isl-btn-select', function (e) {
+        e.stopPropagation();
+        let $tr = $(this).hasClass('sdn-isl-item-row') ? $(this) : $(this).closest('tr');
+        let itemData = {
+            id: $tr.data('id'),
+            name: $tr.data('name'),
+            code: $tr.data('code'),
+            qty: $tr.data('qty'),
+            sell_price: $tr.data('sell'),
+            mrp: $tr.data('mrp')
+        };
+
+        if (!sdnActiveSearchRow || !itemData.id) return;
+        applyItemToSdnRow(sdnActiveSearchRow, itemData);
+    });
+
+    // Keyboard navigation in modal (Arrow keys, Enter)
+    $('#sdn-item-search-modal').on('keydown', function (e) {
+        let $rows = $('#sdn-isl-items-body tr.sdn-isl-item-row');
+        if (!$rows.length) return;
+
+        let $current = $rows.filter('.table-primary');
+        let idx = $rows.index($current);
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            idx = (idx + 1) >= $rows.length ? 0 : idx + 1;
+            $rows.removeClass('table-primary');
+            let $target = $rows.eq(idx).addClass('table-primary');
+            if ($target[0]) {
+                $target[0].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            idx = (idx - 1) < 0 ? $rows.length - 1 : idx - 1;
+            $rows.removeClass('table-primary');
+            let $target = $rows.eq(idx).addClass('table-primary');
+            if ($target[0]) {
+                $target[0].scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            let $target = $current.length ? $current : $rows.first();
+            if ($target.length) {
+                $target.trigger('click');
+            }
+        }
+    });
+
+    // Barcode scanner or Enter in .sdn-item-code
+    $(document).on('keydown', '.sdn-item-code', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            let query = $.trim($(this).val());
+            let $row = $(this).closest('tr');
+            if (!query) {
+                openSdnItemModal($row, '');
+                return;
+            }
+            let branchId = $('select[name="branch_id"]').val() || 3;
+            $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
+                if (item && item.id) {
+                    applyItemToSdnRow($row, item);
+                } else {
+                    openSdnItemModal($row, query);
+                }
+            }).fail(function () {
+                openSdnItemModal($row, query);
+            });
+        }
     });
 
     // Add Row
@@ -327,9 +675,24 @@ $(function () {
 
         let $newRow = $(tmpl);
         $('#sdn-items-body').append($newRow);
-        $newRow.find('.select2').select2({ theme: 'bootstrap4', width: '100%' });
         rowIndex++;
         recalculate();
+        $newRow.find('.sdn-item-code').focus();
+    });
+
+    // Tab / Enter at end of row adds new row or focuses next code
+    $(document).on('keydown', '#sdn-items-body input[name$="[exp_date]"]', function (e) {
+        if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+            let $currentRow = $(this).closest('tr.sdn-item-row');
+            let $nextRow = $currentRow.next('tr.sdn-item-row');
+            if ($nextRow.length) {
+                e.preventDefault();
+                $nextRow.find('.sdn-item-code').focus();
+            } else {
+                e.preventDefault();
+                $('#add-row-btn').trigger('click');
+            }
+        }
     });
 
     // Remove Row

@@ -23,14 +23,7 @@
 <tr class="su-item-row" data-row-index="{{ $idx }}">
     <td style="min-width: 140px;">
         <input type="hidden" name="items[{{ $idx }}][item_id]" class="su-item-id" value="{{ $itemId }}" required>
-        <div class="input-group input-group-sm">
-            <input type="text" class="form-control form-control-sm su-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Enter code or click/tab to search">
-            <div class="input-group-append">
-                <button type="button" class="btn btn-outline-secondary su-search-btn" title="Search Item (Popup)" tabindex="-1">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
-        </div>
+        <input type="text" class="form-control form-control-sm su-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Enter code or click/tab to search">
     </td>
     <td style="min-width: 220px;">
         <input type="text" class="form-control form-control-sm su-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">

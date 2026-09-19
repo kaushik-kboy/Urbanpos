@@ -224,12 +224,9 @@
         function applyItemToRow($row, item) {
             if (!$row || !$row.length) return;
 
-            const $select = $row.find('.item-select');
             $row.find('.item-id-hidden').val(item.id);
-
-            // Update Select2
-            const option = new Option(item.text, item.id, true, true);
-            $select.empty().append(option).trigger('change');
+            const itemName = item.name || item.text || '';
+            $row.find('.item-desc').val(itemName);
 
             // Update Inputs
             const displayCode = item.code || item.barcode || item.item_code || '';
@@ -501,59 +498,9 @@
             }
         });
 
-        // Initialize Select2 on a row
+        // Initialize Select2 on a row (no-op since using standard description input)
         function initRowSelect2($row) {
-            const $select = $row.find('.item-select');
-            if ($select.hasClass('select2-hidden-accessible')) {
-                return;
-            }
-
-            $select.select2({
-                placeholder: 'Search item name or code...',
-                allowClear: true,
-                dropdownAutoWidth: true,
-                width: '100%',
-                minimumInputLength: 1,
-                ajax: {
-                    url: searchItemsUrl,
-                    dataType: 'json',
-                    delay: 200,
-                    data: function (params) {
-                        return { 
-                            q: params.term,
-                            branch_id: $('#branch_id').val() || 2
-                        };
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.map(function (item) {
-                                return {
-                                    id: item.id,
-                                    text: item.text,
-                                    itemData: item
-                                };
-                            })
-                        };
-                    },
-                    cache: true
-                }
-            });
-
-            $select.on('select2:select', function (e) {
-                const data = e.params.data.itemData;
-                if (!data) return;
-                applyItemToRow($row, data);
-            });
-
-            $select.on('select2:clear', function () {
-                $row.find('.item-id-hidden').val('');
-                $row.find('.item-code-input').val('');
-                $row.find('.item-cost').val('');
-                $row.find('.item-sell').val('');
-                $row.find('.item-mrp').val('');
-                $row.find('.item-gst-percent').val(0);
-                recalcRow($row);
-            });
+            // Standard read-only description input is now used.
         }
 
         // Lookup item by code (barcode scanner or typing)

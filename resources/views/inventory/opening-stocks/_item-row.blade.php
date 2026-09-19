@@ -27,33 +27,22 @@
         <span class="row-sno font-weight-bold">{{ is_numeric($rowId) ? $rowId + 1 : '__SNO__' }}</span>
     </td>
     <td style="min-width: 145px;">
-        <div class="input-group input-group-sm">
-            <input type="text" 
-                   class="form-control form-control-sm item-code-input" 
-                   value="{{ $displayCode }}" 
-                   placeholder="Code / Barcode" 
-                   autocomplete="off"
-                   title="Enter code or click/tab to search">
-            <div class="input-group-append">
-                <button type="button" class="btn btn-outline-secondary btn-sm open-item-modal" title="Search Items Popup (F2)" tabindex="-1">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
-        </div>
+        <input type="text" 
+               class="form-control form-control-sm item-code-input" 
+               value="{{ $displayCode }}" 
+               placeholder="Code / Barcode" 
+               autocomplete="off"
+               title="Enter code or click/tab to search">
     </td>
     <td style="min-width: 260px;">
-        <select name="items[{{ $rowId }}][item_id]" 
-                class="form-control form-control-sm item-select" 
-                style="width: 100%;" 
-                required>
-            @if ($item)
-                <option value="{{ $itemId }}" selected>
-                    {{ $item->name }} {{ $item->ean_upc_code ? '[Code: ' . $item->ean_upc_code . ']' : '' }}
-                </option>
-            @else
-                <option value="">Search item name / code...</option>
-            @endif
-        </select>
+        <input type="text" 
+               class="form-control form-control-sm item-desc bg-light font-weight-bold text-truncate" 
+               readonly 
+               tabindex="-1"
+               value="{{ $item ? ($item->name . ($item->ean_upc_code ? ' [Code: ' . $item->ean_upc_code . ']' : '')) : '' }}" 
+               placeholder="Product Description (auto-filled)"
+               title="Product description (auto-filled on code entry)">
+        <input type="hidden" name="items[{{ $rowId }}][item_id]" class="item-select item-id-hidden" value="{{ $itemId }}" required>
     </td>
     <td style="min-width: 130px;">
         <input type="date" 

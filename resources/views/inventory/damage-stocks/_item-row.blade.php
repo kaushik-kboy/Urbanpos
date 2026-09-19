@@ -32,16 +32,16 @@
                title="Enter code or click/tab to search">
     </td>
 
-    {{-- Item Description (Select2 AJAX) --}}
-    <td style="min-width: 280px;">
-        <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-id-hidden" value="{{ $itemId }}">
-        <select class="form-control form-control-sm item-select select2" style="width: 100%;">
-            @if ($itemId && $displayText)
-                <option value="{{ $itemId }}" selected>{{ $displayText }}</option>
-            @else
-                <option value="">-- Search Item / Description --</option>
-            @endif
-        </select>
+    {{-- Item Description (Standard auto-filled read-only input) --}}
+    <td style="min-width: 260px;">
+        <input type="text" 
+               class="form-control form-control-sm item-desc bg-light font-weight-bold text-truncate" 
+               readonly 
+               tabindex="-1"
+               value="{{ $displayText }}" 
+               placeholder="Product Description (auto-filled)"
+               title="Product description (auto-filled on code entry)">
+        <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-id-hidden" value="{{ $itemId }}" required>
     </td>
 
     {{-- Exp Date --}}
