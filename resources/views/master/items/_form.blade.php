@@ -10,30 +10,64 @@
 
 <div class="tab-content pt-3">
     <div class="tab-pane active" id="tab-general">
-        <x-field name="ean_upc_code" label="EAN/UPC Code" :value="$i->ean_upc_code ?? ''">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-generate-barcode" title="Generate New Unique Barcode">
-                <i class="fas fa-barcode mr-1"></i> Generate
-            </button>
-        </x-field>
-        <x-field name="name" label="Item Name" :value="$i->name ?? ''" />
-        <x-field name="alias" label="Alias" :value="$i->alias ?? ''" />
-        <x-select name="brand_id" label="Brand" :options="$brands" :selected="$i->brand_id ?? ''" placeholder="Select a Brand">
-            <button type="button" class="btn btn-outline-primary btn-sm text-nowrap" data-toggle="modal" data-target="#quickBrandModal" title="Add New Brand">
-                <i class="fas fa-plus mr-1"></i> Add Brand
-            </button>
-        </x-select>
-        <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$i->supplier_id ?? ''" placeholder="Select a Supplier">
-            <button type="button" class="btn btn-outline-primary btn-sm text-nowrap" data-toggle="modal" data-target="#quickSupplierModal" title="Add New Supplier">
-                <i class="fas fa-plus mr-1"></i> Add Supplier
-            </button>
-        </x-select>
-        <x-select name="product_type" label="Product Type" :options="['Standard' => 'Standard', 'Serialized' => 'Serialized', 'Service Component' => 'Service Component', 'Gift Voucher' => 'Gift Voucher']" :selected="$i->product_type ?? 'Standard'" />
-        <x-field name="cost_price" label="Cost Price" type="number" step="0.01" :value="$i->cost_price ?? 0" />
-        <x-field name="landing_cost" label="Landing Cost" type="number" step="0.01" :value="$i->landing_cost ?? 0" />
-        <x-field name="sell_price" label="Sell Price" type="number" step="0.01" :value="$i->sell_price ?? 0" />
-        <x-field name="mrp" label="MRP (Maximum Retail Price)" type="number" step="0.01" :value="$i->mrp ?? 0" />
-        <x-bool-select name="status" label="Status" :value="$i->status ?? true" />
-        <x-bool-select name="store_pickup" label="Store Pickup" :value="$i->store_pickup ?? false" true-label="Yes" false-label="No" />
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-barcode mr-1 text-primary"></i> General Item Fields</h6>
+            <x-form-layout-customizer
+                form-key="master_items.general"
+                container-id="item-general-fields-grid"
+                title="Customize Item Form Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="item-general-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="ean_upc_code" data-label="EAN/UPC Code" data-default-order="1" data-core="1">
+                <x-field name="ean_upc_code" label="EAN/UPC Code" :value="$i->ean_upc_code ?? ''">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-generate-barcode" title="Generate New Unique Barcode">
+                        <i class="fas fa-barcode mr-1"></i> Generate
+                    </button>
+                </x-field>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="name" data-label="Item Name" data-default-order="2" data-core="1">
+                <x-field name="name" label="Item Name" :value="$i->name ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="alias" data-label="Alias" data-default-order="3">
+                <x-field name="alias" label="Alias" :value="$i->alias ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="brand_id" data-label="Brand" data-default-order="4">
+                <x-select name="brand_id" label="Brand" :options="$brands" :selected="$i->brand_id ?? ''" placeholder="Select a Brand">
+                    <button type="button" class="btn btn-outline-primary btn-sm text-nowrap" data-toggle="modal" data-target="#quickBrandModal" title="Add New Brand">
+                        <i class="fas fa-plus mr-1"></i> Add Brand
+                    </button>
+                </x-select>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="supplier_id" data-label="Supplier" data-default-order="5">
+                <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$i->supplier_id ?? ''" placeholder="Select a Supplier">
+                    <button type="button" class="btn btn-outline-primary btn-sm text-nowrap" data-toggle="modal" data-target="#quickSupplierModal" title="Add New Supplier">
+                        <i class="fas fa-plus mr-1"></i> Add Supplier
+                    </button>
+                </x-select>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="product_type" data-label="Product Type" data-default-order="6" data-core="1">
+                <x-select name="product_type" label="Product Type" :options="['Standard' => 'Standard', 'Serialized' => 'Serialized', 'Service Component' => 'Service Component', 'Gift Voucher' => 'Gift Voucher']" :selected="$i->product_type ?? 'Standard'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="cost_price" data-label="Cost Price" data-default-order="7" data-core="1">
+                <x-field name="cost_price" label="Cost Price" type="number" step="0.01" :value="$i->cost_price ?? 0" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="landing_cost" data-label="Landing Cost" data-default-order="8">
+                <x-field name="landing_cost" label="Landing Cost" type="number" step="0.01" :value="$i->landing_cost ?? 0" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="sell_price" data-label="Sell Price" data-default-order="9" data-core="1">
+                <x-field name="sell_price" label="Sell Price" type="number" step="0.01" :value="$i->sell_price ?? 0" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="mrp" data-label="MRP (Maximum Retail Price)" data-default-order="10" data-core="1">
+                <x-field name="mrp" label="MRP (Maximum Retail Price)" type="number" step="0.01" :value="$i->mrp ?? 0" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="11">
+                <x-bool-select name="status" label="Status" :value="$i->status ?? true" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="store_pickup" data-label="Store Pickup" data-default-order="12">
+                <x-bool-select name="store_pickup" label="Store Pickup" :value="$i->store_pickup ?? false" true-label="Yes" false-label="No" />
+            </div>
+        </div>
     </div>
 
     <div class="tab-pane" id="tab-taxes">

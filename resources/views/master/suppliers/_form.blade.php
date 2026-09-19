@@ -9,16 +9,46 @@
 <div class="tab-content pt-3">
     <!-- General Tab -->
     <div class="tab-pane active" id="tab-general">
-        <x-field name="name" label="Supplier Name" :value="$s->name ?? ''" required />
-        <x-field name="currency" label="Currency" :value="$s->currency ?? 'INR'" />
-        <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate', 'Import' => 'Import']" :selected="$s->purchase_type ?? 'Local'" />
-        <x-select name="purchase_mode" label="Purchase Mode" :options="['Credit' => 'Credit', 'Cash' => 'Cash', 'Consignment' => 'Consignment']" :selected="$s->purchase_mode ?? 'Credit'" />
-        <x-field name="credit_limit" label="Credit Limit" type="number" step="0.01" :value="$s->credit_limit ?? 0" />
-        <x-field name="credit_balance" label="Credit Balance" type="number" step="0.01" :value="$s->credit_balance ?? 0" />
-        <x-field name="credit_days" label="Credit Days" type="number" :value="$s->credit_days ?? 0" />
-        <x-select name="gst_type" label="GST Type" :options="['Regular' => 'Regular', 'Composite' => 'Composite', 'Un Register' => 'Un Register']" :selected="$s->gst_type ?? 'Regular'" />
-        <x-select name="mail_type" label="Mail Type" :options="['None' => 'None', 'Inline HTML' => 'Inline HTML', 'CSV' => 'CSV', 'SAP' => 'SAP', 'EDI' => 'EDI']" :selected="$s->mail_type ?? 'None'" />
-        <x-bool-select name="status" label="Status" :value="$s->status ?? true" />
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-truck mr-1 text-primary"></i> General Fields</h6>
+            <x-form-layout-customizer
+                form-key="master_suppliers.general"
+                container-id="supplier-general-fields-grid"
+                title="Customize Supplier Form Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="supplier-general-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="name" data-label="Supplier Name" data-default-order="1" data-core="1">
+                <x-field name="name" label="Supplier Name" :value="$s->name ?? ''" required />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="currency" data-label="Currency" data-default-order="2">
+                <x-field name="currency" label="Currency" :value="$s->currency ?? 'INR'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="purchase_type" data-label="Purchase Type" data-default-order="3" data-core="1">
+                <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate', 'Import' => 'Import']" :selected="$s->purchase_type ?? 'Local'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="purchase_mode" data-label="Purchase Mode" data-default-order="4">
+                <x-select name="purchase_mode" label="Purchase Mode" :options="['Credit' => 'Credit', 'Cash' => 'Cash', 'Consignment' => 'Consignment']" :selected="$s->purchase_mode ?? 'Credit'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="credit_limit" data-label="Credit Limit" data-default-order="5">
+                <x-field name="credit_limit" label="Credit Limit" type="number" step="0.01" :value="$s->credit_limit ?? 0" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="credit_balance" data-label="Credit Balance" data-default-order="6">
+                <x-field name="credit_balance" label="Credit Balance" type="number" step="0.01" :value="$s->credit_balance ?? 0" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="credit_days" data-label="Credit Days" data-default-order="7">
+                <x-field name="credit_days" label="Credit Days" type="number" :value="$s->credit_days ?? 0" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="gst_type" data-label="GST Type" data-default-order="8">
+                <x-select name="gst_type" label="GST Type" :options="['Regular' => 'Regular', 'Composite' => 'Composite', 'Un Register' => 'Un Register']" :selected="$s->gst_type ?? 'Regular'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="mail_type" data-label="Mail Type" data-default-order="9">
+                <x-select name="mail_type" label="Mail Type" :options="['None' => 'None', 'Inline HTML' => 'Inline HTML', 'CSV' => 'CSV', 'SAP' => 'SAP', 'EDI' => 'EDI']" :selected="$s->mail_type ?? 'None'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="10">
+                <x-bool-select name="status" label="Status" :value="$s->status ?? true" />
+            </div>
+        </div>
     </div>
 
     <!-- Address & Statutory Tab -->

@@ -304,4 +304,40 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="return_date"', false);
     }
+
+    public function test_customer_master_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('master.customers.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('customer-general-fields-grid');
+        $response->assertSee('data-field="name"', false);
+        $response->assertSee('data-field="mobile"', false);
+    }
+
+    public function test_supplier_master_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('master.suppliers.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('supplier-general-fields-grid');
+        $response->assertSee('data-field="name"', false);
+        $response->assertSee('data-field="purchase_type"', false);
+    }
+
+    public function test_item_master_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('master.items.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('item-general-fields-grid');
+        $response->assertSee('data-field="name"', false);
+        $response->assertSee('data-field="sell_price"', false);
+    }
 }
