@@ -403,6 +403,37 @@
                     <i class="fas fa-check mr-1"></i> Save Configuration
                 </button>
             </div>
+{{-- MODAL: GROUP DRILLDOWN TRANSACTION BREAKDOWN --}}
+<div class="modal fade" id="drilldownModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="drilldownModalTitle">
+                    <i class="fas fa-list-ol mr-2 text-warning"></i> Transaction Breakdown
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-3 bg-light border-bottom d-flex flex-wrap justify-content-between align-items-center">
+                    <div id="drilldown-summary-text" class="font-weight-bold text-dark h6 mb-0"></div>
+                    <div class="small text-muted">
+                        <i class="fas fa-external-link-alt text-primary mr-1"></i> All transaction links open in a new tab without closing this report.
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover table-striped table-bordered mb-0" id="drilldown-table">
+                        <thead class="bg-light sticky-top" id="drilldown-thead"></thead>
+                        <tbody id="drilldown-tbody">
+                            <tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Loading transactions...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -537,12 +568,12 @@ $(document).ready(function() {
             let alignClass = (col.key.includes('qty') || col.key.includes('sales') || col.key.includes('amount') || col.key.includes('profit') || col.key.includes('cost') || col.key.includes('disc') || col.key.includes('aov')) ? 'text-right' : (col.key === 'bill_count' || col.key === 'invoice_count' || col.key.includes('date') || col.key === 'is_primary_supplier' ? 'text-center' : 'text-left');
             headHtml += `<th class="${alignClass}">${col.label}</th>`;
         });
-        headHtml += '</tr>';
+        headHtml += '<th class="text-center" style="width: 90px;">Action</th></tr>';
         $head.html(headHtml);
 
         // 3. Build Body Rows
         if (!resp.rows || resp.rows.length === 0) {
-            $body.html(`<tr><td colspan="${resp.columns.length + 1}" class="text-center py-4 text-muted">No records found for the chosen filters.</td></tr>`);
+            $body.html(`<tr><td colspan="${resp.columns.length + 2}" class="text-center py-4 text-muted">No records found for the chosen filters.</td></tr>`);
             return;
         }
 
@@ -556,12 +587,54 @@ $(document).ready(function() {
                     val = val ? '<span class="badge badge-success"><i class="fas fa-check mr-1"></i> Primary Master</span>' : '<span class="badge badge-light border text-muted">Inward Source</span>';
                 } else if (col.key === 'item_code') {
                     val = `<span class="badge badge-light border">${val || '-'}</span>`;
-                } else if (col.key === 'item_name' || col.key === 'group_name') {
-                    val = `<span class="font-weight-bold text-dark">${val}</span>`;
+                } else if (col.key === 'item_name') {
+                    let itemId = row.item_id || row.group_id;
+                    val = `<span class="font-weight-bold text-dark">${val}</span>
+                           <a href="{{ route('reports.smart-analytics') }}?item_id=${itemId}" target="_blank" class="badge badge-light border text-primary ml-1" title="Open Single Item 360° Profile in New Tab"><i class="fas fa-external-link-alt mr-1"></i>360°</a>`;
+                } else if (col.key === 'group_name') {
+                    if (resp.group_by === 'item') {
+                        val = `<span class="font-weight-bold text-dark">${val}</span>
+                               <a href="{{ route('reports.smart-analytics') }}?item_id=${row.group_id}" target="_blank" class="badge badge-light border text-primary ml-1" title="Open Single Item 360° Profile in New Tab"><i class="fas fa-external-link-alt mr-1"></i>360°</a>`;
+                    } else if (resp.group_by === 'customer') {
+                        val = `<span class="font-weight-bold text-dark">${val}</span>
+                               <a href="{{ route('reports.smart-analytics') }}?customer_id=${row.group_id}" target="_blank" class="badge badge-light border text-primary ml-1" title="Open Customer 360° Profile in New Tab"><i class="fas fa-external-link-alt mr-1"></i>360°</a>`;
+                    } else {
+                        val = `<span class="font-weight-bold text-dark">${val}</span>`;
+                    }
+                } else if (col.key === 'bill_count' || col.key === 'invoice_count') {
+                    let countNum = parseInt(val) || 0;
+                    if (countNum > 0) {
+                        val = `<button type="button" class="btn btn-xs btn-outline-primary btn-drilldown py-0 px-2 font-weight-bold" 
+                                       data-group="${resp.group_by}" 
+                                       data-id="${row.group_id || row.item_id}" 
+                                       data-subid="${row.supplier_id || ''}" 
+                                       data-name="${row.group_name || row.item_name}" 
+                                       title="Click to view underlying transactions in modal">
+                                       <i class="fas fa-search-plus mr-1"></i>${val} ${col.key === 'invoice_count' ? 'Invoices' : 'Bills'}
+                               </button>`;
+                    }
                 }
 
                 rowHtml += `<td class="${alignClass}">${val}</td>`;
             });
+
+            // Action column with Drilldown button
+            let targetId = row.group_id || row.item_id;
+            let targetSubId = row.supplier_id || '';
+            let targetName = row.group_name || row.item_name;
+            rowHtml += `
+                <td class="text-center">
+                    <button type="button" class="btn btn-xs btn-info btn-drilldown font-weight-bold px-2" 
+                            data-group="${resp.group_by}" 
+                            data-id="${targetId}" 
+                            data-subid="${targetSubId}" 
+                            data-name="${targetName}" 
+                            title="View underlying transactions">
+                        <i class="fas fa-list mr-1"></i> Details
+                    </button>
+                </td>
+            `;
+
             rowHtml += '</tr>';
             $body.append(rowHtml);
         });
@@ -826,6 +899,193 @@ $(document).ready(function() {
         $('#m_qty, #m_sales, #m_margin, #m_bills').prop('checked', true);
         runLiveReport();
     });
+
+    // GROUP DRILLDOWN ACTION (CLICKING BILLS OR DETAILS BUTTON)
+    $(document).on('click', '.btn-drilldown', function(e) {
+        e.preventDefault();
+        let group = $(this).data('group');
+        let id = $(this).data('id');
+        let subid = $(this).data('subid');
+        let name = $(this).data('name') || '';
+
+        $('#drilldownModalTitle').html(`<i class="fas fa-search-plus mr-2 text-warning"></i> Transaction Breakdown: ${name}`);
+        $('#drilldown-summary-text').html('<span class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Fetching transactions...</span>');
+        $('#drilldown-tbody').html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Loading transactions...</td></tr>');
+        $('#drilldownModal').modal('show');
+
+        let formData = $('#builder-form').serializeArray();
+        let params = {};
+        formData.forEach(function(item) {
+            params[item.name] = item.value;
+        });
+        params['group_by'] = group;
+        params['group_id'] = id;
+        params['sub_id'] = subid;
+
+        $.ajax({
+            url: '{{ route("reports.analytics-builder.drilldown") }}',
+            method: 'GET',
+            data: params,
+            dataType: 'json',
+            success: function(resp) {
+                renderDrilldownModal(resp);
+            },
+            error: function(xhr) {
+                $('#drilldown-tbody').html('<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load transaction details: ' + (xhr.responseJSON?.message || 'Server error') + '</td></tr>');
+            }
+        });
+    });
+
+    function renderDrilldownModal(resp) {
+        let $thead = $('#drilldown-thead').empty();
+        let $tbody = $('#drilldown-tbody').empty();
+        let summary = resp.summary || {};
+
+        let summaryHtml = `<strong>Total Records:</strong> <span class="badge badge-primary mr-3">${summary.count || resp.records.length}</span>`;
+        if (summary.total_qty) {
+            summaryHtml += `<strong>Total Quantity:</strong> <span class="badge badge-info mr-3">${summary.total_qty}</span>`;
+        }
+        if (summary.total_amount) {
+            summaryHtml += `<strong>Total Value:</strong> <span class="badge badge-success mr-3">${summary.total_amount}</span>`;
+        }
+        $('#drilldown-summary-text').html(summaryHtml);
+
+        if (resp.group_by === 'item_supplier') {
+            $thead.html(`
+                <tr>
+                    <th class="text-center" style="width: 45px;">#</th>
+                    <th>Invoice / GRN No</th>
+                    <th>Invoice Date</th>
+                    <th>Branch</th>
+                    <th class="text-right">Inward Qty</th>
+                    <th class="text-right">Cost Price (₹)</th>
+                    <th class="text-right">Net Value (₹)</th>
+                    <th class="text-center" style="width: 100px;">Action</th>
+                </tr>
+            `);
+
+            if (resp.records.length === 0) {
+                $tbody.html('<tr><td colspan="8" class="text-center py-4 text-muted">No purchase transactions found for this item and supplier.</td></tr>');
+                return;
+            }
+
+            resp.records.forEach(function(r, idx) {
+                $tbody.append(`
+                    <tr>
+                        <td class="text-center text-muted font-weight-bold">${idx + 1}</td>
+                        <td class="font-weight-bold">
+                            <a href="${r.view_url}" target="_blank" class="text-primary" title="Open Purchase Bill in New Tab">
+                                ${r.invoice_number} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
+                            </a>
+                        </td>
+                        <td>${r.formatted_date}</td>
+                        <td>${r.branch_name}</td>
+                        <td class="text-right font-weight-bold">${parseFloat(r.qty).toFixed(2)}</td>
+                        <td class="text-right">${r.formatted_cost}</td>
+                        <td class="text-right font-weight-bold text-success">${r.formatted_amount}</td>
+                        <td class="text-center">
+                            <a href="${r.view_url}" target="_blank" class="btn btn-xs btn-outline-primary font-weight-bold" title="Open in New Tab">
+                                Open ↗
+                            </a>
+                        </td>
+                    </tr>
+                `);
+            });
+
+        } else if (resp.group_by === 'customer') {
+            $thead.html(`
+                <tr>
+                    <th class="text-center" style="width: 45px;">#</th>
+                    <th>Bill Number</th>
+                    <th>Bill Date & Time</th>
+                    <th>Branch</th>
+                    <th class="text-center">Total Qty</th>
+                    <th class="text-center">Payment Mode</th>
+                    <th class="text-right">Bill Total (₹)</th>
+                    <th class="text-center" style="width: 130px;">Action</th>
+                </tr>
+            `);
+
+            if (resp.records.length === 0) {
+                $tbody.html('<tr><td colspan="8" class="text-center py-4 text-muted">No bills found for this customer.</td></tr>');
+                return;
+            }
+
+            resp.records.forEach(function(r, idx) {
+                $tbody.append(`
+                    <tr>
+                        <td class="text-center text-muted font-weight-bold">${idx + 1}</td>
+                        <td class="font-weight-bold">
+                            <a href="${r.view_url}" target="_blank" class="text-primary" title="Open Bill in New Tab">
+                                ${r.bill_number} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
+                            </a>
+                        </td>
+                        <td>${r.formatted_date}</td>
+                        <td>${r.branch_name}</td>
+                        <td class="text-center">${parseFloat(r.total_qty || 0).toFixed(0)}</td>
+                        <td class="text-center"><span class="badge badge-light border">${r.payment_type || 'Cash'}</span></td>
+                        <td class="text-right font-weight-bold text-success">${r.formatted_amount}</td>
+                        <td class="text-center">
+                            <a href="${r.view_url}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Open Bill in New Tab">
+                                Bill ↗
+                            </a>
+                            <a href="${r.receipt_url}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Open Receipt in New Tab">
+                                Receipt ↗
+                            </a>
+                        </td>
+                    </tr>
+                `);
+            });
+
+        } else {
+            // Standard item or general sales bills drilldown
+            $thead.html(`
+                <tr>
+                    <th class="text-center" style="width: 45px;">#</th>
+                    <th>Bill Number</th>
+                    <th>Date & Time</th>
+                    <th>Customer</th>
+                    <th>Branch</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Unit Rate (₹)</th>
+                    <th class="text-right">Total Amount (₹)</th>
+                    <th class="text-center" style="width: 130px;">Action</th>
+                </tr>
+            `);
+
+            if (resp.records.length === 0) {
+                $tbody.html('<tr><td colspan="9" class="text-center py-4 text-muted">No transactions found for this selection.</td></tr>');
+                return;
+            }
+
+            resp.records.forEach(function(r, idx) {
+                $tbody.append(`
+                    <tr>
+                        <td class="text-center text-muted font-weight-bold">${idx + 1}</td>
+                        <td class="font-weight-bold">
+                            <a href="${r.view_url}" target="_blank" class="text-primary" title="Open Bill in New Tab">
+                                ${r.bill_number} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
+                            </a>
+                        </td>
+                        <td>${r.formatted_date}</td>
+                        <td>${r.customer_name}</td>
+                        <td>${r.branch_name || 'Main'}</td>
+                        <td class="text-right font-weight-bold">${parseFloat(r.qty || 1).toFixed(2)}</td>
+                        <td class="text-right">${r.formatted_rate || '-'}</td>
+                        <td class="text-right font-weight-bold text-success">${r.formatted_amount}</td>
+                        <td class="text-center">
+                            <a href="${r.view_url}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Open Bill in New Tab">
+                                Bill ↗
+                            </a>
+                            <a href="${r.receipt_url}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Open Receipt in New Tab">
+                                Receipt ↗
+                            </a>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+    }
 
     // Auto-run initial preset if passed in query string or load default
     @if($initialPreset)

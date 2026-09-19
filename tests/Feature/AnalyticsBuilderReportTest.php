@@ -253,4 +253,108 @@ class AnalyticsBuilderReportTest extends TestCase
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
         $this->assertStringContainsString('attachment;', $response->headers->get('Content-Disposition'));
     }
+
+    public function test_item_drilldown_returns_individual_sales_bill_records(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Amit Verma',
+            'mobile' => '9820011223',
+            'status' => true,
+        ]);
+
+        $item = Item::create([
+            'name' => 'Whiskas Wet Cat Food',
+            'item_code' => 'CAT-WET',
+            'sell_price' => 50.00,
+            'cost_price' => 35.00,
+            'mrp' => 50.00,
+            'status' => true,
+        ]);
+
+        $bill = SalesBill::create([
+            'bill_number' => 'SB-DRILL-001',
+            'bill_date' => Carbon::now()->startOfMonth()->addDays(1),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch->id,
+            'total_qty' => 5,
+            'total' => 250.00,
+            'status' => 'Completed',
+        ]);
+
+        SalesBillItem::create([
+            'sales_bill_id' => $bill->id,
+            'item_id' => $item->id,
+            'qty' => 5,
+            'unit_rate' => 50.00,
+            'net_amount' => 250.00,
+            'cost_at_sale' => 35.00,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson(route('reports.analytics-builder.drilldown', [
+            'group_by' => 'item',
+            'group_id' => $item->id,
+            'date_preset' => 'this_month',
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $records = $response->json('records');
+        $this->assertCount(1, $records);
+        $this->assertEquals('SB-DRILL-001', $records[0]['bill_number']);
+        $this->assertEquals('Amit Verma', $records[0]['customer_name']);
+        $this->assertStringContainsString('/sales/sales-bills/' . $bill->id, $records[0]['view_url']);
+    }
+
+    public function test_item_supplier_drilldown_returns_purchase_invoice_records(): void
+    {
+        $supplier = Supplier::create([
+            'name' => 'Alpha Agro Supplies',
+            'city' => 'Nashik',
+            'mobile' => '9988112233',
+            'status' => true,
+        ]);
+
+        $item = Item::create([
+            'name' => 'Organic Bird Seed 1kg',
+            'item_code' => 'BIRD-SEED',
+            'sell_price' => 150.00,
+            'cost_price' => 90.00,
+            'status' => true,
+        ]);
+
+        $inv = PurchaseInvoice::create([
+            'invoice_number' => 'PINV-ALPHA-99',
+            'invoice_date' => Carbon::now()->startOfMonth()->addDays(3),
+            'supplier_id' => $supplier->id,
+            'branch_id' => $this->branch->id,
+            'total_qty' => 20,
+            'total' => 1800.00,
+            'status' => 'Posted',
+        ]);
+
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $inv->id,
+            'item_id' => $item->id,
+            'qty' => 20,
+            'cost_price' => 90.00,
+            'sell_price' => 150.00,
+            'mrp' => 150.00,
+            'net_amount' => 1800.00,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson(route('reports.analytics-builder.drilldown', [
+            'group_by' => 'item_supplier',
+            'group_id' => $item->id,
+            'sub_id' => $supplier->id,
+            'date_preset' => 'this_month',
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $records = $response->json('records');
+        $this->assertCount(1, $records);
+        $this->assertEquals('PINV-ALPHA-99', $records[0]['invoice_number']);
+        $this->assertEquals(20, (float) $records[0]['qty']);
+        $this->assertStringContainsString('/purchase/purchase-invoices/' . $inv->id, $records[0]['view_url']);
+    }
 }

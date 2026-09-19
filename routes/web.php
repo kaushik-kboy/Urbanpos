@@ -374,6 +374,7 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('analytics-builder/search-items', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'searchItems'])->name('analytics-builder.search-items');
     Route::get('analytics-builder/search-suppliers', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'searchSuppliers'])->name('analytics-builder.search-suppliers');
     Route::get('analytics-builder/search-customers', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'searchCustomers'])->name('analytics-builder.search-customers');
+    Route::get('analytics-builder/drilldown', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'drilldown'])->name('analytics-builder.drilldown');
 });
 
 Route::middleware('auth')->prefix('till')->name('till.')->group(function () {
