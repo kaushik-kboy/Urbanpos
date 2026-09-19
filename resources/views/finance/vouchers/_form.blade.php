@@ -3,10 +3,26 @@
     $existingLines = $v?->lines ?? collect();
 @endphp
 
-<h5 class="mb-3">Header</h5>
-<x-select name="voucher_type" label="Transaction" :options="['Payment' => 'Payment', 'Receipt' => 'Receipt', 'Journal' => 'Journal', 'Contra' => 'Contra']" :selected="$v->voucher_type ?? 'Payment'" />
-<x-field name="voucher_date" label="Date" type="date" :value="optional($v->voucher_date ?? now())->format('Y-m-d')" />
-<x-select name="branch_id" label="Location" :options="$branches" :selected="$v->branch_id ?? ''" placeholder="Select a branch" />
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0 font-weight-bold text-dark"><i class="fas fa-file-invoice mr-1 text-primary"></i> Voucher Header</h5>
+    <x-form-layout-customizer
+        form-key="finance_vouchers.header"
+        container-id="voucher-header-grid"
+        title="Customize Voucher Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="voucher-header-grid">
+    <div class="field-wrapper col-md-4" data-field="voucher_type" data-label="Transaction Type" data-default-order="1" data-core="1">
+        <x-select name="voucher_type" label="Transaction" :options="['Payment' => 'Payment', 'Receipt' => 'Receipt', 'Journal' => 'Journal', 'Contra' => 'Contra']" :selected="$v->voucher_type ?? 'Payment'" />
+    </div>
+    <div class="field-wrapper col-md-4" data-field="voucher_date" data-label="Voucher Date" data-default-order="2" data-core="1">
+        <x-field name="voucher_date" label="Date" type="date" :value="optional($v->voucher_date ?? now())->format('Y-m-d')" required />
+    </div>
+    <div class="field-wrapper col-md-4" data-field="branch_id" data-label="Location" data-default-order="3" data-core="1">
+        <x-select name="branch_id" label="Location" :options="$branches" :selected="$v->branch_id ?? ''" placeholder="Select a branch" />
+    </div>
+</div>
 
 <hr>
 <h5 class="mb-3">Particulars</h5>

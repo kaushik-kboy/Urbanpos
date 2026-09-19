@@ -48,14 +48,19 @@
         <input type="hidden" name="settlement_type" id="settlement-type" value="{{ $settlementType }}">
 
         <div class="card card-primary card-outline shadow-sm mb-3">
-            <div class="card-header py-2">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
                 <h5 class="card-title font-weight-bold mb-0 text-primary">
                     <i class="fas fa-file-invoice-dollar mr-1"></i> Settlement Header & Payment Details
                 </h5>
+                <x-form-layout-customizer
+                    form-key="finance_settlements.header"
+                    container-id="settlement-header-grid"
+                    title="Customize Settlement Header"
+                />
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 form-group">
+                <div class="row form-fields-grid" id="settlement-header-grid">
+                    <div class="field-wrapper col-md-4 form-group" data-field="party" data-label="{{ $settlementType === 'Customer' ? 'Customer' : 'Supplier' }}" data-default-order="1" data-core="1">
                         <label>
                             {{ $settlementType === 'Customer' ? 'Customer (Sundry Debtor)' : 'Supplier (Sundry Creditor)' }}
                             <span class="text-danger">*</span>
@@ -77,7 +82,7 @@
                         @endif
                     </div>
 
-                    <div class="col-md-3 form-group">
+                    <div class="field-wrapper col-md-3 form-group" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
                         <label>Branch <span class="text-danger">*</span></label>
                         <select name="branch_id" id="branch-select" class="form-control form-control-sm select2" required>
                             @foreach($branches as $id => $name)
@@ -86,12 +91,12 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 form-group">
+                    <div class="field-wrapper col-md-2 form-group" data-field="settlement_date" data-label="Settlement Date" data-default-order="3" data-core="1">
                         <label>Settlement Date <span class="text-danger">*</span></label>
                         <input type="date" name="settlement_date" class="form-control form-control-sm" value="{{ old('settlement_date', now()->format('Y-m-d')) }}" required>
                     </div>
 
-                    <div class="col-md-3 form-group">
+                    <div class="field-wrapper col-md-3 form-group" data-field="total_amount" data-label="Total Amount" data-default-order="4" data-core="1">
                         <label>Total Payment Amount (₹) <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
                             <div class="input-group-prepend">
@@ -100,10 +105,8 @@
                             <input type="number" step="0.01" min="0.01" name="total_amount" id="total-payment-amount" class="form-control form-control-sm text-right font-weight-bold text-success text-lg" placeholder="0.00" value="{{ old('total_amount') }}" required>
                         </div>
                     </div>
-                </div>
 
-                <div class="row">
-                    <div class="col-md-3 form-group">
+                    <div class="field-wrapper col-md-3 form-group" data-field="payment_mode" data-label="Payment Mode" data-default-order="5" data-core="1">
                         <label>Payment Mode <span class="text-danger">*</span></label>
                         <select name="payment_mode" class="form-control form-control-sm" required>
                             @foreach(['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Card'] as $mode)
@@ -112,7 +115,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-4 form-group">
+                    <div class="field-wrapper col-md-4 form-group" data-field="bank_ledger_id" data-label="Bank / Cash Ledger" data-default-order="6" data-core="1">
                         <label>Deposit To / Pay From Ledger <span class="text-danger">*</span></label>
                         <select name="bank_ledger_id" class="form-control form-control-sm select2" required>
                             <option value="">Select Cash or Bank Account</option>
@@ -122,12 +125,12 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 form-group">
+                    <div class="field-wrapper col-md-2 form-group" data-field="reference_no" data-label="Reference No" data-default-order="7">
                         <label>Ref / Cheque / UTR No</label>
                         <input type="text" name="reference_no" class="form-control form-control-sm" placeholder="Optional reference" value="{{ old('reference_no') }}">
                     </div>
 
-                    <div class="col-md-3 form-group">
+                    <div class="field-wrapper col-md-3 form-group" data-field="remarks" data-label="Remarks" data-default-order="8">
                         <label>Remarks</label>
                         <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional notes" value="{{ old('remarks') }}">
                     </div>

@@ -17,29 +17,33 @@
     <div class="tab-content" id="loyaltyTabContent">
         {{-- Tab 1: Info --}}
         <div class="tab-pane fade show active" id="tab-info" role="tabpanel">
-            <div class="row">
-                <div class="col-md-6">
+            <div class="d-flex justify-content-end mb-2">
+                <x-form-layout-customizer
+                    form-key="master_loyalty_programs.info"
+                    container-id="loyalty-info-fields-grid"
+                    title="Customize Loyalty Program Layout"
+                />
+            </div>
+            <div class="row form-fields-grid" id="loyalty-info-fields-grid">
+                <div class="field-wrapper col-md-6" data-field="name" data-label="Program Name" data-default-order="1" data-core="1">
                     <div class="form-group">
                         <label for="name" class="font-weight-bold">Program Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $program->name) }}" required placeholder="e.g. Standard Customer Rewards 2026">
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="field-wrapper col-md-3" data-field="start_date" data-label="Start Date" data-default-order="2" data-core="1">
                     <div class="form-group">
                         <label for="start_date" class="font-weight-bold">Start Date <span class="text-danger">*</span></label>
                         <input type="date" name="start_date" id="start_date" class="form-control" value="{{ old('start_date', optional($program->start_date)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="field-wrapper col-md-3" data-field="end_date" data-label="End Date" data-default-order="3">
                     <div class="form-group">
                         <label for="end_date" class="font-weight-bold">End Date (Leave blank for ongoing)</label>
                         <input type="date" name="end_date" id="end_date" class="form-control" value="{{ old('end_date', optional($program->end_date)->format('Y-m-d')) }}">
                     </div>
                 </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-3">
+                <div class="field-wrapper col-md-3" data-field="based_on" data-label="Calculation Based On" data-default-order="4" data-core="1">
                     <div class="form-group">
                         <label for="based_on" class="font-weight-bold">Calculation Based On <span class="text-danger">*</span></label>
                         <select name="based_on" id="based_on" class="form-control">
@@ -47,51 +51,48 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="field-wrapper col-md-3" data-field="points_per_hundred" data-label="Points per ₹100 Spend" data-default-order="5" data-core="1">
                     <div class="form-group">
                         <label for="points_per_hundred" class="font-weight-bold">Points per ₹100 Spend <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="number" step="0.01" min="0" name="points_per_hundred" id="points_per_hundred" class="form-control text-right" value="{{ old('points_per_hundred', $program->points_per_hundred ?? 1.00) }}" required>
                             <div class="input-group-append"><span class="input-group-text">pts</span></div>
                         </div>
-                        <small class="text-muted">e.g. 1 point for every ₹100 bill amount</small>
+                        <small class="text-muted">e.g. 1 point for every ₹100 bill</small>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="field-wrapper col-md-3" data-field="min_points_redeem" data-label="Min Points for Redemption" data-default-order="6" data-core="1">
                     <div class="form-group">
                         <label for="min_points_redeem" class="font-weight-bold">Min Points for Redemption <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="number" min="1" name="min_points_redeem" id="min_points_redeem" class="form-control text-right" value="{{ old('min_points_redeem', $program->min_points_redeem ?? 50) }}" required>
                             <div class="input-group-append"><span class="input-group-text">pts</span></div>
                         </div>
-                        <small class="text-muted">Customer must reach this threshold to redeem</small>
+                        <small class="text-muted">Min threshold to redeem</small>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="field-wrapper col-md-3" data-field="amount_per_point" data-label="Rupee Value per Point" data-default-order="7" data-core="1">
                     <div class="form-group">
                         <label for="amount_per_point" class="font-weight-bold">Rupee Value per 1 Point <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <div class="input-group-prepend"><span class="input-group-text">₹</span></div>
                             <input type="number" step="0.01" min="0.01" name="amount_per_point" id="amount_per_point" class="form-control text-right" value="{{ old('amount_per_point', $program->amount_per_point ?? 1.00) }}" required>
                         </div>
-                        <small class="text-muted">Discount value when redeeming (e.g. ₹1.00/pt)</small>
+                        <small class="text-muted">Discount value when redeeming</small>
                     </div>
                 </div>
-            </div>
-
-            <div class="row mt-2">
-                <div class="col-md-4">
+                <div class="field-wrapper col-md-6" data-field="roundoff" data-label="Round Points" data-default-order="8">
                     <div class="custom-control custom-switch mt-2">
                         <input type="checkbox" class="custom-control-input" id="roundoff" name="roundoff" value="1" {{ old('roundoff', $program->roundoff ?? true) ? 'checked' : '' }}>
                         <label class="custom-control-label font-weight-bold" for="roundoff">Round Points to Whole Integer</label>
                         <small class="form-text text-muted">e.g. 14.8 points rounds to 15 points</small>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="field-wrapper col-md-6" data-field="status" data-label="Active Program" data-default-order="9">
                     <div class="custom-control custom-switch mt-2">
                         <input type="checkbox" class="custom-control-input" id="status" name="status" value="1" {{ old('status', $program->status ?? true) ? 'checked' : '' }}>
                         <label class="custom-control-label font-weight-bold" for="status">Active Program</label>
-                        <small class="form-text text-muted">Only active programs will accrue points on sales</small>
+                        <small class="form-text text-muted">Only active programs will accrue points</small>
                     </div>
                 </div>
             </div>

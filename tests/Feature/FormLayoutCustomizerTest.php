@@ -340,4 +340,143 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('data-field="name"', false);
         $response->assertSee('data-field="sell_price"', false);
     }
+
+    public function test_different_users_have_independent_form_preferences(): void
+    {
+        $userB = User::factory()->create(['branch_id' => $this->branch->id]);
+        $userB->assignRole('Owner');
+
+        // User A saves preference
+        $this->actingAs($this->user)->post(route('tools.form-preferences.store'), [
+            'form_key' => 'sales_bills.header',
+            'preferences' => [
+                ['field' => 'customer_id', 'order' => 1, 'grid_col' => 'col-md-6', 'visible' => true],
+                ['field' => 'bill_date', 'order' => 2, 'grid_col' => 'col-md-6', 'visible' => true],
+            ],
+        ])->assertOk();
+
+        // User B saves different preference
+        $this->actingAs($userB)->post(route('tools.form-preferences.store'), [
+            'form_key' => 'sales_bills.header',
+            'preferences' => [
+                ['field' => 'bill_date', 'order' => 1, 'grid_col' => 'col-md-12', 'visible' => true],
+                ['field' => 'customer_id', 'order' => 2, 'grid_col' => 'col-md-12', 'visible' => false],
+            ],
+        ])->assertOk();
+
+        // Verify independent preferences
+        $prefA = UserFormPreference::getForUser($this->user->id, 'sales_bills.header');
+        $prefB = UserFormPreference::getForUser($userB->id, 'sales_bills.header');
+
+        $this->assertSame('customer_id', $prefA[0]['field']);
+        $this->assertSame('col-md-6', $prefA[0]['grid_col']);
+
+        $this->assertSame('bill_date', $prefB[0]['field']);
+        $this->assertSame('col-md-12', $prefB[0]['grid_col']);
+        $this->assertFalse($prefB[1]['visible']);
+    }
+
+    public function test_purchase_return_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('purchase.purchase-returns.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('purchase-return-header-grid');
+        $response->assertSee('data-field="supplier_id"', false);
+        $response->assertSee('data-field="branch_id"', false);
+    }
+
+    public function test_purchase_indent_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('purchase.purchase-indents.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('indent-header-fields-grid');
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="department"', false);
+    }
+
+    public function test_branch_master_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('master.branches.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('branch-general-fields-grid');
+        $response->assertSee('data-field="name"', false);
+        $response->assertSee('data-field="business_type"', false);
+    }
+
+    public function test_register_master_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('master.registers.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('register-fields-grid');
+        $response->assertSee('data-field="name"', false);
+        $response->assertSee('data-field="branch_id"', false);
+    }
+
+    public function test_user_master_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('master.users.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('user-fields-grid');
+        $response->assertSee('data-field="name"', false);
+        $response->assertSee('data-field="email"', false);
+    }
+
+    public function test_finance_voucher_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('finance.vouchers.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('voucher-header-grid');
+        $response->assertSee('data-field="voucher_type"', false);
+    }
+
+    public function test_finance_ledger_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('finance.ledgers.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('ledger-fields-grid');
+        $response->assertSee('data-field="name"', false);
+    }
+
+    public function test_finance_settlement_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('finance.settlements.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('settlement-header-grid');
+        $response->assertSee('data-field="party"', false);
+    }
+
+    public function test_loyalty_program_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('master.loyalty-programs.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('loyalty-info-fields-grid');
+        $response->assertSee('data-field="name"', false);
+    }
 }

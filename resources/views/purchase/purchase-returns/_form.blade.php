@@ -4,58 +4,63 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($ret?->items ?? collect());
 @endphp
 
-<div class="row">
-    <div class="col-md-4 mb-3">
-        <label for="supplier_id" class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
-        <select name="supplier_id" id="supplier_id" class="form-control select2" required>
-            <option value="">-- Select Supplier --</option>
-            @foreach ($suppliers as $id => $name)
-                <option value="{{ $id }}" @selected(old('supplier_id', $ret->supplier_id ?? '') == $id)>{{ $name }}</option>
-            @endforeach
-        </select>
+    <div class="d-flex justify-content-end mb-2">
+        <x-form-layout-customizer
+            form-key="purchase_returns.header"
+            container-id="purchase-return-header-grid"
+            title="Customize Purchase Return Header"
+        />
     </div>
-    <div class="col-md-3 mb-3">
-        <label for="branch_id" class="font-weight-bold">Branch <span class="text-danger">*</span></label>
-        <select name="branch_id" id="branch_id" class="form-control select2" required>
-            <option value="">-- Select Branch --</option>
-            @foreach ($branches as $id => $name)
-                <option value="{{ $id }}" @selected(old('branch_id', $ret->branch_id ?? '') == $id)>{{ $name }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-md-2 mb-3">
-        <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
-        <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" required>
-    </div>
-    <div class="col-md-3 mb-3">
-        <label for="purchase_type" class="font-weight-bold">Purchase Type <span class="text-danger">*</span></label>
-        <select name="purchase_type" id="purchase_type" class="form-control" required>
-            <option value="Local" @selected(old('purchase_type', $ret->purchase_type ?? 'Local') === 'Local')>Local (CGST + SGST)</option>
-            <option value="Interstate" @selected(old('purchase_type', $ret->purchase_type ?? '') === 'Interstate')>Interstate (IGST)</option>
-        </select>
-    </div>
-</div>
 
-<div class="row">
-    <div class="col-md-4 mb-3">
-        <label for="purchase_invoice_id" class="font-weight-bold">Original Purchase Invoice</label>
-        <select name="purchase_invoice_id" id="purchase_invoice_id" class="form-control select2">
-            <option value="">-- No Original Invoice / Direct Return --</option>
-            @foreach ($purchaseInvoices as $id => $no)
-                <option value="{{ $id }}" @selected(old('purchase_invoice_id', $ret->purchase_invoice_id ?? '') == $id)>{{ $no }}</option>
-            @endforeach
-        </select>
-        <small class="text-muted" id="invoice-loading-hint">Select supplier & invoice to automatically load items.</small>
+    <div class="row form-fields-grid" id="purchase-return-header-grid">
+        <div class="field-wrapper col-md-4 mb-3" data-field="supplier_id" data-label="Supplier" data-default-order="1" data-core="1">
+            <label for="supplier_id" class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
+            <select name="supplier_id" id="supplier_id" class="form-control select2" required>
+                <option value="">-- Select Supplier --</option>
+                @foreach ($suppliers as $id => $name)
+                    <option value="{{ $id }}" @selected(old('supplier_id', $ret->supplier_id ?? '') == $id)>{{ $name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="field-wrapper col-md-3 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
+            <label for="branch_id" class="font-weight-bold">Branch <span class="text-danger">*</span></label>
+            <select name="branch_id" id="branch_id" class="form-control select2" required>
+                <option value="">-- Select Branch --</option>
+                @foreach ($branches as $id => $name)
+                    <option value="{{ $id }}" @selected(old('branch_id', $ret->branch_id ?? '') == $id)>{{ $name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="field-wrapper col-md-2 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
+            <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
+            <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" required>
+        </div>
+        <div class="field-wrapper col-md-3 mb-3" data-field="purchase_type" data-label="Purchase Type" data-default-order="4" data-core="1">
+            <label for="purchase_type" class="font-weight-bold">Purchase Type <span class="text-danger">*</span></label>
+            <select name="purchase_type" id="purchase_type" class="form-control" required>
+                <option value="Local" @selected(old('purchase_type', $ret->purchase_type ?? 'Local') === 'Local')>Local (CGST + SGST)</option>
+                <option value="Interstate" @selected(old('purchase_type', $ret->purchase_type ?? '') === 'Interstate')>Interstate (IGST)</option>
+            </select>
+        </div>
+        <div class="field-wrapper col-md-4 mb-3" data-field="purchase_invoice_id" data-label="Original Purchase Invoice" data-default-order="5">
+            <label for="purchase_invoice_id" class="font-weight-bold">Original Purchase Invoice</label>
+            <select name="purchase_invoice_id" id="purchase_invoice_id" class="form-control select2">
+                <option value="">-- No Original Invoice / Direct Return --</option>
+                @foreach ($purchaseInvoices as $id => $no)
+                    <option value="{{ $id }}" @selected(old('purchase_invoice_id', $ret->purchase_invoice_id ?? '') == $id)>{{ $no }}</option>
+                @endforeach
+            </select>
+            <small class="text-muted" id="invoice-loading-hint">Select supplier & invoice to automatically load items.</small>
+        </div>
+        <div class="field-wrapper col-md-4 mb-3" data-field="supplier_debit_note_no" data-label="Supplier Debit Note No" data-default-order="6">
+            <label for="supplier_debit_note_no" class="font-weight-bold">Supplier Debit Note No</label>
+            <input type="text" name="supplier_debit_note_no" id="supplier_debit_note_no" class="form-control" value="{{ old('supplier_debit_note_no', $ret->supplier_debit_note_no ?? '') }}" placeholder="e.g. DN-2026-001">
+        </div>
+        <div class="field-wrapper col-md-4 mb-3" data-field="supplier_debit_note_date" data-label="Debit Note Date" data-default-order="7">
+            <label for="supplier_debit_note_date" class="font-weight-bold">Debit Note Date</label>
+            <input type="date" name="supplier_debit_note_date" id="supplier_debit_note_date" class="form-control" value="{{ old('supplier_debit_note_date', optional($ret->supplier_debit_note_date ?? null)->format('Y-m-d')) }}">
+        </div>
     </div>
-    <div class="col-md-4 mb-3">
-        <label for="supplier_debit_note_no" class="font-weight-bold">Supplier Debit Note No</label>
-        <input type="text" name="supplier_debit_note_no" id="supplier_debit_note_no" class="form-control" value="{{ old('supplier_debit_note_no', $ret->supplier_debit_note_no ?? '') }}" placeholder="e.g. DN-2026-001">
-    </div>
-    <div class="col-md-4 mb-3">
-        <label for="supplier_debit_note_date" class="font-weight-bold">Debit Note Date</label>
-        <input type="date" name="supplier_debit_note_date" id="supplier_debit_note_date" class="form-control" value="{{ old('supplier_debit_note_date', optional($ret->supplier_debit_note_date ?? null)->format('Y-m-d')) }}">
-    </div>
-</div>
 
 <hr>
 <div class="d-flex justify-content-between align-items-center mb-3">

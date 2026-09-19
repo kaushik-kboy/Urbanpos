@@ -21,8 +21,16 @@
             <div class="card-body">
                 <x-error-summary />
 
-                <div class="row mb-3">
-                    <div class="col-md-3 col-sm-6 mb-3">
+                <div class="d-flex justify-content-end mb-2">
+                    <x-form-layout-customizer
+                        form-key="purchase_indents.header"
+                        container-id="indent-header-fields-grid"
+                        title="Customize Purchase Indent Header"
+                    />
+                </div>
+
+                <div class="row mb-3 form-fields-grid" id="indent-header-fields-grid">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Target Branch" data-default-order="1" data-core="1">
                         <label class="font-weight-bold">Target Branch <span class="text-danger">*</span></label>
                         <select name="branch_id" id="branch_id" class="form-control form-control-sm" required>
                             @foreach ($branches as $bId => $bName)
@@ -31,19 +39,19 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-2 col-sm-6 mb-3" data-field="indent_date" data-label="Indent Date" data-default-order="2" data-core="1">
                         <label class="font-weight-bold">Indent Date <span class="text-danger">*</span></label>
                         <input type="date" name="indent_date" id="indent_date" class="form-control form-control-sm"
                                value="{{ old('indent_date', now()->format('Y-m-d')) }}" required>
                     </div>
 
-                    <div class="col-md-2 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-2 col-sm-6 mb-3" data-field="required_by_date" data-label="Required By Date" data-default-order="3">
                         <label class="font-weight-bold">Required By Date</label>
                         <input type="date" name="required_by_date" id="required_by_date" class="form-control form-control-sm"
                                value="{{ old('required_by_date', now()->addDays(3)->format('Y-m-d')) }}">
                     </div>
 
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="department" data-label="Department" data-default-order="4" data-core="1">
                         <label class="font-weight-bold">Department <span class="text-danger">*</span></label>
                         <select name="department" id="department" class="form-control form-control-sm" required>
                             @foreach ($departments as $dept)
@@ -52,7 +60,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-2 col-sm-6 mb-3" data-field="priority" data-label="Priority" data-default-order="5" data-core="1">
                         <label class="font-weight-bold">Priority <span class="text-danger">*</span></label>
                         <select name="priority" id="priority" class="form-control form-control-sm" required>
                             @foreach ($priorities as $pri)
@@ -61,7 +69,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-12 mb-2">
+                    <div class="field-wrapper col-md-12 mb-2" data-field="remarks" data-label="General Remarks" data-default-order="6">
                         <label class="font-weight-bold">General Remarks / Requisition Reason</label>
                         <textarea name="remarks" class="form-control form-control-sm" rows="2" placeholder="e.g. Stock replenishment for upcoming weekend promotion">{{ old('remarks') }}</textarea>
                     </div>
