@@ -2971,6 +2971,79 @@ class FormFieldValidationSeeder extends Seeder
         ];
     }
 
+    public static function determineSection(string $moduleKey, string $fieldName): string
+    {
+        if ($moduleKey === 'items') {
+            if (in_array($fieldName, ['tax_inclusive'], true)) {
+                return 'Taxes';
+            }
+            if (in_array($fieldName, ['batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days', 'allow_negative_stock'], true)) {
+                return 'Sales';
+            }
+            if (in_array($fieldName, ['department_value_id', 'category_value_id', 'brand_value_id'], true)) {
+                return 'Category';
+            }
+            if (in_array($fieldName, ['gst_tax_id', 'hsn_code'], true)) {
+                return 'GST';
+            }
+            return 'General';
+        }
+
+        if ($moduleKey === 'suppliers') {
+            if (in_array($fieldName, ['gst_no', 'pan_no', 'aadhar_no'], true)) {
+                return 'Tax & Legal';
+            }
+            if (in_array($fieldName, ['address', 'city', 'state', 'pincode', 'country'], true)) {
+                return 'Address Details';
+            }
+            if (in_array($fieldName, ['bank_name', 'bank_account_no', 'bank_ifsc', 'bank_branch', 'credit_days', 'credit_limit', 'status'], true)) {
+                return 'Bank & Financial';
+            }
+            return 'General & Contact';
+        }
+
+        if ($moduleKey === 'customers') {
+            if (in_array($fieldName, ['gstin', 'pan_no', 'aadhar_no'], true)) {
+                return 'Tax & Legal';
+            }
+            if (in_array($fieldName, ['address', 'city', 'state', 'pincode', 'country'], true)) {
+                return 'Address Details';
+            }
+            if (in_array($fieldName, ['credit_days', 'credit_limit', 'status', 'customer_group_id'], true)) {
+                return 'Customer Settings';
+            }
+            return 'General & Contact';
+        }
+
+        if ($moduleKey === 'branches') {
+            if (in_array($fieldName, ['address', 'city', 'state', 'pincode', 'country'], true)) {
+                return 'Address Details';
+            }
+            if (in_array($fieldName, ['gstin', 'pan_no', 'invoice_prefix', 'receipt_prefix', 'purchase_return_prefix', 'sales_return_prefix', 'quotation_prefix', 'order_prefix', 'delivery_prefix'], true)) {
+                return 'Tax & Invoice Prefixes';
+            }
+            return 'General Details';
+        }
+
+        $lineItemFields = [
+            'item_code', 'item_name', 'exp_date', 'available', 'qty', 'physical_qty',
+            'system_qty_at_entry', 'cost_price', 'sell_price', 'mrp', 'rate',
+            'discount', 'tax', 'gst_percent', 'gst_tax_amount', 'net_amount',
+        ];
+        if (in_array($fieldName, $lineItemFields, true)) {
+            return 'Line Items';
+        }
+
+        $totalsFields = [
+            'payment_mode', 'round_off', 'discount_amount', 'shipping_charges', 'tender_amount', 'change_return',
+        ];
+        if (in_array($fieldName, $totalsFields, true)) {
+            return 'Payment & Totals';
+        }
+
+        return 'Header Details';
+    }
+
     public function run(?string $targetModule = null): void
     {
         $all = self::getFields();
@@ -2979,12 +3052,14 @@ class FormFieldValidationSeeder extends Seeder
             FormFieldValidation::where('module_key', $targetModule)->delete();
             $all = array_filter($all, fn($f) => $f['module_key'] === $targetModule);
             foreach ($all as $fieldData) {
+                $fieldData['section'] = $fieldData['section'] ?? self::determineSection($fieldData['module_key'], $fieldData['field_name']);
                 FormFieldValidation::create($fieldData);
             }
             return;
         }
 
         foreach ($all as $fieldData) {
+            $fieldData['section'] = $fieldData['section'] ?? self::determineSection($fieldData['module_key'], $fieldData['field_name']);
             FormFieldValidation::firstOrCreate(
                 [
                     'module_key' => $fieldData['module_key'],

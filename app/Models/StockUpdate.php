@@ -36,4 +36,29 @@ class StockUpdate extends Model
     {
         return $this->status === 'Approved';
     }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'Pending';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'Rejected';
+    }
+
+    public function assertEditable(): void
+    {
+        if ($this->isPosted()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'status' => "Stock Update #{$this->update_number} has already been approved and cannot be edited.",
+            ]);
+        }
+
+        if ($this->isRejected()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'status' => "Stock Update #{$this->update_number} has been rejected and cannot be edited.",
+            ]);
+        }
+    }
 }

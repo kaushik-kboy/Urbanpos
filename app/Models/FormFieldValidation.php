@@ -13,6 +13,7 @@ class FormFieldValidation extends Model
         'module_key',
         'field_name',
         'field_label',
+        'section',
         'field_type',
         'is_required',
         'is_readonly',

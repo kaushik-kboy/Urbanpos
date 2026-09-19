@@ -194,6 +194,7 @@
                             <th style="width: 110px;" class="text-center">Update No</th>
                             <th style="width: 100px;" class="text-center">Date</th>
                             <th style="min-width: 150px;" class="text-left">Location</th>
+                            <th style="width: 95px;" class="text-center">Status</th>
                             <th style="width: 65px;" class="text-center">Actions</th>
                         </tr>
                     </thead>
@@ -269,16 +270,35 @@
                                     {{ $voucher?->branch?->name ?? 'N/A' }}
                                 </td>
                                 <td class="text-center align-middle text-nowrap">
-                                    @if ($voucher)
-                                        <a href="{{ route('inventory.stock-updates.edit', $voucher) }}" class="btn btn-xs btn-outline-secondary" title="Edit Entry">
-                                             <i class="fas fa-pen"></i>
+                                    @if ($voucher?->status === 'Pending')
+                                        <a href="{{ route('inventory.stock-update-approval.index', ['status' => 'Pending']) }}" class="badge badge-warning px-2 py-1" title="Awaiting supervisor approval">
+                                            <i class="fas fa-clock mr-1"></i> Pending
                                         </a>
+                                    @elseif ($voucher?->status === 'Approved')
+                                        <span class="badge badge-success px-2 py-1"><i class="fas fa-check mr-1"></i> Approved</span>
+                                    @elseif ($voucher?->status === 'Rejected')
+                                        <span class="badge badge-danger px-2 py-1"><i class="fas fa-times mr-1"></i> Rejected</span>
+                                    @else
+                                        <span class="badge badge-secondary px-2 py-1">-</span>
+                                    @endif
+                                </td>
+                                <td class="text-center align-middle text-nowrap">
+                                    @if ($voucher)
+                                        @if ($voucher->status === 'Pending')
+                                            <a href="{{ route('inventory.stock-updates.edit', $voucher) }}" class="btn btn-xs btn-outline-secondary" title="Edit Entry">
+                                                 <i class="fas fa-pen"></i>
+                                            </a>
+                                        @else
+                                            <a href="{{ route('inventory.stock-update-approval.show', $voucher) }}" class="btn btn-xs btn-outline-info" title="View Audit Details">
+                                                 <i class="fas fa-eye"></i>
+                                            </a>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="14" class="text-center text-muted py-5">
+                                <td colspan="15" class="text-center text-muted py-5">
                                     <i class="fas fa-boxes fa-3x text-secondary mb-2 d-block"></i>
                                     No stock update items found matching your filters.
                                 </td>

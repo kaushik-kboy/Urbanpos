@@ -1,11 +1,12 @@
 @php
     $entry = $stockUpdate ?? null;
-    $existingItems = $entry?->items ?? collect();
+    $oldItems = old('items');
+    $existingItems = !empty($oldItems) ? collect($oldItems) : ($entry?->items ?? collect());
 @endphp
 
 <h5 class="mb-3 font-weight-bold"><i class="fas fa-file-alt mr-1 text-primary"></i> General Information</h5>
-<x-select name="branch_id" label="Location" :options="$branches" :selected="$entry->branch_id ?? ''" placeholder="Select a branch" required />
-<x-field name="entry_date" label="Date" type="date" :value="optional($entry->entry_date ?? now())->format('Y-m-d')" required />
+<x-select name="branch_id" label="Location" :options="$branches" :selected="old('branch_id', $entry->branch_id ?? '')" placeholder="Select a branch" required />
+<x-field name="entry_date" label="Date" type="date" :value="old('entry_date', optional($entry->entry_date ?? now())->format('Y-m-d'))" required />
 
 <hr>
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -43,7 +44,7 @@
 </div>
 
 <hr>
-<x-textarea name="remarks" label="Remarks" :value="$entry->remarks ?? ''" />
+<x-textarea name="remarks" label="Remarks" :value="old('remarks', $entry->remarks ?? '')" />
 
 <template id="row-template">
     @include('inventory.stock-updates._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])

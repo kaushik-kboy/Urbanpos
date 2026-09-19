@@ -175,14 +175,14 @@ class StockUpdateController extends Controller
         $stockUpdate = DB::transaction(function () use ($data) {
             $stockUpdate = StockUpdate::create(array_merge($data['header'], [
                 'update_number' => $this->nextNumber(),
+                'status' => 'Pending',
             ]));
 
             $lines = $this->buildLines($data['items'], $stockUpdate->branch_id);
             $stockUpdate->items()->createMany($lines);
 
-            // Physical count is only evidence until approved — no stock effect yet unless
-            // this record's status already lands on the posted value (default Approved,
-            // preserving today's "instant" UX for the common case).
+            // Physical count is only evidence until approved by supervisor/manager.
+            // Starts in 'Pending' status and does NOT post to stock ledger until approved.
             if ($stockUpdate->isPosted()) {
                 $this->postLines($stockUpdate, $lines);
             }
@@ -190,7 +190,7 @@ class StockUpdateController extends Controller
             return $stockUpdate;
         });
 
-        return redirect()->route('inventory.stock-updates.index')->with('status', "Stock Update {$stockUpdate->update_number} created successfully.");
+        return redirect()->route('inventory.stock-updates.index')->with('status', "Stock Update {$stockUpdate->update_number} created successfully and submitted for supervisor approval.");
     }
 
     public function edit(StockUpdate $stockUpdate)

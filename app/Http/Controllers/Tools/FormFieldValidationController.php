@@ -165,11 +165,41 @@ class FormFieldValidationController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        $sections = $fields->groupBy(fn ($item) => $item->section ?: 'General');
+        $activeSection = $request->input('section', 'all');
+
+        $sectionIcons = [
+            'General' => 'fas fa-info-circle',
+            'General Information' => 'fas fa-info-circle',
+            'General & Contact' => 'fas fa-address-book',
+            'General Details' => 'fas fa-info-circle',
+            'Taxes' => 'fas fa-percentage',
+            'Sales' => 'fas fa-shopping-cart',
+            'Category' => 'fas fa-sitemap',
+            'GST' => 'fas fa-landmark',
+            'Tax & Legal' => 'fas fa-file-contract',
+            'Address' => 'fas fa-map-marker-alt',
+            'Address Details' => 'fas fa-map-marked-alt',
+            'Bank & Financial' => 'fas fa-university',
+            'Settings' => 'fas fa-cog',
+            'Customer Settings' => 'fas fa-user-cog',
+            'Tax & Invoicing' => 'fas fa-file-invoice',
+            'Header Details' => 'fas fa-file-alt',
+            'Header Information' => 'fas fa-file-alt',
+            'Line Items' => 'fas fa-boxes',
+            'Line Items (Products)' => 'fas fa-boxes',
+            'Payment & Totals' => 'fas fa-money-bill-wave',
+            'Totals & Summary' => 'fas fa-calculator',
+        ];
+
         return view('tools.form-validations.index', [
             'moduleGroups' => $this->moduleGroups,
             'activeGroup' => $requestedGroup,
             'activeModule' => $requestedModule,
             'fields' => $fields,
+            'sections' => $sections,
+            'activeSection' => $activeSection,
+            'sectionIcons' => $sectionIcons,
         ]);
     }
 
@@ -202,7 +232,15 @@ class FormFieldValidationController extends Controller
 
         $this->dynamicValidationService->clearCache($moduleKey);
 
-        return redirect()->route('tools.form-validations.index', ['module' => $moduleKey])
+        $params = ['module' => $moduleKey];
+        if ($request->filled('group')) {
+            $params['group'] = $request->input('group');
+        }
+        if ($request->filled('active_section') && $request->input('active_section') !== 'all') {
+            $params['section'] = $request->input('active_section');
+        }
+
+        return redirect()->route('tools.form-validations.index', $params)
             ->with('status', 'Validation rules updated successfully.');
     }
 
@@ -215,7 +253,15 @@ class FormFieldValidationController extends Controller
 
         $this->dynamicValidationService->clearCache($moduleKey);
 
-        return redirect()->route('tools.form-validations.index', ['module' => $moduleKey])
+        $params = ['module' => $moduleKey];
+        if ($request->filled('group')) {
+            $params['group'] = $request->input('group');
+        }
+        if ($request->filled('active_section') && $request->input('active_section') !== 'all') {
+            $params['section'] = $request->input('active_section');
+        }
+
+        return redirect()->route('tools.form-validations.index', $params)
             ->with('status', 'Validation rules have been reset to system defaults.');
     }
 }
