@@ -234,7 +234,9 @@
             }
 
             recalcTotals();
-            $qty.focus().select();
+            setTimeout(function() {
+                $qty.focus().select();
+            }, 80);
         }
 
         function showHintState(msg) {
@@ -448,6 +450,7 @@
 
         let stCancellingRow = null;
         let stItemSelectedInModal = false;
+        let stLastSelectedRow = null;
 
         // Clicking row or Select button picks item (unless out of stock)
         $(document).on('click', '.st-isl-item-row, .st-isl-btn-select', function (e) {
@@ -464,6 +467,7 @@
             if (item && activeTargetRow) {
                 stItemSelectedInModal = true;
                 stCancellingRow = null;
+                stLastSelectedRow = activeTargetRow;
                 applyItemToRow(activeTargetRow, item);
                 $('#st-item-search-modal').modal('hide');
             }
@@ -509,6 +513,14 @@
                     $target.first().focus();
                 }, 60);
                 return;
+            }
+
+            if (stItemSelectedInModal && stLastSelectedRow && stLastSelectedRow.length) {
+                let $targetRow = stLastSelectedRow;
+                stLastSelectedRow = null;
+                setTimeout(function () {
+                    $targetRow.find('.item-qty').focus().select();
+                }, 60);
             }
 
             stItemSelectedInModal = false;

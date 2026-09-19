@@ -8,7 +8,7 @@
 
 @section('content')
     <div class="card card-primary card-outline">
-        <form action="{{ route('sales.sales-bills.update', $salesBill) }}" method="POST">
+        <form action="{{ route('sales.sales-bills.update', $salesBill) }}" method="POST" id="sales-bill-form">
             @csrf
             @method('PUT')
             <div class="card-body">

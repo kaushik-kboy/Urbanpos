@@ -429,6 +429,51 @@
             }
         });
 
+        let prIslSelectedIdx = -1;
+        let prLastSelectedRow = null;
+
+        function updatePrModalHighlight() {
+            let $rows = $('#pr-isl-items-body tr.pr-isl-item-row');
+            $('#pr-isl-items-body tr').removeClass('table-primary');
+            if (prIslSelectedIdx >= 0 && prIslSelectedIdx < $rows.length) {
+                let $target = $rows.eq(prIslSelectedIdx);
+                $target.addClass('table-primary');
+                let container = $('#pr-isl-table-wrap')[0];
+                let rowEl = $target[0];
+                if (container && rowEl) {
+                    let cTop = container.scrollTop;
+                    let cBottom = cTop + container.clientHeight;
+                    let rTop = rowEl.offsetTop;
+                    let rBottom = rTop + rowEl.clientHeight;
+                    if (rTop < cTop) container.scrollTop = rTop;
+                    else if (rBottom > cBottom) container.scrollTop = rBottom - container.clientHeight;
+                }
+            }
+        }
+
+        $('#pr-item-search-modal').on('keydown', function (e) {
+            let $rows = $('#pr-isl-items-body tr.pr-isl-item-row');
+            if ($rows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                prIslSelectedIdx = (prIslSelectedIdx + 1) >= $rows.length ? 0 : prIslSelectedIdx + 1;
+                updatePrModalHighlight();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                prIslSelectedIdx = (prIslSelectedIdx - 1) < 0 ? $rows.length - 1 : prIslSelectedIdx - 1;
+                updatePrModalHighlight();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                let $target = (prIslSelectedIdx >= 0 && prIslSelectedIdx < $rows.length)
+                    ? $rows.eq(prIslSelectedIdx)
+                    : $rows.first();
+                if ($target.length) {
+                    $target.trigger('click');
+                }
+            }
+        });
+
         $('#pr-item-search-modal').on('hidden.bs.modal', function () {
             prModalOpen = false;
             prModalClosing = true;
@@ -450,6 +495,14 @@
                     $target.first().focus();
                 }, 60);
                 return;
+            }
+
+            if (prItemSelectedInModal && prLastSelectedRow && prLastSelectedRow.length) {
+                let $r = prLastSelectedRow;
+                prLastSelectedRow = null;
+                setTimeout(function () {
+                    $r.find('.pr-qty').focus().select();
+                }, 60);
             }
 
             prItemSelectedInModal = false;
@@ -550,6 +603,9 @@
                 $tbody.html(html);
                 $('#pr-isl-table-wrap').removeClass('d-none');
                 $('#pr-isl-count-label').text(items.length + ' item(s) found');
+
+                prIslSelectedIdx = items.length > 0 ? 0 : -1;
+                updatePrModalHighlight();
             }).fail(function () {
                 $('#pr-isl-loading').addClass('d-none');
             });
@@ -572,6 +628,7 @@
             if (!prActiveSearchRow || !itemData.id) return;
             prItemSelectedInModal = true;
             prCancellingRow = null;
+            prLastSelectedRow = prActiveSearchRow;
 
             let $row = prActiveSearchRow;
             $row.find('.pr-item-code').val(itemData.code);

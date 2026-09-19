@@ -1978,15 +1978,45 @@
             $('#tender-advance-display').text('0.00');
             $('#tender-loyalty-display').text(tenderBillTotal.toFixed(2));
 
-            // Default: Cash pre-filled with total
-            $('#tender-cash').val(tenderBillTotal.toFixed(2));
-            $('#tender-credit').val('');
-            $('#tender-card').val('0.00');
-            $('#tender-wallet').val('');
-            $('#tender-wallet-side').val('');
-            $('#tender-rrn').val('');
-            $('#tender-card-no').val('');
-            $('#tender-wallet-refno').val('');
+            @if(isset($bill) && $bill->payments && $bill->payments->count())
+                let existingBillPayments = @json($bill->payments);
+                let hasPreFilled = false;
+                $('#tender-cash, #tender-credit, #tender-card, #tender-wallet, #tender-wallet-side, #tender-rrn, #tender-card-no, #tender-wallet-refno').val('');
+                existingBillPayments.forEach(function(bp) {
+                    let amt = parseFloat(bp.amount) || 0;
+                    if (amt <= 0) return;
+                    let typeName = (bp.tender_type ? (bp.tender_type.type || bp.tender_type.name) : '').toLowerCase();
+                    if (typeName === 'cash') {
+                        $('#tender-cash').val(amt.toFixed(2));
+                        hasPreFilled = true;
+                    } else if (typeName === 'credit') {
+                        $('#tender-credit').val(amt.toFixed(2));
+                        hasPreFilled = true;
+                    } else if (typeName === 'card') {
+                        $('#tender-card').val(amt.toFixed(2));
+                        hasPreFilled = true;
+                    } else if (typeName === 'wallet') {
+                        $('#tender-wallet, #tender-wallet-side').val(amt.toFixed(2));
+                        hasPreFilled = true;
+                    } else if (typeName === 'finance' || typeName === 'rrn') {
+                        $('#tender-rrn').val(amt.toFixed(2));
+                        hasPreFilled = true;
+                    }
+                });
+                if (!hasPreFilled) {
+                    $('#tender-cash').val(tenderBillTotal.toFixed(2));
+                }
+            @else
+                // Default: Cash pre-filled with total
+                $('#tender-cash').val(tenderBillTotal.toFixed(2));
+                $('#tender-credit').val('');
+                $('#tender-card').val('0.00');
+                $('#tender-wallet').val('');
+                $('#tender-wallet-side').val('');
+                $('#tender-rrn').val('');
+                $('#tender-card-no').val('');
+                $('#tender-wallet-refno').val('');
+            @endif
             $('#tender-error').addClass('d-none').text('');
 
             recalcTender();
@@ -2049,6 +2079,12 @@
                 if (matchedVal) walletValueId = matchedVal.id;
             }
 
+            let otherPayments = Math.round((credit + card + wallet + rrn) * 100) / 100;
+            if (otherPayments > tenderBillTotal) {
+                $('#tender-error').removeClass('d-none').text('Payment amount (₹' + otherPayments.toFixed(2) + ') bill total (₹' + tenderBillTotal.toFixed(2) + ') se jyada nahi ho sakti.');
+                return;
+            }
+
             let payments = [];
 
             // If tendered < total (unpaid balance), assign remaining to credit
@@ -2058,7 +2094,6 @@
             }
 
             // If cash tendered > bill total, cap cash payment amount at bill total (minus other modes)
-            let otherPayments = credit + card + wallet + rrn;
             let effectiveCash = cash;
             if (cash + otherPayments > tenderBillTotal) {
                 effectiveCash = Math.max(0, Math.round((tenderBillTotal - otherPayments) * 100) / 100);
@@ -2138,7 +2173,14 @@
             function doSubmit() {
                 if (!submitted) {
                     submitted = true;
-                    $form[0].submit();
+                    let formEl = $form && $form.length ? $form[0] : document.getElementById('sales-bill-form');
+                    if (formEl) {
+                        if (typeof HTMLFormElement.prototype.submit === 'function') {
+                            HTMLFormElement.prototype.submit.call(formEl);
+                        } else {
+                            formEl.submit();
+                        }
+                    }
                 }
             }
 

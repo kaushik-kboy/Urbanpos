@@ -68,6 +68,21 @@ class DynamicValidationService
     public function applyTo(string $moduleKey, array &$rules, array &$messages, mixed $ignoreId = null): void
     {
         try {
+            if ($ignoreId === null && function_exists('request') && request()) {
+                if (request()->isMethod('put') || request()->isMethod('patch')) {
+                    $routeParams = request()->route() ? request()->route()->parameters() : [];
+                    foreach ($routeParams as $param) {
+                        if (is_object($param) && method_exists($param, 'getKey')) {
+                            $ignoreId = $param->getKey();
+                            break;
+                        } elseif (is_numeric($param) && (int) $param > 0) {
+                            $ignoreId = (int) $param;
+                            break;
+                        }
+                    }
+                }
+            }
+
             $configs = $this->getConfigsForModule($moduleKey);
             if ($configs->isEmpty()) {
                 return;

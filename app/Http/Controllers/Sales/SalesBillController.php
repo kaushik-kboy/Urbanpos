@@ -306,7 +306,7 @@ class SalesBillController extends Controller
 
     public function edit(SalesBill $salesBill)
     {
-        $salesBill->load(['items.item.gstTax', 'customer']);
+        $salesBill->load(['items.item.gstTax', 'customer', 'payments.tenderType', 'payments.tenderTypeValue']);
 
         $branchId = (int) $salesBill->branch_id;
         foreach ($salesBill->items as $billItem) {
@@ -337,7 +337,7 @@ class SalesBillController extends Controller
     {
         $salesBill->assertEditable();
 
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $salesBill->id);
         $this->financialYearGuard->assertOpenForPosting($data['header']['bill_date']);
         $oldCustomerId = $salesBill->customer_id;
         $oldTotal = (float) $salesBill->total;
@@ -1009,7 +1009,7 @@ class SalesBillController extends Controller
         ];
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?int $ignoreId = null): array
     {
         // Filter out empty rows (where item_id is missing or qty <= 0) before validation
         $rawItems = $request->input('items', []);
@@ -1044,8 +1044,11 @@ class SalesBillController extends Controller
             'bill_date.before_or_equal' => 'Future date and time is not allowed for Bill Date.',
         ];
 
+        $currentBill = $ignoreId ?: $request->route('sales_bill');
+        $currentId = is_object($currentBill) ? $currentBill->id : (int)$currentBill;
+
         $dynamicService = app(\App\Services\DynamicValidationService::class);
-        $dynamicService->applyTo('sales_bills', $headerRules, $headerMessages);
+        $dynamicService->applyTo('sales_bills', $headerRules, $headerMessages, $currentId);
 
         $header = $request->validate($headerRules, $headerMessages);
 
