@@ -432,6 +432,7 @@ class PurchaseInvoiceController extends Controller
                 i.id,
                 i.name,
                 COALESCE(i.item_code, '')  AS item_code,
+                COALESCE(i.ean_upc_code, '') AS ean_upc_code,
                 COALESCE(
                     NULLIF(st.quantity, 0),
                     (SELECT NULLIF(SUM(ist.quantity), 0) FROM item_stocks ist WHERE ist.item_id = i.id),
@@ -530,7 +531,7 @@ class PurchaseInvoiceController extends Controller
             $result[] = [
                 'id'                      => (int) $row->id,
                 'name'                    => $row->name,
-                'code'                    => $row->item_code ?: ($row->ean_upc_code ?: ''),
+                'code'                    => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
                 'qty'                     => (float) $row->qty,
                 'cost_price'              => (float) $row->cost_price,
                 'sell_price'              => (float) $row->sell_price,
