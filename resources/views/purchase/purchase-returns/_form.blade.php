@@ -150,7 +150,7 @@
         <div class="modal-content shadow-lg border-0">
             <div class="modal-header bg-primary text-white py-2">
                 <h5 class="modal-title font-weight-bold" id="prItemSearchModalLabel">
-                    <i class="fas fa-search mr-2"></i> Select Item
+                    <i class="fas fa-search mr-2"></i> Select Item <span id="pr-modal-filter-badge" class="ml-2 font-weight-normal"></span>
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
@@ -221,8 +221,8 @@
 <script>
     (function () {
         let rowIndex = {{ max(count($existingItems), 1) }};
-        const PR_ISL_URL = "{{ route('sales.sales-bills.item-list') }}";
-        const PR_LOOKUP_URL = "{{ route('sales.sales-bills.lookup-item') }}";
+        const PR_ISL_URL = "{{ route('purchase.purchase-returns.item-list') }}";
+        const PR_LOOKUP_URL = "{{ route('purchase.purchase-returns.lookup-item') }}";
 
         let prActiveSearchRow = null;
         let prModalOpen = false;
@@ -343,14 +343,49 @@
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
            ---------------------------------------------------------------- */
+        function assertSupplierSelected() {
+            let supplierId = $('#supplier_id').val();
+            let invoiceId = $('#purchase_invoice_id').val();
+            if (!supplierId && !invoiceId) {
+                alert('Please select a Supplier first.');
+                if ($('#supplier_id').hasClass('select2-hidden-accessible')) {
+                    $('#supplier_id').select2('open');
+                } else {
+                    $('#supplier_id').focus();
+                }
+                return false;
+            }
+            return true;
+        }
+
+        function updateModalHeaderBadge() {
+            let invoiceId = $('#purchase_invoice_id').val();
+            let invoiceText = $('#purchase_invoice_id option:selected').text();
+            let supplierText = $('#supplier_id option:selected').text();
+
+            if (invoiceId) {
+                $('#pr-modal-filter-badge').html('<span class="badge badge-warning text-dark"><i class="fas fa-file-invoice mr-1"></i> Invoice: ' + invoiceText.split('(')[0].trim() + '</span>');
+            } else if ($('#supplier_id').val()) {
+                $('#pr-modal-filter-badge').html('<span class="badge badge-light text-dark border"><i class="fas fa-truck mr-1"></i> Supplier: ' + supplierText + '</span>');
+            } else {
+                $('#pr-modal-filter-badge').empty();
+            }
+        }
+
+        /* ----------------------------------------------------------------
+           ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
+           ---------------------------------------------------------------- */
         $(document).off('click focus', '.pr-item-code').on('click focus', '.pr-item-code', function (e) {
             if (prModalOpen || prModalClosing) return;
             let $row = $(this).closest('tr');
             if (e.type === 'focus' && $row.find('.pr-item-id').val()) return;
+            if (!assertSupplierSelected()) return;
+
             prActiveSearchRow = $row;
             let prefill = $.trim($(this).val());
             $('#pr-isl-filter-name').val(prefill);
             $('#pr-isl-filter-code').val('');
+            updateModalHeaderBadge();
             fetchPrItemList();
             prModalOpen = true;
             $('#pr-item-search-modal').modal('show');
@@ -361,10 +396,13 @@
 
         $(document).on('click', '.pr-search-btn', function (e) {
             e.preventDefault();
+            if (!assertSupplierSelected()) return;
+
             prActiveSearchRow = $(this).closest('tr');
             let prefill = $.trim(prActiveSearchRow.find('.pr-item-code').val());
             $('#pr-isl-filter-name').val(prefill);
             $('#pr-isl-filter-code').val('');
+            updateModalHeaderBadge();
             fetchPrItemList();
             prModalOpen = true;
             $('#pr-item-search-modal').modal('show');
@@ -431,15 +469,17 @@
 
         function fetchPrItemList() {
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let supplierId = $('#supplier_id').val();
+            let invoiceId = $('#purchase_invoice_id').val();
             let srch = $.trim($('#pr-isl-filter-name').val());
             let code = $.trim($('#pr-isl-filter-code').val());
 
-            if (!srch && !code) {
+            if (!supplierId && !invoiceId) {
                 $('#pr-isl-loading').addClass('d-none');
                 $('#pr-isl-table-wrap').addClass('d-none');
                 $('#pr-isl-items-body').empty();
                 $('#pr-isl-no-results').removeClass('d-none').html(
-                    '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
+                    '<i class="fas fa-exclamation-triangle fa-2x text-warning"></i><p class="mt-2 text-dark font-weight-bold">Please select a Supplier first.</p>'
                 );
                 $('#pr-isl-count-label').text('');
                 return;
@@ -449,14 +489,23 @@
             $('#pr-isl-no-results').addClass('d-none');
             $('#pr-isl-table-wrap').addClass('d-none');
 
-            $.getJSON(PR_ISL_URL, { branch_id: branchId, search: srch, code: code }, function (res) {
+            $.getJSON(PR_ISL_URL, {
+                branch_id: branchId,
+                supplier_id: supplierId,
+                purchase_invoice_id: invoiceId,
+                search: srch,
+                code: code
+            }, function (res) {
                 $('#pr-isl-loading').addClass('d-none');
                 let items = res.items || [];
                 let $tbody = $('#pr-isl-items-body').empty();
 
                 if (items.length === 0) {
+                    let noMsg = invoiceId
+                        ? 'No products found in the selected Purchase Invoice.'
+                        : 'No products found for this Supplier.';
                     $('#pr-isl-no-results').removeClass('d-none').html(
-                        '<i class="fas fa-inbox fa-2x text-muted"></i><p class="mt-2 text-muted">No items found.</p>'
+                        '<i class="fas fa-inbox fa-2x text-muted"></i><p class="mt-2 text-muted font-weight-bold">' + noMsg + '</p>'
                     );
                     $('#pr-isl-count-label').text('');
                     return;
@@ -468,6 +517,9 @@
                     let costDisplay = it.cost_price > 0 ? '₹' + parseFloat(it.cost_price).toFixed(2) : '—';
                     let sellDisplay = it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—';
                     let stockClass = it.qty <= 0 ? 'text-danger' : 'text-primary font-weight-bold';
+                    let qtyCol = it.invoiced_qty !== null
+                        ? `<span class="text-success font-weight-bold" title="Invoiced Quantity">${parseFloat(it.invoiced_qty).toFixed(2)}</span> <small class="text-muted d-block">(Stock: ${parseFloat(it.qty || 0).toFixed(2)})</small>`
+                        : `<span class="${stockClass}">${parseFloat(it.qty || 0).toFixed(2)}</span>`;
 
                     html += `
                         <tr class="pr-isl-item-row" style="cursor:pointer;"
@@ -475,11 +527,14 @@
                             data-code="${it.code || ''}"
                             data-name="${it.name}"
                             data-cost="${it.cost_price || 0}"
-                            data-gst="${it.gst_percent || 0}">
+                            data-gst="${it.gst_percent || 0}"
+                            data-disc-percent="${it.disc_percent || 0}"
+                            data-disc-amount="${it.disc_amount || 0}"
+                            data-exp-date="${it.exp_date || ''}">
                             <td class="align-middle text-center text-muted">${idx + 1}</td>
                             <td class="align-middle font-weight-bold text-dark">${it.name}</td>
                             <td class="align-middle text-center">${codeBadge}</td>
-                            <td class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(2)}</td>
+                            <td class="align-middle text-center">${qtyCol}</td>
                             <td class="align-middle text-right font-weight-bold text-dark">${costDisplay}</td>
                             <td class="align-middle text-right text-success">${sellDisplay}</td>
                             <td class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
@@ -508,7 +563,10 @@
                 name: $tr.data('name'),
                 code: $tr.data('code'),
                 cost_price: $tr.data('cost'),
-                gst_percent: $tr.data('gst')
+                gst_percent: $tr.data('gst'),
+                disc_percent: $tr.data('disc-percent'),
+                disc_amount: $tr.data('disc-amount'),
+                exp_date: $tr.data('exp-date')
             };
 
             if (!prActiveSearchRow || !itemData.id) return;
@@ -520,12 +578,20 @@
             $row.find('.pr-item-desc').val(itemData.name);
             $row.find('.pr-item-id').val(itemData.id);
 
-            let currentCost = parseFloat($row.find('.pr-cost').val()) || 0;
-            if (currentCost <= 0 && parseFloat(itemData.cost_price) > 0) {
+            if (parseFloat(itemData.cost_price) > 0) {
                 $row.find('.pr-cost').val(parseFloat(itemData.cost_price).toFixed(2));
             }
             if (parseFloat(itemData.gst_percent) >= 0) {
                 $row.find('.pr-gst-percent').val(parseFloat(itemData.gst_percent).toFixed(2));
+            }
+            if (parseFloat(itemData.disc_percent) > 0) {
+                $row.find('.pr-disc-percent').val(parseFloat(itemData.disc_percent).toFixed(2));
+            }
+            if (parseFloat(itemData.disc_amount) > 0) {
+                $row.find('.pr-disc-amount').val(parseFloat(itemData.disc_amount).toFixed(2));
+            }
+            if (itemData.exp_date) {
+                $row.find('.pr-exp-date').val(itemData.exp_date);
             }
 
             recalculateAll();
@@ -548,23 +614,58 @@
             let $row = $input.closest('tr');
             if (!query) return;
 
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            $.getJSON(PR_LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
-                if (item && item.id) {
-                    $row.find('.pr-item-code').val(item.code || query);
-                    $row.find('.pr-item-desc').val(item.name);
-                    $row.find('.pr-item-id').val(item.id);
+            let supplierId = $('#supplier_id').val();
+            let invoiceId = $('#purchase_invoice_id').val();
 
-                    let currentCost = parseFloat($row.find('.pr-cost').val()) || 0;
-                    if (currentCost <= 0 && parseFloat(item.cost_price) > 0) {
-                        $row.find('.pr-cost').val(parseFloat(item.cost_price).toFixed(2));
+            if (!supplierId && !invoiceId) {
+                alert('Please select a Supplier first.');
+                $input.val('');
+                if ($('#supplier_id').hasClass('select2-hidden-accessible')) {
+                    $('#supplier_id').select2('open');
+                } else {
+                    $('#supplier_id').focus();
+                }
+                return;
+            }
+
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            $.getJSON(PR_LOOKUP_URL, {
+                query: query,
+                branch_id: branchId,
+                supplier_id: supplierId,
+                purchase_invoice_id: invoiceId
+            }, function (res) {
+                if (res && res.id) {
+                    $row.find('.pr-item-code').val(res.code || query);
+                    $row.find('.pr-item-desc').val(res.name);
+                    $row.find('.pr-item-id').val(res.id);
+
+                    if (parseFloat(res.cost_price) > 0) {
+                        $row.find('.pr-cost').val(parseFloat(res.cost_price).toFixed(2));
                     }
-                    if (parseFloat(item.gst_percent) >= 0) {
-                        $row.find('.pr-gst-percent').val(parseFloat(item.gst_percent).toFixed(2));
+                    if (parseFloat(res.gst_percent) >= 0) {
+                        $row.find('.pr-gst-percent').val(parseFloat(res.gst_percent).toFixed(2));
+                    }
+                    if (parseFloat(res.disc_percent) > 0) {
+                        $row.find('.pr-disc-percent').val(parseFloat(res.disc_percent).toFixed(2));
+                    }
+                    if (parseFloat(res.disc_amount) > 0) {
+                        $row.find('.pr-disc-amount').val(parseFloat(res.disc_amount).toFixed(2));
+                    }
+                    if (res.exp_date) {
+                        $row.find('.pr-exp-date').val(res.exp_date);
                     }
                     recalculateAll();
                     $row.find('.pr-qty').focus().select();
                 }
+            }).fail(function (xhr) {
+                let msg = (xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message
+                    : 'This product was not found for the selected supplier/invoice.';
+                alert(msg);
+                $input.val('').focus();
+                $row.find('.pr-item-id').val('');
+                $row.find('.pr-item-desc').val('');
             });
         });
 
@@ -574,6 +675,22 @@
             const $invSelect = $('#purchase_invoice_id');
             const currentSelected = $invSelect.val();
             $invSelect.empty().append('<option value="">-- No Original Invoice / Direct Return --</option>');
+
+            let hasItems = false;
+            $('#pr-items-body tr.pr-item-row').each(function () {
+                if ($(this).find('.pr-item-id').val()) {
+                    hasItems = true;
+                }
+            });
+
+            if (hasItems) {
+                if (confirm('Changing the supplier will clear the existing return items. Do you want to proceed?')) {
+                    $('#pr-items-body').empty();
+                    $('#pr-add-row').trigger('click');
+                    recalculateAll();
+                }
+            }
+
             if (!supplierId) return;
 
             fetch(`/purchase/purchase-returns/supplier-invoices/${supplierId}`, {

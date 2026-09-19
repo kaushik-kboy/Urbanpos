@@ -164,6 +164,8 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
     $gatedResource('purchase-receipt-notes', PurchaseReceiptNoteController::class, 'purchase-receipt-notes');
     Route::get('purchase-invoices/{purchase_invoice}/print', [PurchaseInvoiceController::class, 'print'])->name('purchase-invoices.print');
     $gatedResource('purchase-invoices', PurchaseInvoiceController::class, 'purchase-invoices');
+    Route::get('purchase-returns/item-list', [PurchaseReturnController::class, 'itemList'])->name('purchase-returns.item-list');
+    Route::get('purchase-returns/lookup-item', [PurchaseReturnController::class, 'lookupItem'])->name('purchase-returns.lookup-item');
     Route::get('purchase-returns/invoice-items/{purchaseInvoice}', [PurchaseReturnController::class, 'invoiceItems'])->name('purchase-returns.invoice-items');
     Route::get('purchase-returns/supplier-invoices/{supplier}', [PurchaseReturnController::class, 'supplierInvoices'])->name('purchase-returns.supplier-invoices');
     Route::get('purchase-returns/{purchase_return}/print', [PurchaseReturnController::class, 'print'])->name('purchase-returns.print');

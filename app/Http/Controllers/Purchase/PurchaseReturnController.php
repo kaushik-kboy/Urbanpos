@@ -16,6 +16,7 @@ use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseReturnController extends Controller
 {
@@ -206,6 +207,165 @@ class PurchaseReturnController extends Controller
         return response()->json(['invoices' => $invoices]);
     }
 
+    /**
+     * AJAX endpoint: return items strictly filtered by the selected supplier or purchase invoice.
+     */
+    public function itemList(Request $request)
+    {
+        $supplierId = $request->input('supplier_id');
+        $invoiceId  = $request->input('purchase_invoice_id');
+        $branchId   = (int) ($request->input('branch_id') ?: 3);
+        $search     = trim((string) $request->input('search', ''));
+        $code       = trim((string) $request->input('code', ''));
+
+        if (! $supplierId && ! $invoiceId) {
+            return response()->json([
+                'items' => [],
+                'message' => 'Please select a Supplier first.',
+            ]);
+        }
+
+        // Case 1: Specific Purchase Invoice selected -> ONLY items from that invoice
+        if (! empty($invoiceId)) {
+            $query = DB::table('purchase_invoice_items as pii')
+                ->join('items as i', 'i.id', '=', 'pii.item_id')
+                ->leftJoin('gst_taxes as gt', 'gt.id', '=', 'i.gst_tax_id')
+                ->where('pii.purchase_invoice_id', $invoiceId)
+                ->select([
+                    'i.id',
+                    'i.name',
+                    'i.item_code',
+                    'i.ean_upc_code',
+                    'pii.cost_price',
+                    'i.sell_price',
+                    'i.mrp',
+                    'pii.disc_percent',
+                    'pii.disc_amount',
+                    DB::raw('COALESCE(pii.gst_percent, gt.percentage, 0) as gst_percent'),
+                    'pii.exp_date',
+                    'pii.qty as invoiced_qty',
+                ]);
+        } else {
+            // Case 2: Supplier selected (No invoice) -> ONLY products of this supplier
+            $query = DB::table('items as i')
+                ->leftJoin('gst_taxes as gt', 'gt.id', '=', 'i.gst_tax_id')
+                ->where('i.status', true)
+                ->where(function ($sq) use ($supplierId) {
+                    $sq->where('i.supplier_id', $supplierId)
+                        ->orWhereExists(function ($sub) use ($supplierId) {
+                            $sub->select(DB::raw(1))
+                                ->from('purchase_invoice_items as pii')
+                                ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
+                                ->whereColumn('pii.item_id', 'i.id')
+                                ->where('pi.supplier_id', $supplierId);
+                        });
+                })
+                ->select([
+                    'i.id',
+                    'i.name',
+                    'i.item_code',
+                    'i.ean_upc_code',
+                    'i.cost_price',
+                    'i.sell_price',
+                    'i.mrp',
+                    DB::raw('0 as disc_percent'),
+                    DB::raw('0 as disc_amount'),
+                    DB::raw('COALESCE(gt.percentage, 0) as gst_percent'),
+                    DB::raw('NULL as exp_date'),
+                    DB::raw('NULL as invoiced_qty'),
+                ]);
+        }
+
+        if ($search !== '') {
+            $query->where('i.name', 'like', "%{$search}%");
+        }
+
+        if ($code !== '') {
+            $query->where(function ($cq) use ($code) {
+                $cq->where('i.item_code', 'like', "%{$code}%")
+                    ->orWhere('i.ean_upc_code', 'like', "%{$code}%");
+            });
+        }
+
+        $rows = $query->limit(100)->get();
+
+        $itemIds = $rows->pluck('id')->all();
+        $stocks = DB::table('item_stocks')
+            ->where('branch_id', $branchId)
+            ->whereIn('item_id', $itemIds)
+            ->pluck('quantity', 'item_id');
+
+        $result = [];
+        foreach ($rows as $row) {
+            $stock = (float) ($stocks[$row->id] ?? 0);
+            $result[] = [
+                'id'           => (int) $row->id,
+                'name'         => $row->name,
+                'code'         => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
+                'qty'          => $stock,
+                'invoiced_qty' => $row->invoiced_qty !== null ? (float) $row->invoiced_qty : null,
+                'cost_price'   => (float) $row->cost_price,
+                'sell_price'   => (float) $row->sell_price,
+                'mrp'          => (float) $row->mrp,
+                'disc_percent' => (float) $row->disc_percent,
+                'disc_amount'  => (float) $row->disc_amount,
+                'gst_percent'  => (float) $row->gst_percent,
+                'exp_date'     => $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null,
+            ];
+        }
+
+        return response()->json([
+            'items' => $result,
+            'source' => !empty($invoiceId) ? 'invoice' : 'supplier',
+        ]);
+    }
+
+    /**
+     * AJAX endpoint: lookup a single item by code/query strictly within supplier/invoice scope.
+     */
+    public function lookupItem(Request $request)
+    {
+        $supplierId = $request->input('supplier_id');
+        $invoiceId  = $request->input('purchase_invoice_id');
+        $query      = trim((string) $request->input('query', ''));
+
+        if (! $supplierId && ! $invoiceId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please select a Supplier first.',
+            ], 422);
+        }
+
+        if ($query === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide an item code or barcode.',
+            ], 422);
+        }
+
+        $subReq = Request::create('', 'GET', array_merge($request->all(), [
+            'code' => $query,
+        ]));
+        $items = $this->itemList($subReq)->getData(true)['items'] ?? [];
+
+        if (empty($items)) {
+            $subReq = Request::create('', 'GET', array_merge($request->all(), [
+                'code' => '',
+                'search' => $query,
+            ]));
+            $items = $this->itemList($subReq)->getData(true)['items'] ?? [];
+        }
+
+        if (empty($items)) {
+            $msg = ! empty($invoiceId)
+                ? "Item '{$query}' was not found in the selected Purchase Invoice."
+                : "Item '{$query}' does not belong to the selected Supplier.";
+            return response()->json(['success' => false, 'message' => $msg], 404);
+        }
+
+        return response()->json(array_merge(['success' => true], $items[0]));
+    }
+
     public function print(PurchaseReturn $purchaseReturn)
     {
         $purchaseReturn->load(['supplier', 'branch', 'purchaseInvoice', 'items.item']);
@@ -340,6 +500,49 @@ class PurchaseReturnController extends Controller
             'items.*.disc_amount' => ['nullable', 'numeric', 'min:0'],
             'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        // Server-side strict boundary checks
+        if (!empty($header['purchase_invoice_id'])) {
+            $validItemIds = DB::table('purchase_invoice_items')
+                ->where('purchase_invoice_id', $header['purchase_invoice_id'])
+                ->pluck('item_id')
+                ->toArray();
+
+            foreach ($validated['items'] as $line) {
+                if (!in_array($line['item_id'], $validItemIds)) {
+                    $itemModel = Item::find($line['item_id']);
+                    $name = $itemModel?->name ?? "Item #{$line['item_id']}";
+                    throw ValidationException::withMessages([
+                        'items' => "The item '{$name}' does not belong to the selected Purchase Invoice.",
+                    ]);
+                }
+            }
+        } elseif (!empty($header['supplier_id'])) {
+            $supplierId = $header['supplier_id'];
+            foreach ($validated['items'] as $line) {
+                $belongsToSupplier = DB::table('items')
+                    ->where('id', $line['item_id'])
+                    ->where(function ($q) use ($supplierId) {
+                        $q->where('supplier_id', $supplierId)
+                            ->orWhereExists(function ($sub) use ($supplierId) {
+                                $sub->select(DB::raw(1))
+                                    ->from('purchase_invoice_items as pii')
+                                    ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
+                                    ->whereColumn('pii.item_id', 'items.id')
+                                    ->where('pi.supplier_id', $supplierId);
+                            });
+                    })
+                    ->exists();
+
+                if (!$belongsToSupplier) {
+                    $itemModel = Item::find($line['item_id']);
+                    $name = $itemModel?->name ?? "Item #{$line['item_id']}";
+                    throw ValidationException::withMessages([
+                        'items' => "The item '{$name}' does not belong to the selected Supplier.",
+                    ]);
+                }
+            }
+        }
 
         return ['header' => $header, 'items' => $validated['items']];
     }
