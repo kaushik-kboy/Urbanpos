@@ -66,8 +66,14 @@ class BrandController extends Controller
 
     private function validateData(Request $request, ?Brand $brand = null): array
     {
-        if (! $request->has('status') || $request->input('status') === null) {
+        if (! $request->has('status') || $request->input('status') === null || $request->input('status') === '') {
             $request->merge(['status' => 1]);
+        }
+        if ($request->input('prefix') === '') {
+            $request->merge(['prefix' => null]);
+        }
+        if ($request->input('alias_code') === '') {
+            $request->merge(['alias_code' => null]);
         }
 
         return $request->validate([

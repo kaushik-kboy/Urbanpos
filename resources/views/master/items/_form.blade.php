@@ -77,18 +77,6 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var hsn = document.getElementById('hsn_code_input');
-    var lenBadge = document.getElementById('hsn-len');
-    if (hsn && lenBadge) {
-        var len = hsn.value.length;
-        lenBadge.textContent = len + '/8';
-        lenBadge.className = len === 8 ? 'badge badge-success ml-2' : 'badge badge-secondary ml-2';
-    }
-});
-</script>
-
 {{-- Quick Add Brand Modal --}}
 <div class="modal fade" id="quickBrandModal" tabindex="-1" role="dialog" aria-labelledby="quickBrandModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -101,36 +89,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="quick-brand-form" onsubmit="return false;">
-                @csrf
-                <input type="hidden" name="status" value="1">
-                <div class="modal-body py-3">
-                    <div id="quick-brand-alert" class="alert alert-danger d-none py-2 px-3 small"></div>
-                    
-                    <div class="form-group">
-                        <label for="quick_brand_name" class="font-weight-bold small">Brand Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="quick_brand_name" name="name" placeholder="e.g. Bosch, Castrol, 3M" required autocomplete="off">
-                        <div class="invalid-feedback" id="quick_brand_name_feedback"></div>
-                    </div>
+            <div class="modal-body py-3">
+                <div id="quick-brand-alert" class="alert alert-danger d-none py-2 px-3 small"></div>
+                
+                <div class="form-group">
+                    <label for="quick_brand_name" class="font-weight-bold small">Brand Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="quick_brand_name" placeholder="e.g. Bosch, Castrol, 3M" autocomplete="off">
+                    <div class="invalid-feedback" id="quick_brand_name_feedback"></div>
+                </div>
 
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="quick_brand_prefix" class="font-weight-bold small text-muted">Prefix (Optional)</label>
-                            <input type="text" class="form-control form-control-sm" id="quick_brand_prefix" name="prefix" placeholder="e.g. BSH">
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="quick_brand_alias" class="font-weight-bold small text-muted">Alias Code (Optional)</label>
-                            <input type="text" class="form-control form-control-sm" id="quick_brand_alias" name="alias_code" placeholder="e.g. AL-01">
-                        </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="quick_brand_prefix" class="font-weight-bold small text-muted">Prefix (Optional)</label>
+                        <input type="text" class="form-control form-control-sm" id="quick_brand_prefix" placeholder="e.g. BSH">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="quick_brand_alias" class="font-weight-bold small text-muted">Alias Code (Optional)</label>
+                        <input type="text" class="form-control form-control-sm" id="quick_brand_alias" placeholder="e.g. AL-01">
                     </div>
                 </div>
-                <div class="modal-footer py-2 bg-light d-flex justify-content-between">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm font-weight-bold" id="btn-save-quick-brand">
-                        <i class="fas fa-check mr-1"></i> Save & Select Brand
-                    </button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer py-2 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm font-weight-bold" id="btn-save-quick-brand">
+                    <i class="fas fa-check mr-1"></i> Save & Select Brand
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -147,84 +131,72 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="quick-supplier-form" onsubmit="return false;">
-                @csrf
-                <input type="hidden" name="currency" value="INR">
-                <input type="hidden" name="purchase_type" value="Local">
-                <input type="hidden" name="purchase_mode" value="Credit">
-                <input type="hidden" name="credit_limit" value="0">
-                <input type="hidden" name="credit_balance" value="0">
-                <input type="hidden" name="credit_days" value="0">
-                <input type="hidden" name="mail_type" value="None">
-                <input type="hidden" name="status" value="1">
+            <div class="modal-body py-3">
+                <div id="quick-supplier-alert" class="alert alert-danger d-none py-2 px-3 small"></div>
 
-                <div class="modal-body py-3">
-                    <div id="quick-supplier-alert" class="alert alert-danger d-none py-2 px-3 small"></div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_name" class="font-weight-bold small">Supplier Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="quick_supplier_name" name="name" placeholder="e.g. Acme Auto Parts Pvt Ltd" required autocomplete="off">
-                            <div class="invalid-feedback" id="quick_supplier_name_feedback"></div>
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_mobile" class="font-weight-bold small">Mobile Number (10 Digits)</label>
-                            <input type="text" class="form-control" id="quick_supplier_mobile" name="mobile" placeholder="10-digit mobile" maxlength="10" inputmode="numeric">
-                            <div class="invalid-feedback" id="quick_supplier_mobile_feedback"></div>
-                        </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_name" class="font-weight-bold small">Supplier Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="quick_supplier_name" placeholder="e.g. Acme Auto Parts Pvt Ltd" autocomplete="off">
+                        <div class="invalid-feedback" id="quick_supplier_name_feedback"></div>
                     </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_phone" class="font-weight-bold small text-muted">Phone (Landline / Office)</label>
-                            <input type="text" class="form-control form-control-sm" id="quick_supplier_phone" name="phone" placeholder="Office / Landline Phone">
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_email" class="font-weight-bold small text-muted">Email Address</label>
-                            <input type="email" class="form-control form-control-sm" id="quick_supplier_email" name="email" placeholder="supplier@example.com">
-                            <div class="invalid-feedback" id="quick_supplier_email_feedback"></div>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_gst_no" class="font-weight-bold small text-muted">GST No (15 Chars)</label>
-                            <input type="text" class="form-control form-control-sm" id="quick_supplier_gst_no" name="gst_no" maxlength="15" placeholder="e.g. 27AAPFU0939F1ZV" style="text-transform:uppercase;">
-                            <div class="invalid-feedback" id="quick_supplier_gst_no_feedback"></div>
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_gst_type" class="font-weight-bold small text-muted">GST Type</label>
-                            <select class="form-control form-control-sm" id="quick_supplier_gst_type" name="gst_type">
-                                <option value="Regular" selected>Regular</option>
-                                <option value="Composite">Composite</option>
-                                <option value="Un Register">Un Register</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_city" class="font-weight-bold small text-muted">City</label>
-                            <input type="text" class="form-control form-control-sm" id="quick_supplier_city" name="city" placeholder="City">
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="quick_supplier_state" class="font-weight-bold small text-muted">State</label>
-                            <input type="text" class="form-control form-control-sm" id="quick_supplier_state" name="state" placeholder="State">
-                        </div>
-                    </div>
-
-                    <div class="form-group mb-0">
-                        <label for="quick_supplier_address" class="font-weight-bold small text-muted">Address</label>
-                        <input type="text" class="form-control form-control-sm" id="quick_supplier_address" name="address" placeholder="Shop / Warehouse Address">
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_mobile" class="font-weight-bold small">Mobile Number (10 Digits)</label>
+                        <input type="text" class="form-control" id="quick_supplier_mobile" placeholder="10-digit mobile" maxlength="10" inputmode="numeric">
+                        <div class="invalid-feedback" id="quick_supplier_mobile_feedback"></div>
                     </div>
                 </div>
-                <div class="modal-footer py-2 bg-light d-flex justify-content-between">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-success btn-sm font-weight-bold" id="btn-save-quick-supplier">
-                        <i class="fas fa-check mr-1"></i> Save & Select Supplier
-                    </button>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_phone" class="font-weight-bold small text-muted">Phone (Landline / Office)</label>
+                        <input type="text" class="form-control form-control-sm" id="quick_supplier_phone" placeholder="Office / Landline Phone">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_email" class="font-weight-bold small text-muted">Email Address</label>
+                        <input type="email" class="form-control form-control-sm" id="quick_supplier_email" placeholder="supplier@example.com">
+                        <div class="invalid-feedback" id="quick_supplier_email_feedback"></div>
+                    </div>
                 </div>
-            </form>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_gst_no" class="font-weight-bold small text-muted">GST No (15 Chars)</label>
+                        <input type="text" class="form-control form-control-sm" id="quick_supplier_gst_no" maxlength="15" placeholder="e.g. 27AAPFU0939F1ZV" style="text-transform:uppercase;">
+                        <div class="invalid-feedback" id="quick_supplier_gst_no_feedback"></div>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_gst_type" class="font-weight-bold small text-muted">GST Type</label>
+                        <select class="form-control form-control-sm" id="quick_supplier_gst_type">
+                            <option value="Regular" selected>Regular</option>
+                            <option value="Composite">Composite</option>
+                            <option value="Un Register">Un Register</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_city" class="font-weight-bold small text-muted">City</label>
+                        <input type="text" class="form-control form-control-sm" id="quick_supplier_city" placeholder="City">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="quick_supplier_state" class="font-weight-bold small text-muted">State</label>
+                        <input type="text" class="form-control form-control-sm" id="quick_supplier_state" placeholder="State">
+                    </div>
+                </div>
+
+                <div class="form-group mb-0">
+                    <label for="quick_supplier_address" class="font-weight-bold small text-muted">Address</label>
+                    <input type="text" class="form-control form-control-sm" id="quick_supplier_address" placeholder="Shop / Warehouse Address">
+                </div>
+            </div>
+            <div class="modal-footer py-2 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success btn-sm font-weight-bold" id="btn-save-quick-supplier">
+                    <i class="fas fa-check mr-1"></i> Save & Select Supplier
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -241,70 +213,80 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="quick-cat-val-form" onsubmit="return false;">
-                @csrf
-                <input type="hidden" name="item_category_id" id="quick_cat_val_head_id" value="">
-                <input type="hidden" name="status" value="1">
-                <input type="hidden" name="show_in_webstore" value="0">
-                <input type="hidden" name="sellquick_applicable" value="0">
-                <div class="modal-body py-3">
-                    <div id="quick-cat-val-alert" class="alert alert-danger d-none py-2 px-3 small"></div>
+            <input type="hidden" id="quick_cat_val_head_id" value="">
+            <div class="modal-body py-3">
+                <div id="quick-cat-val-alert" class="alert alert-danger d-none py-2 px-3 small"></div>
 
-                    <div class="form-group mb-0">
-                        <label for="quick_cat_val_name" class="font-weight-bold small">Value Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="quick_cat_val_name" name="name" placeholder="e.g. Engine Oil, Brake Pads, Accessories" required autocomplete="off">
-                        <div class="invalid-feedback" id="quick_cat_val_name_feedback"></div>
-                    </div>
+                <div class="form-group mb-0">
+                    <label for="quick_cat_val_name" class="font-weight-bold small">Value Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="quick_cat_val_name" placeholder="e.g. Engine Oil, Brake Pads, Accessories" autocomplete="off">
+                    <div class="invalid-feedback" id="quick_cat_val_name_feedback"></div>
                 </div>
-                <div class="modal-footer py-2 bg-light d-flex justify-content-between">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-info btn-sm font-weight-bold text-white" id="btn-save-quick-cat-val">
-                        <i class="fas fa-check mr-1"></i> Save & Select
-                    </button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer py-2 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info btn-sm font-weight-bold text-white" id="btn-save-quick-cat-val">
+                    <i class="fas fa-check mr-1"></i> Save & Select
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
+@push('js')
 <script>
 $(document).ready(function () {
-    // 1. Detach modals and append directly to body so they are outside any nested forms
+    // 1. Move modals directly to body so they are outside any forms and no backdrop z-index issues
     $('#quickBrandModal, #quickSupplierModal, #quickCatValModal').appendTo('body');
 
-    // 2. Focus first input on open
+    // HSN length indicator
+    var hsn = document.getElementById('hsn_code_input');
+    var lenBadge = document.getElementById('hsn-len');
+    if (hsn && lenBadge) {
+        var len = hsn.value.length;
+        lenBadge.textContent = len + '/8';
+        lenBadge.className = len === 8 ? 'badge badge-success ml-2' : 'badge badge-secondary ml-2';
+    }
+
+    // 2. Focus first input on modal shown
     $('#quickBrandModal').on('shown.bs.modal', function () {
-        $('#quick_brand_name').focus();
+        $('#quick_brand_name').val('').removeClass('is-invalid').focus();
+        $('#quick_brand_prefix').val('');
+        $('#quick_brand_alias').val('');
+        $('#quick-brand-alert').addClass('d-none').empty();
     });
 
     $('#quickSupplierModal').on('shown.bs.modal', function () {
-        $('#quick_supplier_name').focus();
+        $('#quick_supplier_name').val('').removeClass('is-invalid').focus();
+        $('#quickSupplierModal').find('input[type="text"], input[type="email"]').val('').removeClass('is-invalid');
+        $('#quick-supplier-alert').addClass('d-none').empty();
     });
 
     $('#quickCatValModal').on('shown.bs.modal', function () {
-        $('#quick_cat_val_name').focus();
+        $('#quick_cat_val_name').val('').removeClass('is-invalid').focus();
+        $('#quick-cat-val-alert').addClass('d-none').empty();
     });
 
-    // 3. Clear errors when user edits inputs
-    $('#quick-brand-form input').on('input', function () {
+    // 3. Clear errors on typing
+    $('#quickBrandModal input').on('input', function () {
         $(this).removeClass('is-invalid');
         $('#quick-brand-alert').addClass('d-none').empty();
     });
 
-    $('#quick-supplier-form input, #quick-supplier-form select').on('input change', function () {
+    $('#quickSupplierModal input, #quickSupplierModal select').on('input change', function () {
         $(this).removeClass('is-invalid');
         $('#quick-supplier-alert').addClass('d-none').empty();
     });
 
-    $('#quick-cat-val-form input').on('input', function () {
+    $('#quickCatValModal input').on('input', function () {
         $(this).removeClass('is-invalid');
         $('#quick-cat-val-alert').addClass('d-none').empty();
     });
 
     function notifySuccess(msg) {
-        if (window.toastr) {
+        if (typeof toastr !== 'undefined') {
             toastr.success(msg);
-        } else if (window.Swal) {
+        } else if (typeof Swal !== 'undefined') {
             Swal.fire({
                 icon: 'success',
                 title: 'Success',
@@ -312,6 +294,8 @@ $(document).ready(function () {
                 timer: 2000,
                 showConfirmButton: false
             });
+        } else {
+            alert(msg);
         }
     }
 
@@ -339,7 +323,7 @@ $(document).ready(function () {
         });
     });
 
-    // Quick Add Category Value Modal setup
+    // Category Value Modal Trigger
     var currentCatValSelect = null;
     $(document).on('click', '.btn-quick-cat-val', function () {
         var headId = $(this).data('head-id');
@@ -348,19 +332,17 @@ $(document).ready(function () {
 
         $('#quick_cat_val_head_id').val(headId);
         $('#quick-cat-head-title').text(headName + ' Value');
-        $('#quick_cat_val_name').val('').removeClass('is-invalid');
-        $('#quick-cat-val-alert').addClass('d-none').empty();
-
         $('#quickCatValModal').modal('show');
     });
 
+    // Save Category Value
     $('#btn-save-quick-cat-val').on('click', function () {
         var $btn = $(this);
-        var $form = $('#quick-cat-val-form');
         var $alert = $('#quick-cat-val-alert');
         var name = $.trim($('#quick_cat_val_name').val());
+        var headId = $('#quick_cat_val_head_id').val();
 
-        $form.find('.is-invalid').removeClass('is-invalid');
+        $('#quickCatValModal').find('.is-invalid').removeClass('is-invalid');
         $alert.addClass('d-none').empty();
 
         if (!name) {
@@ -376,7 +358,14 @@ $(document).ready(function () {
         $.ajax({
             url: "{{ route('master.item-category-values.store') }}",
             type: "POST",
-            data: $form.serialize(),
+            data: {
+                _token: '{{ csrf_token() }}',
+                item_category_id: headId,
+                name: name,
+                status: 1,
+                show_in_webstore: 0,
+                sellquick_applicable: 0
+            },
             dataType: "json",
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -398,7 +387,7 @@ $(document).ready(function () {
                     }
 
                     $('#quickCatValModal').modal('hide');
-                    $form[0].reset();
+                    $('#quick_cat_val_name').val('');
                     notifySuccess(res.message || 'Value added successfully!');
                 }
             },
@@ -409,7 +398,7 @@ $(document).ready(function () {
                     var messages = [];
                     for (var field in errs) {
                         if (errs.hasOwnProperty(field)) {
-                            var input = $form.find('[name="' + field + '"]');
+                            var input = $('#quickCatValModal').find('[name="' + field + '"], #quick_cat_val_' + field);
                             if (input.length) {
                                 input.addClass('is-invalid');
                                 $('#quick_cat_val_' + field + '_feedback').text(errs[field][0]);
@@ -426,21 +415,21 @@ $(document).ready(function () {
         });
     });
 
-    $('#quick-cat-val-form input').on('keydown', function (e) {
+    $('#quick_cat_val_name').on('keydown', function (e) {
         if (e.key === 'Enter' || e.keyCode === 13) {
             e.preventDefault();
             $('#btn-save-quick-cat-val').trigger('click');
         }
     });
 
-    // 4. Save Brand via AJAX
+    // Save Brand via AJAX
     $('#btn-save-quick-brand').on('click', function () {
         var $btn = $(this);
-        var $form = $('#quick-brand-form');
+        var $modal = $('#quickBrandModal');
         var $alert = $('#quick-brand-alert');
         var name = $.trim($('#quick_brand_name').val());
 
-        $form.find('.is-invalid').removeClass('is-invalid');
+        $modal.find('.is-invalid').removeClass('is-invalid');
         $alert.addClass('d-none').empty();
 
         if (!name) {
@@ -450,13 +439,21 @@ $(document).ready(function () {
             return;
         }
 
+        var postData = {
+            _token: '{{ csrf_token() }}',
+            name: name,
+            prefix: $.trim($('#quick_brand_prefix').val()) || null,
+            alias_code: $.trim($('#quick_brand_alias').val()) || null,
+            status: 1
+        };
+
         var origBtnHtml = $btn.html();
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
 
         $.ajax({
             url: "{{ route('master.brands.store') }}",
             type: "POST",
-            data: $form.serialize(),
+            data: postData,
             dataType: "json",
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -477,7 +474,9 @@ $(document).ready(function () {
                     $select.val(brandId).trigger('change');
 
                     $('#quickBrandModal').modal('hide');
-                    $form[0].reset();
+                    $('#quick_brand_name').val('');
+                    $('#quick_brand_prefix').val('');
+                    $('#quick_brand_alias').val('');
                     notifySuccess(res.message || 'Brand created successfully!');
                 }
             },
@@ -488,7 +487,7 @@ $(document).ready(function () {
                     var messages = [];
                     for (var field in errs) {
                         if (errs.hasOwnProperty(field)) {
-                            var input = $form.find('[name="' + field + '"]');
+                            var input = $('#quick_brand_' + field);
                             if (input.length) {
                                 input.addClass('is-invalid');
                                 $('#quick_brand_' + field + '_feedback').text(errs[field][0]);
@@ -505,21 +504,21 @@ $(document).ready(function () {
         });
     });
 
-    $('#quick-brand-form input').on('keydown', function (e) {
+    $('#quickBrandModal input').on('keydown', function (e) {
         if (e.key === 'Enter' || e.keyCode === 13) {
             e.preventDefault();
             $('#btn-save-quick-brand').trigger('click');
         }
     });
 
-    // 5. Save Supplier via AJAX
+    // Save Supplier via AJAX
     $('#btn-save-quick-supplier').on('click', function () {
         var $btn = $(this);
-        var $form = $('#quick-supplier-form');
+        var $modal = $('#quickSupplierModal');
         var $alert = $('#quick-supplier-alert');
         var name = $.trim($('#quick_supplier_name').val());
 
-        $form.find('.is-invalid').removeClass('is-invalid');
+        $modal.find('.is-invalid').removeClass('is-invalid');
         $alert.addClass('d-none').empty();
 
         if (!name) {
@@ -529,13 +528,34 @@ $(document).ready(function () {
             return;
         }
 
+        var postData = {
+            _token: '{{ csrf_token() }}',
+            name: name,
+            mobile: $.trim($('#quick_supplier_mobile').val()) || null,
+            phone: $.trim($('#quick_supplier_phone').val()) || null,
+            email: $.trim($('#quick_supplier_email').val()) || null,
+            gst_no: $.trim($('#quick_supplier_gst_no').val()) || null,
+            gst_type: $('#quick_supplier_gst_type').val() || 'Regular',
+            city: $.trim($('#quick_supplier_city').val()) || null,
+            state: $.trim($('#quick_supplier_state').val()) || null,
+            address: $.trim($('#quick_supplier_address').val()) || null,
+            currency: 'INR',
+            purchase_type: 'Local',
+            purchase_mode: 'Credit',
+            credit_limit: 0,
+            credit_balance: 0,
+            credit_days: 0,
+            mail_type: 'None',
+            status: 1
+        };
+
         var origBtnHtml = $btn.html();
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
 
         $.ajax({
             url: "{{ route('master.suppliers.store') }}",
             type: "POST",
-            data: $form.serialize(),
+            data: postData,
             dataType: "json",
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -556,7 +576,7 @@ $(document).ready(function () {
                     $select.val(supplierId).trigger('change');
 
                     $('#quickSupplierModal').modal('hide');
-                    $form[0].reset();
+                    $('#quickSupplierModal').find('input[type="text"], input[type="email"]').val('');
                     notifySuccess(res.message || 'Supplier created successfully!');
                 }
             },
@@ -567,7 +587,7 @@ $(document).ready(function () {
                     var messages = [];
                     for (var field in errs) {
                         if (errs.hasOwnProperty(field)) {
-                            var input = $form.find('[name="' + field + '"]');
+                            var input = $('#quick_supplier_' + field);
                             if (input.length) {
                                 input.addClass('is-invalid');
                                 $('#quick_supplier_' + field + '_feedback').text(errs[field][0]);
@@ -584,7 +604,7 @@ $(document).ready(function () {
         });
     });
 
-    $('#quick-supplier-form input').on('keydown', function (e) {
+    $('#quickSupplierModal input').on('keydown', function (e) {
         if (e.key === 'Enter' || e.keyCode === 13) {
             e.preventDefault();
             $('#btn-save-quick-supplier').trigger('click');
@@ -592,3 +612,4 @@ $(document).ready(function () {
     });
 });
 </script>
+@endpush

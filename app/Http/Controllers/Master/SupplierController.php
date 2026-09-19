@@ -165,6 +165,12 @@ class SupplierController extends Controller
             'mail_type' => $request->input('mail_type') ?: 'None',
         ]);
 
+        foreach (['mobile', 'phone', 'email', 'gst_no', 'address', 'city', 'state', 'postal_code', 'country', 'aadhar_no', 'pan_no'] as $optField) {
+            if ($request->input($optField) === '') {
+                $request->merge([$optField => null]);
+            }
+        }
+
         return $request->validate([
             'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('suppliers', 'name')->ignore($supplier?->id)],
             'currency' => ['required', 'string', 'max:10'],
