@@ -1003,6 +1003,9 @@ class SalesBillController extends Controller
             'total_igst' => $collection->sum('igst_amount'),
             'total_qty' => $collection->sum('qty'),
             'total' => round($collection->sum('net_amount') + $roundOff + $totalExtraCess + $gstCalamityCess, 2),
+            'round_off' => $roundOff,
+            'total_extra_cess' => $totalExtraCess,
+            'gst_calamity_cess' => $gstCalamityCess,
         ];
     }
 

@@ -215,6 +215,7 @@ class SalesQuotationController extends Controller
             'total_sgst' => $collection->sum('sgst_amount'),
             'total_igst' => $collection->sum('igst_amount'),
             'total' => round($collection->sum('net_amount') + $roundOff, 2),
+            'round_off' => $roundOff,
         ];
     }
 

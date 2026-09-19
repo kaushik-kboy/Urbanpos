@@ -222,6 +222,8 @@ class SalesOrderController extends Controller
         $collection = collect($lines);
         $roundOff = (float) ($data['header']['round_off'] ?? 0);
 
+        $advanceAmount = (float) ($data['header']['advance_amount'] ?? 0);
+
         return [
             'item_disc_amount' => $collection->sum('disc_amount'),
             'disc_amount' => $collection->sum('disc_amount'),
@@ -230,6 +232,8 @@ class SalesOrderController extends Controller
             'total_sgst' => $collection->sum('sgst_amount'),
             'total_igst' => $collection->sum('igst_amount'),
             'total' => round($collection->sum('net_amount') + $roundOff, 2),
+            'round_off' => $roundOff,
+            'advance_amount' => $advanceAmount,
         ];
     }
 
