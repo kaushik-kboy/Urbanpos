@@ -77,7 +77,8 @@
                             <td>{{ $customer->customer_code }}</td>
                             <td>{{ $customer->category?->name }}</td>
                             <td><x-status-badge :active="$customer->status" /></td>
-                            <td class="text-right">
+                            <td class="text-right text-nowrap">
+                                <a href="{{ route('reports.smart-analytics', ['customer_id' => $customer->id]) }}" class="btn btn-xs btn-outline-info mr-1" title="View Purchase History (360° Analytics)"><i class="fas fa-chart-line"></i></a>
                                 <a href="{{ route('master.customers.edit', $customer) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
                             </td>
                         </tr>

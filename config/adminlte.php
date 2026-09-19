@@ -648,6 +648,12 @@ return [
                     'active' => ['reports'],
                 ],
                 [
+                    'text' => 'Smart Item & Customer 360°',
+                    'url' => 'reports/smart-analytics',
+                    'icon' => 'fas fa-fw fa-chart-line text-warning',
+                    'active' => ['reports/smart-analytics*'],
+                ],
+                [
                     'text' => 'Masters',
                     'icon' => 'fas fa-fw fa-database',
                     'submenu' => [

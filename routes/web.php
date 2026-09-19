@@ -355,6 +355,15 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('quotation-order-summary', [ReportController::class, 'quotationOrderSummary'])->name('quotation-order-summary');
     Route::get('reorder-report', [ReportController::class, 'reorderReport'])->name('reorder-report');
     Route::get('view/{module}', [ReportController::class, 'renderGenericReport'])->name('view');
+
+    // Smart Item & Customer 360° Analytics & Reporting Engine
+    Route::get('smart-analytics', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'index'])->name('smart-analytics');
+    Route::get('smart-analytics/item', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'itemAnalytics'])->name('smart-analytics.item');
+    Route::get('smart-analytics/customer', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'customerAnalytics'])->name('smart-analytics.customer');
+    Route::get('smart-analytics/ranking', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'rankingAnalytics'])->name('smart-analytics.ranking');
+    Route::get('smart-analytics/search-items', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'searchItems'])->name('smart-analytics.search-items');
+    Route::get('smart-analytics/search-customers', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'searchCustomers'])->name('smart-analytics.search-customers');
+    Route::get('smart-analytics/export-item', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'exportItemCsv'])->name('smart-analytics.export-item');
 });
 
 Route::middleware('auth')->prefix('till')->name('till.')->group(function () {

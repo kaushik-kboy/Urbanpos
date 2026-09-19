@@ -22,6 +22,28 @@
         $group = request('group');
     @endphp
 
+    {{-- FEATURED: Smart Item & Customer 360° Analytics --}}
+    <div class="card bg-gradient-navy shadow-sm mb-4 border-0">
+        <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between">
+            <div class="d-flex align-items-center mb-2 mb-md-0">
+                <div class="bg-warning text-dark p-3 rounded-circle mr-3 shadow-sm">
+                    <i class="fas fa-search-dollar fa-2x"></i>
+                </div>
+                <div>
+                    <h5 class="font-weight-bold mb-1 text-white">Smart Item & Customer 360° Analytics Studio</h5>
+                    <p class="mb-0 text-light small">
+                        Drill down into any single item or customer's complete monthly sales history, bill-by-bill breakdown, and fast/slow-moving ranking instantly.
+                    </p>
+                </div>
+            </div>
+            <div>
+                <a href="{{ route('reports.smart-analytics') }}" class="btn btn-warning font-weight-bold shadow-sm px-4">
+                    <i class="fas fa-bolt mr-1"></i> Open Smart Studio
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         {{-- SALES REPORTS --}}
         @if (!$group || $group === 'sales')
