@@ -1,0 +1,256 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\Item;
+use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceItem;
+use App\Models\SalesBill;
+use App\Models\SalesBillItem;
+use App\Models\Supplier;
+use App\Models\User;
+use App\Models\UserSavedReport;
+use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+class AnalyticsBuilderReportTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $user;
+    private Branch $branch;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
+        Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
+
+        $this->branch = Branch::firstOrCreate(
+            ['id' => 1],
+            ['name' => 'Main Outlet', 'code' => 'MAIN', 'state' => 'Maharashtra']
+        );
+
+        $this->user = User::factory()->create(['branch_id' => $this->branch->id]);
+        $this->user->assignRole('Owner');
+    }
+
+    public function test_analytics_builder_page_renders_successfully(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('reports.analytics-builder'));
+
+        $response->assertOk();
+        $response->assertSee('Custom Report Studio & Analytics Builder', false);
+        $response->assertSee('Item ⇄ Supplier Sourcing', false);
+        $response->assertSee('Single Item Monthly Sales', false);
+        $response->assertSee('Save as My Report', false);
+    }
+
+    public function test_group_by_item_supplier_sourcing_traces_which_supplier_supplied_item(): void
+    {
+        $supplierA = Supplier::create([
+            'name' => 'National Wholesalers Ltd',
+            'city' => 'Mumbai',
+            'mobile' => '9876543210',
+            'status' => true,
+        ]);
+
+        $supplierB = Supplier::create([
+            'name' => 'Metro Distributors',
+            'city' => 'Pune',
+            'mobile' => '9123456780',
+            'status' => true,
+        ]);
+
+        $item1 = Item::create([
+            'name' => 'Dog Food 5kg',
+            'item_code' => 'DOG-5KG',
+            'sell_price' => 500.00,
+            'cost_price' => 380.00,
+            'supplier_id' => $supplierA->id, // Primary supplier
+            'status' => true,
+        ]);
+
+        // Purchase Invoice from Supplier A
+        $invA = PurchaseInvoice::create([
+            'invoice_number' => 'PINV-001',
+            'invoice_date' => Carbon::parse('2026-08-10'),
+            'supplier_id' => $supplierA->id,
+            'branch_id' => $this->branch->id,
+            'total_qty' => 100,
+            'total' => 35000.00,
+            'status' => 'Posted',
+        ]);
+
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $invA->id,
+            'item_id' => $item1->id,
+            'qty' => 100,
+            'cost_price' => 350.00,
+            'sell_price' => 500.00,
+            'mrp' => 500.00,
+            'net_amount' => 35000.00,
+        ]);
+
+        // Purchase Invoice from Supplier B (Purchased later at different cost)
+        $invB = PurchaseInvoice::create([
+            'invoice_number' => 'PINV-002',
+            'invoice_date' => Carbon::parse('2026-09-05'),
+            'supplier_id' => $supplierB->id,
+            'branch_id' => $this->branch->id,
+            'total_qty' => 50,
+            'total' => 19000.00,
+            'status' => 'Posted',
+        ]);
+
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $invB->id,
+            'item_id' => $item1->id,
+            'qty' => 50,
+            'cost_price' => 380.00,
+            'sell_price' => 500.00,
+            'mrp' => 500.00,
+            'net_amount' => 19000.00,
+        ]);
+
+        // Run report grouped by item_supplier
+        $response = $this->actingAs($this->user)->postJson(route('reports.analytics-builder.generate'), [
+            'group_by' => 'item_supplier',
+            'date_preset' => 'all_time',
+            'item_id' => $item1->id,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('group_by', 'item_supplier');
+
+        $rows = $response->json('rows');
+        $this->assertCount(2, $rows);
+
+        // Verify both suppliers are traced
+        $supplierNames = collect($rows)->pluck('supplier_name')->all();
+        $this->assertContains('National Wholesalers Ltd', $supplierNames);
+        $this->assertContains('Metro Distributors', $supplierNames);
+
+        // Check primary source flag
+        $supplierARow = collect($rows)->firstWhere('supplier_name', 'National Wholesalers Ltd');
+        $this->assertTrue($supplierARow['is_primary_supplier']);
+        $this->assertEquals(100, $supplierARow['total_qty']);
+
+        $supplierBRow = collect($rows)->firstWhere('supplier_name', 'Metro Distributors');
+        $this->assertFalse($supplierBRow['is_primary_supplier']);
+        $this->assertEquals(50, $supplierBRow['total_qty']);
+    }
+
+    public function test_single_item_monthly_sales_drilldown_calculates_accurately(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Rahul Sharma',
+            'mobile' => '9988776655',
+            'status' => true,
+        ]);
+
+        $item = Item::create([
+            'name' => 'Royal Canin Adult 3kg',
+            'item_code' => 'RC-3KG',
+            'sell_price' => 1200.00,
+            'cost_price' => 900.00,
+            'mrp' => 1200.00,
+            'status' => true,
+        ]);
+
+        $billDate = Carbon::now()->startOfMonth()->addDays(2);
+
+        $bill = SalesBill::create([
+            'bill_number' => 'SB-TEST-001',
+            'bill_date' => $billDate,
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch->id,
+            'invoice_type' => 'Tax Invoice',
+            'total_qty' => 3,
+            'total' => 3600.00,
+            'disc_amount' => 100.00,
+            'status' => 'Completed',
+        ]);
+
+        SalesBillItem::create([
+            'sales_bill_id' => $bill->id,
+            'item_id' => $item->id,
+            'qty' => 3,
+            'unit_rate' => 1200.00,
+            'disc_amount' => 100.00,
+            'net_amount' => 3500.00,
+            'cost_at_sale' => 900.00,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson(route('reports.analytics-builder.generate'), [
+            'group_by' => 'item',
+            'date_preset' => 'this_month',
+            'item_id' => $item->id,
+            'metrics' => ['qty', 'sales_value', 'margin', 'bill_count'],
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $rows = $response->json('rows');
+        $this->assertCount(1, $rows);
+
+        $row = $rows[0];
+        $this->assertEquals('Royal Canin Adult 3kg', $row['group_name']);
+        $this->assertEquals(3, (float) $row['total_qty']);
+        $this->assertEquals(3500.00, (float) $row['total_sales']);
+        $this->assertEquals(1, $row['bill_count']);
+    }
+
+    public function test_save_and_delete_custom_report_configuration(): void
+    {
+        $saveData = [
+            'name' => 'Monthly High Margin Items',
+            'description' => 'Items with highest profit this month',
+            'group_by' => 'item',
+            'metrics' => ['qty', 'sales_value', 'margin'],
+            'filters' => [
+                'date_preset' => 'this_month',
+                'limit' => '20',
+                'sort_dir' => 'desc',
+            ],
+        ];
+
+        // 1. Save Report
+        $saveResponse = $this->actingAs($this->user)->postJson(route('reports.analytics-builder.save'), $saveData);
+        $saveResponse->assertOk();
+        $saveResponse->assertJsonPath('success', true);
+
+        $reportId = $saveResponse->json('report.id');
+        $this->assertDatabaseHas('user_saved_reports', [
+            'id' => $reportId,
+            'user_id' => $this->user->id,
+            'name' => 'Monthly High Margin Items',
+        ]);
+
+        // 2. Delete Report
+        $deleteResponse = $this->actingAs($this->user)->deleteJson(route('reports.analytics-builder.delete', ['id' => $reportId]));
+        $deleteResponse->assertOk();
+        $deleteResponse->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('user_saved_reports', ['id' => $reportId]);
+    }
+
+    public function test_csv_export_returns_stream_download(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('reports.analytics-builder.export', [
+            'group_by' => 'item',
+            'date_preset' => 'this_month',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('attachment;', $response->headers->get('Content-Disposition'));
+    }
+}

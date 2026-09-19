@@ -648,6 +648,12 @@ return [
                     'active' => ['reports'],
                 ],
                 [
+                    'text' => 'Custom Report Studio (Builder)',
+                    'url' => 'reports/analytics-builder',
+                    'icon' => 'fas fa-fw fa-magic text-info',
+                    'active' => ['reports/analytics-builder*'],
+                ],
+                [
                     'text' => 'Smart Item & Customer 360°',
                     'url' => 'reports/smart-analytics',
                     'icon' => 'fas fa-fw fa-chart-line text-warning',

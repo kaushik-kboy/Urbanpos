@@ -364,6 +364,16 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('smart-analytics/search-items', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'searchItems'])->name('smart-analytics.search-items');
     Route::get('smart-analytics/search-customers', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'searchCustomers'])->name('smart-analytics.search-customers');
     Route::get('smart-analytics/export-item', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'exportItemCsv'])->name('smart-analytics.export-item');
+
+    // Universal Analytics & Custom Report Studio (Dynamic Report Builder)
+    Route::get('analytics-builder', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'index'])->name('analytics-builder');
+    Route::post('analytics-builder/generate', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'generate'])->name('analytics-builder.generate');
+    Route::post('analytics-builder/save', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'saveReport'])->name('analytics-builder.save');
+    Route::delete('analytics-builder/saved/{id}', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'deleteReport'])->name('analytics-builder.delete');
+    Route::get('analytics-builder/export', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'exportCsv'])->name('analytics-builder.export');
+    Route::get('analytics-builder/search-items', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'searchItems'])->name('analytics-builder.search-items');
+    Route::get('analytics-builder/search-suppliers', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'searchSuppliers'])->name('analytics-builder.search-suppliers');
+    Route::get('analytics-builder/search-customers', [\App\Http\Controllers\Reports\AnalyticsBuilderController::class, 'searchCustomers'])->name('analytics-builder.search-customers');
 });
 
 Route::middleware('auth')->prefix('till')->name('till.')->group(function () {

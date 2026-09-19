@@ -22,24 +22,50 @@
         $group = request('group');
     @endphp
 
-    {{-- FEATURED: Smart Item & Customer 360° Analytics --}}
-    <div class="card bg-gradient-navy shadow-sm mb-4 border-0">
-        <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between">
-            <div class="d-flex align-items-center mb-2 mb-md-0">
-                <div class="bg-warning text-dark p-3 rounded-circle mr-3 shadow-sm">
-                    <i class="fas fa-search-dollar fa-2x"></i>
-                </div>
-                <div>
-                    <h5 class="font-weight-bold mb-1 text-white">Smart Item & Customer 360° Analytics Studio</h5>
-                    <p class="mb-0 text-light small">
-                        Drill down into any single item or customer's complete monthly sales history, bill-by-bill breakdown, and fast/slow-moving ranking instantly.
-                    </p>
+    {{-- FEATURED: Smart Studio & Custom Report Builder --}}
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-2 mb-lg-0">
+            <div class="card bg-gradient-navy shadow-sm h-100 border-0">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-info text-white p-3 rounded-circle mr-3 shadow-sm">
+                            <i class="fas fa-magic fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="font-weight-bold mb-1 text-white">Custom Report Studio (Builder)</h5>
+                            <p class="mb-0 text-light small">
+                                Universal dynamic reports: Group by Item, Supplier Sourcing, Customer, Cashier, or Payment Mode. Choose your metrics & save custom reports!
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{{ route('reports.analytics-builder') }}" class="btn btn-info font-weight-bold shadow-sm px-3 text-nowrap">
+                            <i class="fas fa-sliders-h mr-1"></i> Open Builder
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div>
-                <a href="{{ route('reports.smart-analytics') }}" class="btn btn-warning font-weight-bold shadow-sm px-4">
-                    <i class="fas fa-bolt mr-1"></i> Open Smart Studio
-                </a>
+        </div>
+        <div class="col-lg-6">
+            <div class="card bg-gradient-dark shadow-sm h-100 border-0">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning text-dark p-3 rounded-circle mr-3 shadow-sm">
+                            <i class="fas fa-search-dollar fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="font-weight-bold mb-1 text-white">Smart Item & Customer 360°</h5>
+                            <p class="mb-0 text-light small">
+                                Single item monthly drilldown, bill-by-bill breakdown, and fast/slow-moving ranking instantly.
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{{ route('reports.smart-analytics') }}" class="btn btn-warning font-weight-bold shadow-sm px-3 text-nowrap">
+                            <i class="fas fa-bolt mr-1"></i> Open 360°
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
