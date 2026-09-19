@@ -68,6 +68,14 @@
         window.POS_HOTKEYS = @json(\App\Models\FunctionKeyMapping::getActiveMappings());
         window.APP_URL = "{{ url('/') }}";
         window.exportTableToCSV = function(tableId, filename) {
+            // If the table is paginated, download the full dataset from server preserving active filters
+            if (document.querySelector('.pagination, .pagination-sm')) {
+                var currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('export', 'csv');
+                window.location.href = currentUrl.toString();
+                return;
+            }
+
             var table = document.getElementById(tableId);
             if (!table) {
                 table = document.querySelector('.card-body table') || document.querySelector('table');

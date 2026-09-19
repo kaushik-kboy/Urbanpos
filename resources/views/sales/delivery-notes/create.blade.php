@@ -148,8 +148,8 @@
                                 $r = is_array($row) ? (object) $row : $row;
                                 $itemId = $r->item_id ?? '';
                                 $itemObj = isset($r->item) && is_object($r->item) ? $r->item : ($itemId ? \App\Models\Item::find($itemId) : null);
-                                $displayCode = $itemObj?->ean_upc_code ?: ($itemObj?->item_code ?? '');
-                                $displayName = $itemObj ? ($itemObj->name . ($itemObj->ean_upc_code ? ' [Code: ' . $itemObj->ean_upc_code . ']' : '')) : '';
+                                $displayCode = $itemObj?->item_code ?: ($itemObj?->ean_upc_code ?? '');
+                                $displayName = $itemObj ? ($itemObj->name . ($itemObj->item_code ? ' [Code: ' . $itemObj->item_code . ']' : ($itemObj->ean_upc_code ? ' [Barcode: ' . $itemObj->ean_upc_code . ']' : ''))) : '';
                                 $soItemId = $r->sales_order_item_id ?? '';
                                 $ordered = $r->ordered_qty ?? 0;
                                 $dispatched = $r->dispatched_qty ?? '';

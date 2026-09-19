@@ -39,7 +39,7 @@
             <option value="">Search item name / code...</option>
             @if($selectedItem)
                 @php
-                    $displayCode = $selectedItem->ean_upc_code ?: ($selectedItem->item_code ? "Item: {$selectedItem->item_code}" : "");
+                    $displayCode = $selectedItem->item_code ?: ($selectedItem->ean_upc_code ? "Barcode: {$selectedItem->ean_upc_code}" : "");
                     $codeStr = $displayCode ? " [{$displayCode}]" : "";
                 @endphp
                 <option value="{{ $selectedItem->id }}" selected>{{ $selectedItem->name }}{{ $codeStr }}</option>

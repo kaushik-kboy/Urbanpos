@@ -191,7 +191,7 @@
                         <tr>
                             <td class="text-center">{{ $idx + 1 }}</td>
                             <td class="text-monospace font-weight-bold text-muted small">
-                                {{ $item->item?->ean_upc_code ?: ($item->item?->item_code ?? '—') }}
+                                {{ $item->item?->item_code ?: ($item->item?->ean_upc_code ?? '—') }}
                             </td>
                             <td class="font-weight-bold">
                                 {{ $item->item?->name ?? 'Item' }}

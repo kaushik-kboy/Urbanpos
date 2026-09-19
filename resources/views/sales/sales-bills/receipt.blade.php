@@ -270,8 +270,8 @@
                     </tr>
                     <tr>
                         <td class="store-sub" style="color: #444;">
-                            @if ($item->item?->ean_upc_code || $item->item?->item_code)
-                                [{{ $item->item->ean_upc_code ?: $item->item->item_code }}]
+                            @if ($item->item?->item_code || $item->item?->ean_upc_code)
+                                [{{ $item->item->item_code ?: $item->item->ean_upc_code }}]
                             @endif
                             @if ($item->gst_percent > 0)
                                 (GST {{ $item->gst_percent }}%)

@@ -630,7 +630,7 @@ $(document).ready(function() {
                             data-subid="${targetSubId}" 
                             data-name="${targetName}" 
                             title="View underlying transactions">
-                        <i class="fas fa-list mr-1"></i> Details
+                        <i class="fas fa-eye mr-1"></i> View / Details
                     </button>
                 </td>
             `;
@@ -920,6 +920,7 @@ $(document).ready(function() {
         });
         params['group_by'] = group;
         params['group_id'] = id;
+        params['id'] = id;
         params['sub_id'] = subid;
 
         $.ajax({
@@ -1027,10 +1028,10 @@ $(document).ready(function() {
                         <td class="text-right font-weight-bold text-success">${r.formatted_amount}</td>
                         <td class="text-center">
                             <a href="${r.view_url}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Open Bill in New Tab">
-                                Bill ↗
+                                <i class="fas fa-eye mr-1"></i> View Bill ↗
                             </a>
                             <a href="${r.receipt_url}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Open Receipt in New Tab">
-                                Receipt ↗
+                                <i class="fas fa-receipt mr-1"></i> Receipt ↗
                             </a>
                         </td>
                     </tr>
@@ -1049,7 +1050,7 @@ $(document).ready(function() {
                     <th class="text-right">Qty</th>
                     <th class="text-right">Unit Rate (₹)</th>
                     <th class="text-right">Total Amount (₹)</th>
-                    <th class="text-center" style="width: 130px;">Action</th>
+                    <th class="text-center" style="width: 140px;">Action</th>
                 </tr>
             `);
 
@@ -1075,10 +1076,10 @@ $(document).ready(function() {
                         <td class="text-right font-weight-bold text-success">${r.formatted_amount}</td>
                         <td class="text-center">
                             <a href="${r.view_url}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Open Bill in New Tab">
-                                Bill ↗
+                                <i class="fas fa-eye mr-1"></i> View Bill ↗
                             </a>
                             <a href="${r.receipt_url}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Open Receipt in New Tab">
-                                Receipt ↗
+                                <i class="fas fa-receipt mr-1"></i> Receipt ↗
                             </a>
                         </td>
                     </tr>

@@ -79,7 +79,7 @@
                         <tr>
                             <td data-col-key="code">{{ $customer->customer_code }}</td>
                             <td data-col-key="name">{{ $customer->name }}</td>
-                            <td data-col-key="mobile">{{ $customer->mobile }}</td>
+                            <td data-col-key="mobile">{{ $customer->phone }}</td>
                             <td data-col-key="city">{{ $customer->city }}</td>
                             <td data-col-key="gst-no">{{ $customer->gst_no }}</td>
                             <td data-col-key="category">{{ $customer->category?->name }}</td>

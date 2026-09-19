@@ -29,6 +29,7 @@ use App\Models\TillSession;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -232,7 +233,6 @@ class ReportController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('customer_code', 'like', "%{$search}%")
-                    ->orWhere('mobile', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%");
             });
         }
@@ -248,6 +248,24 @@ class ReportController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', (bool) $request->status);
+        }
+
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderBy('name'),
+                [
+                    'Code' => fn($c) => $c->customer_code,
+                    'Customer Name' => fn($c) => $c->name,
+                    'Mobile / Phone' => fn($c) => $c->phone,
+                    'City' => fn($c) => $c->city,
+                    'GST No' => fn($c) => $c->gst_no,
+                    'Category' => fn($c) => $c->category?->name ?? '',
+                    'Branch' => fn($c) => $c->branch?->name ?? 'GLOBAL',
+                    'Credit Balance' => fn($c) => number_format((float) $c->credit_balance, 2),
+                    'Status' => fn($c) => $c->status ? 'Active' : 'Inactive',
+                ],
+                'customer-master-report.csv'
+            );
         }
 
         $customers = $query->orderBy('name')->paginate(50)->withQueryString();
@@ -266,7 +284,7 @@ class ReportController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('customer_code', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhereHas('pets', fn ($pq) => $pq->where('name', 'like', "%{$search}%"));
             });
@@ -278,6 +296,39 @@ class ReportController extends Controller
 
         if ($request->filled('breed_id')) {
             $query->whereHas('pets', fn ($pq) => $pq->where('breed_id', $request->breed_id));
+        }
+
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderBy('name'),
+                [
+                    'Customer Code',
+                    'Customer Name',
+                    'Pet Name',
+                    'Pet Type',
+                    'Breed',
+                    'Gender',
+                    'Age',
+                    'Birth Date',
+                ],
+                'customer-pet-details-report.csv',
+                function ($customer) {
+                    $lines = [];
+                    foreach ($customer->pets as $pet) {
+                        $lines[] = [
+                            $customer->customer_code,
+                            $customer->name,
+                            $pet->name,
+                            $pet->petType?->name ?? '-',
+                            $pet->breed?->name ?? '-',
+                            $pet->gender ?: '-',
+                            $pet->age ?: '-',
+                            $pet->birth_date ? optional($pet->birth_date)->format('d-m-Y') : '-',
+                        ];
+                    }
+                    return $lines;
+                }
+            );
         }
 
         $customers = $query->orderBy('name')->paginate(50)->withQueryString();
@@ -370,6 +421,27 @@ class ReportController extends Controller
             $query->where('status', (bool) $request->status);
         }
 
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderBy('name'),
+                [
+                    'Code' => fn($i) => $i->item_code,
+                    'Barcode' => fn($i) => $i->ean_upc_code ?: '-',
+                    'Item Name' => fn($i) => $i->name,
+                    'Brand' => fn($i) => $i->brand?->name ?? '-',
+                    'Category' => fn($i) => $i->categoryValue?->name ?? '-',
+                    'UOM' => fn($i) => $i->base_uom ?: '-',
+                    'HSN' => fn($i) => $i->hsn_code ?: '-',
+                    'Tax %' => fn($i) => $i->gstTax ? $i->gstTax->percentage . '%' : '-',
+                    'Cost Price' => fn($i) => number_format((float) $i->cost_price, 2),
+                    'Sell Price' => fn($i) => number_format((float) $i->sell_price, 2),
+                    'MRP' => fn($i) => number_format((float) $i->mrp, 2),
+                    'Status' => fn($i) => $i->status ? 'Active' : 'Inactive',
+                ],
+                'item-master-report.csv'
+            );
+        }
+
         $items = $query->orderBy('name')->paginate(50)->withQueryString();
         $brands = Brand::orderBy('name')->pluck('name', 'id');
         $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
@@ -399,6 +471,25 @@ class ReportController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', (bool) $request->status);
+        }
+
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderBy('name'),
+                [
+                    'Supplier Name' => fn($s) => $s->name,
+                    'Mobile' => fn($s) => $s->mobile ?: '-',
+                    'Phone' => fn($s) => $s->phone ?: '-',
+                    'Email' => fn($s) => $s->email ?: '-',
+                    'GST No' => fn($s) => $s->gst_no ?: '-',
+                    'City / State' => fn($s) => $s->city ? $s->city . ($s->state ? ', ' . $s->state : '') : ($s->state ?: '-'),
+                    'Address' => fn($s) => $s->address ?: '-',
+                    'Credit Limit' => fn($s) => number_format((float) $s->credit_limit, 2),
+                    'Credit Balance' => fn($s) => number_format((float) $s->credit_balance, 2),
+                    'Status' => fn($s) => $s->status ? 'Active' : 'Inactive',
+                ],
+                'supplier-master-report.csv'
+            );
         }
 
         $suppliers = $query->orderBy('name')->paginate(50)->withQueryString();
@@ -466,6 +557,24 @@ class ReportController extends Controller
             });
         }
 
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderByDesc('po_date'),
+                [
+                    'PO Number' => fn($po) => $po->po_number,
+                    'PO Date' => fn($po) => $po->po_date->format('d-m-Y'),
+                    'Supplier' => fn($po) => $po->supplier?->name ?? '-',
+                    'Branch' => fn($po) => $po->branch?->name ?? '-',
+                    'Total Qty' => fn($po) => number_format((float) $po->total_qty, 2),
+                    'Freight' => fn($po) => number_format((float) $po->freight, 2),
+                    'Total GST' => fn($po) => number_format((float) $po->total_gst, 2),
+                    'Total Amount' => fn($po) => number_format((float) $po->total, 2),
+                    'Status' => fn($po) => $po->status,
+                ],
+                'purchase-order-summary-report.csv'
+            );
+        }
+
         $purchaseOrders = $query->orderByDesc('po_date')->paginate(30)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
@@ -492,6 +601,23 @@ class ReportController extends Controller
             $query->where('transfer_number', 'like', "%{$search}%");
         }
 
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderByDesc('transfer_date'),
+                [
+                    'Transfer Number' => fn($t) => $t->transfer_number,
+                    'Transfer Date' => fn($t) => $t->transfer_date->format('d-m-Y'),
+                    'From Branch' => fn($t) => $t->fromBranch?->name ?? '-',
+                    'To Branch' => fn($t) => $t->toBranch?->name ?? '-',
+                    'Total Qty' => fn($t) => number_format((float) $t->total_qty, 2),
+                    'Dispatched At' => fn($t) => $t->dispatched_at ? $t->dispatched_at->format('d-m-Y H:i') : '-',
+                    'Received At' => fn($t) => $t->received_at ? $t->received_at->format('d-m-Y H:i') : '-',
+                    'Status' => fn($t) => $t->status,
+                ],
+                'stock-transfer-summary-report.csv'
+            );
+        }
+
         $transfers = $query->orderByDesc('transfer_date')->paginate(30)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $statuses = StockTransfer::select('status')->distinct()->whereNotNull('status')->pluck('status');
@@ -511,6 +637,23 @@ class ReportController extends Controller
 
         if ($search) {
             $query->where('damage_number', 'like', "%{$search}%");
+        }
+
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderByDesc('entry_date'),
+                [
+                    'Entry Number' => fn($ds) => $ds->damage_number,
+                    'Entry Date' => fn($ds) => $ds->entry_date->format('d-m-Y'),
+                    'Branch' => fn($ds) => $ds->branch?->name ?? '-',
+                    'Wastage Type' => fn($ds) => ucfirst($ds->wastage_type ?: 'Damage'),
+                    'Total Damaged Qty' => fn($ds) => number_format((float) $ds->total_qty, 2),
+                    'Total Loss Cost' => fn($ds) => number_format((float) $ds->total_cost, 2),
+                    'Remarks' => fn($ds) => $ds->remarks ?: '-',
+                    'Status' => fn($ds) => $ds->status,
+                ],
+                'damage-stock-summary-report.csv'
+            );
         }
 
         $damageStocks = $query->orderByDesc('entry_date')->paginate(30)->withQueryString();
@@ -572,6 +715,22 @@ class ReportController extends Controller
                     ->orWhere('reason', 'like', "%{$search}%")
                     ->orWhere('ip_address', 'like', "%{$search}%");
             });
+        }
+
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv(
+                $query->orderByDesc('created_at'),
+                [
+                    'Date & Time' => fn($log) => $log->created_at->format('d-m-Y H:i:s'),
+                    'User' => fn($log) => $log->user?->name ?? 'System',
+                    'Action' => fn($log) => strtoupper($log->action),
+                    'Entity' => fn($log) => class_basename($log->auditable_type),
+                    'Entity ID' => fn($log) => $log->auditable_id,
+                    'Reason / Description' => fn($log) => $log->reason ?: '-',
+                    'IP Address' => fn($log) => $log->ip_address ?: '-',
+                ],
+                'audit-logs-report.csv'
+            );
         }
 
         $logs = $query->orderByDesc('created_at')->paginate(50)->withQueryString();
@@ -886,5 +1045,59 @@ class ReportController extends Controller
         $branchId = $this->resolveBranchId($request);
 
         return [$from, $to, $branchId];
+    }
+
+    /**
+     * Stream query results directly to CSV download for full dataset export.
+     */
+    protected function exportQueryToCsv($query, array $columns, string $filename, ?callable $rowMapper = null): StreamedResponse
+    {
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        return response()->stream(function () use ($query, $columns, $rowMapper) {
+            $handle = fopen('php://output', 'w');
+            // Write UTF-8 BOM for Excel compatibility
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            // Header row
+            $headerLabels = array_map(function ($val, $key) {
+                return is_string($key) ? $key : $val;
+            }, array_values($columns), array_keys($columns));
+            fputcsv($handle, $headerLabels);
+
+            // Stream rows in chunks of 500
+            $query->chunk(500, function ($rows) use ($handle, $columns, $rowMapper) {
+                foreach ($rows as $item) {
+                    if ($rowMapper !== null) {
+                        $mapped = $rowMapper($item);
+                        if (is_array($mapped) && isset($mapped[0]) && is_array($mapped[0])) {
+                            foreach ($mapped as $subRow) {
+                                fputcsv($handle, $subRow);
+                            }
+                        } elseif (is_array($mapped)) {
+                            fputcsv($handle, $mapped);
+                        }
+                    } else {
+                        $line = [];
+                        foreach ($columns as $header => $extractor) {
+                            if (is_callable($extractor)) {
+                                $line[] = $extractor($item);
+                            } else {
+                                $line[] = data_get($item, $extractor, '');
+                            }
+                        }
+                        fputcsv($handle, $line);
+                    }
+                }
+            });
+
+            fclose($handle);
+        }, 200, $headers);
     }
 }

@@ -304,7 +304,7 @@
                             @foreach ($items->take(15) as $idx => $item)
                                 <tr>
                                     <td class="text-center">{{ $idx + 1 }}</td>
-                                    <td><code>{{ $item->ean_upc_code ?: 'ITEM-'.$item->id }}</code></td>
+                                    <td><code>{{ $item->item_code ?: ($item->ean_upc_code ?: 'ITEM-'.$item->id) }}</code></td>
                                     <td class="font-weight-bold">{{ $item->name }}</td>
                                     <td>
                                         <select class="form-control form-control-sm">

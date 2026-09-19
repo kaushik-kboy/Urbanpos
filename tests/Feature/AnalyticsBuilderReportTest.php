@@ -357,4 +357,86 @@ class AnalyticsBuilderReportTest extends TestCase
         $this->assertEquals(20, (float) $records[0]['qty']);
         $this->assertStringContainsString('/purchase/purchase-invoices/' . $inv->id, $records[0]['view_url']);
     }
+
+    public function test_customer_master_exports_full_dataset_to_csv(): void
+    {
+        Customer::create([
+            'customer_code' => 'CUST001',
+            'name' => 'Rahul Sharma',
+            'phone' => '9876543210',
+            'city' => 'Mumbai',
+            'branch_id' => $this->branch->id,
+            'status' => true,
+        ]);
+        Customer::create([
+            'customer_code' => 'CUST002',
+            'name' => 'Pooja Verma',
+            'phone' => '9123456780',
+            'city' => 'Pune',
+            'branch_id' => $this->branch->id,
+            'status' => true,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('reports.customer-master', ['export' => 'csv']));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Disposition', 'attachment; filename="customer-master-report.csv"');
+        
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('Rahul Sharma', $content);
+        $this->assertStringContainsString('9876543210', $content);
+        $this->assertStringContainsString('Pooja Verma', $content);
+        $this->assertStringContainsString('CUST001', $content);
+    }
+
+    public function test_drilldown_works_with_id_param_and_item_grouping(): void
+    {
+        $item = Item::create([
+            'name' => 'Pedigree Adult 3kg',
+            'item_code' => 'PED3KG',
+            'sell_price' => 500,
+            'status' => 1,
+        ]);
+
+        $customer = Customer::create([
+            'customer_code' => 'CUST003',
+            'name' => 'Suresh Patel',
+            'phone' => '9988776655',
+            'branch_id' => $this->branch->id,
+            'status' => true,
+        ]);
+
+        $bill = SalesBill::create([
+            'bill_number' => 'BILL-ITEM-001',
+            'bill_date' => Carbon::now(),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch->id,
+            'total_qty' => 2,
+            'total' => 1000,
+            'status' => 'Paid',
+        ]);
+
+        SalesBillItem::create([
+            'sales_bill_id' => $bill->id,
+            'item_id' => $item->id,
+            'qty' => 2,
+            'sell_price' => 500,
+            'mrp' => 500,
+            'net_amount' => 1000,
+        ]);
+
+        // Sending 'id' instead of 'group_id' to verify backwards compatibility with front-end
+        $response = $this->actingAs($this->user)->getJson(route('reports.analytics-builder.drilldown', [
+            'group_by' => 'item',
+            'id' => $item->id,
+            'date_preset' => 'this_month',
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $records = $response->json('records');
+        $this->assertCount(1, $records);
+        $this->assertEquals('BILL-ITEM-001', $records[0]['bill_number']);
+        $this->assertStringContainsString('/sales/sales-bills/' . $bill->id, $records[0]['view_url']);
+    }
 }

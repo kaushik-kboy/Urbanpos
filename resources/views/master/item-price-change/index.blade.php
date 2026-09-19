@@ -215,7 +215,7 @@
                     @forelse ($items as $item)
                         <tr class="{{ ($selectedItem && $selectedItem->id == $item->id) ? 'table-primary font-weight-bold' : '' }}">
                             <td>#{{ $item->id }}</td>
-                            <td><code>{{ $item->ean_upc_code ?: '-' }}</code></td>
+                            <td><code>{{ $item->item_code ?: ($item->ean_upc_code ?: '-') }}</code></td>
                             <td>{{ $item->name }}</td>
                             <td>{{ $item->brand?->name ?: '-' }}</td>
                             <td class="text-right text-primary">₹{{ number_format($item->sell_price, 2) }}</td>

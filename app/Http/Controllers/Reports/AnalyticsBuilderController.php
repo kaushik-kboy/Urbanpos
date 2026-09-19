@@ -315,20 +315,20 @@ class AnalyticsBuilderController extends Controller
                     ->selectRaw('
                         customers.id as group_id,
                         customers.name as group_name,
-                        COALESCE(customers.mobile, "-") as group_subtext,
+                        COALESCE(customers.phone, "-") as group_subtext,
                         COUNT(sales_bills.id) as bill_count,
                         SUM(sales_bills.total) as total_sales,
                         SUM(sales_bills.disc_amount) as total_disc,
                         MAX(sales_bills.bill_date) as last_date,
                         SUM(sales_bills.total_qty) as total_qty
                     ')
-                    ->groupBy('customers.id', 'customers.name', 'customers.mobile');
+                    ->groupBy('customers.id', 'customers.name', 'customers.phone');
 
                 if ($customerId) {
                     $query->where('sales_bills.customer_id', $customerId);
                 }
                 $groupLabel = 'Customer Name';
-                $subtextLabel = 'Mobile';
+                $subtextLabel = 'Phone';
                 break;
 
             case 'category':
@@ -646,13 +646,14 @@ class AnalyticsBuilderController extends Controller
     {
         $term = $request->query('q', '');
         $customers = Customer::where('name', 'LIKE', "%{$term}%")
-            ->orWhere('mobile', 'LIKE', "%{$term}%")
+            ->orWhere('phone', 'LIKE', "%{$term}%")
+            ->orWhere('customer_code', 'LIKE', "%{$term}%")
             ->limit(30)
-            ->get(['id', 'name', 'mobile']);
+            ->get(['id', 'name', 'phone']);
 
         $formatted = $customers->map(fn($c) => [
             'id' => $c->id,
-            'text' => "{$c->name} ({$c->mobile})",
+            'text' => "{$c->name}" . ($c->phone ? " ({$c->phone})" : ''),
         ]);
 
         return response()->json(['results' => $formatted]);
@@ -664,7 +665,7 @@ class AnalyticsBuilderController extends Controller
     public function drilldown(Request $request): JsonResponse
     {
         $groupBy = $request->input('group_by', 'item');
-        $groupId = $request->input('group_id');
+        $groupId = $request->input('group_id') ?? $request->input('id');
         $subId = $request->input('sub_id'); // e.g. supplier_id for item_supplier sourcing
         [$from, $to] = $this->resolveDateRange($request);
         $branchId = $request->input('branch_id');
@@ -696,7 +697,7 @@ class AnalyticsBuilderController extends Controller
                 sales_bills.bill_number,
                 sales_bills.bill_date,
                 COALESCE(customers.name, "Walk-in Customer") as customer_name,
-                COALESCE(customers.mobile, "-") as customer_mobile,
+                COALESCE(customers.phone, "-") as customer_mobile,
                 COALESCE(branches.name, "Main") as branch_name,
                 sales_bill_items.qty,
                 sales_bill_items.sell_price,
@@ -713,8 +714,8 @@ class AnalyticsBuilderController extends Controller
                 $it->formatted_date = Carbon::parse($it->bill_date)->format('d-M-Y H:i');
                 $it->formatted_rate = '₹ ' . number_format($it->sell_price, 2);
                 $it->formatted_amount = '₹ ' . number_format($it->net_amount, 2);
-                $it->view_url = url('/sales/sales-bills/' . $it->bill_id);
-                $it->receipt_url = url('/sales/sales-bills/' . $it->bill_id . '/receipt');
+                $it->view_url = route('sales.sales-bills.show', $it->bill_id);
+                $it->receipt_url = route('sales.sales-bills.receipt', $it->bill_id);
                 $totalQty += (float) $it->qty;
                 $totalAmount += (float) $it->net_amount;
             }
@@ -765,7 +766,7 @@ class AnalyticsBuilderController extends Controller
                 $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-M-Y');
                 $inv->formatted_cost = '₹ ' . number_format($inv->cost_price, 2);
                 $inv->formatted_amount = '₹ ' . number_format($inv->net_amount, 2);
-                $inv->view_url = url('/purchase/purchase-invoices/' . $inv->invoice_id);
+                $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
                 $totalQty += (float) $inv->qty;
                 $totalAmount += (float) $inv->net_amount;
             }
@@ -811,8 +812,8 @@ class AnalyticsBuilderController extends Controller
             foreach ($bills as $b) {
                 $b->formatted_date = Carbon::parse($b->bill_date)->format('d-M-Y H:i');
                 $b->formatted_amount = '₹ ' . number_format($b->total, 2);
-                $b->view_url = url('/sales/sales-bills/' . $b->bill_id);
-                $b->receipt_url = url('/sales/sales-bills/' . $b->bill_id . '/receipt');
+                $b->view_url = route('sales.sales-bills.show', $b->bill_id);
+                $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);
                 $totalAmount += (float) $b->total;
             }
 
@@ -854,8 +855,8 @@ class AnalyticsBuilderController extends Controller
             foreach ($bills as $b) {
                 $b->formatted_date = Carbon::parse($b->bill_date)->format('d-M-Y H:i');
                 $b->formatted_amount = '₹ ' . number_format($b->total, 2);
-                $b->view_url = url('/sales/sales-bills/' . $b->bill_id);
-                $b->receipt_url = url('/sales/sales-bills/' . $b->bill_id . '/receipt');
+                $b->view_url = route('sales.sales-bills.show', $b->bill_id);
+                $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);
                 $totalAmount += (float) $b->total;
             }
 

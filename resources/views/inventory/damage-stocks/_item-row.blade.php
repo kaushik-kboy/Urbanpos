@@ -2,7 +2,7 @@
     $idx = $index ?? 0;
     $itemId = data_get($line, 'item_id');
     $item = is_object($line) && isset($line->item) ? $line->item : ($itemId ? \App\Models\Item::find($itemId) : null);
-    $displayCode = $item?->ean_upc_code ?: ($item?->item_code ?: '');
+    $displayCode = $item?->item_code ?: ($item?->ean_upc_code ?: '');
     $displayText = $item ? "{$item->name}" . ($displayCode ? " [{$displayCode}]" : "") : '';
     $expDate = data_get($line, 'exp_date');
     if ($expDate instanceof \DateTimeInterface) {

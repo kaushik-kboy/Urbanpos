@@ -111,7 +111,7 @@
                         @foreach ($damageStock->items as $idx => $line)
                             @php
                                 $item = $line->item;
-                                $displayCode = $item?->ean_upc_code ?: ($item?->item_code ?: '-');
+                                $displayCode = $item?->item_code ?: ($item?->ean_upc_code ?: '-');
                             @endphp
                             <tr>
                                 <td class="text-center align-middle font-weight-bold text-muted">{{ $idx + 1 }}</td>

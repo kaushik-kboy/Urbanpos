@@ -125,7 +125,7 @@
                                                         <tr>
                                                             <td>{{ $idx + 1 }}</td>
                                                             <td>{{ $line->item?->name }}</td>
-                                                            <td><code>{{ $line->item?->ean_upc_code ?: '-' }}</code></td>
+                                                            <td><code>{{ $line->item?->item_code ?: ($line->item?->ean_upc_code ?: '-') }}</code></td>
                                                             <td class="text-right">{{ number_format($line->system_qty_at_entry, 2) }}</td>
                                                             <td class="text-right font-weight-bold">{{ number_format($line->physical_qty, 2) }}</td>
                                                             <td class="text-right font-weight-bold {{ $line->delta_qty >= 0 ? 'text-success' : 'text-danger' }}">
