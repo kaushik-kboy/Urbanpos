@@ -56,6 +56,27 @@ class Item extends Model
             $item->tax_inclusive = $item->tax_inclusive ?? false;
             $item->batch_expiry_details = $item->batch_expiry_details ?: 'Not Required';
             $item->allow_negative_stock = $item->allow_negative_stock ?? false;
+
+            // Nullable integer, foreign key, and string fields: convert empty strings to null
+            $nullableAttributes = [
+                'brand_id',
+                'supplier_id',
+                'department_value_id',
+                'category_value_id',
+                'brand_value_id',
+                'gst_tax_id',
+                'shelf_life_days',
+                'minimum_shelf_life_days',
+                'hsn_code',
+                'alias',
+                'ean_upc_code',
+                'item_code',
+            ];
+            foreach ($nullableAttributes as $attr) {
+                if ($item->$attr === '' || (is_string($item->$attr) && trim($item->$attr) === '')) {
+                    $item->$attr = null;
+                }
+            }
         });
     }
 

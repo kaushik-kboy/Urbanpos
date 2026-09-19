@@ -63,8 +63,18 @@ class ItemController extends Controller
             $source = Item::find($request->input('copy_from'));
             if ($source) {
                 $item = $source->replicate();
-                $item->name = $source->name . ' (Copy)';
+
+                // Smart unique copy name generation to avoid duplicate name validation errors
+                $baseName = trim(preg_replace('/\s*\(Copy(\s+\d+)?\)$/i', '', $source->name));
+                $copyName = $baseName . ' (Copy)';
+                $counter = 2;
+                while (Item::where('name', $copyName)->exists()) {
+                    $copyName = $baseName . ' (Copy ' . $counter . ')';
+                    $counter++;
+                }
+                $item->name = $copyName;
                 $item->ean_upc_code = Item::generateUniqueEanUpc();
+                $item->item_code = null;
             }
         }
 
@@ -129,6 +139,18 @@ class ItemController extends Controller
         }
         if (!isset($data['allow_negative_stock'])) {
             $data['allow_negative_stock'] = false;
+        }
+
+        // Nullable foreign key, integer, and string fields: convert empty strings to null
+        $nullableFields = [
+            'brand_id', 'supplier_id', 'department_value_id', 'category_value_id',
+            'brand_value_id', 'gst_tax_id', 'shelf_life_days', 'minimum_shelf_life_days',
+            'hsn_code', 'alias', 'ean_upc_code', 'item_code'
+        ];
+        foreach ($nullableFields as $field) {
+            if (array_key_exists($field, $data) && ($data[$field] === '' || (is_string($data[$field]) && trim($data[$field]) === ''))) {
+                $data[$field] = null;
+            }
         }
 
         return $data;
