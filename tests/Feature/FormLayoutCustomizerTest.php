@@ -163,4 +163,43 @@ class FormLayoutCustomizerTest extends TestCase
             'invoice_type' => 'Retail Invoice',
         ]);
     }
+
+    public function test_purchase_invoice_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('purchase.purchase-invoices.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('pinv-header-fields-grid');
+        $response->assertSee('data-field="invoice_date"', false);
+        $response->assertSee('data-field="supplier_id"', false);
+        $response->assertSee('data-field="supplier_inv_amount"', false);
+    }
+
+    public function test_purchase_order_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('purchase.purchase-orders.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('po-header-fields-grid');
+        $response->assertSee('data-field="supplier_id"', false);
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="po_date"', false);
+    }
+
+    public function test_receipt_note_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('purchase.purchase-receipt-notes.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('grn-header-fields-grid');
+        $response->assertSee('data-field="receipt_date"', false);
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="supplier_id"', false);
+    }
 }

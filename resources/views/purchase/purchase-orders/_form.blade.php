@@ -17,13 +17,40 @@
     </div>
 @endif
 
-<h5 class="mb-3"><i class="fas fa-file-invoice mr-1 text-primary"></i> Header</h5>
-<x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$po->supplier_id ?? ''" placeholder="Select a supplier" required />
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? ''))))" placeholder="Select a branch" required />
-<x-field name="po_date" label="PO Date" type="date" :value="optional($po->po_date ?? now())->format('Y-m-d')" required />
-<x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$po->purchase_type ?? 'Local'" required />
-<x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$po->c_form ?? 'Against C-Form'" required />
-<x-select name="status" label="Status" :options="['Open' => 'Open', 'Closed' => 'Closed']" :selected="$po->status ?? 'Open'" required />
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0 text-muted font-weight-bold text-uppercase small"><i class="fas fa-file-invoice text-primary mr-1"></i> PO Header</h5>
+    <x-form-layout-customizer
+        form-key="purchase_orders.header"
+        container-id="po-header-fields-grid"
+        title="Customize Purchase Order Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid" id="po-header-fields-grid">
+    <div class="field-wrapper col-md-6" data-field="supplier_id" data-label="Supplier" data-default-order="1" data-core="1">
+        <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$po->supplier_id ?? ''" placeholder="Select a supplier" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
+        <x-select name="branch_id" label="Branch" :options="$branches" :selected="$po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? ''))))" placeholder="Select a branch" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="po_date" data-label="PO Date" data-default-order="3" data-core="1">
+        <x-field name="po_date" label="PO Date" type="date" :value="optional($po->po_date ?? now())->format('Y-m-d')" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="purchase_type" data-label="Purchase Type" data-default-order="4" data-core="1">
+        <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$po->purchase_type ?? 'Local'" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="c_form" data-label="C-Form" data-default-order="5">
+        <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$po->c_form ?? 'Against C-Form'" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="6" data-core="1">
+        <x-select name="status" label="Status" :options="['Open' => 'Open', 'Closed' => 'Closed']" :selected="$po->status ?? 'Open'" required />
+    </div>
+</div>
 @if (($po->status ?? null) === 'Cancelled')
     <div class="alert alert-secondary">
         This Purchase Order was cancelled on {{ $po->cancelled_at->format('d-m-Y H:i') }}

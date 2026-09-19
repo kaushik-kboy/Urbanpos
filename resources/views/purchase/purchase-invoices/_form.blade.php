@@ -40,21 +40,64 @@
 
 <input type="hidden" name="purchase_receipt_note_id" value="{{ $rnIdVal }}">
 
-<x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" required />
-<x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$selectedSupplier" placeholder="Select a Supplier" required />
-<x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a Branch" required />
-<x-select name="purchase_order_id" label="Purchase Order" :options="$purchaseOrders" :selected="$selectedPo" placeholder="Select PO" />
-<x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
-<x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'No Forms'" required />
-<x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" readonly />
-<x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" max="{{ date('Y-m-d') }}" />
-<x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase();" placeholder="e.g. INV-2026-001" />
-<x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" />
-<x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
-<div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">
-    <div class="col-sm-3"></div>
-    <div class="col-sm-6">
-        <div id="supplier-inv-amount-match-status" class="small font-weight-bold"></div>
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0 text-muted font-weight-bold text-uppercase small"><i class="fas fa-file-invoice text-primary mr-1"></i> Invoice Details</h5>
+    <x-form-layout-customizer
+        form-key="purchase_invoices.header"
+        container-id="pinv-header-fields-grid"
+        title="Customize Purchase Invoice Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid" id="pinv-header-fields-grid">
+    <div class="field-wrapper col-md-6" data-field="invoice_date" data-label="Invoice Date" data-default-order="1" data-core="1">
+        <x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="supplier_id" data-label="Supplier" data-default-order="2" data-core="1">
+        <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$selectedSupplier" placeholder="Select a Supplier" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="3" data-core="1">
+        <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a Branch" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="purchase_order_id" data-label="Purchase Order" data-default-order="4">
+        <x-select name="purchase_order_id" label="Purchase Order" :options="$purchaseOrders" :selected="$selectedPo" placeholder="Select PO" />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="purchase_type" data-label="Purchase Type" data-default-order="5" data-core="1">
+        <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="c_form" data-label="C-Form" data-default-order="6">
+        <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'No Forms'" required />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="grn_number" data-label="GRN Number" data-default-order="7">
+        <x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" readonly />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="grn_date" data-label="GRN Date" data-default-order="8">
+        <x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" max="{{ date('Y-m-d') }}" />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="supplier_inv_no" data-label="Inv No (Supplier)" data-default-order="9">
+        <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase();" placeholder="e.g. INV-2026-001" />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="supplier_inv_date" data-label="Inv Date (Supplier)" data-default-order="10">
+        <x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" />
+    </div>
+
+    <div class="field-wrapper col-md-6" data-field="supplier_inv_amount" data-label="Inv Amount (Supplier)" data-default-order="11" data-core="1">
+        <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
+        <div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-6">
+                <div id="supplier-inv-amount-match-status" class="small font-weight-bold"></div>
+            </div>
+        </div>
     </div>
 </div>
 

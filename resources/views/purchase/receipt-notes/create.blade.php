@@ -35,16 +35,21 @@
         @endif
 
         <div class="card card-primary card-outline shadow-sm mb-3">
-            <div class="card-header bg-light py-2">
-                <h3 class="card-title font-weight-bold"><i class="fas fa-truck-loading mr-1"></i> Receipt & Challan Details</h3>
+            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-truck-loading mr-1"></i> Receipt & Challan Details</h3>
+                <x-form-layout-customizer
+                    form-key="receipt_notes.header"
+                    container-id="grn-header-fields-grid"
+                    title="Customize Receipt Note Header"
+                />
             </div>
             <div class="card-body p-3">
-                <div class="row">
-                    <div class="col-md-3 col-sm-6 mb-3">
+                <div class="row g-2 form-fields-grid" id="grn-header-fields-grid">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="receipt_date" data-label="Receipt Date" data-default-order="1" data-core="1">
                         <label class="font-weight-bold">Receipt Date <span class="text-danger">*</span></label>
                         <input type="date" name="receipt_date" class="form-control" value="{{ old('receipt_date', date('Y-m-d')) }}" required>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
                         <label class="font-weight-bold">Branch <span class="text-danger">*</span></label>
                         <select name="branch_id" class="form-control select2" required>
                             <option value="">-- Select Branch --</option>
@@ -55,7 +60,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_id" data-label="Supplier" data-default-order="3" data-core="1">
                         <label class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
                         <select name="supplier_id" class="form-control select2" required>
                             <option value="">-- Select Supplier --</option>
@@ -66,7 +71,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="purchase_order_id" data-label="Purchase Order (Ref)" data-default-order="4">
                         <label class="font-weight-bold">Purchase Order (Ref)</label>
                         <select name="purchase_order_id" class="form-control select2" id="grn-po-select">
                             <option value="">-- Direct Receipt (No PO) --</option>
@@ -77,22 +82,19 @@
                             @endforeach
                         </select>
                     </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_challan_no" data-label="Supplier Challan / DC No" data-default-order="5">
                         <label class="font-weight-bold">Supplier Challan / DC No</label>
                         <input type="text" name="supplier_challan_no" class="form-control" placeholder="e.g. DC-9842" value="{{ old('supplier_challan_no') }}">
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_challan_date" data-label="Challan Date" data-default-order="6">
                         <label class="font-weight-bold">Challan Date</label>
                         <input type="date" name="supplier_challan_date" class="form-control" value="{{ old('supplier_challan_date', date('Y-m-d')) }}">
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="vehicle_no" data-label="Vehicle No" data-default-order="7">
                         <label class="font-weight-bold">Vehicle No</label>
                         <input type="text" name="vehicle_no" class="form-control" placeholder="e.g. GJ-01-AB-1234" value="{{ old('vehicle_no') }}">
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="transporter_name" data-label="Transporter Name" data-default-order="8">
                         <label class="font-weight-bold">Transporter Name</label>
                         <input type="text" name="transporter_name" class="form-control" placeholder="e.g. SafeXpress" value="{{ old('transporter_name') }}">
                     </div>
