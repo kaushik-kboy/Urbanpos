@@ -38,16 +38,21 @@
         @endif
 
         <div class="card card-primary card-outline shadow-sm mb-3">
-            <div class="card-header bg-light py-2">
-                <h3 class="card-title font-weight-bold"><i class="fas fa-shipping-fast mr-1"></i> Dispatch & Transport Details</h3>
+            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-shipping-fast mr-1"></i> Dispatch & Transport Details</h3>
+                <x-form-layout-customizer
+                    form-key="delivery_notes.header"
+                    container-id="sdn-header-fields-grid"
+                    title="Customize Delivery Note Header"
+                />
             </div>
             <div class="card-body p-3">
-                <div class="row">
-                    <div class="col-md-3 col-sm-6 mb-3">
+                <div class="row g-2 form-fields-grid" id="sdn-header-fields-grid">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="delivery_date" data-label="Dispatch Date" data-default-order="1" data-core="1">
                         <label class="font-weight-bold">Dispatch Date <span class="text-danger">*</span></label>
                         <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', date('Y-m-d')) }}" required>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
                         <label class="font-weight-bold">Branch <span class="text-danger">*</span></label>
                         <select name="branch_id" class="form-control select2" required>
                             <option value="">-- Select Branch --</option>
@@ -58,7 +63,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="customer_id" data-label="Customer" data-default-order="3" data-core="1">
                         <label class="font-weight-bold">Customer <span class="text-danger">*</span></label>
                         <select name="customer_id" class="form-control select2" required>
                             <option value="">-- Select Customer --</option>
@@ -69,7 +74,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="sales_order_id" data-label="Sales Order (Ref)" data-default-order="4">
                         <label class="font-weight-bold">Sales Order (Ref)</label>
                         <select name="sales_order_id" class="form-control select2" id="sdn-so-select">
                             <option value="">-- Direct Dispatch (No SO) --</option>
@@ -80,33 +85,27 @@
                             @endforeach
                         </select>
                     </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="reference_no" data-label="Customer Ref / PO No" data-default-order="5">
                         <label class="font-weight-bold">Customer Ref / PO No</label>
                         <input type="text" name="reference_no" class="form-control" placeholder="e.g. PO-8492" value="{{ old('reference_no') }}">
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="vehicle_no" data-label="Vehicle No" data-default-order="6">
                         <label class="font-weight-bold">Vehicle No</label>
                         <input type="text" name="vehicle_no" class="form-control" placeholder="e.g. MH-12-AB-1234" value="{{ old('vehicle_no') }}">
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="transporter_name" data-label="Transporter Name" data-default-order="7">
                         <label class="font-weight-bold">Transporter Name</label>
                         <input type="text" name="transporter_name" class="form-control" placeholder="e.g. Blue Dart / Own Fleet" value="{{ old('transporter_name') }}">
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="lr_no" data-label="LR / Bilty No" data-default-order="8">
                         <label class="font-weight-bold">LR / Bilty No</label>
                         <input type="text" name="lr_no" class="form-control" placeholder="e.g. LR-90812" value="{{ old('lr_no') }}">
                     </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="lr_date" data-label="LR Date" data-default-order="9">
                         <label class="font-weight-bold">LR Date</label>
                         <input type="date" name="lr_date" class="form-control" value="{{ old('lr_date', date('Y-m-d')) }}">
                     </div>
-                    <div class="col-md-9 col-sm-6 mb-3">
+                    <div class="field-wrapper col-md-9 col-sm-6 mb-3" data-field="delivery_address" data-label="Delivery Address" data-default-order="10">
                         <label class="font-weight-bold">Delivery / Destination Address</label>
                         <input type="text" name="delivery_address" class="form-control" placeholder="Site or client shipping address" value="{{ old('delivery_address') }}">
                     </div>

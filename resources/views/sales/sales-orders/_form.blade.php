@@ -14,8 +14,17 @@
     </div>
 @endif
 
-<div class="row">
-    <div class="col-md-3 form-group">
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-shopping-cart text-primary mr-1"></i> Sales Order Details</h6>
+    <x-form-layout-customizer
+        form-key="sales_orders.header"
+        container-id="so-header-fields-grid"
+        title="Customize Sales Order Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="so-header-fields-grid">
+    <div class="field-wrapper col-md-3 form-group" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
         <label>Customer <span class="text-danger">*</span></label>
         <select name="customer_id" class="form-control form-control-sm select2" required>
             <option value="">Select a customer</option>
@@ -24,7 +33,7 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-3 form-group">
+    <div class="field-wrapper col-md-3 form-group" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
         <label>Branch <span class="text-danger">*</span></label>
         <select name="branch_id" class="form-control form-control-sm select2" required>
             <option value="">Select a branch</option>
@@ -33,29 +42,26 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="order_date" data-label="Order Date" data-default-order="3" data-core="1">
         <label>Order Date <span class="text-danger">*</span></label>
         <input type="date" name="order_date" class="form-control form-control-sm" value="{{ optional($order?->order_date ?? now())->format('Y-m-d') }}" required>
     </div>
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="expected_delivery_date" data-label="Expected Delivery" data-default-order="4">
         <label>Expected Delivery</label>
         <input type="date" name="expected_delivery_date" class="form-control form-control-sm" value="{{ optional($order?->expected_delivery_date ?? now())->format('Y-m-d') }}">
     </div>
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="sales_type" data-label="Sales Type" data-default-order="5" data-core="1">
         <label>Sales Type <span class="text-danger">*</span></label>
         <select name="sales_type" id="so-sales-type" class="form-control form-control-sm" required>
             <option value="Local" @selected($selectedSalesType === 'Local')>Local</option>
             <option value="Interstate" @selected($selectedSalesType === 'Interstate')>Interstate</option>
         </select>
     </div>
-</div>
-
-<div class="row">
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="advance_amount" data-label="Advance Amount (₹)" data-default-order="6">
         <label>Advance Amount (₹)</label>
         <input type="number" step="0.01" min="0" name="advance_amount" class="form-control form-control-sm font-weight-bold text-primary" placeholder="0.00" value="{{ $order->advance_amount ?? old('advance_amount', '0.00') }}">
     </div>
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="status" data-label="Status" data-default-order="7" data-core="1">
         <label>Status</label>
         <select name="status" class="form-control form-control-sm">
             @foreach(['Open', 'Partially Fulfilled'] as $st)
@@ -66,7 +72,7 @@
             @endif
         </select>
     </div>
-    <div class="col-md-8 form-group">
+    <div class="field-wrapper col-md-8 form-group" data-field="remarks" data-label="Remarks" data-default-order="8">
         <label>Remarks</label>
         <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional delivery notes or customer remarks..." value="{{ $order->remarks ?? old('remarks') }}">
     </div>

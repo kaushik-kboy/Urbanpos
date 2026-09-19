@@ -4,8 +4,17 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($ret?->items ?? collect());
 @endphp
 
-<div class="row">
-    <div class="col-md-4 mb-3">
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-undo text-primary mr-1"></i> Sales Return Header</h6>
+    <x-form-layout-customizer
+        form-key="sales_returns.header"
+        container-id="sr-header-fields-grid"
+        title="Customize Sales Return Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="sr-header-fields-grid">
+    <div class="field-wrapper col-md-4 mb-3" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
         <label for="customer_id" class="font-weight-bold">Customer <span class="text-danger">*</span></label>
         <select name="customer_id" id="customer_id" class="form-control select2" required>
             <option value="">-- Select Customer --</option>
@@ -14,7 +23,7 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-3 mb-3">
+    <div class="field-wrapper col-md-3 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
         <label for="branch_id" class="font-weight-bold">Branch <span class="text-danger">*</span></label>
         <select name="branch_id" id="branch_id" class="form-control select2" required>
             <option value="">-- Select Branch --</option>
@@ -23,21 +32,18 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-2 mb-3">
+    <div class="field-wrapper col-md-2 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
         <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
         <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" required>
     </div>
-    <div class="col-md-3 mb-3">
+    <div class="field-wrapper col-md-3 mb-3" data-field="sales_type" data-label="Sales Type" data-default-order="4" data-core="1">
         <label for="sales_type" class="font-weight-bold">Sales Type <span class="text-danger">*</span></label>
         <select name="sales_type" id="sales_type" class="form-control" required>
             <option value="Local" @selected(old('sales_type', $ret->sales_type ?? 'Local') === 'Local')>Local (CGST + SGST)</option>
             <option value="Interstate" @selected(old('sales_type', $ret->sales_type ?? '') === 'Interstate')>Interstate (IGST)</option>
         </select>
     </div>
-</div>
-
-<div class="row">
-    <div class="col-md-5 mb-3">
+    <div class="field-wrapper col-md-6 mb-3" data-field="sales_bill_id" data-label="Original Sales Bill" data-default-order="5">
         <label for="sales_bill_id" class="font-weight-bold">Original Sales Bill</label>
         <select name="sales_bill_id" id="sales_bill_id" class="form-control select2">
             <option value="">-- No Original Bill / Direct Return --</option>
@@ -47,7 +53,7 @@
         </select>
         <small class="text-muted">Bill select karte hi items automatically load ho jayenge.</small>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="field-wrapper col-md-6 mb-3" data-field="return_mode" data-label="Return Mode" data-default-order="6" data-core="1">
         <label for="return_mode" class="font-weight-bold">Return Mode <span class="text-danger">*</span></label>
         <select name="return_mode" id="return_mode" class="form-control" required>
             @foreach (['Cash' => 'Cash', 'Credit Note' => 'Credit Note', 'Wallet' => 'Wallet', 'Card' => 'Card', 'RRN' => 'RRN'] as $val => $lbl)

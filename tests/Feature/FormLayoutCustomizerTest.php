@@ -252,4 +252,56 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="entry_date"', false);
     }
+
+    public function test_sales_quotation_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('sales.sales-quotations.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('sq-header-fields-grid');
+        $response->assertSee('data-field="customer_id"', false);
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="quotation_date"', false);
+    }
+
+    public function test_sales_order_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('sales.sales-orders.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('so-header-fields-grid');
+        $response->assertSee('data-field="customer_id"', false);
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="order_date"', false);
+    }
+
+    public function test_delivery_note_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('sales.delivery-notes.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('sdn-header-fields-grid');
+        $response->assertSee('data-field="delivery_date"', false);
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="customer_id"', false);
+    }
+
+    public function test_sales_return_create_page_renders_form_layout_customizer(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->get(route('sales.sales-returns.create'));
+
+        $response->assertOk();
+        $response->assertSee('Customize Layout');
+        $response->assertSee('sr-header-fields-grid');
+        $response->assertSee('data-field="customer_id"', false);
+        $response->assertSee('data-field="branch_id"', false);
+        $response->assertSee('data-field="return_date"', false);
+    }
 }

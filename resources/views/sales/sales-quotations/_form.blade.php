@@ -7,8 +7,17 @@
     $selectedSalesType = $quote->sales_type ?? old('sales_type', 'Local');
 @endphp
 
-<div class="row">
-    <div class="col-md-3 form-group">
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-file-invoice text-primary mr-1"></i> Quotation Details</h6>
+    <x-form-layout-customizer
+        form-key="sales_quotations.header"
+        container-id="sq-header-fields-grid"
+        title="Customize Sales Quotation Header"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid mb-3" id="sq-header-fields-grid">
+    <div class="field-wrapper col-md-3 form-group" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
         <label>Customer <span class="text-danger">*</span></label>
         <select name="customer_id" class="form-control form-control-sm select2" required>
             <option value="">Select a customer</option>
@@ -17,7 +26,7 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-3 form-group">
+    <div class="field-wrapper col-md-3 form-group" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
         <label>Branch <span class="text-danger">*</span></label>
         <select name="branch_id" class="form-control form-control-sm select2" required>
             <option value="">Select a branch</option>
@@ -26,25 +35,22 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="quotation_date" data-label="Quotation Date" data-default-order="3" data-core="1">
         <label>Quotation Date <span class="text-danger">*</span></label>
         <input type="date" name="quotation_date" class="form-control form-control-sm" value="{{ optional($quote?->quotation_date ?? now())->format('Y-m-d') }}" required>
     </div>
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="valid_until" data-label="Valid Until" data-default-order="4">
         <label>Valid Until</label>
         <input type="date" name="valid_until" class="form-control form-control-sm" value="{{ optional($quote?->valid_until ?? now())->format('Y-m-d') }}">
     </div>
-    <div class="col-md-2 form-group">
+    <div class="field-wrapper col-md-2 form-group" data-field="sales_type" data-label="Sales Type" data-default-order="5" data-core="1">
         <label>Sales Type <span class="text-danger">*</span></label>
         <select name="sales_type" id="sq-sales-type" class="form-control form-control-sm" required>
             <option value="Local" @selected($selectedSalesType === 'Local')>Local</option>
             <option value="Interstate" @selected($selectedSalesType === 'Interstate')>Interstate</option>
         </select>
     </div>
-</div>
-
-<div class="row">
-    <div class="col-md-3 form-group">
+    <div class="field-wrapper col-md-3 form-group" data-field="status" data-label="Status" data-default-order="6" data-core="1">
         <label>Status</label>
         <select name="status" class="form-control form-control-sm">
             @foreach(['Draft', 'Sent', 'Accepted'] as $st)
@@ -55,7 +61,7 @@
             @endif
         </select>
     </div>
-    <div class="col-md-9 form-group">
+    <div class="field-wrapper col-md-9 form-group" data-field="remarks" data-label="Remarks" data-default-order="7">
         <label>Remarks</label>
         <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional remarks or terms..." value="{{ $quote->remarks ?? old('remarks') }}">
     </div>
