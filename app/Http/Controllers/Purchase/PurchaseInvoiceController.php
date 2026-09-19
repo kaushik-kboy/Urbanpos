@@ -438,6 +438,7 @@ class PurchaseInvoiceController extends Controller
                     (SELECT NULLIF(SUM(cs.closing_stock), 0) FROM closing_stocks cs WHERE cs.item_id = i.id),
                     0
                 )                          AS qty,
+                COALESCE(
                     NULLIF(ei.cost_price, 0),
                     NULLIF(i.cost_price, 0),
                     0
