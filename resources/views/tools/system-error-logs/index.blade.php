@@ -164,11 +164,11 @@
                     <div class="col-md-3 col-sm-12 mb-2">
                         <label class="small font-weight-bold mb-1">Custom Date Range</label>
                         <div class="input-group input-group-sm">
-                            <input type="date" name="from_date" id="from_date" class="form-control" value="{{ $fromDate }}" placeholder="From">
+                            <input type="text" name="from_date" id="from_date" class="form-control datepicker" value="{{ $fromDate }}" placeholder="YYYY-MM-DD" autocomplete="off">
                             <div class="input-group-append input-group-prepend">
-                                <span class="input-group-text">to</span>
+                                <span class="input-group-text"><i class="fas fa-arrow-right"></i></span>
                             </div>
-                            <input type="date" name="to_date" id="to_date" class="form-control" value="{{ $toDate }}" placeholder="To">
+                            <input type="text" name="to_date" id="to_date" class="form-control datepicker" value="{{ $toDate }}" placeholder="YYYY-MM-DD" autocomplete="off">
                         </div>
                     </div>
                 </div>

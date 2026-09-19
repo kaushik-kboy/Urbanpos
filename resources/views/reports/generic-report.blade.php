@@ -54,11 +54,21 @@
                 @if ($hasDateFilter ?? true)
                     <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">From Date</label>
-                        <input type="date" name="from" class="form-control form-control-sm" value="{{ $from ?? now()->subDays(60)->format('Y-m-d') }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="from" class="form-control form-control-sm datepicker" value="{{ $from ?? now()->subDays(60)->format('Y-m-d') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">To Date</label>
-                        <input type="date" name="to" class="form-control form-control-sm" value="{{ $to ?? now()->format('Y-m-d') }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="to" class="form-control form-control-sm datepicker" value="{{ $to ?? now()->format('Y-m-d') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                 @endif
 
@@ -189,26 +199,4 @@
     </div>
 @stop
 
-@section('css')
-    <style>
-        .card-header::after {
-            display: none !important;
-        }
-        @media print {
-            .main-sidebar, .main-header, .card-header .card-tools, .card-body form, .card-footer, .breadcrumb, .btn {
-                display: none !important;
-            }
-            .content-wrapper {
-                margin-left: 0 !important;
-                background-color: white !important;
-            }
-            .card {
-                border: none !important;
-                box-shadow: none !important;
-            }
-            .table-responsive {
-                overflow: visible !important;
-            }
-        }
-    </style>
-@stop
+

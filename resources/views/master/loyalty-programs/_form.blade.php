@@ -27,13 +27,23 @@
                 <div class="col-md-3">
                     <div class="form-group">
                         <label for="start_date" class="font-weight-bold">Start Date <span class="text-danger">*</span></label>
-                        <input type="date" name="start_date" id="start_date" class="form-control" value="{{ old('start_date', optional($program->start_date)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required>
+                        <div class="input-group">
+                            <input type="text" name="start_date" id="start_date" class="form-control datepicker" value="{{ old('start_date', optional($program->start_date)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="form-group">
                         <label for="end_date" class="font-weight-bold">End Date (Leave blank for ongoing)</label>
-                        <input type="date" name="end_date" id="end_date" class="form-control" value="{{ old('end_date', optional($program->end_date)->format('Y-m-d')) }}">
+                        <div class="input-group">
+                            <input type="text" name="end_date" id="end_date" class="form-control datepicker" value="{{ old('end_date', optional($program->end_date)->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

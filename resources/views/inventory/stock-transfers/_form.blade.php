@@ -25,7 +25,12 @@
     </div>
     <div class="col-md-3">
         <label for="transfer_date" class="font-weight-bold">Transfer Date <span class="text-danger">*</span></label>
-        <input type="date" name="transfer_date" id="transfer_date" class="form-control" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required>
+        <div class="input-group">
+            <input type="text" name="transfer_date" id="transfer_date" class="form-control datepicker" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+            </div>
+        </div>
     </div>
     <div class="col-md-3 d-flex align-items-end justify-content-end">
         <div class="text-muted small text-right">
@@ -183,14 +188,7 @@
     @include('inventory.stock-transfers._item-row', ['index' => '__INDEX__', 'line' => null])
 </template>
 
-@push('css')
-<style>
-    .select2-container .select2-selection--single { height: 31px !important; border-color: #ced4da !important; font-size: 0.875rem; }
-    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 29px !important; padding-left: 6px; padding-right: 18px; }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 29px !important; right: 3px; }
-    .st-isl-item-disabled { cursor: not-allowed !important; opacity: 0.65; }
-</style>
-@endpush
+
 
 @push('js')
 <script>
@@ -225,7 +223,7 @@
             $row.find('.item-available').val(avail.toFixed(3));
 
             if (item.exp_date) {
-                $row.find('input[type="date"]').val(item.exp_date);
+                $row.find('.item-exp-date, input[name$="[exp_date]"]').val(item.exp_date).trigger('change');
             }
 
             const $qty = $row.find('.item-qty');

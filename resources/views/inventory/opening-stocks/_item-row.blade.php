@@ -56,10 +56,12 @@
         </select>
     </td>
     <td style="min-width: 130px;">
-        <input type="date" 
+        <input type="text" 
                name="items[{{ $rowId }}][exp_date]" 
                value="{{ $expDate }}" 
-               class="form-control form-control-sm">
+               class="form-control form-control-sm datepicker"
+               placeholder="YYYY-MM-DD"
+               autocomplete="off">
     </td>
     <td style="min-width: 85px;">
         <input type="number" 

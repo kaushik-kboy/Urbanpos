@@ -16,7 +16,12 @@
     </div>
     <div class="col-md-3">
         <label for="entry_date" class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>
-        <input type="date" name="entry_date" id="entry_date" class="form-control" value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" required>
+        <div class="input-group">
+            <input type="text" name="entry_date" id="entry_date" class="form-control datepicker" value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+            </div>
+        </div>
     </div>
     <div class="col-md-5 d-flex align-items-end justify-content-end">
         <div class="text-muted small text-right">
@@ -177,40 +182,7 @@
     @include('inventory.opening-stocks._item-row', ['suppliers' => $suppliers, 'index' => '__INDEX__', 'line' => null])
 </template>
 
-@push('css')
-<style>
-    #items-table th {
-        font-weight: 600;
-        vertical-align: middle;
-        font-size: 0.84rem;
-        padding: 6px 4px;
-    }
-    #items-table td {
-        padding: 4px;
-        vertical-align: middle;
-    }
-    .select2-container .select2-selection--single {
-        height: 31px !important;
-        border-color: #ced4da !important;
-        font-size: 0.85rem;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 29px !important;
-        padding-left: 6px;
-        padding-right: 18px;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 29px !important;
-        right: 3px;
-    }
-    .select2-dropdown {
-        font-size: 0.85rem;
-    }
-    .modal-item-result-row.table-active {
-        background-color: #d1ecf1 !important;
-    }
-</style>
-@endpush
+
 
 @push('js')
 <script>

@@ -63,7 +63,7 @@ return [
     |
     */
 
-    'logo' => '<b>Urban</b>pos',
+    'logo' => '<b>URBAN</b> PETS',
     'logo_img' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
     'logo_img_class' => 'brand-image img-circle elevation-3',
     'logo_img_xl' => null,
@@ -196,7 +196,7 @@ return [
     'classes_content_wrapper' => '',
     'classes_content_header' => '',
     'classes_content' => '',
-    'classes_sidebar' => 'sidebar-dark-primary elevation-4',
+    'classes_sidebar' => 'sidebar-light-primary',
     'classes_sidebar_nav' => 'nav-child-indent',
     'classes_topnav' => 'navbar-white navbar-light',
     'classes_topnav_nav' => 'navbar-expand',
@@ -1120,6 +1120,31 @@ return [
                     'type' => 'js',
                     'asset' => true,
                     'location' => 'js/select2-init.js?v=20260917_branch2',
+                ],
+            ],
+        ],
+        'DateRangePicker' => [
+            'active' => true,
+            'files' => [
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/moment/moment.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/daterangepicker/daterangepicker.js',
+                ],
+                [
+                    'type' => 'css',
+                    'asset' => true,
+                    'location' => 'vendor/daterangepicker/daterangepicker.css',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'js/datepicker-init.js?v=20260919_1',
                 ],
             ],
         ],

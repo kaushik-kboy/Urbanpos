@@ -47,10 +47,12 @@
         </select>
     </td>
     <td style="min-width: 130px;">
-        <input type="date"
+        <input type="text"
                name="items[{{ $index }}][exp_date]"
                value="{{ $expDateVal }}"
-               class="form-control form-control-sm">
+               class="form-control form-control-sm datepicker item-exp-date"
+               placeholder="YYYY-MM-DD"
+               autocomplete="off">
     </td>
     <td style="min-width: 100px;">
         <input type="text" class="form-control form-control-sm item-available text-right bg-light" value="{{ $availableVal }}" readonly tabindex="-1">

@@ -242,53 +242,7 @@
     </div>
 @stop
 
-@section('css')
-<style>
-    .truepos-price-table {
-        border-collapse: collapse;
-    }
-    .truepos-price-table th {
-        background-color: #fcfcfc !important;
-        border-top: 0 !important;
-    }
-    .price-row:hover {
-        background-color: #fafbfc;
-    }
-    .price-label {
-        min-width: 100px;
-        font-size: 0.9rem;
-        color: #495057;
-        font-weight: 500;
-        margin-right: 12px;
-        text-align: right;
-    }
-    .price-input {
-        max-width: 170px;
-        height: 36px;
-        border: 1px solid #ced4da;
-        border-radius: 4px !important;
-        font-size: 0.95rem;
-        background-color: #ffffff;
-        box-shadow: none;
-        transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
-    }
-    .price-input:focus {
-        border-color: #80bdff;
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-    }
-    .select2-container .select2-selection--single {
-        height: 38px !important;
-        border-color: #ced4da !important;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 36px !important;
-        font-size: 0.95rem;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px !important;
-    }
-</style>
-@stop
+
 
 @section('js')
 <script>

@@ -64,9 +64,19 @@
                 <input type="hidden" name="tab" value="{{ $tab }}">
                 
                 <span class="small font-weight-bold text-muted mr-2"><i class="fas fa-calendar-alt mr-1"></i> Period:</span>
-                <input type="date" name="from_date" value="{{ $fromDate }}" class="form-control form-control-sm mr-2" style="width: 140px;">
+                <div class="input-group input-group-sm mr-2" style="width: 155px;">
+                    <input type="text" name="from_date" value="{{ $fromDate }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
                 <span class="mr-2 text-muted">to</span>
-                <input type="date" name="to_date" value="{{ $toDate }}" class="form-control form-control-sm mr-2" style="width: 140px;">
+                <div class="input-group input-group-sm mr-2" style="width: 155px;">
+                    <input type="text" name="to_date" value="{{ $toDate }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
                 <button type="submit" class="btn btn-secondary btn-sm px-3 shadow-sm">
                     <i class="fas fa-sync-alt mr-1"></i> Filter
                 </button>
@@ -325,11 +335,21 @@
                     
                     <div class="col-lg-2 col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold text-muted mb-1">From Date</label>
-                        <input type="date" name="from_date" value="{{ $fromDate }}" class="form-control form-control-sm">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="from_date" value="{{ $fromDate }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-lg-2 col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold text-muted mb-1">To Date</label>
-                        <input type="date" name="to_date" value="{{ $toDate }}" class="form-control form-control-sm">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="to_date" value="{{ $toDate }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-lg-2 col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold text-muted mb-1">Invoice Type</label>

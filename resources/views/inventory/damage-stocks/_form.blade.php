@@ -16,8 +16,13 @@
     </div>
     <div class="col-md-3">
         <label for="entry_date" class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>
-        <input type="date" name="entry_date" id="entry_date" class="form-control" 
-               value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" required>
+        <div class="input-group">
+            <input type="text" name="entry_date" id="entry_date" class="form-control datepicker" 
+                   value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+            </div>
+        </div>
     </div>
     <div class="col-md-3">
         <label for="wastage_type" class="font-weight-bold">Wastage Type <span class="text-danger">*</span></label>
@@ -172,35 +177,7 @@
     </div>
 </div>
 
-@push('css')
-<style>
-    #items-table th, #items-table td {
-        vertical-align: middle;
-        padding: 0.35rem 0.45rem;
-    }
-    #items-table input.form-control-sm {
-        height: calc(1.75rem + 2px);
-        padding: 0.2rem 0.4rem;
-        font-size: 0.85rem;
-    }
-    .select2-container--default .select2-selection--single {
-        height: calc(1.75rem + 2px) !important;
-        padding: 0.15rem 0.4rem !important;
-        font-size: 0.85rem !important;
-        border-color: #ced4da;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 1.45 !important;
-        padding-left: 0 !important;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 1.65rem !important;
-    }
-    #modal-items-body tr.table-active {
-        background-color: #ffebee !important;
-    }
-</style>
-@endpush
+
 
 @push('js')
 <script>

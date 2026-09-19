@@ -12,9 +12,19 @@
         <div class="card-body py-2">
             <form method="GET" action="{{ route('reports.sales-margin-category') }}" class="form-inline">
                 <label class="mr-2 small font-weight-bold">From</label>
-                <input type="date" name="from" class="form-control form-control-sm mr-3" value="{{ $from }}">
+                <div class="input-group input-group-sm mr-3">
+                    <input type="text" name="from" class="form-control form-control-sm datepicker" value="{{ $from }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
                 <label class="mr-2 small font-weight-bold">To</label>
-                <input type="date" name="to" class="form-control form-control-sm mr-3" value="{{ $to }}">
+                <div class="input-group input-group-sm mr-3">
+                    <input type="text" name="to" class="form-control form-control-sm datepicker" value="{{ $to }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
                 <select name="branch_id" class="form-control form-control-sm mr-3">
                     <option value="">All Branches</option>
                     @foreach ($branches as $id => $name)

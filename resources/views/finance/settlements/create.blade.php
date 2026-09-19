@@ -88,7 +88,12 @@
 
                     <div class="col-md-2 form-group">
                         <label>Settlement Date <span class="text-danger">*</span></label>
-                        <input type="date" name="settlement_date" class="form-control form-control-sm" value="{{ old('settlement_date', now()->format('Y-m-d')) }}" required>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="settlement_date" class="form-control form-control-sm datepicker" value="{{ old('settlement_date', now()->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-md-3 form-group">

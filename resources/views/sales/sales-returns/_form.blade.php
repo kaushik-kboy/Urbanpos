@@ -25,7 +25,12 @@
     </div>
     <div class="col-md-2 mb-3">
         <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
-        <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" required>
+        <div class="input-group">
+            <input type="text" name="return_date" id="return_date" class="form-control datepicker" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+            </div>
+        </div>
     </div>
     <div class="col-md-3 mb-3">
         <label for="sales_type" class="font-weight-bold">Sales Type <span class="text-danger">*</span></label>

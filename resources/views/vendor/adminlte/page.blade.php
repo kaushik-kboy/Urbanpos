@@ -4,6 +4,10 @@
 @inject('preloaderHelper', 'JeroenNoten\LaravelAdminLte\Helpers\PreloaderHelper')
 
 @section('adminlte_css')
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}">
     @stack('css')
     @yield('css')
 @stop
@@ -46,6 +50,17 @@
         {{-- Footer --}}
         @hasSection('footer')
             @include('adminlte::partials.footer.footer')
+        @else
+            <footer class="main-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Urban Pets</strong> &copy; {{ date('Y') }} POS / ERP System.
+                    </div>
+                    <div class="d-none d-sm-inline-block">
+                        <span class="up-footer-pill">Urban Pets UI 2.0</span>
+                    </div>
+                </div>
+            </footer>
         @endif
 
         {{-- Right Control Sidebar --}}

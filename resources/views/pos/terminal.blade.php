@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
 
+    <!-- UrbanPets UI 2.0 Design Tokens & Theme -->
+    <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}?v={{ time() }}">
     <!-- Custom POS Terminal Styles -->
     <link rel="stylesheet" href="{{ asset('css/pos-terminal.css') }}?v={{ time() }}">
 </head>
@@ -236,7 +238,7 @@
 <div class="modal fade" id="posAddCustomerModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content shadow-lg border-0">
-            <div class="modal-header bg-dark text-white py-2">
+            <div class="modal-header text-white py-2" style="background-color: var(--pos-header-bg);">
                 <h6 class="modal-title font-weight-bold mb-0"><i class="fas fa-user-plus mr-2"></i> Add New Customer</h6>
                 <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
             </div>

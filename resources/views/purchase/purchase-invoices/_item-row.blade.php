@@ -60,10 +60,11 @@
                required>
     </td>
     <td style="width: 125px;">
-        <input type="date"
+        <input type="text"
                name="items[{{ $index }}][exp_date]"
                value="{{ $expDateVal }}"
-               class="form-control form-control-sm pinv-exp-date {{ $isExpRequired ? 'border-danger' : '' }}"
+               class="form-control form-control-sm datepicker pinv-exp-date {{ $isExpRequired ? 'border-danger' : '' }}"
+               placeholder="YYYY-MM-DD"
                @if($isExpRequired) required @endif
                autocomplete="off"
                title="{{ $isExpRequired ? 'Expiry date is mandatory for this item' : 'Expiry date (optional)' }}">

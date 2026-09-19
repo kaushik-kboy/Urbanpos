@@ -47,11 +47,21 @@
                 </div>
                 <div class="col-md-2 form-group mb-2">
                     <label class="text-xs text-muted mb-1">Date From</label>
-                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="date_from" class="form-control form-control-sm datepicker" value="{{ request('date_from') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2 form-group mb-2">
                     <label class="text-xs text-muted mb-1">Date To</label>
-                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="date_to" class="form-control form-control-sm datepicker" value="{{ request('date_to') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-1 form-group mb-2">
                     <label class="text-xs text-muted mb-1">Status</label>

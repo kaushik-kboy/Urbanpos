@@ -44,9 +44,10 @@
     </td>
     {{-- Exp Date --}}
     <td style="width: 135px;">
-        <input type="date" name="items[{{ $rowId }}][exp_date]"
+        <input type="text" name="items[{{ $rowId }}][exp_date]"
                value="{{ $rowId === '__INDEX__' ? '' : $expDate }}"
                class="form-control form-control-sm sr-exp-date bg-light"
+               placeholder="YYYY-MM-DD"
                readonly tabindex="-1">
     </td>
     {{-- Qty --}}

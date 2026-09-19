@@ -29,7 +29,12 @@
                 </div>
                 <div class="col-md-3 form-group mb-2">
                     <label class="text-xs text-muted mb-1">As Of Date</label>
-                    <input type="date" name="as_of_date" class="form-control form-control-sm" value="{{ $asOfDate }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="as_of_date" class="form-control form-control-sm datepicker" value="{{ $asOfDate }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-3 form-group mb-2">
                     <label class="text-xs text-muted mb-1">Branch</label>

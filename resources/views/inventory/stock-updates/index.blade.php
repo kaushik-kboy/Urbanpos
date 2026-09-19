@@ -144,11 +144,21 @@
                 <div class="row">
                     <div class="col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold text-muted mb-1">From Entry Date:</label>
-                        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="date_from" class="form-control form-control-sm datepicker" value="{{ request('date_from') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold text-muted mb-1">To Entry Date:</label>
-                        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="date_to" class="form-control form-control-sm datepicker" value="{{ request('date_to') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-6 col-sm-12 d-flex align-items-end mb-2">
                         <button type="submit" class="btn btn-primary btn-sm px-4 mr-2 shadow-sm font-weight-bold">
@@ -301,14 +311,4 @@
     </div>
 @stop
 
-@push('css')
-<style>
-    .table thead th {
-        vertical-align: middle;
-        letter-spacing: 0.02em;
-    }
-    .table tbody tr:hover {
-        background-color: #f5f9ff !important;
-    }
-</style>
-@endpush
+

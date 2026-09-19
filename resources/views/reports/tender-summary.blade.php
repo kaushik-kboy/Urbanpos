@@ -12,11 +12,21 @@
             <form method="GET" action="{{ route('reports.tender-summary') }}" class="row align-items-end">
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">From Date</label>
-                    <input type="date" name="from" value="{{ $from }}" class="form-control form-control-sm">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="from" value="{{ $from }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">To Date</label>
-                    <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="to" value="{{ $to }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>

@@ -73,11 +73,21 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">From Date</label>
-                    <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control form-control-sm">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="date_from" value="{{ request('date_from') }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">To Date</label>
-                    <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control form-control-sm">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="date_to" value="{{ request('date_to') }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Location / Branch</label>
@@ -309,17 +319,7 @@
     </div>
 @stop
 
-@push('css')
-<style>
-    .damage-row-clickable {
-        cursor: pointer;
-        transition: background-color 0.15s ease-in-out;
-    }
-    .damage-row-clickable:hover {
-        background-color: #fff3f3 !important;
-    }
-</style>
-@endpush
+
 
 @push('js')
 <script>

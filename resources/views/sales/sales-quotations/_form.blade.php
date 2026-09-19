@@ -28,11 +28,21 @@
     </div>
     <div class="col-md-2 form-group">
         <label>Quotation Date <span class="text-danger">*</span></label>
-        <input type="date" name="quotation_date" class="form-control form-control-sm" value="{{ optional($quote?->quotation_date ?? now())->format('Y-m-d') }}" required>
+        <div class="input-group input-group-sm">
+            <input type="text" name="quotation_date" class="form-control form-control-sm datepicker" value="{{ optional($quote?->quotation_date ?? now())->format('Y-m-d') }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+            </div>
+        </div>
     </div>
     <div class="col-md-2 form-group">
         <label>Valid Until</label>
-        <input type="date" name="valid_until" class="form-control form-control-sm" value="{{ optional($quote?->valid_until ?? now())->format('Y-m-d') }}">
+        <div class="input-group input-group-sm">
+            <input type="text" name="valid_until" class="form-control form-control-sm datepicker" value="{{ optional($quote?->valid_until ?? now())->format('Y-m-d') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+            </div>
+        </div>
     </div>
     <div class="col-md-2 form-group">
         <label>Sales Type <span class="text-danger">*</span></label>

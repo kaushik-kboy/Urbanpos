@@ -46,12 +46,13 @@
     </td>
     <td style="width: 135px;">
         <div class="input-group input-group-sm">
-            <input type="date"
+            <input type="text"
                    name="items[{{ $index }}][exp_date]"
                    value="{{ $expDateVal }}"
                    readonly
                    tabindex="-1"
                    class="form-control form-control-sm sb-exp-date bg-light"
+                   placeholder="YYYY-MM-DD"
                    autocomplete="off"
                    title="Expiry date (Read-only)">
             <div class="input-group-append sb-batch-btn-wrap d-none">

@@ -134,7 +134,14 @@
 
         <div class="form-group row">
             <label class="col-sm-3 col-form-label">Birth Date</label>
-            <div class="col-sm-6"><input type="date" name="pets[__INDEX__][birth_date]" class="form-control"></div>
+            <div class="col-sm-6">
+                <div class="input-group">
+                    <input type="text" name="pets[__INDEX__][birth_date]" class="form-control datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="text-right">

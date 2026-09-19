@@ -474,7 +474,12 @@
                             </div>
                             <div class="col-md-4 form-group">
                                 <label class="font-weight-bold small text-dark">Doc / LR Date</label>
-                                <input type="date" name="transport_doc_date" class="form-control" value="{{ old('transport_doc_date', $salesBill->transport_doc_date ? $salesBill->transport_doc_date->format('Y-m-d') : '') }}">
+                                <div class="input-group">
+                                    <input type="text" name="transport_doc_date" class="form-control datepicker" value="{{ old('transport_doc_date', $salesBill->transport_doc_date ? $salesBill->transport_doc_date->format('Y-m-d') : '') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

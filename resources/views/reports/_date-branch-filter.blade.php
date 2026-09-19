@@ -1,8 +1,18 @@
 <form method="GET" class="form-inline mb-3">
-    <label class="mr-2">From</label>
-    <input type="date" name="from" value="{{ $from }}" class="form-control form-control-sm mr-3">
-    <label class="mr-2">To</label>
-    <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm mr-3">
+    <label class="mr-2 font-weight-bold small text-muted">From</label>
+    <div class="input-group input-group-sm mr-3">
+        <input type="text" name="from" value="{{ $from }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+        <div class="input-group-append">
+            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+        </div>
+    </div>
+    <label class="mr-2 font-weight-bold small text-muted">To</label>
+    <div class="input-group input-group-sm mr-3">
+        <input type="text" name="to" value="{{ $to }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+        <div class="input-group-append">
+            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+        </div>
+    </div>
     <label class="mr-2">Location</label>
     <select name="branch_id" class="form-control form-control-sm mr-3">
         <option value="">All Location</option>

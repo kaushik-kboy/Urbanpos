@@ -11,7 +11,7 @@
             <small class="text-muted">Real-time store metrics, visual analytics, and fast-action command center</small>
         </div>
         <div class="d-flex align-items-center mt-2 mt-md-0">
-            <span class="badge badge-primary px-3 py-2 shadow-sm font-weight-normal">
+            <span class="badge badge-primary px-3 py-2 font-weight-bold">
                 <i class="far fa-calendar-alt mr-1"></i> {{ now()->format('d M Y') }}
             </span>
         </div>
@@ -123,13 +123,14 @@
                         <div>
                             <span class="text-uppercase text-xs font-weight-bold text-white-50">Month to Date (MTD)</span>
                             <h2 class="font-weight-bold mb-0">₹{{ number_format($monthSales, 2) }}</h2>
-                            <small class="text-white-50">
+                            <div class="mt-1">
                                 @if ($salesGrowthPct >= 0)
-                                    <i class="fas fa-arrow-up text-white"></i> +{{ $salesGrowthPct }}% vs prev month
+                                    <span class="badge badge-success"><i class="fas fa-arrow-up mr-1"></i> +{{ $salesGrowthPct }}%</span>
                                 @else
-                                    <i class="fas fa-arrow-down text-white"></i> {{ $salesGrowthPct }}% vs prev month
+                                    <span class="badge badge-danger"><i class="fas fa-arrow-down mr-1"></i> {{ $salesGrowthPct }}%</span>
                                 @endif
-                            </small>
+                                <small class="text-muted ml-1">vs prev month</small>
+                            </div>
                         </div>
                         <div class="bg-white rounded-circle p-3 text-success shadow-sm">
                             <i class="fas fa-chart-line fa-2x"></i>
@@ -443,23 +444,17 @@
 @stop
 
 @section('css')
-<style>
-.bg-black-10 {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-.text-white-50 {
-    color: rgba(255, 255, 255, 0.75) !important;
-}
-.text-black-50 {
-    color: rgba(0, 0, 0, 0.6) !important;
-}
-</style>
+{{-- Common theme styles loaded via public/css/urbanpets-theme.css in layout --}}
 @stop
 
 @section('js')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // UI 2.0 Font & Color Defaults
+    Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
+    Chart.defaults.color = '#74839B';
+
     // 1. 30-Day Sales & Revenue Trend Chart
     const trendCtx = document.getElementById('salesTrendChart');
     if (trendCtx) {
@@ -475,24 +470,26 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         label: 'Daily Revenue (₹)',
                         data: trendRevenue,
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.12)',
+                        borderColor: '#1769E8', // UI 2.0 Primary Blue
+                        backgroundColor: 'rgba(23, 105, 232, 0.12)',
                         borderWidth: 2.5,
                         fill: true,
                         tension: 0.35,
                         pointRadius: 2,
                         pointHoverRadius: 6,
+                        pointBackgroundColor: '#1769E8',
                         yAxisID: 'y'
                     },
                     {
                         label: 'Bills Count',
                         data: trendBills,
-                        borderColor: '#28a745',
+                        borderColor: '#078B87', // UI 2.0 Teal
                         backgroundColor: 'transparent',
                         borderWidth: 1.8,
                         borderDash: [4, 4],
                         pointRadius: 2,
                         pointHoverRadius: 5,
+                        pointBackgroundColor: '#078B87',
                         tension: 0.2,
                         yAxisID: 'y1'
                     }
@@ -508,9 +505,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: { boxWidth: 12, font: { size: 11 } }
+                        labels: { boxWidth: 12, font: { size: 11, weight: 600 }, color: '#0B1F52' }
                     },
                     tooltip: {
+                        backgroundColor: '#0B1F52',
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#FFFFFF',
+                        cornerRadius: 6,
                         callbacks: {
                             label: function (context) {
                                 if (context.datasetIndex === 0) {
@@ -524,15 +525,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 10 }, maxTicksLimit: 12 }
+                        ticks: { font: { size: 10 }, maxTicksLimit: 12, color: '#74839B' }
                     },
                     y: {
                         type: 'linear',
                         display: true,
                         position: 'left',
                         beginAtZero: true,
+                        grid: { color: '#EEF3FA' },
                         ticks: {
                             font: { size: 10 },
+                            color: '#74839B',
                             callback: function (val) {
                                 return '₹' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val);
                             }
@@ -544,14 +547,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         position: 'right',
                         beginAtZero: true,
                         grid: { drawOnChartArea: false },
-                        ticks: { font: { size: 10 }, precision: 0 }
+                        ticks: { font: { size: 10 }, precision: 0, color: '#74839B' }
                     }
                 }
             }
         });
     }
 
-    // 2. Sales by Category Doughnut Chart
+    // 2. Sales by Category Doughnut Chart (UI 2.0 Palette)
     const catCtx = document.getElementById('categoryChart');
     if (catCtx) {
         const catLabels = {!! json_encode($categoryLabels) !!};
@@ -565,9 +568,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     datasets: [{
                         data: catAmounts,
                         backgroundColor: [
-                            '#007bff', '#28a745', '#17a2b8', '#ffc107', '#dc3545', '#6c757d'
+                            '#1769E8', '#078B87', '#F28C28', '#6C3BE8', '#168447', '#74839B'
                         ],
                         borderWidth: 2,
+                        borderColor: '#FFFFFF',
                         hoverOffset: 4
                     }]
                 },
@@ -577,9 +581,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: { boxWidth: 10, font: { size: 11 } }
+                            labels: { boxWidth: 10, font: { size: 11 }, color: '#0B1F52' }
                         },
                         tooltip: {
+                            backgroundColor: '#0B1F52',
                             callbacks: {
                                 label: function (ctx) {
                                     const val = Number(ctx.raw);
@@ -608,8 +613,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     datasets: [{
                         label: 'Units Sold',
                         data: itemQty,
-                        backgroundColor: 'rgba(40, 167, 69, 0.75)',
-                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(23, 105, 232, 0.8)',
+                        borderColor: '#1769E8',
                         borderWidth: 1,
                         borderRadius: 4
                     }]
@@ -621,6 +626,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            backgroundColor: '#0B1F52',
                             callbacks: {
                                 afterLabel: function (ctx) {
                                     const idx = ctx.dataIndex;
@@ -632,10 +638,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     scales: {
                         x: {
                             beginAtZero: true,
+                            grid: { color: '#EEF3FA' },
                             ticks: { font: { size: 10 }, precision: 0 }
                         },
                         y: {
-                            ticks: { font: { size: 10 } }
+                            grid: { display: false },
+                            ticks: { font: { size: 10 }, color: '#0B1F52' }
                         }
                     }
                 }
@@ -657,8 +665,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     label: 'Hourly Sales (₹)',
                     data: hourlyRevenue,
-                    backgroundColor: 'rgba(255, 193, 7, 0.75)',
-                    borderColor: '#ffc107',
+                    backgroundColor: 'rgba(7, 139, 135, 0.8)',
+                    borderColor: '#078B87',
                     borderWidth: 1,
                     borderRadius: 3
                 }]
@@ -669,6 +677,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: '#0B1F52',
                         callbacks: {
                             label: function (ctx) {
                                 return 'Sales: ₹' + Number(ctx.raw).toLocaleString('en-IN', { minimumFractionDigits: 2 });
@@ -686,6 +695,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     },
                     y: {
                         beginAtZero: true,
+                        grid: { color: '#EEF3FA' },
                         ticks: {
                             font: { size: 10 },
                             callback: function (val) {

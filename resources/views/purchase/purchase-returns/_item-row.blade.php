@@ -37,7 +37,7 @@
         <input type="text" class="form-control form-control-sm pr-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">
     </td>
     <td style="width: 130px;">
-        <input type="date" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm pr-exp-date">
+        <input type="text" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm datepicker pr-exp-date" placeholder="YYYY-MM-DD" autocomplete="off">
     </td>
     <td style="width: 95px;">
         <input type="number" step="0.001" min="0.001" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm text-right pr-qty font-weight-bold" placeholder="0.000" required>

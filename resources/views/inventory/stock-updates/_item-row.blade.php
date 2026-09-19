@@ -26,7 +26,7 @@
         <input type="text" class="form-control form-control-sm su-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">
     </td>
     <td style="width: 130px;">
-        <input type="date" name="items[{{ $idx }}][exp_date]" value="{{ optional($line->exp_date ?? null)->format('Y-m-d') }}" class="form-control form-control-sm su-exp-date">
+        <input type="text" name="items[{{ $idx }}][exp_date]" value="{{ optional($line->exp_date ?? null)->format('Y-m-d') }}" class="form-control form-control-sm datepicker su-exp-date" placeholder="YYYY-MM-DD" autocomplete="off">
     </td>
     <td style="width: 110px;">
         <input type="number" step="0.001" name="items[{{ $idx }}][physical_qty]" value="{{ $line->physical_qty ?? '' }}" class="form-control form-control-sm text-right su-physical-qty font-weight-bold" placeholder="0.000" required>

@@ -33,14 +33,24 @@
 
                     <div class="col-md-2 col-sm-6 mb-3">
                         <label class="font-weight-bold">Indent Date <span class="text-danger">*</span></label>
-                        <input type="date" name="indent_date" id="indent_date" class="form-control form-control-sm"
-                               value="{{ old('indent_date', now()->format('Y-m-d')) }}" required>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="indent_date" id="indent_date" class="form-control form-control-sm datepicker"
+                                   value="{{ old('indent_date', now()->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-md-2 col-sm-6 mb-3">
                         <label class="font-weight-bold">Required By Date</label>
-                        <input type="date" name="required_by_date" id="required_by_date" class="form-control form-control-sm"
-                               value="{{ old('required_by_date', now()->addDays(3)->format('Y-m-d')) }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="required_by_date" id="required_by_date" class="form-control form-control-sm datepicker"
+                                   value="{{ old('required_by_date', now()->addDays(3)->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-md-3 col-sm-6 mb-3">

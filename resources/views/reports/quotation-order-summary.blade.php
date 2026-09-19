@@ -19,11 +19,21 @@
                 <div class="row">
                     <div class="col-md-2">
                         <label class="small font-weight-bold">From</label>
-                        <input type="date" name="from" class="form-control form-control-sm" value="{{ $from }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="from" class="form-control form-control-sm datepicker" value="{{ $from }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="small font-weight-bold">To</label>
-                        <input type="date" name="to" class="form-control form-control-sm" value="{{ $to }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="to" class="form-control form-control-sm datepicker" value="{{ $to }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="small font-weight-bold">Branch</label>

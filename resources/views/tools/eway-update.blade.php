@@ -83,11 +83,21 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small text-muted mb-1 font-weight-bold">From Date</label>
-                    <input type="date" name="from_date" class="form-control form-control-sm" value="{{ request('from_date') }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="from_date" class="form-control form-control-sm datepicker" value="{{ request('from_date') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small text-muted mb-1 font-weight-bold">To Date</label>
-                    <input type="date" name="to_date" class="form-control form-control-sm" value="{{ request('to_date') }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="to_date" class="form-control form-control-sm datepicker" value="{{ request('to_date') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small text-muted mb-1 font-weight-bold">Search (Doc / Customer / Vehicle)</label>

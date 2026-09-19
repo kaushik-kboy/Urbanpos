@@ -90,12 +90,40 @@ class RolesAndPermissionsSeeder extends Seeder
      * for Owner — this is the real distinction between the two roles, not a cosmetic one.
      */
     private const MANAGER_MODULES = [
-        'purchase-invoices', 'purchase-returns', 'purchase-receipt-notes', 'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'sales-delivery-notes', 'damage-stocks',
-        'opening-stocks', 'stock-updates', 'stock-transfers', 'bill-settlements', 'loyalty-programs',
-        'item-categories', 'item-category-values', 'brands', 'uoms',
-        'customer-categories', 'customers', 'areas', 'pet-types', 'breeds', 'colors',
-        'suppliers', 'registers', 'tender-types', 'tender-type-values',
-        'purchase-orders', 'purchase-indents', 'repack', 'kit-preparation', 'kit-unpack', 'till',
+        'purchase-invoices',
+        'purchase-returns',
+        'purchase-receipt-notes',
+        'sales-bills',
+        'sales-returns',
+        'sales-quotations',
+        'sales-orders',
+        'sales-delivery-notes',
+        'damage-stocks',
+        'opening-stocks',
+        'stock-updates',
+        'stock-transfers',
+        'bill-settlements',
+        'loyalty-programs',
+        'item-categories',
+        'item-category-values',
+        'brands',
+        'uoms',
+        'customer-categories',
+        'customers',
+        'areas',
+        'pet-types',
+        'breeds',
+        'colors',
+        'suppliers',
+        'registers',
+        'tender-types',
+        'tender-type-values',
+        'purchase-orders',
+        'purchase-indents',
+        'repack',
+        'kit-preparation',
+        'kit-unpack',
+        'till',
     ];
 
     /**
@@ -109,29 +137,29 @@ class RolesAndPermissionsSeeder extends Seeder
 
     public function run(): void
     {
-        $permissions = [];
-        foreach (self::MODULE_ACTIONS as $module => $actions) {
-            foreach ($actions as $action) {
-                $permissions[] = Permission::firstOrCreate(['name' => "{$module}.{$action}", 'guard_name' => 'web']);
-            }
-        }
+        // $permissions = [];
+        // foreach (self::MODULE_ACTIONS as $module => $actions) {
+        //     foreach ($actions as $action) {
+        //         $permissions[] = Permission::firstOrCreate(['name' => "{$module}.{$action}", 'guard_name' => 'web']);
+        //     }
+        // }
 
-        $owner = Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
-        $owner->syncPermissions($permissions);
+        // $owner = Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
+        // $owner->syncPermissions($permissions);
 
-        $manager = Role::firstOrCreate(['name' => 'Manager', 'guard_name' => 'web']);
-        $managerPermissions = collect($permissions)->filter(
-            fn (Permission $permission) => in_array(explode('.', $permission->name)[0], self::MANAGER_MODULES, true)
-                || in_array($permission->name, self::MANAGER_EXTRA_PERMISSIONS, true)
-        );
-        $manager->syncPermissions($managerPermissions);
+        // $manager = Role::firstOrCreate(['name' => 'Manager', 'guard_name' => 'web']);
+        // $managerPermissions = collect($permissions)->filter(
+        //     fn (Permission $permission) => in_array(explode('.', $permission->name)[0], self::MANAGER_MODULES, true)
+        //         || in_array($permission->name, self::MANAGER_EXTRA_PERMISSIONS, true)
+        // );
+        // $manager->syncPermissions($managerPermissions);
 
-        $cashier = Role::firstOrCreate(['name' => 'Cashier', 'guard_name' => 'web']);
-        $cashier->syncPermissions([
-            'sales-bills.create',
-            'sales-returns.create',
-            'till.open',
-            'till.close',
-        ]);
+        // $cashier = Role::firstOrCreate(['name' => 'Cashier', 'guard_name' => 'web']);
+        // $cashier->syncPermissions([
+        //     'sales-bills.create',
+        //     'sales-returns.create',
+        //     'till.open',
+        //     'till.close',
+        // ]);
     }
 }

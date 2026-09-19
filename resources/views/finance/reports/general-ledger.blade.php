@@ -18,9 +18,19 @@
                     @endforeach
                 </select>
                 <label class="mr-2">From</label>
-                <input type="date" name="from" value="{{ $from }}" class="form-control form-control-sm mr-3">
+                <div class="input-group input-group-sm mr-3">
+                    <input type="text" name="from" value="{{ $from }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
                 <label class="mr-2">To</label>
-                <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm mr-3">
+                <div class="input-group input-group-sm mr-3">
+                    <input type="text" name="to" value="{{ $to }}" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
+                    <div class="input-group-append">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                </div>
                 <button type="submit" class="btn btn-primary btn-sm">Apply</button>
             </form>
 

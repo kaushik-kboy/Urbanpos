@@ -20,11 +20,21 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">From Date</label>
-                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="date_from" class="form-control form-control-sm datepicker" value="{{ request('date_from') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">To Date</label>
-                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="date_to" class="form-control form-control-sm datepicker" value="{{ request('date_to') }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>

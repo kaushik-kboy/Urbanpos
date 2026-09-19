@@ -45,7 +45,12 @@
                 <div class="row">
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Dispatch Date <span class="text-danger">*</span></label>
-                        <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', date('Y-m-d')) }}" required>
+                        <div class="input-group">
+                            <input type="text" name="delivery_date" class="form-control datepicker" value="{{ old('delivery_date', date('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Branch <span class="text-danger">*</span></label>
@@ -104,7 +109,12 @@
                 <div class="row">
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">LR Date</label>
-                        <input type="date" name="lr_date" class="form-control" value="{{ old('lr_date', date('Y-m-d')) }}">
+                        <div class="input-group">
+                            <input type="text" name="lr_date" class="form-control datepicker" value="{{ old('lr_date', date('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-9 col-sm-6 mb-3">
                         <label class="font-weight-bold">Delivery / Destination Address</label>
@@ -184,7 +194,7 @@
                                     <input type="text" name="items[{{ $idx }}][batch_no]" class="form-control form-control-sm" value="{{ $batch }}" placeholder="Batch">
                                 </td>
                                 <td>
-                                    <input type="date" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm" value="{{ $exp }}">
+                                    <input type="text" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm datepicker" value="{{ $exp }}" placeholder="YYYY-MM-DD" autocomplete="off">
                                 </td>
                                 <td class="text-right align-middle font-weight-bold text-success row-total">₹0.00</td>
                                 <td class="text-center align-middle">
@@ -256,7 +266,7 @@
                 <input type="text" name="items[__INDEX__][batch_no]" class="form-control form-control-sm" value="" placeholder="Batch">
             </td>
             <td>
-                <input type="date" name="items[__INDEX__][exp_date]" class="form-control form-control-sm" value="">
+                <input type="text" name="items[__INDEX__][exp_date]" class="form-control form-control-sm datepicker" value="" placeholder="YYYY-MM-DD" autocomplete="off">
             </td>
             <td class="text-right align-middle font-weight-bold text-success row-total">₹0.00</td>
             <td class="text-center align-middle">

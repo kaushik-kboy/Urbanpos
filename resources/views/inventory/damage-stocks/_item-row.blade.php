@@ -46,9 +46,11 @@
 
     {{-- Exp Date --}}
     <td style="width: 130px;">
-        <input type="date" name="items[{{ $idx }}][exp_date]" 
+        <input type="text" name="items[{{ $idx }}][exp_date]" 
                value="{{ $expDate }}" 
-               class="form-control form-control-sm item-exp-date">
+               class="form-control form-control-sm datepicker item-exp-date"
+               placeholder="YYYY-MM-DD"
+               autocomplete="off">
     </td>
 
     {{-- Qty --}}

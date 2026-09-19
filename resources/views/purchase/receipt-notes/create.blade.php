@@ -42,7 +42,12 @@
                 <div class="row">
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Receipt Date <span class="text-danger">*</span></label>
-                        <input type="date" name="receipt_date" class="form-control" value="{{ old('receipt_date', date('Y-m-d')) }}" required>
+                        <div class="input-group">
+                            <input type="text" name="receipt_date" class="form-control datepicker" value="{{ old('receipt_date', date('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Branch <span class="text-danger">*</span></label>
@@ -86,7 +91,12 @@
                     </div>
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Challan Date</label>
-                        <input type="date" name="supplier_challan_date" class="form-control" value="{{ old('supplier_challan_date', date('Y-m-d')) }}">
+                        <div class="input-group">
+                            <input type="text" name="supplier_challan_date" class="form-control datepicker" value="{{ old('supplier_challan_date', date('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-3 col-sm-6 mb-3">
                         <label class="font-weight-bold">Vehicle No</label>
@@ -180,7 +190,7 @@
                                     <input type="text" name="items[{{ $idx }}][batch_no]" class="form-control form-control-sm" value="{{ $batch }}" placeholder="Batch">
                                 </td>
                                 <td>
-                                    <input type="date" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm" value="{{ $exp }}">
+                                    <input type="text" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm datepicker" value="{{ $exp }}" placeholder="YYYY-MM-DD" autocomplete="off">
                                 </td>
                                 <td class="text-right align-middle font-weight-bold text-primary row-total">₹0.00</td>
                                 <td class="text-center align-middle">
@@ -261,7 +271,7 @@
                 <input type="text" name="items[__INDEX__][batch_no]" class="form-control form-control-sm" placeholder="Batch">
             </td>
             <td>
-                <input type="date" name="items[__INDEX__][exp_date]" class="form-control form-control-sm">
+                <input type="text" name="items[__INDEX__][exp_date]" class="form-control form-control-sm datepicker" placeholder="YYYY-MM-DD" autocomplete="off">
             </td>
             <td class="text-right align-middle font-weight-bold text-primary row-total">₹0.00</td>
             <td class="text-center align-middle">

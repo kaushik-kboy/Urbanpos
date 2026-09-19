@@ -407,52 +407,7 @@
                 </button>
             </div>
             <div class="modal-body p-0" style="background-color: #f8f9fa;">
-                <style>
-                    .tender-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-                    .tender-table td { padding: 4px 8px; border: 1px solid #ced4da; vertical-align: middle; font-size: 0.92rem; }
-                    .tender-label { background-color: #e9ecef; font-weight: 600; color: #212529; width: 38%; }
-                    .tender-table input.form-control, .tender-table select.form-control {
-                        border: 1px solid #adb5bd;
-                        height: 28px;
-                        padding: 2px 8px;
-                        font-weight: 600;
-                        border-radius: 2px;
-                        font-size: 0.92rem;
-                        background-color: #fff;
-                    }
-                    .tender-table input.form-control:focus, .tender-table select.form-control:focus {
-                        border-color: #0078d7;
-                        box-shadow: 0 0 0 2px rgba(0, 120, 215, 0.25);
-                        background-color: #ffffea;
-                    }
-                    .tender-summary-label { background-color: #e9ecef; font-weight: 600; color: #212529; width: 40%; }
-                    .tender-summary-val { font-weight: 700; font-size: 0.95rem; background-color: #fff; padding: 4px 10px; }
-                    .tender-btn {
-                        border: 1px solid #7092be;
-                        background: linear-gradient(180deg, #fbfdff 0%, #e8f0f8 100%);
-                        color: #111;
-                        font-weight: 600;
-                        padding: 3px 25px;
-                        border-radius: 3px;
-                        min-width: 85px;
-                        font-size: 0.9rem;
-                        cursor: pointer;
-                        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-                    }
-                    .tender-btn:hover {
-                        background: linear-gradient(180deg, #eaf2fc 0%, #d5e5f7 100%);
-                        border-color: #3b6ea5;
-                    }
-                    .tender-hotkey-bar {
-                        border-top: 1px solid #e05b5b;
-                        color: #c92a2a;
-                        font-size: 0.85rem;
-                        padding: 4px 10px;
-                        background-color: #fff5f5;
-                        font-weight: 600;
-                        letter-spacing: 0.2px;
-                    }
-                </style>
+
 
                 <!-- Upper Section: 2 Column Inputs -->
                 <div class="row no-gutters">
