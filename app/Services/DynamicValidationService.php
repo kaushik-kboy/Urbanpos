@@ -54,6 +54,12 @@ class DynamicValidationService
     private array $fieldAliases = [
         'gstin' => 'gst_no',
         'gst_no' => 'gstin',
+        'item_code' => 'ean_upc_code',
+        'ean_upc_code' => 'item_code',
+        'code' => 'erp_code',
+        'erp_code' => 'code',
+        'address' => 'address1',
+        'address1' => 'address',
     ];
 
     /**
@@ -68,13 +74,32 @@ class DynamicValidationService
             }
 
             foreach ($configs as $fieldName => $config) {
+                // If both canonical field and alias exist in configs, prevent optional/non-unique config from clobbering strict alias
+                if (isset($this->fieldAliases[$fieldName])) {
+                    $alias = $this->fieldAliases[$fieldName];
+                    if ($configs->has($alias)) {
+                        $aliasConfig = $configs[$alias];
+                        if (!$config->is_required && $aliasConfig->is_required) {
+                            continue;
+                        }
+                        if (!$config->is_unique && $aliasConfig->is_unique) {
+                            continue;
+                        }
+                    }
+                }
+
                 $targetField = $fieldName;
                 if (!isset($rules[$targetField])) {
                     $alias = $this->fieldAliases[$fieldName] ?? null;
                     if ($alias && isset($rules[$alias])) {
                         $targetField = $alias;
                     } else {
-                        continue;
+                        // If not in base rules but configured as required, add it dynamically
+                        if ($config->is_required) {
+                            $rules[$targetField] = ['required'];
+                        } else {
+                            continue;
+                        }
                     }
                 }
 
@@ -95,6 +120,7 @@ class DynamicValidationService
                         'name',
                         'item_code',
                         'code',
+                        'erp_code',
                         'branch_id',
                         'supplier_id',
                         'customer_id',
@@ -106,6 +132,11 @@ class DynamicValidationService
                         'return_number',
                         'indent_number',
                         'receipt_number',
+                        'delivery_number',
+                        'transfer_number',
+                        'entry_number',
+                        'damage_number',
+                        'update_number',
                     ];
                     if (!in_array($targetField, $protectedKeys, true)) {
                         $ruleList = array_values(array_filter($ruleList, fn ($r) => $r !== 'required'));

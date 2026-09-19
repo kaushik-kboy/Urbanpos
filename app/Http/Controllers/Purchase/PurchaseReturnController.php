@@ -477,7 +477,7 @@ class PurchaseReturnController extends Controller
 
     private function validateData(Request $request): array
     {
-        $header = $request->validate([
+        $headerRules = [
             'return_date' => ['required', 'date'],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
@@ -488,7 +488,11 @@ class PurchaseReturnController extends Controller
             'round_off' => ['nullable', 'numeric'],
             'remarks' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('purchase_returns', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],

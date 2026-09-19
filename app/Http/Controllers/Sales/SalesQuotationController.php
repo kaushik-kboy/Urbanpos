@@ -221,7 +221,7 @@ class SalesQuotationController extends Controller
 
     private function validateData(Request $request): array
     {
-        $header = $request->validate([
+        $headerRules = [
             'quotation_date' => ['required', 'date'],
             'valid_until' => ['nullable', 'date'],
             'customer_id' => ['required', 'exists:customers,id'],
@@ -230,7 +230,11 @@ class SalesQuotationController extends Controller
             'round_off' => ['nullable', 'numeric'],
             'remarks' => ['nullable', 'string'],
             'status' => ['nullable', 'in:Draft,Sent,Accepted,Converted,Cancelled'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('sales_quotations', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $header['quotation_date'] = $this->normalizeDate($header['quotation_date']);
         if (!empty($header['valid_until'])) {

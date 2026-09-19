@@ -301,7 +301,7 @@ class PurchaseOrderController extends Controller
 
     private function validateData(Request $request): array
     {
-        $header = $request->validate([
+        $headerRules = [
             'po_date' => ['required', 'date'],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
@@ -320,7 +320,11 @@ class PurchaseOrderController extends Controller
             // the guarded destroy() action (requires a reason, blocks if already invoiced,
             // writes an audit log), never silently via this form's status dropdown.
             'status' => ['required', 'in:Open,Closed'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('purchase_orders', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $header['po_date'] = $this->normalizeDate($header['po_date']);
 

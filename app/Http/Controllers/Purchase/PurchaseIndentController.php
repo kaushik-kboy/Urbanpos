@@ -72,7 +72,7 @@ class PurchaseIndentController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $rules = [
             'indent_date' => ['required', 'date'],
             'required_by_date' => ['nullable', 'date', 'after_or_equal:indent_date'],
             'branch_id' => ['required', 'exists:branches,id'],
@@ -84,7 +84,11 @@ class PurchaseIndentController extends Controller
             'items.*.requested_qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.estimated_cost' => ['nullable', 'numeric', 'min:0'],
             'items.*.remarks' => ['nullable', 'string', 'max:255'],
-        ]);
+        ];
+
+        $messages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('purchase_indents', $rules, $messages);
+        $data = $request->validate($rules, $messages);
 
         $indent = DB::transaction(function () use ($data, $request) {
             $totRequestedQty = 0;

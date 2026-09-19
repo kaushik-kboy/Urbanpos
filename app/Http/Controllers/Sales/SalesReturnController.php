@@ -351,7 +351,7 @@ class SalesReturnController extends Controller
         })->values()->all();
         $request->merge(['items' => $filteredItems]);
 
-        $header = $request->validate([
+        $headerRules = [
             'return_date' => ['required', 'date'],
             'customer_id' => ['required', 'exists:customers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
@@ -363,7 +363,11 @@ class SalesReturnController extends Controller
             'gst_calamity_cess' => ['nullable', 'numeric', 'min:0'],
             'remarks' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('sales_returns', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $header['return_date'] = $this->normalizeDate($header['return_date']);
 

@@ -311,7 +311,7 @@ class PurchaseReceiptNoteController extends Controller
 
     private function validateData(Request $request): array
     {
-        $header = $request->validate([
+        $headerRules = [
             'receipt_date' => ['required', 'date'],
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
@@ -322,7 +322,11 @@ class PurchaseReceiptNoteController extends Controller
             'transporter_name' => ['nullable', 'string', 'max:100'],
             'remarks' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('purchase_receipt_notes', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $items = $request->validate([
             'items' => ['required', 'array', 'min:1'],

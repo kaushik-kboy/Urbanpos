@@ -324,13 +324,17 @@ class OpeningStockController extends Controller
 
     private function validateData(Request $request): array
     {
-        $header = $request->validate([
+        $headerRules = [
             'branch_id' => ['required', 'exists:branches,id'],
             'entry_date' => ['required', 'date'],
             'remarks' => ['nullable', 'string'],
             'message' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('opening_stocks', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $header['entry_date'] = $this->normalizeDate($header['entry_date']);
 

@@ -300,11 +300,15 @@ class StockUpdateController extends Controller
 
     private function validateData(Request $request): array
     {
-        $header = $request->validate([
+        $headerRules = [
             'branch_id' => ['required', 'exists:branches,id'],
             'entry_date' => ['required', 'date'],
             'remarks' => ['nullable', 'string'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('stock_updates', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $header['entry_date'] = $this->normalizeDate($header['entry_date']);
 

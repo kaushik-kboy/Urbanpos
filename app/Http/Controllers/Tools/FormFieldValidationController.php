@@ -211,7 +211,7 @@ class FormFieldValidationController extends Controller
         $moduleKey = $request->input('module_key', 'purchase_invoices');
 
         $seeder = new FormFieldValidationSeeder();
-        $seeder->run();
+        $seeder->run($moduleKey);
 
         $this->dynamicValidationService->clearCache($moduleKey);
 

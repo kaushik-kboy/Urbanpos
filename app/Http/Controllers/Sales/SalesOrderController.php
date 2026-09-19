@@ -239,7 +239,7 @@ class SalesOrderController extends Controller
 
     private function validateData(Request $request): array
     {
-        $header = $request->validate([
+        $headerRules = [
             'order_date' => ['required', 'date'],
             'expected_delivery_date' => ['nullable', 'date'],
             'customer_id' => ['required', 'exists:customers,id'],
@@ -249,7 +249,11 @@ class SalesOrderController extends Controller
             'round_off' => ['nullable', 'numeric'],
             'remarks' => ['nullable', 'string'],
             'status' => ['nullable', 'in:Open,Partially Fulfilled,Converted,Cancelled'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('sales_orders', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         $header['order_date'] = $this->normalizeDate($header['order_date']);
         if (!empty($header['expected_delivery_date'])) {

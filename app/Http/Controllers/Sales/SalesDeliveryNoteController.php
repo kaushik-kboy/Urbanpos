@@ -336,7 +336,7 @@ class SalesDeliveryNoteController extends Controller
     private function validateData(Request $request): array
     {
         $user = $request->user();
-        $header = $request->validate([
+        $headerRules = [
             'delivery_date' => ['required', 'date'],
             'customer_id' => ['required', 'exists:customers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
@@ -349,7 +349,11 @@ class SalesDeliveryNoteController extends Controller
             'delivery_address' => ['nullable', 'string'],
             'remarks' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string'],
-        ]);
+        ];
+
+        $headerMessages = [];
+        app(\App\Services\DynamicValidationService::class)->applyTo('sales_delivery_notes', $headerRules, $headerMessages);
+        $header = $request->validate($headerRules, $headerMessages);
 
         if ($user && $user->branch_id && !$user->hasRole('Owner')) {
             $header['branch_id'] = $user->branch_id;
