@@ -425,6 +425,13 @@ Route::middleware('auth')->post('/active-branch', function (\Illuminate\Http\Req
     ]);
 })->name('set-active-branch');
 
+// User Dashboard Customizer Preferences
+Route::middleware('auth')->prefix('user/dashboard-preferences')->name('user.dashboard-preferences.')->group(function () {
+    Route::post('/', [\App\Http\Controllers\UserDashboardPreferenceController::class, 'save'])->name('save');
+    Route::post('/reset', [\App\Http\Controllers\UserDashboardPreferenceController::class, 'reset'])->name('reset');
+});
+
 // Public guest route for customer WhatsApp invoice/receipt view (no login required)
 Route::get('receipt/v/{salesBill}/{hash}', [\App\Http\Controllers\Sales\SalesBillController::class, 'publicReceipt'])
     ->name('sales-bills.public-receipt');
+

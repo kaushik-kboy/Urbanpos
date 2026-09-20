@@ -11,6 +11,9 @@
             <small class="text-muted">Real-time store metrics, visual analytics, and fast-action command center</small>
         </div>
         <div class="d-flex align-items-center mt-2 mt-md-0">
+            <button type="button" class="btn btn-outline-dark btn-sm shadow-sm font-weight-bold mr-2" data-toggle="modal" data-target="#dashboardCustomizerModal" id="btnOpenDashboardCustomizer">
+                <i class="fas fa-sliders-h mr-1 text-primary"></i> Customize Dashboard
+            </button>
             <span class="badge badge-primary px-3 py-2 shadow-sm font-weight-normal">
                 <i class="far fa-calendar-alt mr-1"></i> {{ now()->format('d M Y') }}
             </span>
@@ -28,69 +31,61 @@
         </div>
     @endif
 
-    {{-- Fast Action Command Center --}}
+    {{-- Fast Action Command Center (Dynamic Auto-Fill Grid) --}}
     <div class="card card-outline card-secondary shadow-sm mb-4">
-        <div class="card-header py-2 bg-light">
+        <div class="card-header py-2 bg-light d-flex justify-content-between align-items-center">
             <h3 class="card-title text-sm font-weight-bold text-uppercase text-secondary mb-0">
                 <i class="fas fa-bolt mr-1 text-warning"></i> Fast Action Command Center
             </h3>
+            <div class="card-tools">
+                <button type="button" class="btn btn-tool text-xs font-weight-bold" data-toggle="modal" data-target="#dashboardCustomizerModal" title="Customize Buttons">
+                    <i class="fas fa-sliders-h mr-1 text-primary"></i> Customize
+                </button>
+            </div>
         </div>
         <div class="card-body py-3">
-            <div class="row text-center">
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('sales.sales-bills.create') }}" class="btn btn-block btn-primary shadow-sm py-2">
-                        <i class="fas fa-cash-register fa-lg d-block mb-1"></i>
-                        <span class="font-weight-bold">New POS Bill</span>
+            <div class="dashboard-shortcut-grid">
+                @forelse($activeShortcuts as $shortcut)
+                    @php
+                        $btnClass = match($shortcut['color'] ?? 'primary') {
+                            'primary' => 'btn-primary',
+                            'success' => 'btn-success',
+                            'outline-primary' => 'btn-outline-primary',
+                            'outline-info' => 'btn-outline-info',
+                            'outline-success' => 'btn-outline-success',
+                            'outline-danger' => 'btn-outline-danger',
+                            'outline-warning' => 'btn-outline-warning text-dark',
+                            'outline-secondary' => 'btn-outline-secondary',
+                            'outline-purple' => 'btn-outline-purple text-dark border-secondary',
+                            'outline-dark' => 'btn-outline-dark',
+                            default => 'btn-outline-primary',
+                        };
+                    @endphp
+                    <a href="{{ route($shortcut['route']) }}" class="btn {{ $btnClass }} shadow-sm shortcut-tile position-relative">
+                        <i class="{{ $shortcut['icon'] }} fa-lg mb-1"></i>
+                        <span class="font-weight-bold shortcut-title">{{ $shortcut['title'] }}</span>
+                        @if(isset($shortcut['badge_value']) && $shortcut['badge_value'] > 0)
+                            <span class="badge badge-danger position-absolute" style="top: 6px; right: 6px; font-size: 10px; border-radius: 10px; padding: 2px 6px;">
+                                {{ $shortcut['badge_value'] }}
+                            </span>
+                        @endif
                     </a>
-                </div>
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('sales.delivery-notes.create') }}" class="btn btn-block btn-outline-primary shadow-sm py-2">
-                        <i class="fas fa-truck-loading fa-lg d-block mb-1 text-primary"></i>
-                        <span class="font-weight-bold">New Delivery Note</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('sales.sales-quotations.create') }}" class="btn btn-block btn-outline-info shadow-sm py-2">
-                        <i class="fas fa-file-signature fa-lg d-block mb-1"></i>
-                        <span class="font-weight-bold">New Quotation</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('purchase.purchase-orders.create') }}" class="btn btn-block btn-outline-purple shadow-sm py-2 text-dark border-secondary">
-                        <i class="fas fa-cart-plus fa-lg d-block mb-1 text-primary"></i>
-                        <span class="font-weight-bold">New Purchase Order</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('purchase.purchase-receipt-notes.create') }}" class="btn btn-block btn-success shadow-sm py-2">
-                        <i class="fas fa-truck-loading fa-lg d-block mb-1"></i>
-                        <span class="font-weight-bold">New GRN Receipt</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('finance.settlements.create') }}" class="btn btn-block btn-outline-warning shadow-sm py-2 text-dark">
-                        <i class="fas fa-hand-holding-usd fa-lg d-block mb-1 text-warning"></i>
-                        <span class="font-weight-bold">Credit Settlement</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('inventory.barcode.index') }}" class="btn btn-block btn-outline-secondary shadow-sm py-2">
-                        <i class="fas fa-barcode fa-lg d-block mb-1 text-muted"></i>
-                        <span class="font-weight-bold">Print Barcodes</span>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3 col-lg-auto mb-2 flex-grow-1">
-                    <a href="{{ route('reports.reorder-report') }}" class="btn btn-block btn-outline-danger shadow-sm py-2 position-relative">
-                        <i class="fas fa-exclamation-triangle fa-lg d-block mb-1 text-danger"></i>
-                        <span class="font-weight-bold">Low Stock ({{ $lowStockItems }})</span>
-                    </a>
-                </div>
+                @empty
+                    <div class="text-center py-4 text-muted w-100">
+                        <i class="fas fa-info-circle mr-1"></i> No shortcuts currently active. Click 
+                        <button type="button" class="btn btn-xs btn-primary ml-1 font-weight-bold" data-toggle="modal" data-target="#dashboardCustomizerModal">
+                            Customize Dashboard
+                        </button> to add fast-action buttons.
+                    </div>
+                @endforelse
             </div>
         </div>
     </div>
 
     {{-- Executive KPI Metrics --}}
+    @if(($activeWidgets['kpi_sales'] ?? true) || ($activeWidgets['kpi_stock'] ?? true))
     <div class="row">
+        @if($activeWidgets['kpi_sales'] ?? true)
         <div class="col-xl-3 col-md-6 col-12 mb-3">
             <div class="card bg-gradient-primary text-white shadow-sm h-100 mb-0">
                 <div class="card-body">
@@ -170,7 +165,9 @@
                 </div>
             </div>
         </div>
+        @endif
 
+        @if($activeWidgets['kpi_stock'] ?? true)
         <div class="col-xl-3 col-md-6 col-12 mb-3">
             <div class="card bg-gradient-warning text-dark shadow-sm h-100 mb-0">
                 <div class="card-body">
@@ -195,11 +192,15 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
+    @endif
 
     {{-- Charts Row 1: 30-Day Trend & Category Breakdown --}}
+    @if(($activeWidgets['revenue_trend'] ?? true) || ($activeWidgets['category_share'] ?? true))
     <div class="row">
-        <div class="col-lg-8 mb-4">
+        @if($activeWidgets['revenue_trend'] ?? true)
+        <div class="{{ ($activeWidgets['category_share'] ?? true) ? 'col-lg-8' : 'col-12' }} mb-4">
             <div class="card card-outline card-primary shadow-sm h-100">
                 <div class="card-header border-0 d-flex justify-content-between align-items-center">
                     <h3 class="card-title font-weight-bold text-dark">
@@ -214,8 +215,10 @@
                 </div>
             </div>
         </div>
+        @endif
 
-        <div class="col-lg-4 mb-4">
+        @if($activeWidgets['category_share'] ?? true)
+        <div class="{{ ($activeWidgets['revenue_trend'] ?? true) ? 'col-lg-4' : 'col-12' }} mb-4">
             <div class="card card-outline card-info shadow-sm h-100">
                 <div class="card-header border-0">
                     <h3 class="card-title font-weight-bold text-dark">
@@ -236,9 +239,12 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
+    @endif
 
     {{-- Charts Row 2: Top Items & Today's Hourly Velocity --}}
+    @if($activeWidgets['top_items'] ?? true)
     <div class="row">
         <div class="col-lg-6 mb-4">
             <div class="card card-outline card-success shadow-sm h-100">
@@ -279,11 +285,12 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- Operational Row 3: Active Till Sessions & Recent Transactions --}}
     <div class="row">
         {{-- Active Till Session Monitor --}}
-        <div class="col-lg-5 mb-4">
+        <div class="{{ ($activeWidgets['recent_bills'] ?? true) ? 'col-lg-5' : 'col-12' }} mb-4">
             <div class="card card-outline card-secondary shadow-sm h-100">
                 <div class="card-header border-0 d-flex justify-content-between align-items-center">
                     <h3 class="card-title font-weight-bold text-dark">
@@ -339,6 +346,7 @@
         </div>
 
         {{-- Recent Sales Bills & Open Quotations --}}
+        @if($activeWidgets['recent_bills'] ?? true)
         <div class="col-lg-7 mb-4">
             <div class="card card-outline card-primary shadow-sm h-100">
                 <div class="card-header border-0 p-2">
@@ -439,7 +447,11 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
+
+    {{-- Dashboard Personalization Modal --}}
+    @include('components.dashboard-customizer-modal')
 @stop
 
 @section('css')
@@ -452,6 +464,41 @@
 }
 .text-black-50 {
     color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Dynamic Responsive Auto-Fill Grid (Layout-Safe) */
+.dashboard-shortcut-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 12px;
+    width: 100%;
+}
+.shortcut-tile {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 84px;
+    border-radius: 8px;
+    text-align: center;
+    padding: 10px 8px;
+    text-decoration: none !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.shortcut-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.12) !important;
+}
+.shortcut-tile .shortcut-title {
+    font-size: 13px;
+    line-height: 1.25;
+    margin-top: 4px;
+}
+@media (max-width: 576px) {
+    .dashboard-shortcut-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
 }
 </style>
 @stop

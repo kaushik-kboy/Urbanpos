@@ -1,0 +1,283 @@
+<?php
+
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Master Dashboard Shortcut Registry
+    |--------------------------------------------------------------------------
+    | All available fast-action shortcuts with route, icon, theme, and Spatie permission.
+    | If 'permission' is null, any authenticated user can access it.
+    */
+    'shortcuts' => [
+        'pos_bill' => [
+            'key'         => 'pos_bill',
+            'title'       => 'New POS Bill',
+            'icon'        => 'fas fa-cash-register',
+            'color'       => 'primary',
+            'route'       => 'sales.sales-bills.create',
+            'permission'  => 'sales-bills.create',
+            'module'      => 'Sales',
+            'description' => 'Fast billing and cash register counter',
+        ],
+        'delivery_note' => [
+            'key'         => 'delivery_note',
+            'title'       => 'Delivery Note',
+            'icon'        => 'fas fa-truck-loading',
+            'color'       => 'outline-primary',
+            'route'       => 'sales.delivery-notes.create',
+            'permission'  => 'sales-delivery-notes.create',
+            'module'      => 'Sales',
+            'description' => 'Create dispatch and delivery challan',
+        ],
+        'sales_quotation' => [
+            'key'         => 'sales_quotation',
+            'title'       => 'New Quotation',
+            'icon'        => 'fas fa-file-signature',
+            'color'       => 'outline-info',
+            'route'       => 'sales.sales-quotations.create',
+            'permission'  => 'sales-quotations.create',
+            'module'      => 'Sales',
+            'description' => 'Create customer price estimate',
+        ],
+        'sales_order' => [
+            'key'         => 'sales_order',
+            'title'       => 'New Sales Order',
+            'icon'        => 'fas fa-clipboard-list',
+            'color'       => 'outline-primary',
+            'route'       => 'sales.sales-orders.create',
+            'permission'  => 'sales-orders.create',
+            'module'      => 'Sales',
+            'description' => 'Record advance customer sales order',
+        ],
+        'sales_return' => [
+            'key'         => 'sales_return',
+            'title'       => 'Sales Return',
+            'icon'        => 'fas fa-undo-alt',
+            'color'       => 'outline-danger',
+            'route'       => 'sales.sales-returns.create',
+            'permission'  => 'sales-returns.create',
+            'module'      => 'Sales',
+            'description' => 'Process customer product returns / exchange',
+        ],
+        'till_session' => [
+            'key'         => 'till_session',
+            'title'       => 'Till / Counter',
+            'icon'        => 'fas fa-calculator',
+            'color'       => 'outline-success',
+            'route'       => 'till.sessions.index',
+            'permission'  => 'till.open',
+            'module'      => 'POS',
+            'description' => 'Manage counter cash float & drawer sessions',
+        ],
+        'purchase_order' => [
+            'key'         => 'purchase_order',
+            'title'       => 'Purchase Order',
+            'icon'        => 'fas fa-cart-plus',
+            'color'       => 'outline-purple',
+            'route'       => 'purchase.purchase-orders.create',
+            'permission'  => 'purchase-orders.create',
+            'module'      => 'Purchase',
+            'description' => 'Raise supplier procurement PO',
+        ],
+        'purchase_receipt_note' => [
+            'key'         => 'purchase_receipt_note',
+            'title'       => 'GRN Receipt',
+            'icon'        => 'fas fa-boxes',
+            'color'       => 'success',
+            'route'       => 'purchase.purchase-receipt-notes.create',
+            'permission'  => 'purchase-receipt-notes.create',
+            'module'      => 'Purchase',
+            'description' => 'Goods inward receipt verification',
+        ],
+        'purchase_invoice' => [
+            'key'         => 'purchase_invoice',
+            'title'       => 'Purchase Bill',
+            'icon'        => 'fas fa-file-invoice-dollar',
+            'color'       => 'outline-success',
+            'route'       => 'purchase.purchase-invoices.create',
+            'permission'  => 'purchase-invoices.create',
+            'module'      => 'Purchase',
+            'description' => 'Enter supplier commercial invoice',
+        ],
+        'stock_transfer' => [
+            'key'         => 'stock_transfer',
+            'title'       => 'Stock Transfer',
+            'icon'        => 'fas fa-exchange-alt',
+            'color'       => 'outline-info',
+            'route'       => 'inventory.stock-transfers.create',
+            'permission'  => 'stock-transfers.create',
+            'module'      => 'Inventory',
+            'description' => 'Transfer stock between store branches',
+        ],
+        'credit_settlement' => [
+            'key'         => 'credit_settlement',
+            'title'       => 'Settlement',
+            'icon'        => 'fas fa-hand-holding-usd',
+            'color'       => 'outline-warning',
+            'route'       => 'finance.settlements.create',
+            'permission'  => 'bill-settlements.create',
+            'module'      => 'Finance',
+            'description' => 'Receive customer dues & ledger payment',
+        ],
+        'barcode_print' => [
+            'key'         => 'barcode_print',
+            'title'       => 'Print Barcodes',
+            'icon'        => 'fas fa-barcode',
+            'color'       => 'outline-secondary',
+            'route'       => 'inventory.barcode.index',
+            'permission'  => null,
+            'module'      => 'Inventory',
+            'description' => 'Generate and print thermal barcode stickers',
+        ],
+        'low_stock_report' => [
+            'key'         => 'low_stock_report',
+            'title'       => 'Low Stock Alert',
+            'icon'        => 'fas fa-exclamation-triangle',
+            'color'       => 'outline-danger',
+            'route'       => 'reports.reorder-report',
+            'permission'  => null,
+            'badge'       => 'low_stock_count',
+            'module'      => 'Reports',
+            'description' => 'View items running below reorder level',
+        ],
+        'quick_customer' => [
+            'key'         => 'quick_customer',
+            'title'       => 'New Customer',
+            'icon'        => 'fas fa-user-plus',
+            'color'       => 'outline-dark',
+            'route'       => 'master.customers.create',
+            'permission'  => 'customers.create',
+            'module'      => 'Master',
+            'description' => 'Register a new pet parent profile',
+        ],
+        'quick_item' => [
+            'key'         => 'quick_item',
+            'title'       => 'New Product',
+            'icon'        => 'fas fa-box-open',
+            'color'       => 'outline-dark',
+            'route'       => 'master.items.create',
+            'permission'  => 'items.create',
+            'module'      => 'Master',
+            'description' => 'Add new SKU to inventory catalog',
+        ],
+        'smart_analytics' => [
+            'key'         => 'smart_analytics',
+            'title'       => 'Analytics Studio',
+            'icon'        => 'fas fa-chart-line',
+            'color'       => 'outline-primary',
+            'route'       => 'reports.smart-analytics',
+            'permission'  => null,
+            'module'      => 'Reports',
+            'description' => 'Dynamic analytics, charts & slice-and-dice',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Shortcuts Presets by Role
+    |--------------------------------------------------------------------------
+    | Fallback layout when user hasn't saved custom preferences.
+    */
+    'role_defaults' => [
+        'Cashier' => [
+            'pos_bill',
+            'till_session',
+            'sales_return',
+        ],
+        'Sales' => [
+            'pos_bill',
+            'sales_quotation',
+            'sales_order',
+            'delivery_note',
+            'credit_settlement',
+            'quick_customer',
+        ],
+        'StoreKeeper' => [
+            'purchase_order',
+            'purchase_receipt_note',
+            'stock_transfer',
+            'low_stock_report',
+            'barcode_print',
+        ],
+        'Manager' => [
+            'pos_bill',
+            'sales_quotation',
+            'purchase_order',
+            'purchase_receipt_note',
+            'credit_settlement',
+            'low_stock_report',
+            'stock_transfer',
+            'smart_analytics',
+        ],
+        'Owner' => [
+            'pos_bill',
+            'delivery_note',
+            'sales_quotation',
+            'purchase_order',
+            'purchase_receipt_note',
+            'credit_settlement',
+            'barcode_print',
+            'low_stock_report',
+        ],
+        'default' => [
+            'pos_bill',
+            'delivery_note',
+            'sales_quotation',
+            'purchase_order',
+            'purchase_receipt_note',
+            'credit_settlement',
+            'barcode_print',
+            'low_stock_report',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Available Dashboard Widgets
+    |--------------------------------------------------------------------------
+    */
+    'widgets' => [
+        'kpi_sales' => [
+            'key'         => 'kpi_sales',
+            'title'       => 'Sales & Profit KPIs',
+            'description' => "Today's sales, month sales, profit margin, and purchase summary cards",
+            'default'     => true,
+            'permission'  => null,
+        ],
+        'kpi_stock' => [
+            'key'         => 'kpi_stock',
+            'title'       => 'Stock Valuation & Health',
+            'description' => 'Inventory value, low stock count, and out-of-stock count cards',
+            'default'     => true,
+            'permission'  => null,
+        ],
+        'revenue_trend' => [
+            'key'         => 'revenue_trend',
+            'title'       => '30-Day Revenue Trend Chart',
+            'description' => 'Interactive daily sales and bill count trend line graph',
+            'default'     => true,
+            'permission'  => null,
+        ],
+        'category_share' => [
+            'key'         => 'category_share',
+            'title'       => 'Category & Payment Breakdown',
+            'description' => 'Pie and donut charts for sales categories and payment modes',
+            'default'     => true,
+            'permission'  => null,
+        ],
+        'top_items' => [
+            'key'         => 'top_items',
+            'title'       => 'Top Selling Items',
+            'description' => 'List of top 5 fast-moving products with revenue contribution',
+            'default'     => true,
+            'permission'  => null,
+        ],
+        'recent_bills' => [
+            'key'         => 'recent_bills',
+            'title'       => 'Recent Sales Bills Table',
+            'description' => 'Quick table showing recent 5 invoices with quick view links',
+            'default'     => true,
+            'permission'  => null,
+        ],
+    ],
+];

@@ -24,8 +24,9 @@ class HomeController extends Controller
      *
      * @return void
      */
-    public function __construct()
-    {
+    public function __construct(
+        private readonly \App\Services\Dashboard\DashboardRegistryService $registryService
+    ) {
         $this->middleware('auth');
     }
 
@@ -171,10 +172,13 @@ class HomeController extends Controller
         $categoryAmounts = $categorySales->map(fn ($c) => round((float) $c->cat_revenue, 2))->values()->toArray();
 
         // 5. Today's Hourly Sales Velocity
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $hourExpr = $isSqlite ? "CAST(strftime('%H', created_at) AS INTEGER)" : "HOUR(created_at)";
+
         $rawHourly = SalesBill::where('status', '!=', 'Cancelled')
             ->whereDate('bill_date', $today)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->selectRaw('HOUR(created_at) as hr, SUM(total) as revenue, COUNT(*) as bills')
+            ->selectRaw("{$hourExpr} as hr, SUM(total) as revenue, COUNT(*) as bills")
             ->groupBy('hr')
             ->get()
             ->keyBy('hr');
@@ -221,6 +225,12 @@ class HomeController extends Controller
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->count();
 
+        // Dynamic Dashboard Shortcuts & Widgets
+        $activeShortcuts = $this->registryService->getActiveShortcutsForUser($user, $branchId);
+        $accessibleShortcuts = $this->registryService->getAccessibleShortcuts($user);
+        $activeWidgets = $this->registryService->getActiveWidgetsForUser($user);
+        $allWidgets = config('dashboard.widgets', []);
+
         return view('home', compact(
             'allBranches', 'branchId',
             'todaySales', 'todayBillsCount',
@@ -233,7 +243,8 @@ class HomeController extends Controller
             'categoryLabels', 'categoryAmounts',
             'hourlyLabels', 'hourlyRevenue', 'hourlyBills',
             'activeTills', 'recentBills', 'recentQuotations',
-            'openQuotationsCount', 'openOrdersCount'
+            'openQuotationsCount', 'openOrdersCount',
+            'activeShortcuts', 'accessibleShortcuts', 'activeWidgets', 'allWidgets'
         ));
     }
 }
