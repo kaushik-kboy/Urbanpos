@@ -76,6 +76,11 @@ class ChatOnClickWhatsAppService
     public function getPublicReceiptUrl(SalesBill $salesBill): string
     {
         $hash = $this->generateReceiptHash($salesBill);
+        $appUrl = config('app.url');
+        if (!empty($appUrl) && !str_contains($appUrl, 'localhost')) {
+            return rtrim($appUrl, '/') . "/receipt/v/{$salesBill->id}/{$hash}";
+        }
+
         return route('sales-bills.public-receipt', [
             'salesBill' => $salesBill->id,
             'hash'      => $hash,
