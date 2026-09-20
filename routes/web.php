@@ -331,6 +331,10 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::post('whatsapp-settings', [\App\Http\Controllers\Tools\WhatsAppSettingController::class, 'update'])->name('whatsapp-settings.update');
     Route::post('whatsapp-settings/test', [\App\Http\Controllers\Tools\WhatsAppSettingController::class, 'sendTest'])->name('whatsapp-settings.test');
 
+    // Receipt & Invoice Print Designer
+    Route::get('receipt-designer', [\App\Http\Controllers\Tools\ReceiptDesignerController::class, 'index'])->name('receipt-designer.index');
+    Route::post('receipt-designer', [\App\Http\Controllers\Tools\ReceiptDesignerController::class, 'update'])->name('receipt-designer.update');
+
     Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });
 

@@ -240,6 +240,16 @@ return [
             'module'      => 'Reports',
             'description' => 'Dynamic analytics, charts & slice-and-dice',
         ],
+        'receipt_designer' => [
+            'key'         => 'receipt_designer',
+            'title'       => 'Receipt Designer',
+            'icon'        => 'fas fa-receipt',
+            'color'       => 'outline-warning',
+            'route'       => 'tools.receipt-designer.index',
+            'permission'  => null,
+            'module'      => 'Master',
+            'description' => 'Customize bill print header, address, QR, barcodes & policies',
+        ],
     ],
 
     /*

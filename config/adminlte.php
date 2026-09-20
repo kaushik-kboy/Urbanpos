@@ -986,6 +986,12 @@ return [
                     'active' => ['tools/whatsapp-settings*'],
                 ],
                 [
+                    'text' => 'Receipt Designer',
+                    'url' => 'tools/receipt-designer',
+                    'icon' => 'fas fa-fw fa-receipt text-warning',
+                    'active' => ['tools/receipt-designer*'],
+                ],
+                [
                     'text' => 'Master Migration',
                     'url' => 'tools/master-migration',
                     'icon' => 'fas fa-fw fa-database',

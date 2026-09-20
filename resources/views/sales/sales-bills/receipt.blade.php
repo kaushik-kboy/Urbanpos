@@ -1,3 +1,31 @@
+@php
+    $receiptSettings = \App\Models\ReceiptSetting::current();
+    $paperSize = $receiptSettings->paper_size ?? '80mm';
+    $fontSize = $receiptSettings->font_size ?? 'normal';
+    $containerWidth = match($paperSize) {
+        '58mm' => '58mm',
+        'a4'   => '100%',
+        'a5'   => '100%',
+        default => '80mm',
+    };
+    $containerMaxWidth = match($paperSize) {
+        '58mm' => '240px',
+        'a4'   => '700px',
+        'a5'   => '500px',
+        default => '320px',
+    };
+    $baseFontSize = match($fontSize) {
+        'small' => '10.5px',
+        'large' => '13.5px',
+        default => '12px',
+    };
+    $pageSizeRule = match($paperSize) {
+        '58mm' => '58mm auto',
+        'a4'   => 'A4 portrait',
+        'a5'   => 'A5 portrait',
+        default => '80mm auto',
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,14 +45,14 @@
             font-family: 'Courier New', Courier, monospace, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #eef2f5;
             color: #000;
-            font-size: 12px;
+            font-size: {{ $baseFontSize }};
             line-height: 1.35;
             padding: 20px 0;
         }
 
         .receipt-container {
-            width: 80mm;
-            max-width: 320px;
+            width: {{ $containerWidth }};
+            max-width: {{ $containerMaxWidth }};
             margin: 0 auto;
             background: #fff;
             padding: 12px 10px;
@@ -33,8 +61,8 @@
         }
 
         .screen-toolbar {
-            width: 80mm;
-            max-width: 320px;
+            width: {{ $containerWidth }};
+            max-width: {{ $containerMaxWidth }};
             margin: 0 auto 12px auto;
             display: flex;
             justify-content: space-between;
@@ -83,6 +111,7 @@
             font-weight: 900;
             letter-spacing: 0.5px;
             margin-bottom: 2px;
+            text-transform: uppercase;
         }
 
         .store-sub {
@@ -168,7 +197,7 @@
         .footer-note {
             font-size: 10px;
             margin-top: 6px;
-            line-height: 1.3;
+            line-height: 1.35;
         }
 
         @media print {
@@ -189,10 +218,11 @@
                 margin: 0 !important;
             }
             @page {
-                size: 80mm auto;
+                size: {{ $pageSizeRule }};
                 margin: 0mm 2mm;
             }
         }
+        {!! $receiptSettings->custom_css ?? '' !!}
     </style>
 </head>
 <body>
@@ -219,18 +249,30 @@
     </div>
 
     <div class="receipt-container">
+        {{-- Store Logo (Optional) --}}
+        @if ($receiptSettings->show_logo && $receiptSettings->logo_path)
+            <div class="text-center" style="margin-bottom: 6px;">
+                <img src="{{ asset($receiptSettings->logo_path) }}" alt="{{ $receiptSettings->store_name }}" style="max-width: {{ $receiptSettings->logo_width }}px; height: auto;">
+            </div>
+        @endif
+
         {{-- Store Header --}}
         <div class="text-center">
-            <div class="store-title">URBAN PETS</div>
+            <div class="store-title">{{ $receiptSettings->store_name ?: 'URBAN PETS' }}</div>
+            @if ($receiptSettings->tagline)
+                <div class="store-sub font-bold">{{ $receiptSettings->tagline }}</div>
+            @endif
             <div class="store-sub font-bold">{{ $salesBill->branch?->name ?? 'Main Branch' }}</div>
-            @if ($salesBill->branch?->address)
+            @if ($receiptSettings->header_address)
+                <div class="store-sub">{!! nl2br(e($receiptSettings->header_address)) !!}</div>
+            @elseif ($salesBill->branch?->address)
                 <div class="store-sub">{{ $salesBill->branch->address }}</div>
             @endif
-            @if ($salesBill->branch?->phone)
-                <div class="store-sub">Tel: {{ $salesBill->branch->phone }}</div>
+            @if ($receiptSettings->phone || $salesBill->branch?->phone)
+                <div class="store-sub">Tel: {{ $receiptSettings->phone ?: $salesBill->branch?->phone }}@if ($receiptSettings->phone_alt) / {{ $receiptSettings->phone_alt }}@endif</div>
             @endif
-            @if ($salesBill->branch?->gst_number)
-                <div class="store-sub font-bold">GSTIN: {{ $salesBill->branch->gst_number }}</div>
+            @if ($receiptSettings->gstin || $salesBill->branch?->gst_number)
+                <div class="store-sub font-bold">GSTIN: {{ $receiptSettings->gstin ?: $salesBill->branch?->gst_number }}</div>
             @endif
         </div>
 
@@ -258,6 +300,12 @@
                         Cust: <strong>{{ $salesBill->customer->name }}</strong>
                         @if ($salesBill->customer->phone)
                             ({{ $salesBill->customer->phone }})
+                        @endif
+                        {{-- Customer Pet Name (Dynamic Toggle) --}}
+                        @if ($receiptSettings->show_customer_pet_name && $salesBill->customer->pets && $salesBill->customer->pets->count() > 0)
+                            <div style="font-size: 10.5px; font-weight: bold; color: #2c3e50;">
+                                🐾 Pet: {{ $salesBill->customer->pets->pluck('name')->filter()->join(', ') }}
+                            </div>
                         @endif
                     </td>
                 </tr>
@@ -288,6 +336,10 @@
                             @if ($item->item?->item_code || $item->item?->ean_upc_code)
                                 [{{ $item->item->item_code ?: $item->item->ean_upc_code }}]
                             @endif
+                            {{-- HSN Code (Dynamic Toggle) --}}
+                            @if ($receiptSettings->show_hsn_code && $item->item?->hsn_code)
+                                (HSN: {{ $item->item->hsn_code }})
+                            @endif
                             @if ($item->gst_percent > 0)
                                 (GST {{ $item->gst_percent }}%)
                             @endif
@@ -296,7 +348,8 @@
                         <td class="text-right">₹{{ number_format($item->sell_price, 2) }}</td>
                         <td class="text-right font-bold">₹{{ number_format($item->net_amount, 2) }}</td>
                     </tr>
-                    @if ($item->disc_amount > 0)
+                    {{-- Item Discount (Dynamic Toggle) --}}
+                    @if ($receiptSettings->show_discount && $item->disc_amount > 0)
                         <tr>
                             <td colspan="4" class="text-right store-sub" style="color: #666; font-style: italic;">
                                 Disc: -₹{{ number_format($item->disc_amount, 2) }} ({{ $item->disc_percent }}%)
@@ -315,35 +368,37 @@
                 <td class="text-left">Total Items / Qty:</td>
                 <td class="text-right font-bold">{{ count($salesBill->items) }} / {{ number_format($salesBill->items->sum('qty'), 3) }}</td>
             </tr>
-            @if ($salesBill->disc_amount > 0)
+            @if ($receiptSettings->show_discount && $salesBill->disc_amount > 0)
                 <tr>
                     <td class="text-left">Total Discount:</td>
                     <td class="text-right">-₹{{ number_format($salesBill->disc_amount, 2) }}</td>
                 </tr>
             @endif
-            <tr>
-                <td class="text-left">Taxable Subtotal:</td>
-                <td class="text-right">₹{{ number_format(max(0, $salesBill->total - $salesBill->total_gst - $salesBill->round_off), 2) }}</td>
-            </tr>
-            @if ($salesBill->total_cgst > 0 || $salesBill->total_sgst > 0)
+            @if ($receiptSettings->show_tax_breakup)
                 <tr>
-                    <td class="text-left">CGST:</td>
-                    <td class="text-right">₹{{ number_format($salesBill->total_cgst, 2) }}</td>
+                    <td class="text-left">Taxable Subtotal:</td>
+                    <td class="text-right">₹{{ number_format(max(0, $salesBill->total - $salesBill->total_gst - $salesBill->round_off), 2) }}</td>
                 </tr>
-                <tr>
-                    <td class="text-left">SGST:</td>
-                    <td class="text-right">₹{{ number_format($salesBill->total_sgst, 2) }}</td>
-                </tr>
-            @elseif ($salesBill->total_igst > 0)
-                <tr>
-                    <td class="text-left">IGST:</td>
-                    <td class="text-right">₹{{ number_format($salesBill->total_igst, 2) }}</td>
-                </tr>
-            @elseif ($salesBill->total_gst > 0)
-                <tr>
-                    <td class="text-left">GST Tax:</td>
-                    <td class="text-right">₹{{ number_format($salesBill->total_gst, 2) }}</td>
-                </tr>
+                @if ($salesBill->total_cgst > 0 || $salesBill->total_sgst > 0)
+                    <tr>
+                        <td class="text-left">CGST:</td>
+                        <td class="text-right">₹{{ number_format($salesBill->total_cgst, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-left">SGST:</td>
+                        <td class="text-right">₹{{ number_format($salesBill->total_sgst, 2) }}</td>
+                    </tr>
+                @elseif ($salesBill->total_igst > 0)
+                    <tr>
+                        <td class="text-left">IGST:</td>
+                        <td class="text-right">₹{{ number_format($salesBill->total_igst, 2) }}</td>
+                    </tr>
+                @elseif ($salesBill->total_gst > 0)
+                    <tr>
+                        <td class="text-left">GST Tax:</td>
+                        <td class="text-right">₹{{ number_format($salesBill->total_gst, 2) }}</td>
+                    </tr>
+                @endif
             @endif
             @if ($salesBill->round_off != 0)
                 <tr>
@@ -429,17 +484,37 @@
             <div class="divider"></div>
         @endif
 
-        {{-- Barcode --}}
-        <div class="barcode-box">
-            <div class="barcode-stripes"></div>
-            <div class="barcode-text">* {{ $salesBill->bill_number }} *</div>
-        </div>
+        {{-- Dynamic UPI Payment QR Code (Dynamic Toggle) --}}
+        @if ($receiptSettings->show_upi_qr)
+            <div class="text-center" style="margin: 8px auto;">
+                <div style="font-weight: bold; font-size: 10.5px; margin-bottom: 3px;">
+                    <i class="fas fa-qrcode" style="margin-right: 3px;"></i> SCAN TO PAY VIA UPI
+                </div>
+                <img src="{{ $receiptSettings->getUpiQrUrl($salesBill->total, $salesBill->bill_number) }}" alt="UPI QR Code" style="width: 115px; height: 115px; border: 1px solid #ddd; padding: 2px; background: #fff;" />
+                <div style="font-size: 9.5px; font-weight: bold; margin-top: 2px; letter-spacing: 0.5px;">
+                    UPI: {{ $receiptSettings->upi_id ?: '7383056626@okbizaxis' }}
+                </div>
+                <div style="font-size: 8.5px; color: #555;">(GPay, PhonePe, Paytm, BHIM)</div>
+            </div>
+            <div class="divider"></div>
+        @endif
 
-        {{-- Footer Note --}}
+        {{-- Barcode (Dynamic Toggle) --}}
+        @if ($receiptSettings->show_barcode)
+            <div class="barcode-box">
+                <div class="barcode-stripes"></div>
+                <div class="barcode-text">* {{ $salesBill->bill_number }} *</div>
+            </div>
+        @endif
+
+        {{-- Footer Note & Policy (Dynamic) --}}
         <div class="text-center footer-note">
-            <div class="font-bold">Thank you for shopping at Urban Pets!</div>
-            <div>Exchange valid within 7 days with original bill.</div>
-            <div style="margin-top: 2px;">*** Have an Awesome Day! ***</div>
+            @if ($receiptSettings->footer_policy)
+                <div style="white-space: pre-line; margin-bottom: 4px;">{!! nl2br(e($receiptSettings->footer_policy)) !!}</div>
+            @endif
+            @if ($receiptSettings->footer_note)
+                <div class="font-bold" style="white-space: pre-line;">{!! nl2br(e($receiptSettings->footer_note)) !!}</div>
+            @endif
         </div>
     </div>
 
@@ -452,12 +527,13 @@
             }
 
             const el = document.querySelector('.receipt-container');
+            const pdfFormat = {!! $paperSize === 'a4' ? "'a4'" : ($paperSize === 'a5' ? "'a5'" : json_encode([$paperSize === '58mm' ? 58 : 80, 297])) !!};
             const opt = {
                 margin:       [4, 4, 4, 4],
                 filename:     '{{ $salesBill->bill_number }}.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
+                jsPDF:        { unit: 'mm', format: pdfFormat, orientation: 'portrait' }
             };
 
             html2pdf().set(opt).from(el).save().then(function () {
