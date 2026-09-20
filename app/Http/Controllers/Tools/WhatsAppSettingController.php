@@ -19,8 +19,10 @@ class WhatsAppSettingController extends Controller
     public function index(): View
     {
         $settings = WhatsAppSetting::current();
-        $recentBills = SalesBill::with('customer')
-            ->orderBy('id', 'desc')
+        $recentBills = SalesBill::query()
+            ->select(['id', 'bill_number', 'total', 'customer_id', 'created_at'])
+            ->with(['customer' => fn($q) => $q->select(['id', 'name', 'phone', 'mobile'])])
+            ->latest('id')
             ->limit(10)
             ->get();
 

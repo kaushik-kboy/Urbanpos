@@ -128,12 +128,12 @@ class ChatOnClickWhatsAppService
         $branchPhone  = $this->supportPhone ?: ($salesBill->branch?->phone ?: '7383056626');
         $billNumber   = $salesBill->bill_number;
         $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-M-Y h:i A') : now()->format('d-M-Y');
-        $totalItems   = (int) $salesBill->items()->count();
+        $totalItems   = $salesBill->relationLoaded('items') ? (int) $salesBill->items->count() : (int) $salesBill->items()->count();
         $totalAmount  = number_format((float) $salesBill->total, 2);
         $publicUrl    = $this->getPublicReceiptUrl($salesBill);
 
-        // Determine payment mode
-        $payments = $salesBill->payments()->with('tenderType')->get();
+        // Determine payment mode (use loaded relation when available)
+        $payments = $salesBill->relationLoaded('payments') ? $salesBill->payments : $salesBill->payments()->with('tenderType')->get();
         if ($payments->isNotEmpty()) {
             $paymentModes = $payments->map(fn($p) => $p->tenderType?->name ?: 'Payment')->unique()->implode(', ');
         } else {
