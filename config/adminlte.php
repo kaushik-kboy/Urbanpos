@@ -992,6 +992,12 @@ return [
                     'active' => ['tools/receipt-designer*'],
                 ],
                 [
+                    'text' => 'Document Sequences',
+                    'url' => 'tools/document-sequences',
+                    'icon' => 'fas fa-fw fa-sort-numeric-up-alt text-primary',
+                    'active' => ['tools/document-sequences*'],
+                ],
+                [
                     'text' => 'Master Migration',
                     'url' => 'tools/master-migration',
                     'icon' => 'fas fa-fw fa-database',

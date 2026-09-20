@@ -588,30 +588,12 @@ class SalesBillController extends Controller
 
     private function nextNumber(): string
     {
-        return \Illuminate\Support\Facades\Cache::lock('sales_bill_number_seq_lock', 10)->block(5, function () {
-            // 1. Detect if active database uses a business prefix pattern (e.g. CO-225-38118)
-            $latest = SalesBill::orderBy('id', 'desc')->first();
-            if ($latest && preg_match('/^(.*?)(\d+)$/', $latest->bill_number, $matches)) {
-                $prefix = $matches[1];
-                $lastSeq = (int) $matches[2];
-                $padding = strlen($matches[2]);
-                do {
-                    $lastSeq++;
-                    $candidate = $prefix . str_pad((string) $lastSeq, $padding, '0', STR_PAD_LEFT);
-                } while (SalesBill::where('bill_number', $candidate)->exists());
+        $branchId = session('active_branch_id', auth()->user()?->branch_id);
 
-                return $candidate;
-            }
-
-            // 2. Standard fallback continuous sequence
-            $maxId = (int) (SalesBill::max('id') ?? 0);
-            do {
-                $maxId++;
-                $num = 'SB' . str_pad((string) $maxId, 6, '0', STR_PAD_LEFT);
-            } while (SalesBill::where('bill_number', $num)->exists());
-
-            return $num;
-        });
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'sales_bill',
+            $branchId ? (int) $branchId : null
+        );
     }
 
     public function itemList(Request $request)

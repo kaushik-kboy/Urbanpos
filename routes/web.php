@@ -335,6 +335,11 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('receipt-designer', [\App\Http\Controllers\Tools\ReceiptDesignerController::class, 'index'])->name('receipt-designer.index');
     Route::post('receipt-designer', [\App\Http\Controllers\Tools\ReceiptDesignerController::class, 'update'])->name('receipt-designer.update');
 
+    // Dynamic Document Sequences & Numbering Rules
+    Route::get('document-sequences', [\App\Http\Controllers\Tools\DocumentSequenceController::class, 'index'])->name('document-sequences.index');
+    Route::post('document-sequences', [\App\Http\Controllers\Tools\DocumentSequenceController::class, 'update'])->name('document-sequences.update');
+    Route::post('document-sequences/{sequence}/reset', [\App\Http\Controllers\Tools\DocumentSequenceController::class, 'reset'])->name('document-sequences.reset');
+
     Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });
 

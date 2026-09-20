@@ -250,6 +250,16 @@ return [
             'module'      => 'Master',
             'description' => 'Customize bill print header, address, QR, barcodes & policies',
         ],
+        'document_sequences' => [
+            'key'         => 'document_sequences',
+            'title'       => 'Bill Sequences',
+            'icon'        => 'fas fa-sort-numeric-up-alt',
+            'color'       => 'outline-primary',
+            'route'       => 'tools.document-sequences.index',
+            'permission'  => null,
+            'module'      => 'Master',
+            'description' => 'Configure dynamic prefixes ({YEAR}, {FY}), starting numbers & auto-resets',
+        ],
     ],
 
     /*

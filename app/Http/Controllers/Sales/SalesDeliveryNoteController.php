@@ -312,9 +312,12 @@ class SalesDeliveryNoteController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (SalesDeliveryNote::max('id') ?? 0) + 1;
+        $branchId = session('active_branch_id', auth()->user()?->branch_id);
 
-        return 'SDN'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'delivery_note',
+            $branchId ? (int) $branchId : null
+        );
     }
 
     private function formOptions(Request $request): array

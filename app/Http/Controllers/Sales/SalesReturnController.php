@@ -256,9 +256,12 @@ class SalesReturnController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (SalesReturn::max('id') ?? 0) + 1;
+        $branchId = session('active_branch_id', auth()->user()?->branch_id);
 
-        return 'SRN'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'sales_return',
+            $branchId ? (int) $branchId : null
+        );
     }
 
     private function formOptions(?SalesReturn $salesReturn = null): array
