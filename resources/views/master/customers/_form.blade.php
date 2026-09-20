@@ -5,6 +5,7 @@
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-contact">Contact Details</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-others">Others</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-pets">Pet Details</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-custom-fields"><i class="fas fa-sliders-h text-primary mr-1"></i> Custom Fields</a></li>
 </ul>
 
 <div class="tab-content pt-3">
@@ -117,6 +118,12 @@
         </div>
 
         <button type="button" id="add-pet-detail" class="btn btn-link"><i class="fas fa-plus-circle"></i> Add Pet Detail</button>
+    </div>
+
+    <div class="tab-pane" id="tab-custom-fields">
+        <div class="p-2">
+            <x-custom-fields-renderer module="Customer" :model="$c" :showHeader="false" colClass="col-md-6 col-12 mb-3" />
+        </div>
     </div>
 </div>
 

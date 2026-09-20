@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Item extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'item_code', 'ean_upc_code', 'name', 'alias', 'brand_id', 'supplier_id', 'product_type',

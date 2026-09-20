@@ -126,7 +126,10 @@ class ItemController extends Controller
     public function store(Request $request)
     {
         $data = $this->sanitizeItemData($this->validateData($request));
-        Item::create($data);
+        $item = Item::create($data);
+        if ($request->has('custom_fields')) {
+            $item->syncCustomFields($request->input('custom_fields', []));
+        }
 
         return redirect()->route('master.items.index')->with('status', 'Item created successfully.');
     }
@@ -140,6 +143,9 @@ class ItemController extends Controller
     {
         $data = $this->sanitizeItemData($this->validateData($request, $item));
         $item->update($data);
+        if ($request->has('custom_fields')) {
+            $item->syncCustomFields($request->input('custom_fields', []));
+        }
 
         return redirect()->route('master.items.index')->with('status', 'Item updated successfully.');
     }

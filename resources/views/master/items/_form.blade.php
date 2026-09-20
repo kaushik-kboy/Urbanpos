@@ -6,6 +6,7 @@
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-sales">Sales</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-category">Category</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-gst">GST</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-custom-fields"><i class="fas fa-sliders-h text-primary mr-1"></i> Custom Fields</a></li>
 </ul>
 
 <div class="tab-content pt-3">
@@ -107,6 +108,12 @@
             <div class="col-sm-6">
                 <span id="hsn-len" class="badge {{ !empty($i->hsn_code) && strlen($i->hsn_code) >= 4 ? 'badge-success' : 'badge-secondary' }}">{{ strlen($i->hsn_code ?? '') }}/8</span>
             </div>
+        </div>
+    </div>
+
+    <div class="tab-pane" id="tab-custom-fields">
+        <div class="p-2">
+            <x-custom-fields-renderer module="Item" :model="$i" :showHeader="false" colClass="col-md-6 col-12 mb-3" />
         </div>
     </div>
 </div>

@@ -994,6 +994,12 @@ return [
                     'active' => ['tools/document-sequences*'],
                 ],
                 [
+                    'text' => 'Custom Fields Builder',
+                    'url' => 'tools/custom-fields',
+                    'icon' => 'fas fa-fw fa-sliders-h text-info',
+                    'active' => ['tools/custom-fields*'],
+                ],
+                [
                     'text' => 'Master Migration',
                     'url' => 'tools/master-migration',
                     'icon' => 'fas fa-fw fa-database',

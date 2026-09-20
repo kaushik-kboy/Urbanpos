@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Customer extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'title', 'name', 'customer_category_id', 'customer_code', 'sales_type', 'payment_mode',

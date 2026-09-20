@@ -58,6 +58,9 @@ class CustomerController extends Controller
         $data = $this->validateData($request);
         $customer = Customer::create($data);
         $this->syncPets($request, $customer);
+        if ($request->has('custom_fields')) {
+            $customer->syncCustomFields($request->input('custom_fields', []));
+        }
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -111,6 +114,9 @@ class CustomerController extends Controller
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);
+        if ($request->has('custom_fields')) {
+            $customer->syncCustomFields($request->input('custom_fields', []));
+        }
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([

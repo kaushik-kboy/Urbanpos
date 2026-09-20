@@ -349,6 +349,11 @@
                                 <i class="fas fa-paw mr-1 text-warning"></i> Pet Details
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pos-tab-custom-fields-link" data-toggle="tab" href="#pos-tab-custom-fields" role="tab">
+                                <i class="fas fa-sliders-h mr-1" style="color: #6f42c1;"></i> Custom Fields
+                            </a>
+                        </li>
                     </ul>
 
                     <!-- Tab Contents -->
@@ -578,6 +583,13 @@
                             <button type="button" id="pos-add-pet-detail" class="btn btn-sm btn-outline-primary font-weight-bold">
                                 <i class="fas fa-plus-circle mr-1"></i> Add Pet Detail
                             </button>
+                        </div>
+
+                        <!-- 5. Custom Fields Tab -->
+                        <div class="tab-pane fade" id="pos-tab-custom-fields" role="tabpanel">
+                            <div class="row px-2">
+                                <x-custom-fields-renderer module="Customer" :showHeader="false" colClass="col-md-6 mb-3" />
+                            </div>
                         </div>
                     </div>
                 </div>

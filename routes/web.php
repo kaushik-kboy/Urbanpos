@@ -326,6 +326,15 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('gst/gstr-3b-details', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr3bDetails'])->name('gst.gstr-3b');
     Route::post('gst/gstr-9-sync', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr9Sync'])->name('gst.gstr-9-sync');
     Route::post('gst/gstr-2-upload', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'uploadGstr2'])->name('gst.gstr-2-upload');
+    Route::get('gst/gstr-2-download', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'downloadGstr2'])->name('gst.gstr-2-download');
+
+    // No-Code Custom Fields Builder
+    Route::get('custom-fields', [\App\Http\Controllers\Tools\CustomFieldController::class, 'index'])->name('custom-fields.index');
+    Route::post('custom-fields', [\App\Http\Controllers\Tools\CustomFieldController::class, 'store'])->name('custom-fields.store');
+    Route::put('custom-fields/{customField}', [\App\Http\Controllers\Tools\CustomFieldController::class, 'update'])->name('custom-fields.update');
+    Route::delete('custom-fields/{customField}', [\App\Http\Controllers\Tools\CustomFieldController::class, 'destroy'])->name('custom-fields.destroy');
+    Route::post('custom-fields/{customField}/toggle', [\App\Http\Controllers\Tools\CustomFieldController::class, 'toggleStatus'])->name('custom-fields.toggle');
+
     // WhatsApp Integration & Template Settings (ChatOnClick API)
     Route::get('whatsapp-settings', [\App\Http\Controllers\Tools\WhatsAppSettingController::class, 'index'])->name('whatsapp-settings.index');
     Route::post('whatsapp-settings', [\App\Http\Controllers\Tools\WhatsAppSettingController::class, 'update'])->name('whatsapp-settings.update');
