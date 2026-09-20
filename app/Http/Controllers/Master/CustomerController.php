@@ -75,9 +75,32 @@ class CustomerController extends Controller
         return redirect()->route('master.customers.index')->with('status', 'Customer created successfully.');
     }
 
-    public function edit(Customer $customer)
+    public function show(Request $request, Customer $customer)
     {
         $customer->load('pets');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'customer' => $customer,
+                'pets' => $customer->pets,
+            ]);
+        }
+
+        return view('master.customers.show', compact('customer'));
+    }
+
+    public function edit(Request $request, Customer $customer)
+    {
+        $customer->load('pets');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'customer' => $customer,
+                'pets' => $customer->pets,
+            ]);
+        }
 
         return view('master.customers.edit', array_merge(['customer' => $customer], $this->formOptions()));
     }
@@ -88,6 +111,19 @@ class CustomerController extends Controller
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'customer' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'mobile' => $customer->mobile,
+                    'text' => $customer->mobile ? "{$customer->name} ({$customer->mobile})" : $customer->name,
+                ],
+                'message' => 'Customer updated successfully.',
+            ]);
+        }
 
         return redirect()->route('master.customers.index')->with('status', 'Customer updated successfully.');
     }
@@ -143,14 +179,14 @@ class CustomerController extends Controller
             }
 
             $attributes = [
-                'pet_type_id' => $pet['pet_type_id'] ?: null,
-                'breed_id' => $pet['breed_id'] ?: null,
-                'color_id' => $pet['color_id'] ?: null,
+                'pet_type_id' => !empty($pet['pet_type_id']) ? $pet['pet_type_id'] : null,
+                'breed_id' => !empty($pet['breed_id']) ? $pet['breed_id'] : null,
+                'color_id' => !empty($pet['color_id']) ? $pet['color_id'] : null,
                 'name' => $pet['name'] ?? null,
-                'gender' => $pet['gender'] ?: null,
+                'gender' => !empty($pet['gender']) ? $pet['gender'] : null,
                 'age' => $pet['age'] ?? null,
                 'remarks' => $pet['remarks'] ?? null,
-                'birth_date' => $pet['birth_date'] ?: null,
+                'birth_date' => !empty($pet['birth_date']) ? $pet['birth_date'] : null,
             ];
 
             if (! empty($pet['id'])) {
@@ -175,7 +211,7 @@ class CustomerController extends Controller
 
     private function validateData(Request $request, ?Customer $customer = null): array
     {
-        $rules = [
+        return $request->validate([
             // General
             'title' => ['nullable', 'in:Mr,Ms,Mrs,M/s,Dr'],
             'name' => ['required', 'string', 'max:255'],
@@ -213,17 +249,11 @@ class CustomerController extends Controller
             'gender' => ['nullable', 'in:Male,Female'],
             'exempted_reason' => ['nullable', 'string', 'max:255'],
             'customer_type' => ['required', 'in:RETAIL INVOICE,TAX INVOICE,EXEMPTED,E-COMMERCE'],
-        ];
-
-        $messages = [
+        ], [
             'mobile.required' => 'Customer mobile number is required.',
             'mobile.digits' => 'Customer mobile number must be exactly 10 digits.',
             'mobile.unique' => 'A customer with this mobile number already exists.',
-        ];
-
-        app(\App\Services\DynamicValidationService::class)->applyTo('customers', $rules, $messages, $customer?->id);
-
-        return $request->validate($rules, $messages);
+        ]);
     }
 
     protected function importModel(): string

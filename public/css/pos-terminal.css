@@ -361,6 +361,74 @@ html, body {
     box-shadow: 0 0 0 3px rgba(23, 105, 232, 0.15);
 }
 
+/* Customer Selected Profile Box */
+.pos-selected-cust-box {
+    background: #F8FAFC;
+    border: 1px solid var(--pos-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    transition: all 0.2s ease;
+}
+
+.pos-selected-cust-box:hover {
+    border-color: #CBD5E1;
+}
+
+.pos-selected-cust-name {
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.pos-selected-cust-mobile {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+}
+
+.pos-cust-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    border: 1px solid var(--pos-border);
+    background: #FFFFFF;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    text-decoration: none !important;
+}
+
+.pos-cust-btn:hover {
+    background: #EDF4FF;
+    border-color: #B9D9FD;
+}
+
+/* Total Invoices Button */
+.pos-total-invoices-btn {
+    background: #FFFFFF;
+    border: 1px solid var(--pos-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none !important;
+}
+
+.pos-total-invoices-btn:hover {
+    background: #F0F7FF;
+    border-color: #B9D9FD;
+}
+
+.pos-total-invoices-btn .badge {
+    background: #EDF4FF;
+    color: var(--pos-primary);
+    border-color: #CBE0FC !important;
+    font-size: 0.8rem;
+}
+
 #posLoyaltyBadge {
     background: #F3F0FF !important;
     color: #6C3BE8 !important;
@@ -665,4 +733,158 @@ html, body {
 #posAddCustomerModal .form-control:focus {
     border-color: var(--pos-primary);
     box-shadow: 0 0 0 3px rgba(23, 105, 232, 0.15);
+}
+
+/* Customer Invoices Modal (Screenshot 2 exact look) */
+.cim-modal-content {
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.15), 0 0 1px 1px rgba(15, 23, 42, 0.05);
+}
+
+.cim-search-container {
+    position: relative;
+}
+
+.cim-search-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.cim-search-icon {
+    position: absolute;
+    left: 14px;
+    color: #0284C7;
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+
+.cim-search-input {
+    width: 100%;
+    height: 44px;
+    padding-left: 40px;
+    padding-right: 14px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    font-size: 0.92rem;
+    color: #1E293B;
+    background: #FFFFFF;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cim-search-input::placeholder {
+    color: #94A3B8;
+}
+
+.cim-search-input:focus {
+    border-color: #38BDF8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.cim-table-responsive {
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+.cim-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.cim-table th {
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #475569;
+    border-bottom: 1.5px solid #F1F5F9;
+    background: #FFFFFF;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.cim-table td {
+    padding: 12px 14px;
+    font-size: 0.88rem;
+    color: #1E293B;
+    border-bottom: 1px solid #F1F5F9;
+    vertical-align: middle;
+}
+
+.cim-table tbody tr:hover {
+    background-color: #F8FAFC;
+}
+
+.cim-invoice-num {
+    font-weight: 800;
+    color: #0F172A;
+}
+
+.cim-invoice-total {
+    font-weight: 800;
+    color: #0F172A;
+}
+
+.cim-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #0284C7;
+    margin: 0 2px;
+    transition: all 0.15s ease;
+    text-decoration: none !important;
+}
+
+.cim-action-btn:hover {
+    background: #F0F9FF;
+    border-color: #BAE6FD;
+    color: #0369A1;
+}
+
+.cim-page-btn {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none !important;
+}
+
+.cim-page-btn:hover:not(:disabled) {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    color: #1E293B;
+}
+
+.cim-page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.cim-close-btn {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 6px 20px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #0F172A;
+    transition: all 0.15s ease;
+}
+
+.cim-close-btn:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
 }

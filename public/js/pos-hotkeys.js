@@ -150,45 +150,80 @@
             }
 
             case 'new_entry': {
-                // Add new row when explicitly requested via F3 or button
-                let $addRowBtn = $('#sb-add-row, #pinv-add-row, #st-add-row, #sq-add-row, #so-add-row, #sr-add-row, #add-row, [data-action="add-row"]').filter(':visible').first();
-                if ($addRowBtn.length) {
-                    $addRowBtn.trigger('click');
-                    setTimeout(function () {
-                        let $newCode = $('.sb-item-code, .pinv-item-code, .st-item-code, .item-code-input').last();
-                        if ($newCode.length) {
-                            $newCode.focus();
+                if (confirm('Data will not be saved. Create new record?')) {
+                    let loc = window.location.pathname;
+                    if (loc.includes('/edit')) {
+                        window.location.href = loc.replace(/\/[^\/]+\/edit/, '/create');
+                    } else if (loc.includes('/create') || loc.includes('/pos')) {
+                        window.location.reload();
+                    } else {
+                        // find a create button if on a list page, though this shouldn't happen much since bar is restricted
+                        let $createBtn = $('a[href$="/create"], .btn-primary:contains("Add"), .btn-primary:contains("New"), .btn-primary:contains("Create")').not('.pos-keyboard-bar a, .pos-jump-wrapper a').filter(':visible').first();
+                        if ($createBtn.length && $createBtn.attr('href')) {
+                            window.location.href = $createBtn.attr('href');
+                        } else {
+                            // Default: open Sales Bill
+                            navigateTo('sales/sales-bills/create');
                         }
-                    }, 80);
-                    return;
+                    }
                 }
-
-                // If on a listing table page, find "Create / Add New" button
-                let $createBtn = $('a[href$="/create"], .btn-primary:contains("Add"), .btn-primary:contains("New"), .btn-primary:contains("Create")').filter(':visible').first();
-                if ($createBtn.length && $createBtn.attr('href')) {
-                    window.location.href = $createBtn.attr('href');
-                    return;
-                }
-
-                // Default: open Sales Bill
-                navigateTo('sales/sales-bills/create');
                 break;
             }
 
             case 'edit_entry': {
-                let $focused = $(':focus');
-                let $row = $focused.closest('tr');
-                if ($row.length) {
-                    let $qty = $row.find('.sb-qty, .pinv-qty, .st-qty, input[name*="[qty]"]').first();
-                    if ($qty.length) {
-                        $qty.focus().select();
+                let loc = window.location.pathname;
+                if (loc.includes('/pos')) {
+                    if ($('#posListModal').length) {
+                        let listUrl = (window.APP_URL || '') + '/sales/sales-bills?is_iframe=1&mode=edit';
+                        if ($('#posListIframe').attr('src') !== listUrl) {
+                            $('#posListLoader').css('display', 'flex');
+                            $('#posListIframe').attr('src', listUrl);
+                        }
+                        $('#posListModal').modal('show');
+                    } else {
+                        navigateTo('sales/sales-bills');
+                    }
+                    break;
+                }
+
+                // Same module map as view_records — navigate to list so user can pick a record to edit
+                var EDIT_LIST_MAP = [
+                    { seg: '/sales-bills',              list: 'sales/sales-bills' },
+                    { seg: '/sales-returns',             list: 'sales/sales-returns' },
+                    { seg: '/sales-quotations',          list: 'sales/sales-quotations' },
+                    { seg: '/sales-orders',              list: 'sales/sales-orders' },
+                    { seg: '/delivery-notes',            list: 'sales/delivery-notes' },
+                    { seg: '/purchase-orders',           list: 'purchase/purchase-orders' },
+                    { seg: '/purchase-receipt-notes',    list: 'purchase/purchase-receipt-notes' },
+                    { seg: '/purchase-invoices',         list: 'purchase/purchase-invoices' },
+                    { seg: '/purchase-returns',          list: 'purchase/purchase-returns' },
+                    { seg: '/purchase-indents',          list: 'purchase/purchase-indents' },
+                    { seg: '/opening-stocks',            list: 'inventory/opening-stocks' },
+                    { seg: '/damage-stocks',             list: 'inventory/damage-stocks' },
+                    { seg: '/stock-updates',             list: 'inventory/stock-updates' },
+                    { seg: '/stock-transfers',           list: 'inventory/stock-transfers' },
+                ];
+
+                var editMatched = false;
+                for (var ei = 0; ei < EDIT_LIST_MAP.length; ei++) {
+                    if (loc.includes(EDIT_LIST_MAP[ei].seg)) {
+                        navigateTo(EDIT_LIST_MAP[ei].list);
+                        editMatched = true;
+                        break;
+                    }
+                }
+
+                if (!editMatched) {
+                    let $cancelLink = $('.card-footer a.btn-default, .card-footer a.btn-secondary').filter(':visible').first();
+                    if ($cancelLink.length && $cancelLink.attr('href')) {
+                        window.location.href = $cancelLink.attr('href');
                     }
                 }
                 break;
             }
 
             case 'save_form': {
-                let $tenderBtn = $('#btn-tender-save, #btn-tender, #btn-quick-tender').filter(':visible');
+                let $tenderBtn = $('#posPayBtn, #btn-tender-save, #btn-tender, #btn-quick-tender').filter(':visible');
                 if ($tenderBtn.length) {
                     $tenderBtn.trigger('click');
                     return;
@@ -203,16 +238,58 @@
 
             case 'view_records': {
                 let loc = window.location.pathname;
-                if (loc.includes('/sales-bills')) {
-                    navigateTo('sales/sales-bills');
-                } else if (loc.includes('/purchase-invoices')) {
-                    navigateTo('purchase/purchase-invoices');
-                } else if (loc.includes('/stock-transfers')) {
-                    navigateTo('inventory/stock-transfers');
-                } else {
-                    let $indexLink = $('a[href*="/sales-bills"], a[href*="/purchase-invoices"], a[href*="/stock-transfers"]').first();
-                    if ($indexLink.length) {
-                        window.location.href = $indexLink.attr('href');
+
+                // POS terminal — show the sales bill list in a modal
+                if (loc.includes('/pos')) {
+                    if ($('#posListModal').length) {
+                        let listUrl = (window.APP_URL || '') + '/sales/sales-bills?is_iframe=1&mode=view';
+                        if ($('#posListIframe').attr('src') !== listUrl) {
+                            $('#posListLoader').css('display', 'flex');
+                            $('#posListIframe').attr('src', listUrl);
+                        }
+                        $('#posListModal').modal('show');
+                    } else {
+                        navigateTo('sales/sales-bills');
+                    }
+                    break;
+                }
+
+                // Map URL segments → list URL for all supported modules
+                var LIST_MAP = [
+                    // Sales
+                    { seg: '/sales-bills',              list: 'sales/sales-bills' },
+                    { seg: '/sales-returns',             list: 'sales/sales-returns' },
+                    { seg: '/sales-quotations',          list: 'sales/sales-quotations' },
+                    { seg: '/sales-orders',              list: 'sales/sales-orders' },
+                    { seg: '/delivery-notes',            list: 'sales/delivery-notes' },
+                    // Purchase
+                    { seg: '/purchase-orders',           list: 'purchase/purchase-orders' },
+                    { seg: '/purchase-receipt-notes',    list: 'purchase/purchase-receipt-notes' },
+                    { seg: '/purchase-invoices',         list: 'purchase/purchase-invoices' },
+                    { seg: '/purchase-returns',          list: 'purchase/purchase-returns' },
+                    { seg: '/purchase-indents',          list: 'purchase/purchase-indents' },
+                    // Inventory
+                    { seg: '/opening-stocks',            list: 'inventory/opening-stocks' },
+                    { seg: '/damage-stocks',             list: 'inventory/damage-stocks' },
+                    { seg: '/stock-updates',             list: 'inventory/stock-updates' },
+                    // Stock transfer (legacy support)
+                    { seg: '/stock-transfers',           list: 'inventory/stock-transfers' },
+                ];
+
+                var matched = false;
+                for (var i = 0; i < LIST_MAP.length; i++) {
+                    if (loc.includes(LIST_MAP[i].seg)) {
+                        navigateTo(LIST_MAP[i].list);
+                        matched = true;
+                        break;
+                    }
+                }
+
+                // Fallback: look for any Cancel/Back link in the page footer
+                if (!matched) {
+                    let $cancelLink = $('.card-footer a.btn-default, .card-footer a.btn-secondary').filter(':visible').first();
+                    if ($cancelLink.length && $cancelLink.attr('href')) {
+                        window.location.href = $cancelLink.attr('href');
                     }
                 }
                 break;
@@ -229,10 +306,18 @@
             }
 
             case 'clear_form': {
-                let $resetBtn = $('.btn-reset-form, [type="reset"]').filter(':visible').first();
-                if ($resetBtn.length) {
-                    if (confirm('Are you sure you want to reset this form? All unsaved data will be cleared.')) {
+                let $posClearBtn = $('#posClearBtn').filter(':visible').first();
+                if ($posClearBtn.length) {
+                    $posClearBtn.trigger('click');
+                    return;
+                }
+
+                if (confirm('Are you sure you want to clear this form? All unsaved data will be lost.')) {
+                    let $resetBtn = $('.btn-reset-form, [type="reset"]').filter(':visible').first();
+                    if ($resetBtn.length) {
                         $resetBtn.trigger('click');
+                    } else {
+                        window.location.reload();
                     }
                 }
                 break;

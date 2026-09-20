@@ -43,13 +43,27 @@ class SalesBillController extends Controller
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
-            $query->where(function ($q) use ($term) {
-                $q->where('bill_number', 'like', "%{$term}%")
-                    ->orWhereHas('customer', function ($cq) use ($term) {
-                        $cq->where('name', 'like', "%{$term}%")
-                            ->orWhere('phone', 'like', "%{$term}%")
-                            ->orWhere('customer_code', 'like', "%{$term}%");
+            $column = $request->input('search_column', 'all');
+
+            $query->where(function ($q) use ($term, $column) {
+                if ($column === 'bill_number' || $column === 'all') {
+                    $q->orWhere('bill_number', 'like', "%{$term}%");
+                }
+                if ($column === 'amount') {
+                    $q->orWhere('total', 'like', "%{$term}%");
+                }
+                if (in_array($column, ['customer_name', 'mobile', 'all'])) {
+                    $q->orWhereHas('customer', function ($cq) use ($term, $column) {
+                        if ($column === 'customer_name' || $column === 'all') {
+                            $cq->orWhere('name', 'like', "%{$term}%")
+                               ->orWhere('customer_code', 'like', "%{$term}%");
+                        }
+                        if ($column === 'mobile' || $column === 'all') {
+                            $cq->orWhere('mobile', 'like', "%{$term}%")
+                               ->orWhere('phone', 'like', "%{$term}%");
+                        }
                     });
+                }
             });
         }
 
@@ -103,6 +117,13 @@ class SalesBillController extends Controller
             ->latest()
             ->first();
 
+        // Customer Master Form dropdown options for modal
+        $options['customerCategories'] = \App\Models\CustomerCategory::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $options['areas'] = \App\Models\Area::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $options['petTypes'] = \App\Models\PetType::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $options['breeds'] = \App\Models\Breed::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $options['colors'] = \App\Models\Color::where('status', true)->orderBy('name')->pluck('name', 'id');
+
         // Default or walk-in customer detection
         $walkInCust = Customer::where('status', true)
             ->where(function ($q) {
@@ -114,7 +135,18 @@ class SalesBillController extends Controller
         if ($walkInCust && !isset($options['customers'][$walkInCust->id])) {
             $options['customers']->put($walkInCust->id, $walkInCust->name);
         }
-        $options['defaultCustomerId'] = $walkInCust?->id ?? ($options['customers']->keys()->first() ?? null);
+
+        if ($request->filled('edit_id')) {
+            $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments'])->findOrFail($request->input('edit_id'));
+            $options['editBill'] = $editBill;
+            $defaultCustId = $editBill->customer_id;
+            $options['defaultCustomerId'] = $defaultCustId;
+            $options['defaultCustomer'] = $editBill->customer;
+        } else {
+            $defaultCustId = $walkInCust?->id ?? ($options['customers']->keys()->first() ?? null);
+            $options['defaultCustomerId'] = $defaultCustId;
+            $options['defaultCustomer'] = $defaultCustId ? Customer::with(['pets.petType'])->find($defaultCustId) : null;
+        }
 
         return view('pos.terminal', $options);
     }
@@ -449,19 +481,36 @@ class SalesBillController extends Controller
         return response()->json($this->loyaltyService->getCustomerLoyalty($customer));
     }
 
-    public function customerInvoices(Customer $customer)
+    public function customerInvoices($customer)
     {
+        if (! ($customer instanceof Customer)) {
+            $customer = Customer::findOrFail($customer);
+        }
+
         $bills = SalesBill::where('customer_id', $customer->id)
+            ->withCount('items')
             ->orderBy('bill_date', 'desc')
             ->orderBy('id', 'desc')
             ->limit(100)
             ->get(['id', 'bill_number', 'bill_date', 'total', 'invoice_type', 'status'])
             ->map(function ($bill) {
+                $formattedDate = '';
+                if ($bill->bill_date) {
+                    $month = $bill->bill_date->format('M');
+                    if ($month === 'Sep') {
+                        $month = 'Sept';
+                    }
+                    $formattedDate = $bill->bill_date->format('d ') . $month . $bill->bill_date->format(' y h:i a');
+                }
+
                 return [
                     'id' => $bill->id,
                     'bill_number' => $bill->bill_number,
-                    'bill_date' => $bill->bill_date ? $bill->bill_date->format('d-m-Y h:i A') : '',
-                    'total' => (float) $bill->total,
+                    'bill_date' => $formattedDate ?: ($bill->bill_date ? $bill->bill_date->format('d M y h:i a') : ''),
+                    'raw_date' => $bill->bill_date ? $bill->bill_date->format('Y-m-d H:i:s') : '',
+                    'items' => $bill->items_count ?? 1,
+                    'total' => number_format((float) $bill->total, 2),
+                    'raw_total' => (float) $bill->total,
                     'invoice_type' => $bill->invoice_type,
                     'status' => $bill->status,
                     'view_url' => route('sales.sales-bills.show', $bill),
@@ -470,9 +519,25 @@ class SalesBillController extends Controller
                 ];
             });
 
+        $customer->load(['pets.petType', 'pets.breed']);
+        $pets = $customer->pets->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'type' => $p->petType?->name,
+                'breed' => $p->breed?->name,
+                'display' => $p->name ? ($p->petType ? "{$p->name} ({$p->petType->name})" : $p->name) : ($p->petType?->name ?? 'Pet'),
+            ];
+        });
+
         return response()->json([
+            'customer_id' => $customer->id,
             'customer_name' => $customer->name,
             'customer_mobile' => $customer->mobile ?? '',
+            'customer_edit_url' => url("master/customers/{$customer->id}/edit"),
+            'pets' => $pets,
+            'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
+            'total_invoices' => count($bills),
             'invoices' => $bills,
         ]);
     }
@@ -921,21 +986,38 @@ class SalesBillController extends Controller
         $q = trim((string) $request->input('q', ''));
 
         $customers = Customer::where('status', true)
+            ->with(['pets.petType'])
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
                         ->orWhere('mobile', 'like', "%{$q}%")
-                        ->orWhere('customer_code', 'like', "%{$q}%");
+                        ->orWhere('customer_code', 'like', "%{$q}%")
+                        ->orWhereHas('pets', function ($pq) use ($q) {
+                            $pq->where('name', 'like', "%{$q}%");
+                        });
                 });
             })
             ->orderBy('name')
             ->limit(30)
-            ->get(['id', 'name', 'mobile'])
+            ->get()
             ->map(function ($c) {
+                $pets = $c->pets->map(function ($p) {
+                    return [
+                        'id' => $p->id,
+                        'name' => $p->name,
+                        'type' => $p->petType?->name,
+                        'display' => $p->name ? ($p->petType ? "{$p->name} ({$p->petType->name})" : $p->name) : ($p->petType?->name ?? 'Pet'),
+                    ];
+                });
+
                 return [
                     'id' => $c->id,
                     'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
+                    'name' => $c->name,
                     'mobile' => $c->mobile ?? '',
+                    'edit_url' => url("master/customers/{$c->id}/edit"),
+                    'pets' => $pets,
+                    'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
                 ];
             });
 
