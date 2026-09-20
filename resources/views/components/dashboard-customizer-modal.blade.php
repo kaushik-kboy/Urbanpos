@@ -40,9 +40,32 @@
                     <div class="tab-content pt-2" id="dashboardCustomizerTabContent">
                         {{-- Tab 1: Shortcuts --}}
                         <div class="tab-pane fade show active" id="tab-shortcuts" role="tabpanel">
+                            {{-- Search & Module Filter Header --}}
+                            <div class="row mb-2 align-items-center">
+                                <div class="col-md-5 mb-2 mb-md-0">
+                                    <div class="input-group input-group-sm shadow-xs">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                        </div>
+                                        <input type="text" id="shortcutSearchInput" class="form-control border-left-0" placeholder="Search menu (e.g. return, bill, order)...">
+                                    </div>
+                                </div>
+                                <div class="col-md-7">
+                                    <div class="d-flex flex-wrap justify-content-md-end" id="moduleFilterPills" style="gap: 4px;">
+                                        <button type="button" class="btn btn-xs btn-primary filter-pill active" data-module="ALL">All</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary filter-pill" data-module="Sales">Sales</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary filter-pill" data-module="Purchase">Purchase</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary filter-pill" data-module="Inventory">Inventory</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary filter-pill" data-module="Finance">Finance</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary filter-pill" data-module="POS">POS</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary filter-pill" data-module="Master">Master</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="d-flex justify-content-between align-items-center mb-2 px-1">
                                 <span class="text-xs text-uppercase font-weight-bold text-muted">
-                                    <i class="fas fa-info-circle mr-1"></i> Select & Reorder buttons for your Command Center
+                                    <i class="fas fa-info-circle mr-1"></i> Check to enable / uncheck to hide buttons
                                 </span>
                                 <small class="text-muted">Use <i class="fas fa-arrow-up"></i> <i class="fas fa-arrow-down"></i> to re-order</small>
                             </div>
@@ -67,8 +90,9 @@
                                 @foreach($orderedAccessible as $key => $shortcut)
                                     @php
                                         $isChecked = in_array($key, $activeKeys, true);
+                                        $moduleName = $shortcut['module'] ?? 'App';
                                     @endphp
-                                    <div class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 shortcut-item-row {{ $isChecked ? 'bg-white' : 'bg-light text-muted' }}" data-key="{{ $key }}">
+                                    <div class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 shortcut-item-row {{ $isChecked ? 'bg-white' : 'bg-light text-muted' }}" data-key="{{ $key }}" data-module="{{ $moduleName }}" data-title="{{ strtolower($shortcut['title'] . ' ' . $shortcut['description']) }}">
                                         <div class="custom-control custom-checkbox d-flex align-items-center flex-grow-1 mr-2">
                                             <input type="checkbox" name="shortcuts[]" value="{{ $key }}" class="custom-control-input shortcut-checkbox" id="sc_chk_{{ $key }}" {{ $isChecked ? 'checked' : '' }}>
                                             <label class="custom-control-label d-flex align-items-center w-100 cursor-pointer mb-0 pl-2" for="sc_chk_{{ $key }}">
@@ -78,7 +102,7 @@
                                                 <div class="d-flex flex-column">
                                                     <div class="d-flex align-items-center">
                                                         <span class="font-weight-bold text-dark mr-2">{{ $shortcut['title'] }}</span>
-                                                        <span class="badge badge-secondary text-xs">{{ $shortcut['module'] ?? 'App' }}</span>
+                                                        <span class="badge badge-secondary text-xs">{{ $moduleName }}</span>
                                                     </div>
                                                     <small class="text-muted">{{ $shortcut['description'] ?? '' }}</small>
                                                 </div>
@@ -150,7 +174,7 @@
 </div>
 
 <script>
-document ariaHidden = true;
+let currentModuleFilter = 'ALL';
 
 function updateShortcutsCountBadge() {
     const checkedCount = document.querySelectorAll('#shortcutsSortableList .shortcut-checkbox:checked').length;
@@ -171,8 +195,40 @@ function moveShortcutRow(button, direction) {
     }
 }
 
+function filterShortcuts() {
+    const searchEl = document.getElementById('shortcutSearchInput');
+    const query = (searchEl ? searchEl.value : '').toLowerCase().trim();
+    document.querySelectorAll('#shortcutsSortableList .shortcut-item-row').forEach(function(row) {
+        const title = row.getAttribute('data-title') || '';
+        const module = row.getAttribute('data-module') || '';
+        const matchesQuery = !query || title.includes(query) || module.toLowerCase().includes(query);
+        const matchesModule = currentModuleFilter === 'ALL' || module === currentModuleFilter;
+        row.style.setProperty('display', (matchesQuery && matchesModule) ? 'flex' : 'none', 'important');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     updateShortcutsCountBadge();
+
+    // Search input live filter
+    const searchInput = document.getElementById('shortcutSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterShortcuts);
+    }
+
+    // Module pills filter
+    document.querySelectorAll('#moduleFilterPills .filter-pill').forEach(function(pill) {
+        pill.addEventListener('click', function() {
+            document.querySelectorAll('#moduleFilterPills .filter-pill').forEach(function(p) {
+                p.classList.remove('btn-primary', 'active');
+                p.classList.add('btn-outline-secondary');
+            });
+            this.classList.remove('btn-outline-secondary');
+            this.classList.add('btn-primary', 'active');
+            currentModuleFilter = this.getAttribute('data-module');
+            filterShortcuts();
+        });
+    });
 
     // Checkbox styling update on toggle
     document.querySelectorAll('#shortcutsSortableList .shortcut-checkbox').forEach(function(chk) {
