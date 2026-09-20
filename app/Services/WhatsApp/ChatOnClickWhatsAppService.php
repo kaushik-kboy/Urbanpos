@@ -11,12 +11,43 @@ class ChatOnClickWhatsAppService
     protected string $url;
     protected ?string $appKey;
     protected ?string $authKey;
+    protected ?string $templateName;
+    protected string $templateLang;
+    protected string $headerTitle;
+    protected string $footerMessage;
+    protected ?string $supportPhone;
+    protected bool $autoSendOnBill;
+    protected bool $isActive;
 
     public function __construct()
     {
-        $this->url = rtrim(config('services.chatonclick.url', 'https://chatonclick.com'), '/');
-        $this->appKey = config('services.chatonclick.appkey');
-        $this->authKey = config('services.chatonclick.authkey');
+        $this->refreshSettings();
+    }
+
+    /**
+     * Refresh settings dynamically from database singleton (with env/config fallback).
+     */
+    public function refreshSettings(): void
+    {
+        $settings = null;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('whats_app_settings')) {
+                $settings = \App\Models\WhatsAppSetting::current();
+            }
+        } catch (\Throwable $e) {
+            // Fallback gracefully during early boot or tests without migrations
+        }
+
+        $this->url = rtrim($settings?->api_url ?: config('services.chatonclick.url', 'https://chatonclick.com'), '/');
+        $this->appKey = $settings?->app_key ?: config('services.chatonclick.appkey');
+        $this->authKey = $settings?->auth_key ?: config('services.chatonclick.authkey');
+        $this->templateName = $settings?->template_name ?: config('services.chatonclick.template_name');
+        $this->templateLang = $settings?->template_lang ?: config('services.chatonclick.template_lang', 'en');
+        $this->headerTitle = $settings?->header_title ?: 'URBAN PETS';
+        $this->footerMessage = $settings?->footer_message ?: 'Have an Awesome Day!';
+        $this->supportPhone = $settings?->support_phone ?: null;
+        $this->autoSendOnBill = $settings ? (bool) $settings->auto_send_on_bill : true;
+        $this->isActive = $settings ? (bool) $settings->is_active : true;
     }
 
     /**
@@ -93,8 +124,8 @@ class ChatOnClickWhatsAppService
     public function formatInvoiceMessage(SalesBill $salesBill): string
     {
         $customerName = trim($salesBill->customer?->name ?: 'Customer');
-        $branchName   = $salesBill->branch?->name ?: 'Urban Pets';
-        $branchPhone  = $salesBill->branch?->phone ?: '9638455255';
+        $branchName   = $salesBill->branch?->name ?: $this->headerTitle;
+        $branchPhone  = $this->supportPhone ?: ($salesBill->branch?->phone ?: '7383056626');
         $billNumber   = $salesBill->bill_number;
         $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-M-Y h:i A') : now()->format('d-M-Y');
         $totalItems   = (int) $salesBill->items()->count();
@@ -109,7 +140,10 @@ class ChatOnClickWhatsAppService
             $paymentModes = $salesBill->payment_type ?: 'Cash';
         }
 
-        return "🐾 *URBAN PETS* 🐾\n"
+        $header = strtoupper($this->headerTitle);
+        $footer = $this->footerMessage;
+
+        return "🐾 *{$header}* 🐾\n"
              . "*Official Tax Invoice Receipt*\n"
              . "━━━━━━━━━━━━━━━━━━━━\n"
              . "Dear *{$customerName}*,\n"
@@ -124,14 +158,112 @@ class ChatOnClickWhatsAppService
              . "{$publicUrl}\n\n"
              . "━━━━━━━━━━━━━━━━━━━━\n"
              . "📞 *Store Helpline:* {$branchPhone}\n"
-             . "🐾 *Have an Awesome Day!*";
+             . "🐾 *{$footer}*";
+    }
+
+    /**
+     * Send arbitrary text message to a specific phone number.
+     */
+    public function sendTextMessage(string $phone, string $message): array
+    {
+        $this->refreshSettings();
+
+        if (empty($this->appKey) || empty($this->authKey)) {
+            return [
+                'success' => false,
+                'error'   => 'ChatOnClick API credentials (appkey / authkey) are not configured.',
+            ];
+        }
+
+        $cleanPhone = $this->sanitizePhone($phone);
+        if (!$cleanPhone) {
+            return [
+                'success' => false,
+                'error'   => 'Invalid mobile number format. Please provide a valid 10-digit number.',
+            ];
+        }
+
+        $multipart = [
+            [
+                'name'     => 'appkey',
+                'contents' => $this->appKey,
+            ],
+            [
+                'name'     => 'authkey',
+                'contents' => $this->authKey,
+            ],
+            [
+                'name'     => 'to',
+                'contents' => $cleanPhone,
+            ],
+            [
+                'name'     => 'message',
+                'contents' => $message,
+            ],
+        ];
+
+        try {
+            $response = Http::asMultipart()
+                ->timeout(15)
+                ->post($this->url . '/api/whatsapp/message', $multipart);
+
+            $json = $response->json();
+
+            if ($response->successful() && ($json['success'] ?? false)) {
+                return [
+                    'success' => true,
+                    'phone'   => $cleanPhone,
+                    'wamid'   => $json['data']['mid'] ?? null,
+                    'message' => "Message successfully sent to +{$cleanPhone}",
+                ];
+            }
+
+            $errorMessage = $json['error'] ?? ($json['message'] ?? 'Failed to send WhatsApp message via ChatOnClick.');
+            return [
+                'success' => false,
+                'error'   => $errorMessage,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'error'   => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Dispatch a test WhatsApp message from Settings page to verify credentials.
+     */
+    public function sendTestMessage(string $phone): array
+    {
+        $timestamp = now()->format('d-M-Y h:i A');
+        $msg = "🐾 *{$this->headerTitle}* 🐾\n"
+             . "✅ *WhatsApp Integration Test Successful!*\n"
+             . "━━━━━━━━━━━━━━━━━━━━\n"
+             . "This is a live test dispatch from your UrbanPOS Admin Panel.\n"
+             . "📅 *Time:* {$timestamp}\n"
+             . "⚡ *Status:* ChatOnClick API Connected\n"
+             . "━━━━━━━━━━━━━━━━━━━━\n"
+             . "🐾 *{$this->footerMessage}*";
+
+        return $this->sendTextMessage($phone, $msg);
     }
 
     /**
      * Send Sales Bill invoice WhatsApp message via ChatOnClick API.
      */
-    public function sendSalesBillInvoice(SalesBill $salesBill, ?string $overridePhone = null): array
+    public function sendSalesBillInvoice(SalesBill $salesBill, ?string $overridePhone = null, bool $force = false): array
     {
+        $this->refreshSettings();
+
+        // Check if disabled and not forced
+        if (!$this->isActive && !$force) {
+            return [
+                'success' => false,
+                'error'   => 'WhatsApp notifications are currently disabled in Settings.',
+            ];
+        }
+
         if (empty($this->appKey) || empty($this->authKey)) {
             Log::warning("WhatsApp dispatch aborted: ChatOnClick credentials missing for Bill #{$salesBill->bill_number}");
             return [
@@ -150,9 +282,7 @@ class ChatOnClickWhatsAppService
             ];
         }
 
-        $templateName = config('services.chatonclick.template_name');
-
-        if (!empty($templateName)) {
+        if (!empty($this->templateName)) {
             $customerName = trim($salesBill->customer?->name ?: 'Customer');
             $billNumber   = $salesBill->bill_number;
             $totalAmount  = number_format((float) $salesBill->total, 2);
@@ -173,11 +303,11 @@ class ChatOnClickWhatsAppService
                 ],
                 [
                     'name'     => 'template_name',
-                    'contents' => $templateName,
+                    'contents' => $this->templateName,
                 ],
                 [
                     'name'     => 'language',
-                    'contents' => config('services.chatonclick.template_lang', 'en'),
+                    'contents' => $this->templateLang,
                 ],
                 [
                     'name'     => 'variables',

@@ -305,9 +305,12 @@ class SalesBillController extends Controller
 
         $whatsappNotice = '';
         try {
-            $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
-            if ($waResult['success'] ?? false) {
-                $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
+            $waSettings = \App\Models\WhatsAppSetting::current();
+            if ($waSettings->is_active && $waSettings->auto_send_on_bill) {
+                $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
+                if ($waResult['success'] ?? false) {
+                    $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
+                }
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Auto WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
@@ -371,7 +374,7 @@ class SalesBillController extends Controller
     public function sendWhatsApp(Request $request, SalesBill $salesBill)
     {
         $overridePhone = $request->input('phone');
-        $result = $this->whatsAppService->sendSalesBillInvoice($salesBill, $overridePhone);
+        $result = $this->whatsAppService->sendSalesBillInvoice($salesBill, $overridePhone, force: true);
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json($result, $result['success'] ? 200 : 422);

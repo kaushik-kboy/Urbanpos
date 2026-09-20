@@ -325,7 +325,10 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('gst/gstr-3b-details', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr3bDetails'])->name('gst.gstr-3b');
     Route::post('gst/gstr-9-sync', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr9Sync'])->name('gst.gstr-9-sync');
     Route::post('gst/gstr-2-upload', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'uploadGstr2'])->name('gst.gstr-2-upload');
-    Route::get('gst/gstr-2-download', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'downloadGstr2'])->name('gst.gstr-2-download');
+    // WhatsApp Integration & Template Settings (ChatOnClick API)
+    Route::get('whatsapp-settings', [\App\Http\Controllers\Tools\WhatsAppSettingController::class, 'index'])->name('whatsapp-settings.index');
+    Route::post('whatsapp-settings', [\App\Http\Controllers\Tools\WhatsAppSettingController::class, 'update'])->name('whatsapp-settings.update');
+    Route::post('whatsapp-settings/test', [\App\Http\Controllers\Tools\WhatsAppSettingController::class, 'sendTest'])->name('whatsapp-settings.test');
 
     Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });

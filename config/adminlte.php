@@ -973,10 +973,17 @@ return [
                     'text' => 'Integrations',
                     'icon' => 'fas fa-fw fa-plug',
                     'submenu' => [
+                        ['text' => 'WhatsApp Integration', 'url' => 'tools/whatsapp-settings', 'icon' => 'fab fa-fw fa-whatsapp text-success', 'active' => ['tools/whatsapp-settings*']],
                         ['text' => 'GoFrugal Alert', 'url' => 'tools/integrations-alert', 'icon' => 'fas fa-fw fa-bell'],
                         ['text' => 'GST Efiling', 'url' => 'tools/integrations-gst', 'icon' => 'fas fa-fw fa-cloud-upload-alt'],
                         ['text' => 'GOFRUGAL Gosure', 'url' => 'tools/integrations-gosure', 'icon' => 'fas fa-fw fa-shield-alt'],
                     ],
+                ],
+                [
+                    'text' => 'WhatsApp Settings',
+                    'url' => 'tools/whatsapp-settings',
+                    'icon' => 'fab fa-fw fa-whatsapp text-success',
+                    'active' => ['tools/whatsapp-settings*'],
                 ],
                 [
                     'text' => 'Master Migration',
