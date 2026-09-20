@@ -11,6 +11,9 @@ class SystemErrorLog extends Model
         'module',
         'error_type',
         'message',
+        'error_hash',
+        'occurrence_count',
+        'last_seen_at',
         'file',
         'line',
         'url',
@@ -28,9 +31,11 @@ class SystemErrorLog extends Model
     ];
 
     protected $casts = [
-        'request_data' => 'array',
-        'resolved_at'  => 'datetime',
-        'line'         => 'integer',
+        'request_data'     => 'array',
+        'resolved_at'      => 'datetime',
+        'last_seen_at'     => 'datetime',
+        'line'             => 'integer',
+        'occurrence_count' => 'integer',
     ];
 
     public function user(): BelongsTo

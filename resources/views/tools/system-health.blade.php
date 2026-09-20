@@ -13,6 +13,9 @@
             </p>
         </div>
         <div>
+            <button type="button" id="btn-clear-laravel-log" class="btn btn-outline-warning shadow-sm font-weight-bold mr-2" title="Clear laravel.log to 0 MB">
+                <i class="fas fa-eraser mr-1"></i> Clear Log (<span id="header-log-size">{{ $metrics['storage']['laravel_log']['formatted'] ?? '0.00 MB' }}</span>)
+            </button>
             <a href="{{ route('tools.system-error-logs.index') }}" class="btn btn-outline-danger shadow-sm font-weight-bold mr-2">
                 <i class="fas fa-bug mr-1"></i> System Error Logs
             </a>
@@ -40,20 +43,21 @@
                             <i class="fas fa-database fa-lg"></i>
                         </div>
                     </div>
-                    <div class="mt-2 text-xs text-muted">
-                        Status: <span class="badge badge-success">ACTIVE & FAST</span>
+                    <div class="mt-2 text-xs text-muted d-flex justify-content-between align-items-center">
+                        <span>Status: <span class="badge badge-success">ACTIVE</span></span>
+                        <span>Size: <strong class="text-dark">{{ $metrics['database']['size_mb'] ?? 0 }} MB</strong></span>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Card 2: Storage & Permissions --}}
+        {{-- Card 2: Storage & laravel.log Tracker --}}
         <div class="col-md-3 col-sm-6 mb-3">
             <div class="card card-outline card-info shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="text-muted small font-weight-bold text-uppercase">Storage Permissions</div>
+                            <div class="text-muted small font-weight-bold text-uppercase">Storage & Logs</div>
                             <h4 class="font-weight-bold mb-0 text-info">
                                 {{ $metrics['storage']['writable'] ? 'WRITABLE' : 'READ-ONLY' }}
                             </h4>
@@ -62,8 +66,11 @@
                             <i class="fas fa-folder-open fa-lg"></i>
                         </div>
                     </div>
-                    <div class="mt-2 text-xs text-muted">
-                        Views, cache & logs accessible
+                    <div class="mt-2 text-xs text-muted d-flex justify-content-between align-items-center">
+                        <span>laravel.log: <strong id="card-log-size" class="text-dark">{{ $metrics['storage']['laravel_log']['formatted'] ?? '0.00 MB' }}</strong></span>
+                        <button type="button" class="btn btn-xs btn-outline-danger font-weight-bold btn-trigger-clear-log py-0 px-1" title="Clear laravel.log to 0 MB">
+                            <i class="fas fa-eraser mr-1"></i>0 MB
+                        </button>
                     </div>
                 </div>
             </div>
@@ -89,23 +96,31 @@
             </div>
         </div>
 
-        {{-- Card 4: Server Environment --}}
+        {{-- Card 4: Server Environment & Host RAM --}}
         <div class="col-md-3 col-sm-6 mb-3">
             <div class="card card-outline card-secondary shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="text-muted small font-weight-bold text-uppercase">Environment</div>
+                            <div class="text-muted small font-weight-bold text-uppercase">Host RAM & Server</div>
                             <h5 class="font-weight-bold mb-0 text-dark">
-                                PHP {{ $metrics['server']['php_version'] }}
+                                @if(!empty($metrics['server']['memory_stats']['total_ram_gb']))
+                                    {{ $metrics['server']['memory_stats']['used_ram_gb'] }} / {{ $metrics['server']['memory_stats']['total_ram_gb'] }} GB
+                                @else
+                                    PHP {{ $metrics['server']['php_version'] }}
+                                @endif
                             </h5>
                         </div>
                         <div class="bg-secondary text-white rounded-circle p-3 shadow-sm">
-                            <i class="fas fa-server fa-lg"></i>
+                            <i class="fas fa-memory fa-lg"></i>
                         </div>
                     </div>
                     <div class="mt-2 text-xs text-muted">
-                        {{ strtoupper($metrics['server']['environment']) }} &bull; Memory: {{ $metrics['server']['memory_usage_mb'] }}MB
+                        @if(!empty($metrics['server']['memory_stats']['usage_percentage']))
+                            RAM: <span class="font-weight-bold {{ $metrics['server']['memory_stats']['usage_percentage'] > 85 ? 'text-danger' : 'text-success' }}">{{ $metrics['server']['memory_stats']['usage_percentage'] }}%</span> &bull; PHP: {{ $metrics['server']['memory_usage_mb'] }}MB
+                        @else
+                            {{ strtoupper($metrics['server']['environment']) }} &bull; PHP: {{ $metrics['server']['memory_usage_mb'] }}MB
+                        @endif
                     </div>
                 </div>
             </div>
@@ -140,9 +155,41 @@
                                     <td class="font-weight-bold">
                                         <i class="fas fa-database text-success mr-1"></i> MySQL Database
                                     </td>
-                                    <td>Active PDO connection, schema accessible</td>
+                                    <td>Active PDO connection &bull; Disk Footprint: <strong>{{ $metrics['database']['size_mb'] ?? 0 }} MB</strong> (information_schema)</td>
                                     <td><span class="badge badge-success font-weight-bold px-2 py-1">PASS</span></td>
                                     <td>{{ $metrics['database']['latency_ms'] }} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">
+                                        <i class="fas fa-file-alt text-warning mr-1"></i> laravel.log File Tracker
+                                    </td>
+                                    <td>File Size: <strong id="table-log-size">{{ $metrics['storage']['laravel_log']['formatted'] ?? '0.00 MB' }}</strong> &bull; <code>storage/logs/laravel.log</code></td>
+                                    <td><span class="badge badge-success font-weight-bold px-2 py-1" id="table-log-badge">PASS</span></td>
+                                    <td>
+                                        <button type="button" class="btn btn-xs btn-outline-danger font-weight-bold btn-trigger-clear-log shadow-xs" title="Clear log to 0 MB">
+                                            <i class="fas fa-eraser mr-1"></i> Clear Log
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">
+                                        <i class="fas fa-memory text-info mr-1"></i> Host RAM & Memory
+                                    </td>
+                                    <td>
+                                        @if(!empty($metrics['server']['memory_stats']['total_ram_gb']))
+                                            Total: {{ $metrics['server']['memory_stats']['total_ram_gb'] }} GB &bull; Free: {{ $metrics['server']['memory_stats']['free_ram_gb'] }} GB ({{ $metrics['server']['memory_stats']['source'] }})
+                                        @else
+                                            PHP process memory: {{ $metrics['server']['memory_usage_mb'] }} MB
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $ramUsage = $metrics['server']['memory_stats']['usage_percentage'] ?? null;
+                                            $ramBadgeClass = ($ramUsage !== null && $ramUsage > 90) ? 'badge-warning' : 'badge-success';
+                                        @endphp
+                                        <span class="badge {{ $ramBadgeClass }} font-weight-bold px-2 py-1">PASS</span>
+                                    </td>
+                                    <td>{{ $metrics['server']['memory_stats']['formatted_summary'] ?? ($metrics['server']['memory_usage_mb'] . ' MB') }}</td>
                                 </tr>
                                 <tr>
                                     <td class="font-weight-bold">
@@ -409,6 +456,50 @@ $(document).ready(function () {
             error: function () {
                 alert('Failed to delete snapshot archive.');
                 btn.prop('disabled', false).html('<i class="fas fa-trash-alt"></i>');
+            }
+        });
+    // 4. One-Click Clear laravel.log (Truncate to 0 MB safely)
+    $(document).on('click', '#btn-clear-laravel-log, .btn-trigger-clear-log', function () {
+        if (!confirm('Clear laravel.log file?\n\nThis will truncate the log to 0.00 MB instantly without opening SSH. File permissions and ownership will remain 100% intact.')) {
+            return;
+        }
+
+        const btn = $(this);
+        const originalHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Clearing...');
+
+        $.ajax({
+            url: '{{ route("tools.system-health.clear-log") }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function (res) {
+                btn.prop('disabled', false).html(originalHtml);
+                if (res.success) {
+                    const formatted = (res.log_size && res.log_size.formatted) ? res.log_size.formatted : '0.00 MB';
+                    $('#header-log-size').text(formatted);
+                    $('#card-log-size').text(formatted);
+                    $('#table-log-size').text(formatted);
+
+                    const alertHtml = `
+                        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                            <i class="fas fa-check-circle mr-2"></i> <strong>Log Cleared!</strong> ${res.message} (File is now 0.00 MB).
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    `;
+                    $('.content').prepend(alertHtml);
+                    setTimeout(() => { $('.alert').alert('close'); }, 4000);
+                } else {
+                    alert('Clear log error: ' + res.message);
+                }
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false).html(originalHtml);
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Log clearance failed.';
+                alert(msg);
             }
         });
     });

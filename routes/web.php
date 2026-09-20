@@ -294,6 +294,7 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::post('system-health/backup', [\App\Http\Controllers\Tools\SystemHealthController::class, 'createBackup'])->name('system-health.backup.create');
     Route::get('system-health/backup/download/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'downloadBackup'])->name('system-health.backup.download');
     Route::delete('system-health/backup/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'deleteBackup'])->name('system-health.backup.delete');
+    Route::post('system-health/clear-laravel-log', [\App\Http\Controllers\Tools\SystemHealthController::class, 'clearLaravelLog'])->name('system-health.clear-log');
 
     // System Error & Exception Hub (Module-wise & Date-wise)
     Route::get('system-error-logs', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'index'])->name('system-error-logs.index');

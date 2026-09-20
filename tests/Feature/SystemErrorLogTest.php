@@ -7,13 +7,15 @@ use App\Models\SystemErrorLog;
 use App\Models\User;
 use App\Services\System\ErrorLoggerService;
 use Exception;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 class SystemErrorLogTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $user;
     private Branch $branch;
@@ -30,7 +32,8 @@ class SystemErrorLogTest extends TestCase
         );
 
         $this->user = User::factory()->create(['branch_id' => $this->branch->id]);
-        $this->user->assignRole('Owner');
+        $ownerRole = Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
+        $this->user->assignRole($ownerRole);
     }
 
     public function test_error_logger_service_captures_exception_and_stores_in_db(): void
@@ -55,11 +58,61 @@ class SystemErrorLogTest extends TestCase
         $this->assertEquals('POST', $log->method);
         $this->assertEquals('Unresolved', $log->status);
         $this->assertEquals($this->user->id, $log->user_id);
+        $this->assertEquals(1, $log->occurrence_count);
+        $this->assertNotNull($log->error_hash);
+        $this->assertNotNull($log->last_seen_at);
 
         // Verify sensitive payload redaction
         $this->assertArrayHasKey('password', $log->request_data);
         $this->assertEquals('***REDACTED***', $log->request_data['password']);
         $this->assertEquals('SB-TEST-001', $log->request_data['bill_number']);
+    }
+
+    public function test_routine_noise_exceptions_are_filtered_and_not_logged(): void
+    {
+        $service = app(ErrorLoggerService::class);
+
+        // 1. 404 NotFoundHttpException
+        $notFoundEx = new NotFoundHttpException('Route not found');
+        $this->assertTrue($service->shouldIgnore($notFoundEx));
+        $result = $service->capture($notFoundEx);
+        $this->assertNull($result);
+
+        // 2. ValidationException
+        $validator = \Illuminate\Support\Facades\Validator::make([], ['email' => 'required']);
+        $valEx = new \Illuminate\Validation\ValidationException($validator);
+        $this->assertTrue($service->shouldIgnore($valEx));
+        $resultVal = $service->capture($valEx);
+        $this->assertNull($resultVal);
+
+        // Verify database remains empty of these noise events
+        $this->assertEquals(0, SystemErrorLog::count());
+    }
+
+    public function test_identical_exceptions_are_deduplicated_with_incrementing_counter(): void
+    {
+        $service = app(ErrorLoggerService::class);
+
+        $request = Request::create('/sales/sales-bills', 'POST', ['ref' => 'TEST-DEDUP']);
+        $exception = new Exception('Payment gateway connection reset by peer');
+
+        // First capture
+        $firstLog = $service->capture($exception, $request);
+        $this->assertNotNull($firstLog);
+        $this->assertEquals(1, $firstLog->occurrence_count);
+        $this->assertEquals(1, SystemErrorLog::count());
+
+        // Second capture with identical exception signature
+        $secondLog = $service->capture($exception, $request);
+        $this->assertEquals($firstLog->id, $secondLog->id);
+        $this->assertEquals(2, $secondLog->occurrence_count);
+        $this->assertEquals(1, SystemErrorLog::count(), 'Error storm deduplication should not insert a second row.');
+
+        // Third capture
+        $thirdLog = $service->capture($exception, $request);
+        $this->assertEquals($firstLog->id, $thirdLog->id);
+        $this->assertEquals(3, $thirdLog->occurrence_count);
+        $this->assertEquals(1, SystemErrorLog::count());
     }
 
     public function test_error_logger_service_detects_purchase_and_gst_modules(): void
@@ -78,11 +131,14 @@ class SystemErrorLogTest extends TestCase
 
     public function test_system_error_logs_dashboard_renders_successfully(): void
     {
-        // Seed a sample log
+        // Seed a sample log with deduplication metrics
         SystemErrorLog::create([
             'module' => 'SalesBill',
             'error_type' => 'QueryException',
             'message' => 'Test SQL syntax error on line 42',
+            'error_hash' => md5('QueryException|test|42'),
+            'occurrence_count' => 5,
+            'last_seen_at' => now(),
             'file' => 'app/Http/Controllers/Sales/SalesBillController.php',
             'line' => 42,
             'url' => 'http://urbanpos.test/sales/sales-bills',
@@ -97,6 +153,7 @@ class SystemErrorLogTest extends TestCase
         $response->assertSee('Test SQL syntax error on line 42');
         $response->assertSee('SalesBill');
         $response->assertSee('Unresolved');
+        $response->assertSee('x5');
     }
 
     public function test_system_error_logs_inspection_json_returns_details(): void
@@ -105,6 +162,9 @@ class SystemErrorLogTest extends TestCase
             'module' => 'GST',
             'error_type' => 'GstApiException',
             'message' => 'NIC Portal timeout after 30s',
+            'error_hash' => md5('GstApiException|einvoice|110'),
+            'occurrence_count' => 3,
+            'last_seen_at' => now(),
             'file' => 'app/Services/GST/EInvoiceService.php',
             'line' => 110,
             'url' => 'http://urbanpos.test/tools/einvoice/generate-irn',
@@ -124,6 +184,7 @@ class SystemErrorLogTest extends TestCase
                 'module' => 'GST',
                 'message' => 'NIC Portal timeout after 30s',
                 'status' => 'Unresolved',
+                'occurrence_count' => 3,
             ],
         ]);
     }
@@ -152,8 +213,8 @@ class SystemErrorLogTest extends TestCase
     {
         SystemErrorLog::create([
             'module' => 'Purchase',
-            'error_type' => 'ValidationException',
-            'message' => 'Supplier invoice number is required',
+            'error_type' => 'RuntimeException',
+            'message' => 'Supplier invoice number corrupted',
             'status' => 'Unresolved',
         ]);
 

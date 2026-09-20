@@ -137,24 +137,27 @@ class SystemErrorLogController extends Controller
         return response()->json([
             'success' => true,
             'log' => [
-                'id'           => $log->id,
-                'module'       => $log->module,
-                'error_type'   => $log->error_type,
-                'message'      => $log->message,
-                'file'         => $log->file,
-                'line'         => $log->line,
-                'url'          => $log->url,
-                'method'       => $log->method,
-                'user_name'    => $log->user_name ?? ($log->user ? $log->user->name : 'Guest / System'),
-                'branch_name'  => $log->branch ? $log->branch->name : 'N/A',
-                'ip_address'   => $log->ip_address ?? 'N/A',
-                'user_agent'   => $log->user_agent ?? 'N/A',
-                'status'       => $log->status,
-                'request_data' => $log->request_data ? json_encode($log->request_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : null,
-                'stack_trace'  => $log->stack_trace,
-                'created_at'   => $log->created_at ? $log->created_at->format('d M Y, h:i:s A') : 'N/A',
-                'resolved_at'  => $log->resolved_at ? $log->resolved_at->format('d M Y, h:i:s A') : null,
-                'resolver'     => $log->resolver ? $log->resolver->name : null,
+                'id'               => $log->id,
+                'module'           => $log->module,
+                'error_type'       => $log->error_type,
+                'message'          => $log->message,
+                'error_hash'       => $log->error_hash,
+                'occurrence_count' => $log->occurrence_count ?? 1,
+                'last_seen_at'     => $log->last_seen_at ? $log->last_seen_at->format('d M Y, h:i:s A') : null,
+                'file'             => $log->file,
+                'line'             => $log->line,
+                'url'              => $log->url,
+                'method'           => $log->method,
+                'user_name'        => $log->user_name ?? ($log->user ? $log->user->name : 'Guest / System'),
+                'branch_name'      => $log->branch ? $log->branch->name : 'N/A',
+                'ip_address'       => $log->ip_address ?? 'N/A',
+                'user_agent'       => $log->user_agent ?? 'N/A',
+                'status'           => $log->status,
+                'request_data'     => $log->request_data ? json_encode($log->request_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : null,
+                'stack_trace'      => $log->stack_trace,
+                'created_at'       => $log->created_at ? $log->created_at->format('d M Y, h:i:s A') : 'N/A',
+                'resolved_at'      => $log->resolved_at ? $log->resolved_at->format('d M Y, h:i:s A') : null,
+                'resolver'         => $log->resolver ? $log->resolver->name : null,
             ],
         ]);
     }
@@ -220,7 +223,7 @@ class SystemErrorLogController extends Controller
 
         return response()->streamDownload(function () use ($query) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['ID', 'Module', 'Error Type', 'Message', 'File', 'Line', 'URL', 'Method', 'User', 'Branch', 'Status', 'Date Time']);
+            fputcsv($handle, ['ID', 'Module', 'Error Type', 'Message', 'Occurrences', 'Last Seen', 'File', 'Line', 'URL', 'Method', 'User', 'Branch', 'Status', 'Date Time']);
 
             $query->orderBy('created_at', 'desc')->chunk(200, function ($rows) use ($handle) {
                 foreach ($rows as $row) {
@@ -229,6 +232,8 @@ class SystemErrorLogController extends Controller
                         $row->module,
                         $row->error_type,
                         $row->message,
+                        $row->occurrence_count ?? 1,
+                        $row->last_seen_at ? $row->last_seen_at->toDateTimeString() : '',
                         $row->file,
                         $row->line,
                         $row->url,

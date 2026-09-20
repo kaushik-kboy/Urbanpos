@@ -292,8 +292,21 @@ class ChatOnClickWhatsAppService
 
         if (!empty($this->templateName)) {
             $customerName = trim($salesBill->customer?->name ?: 'Customer');
-            $billNumber   = $salesBill->bill_number;
+            $billNumber   = (string)$salesBill->bill_number;
+            $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-M-Y h:i A') : now()->format('d-M-Y');
+            $branchName   = trim($salesBill->branch?->name ?: $this->headerTitle);
+            $totalItems   = (string)($salesBill->relationLoaded('items') ? $salesBill->items->count() : $salesBill->items()->count());
             $totalAmount  = number_format((float) $salesBill->total, 2);
+
+            // Determine payment mode
+            $payments = $salesBill->relationLoaded('payments') ? $salesBill->payments : $salesBill->payments()->with('tenderType')->get();
+            if ($payments->isNotEmpty()) {
+                $paymentModes = $payments->map(fn($p) => $p->tenderType?->name ?: 'Payment')->unique()->implode(', ');
+            } else {
+                $paymentModes = (string)($salesBill->payment_type ?: 'Cash');
+            }
+
+            $branchPhone  = (string)($this->supportPhone ?: ($salesBill->branch?->phone ?: '7383056626'));
             $publicUrl    = $this->getPublicReceiptUrl($salesBill);
 
             $multipart = [
@@ -319,14 +332,29 @@ class ChatOnClickWhatsAppService
                 ],
             ];
 
-            // ChatOnClick API expects variables[] array in multipart
-            $variables = [$customerName, $billNumber, $totalAmount, $publicUrl];
+            // 8 Body variables matching urban_tax_invoice
+            $variables = [
+                $customerName,
+                $billNumber,
+                $billDate,
+                $branchName,
+                $totalItems,
+                $totalAmount,
+                $paymentModes,
+                $branchPhone,
+            ];
             foreach ($variables as $var) {
                 $multipart[] = [
                     'name'     => 'variables[]',
                     'contents' => (string) $var,
                 ];
             }
+
+            // Dynamic Button URL parameter
+            $multipart[] = [
+                'name'     => 'button_url',
+                'contents' => (string) $publicUrl,
+            ];
         } else {
             $message = $this->formatInvoiceMessage($salesBill);
             $multipart = [

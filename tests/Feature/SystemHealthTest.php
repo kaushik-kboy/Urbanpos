@@ -4,14 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class SystemHealthTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $user;
     private Branch $branch;
@@ -28,7 +29,8 @@ class SystemHealthTest extends TestCase
         );
 
         $this->user = User::factory()->create(['branch_id' => $this->branch->id]);
-        $this->user->assignRole('Owner');
+        $ownerRole = Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
+        $this->user->assignRole($ownerRole);
     }
 
     public function test_system_health_dashboard_renders_successfully(): void
@@ -36,14 +38,15 @@ class SystemHealthTest extends TestCase
         $response = $this->actingAs($this->user)->get(route('tools.system-health.index'));
 
         $response->assertOk();
-        $response->assertSee('System Health &amp; 24/7 Monitor', false);
+        $response->assertSee('System Health');
         $response->assertSee('Run Live Diagnostics');
         $response->assertSee('MySQL Database');
-        $response->assertSee('Storage Permissions');
+        $response->assertSee('Host RAM');
+        $response->assertSee('Storage');
         $response->assertSee('Regression Guard');
     }
 
-    public function test_system_health_run_diagnostics_ajax_returns_healthy_json(): void
+    public function test_system_health_run_diagnostics_ajax_returns_healthy_json_with_memory_stats(): void
     {
         $response = $this->actingAs($this->user)->post(route('tools.system-health.run'));
 
@@ -56,7 +59,15 @@ class SystemHealthTest extends TestCase
                 'overall_healthy',
                 'database' => ['status', 'latency_ms'],
                 'storage' => ['status', 'writable'],
-                'server' => ['php_version', 'laravel_version'],
+                'server' => [
+                    'php_version',
+                    'laravel_version',
+                    'memory_usage_mb',
+                    'memory_stats' => [
+                        'php_usage_mb',
+                        'formatted_summary',
+                    ],
+                ],
             ],
         ]);
         $response->assertJson(['success' => true, 'status' => 'HEALTHY']);
@@ -75,5 +86,26 @@ class SystemHealthTest extends TestCase
 
         $content = File::get($logPath);
         $this->assertStringContainsString('"status":"HEALTHY"', $content);
+    }
+
+    public function test_clear_laravel_log_truncates_file_to_zero_bytes(): void
+    {
+        $logPath = storage_path('logs/laravel.log');
+        File::put($logPath, "Simulated log line 1\nSimulated log line 2\n");
+        $this->assertGreaterThan(0, File::size($logPath));
+
+        $response = $this->actingAs($this->user)->postJson(route('tools.system-health.clear-log'));
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'log_size' => [
+                'bytes' => 0,
+                'formatted' => '0.00 MB',
+            ],
+        ]);
+
+        $this->assertTrue(File::exists($logPath));
+        $this->assertEquals(0, File::size($logPath));
     }
 }

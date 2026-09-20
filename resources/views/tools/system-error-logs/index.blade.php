@@ -242,7 +242,14 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="font-weight-bold text-danger">{{ $log->error_type ?? 'Exception' }}</span>
+                                <div class="d-flex align-items-center flex-wrap">
+                                    <span class="font-weight-bold text-danger mr-1">{{ $log->error_type ?? 'Exception' }}</span>
+                                    @if(($log->occurrence_count ?? 1) > 1)
+                                        <span class="badge badge-warning text-dark font-weight-bold shadow-xs" title="Occurred {{ $log->occurrence_count }} times">
+                                            <i class="fas fa-fire text-danger mr-1"></i>x{{ $log->occurrence_count }}
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td>
                                 <div class="font-weight-bold text-dark text-break" style="max-height: 48px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
@@ -263,6 +270,11 @@
                             <td>
                                 <div class="font-weight-bold text-dark">{{ $log->created_at ? $log->created_at->format('d M Y') : 'N/A' }}</div>
                                 <div class="text-xs text-muted">{{ $log->created_at ? $log->created_at->format('h:i:s A') : '' }}</div>
+                                @if(($log->occurrence_count ?? 1) > 1 && $log->last_seen_at)
+                                    <div class="text-xs text-warning font-weight-bold mt-1" title="Most recent occurrence">
+                                        <i class="fas fa-history mr-1"></i>Last: {{ $log->last_seen_at->format('d M, h:i A') }}
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 @if($log->status === 'Resolved')
@@ -361,6 +373,13 @@
                                         <tr>
                                             <th class="bg-light">Timestamp</th>
                                             <td id="modal-timestamp"></td>
+                                        </tr>
+                                        <tr>
+                                            <th class="bg-light">Occurrences</th>
+                                            <td>
+                                                <span id="modal-occurrences" class="badge badge-secondary px-2">1 occurrence</span>
+                                                <span class="text-xs text-muted ml-2" id="modal-last-seen-text"></span>
+                                            </td>
                                         </tr>
                                     </table>
                                 </div>
@@ -495,6 +514,15 @@
                 $('#modal-file').text(log.file || 'Unknown');
                 $('#modal-line').text(log.line || '-');
                 $('#modal-timestamp').text(log.created_at);
+                const count = log.occurrence_count || 1;
+                $('#modal-occurrences')
+                    .attr('class', count > 1 ? 'badge badge-warning text-dark font-weight-bold px-2' : 'badge badge-secondary px-2')
+                    .text(count + ' occurrence' + (count > 1 ? 's' : ''));
+                if (count > 1 && log.last_seen_at) {
+                    $('#modal-last-seen-text').html('<i class="fas fa-history mr-1"></i>Last seen: <strong>' + log.last_seen_at + '</strong>');
+                } else {
+                    $('#modal-last-seen-text').text('');
+                }
                 $('#modal-user').text(log.user_name);
                 $('#modal-branch').text(log.branch_name);
                 $('#modal-ip').text(log.ip_address);

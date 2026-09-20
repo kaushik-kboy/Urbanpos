@@ -26,11 +26,41 @@ class ErrorLoggerService
     ];
 
     /**
+     * Exceptions that should never be logged to system_error_logs (routine user / HTTP events).
+     */
+    protected array $ignoredExceptions = [
+        \Illuminate\Validation\ValidationException::class,
+        \Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class,
+        \Illuminate\Auth\AuthenticationException::class,
+        \Illuminate\Auth\Access\AuthorizationException::class,
+        \Illuminate\Session\TokenMismatchException::class,
+        \Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException::class,
+    ];
+
+    /**
+     * Check if exception is in the ignored list.
+     */
+    public function shouldIgnore(Throwable $e): bool
+    {
+        foreach ($this->ignoredExceptions as $ignoredClass) {
+            if ($e instanceof $ignoredClass) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Capture and record an exception into the system_error_logs table.
      */
     public function capture(Throwable $e, ?Request $request = null): ?SystemErrorLog
     {
         try {
+            // Noise filtering: Avoid logging routine user validation errors, 404s, CSRF token expirations
+            if ($this->shouldIgnore($e)) {
+                return null;
+            }
+
             // Avoid logging if database or table is not ready
             if (!Schema::hasTable('system_error_logs')) {
                 return null;
@@ -46,13 +76,6 @@ class ErrorLoggerService
             $errorType = class_basename($e);
             $message = $e->getMessage() ?: ('Unhandled ' . $errorType);
 
-            if ($e instanceof \Illuminate\Validation\ValidationException) {
-                $validationErrors = $e->validator->errors()->all();
-                if (!empty($validationErrors)) {
-                    $message = 'Validation Error: ' . implode(' | ', $validationErrors);
-                }
-            }
-
             $file = $e->getFile();
             $line = $e->getLine();
 
@@ -61,6 +84,9 @@ class ErrorLoggerService
             if (str_starts_with($file, $basePath)) {
                 $file = ltrim(substr($file, strlen($basePath)), '/\\');
             }
+
+            // Error storm protection: Generate deterministic MD5 fingerprint
+            $errorHash = md5($errorType . '|' . $file . '|' . $line . '|' . $message);
 
             // User and branch context
             $user = Auth::user();
@@ -76,6 +102,25 @@ class ErrorLoggerService
                 $requestData = ['_query' => $this->sanitizePayload($request->query())];
             }
 
+            // Check for existing unresolved instance of identical error (Deduplication)
+            $existing = SystemErrorLog::where('error_hash', $errorHash)
+                ->where('status', 'Unresolved')
+                ->latest()
+                ->first();
+
+            if ($existing) {
+                $existing->increment('occurrence_count');
+                $existing->update([
+                    'last_seen_at' => now(),
+                    'user_id'      => $userId ?? $existing->user_id,
+                    'user_name'    => $userName ?? $existing->user_name,
+                    'branch_id'    => $branchId ?? $existing->branch_id,
+                    'url'          => substr($url, 0, 950),
+                    'request_data' => !empty($requestData) ? $requestData : $existing->request_data,
+                ]);
+                return $existing;
+            }
+
             // Stack trace truncated to first 60 lines or 60KB
             $trace = $e->getTraceAsString();
             if (strlen($trace) > 60000) {
@@ -83,21 +128,24 @@ class ErrorLoggerService
             }
 
             return SystemErrorLog::create([
-                'module'       => $module,
-                'error_type'   => $errorType,
-                'message'      => $message,
-                'file'         => $file,
-                'line'         => $line,
-                'url'          => substr($url, 0, 950),
-                'method'       => $method,
-                'user_id'      => $userId,
-                'user_name'    => $userName,
-                'branch_id'    => $branchId,
-                'request_data' => !empty($requestData) ? $requestData : null,
-                'stack_trace'  => $trace,
-                'ip_address'   => $request?->ip(),
-                'user_agent'   => substr($request?->userAgent() ?? '', 0, 490),
-                'status'       => 'Unresolved',
+                'module'           => $module,
+                'error_type'       => $errorType,
+                'message'          => $message,
+                'error_hash'       => $errorHash,
+                'occurrence_count' => 1,
+                'last_seen_at'     => now(),
+                'file'             => $file,
+                'line'             => $line,
+                'url'              => substr($url, 0, 950),
+                'method'           => $method,
+                'user_id'          => $userId,
+                'user_name'        => $userName,
+                'branch_id'        => $branchId,
+                'request_data'     => !empty($requestData) ? $requestData : null,
+                'stack_trace'      => $trace,
+                'ip_address'       => $request?->ip(),
+                'user_agent'       => substr($request?->userAgent() ?? '', 0, 490),
+                'status'           => 'Unresolved',
             ]);
         } catch (Throwable $internalEx) {
             // Absolute fail-safe: Never disrupt user application flow if logger itself fails
