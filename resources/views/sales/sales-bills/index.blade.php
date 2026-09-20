@@ -100,7 +100,7 @@
                             <td>{{ $bill->invoice_type }}</td>
                             <td class="font-weight-bold text-success">₹{{ number_format($bill->total, 2) }}</td>
                             <td class="text-right text-nowrap">
-                                <button type="button" class="btn btn-xs btn-outline-success btn-whatsapp-index" data-url="{{ route('sales.sales-bills.send-whatsapp', $bill) }}" title="Send WhatsApp Bill to Client" onclick="sendWhatsAppFromIndex(this)">
+                                <button type="button" class="btn btn-xs btn-outline-success btn-whatsapp-index" data-url="{{ route('sales.sales-bills.send-whatsapp', $bill) }}" data-phone="{{ $bill->customer?->phone ?: $bill->customer?->mobile }}" title="Send WhatsApp Bill to Client" onclick="sendWhatsAppFromIndex(this)">
                                     <i class="fab fa-whatsapp"></i>
                                 </button>
                                 <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-xs btn-outline-success" title="Thermal Receipt (80mm)">
@@ -129,6 +129,12 @@
 function sendWhatsAppFromIndex(btn) {
     const url = btn.getAttribute('data-url');
     if (!url) return;
+    let phone = btn.getAttribute('data-phone') || '';
+    if (!phone || phone.trim().length < 10) {
+        phone = prompt('Customer has no mobile number saved. Enter 10-digit WhatsApp number:');
+        if (!phone) return;
+    }
+
     const origHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -140,7 +146,7 @@ function sendWhatsAppFromIndex(btn) {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json'
         },
-        body: JSON.stringify({})
+        body: JSON.stringify({ phone: phone })
     })
     .then(res => res.json())
     .then(data => {

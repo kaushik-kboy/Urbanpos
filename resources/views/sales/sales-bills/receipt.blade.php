@@ -449,6 +449,12 @@
 
         @if (!($isPublicGuest ?? false))
         function sendWhatsAppInvoice() {
+            let phone = '{{ $salesBill->customer?->phone ?: $salesBill->customer?->mobile }}';
+            if (!phone || phone.trim().length < 10) {
+                phone = prompt('Customer has no mobile number saved. Enter 10-digit WhatsApp number:');
+                if (!phone) return;
+            }
+
             const btn = document.getElementById('btn-whatsapp-send');
             if (!btn) return;
             const origHtml = btn.innerHTML;
@@ -462,7 +468,7 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({})
+                body: JSON.stringify({ phone: phone })
             })
             .then(res => res.json())
             .then(data => {
