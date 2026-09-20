@@ -403,6 +403,10 @@
                     <i class="fas fa-check mr-1"></i> Save Configuration
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
 {{-- MODAL: GROUP DRILLDOWN TRANSACTION BREAKDOWN --}}
 <div class="modal fade" id="drilldownModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
@@ -642,45 +646,52 @@ $(document).ready(function() {
 
     // Render Chart.js
     function renderReportChart(resp) {
-        if (!resp.chart || !resp.chart.labels || resp.chart.labels.length === 0) return;
+        if (!resp || !resp.chart || !resp.chart.labels || resp.chart.labels.length === 0) return;
+        if (typeof Chart === 'undefined') return;
 
-        let ctx = document.getElementById('analyticsChart').getContext('2d');
-        if (currentChart) {
-            currentChart.destroy();
-        }
-
-        let bgColors = [
-            '#007bff', '#28a745', '#17a2b8', '#ffc107', '#dc3545',
-            '#6610f2', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'
-        ];
-
-        currentChart = new Chart(ctx, {
-            type: chartType,
-            data: {
-                labels: resp.chart.labels,
-                datasets: [{
-                    label: resp.chart.label || 'Value',
-                    data: resp.chart.values,
-                    backgroundColor: chartType === 'pie' ? bgColors : '#17a2b8',
-                    borderColor: chartType === 'pie' ? '#ffffff' : '#117a8b',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: (chartType === 'pie')
-                    }
-                },
-                scales: (chartType === 'bar') ? {
-                    y: {
-                        beginAtZero: true
-                    }
-                } : {}
+        try {
+            let canvas = document.getElementById('analyticsChart');
+            if (!canvas) return;
+            let ctx = canvas.getContext('2d');
+            if (currentChart) {
+                currentChart.destroy();
             }
-        });
+
+            let bgColors = [
+                '#007bff', '#28a745', '#17a2b8', '#ffc107', '#dc3545',
+                '#6610f2', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'
+            ];
+
+            currentChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: resp.chart.labels,
+                    datasets: [{
+                        label: resp.chart.label || 'Value',
+                        data: resp.chart.values,
+                        backgroundColor: chartType === 'pie' ? bgColors : '#17a2b8',
+                        borderColor: chartType === 'pie' ? '#ffffff' : '#117a8b',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: (chartType === 'pie')
+                        }
+                    },
+                    scales: (chartType === 'bar') ? {
+                        y: {
+                            beginAtZero: true
+                        }
+                    } : {}
+                }
+            });
+        } catch (chartErr) {
+            console.warn('Visual chart rendering suppressed:', chartErr);
+        }
     }
 
     // View Mode Toggle (Table vs Chart)
