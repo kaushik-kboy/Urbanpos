@@ -150,29 +150,66 @@ class ChatOnClickWhatsAppService
             ];
         }
 
-        $message = $this->formatInvoiceMessage($salesBill);
+        $templateName = config('services.chatonclick.template_name');
+
+        if (!empty($templateName)) {
+            $customerName = trim($salesBill->customer?->name ?: 'Customer');
+            $billNumber   = $salesBill->bill_number;
+            $totalAmount  = number_format((float) $salesBill->total, 2);
+            $publicUrl    = $this->getPublicReceiptUrl($salesBill);
+
+            $multipart = [
+                [
+                    'name'     => 'appkey',
+                    'contents' => $this->appKey,
+                ],
+                [
+                    'name'     => 'authkey',
+                    'contents' => $this->authKey,
+                ],
+                [
+                    'name'     => 'to',
+                    'contents' => $cleanPhone,
+                ],
+                [
+                    'name'     => 'template_name',
+                    'contents' => $templateName,
+                ],
+                [
+                    'name'     => 'language',
+                    'contents' => config('services.chatonclick.template_lang', 'en'),
+                ],
+                [
+                    'name'     => 'variables',
+                    'contents' => json_encode([$customerName, $billNumber, $totalAmount, $publicUrl]),
+                ],
+            ];
+        } else {
+            $message = $this->formatInvoiceMessage($salesBill);
+            $multipart = [
+                [
+                    'name'     => 'appkey',
+                    'contents' => $this->appKey,
+                ],
+                [
+                    'name'     => 'authkey',
+                    'contents' => $this->authKey,
+                ],
+                [
+                    'name'     => 'to',
+                    'contents' => $cleanPhone,
+                ],
+                [
+                    'name'     => 'message',
+                    'contents' => $message,
+                ],
+            ];
+        }
 
         try {
             $response = Http::asMultipart()
                 ->timeout(15)
-                ->post($this->url . '/api/whatsapp/message', [
-                    [
-                        'name'     => 'appkey',
-                        'contents' => $this->appKey,
-                    ],
-                    [
-                        'name'     => 'authkey',
-                        'contents' => $this->authKey,
-                    ],
-                    [
-                        'name'     => 'to',
-                        'contents' => $cleanPhone,
-                    ],
-                    [
-                        'name'     => 'message',
-                        'contents' => $message,
-                    ],
-                ]);
+                ->post($this->url . '/api/whatsapp/message', $multipart);
 
             $json = $response->json();
 
