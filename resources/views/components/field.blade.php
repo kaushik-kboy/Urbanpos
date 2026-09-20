@@ -14,7 +14,27 @@
         @if($required || $attributes->has('required')) <span class="text-danger">*</span> @endif
     </label>
     <div class="col-sm-{{ $col }}">
-        @if($hasAddon)
+        @if($type === 'date')
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="{{ $name }}"
+                    name="{{ $name }}"
+                    @if($required || $attributes->has('required')) required @endif
+                    {{ $attributes->merge(['class' => 'form-control datepicker ' . ($errors->has($name) ? 'is-invalid' : '')]) }}
+                    value="{{ $computedValue }}"
+                    placeholder="YYYY-MM-DD"
+                    autocomplete="off"
+                >
+                <div class="input-group-append">
+                    @if($hasAddon)
+                        {!! $addon !!}{{ $slot }}
+                    @else
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    @endif
+                </div>
+            </div>
+        @elseif($hasAddon)
             <div class="input-group">
                 <input
                     type="{{ $type }}"
