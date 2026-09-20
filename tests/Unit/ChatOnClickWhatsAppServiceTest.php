@@ -88,6 +88,7 @@ class ChatOnClickWhatsAppServiceTest extends TestCase
         $this->assertStringContainsString('1,250.50', $message);
         $this->assertStringContainsString('Motera Branch', $message);
         $this->assertStringContainsString('/receipt/v/', $message);
+        $this->assertStringContainsString('Have an Awesome Day!', $message);
     }
 
     public function test_send_sales_bill_invoice_http_dispatch(): void

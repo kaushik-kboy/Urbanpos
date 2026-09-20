@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipt - {{ $salesBill->bill_number }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -209,6 +210,9 @@
                 <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Verified Digital Bill
             </span>
         @endif
+        <button id="btn-download-pdf" type="button" onclick="downloadReceiptPdf()" class="btn btn-primary" style="background: #17a2b8; border-color: #17a2b8;" title="Save as PDF directly to phone">
+            <i class="fas fa-download" style="margin-right: 5px;"></i> Download PDF
+        </button>
         <button onclick="window.print()" class="btn btn-primary">
             <i class="fas fa-print" style="margin-right: 5px;"></i> Print Slip
         </button>
@@ -435,13 +439,48 @@
         <div class="text-center footer-note">
             <div class="font-bold">Thank you for shopping at Urban Pets!</div>
             <div>Exchange valid within 7 days with original bill.</div>
-            <div style="margin-top: 2px;">*** Have a Pawsome Day! ***</div>
+            <div style="margin-top: 2px;">*** Have an Awesome Day! ***</div>
         </div>
     </div>
 
     <script>
-        // Auto trigger print if ?autoprint=1 is in URL
-        if (new URLSearchParams(window.location.search).get('autoprint') === '1') {
+        function downloadReceiptPdf() {
+            const btn = document.getElementById('btn-download-pdf');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 5px;"></i> Generating...';
+            }
+
+            const el = document.querySelector('.receipt-container');
+            const opt = {
+                margin:       [4, 4, 4, 4],
+                filename:     '{{ $salesBill->bill_number }}.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(el).save().then(function () {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download" style="margin-right: 5px;"></i> Download PDF';
+                }
+            }).catch(function (err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download" style="margin-right: 5px;"></i> Download PDF';
+                }
+                alert('PDF generation notice: Opening print dialog instead.');
+                window.print();
+            });
+        }
+
+        // Auto trigger download or print if requested
+        if (new URLSearchParams(window.location.search).get('download') === '1') {
+            window.addEventListener('load', function () {
+                downloadReceiptPdf();
+            });
+        } else if (new URLSearchParams(window.location.search).get('autoprint') === '1') {
             window.addEventListener('load', function () {
                 window.print();
             });

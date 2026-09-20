@@ -124,7 +124,7 @@ class ChatOnClickWhatsAppService
              . "{$publicUrl}\n\n"
              . "━━━━━━━━━━━━━━━━━━━━\n"
              . "📞 *Store Helpline:* {$branchPhone}\n"
-             . "🐾 *Have a Pawsome Day!*";
+             . "🐾 *Have an Awesome Day!*";
     }
 
     /**
