@@ -252,6 +252,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('sales-bills/customer-loyalty/{customer}', [SalesBillController::class, 'customerLoyalty'])->name('sales-bills.customer-loyalty');
     Route::get('sales-bills/customer-invoices/{customer}', [SalesBillController::class, 'customerInvoices'])->name('sales-bills.customer-invoices');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
+    Route::post('sales-bills/{salesBill}/send-whatsapp', [SalesBillController::class, 'sendWhatsApp'])->name('sales-bills.send-whatsapp');
     Route::get('sales-bills/{salesBill}/eway-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadJson'])->name('sales-bills.eway-json');
     Route::post('sales-bills/{salesBill}/eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'updateDetails'])->name('sales-bills.eway-update');
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');
@@ -419,3 +420,7 @@ Route::middleware('auth')->post('/active-branch', function (\Illuminate\Http\Req
         'active_branch_id' => session('active_branch_id', null),
     ]);
 })->name('set-active-branch');
+
+// Public guest route for customer WhatsApp invoice/receipt view (no login required)
+Route::get('receipt/v/{salesBill}/{hash}', [\App\Http\Controllers\Sales\SalesBillController::class, 'publicReceipt'])
+    ->name('sales-bills.public-receipt');

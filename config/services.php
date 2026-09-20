@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'chatonclick' => [
+        'url'     => env('CHATONCLICK_URL', 'https://chatonclick.com'),
+        'appkey'  => env('CHATONCLICK_APPKEY'),
+        'authkey' => env('CHATONCLICK_AUTHKEY'),
+    ],
+
 ];
+

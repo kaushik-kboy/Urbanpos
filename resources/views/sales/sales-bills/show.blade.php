@@ -24,6 +24,9 @@
             <a href="{{ route('sales.sales-bills.receipt', $salesBill) }}" target="_blank" class="btn btn-success btn-sm mr-1 shadow-sm">
                 <i class="fas fa-receipt mr-1"></i> Thermal Receipt (80mm)
             </a>
+            <button type="button" id="btn-show-send-whatsapp" class="btn btn-success btn-sm mr-1 shadow-sm font-weight-bold" onclick="sendWhatsAppInvoiceShow()" style="background-color: #25d366; border-color: #25d366;" title="Send Digital Bill via WhatsApp">
+                <i class="fab fa-whatsapp mr-1"></i> Send WhatsApp
+            </button>
             <button onclick="window.print()" class="btn btn-outline-secondary btn-sm mr-1">
                 <i class="fas fa-print mr-1"></i> Print (A4)
             </button>
@@ -488,4 +491,41 @@
             </div>
         </div>
     </div>
+@stop
+
+@section('js')
+<script>
+function sendWhatsAppInvoiceShow() {
+    const btn = document.getElementById('btn-show-send-whatsapp');
+    if (!btn) return;
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Sending...';
+
+    fetch('{{ route('sales.sales-bills.send-whatsapp', $salesBill) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        if (data.success) {
+            alert('✅ ' + data.message);
+        } else {
+            alert('⚠️ ' + (data.error || 'Failed to send WhatsApp message'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        alert('Network error while dispatching WhatsApp: ' + err.message);
+    });
+}
+</script>
 @stop

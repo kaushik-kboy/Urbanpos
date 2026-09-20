@@ -18,6 +18,7 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Inventory\StockLedgerService;
 use App\Services\Loyalty\LoyaltyService;
 use App\Services\Tax\TaxEngine;
+use App\Services\WhatsApp\ChatOnClickWhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +33,7 @@ class SalesBillController extends Controller
         private CreditLimitGuard $creditLimitGuard,
         private FinancialYearGuard $financialYearGuard,
         private LoyaltyService $loyaltyService,
+        private ChatOnClickWhatsAppService $whatsAppService,
     ) {
     }
 
@@ -301,7 +303,17 @@ class SalesBillController extends Controller
             \Illuminate\Support\Facades\Log::error("Auto E-Invoice exception for bill {$salesBill->bill_number}: " . $e->getMessage());
         }
 
-        return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}");
+        $whatsappNotice = '';
+        try {
+            $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
+            if ($waResult['success'] ?? false) {
+                $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Auto WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
+        }
+
+        return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$whatsappNotice}");
     }
 
     public function edit(SalesBill $salesBill)
@@ -330,7 +342,46 @@ class SalesBillController extends Controller
     {
         $salesBill->load(['customer', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
 
-        return view('sales.sales-bills.receipt', compact('salesBill'));
+        return view('sales.sales-bills.receipt', [
+            'salesBill' => $salesBill,
+            'isPublicGuest' => false,
+        ]);
+    }
+
+    /**
+     * Public guest view for client to access/print receipt from WhatsApp link without login.
+     */
+    public function publicReceipt(SalesBill $salesBill, string $hash)
+    {
+        if (!$this->whatsAppService->verifyReceiptHash($salesBill, $hash)) {
+            abort(403, 'Invalid or expired receipt security link.');
+        }
+
+        $salesBill->load(['customer', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
+
+        return view('sales.sales-bills.receipt', [
+            'salesBill' => $salesBill,
+            'isPublicGuest' => true,
+        ]);
+    }
+
+    /**
+     * Trigger manual dispatch of WhatsApp invoice to client.
+     */
+    public function sendWhatsApp(Request $request, SalesBill $salesBill)
+    {
+        $overridePhone = $request->input('phone');
+        $result = $this->whatsAppService->sendSalesBillInvoice($salesBill, $overridePhone);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json($result, $result['success'] ? 200 : 422);
+        }
+
+        if ($result['success']) {
+            return back()->with('status', $result['message']);
+        }
+
+        return back()->withErrors(['whatsapp' => $result['error']]);
     }
 
     public function update(Request $request, SalesBill $salesBill)

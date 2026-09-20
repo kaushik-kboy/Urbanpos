@@ -100,6 +100,9 @@
                             <td>{{ $bill->invoice_type }}</td>
                             <td class="font-weight-bold text-success">₹{{ number_format($bill->total, 2) }}</td>
                             <td class="text-right text-nowrap">
+                                <button type="button" class="btn btn-xs btn-outline-success btn-whatsapp-index" data-url="{{ route('sales.sales-bills.send-whatsapp', $bill) }}" title="Send WhatsApp Bill to Client" onclick="sendWhatsAppFromIndex(this)">
+                                    <i class="fab fa-whatsapp"></i>
+                                </button>
                                 <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-xs btn-outline-success" title="Thermal Receipt (80mm)">
                                     <i class="fas fa-receipt"></i>
                                 </a>
@@ -120,3 +123,41 @@
         <div class="card-footer">{{ $salesBills->links() }}</div>
     </div>
 @stop
+
+@section('js')
+<script>
+function sendWhatsAppFromIndex(btn) {
+    const url = btn.getAttribute('data-url');
+    if (!url) return;
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        if (data.success) {
+            alert('✅ ' + data.message);
+        } else {
+            alert('⚠️ ' + (data.error || 'Failed to dispatch WhatsApp message'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        alert('Network error: ' + err.message);
+    });
+}
+</script>
+@stop
+

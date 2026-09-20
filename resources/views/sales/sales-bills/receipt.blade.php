@@ -54,8 +54,10 @@
 
         .btn-primary { background: #007bff; color: #fff; }
         .btn-secondary { background: #6c757d; color: #fff; }
+        .btn-success { background: #25d366; color: #fff; }
         .btn-primary:hover { background: #0069d9; }
         .btn-secondary:hover { background: #5a6268; }
+        .btn-success:hover { background: #1ebd56; }
 
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -195,11 +197,20 @@
 <body>
 
     <div class="screen-toolbar">
-        <a href="{{ route('sales.sales-bills.show', $salesBill) }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left" style="margin-right: 5px;"></i> Back to Bill
-        </a>
+        @if (!($isPublicGuest ?? false))
+            <a href="{{ route('sales.sales-bills.show', $salesBill) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left" style="margin-right: 5px;"></i> Back to Bill
+            </a>
+            <button id="btn-whatsapp-send" type="button" class="btn btn-success" onclick="sendWhatsAppInvoice()">
+                <i class="fab fa-whatsapp" style="margin-right: 5px; font-size: 14px;"></i> WhatsApp
+            </button>
+        @else
+            <span style="font-size: 11px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 5px 8px; border-radius: 4px;">
+                <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Verified Digital Bill
+            </span>
+        @endif
         <button onclick="window.print()" class="btn btn-primary">
-            <i class="fas fa-print" style="margin-right: 5px;"></i> Print Slip (80mm)
+            <i class="fas fa-print" style="margin-right: 5px;"></i> Print Slip
         </button>
     </div>
 
@@ -435,6 +446,41 @@
                 window.print();
             });
         }
+
+        @if (!($isPublicGuest ?? false))
+        function sendWhatsAppInvoice() {
+            const btn = document.getElementById('btn-whatsapp-send');
+            if (!btn) return;
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 5px;"></i> Sending...';
+
+            fetch('{{ route('sales.sales-bills.send-whatsapp', $salesBill) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({})
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                } else {
+                    alert('⚠️ ' + (data.error || 'Failed to send WhatsApp message'));
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                alert('Network error while dispatching WhatsApp: ' + err.message);
+            });
+        }
+        @endif
     </script>
 </body>
 </html>
