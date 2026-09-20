@@ -13,12 +13,16 @@
             <span class="badge badge-primary mr-1">F2</span> Item Search
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('new_entry');" title="Add New Item Row / New Entry (F3)">
-            <span class="badge badge-info mr-1">F3</span> New Row
+        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('new_entry');" title="Create New Record (F3)">
+            <span class="badge badge-info mr-1">F3</span> New
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('edit_entry');" title="Edit / Focus Row (F4)">
-            <span class="badge badge-secondary mr-1">F4</span> Edit Qty
+        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('edit_entry');" title="Edit Record (F4)">
+            <span class="badge badge-secondary mr-1">F4</span> Edit
+        </button>
+
+        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('view_records');" title="View Records / List (F7)">
+            <span class="badge badge-info mr-1" style="background-color: #6C3BE8; color: #fff;">F7</span> View
         </button>
 
         <button type="button" tabindex="-1" class="btn btn-xs btn-outline-success font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('save_form');" title="Save Bill / Tender (F6)">

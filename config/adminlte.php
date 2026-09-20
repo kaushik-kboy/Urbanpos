@@ -568,19 +568,19 @@ return [
             'submenu' => [
                 [
                     'text' => 'Opening Stock Entry',
-                    'url' => 'inventory/opening-stocks',
+                    'url' => 'inventory/opening-stocks/create',
                     'icon' => 'fas fa-fw fa-dolly',
                     'active' => ['inventory/opening-stocks*'],
                 ],
                 [
                     'text' => 'Damage Stock Entry',
-                    'url' => 'inventory/damage-stocks',
+                    'url' => 'inventory/damage-stocks/create',
                     'icon' => 'fas fa-fw fa-dumpster-fire',
                     'active' => ['inventory/damage-stocks*'],
                 ],
                 [
                     'text' => 'Stock Update Entry',
-                    'url' => 'inventory/stock-updates',
+                    'url' => 'inventory/stock-updates/create',
                     'icon' => 'fas fa-fw fa-sync-alt',
                     'active' => ['inventory/stock-updates*'],
                 ],
