@@ -225,7 +225,7 @@ p, span, label, small {
 }
 
 .brand-link .brand-text {
-    color: var(--up-text-primary) !important;
+    color: #000000 !important;
     font-weight: 800 !important;
     font-size: 16px !important;
     letter-spacing: 0.04em !important;
@@ -251,9 +251,13 @@ p, span, label, small {
 .form-control-sidebar {
     background-color: var(--up-bg) !important;
     border: 1px solid var(--up-border) !important;
-    color: var(--up-text-primary) !important;
+    color: #000000 !important;
     border-radius: 8px 0 0 8px !important;
     font-size: 13px !important;
+}
+
+.form-control-sidebar::placeholder {
+    color: #4B5563 !important;
 }
 
 .form-control-sidebar:focus {
@@ -265,8 +269,13 @@ p, span, label, small {
     background-color: var(--up-bg) !important;
     border: 1px solid var(--up-border) !important;
     border-left: none !important;
-    color: var(--up-text-muted) !important;
+    color: #000000 !important;
     border-radius: 0 8px 8px 0 !important;
+}
+
+.btn-sidebar i,
+.btn-sidebar .fas {
+    color: #000000 !important;
 }
 
 .btn-sidebar:hover {
@@ -279,7 +288,7 @@ p, span, label, small {
 }
 
 .nav-sidebar .nav-header {
-    color: var(--up-text-muted) !important;
+    color: #000000 !important;
     font-size: 11px !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
@@ -292,8 +301,12 @@ p, span, label, small {
     margin: 2px 8px !important;
 }
 
-.nav-sidebar .nav-item .nav-link {
-    color: var(--up-text-secondary) !important;
+/* Base link styling - Font color default BLACK */
+.main-sidebar .nav-sidebar .nav-item .nav-link,
+.main-sidebar .sidebar a,
+[class*="sidebar-light-"] .sidebar a,
+[class*="sidebar-light-"] .nav-sidebar > .nav-item > .nav-link {
+    color: #000000 !important;
     font-size: 13.5px !important;
     font-weight: 500 !important;
     padding: 9px 12px !important;
@@ -303,8 +316,21 @@ p, span, label, small {
     transition: all 0.15s ease !important;
 }
 
-.nav-sidebar .nav-item .nav-link .nav-icon {
-    color: var(--up-text-muted) !important;
+.main-sidebar .nav-sidebar .nav-item .nav-link p,
+.main-sidebar .nav-sidebar .nav-item .nav-link span,
+[class*="sidebar-light-"] .nav-sidebar .nav-item .nav-link p {
+    color: #000000 !important;
+    margin: 0 !important;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+/* Sidebar Icons - Icon color default BLACK */
+.main-sidebar .nav-sidebar .nav-item .nav-link .nav-icon,
+.main-sidebar .nav-sidebar .nav-item .nav-link i,
+.main-sidebar .nav-sidebar .nav-item .nav-link [class*="fa-"],
+[class*="sidebar-light-"] .nav-sidebar .nav-item .nav-link .nav-icon,
+[class*="sidebar-light-"] .nav-sidebar .nav-item .nav-link i {
+    color: #000000 !important;
     font-size: 15px !important;
     width: 20px !important;
     margin-right: 10px !important;
@@ -313,38 +339,54 @@ p, span, label, small {
     flex-shrink: 0;
 }
 
-.nav-sidebar .nav-item .nav-link p {
-    margin: 0 !important;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+/* Treeview dropdown angle arrows - Default BLACK */
+.main-sidebar .nav-sidebar .nav-link .right,
+.main-sidebar .nav-sidebar .nav-link > p > .right,
+.main-sidebar .nav-sidebar .nav-link i.right,
+.main-sidebar .nav-sidebar .nav-link .fas.fa-angle-left,
+.main-sidebar .nav-sidebar .nav-link .fa-angle-left {
+    color: #000000 !important;
 }
 
-/* Sidebar Hover State */
-.nav-sidebar .nav-item .nav-link:hover {
+/* Sidebar Hover State - Soft background, font and icon turn blue */
+.main-sidebar .nav-sidebar .nav-item .nav-link:hover,
+[class*="sidebar-light-"] .nav-sidebar > .nav-item:hover > .nav-link,
+[class*="sidebar-light-"] .nav-sidebar > .nav-item.menu-open > .nav-link {
     background-color: var(--up-bg) !important;
     color: var(--up-blue) !important;
 }
 
-.nav-sidebar .nav-item .nav-link:hover .nav-icon {
+.main-sidebar .nav-sidebar .nav-item .nav-link:hover p,
+.main-sidebar .nav-sidebar .nav-item .nav-link:hover .nav-icon,
+.main-sidebar .nav-sidebar .nav-item .nav-link:hover i,
+.main-sidebar .nav-sidebar .nav-item .nav-link:hover .right,
+[class*="sidebar-light-"] .nav-sidebar > .nav-item:hover > .nav-link .nav-icon,
+[class*="sidebar-light-"] .nav-sidebar > .nav-item:hover > .nav-link i {
     color: var(--up-blue) !important;
 }
 
-/* Sidebar ACTIVE State (Pill design from Page 5 & 6) */
+/* Sidebar ACTIVE State - Pill design with soft blue background and blue font & icon */
 .nav-sidebar .nav-item .nav-link.active,
 .sidebar-light-primary .nav-sidebar > .nav-item > .nav-link.active,
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active,
+[class*="sidebar-light-"] .nav-sidebar > .nav-item > .nav-link.active {
     background-color: var(--up-blue-soft) !important;
     color: var(--up-blue) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     box-shadow: none !important;
+    border-left: 3px solid var(--up-blue) !important;
 }
 
+.nav-sidebar .nav-item .nav-link.active p,
 .nav-sidebar .nav-item .nav-link.active .nav-icon,
+.nav-sidebar .nav-item .nav-link.active i,
 .sidebar-light-primary .nav-sidebar > .nav-item > .nav-link.active .nav-icon,
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active .nav-icon {
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active .nav-icon,
+[class*="sidebar-light-"] .nav-sidebar > .nav-item > .nav-link.active .nav-icon {
     color: var(--up-blue) !important;
 }
 
-/* Sidebar Treeview / Submenu */
+/* Sidebar Treeview / Submenu - Default BLACK for font and icons */
 .nav-treeview {
     background-color: transparent !important;
     padding-left: 6px !important;
@@ -354,16 +396,48 @@ p, span, label, small {
     margin: 1px 4px !important;
 }
 
-.nav-treeview .nav-item .nav-link {
+.main-sidebar .nav-treeview .nav-item .nav-link,
+[class*="sidebar-light-"] .nav-treeview > .nav-item > .nav-link {
     font-size: 13px !important;
     padding: 7px 10px 7px 28px !important;
     border-radius: 6px !important;
+    color: #000000 !important;
+    font-weight: 500 !important;
 }
 
-.nav-treeview .nav-item .nav-link.active {
+.main-sidebar .nav-treeview .nav-item .nav-link p,
+.main-sidebar .nav-treeview .nav-item .nav-link span,
+.main-sidebar .nav-treeview .nav-item .nav-link .nav-icon,
+.main-sidebar .nav-treeview .nav-item .nav-link i,
+[class*="sidebar-light-"] .nav-treeview > .nav-item > .nav-link .nav-icon,
+[class*="sidebar-light-"] .nav-treeview > .nav-item > .nav-link i {
+    color: #000000 !important;
+}
+
+.main-sidebar .nav-treeview .nav-item .nav-link:hover,
+[class*="sidebar-light-"] .nav-treeview > .nav-item > .nav-link:hover {
+    background-color: var(--up-bg) !important;
+    color: var(--up-blue) !important;
+}
+
+.main-sidebar .nav-treeview .nav-item .nav-link:hover p,
+.main-sidebar .nav-treeview .nav-item .nav-link:hover .nav-icon,
+.main-sidebar .nav-treeview .nav-item .nav-link:hover i {
+    color: var(--up-blue) !important;
+}
+
+.main-sidebar .nav-treeview .nav-item .nav-link.active,
+[class*="sidebar-light-"] .nav-treeview > .nav-item > .nav-link.active {
     background-color: var(--up-blue-soft) !important;
     color: var(--up-blue) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
+    border-left: 3px solid var(--up-blue) !important;
+}
+
+.main-sidebar .nav-treeview .nav-item .nav-link.active p,
+.main-sidebar .nav-treeview .nav-item .nav-link.active .nav-icon,
+.main-sidebar .nav-treeview .nav-item .nav-link.active i {
+    color: var(--up-blue) !important;
 }
 
 /* ==========================================================================
@@ -579,6 +653,9 @@ p, span, label, small {
     }
     body.sidebar-mini.sidebar-collapse .pos-keyboard-bar {
         left: var(--up-sidebar-collapsed-width) !important;
+    }
+    body.pos-terminal-body .pos-keyboard-bar {
+        left: 0 !important;
     }
 }
 
@@ -1376,6 +1453,54 @@ body {
     border: 1px solid var(--up-border) !important;
     border-radius: 8px !important;
     box-shadow: 0 10px 25px rgba(11, 31, 82, 0.12) !important;
+}
+
+/* ==========================================================================
+   INLINE SEARCH UX FOR SELECT2 SINGLE (Overrides default dropdown search)
+   Makes the dropdown search box visually replace the main select field
+   ========================================================================== */
+.select2-container--bootstrap4.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+    opacity: 0 !important;
+}
+
+.select2-container .select2-dropdown--below {
+    margin-top: -34px !important;
+}
+
+.select2-container .select2-dropdown--above {
+    margin-top: 34px !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.select2-container .select2-dropdown--above .select2-search--dropdown {
+    order: 2;
+}
+
+.select2-container .select2-dropdown--above .select2-results {
+    order: 1;
+}
+
+.select2-container .select2-search--dropdown {
+    padding: 0 !important;
+}
+
+.select2-container .select2-search--dropdown .select2-search__field {
+    height: 34px !important;
+    border: 1.5px solid var(--up-blue) !important;
+    box-shadow: 0 0 0 3px rgba(23, 105, 232, 0.12) !important;
+    padding: 4px 10px !important;
+    font-size: 13px !important;
+    font-family: 'Inter', -apple-system, sans-serif !important;
+    margin: 0 !important;
+    outline: none !important;
+    border-radius: 6px 6px 0 0 !important;
+    width: 100% !important;
+}
+
+.select2-container .select2-dropdown--above .select2-search__field {
+    border-radius: 0 0 6px 6px !important;
 }
 
 .select2-results__option--highlighted[aria-selected] {

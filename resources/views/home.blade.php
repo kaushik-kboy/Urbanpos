@@ -16,6 +16,24 @@
             </span>
         </div>
     </div>
+    
+    <div class="mt-4 mb-2">
+        <div class="position-relative">
+            <div class="input-group input-group-lg shadow-sm">
+                <div class="input-group-prepend">
+                    <span class="input-group-text bg-white border-right-0 text-primary">
+                        <i class="fas fa-search"></i>
+                    </span>
+                </div>
+                <input type="text" id="dashboardSearchInput" class="form-control border-left-0 pl-0" placeholder="Search for modules, reports, or settings..." autocomplete="off">
+            </div>
+            
+            <!-- Search Results Dropdown -->
+            <div id="dashboardSearchResults" class="dropdown-menu w-100 shadow-lg mt-1 rounded" style="display: none; max-height: 350px; overflow-y: auto; position: absolute; z-index: 1000;">
+                <!-- Results injected via JS -->
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('content')
@@ -451,6 +469,88 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Dashboard Search Logic
+    const searchInput = document.getElementById('dashboardSearchInput');
+    const searchResults = document.getElementById('dashboardSearchResults');
+    
+    if (searchInput && searchResults) {
+        // Collect links from the sidebar
+        const links = [];
+        document.querySelectorAll('.nav-sidebar .nav-item > .nav-link').forEach(link => {
+            const url = link.getAttribute('href');
+            if (!url || url === '#' || url === 'javascript:void(0)') return;
+            
+            const textEl = link.querySelector('p') || link;
+            // Clean up text, remove badges like 'New' or counts
+            let text = textEl.textContent.trim();
+            const badge = link.querySelector('.badge');
+            if (badge) {
+                text = text.replace(badge.textContent.trim(), '').trim();
+            }
+            // If it has a caret, it's a menu header, skip if you want, but they usually have href="#"
+            
+            const iconEl = link.querySelector('i.nav-icon');
+            const iconClass = iconEl ? iconEl.className : 'far fa-circle text-muted';
+            
+            if (text && url) {
+                links.push({ text: text, url: url, icon: iconClass });
+            }
+        });
+
+        searchInput.addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase().trim();
+            searchResults.innerHTML = '';
+            
+            if (query.length === 0) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            const filtered = links.filter(link => link.text.toLowerCase().includes(query));
+            
+            if (filtered.length > 0) {
+                filtered.forEach(link => {
+                    const a = document.createElement('a');
+                    a.className = 'dropdown-item d-flex align-items-center py-2 border-bottom';
+                    a.href = link.url;
+                    // Adding custom hover effect via inline CSS or we can use existing Bootstrap utilities
+                    a.innerHTML = `
+                        <div class="icon-container rounded bg-light mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i class="${link.icon} text-primary" style="font-size: 1.1rem;"></i>
+                        </div>
+                        <div class="d-flex flex-column">
+                            <span class="font-weight-bold text-dark">${link.text}</span>
+                            <small class="text-muted">${link.url.replace(window.location.origin, '')}</small>
+                        </div>
+                    `;
+                    searchResults.appendChild(a);
+                });
+            } else {
+                searchResults.innerHTML = `
+                    <div class="p-4 text-center text-muted">
+                        <i class="fas fa-search fa-3x mb-3 text-light"></i>
+                        <p class="mb-0 font-weight-bold">No results found for "${query}"</p>
+                        <small>Try a different keyword</small>
+                    </div>`;
+            }
+            
+            searchResults.style.display = 'block';
+        });
+
+        // Hide when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+        
+        searchInput.addEventListener('focus', function() {
+            if (this.value.trim().length > 0) {
+                searchResults.style.display = 'block';
+            }
+        });
+    }
+
     // UI 2.0 Font & Color Defaults
     Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
     Chart.defaults.color = '#74839B';

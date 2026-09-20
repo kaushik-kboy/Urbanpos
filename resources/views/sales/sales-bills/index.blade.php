@@ -1,9 +1,11 @@
-@extends('adminlte::page')
+@extends(request('is_iframe') ? 'layouts.iframe' : 'adminlte::page')
 
 @section('title', 'Sales Bills')
 
 @section('content_header')
-    <h1>Sales Bills</h1>
+    @if(!request('is_iframe'))
+        <h1>Sales Bills</h1>
+    @endif
 @stop
 
 @section('content')
@@ -11,58 +13,84 @@
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
 
-    <div class="card card-default mb-3 shadow-none border">
-        <div class="card-body p-3">
+    <div class="@if(!request('is_iframe')) card card-default mb-3 shadow-none border @else mb-2 @endif">
+        <div class="@if(!request('is_iframe')) card-body p-3 @endif">
             <form method="GET" action="{{ route('sales.sales-bills.index') }}" class="row align-items-end">
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">Search</label>
-                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Bill No / Customer" value="{{ request('search') }}">
-                </div>
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">From Date</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" name="date_from" class="form-control form-control-sm datepicker" value="{{ request('date_from', now()->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
-                        <div class="input-group-append">
-                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                @if(request('is_iframe'))
+                    <input type="hidden" name="is_iframe" value="1">
+                    @if(request()->has('mode'))
+                        <input type="hidden" name="mode" value="{{ request('mode') }}">
+                    @endif
+                @endif
+                @if(request('is_iframe'))
+                    <div class="col-md-3 mb-0">
+                        <label class="small font-weight-bold mb-1">Search By</label>
+                        <select name="search_column" class="form-control form-control-sm" autofocus>
+                            <option value="all" @selected(request('search_column') == 'all')>All</option>
+                            <option value="bill_number" @selected(request('search_column') == 'bill_number')>Bill No</option>
+                            <option value="customer_name" @selected(request('search_column') == 'customer_name')>Customer Name</option>
+                            <option value="mobile" @selected(request('search_column') == 'mobile')>Mobile Number</option>
+                            <option value="amount" @selected(request('search_column') == 'amount')>Amount</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-0">
+                        <label class="small font-weight-bold mb-1">Search Query</label>
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Enter search term..." value="{{ request('search') }}">
+                    </div>
+                    <!-- Hidden submit button to enable Enter key submission in multi-input forms -->
+                    <button type="submit" class="d-none"></button>
+                @else
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Search</label>
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Bill No / Customer" value="{{ request('search') }}">
+                    </div>
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">From Date</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="date_from" class="form-control form-control-sm datepicker" value="{{ request('date_from', now()->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">To Date</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" name="date_to" class="form-control form-control-sm datepicker" value="{{ request('date_to', now()->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
-                        <div class="input-group-append">
-                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">To Date</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="date_to" class="form-control form-control-sm datepicker" value="{{ request('date_to', now()->format('Y-m-d')) }}" placeholder="YYYY-MM-DD" autocomplete="off">
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">Branch</label>
-                    <select name="branch_id" class="form-control form-control-sm">
-                        <option value="">All Branches</option>
-                        @foreach ($branches as $id => $name)
-                            <option value="{{ $id }}" @selected(request('branch_id') == $id)>{{ $name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">Customer</label>
-                    <select name="customer_id" class="form-control form-control-sm">
-                        <option value="">All Customers</option>
-                        @foreach ($customers as $id => $name)
-                            <option value="{{ $id }}" @selected(request('customer_id') == $id)>{{ $name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">Invoice Type</label>
-                    <select name="invoice_type" class="form-control form-control-sm">
-                        <option value="">All Types</option>
-                        @foreach ($invoiceTypes as $type)
-                            <option value="{{ $type }}" @selected(request('invoice_type') == $type)>{{ $type }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Branch</label>
+                        <select name="branch_id" class="form-control form-control-sm">
+                            <option value="">All Branches</option>
+                            @foreach ($branches as $id => $name)
+                                <option value="{{ $id }}" @selected(request('branch_id') == $id)>{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Customer</label>
+                        <select name="customer_id" class="form-control form-control-sm">
+                            <option value="">All Customers</option>
+                            @foreach ($customers as $id => $name)
+                                <option value="{{ $id }}" @selected(request('customer_id') == $id)>{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Invoice Type</label>
+                        <select name="invoice_type" class="form-control form-control-sm">
+                            <option value="">All Types</option>
+                            @foreach ($invoiceTypes as $type)
+                                <option value="{{ $type }}" @selected(request('invoice_type') == $type)>{{ $type }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+                @if(!request('is_iframe'))
                 <div class="col-12 mt-1">
                     <button type="submit" class="btn btn-primary btn-sm px-3">
                         <i class="fas fa-filter mr-1"></i> Apply Filter
@@ -71,54 +99,75 @@
                         <i class="fas fa-undo mr-1"></i> Reset
                     </a>
                 </div>
+                @endif
             </form>
         </div>
     </div>
 
     <div class="card card-primary card-outline">
+        @if(!request('is_iframe'))
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-list mr-1"></i> Sales Bills List</h3>
             <div class="card-tools d-flex align-items-center ml-auto">
-                <a href="{{ route('sales.sales-bills.create') }}" class="btn btn-primary btn-sm mr-2">
+                <a href="{{ route('sales.sales-bills.create') }}" class="btn btn-primary btn-sm mr-2" @if(request('is_iframe')) target="_parent" @endif>
                     <i class="fas fa-plus"></i> Add Sales Bill
                 </a>
                 <x-table-column-customizer table-key="sales.sales-bills" table-id="salesBillsTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
+        @endif
         <div class="card-body p-0">
             <table class="table table-striped mb-0" id="salesBillsTable">
                 <thead>
-                    <tr>
+                    <tr class="text-nowrap">
+                        <th>Date</th>
+                        <th>Customer Name</th>
+                        <th>Mobile</th>
                         <th>Bill No</th>
-                        <th>Bill Date</th>
-                        <th>Customer</th>
-                        <th>Branch</th>
-                        <th>Invoice Type</th>
-                        <th>Total</th>
+                        <th>Amount</th>
+                        <th>Payment Mode</th>
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($salesBills as $bill)
-                        <tr>
-                            <td class="font-weight-bold">
-                                <a href="{{ route('sales.sales-bills.show', $bill) }}">{{ $bill->bill_number }}</a>
-                            </td>
+                        <tr class="text-nowrap">
                             <td>{{ $bill->bill_date ? $bill->bill_date->format('d-m-Y h:i A') : '' }}</td>
                             <td>{{ $bill->customer?->name }}</td>
-                            <td>{{ $bill->branch?->name }}</td>
-                            <td>{{ $bill->invoice_type }}</td>
+                            <td>{{ $bill->customer?->mobile }}</td>
+                            <td class="font-weight-bold">
+                                @if(request('mode') === 'edit')
+                                    <a href="{{ request('is_iframe') ? route('pos.terminal', ['edit_id' => $bill->id]) : route('sales.sales-bills.edit', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
+                                @else
+                                    <a href="{{ route('sales.sales-bills.show', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
+                                @endif
+                            </td>
                             <td class="font-weight-bold text-success">₹{{ number_format($bill->total, 2) }}</td>
-                            <td class="text-right text-nowrap">
+                            <td>
+                                @if($bill->payments && $bill->payments->count() > 0)
+                                    {{ $bill->payments->map(fn($p) => $p->tenderType?->name ?? 'Unknown')->implode(', ') }}
+                                @else
+                                    <span class="text-muted">N/A</span>
+                                @endif
+                            </td>
+                            <td class="text-right">
+                                @if(!request('is_iframe'))
                                 <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-xs btn-outline-success" title="Thermal Receipt (80mm)">
                                     <i class="fas fa-receipt"></i>
                                 </a>
-                                <a href="{{ route('sales.sales-bills.show', $bill) }}" class="btn btn-xs btn-outline-info" title="View Details">
+                                @endif
+                                
+                                @if(!request('is_iframe') || request('mode') === 'view' || !request()->has('mode'))
+                                <a href="{{ route('sales.sales-bills.show', $bill) }}" class="btn btn-xs btn-outline-info" title="View Details" @if(request('is_iframe')) target="_parent" @endif>
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('sales.sales-bills.edit', $bill) }}" class="btn btn-xs btn-outline-secondary" title="Edit">
+                                @endif
+                                
+                                @if(!request('is_iframe') || request('mode') === 'edit')
+                                <a href="{{ request('is_iframe') ? route('pos.terminal', ['edit_id' => $bill->id]) : route('sales.sales-bills.edit', $bill) }}" class="btn btn-xs btn-outline-secondary" title="Edit" @if(request('is_iframe')) target="_parent" @endif>
                                     <i class="fas fa-pen"></i>
                                 </a>
+                                @endif
                             </td>
                         </tr>
                     @empty

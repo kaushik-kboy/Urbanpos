@@ -11,12 +11,12 @@ use App\Models\PurchaseInvoiceItem;
 use App\Models\SalesBill;
 use App\Models\Supplier;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PosEnhancementsTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $owner;
     private Branch $branch;
@@ -28,10 +28,8 @@ class PosEnhancementsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
-
+        $this->artisan('migrate');
         $this->owner = User::factory()->create();
-        $this->owner->assignRole('Owner');
 
         $this->branch = Branch::firstOrCreate(['name' => 'Main Test Branch'], ['status' => true]);
         $this->supplier = Supplier::firstOrCreate(['name' => 'Test Supplier'], ['status' => true]);
@@ -216,5 +214,146 @@ class PosEnhancementsTest extends TestCase
         $response->assertOk();
         $response->assertSee('PO99999');
         $response->assertSee('Converting directly from Purchase Order');
+    }
+
+    public function test_pos_terminal_renders_customer_card_and_modal(): void
+    {
+        $response = $this->actingAs($this->owner)->get(route('pos.terminal'));
+        $response->assertOk();
+        $response->assertSee('posCustomerCard');
+        $response->assertSee('posCustomerInvoicesModal');
+        $response->assertSee('posEditCustomerBtn');
+        $response->assertSee('posViewCustomerInvoicesBtn');
+        $response->assertSee('Customer invoices');
+    }
+
+    public function test_customer_search_returns_edit_url_and_mobile(): void
+    {
+        $response = $this->actingAs($this->owner)->getJson(route('sales.sales-bills.customer-search', ['q' => '9876543210']));
+        $response->assertOk();
+        $response->assertJsonFragment([
+            'id' => $this->customer1->id,
+            'name' => 'Alice Test',
+            'mobile' => '9876543210',
+            'edit_url' => url("master/customers/{$this->customer1->id}/edit"),
+        ]);
+    }
+
+    public function test_customer_invoices_returns_bills_with_items_count_and_edit_url(): void
+    {
+        $bill = SalesBill::create([
+            'bill_number' => 'INV/2627/000860',
+            'bill_date' => now(),
+            'customer_id' => $this->customer1->id,
+            'branch_id' => $this->branch->id,
+            'invoice_type' => 'Retail Invoice',
+            'sales_type' => 'Local',
+            'total' => 22.00,
+            'status' => 'Completed',
+        ]);
+
+        $bill->items()->create([
+            'item_id' => $this->item->id,
+            'qty' => 1,
+            'sell_price' => 22,
+            'mrp' => 22,
+            'cost_at_sale' => 10,
+            'net_amount' => 22,
+        ]);
+
+        $response = $this->actingAs($this->owner)->getJson(route('sales.sales-bills.customer-invoices', $this->customer1));
+        $response->assertOk();
+        $response->assertJson([
+            'customer_id' => $this->customer1->id,
+            'customer_name' => 'Alice Test',
+            'customer_mobile' => '9876543210',
+            'customer_edit_url' => url("master/customers/{$this->customer1->id}/edit"),
+            'total_invoices' => 1,
+        ]);
+
+        $json = $response->json();
+        $this->assertCount(1, $json['invoices']);
+        $this->assertEquals('INV/2627/000860', $json['invoices'][0]['bill_number']);
+        $this->assertEquals(1, $json['invoices'][0]['items']);
+        $this->assertEquals('22.00', $json['invoices'][0]['total']);
+        $this->assertArrayHasKey('view_url', $json['invoices'][0]);
+        $this->assertArrayHasKey('edit_url', $json['invoices'][0]);
+        $this->assertArrayHasKey('print_url', $json['invoices'][0]);
+    }
+
+    public function test_pos_terminal_renders_customer_modal_with_all_tabs(): void
+    {
+        $response = $this->actingAs($this->owner)->get(route('pos.terminal'));
+        $response->assertOk();
+        $response->assertSee('pos-tab-general');
+        $response->assertSee('pos-tab-contact');
+        $response->assertSee('pos-tab-others');
+        $response->assertSee('pos-tab-pets');
+        $response->assertSee('pos-pet-row-template');
+        $response->assertSee('pos-add-pet-detail');
+    }
+
+    public function test_customer_edit_returns_json_with_pets(): void
+    {
+        $this->customer1->pets()->create([
+            'name' => 'Bruno',
+            'gender' => 'Male',
+            'age' => '2 yrs',
+            'remarks' => 'Golden retriever',
+        ]);
+
+        $response = $this->actingAs($this->owner)->getJson(route('master.customers.edit', $this->customer1));
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'customer' => [
+                'id' => $this->customer1->id,
+                'name' => 'Alice Test',
+            ],
+        ]);
+        $json = $response->json();
+        $this->assertNotEmpty($json['pets']);
+        $this->assertEquals('Bruno', $json['pets'][0]['name']);
+    }
+
+    public function test_customer_update_via_ajax_with_pets(): void
+    {
+        $response = $this->actingAs($this->owner)->postJson(route('master.customers.update', $this->customer1), [
+            '_method' => 'PUT',
+            'title' => 'Ms',
+            'name' => 'Alice Updated',
+            'mobile' => '9876543210',
+            'sales_type' => 'Local',
+            'payment_mode' => 'Cash Only',
+            'credit_limit' => 1000000,
+            'credit_balance' => 0,
+            'monthly_credit_balance' => 0,
+            'credit_days' => 1000,
+            'status' => 1,
+            'gst_type' => 'Un Register',
+            'sms_consent' => 1,
+            'customer_type' => 'RETAIL INVOICE',
+            'pets' => [
+                [
+                    'name' => 'Milo',
+                    'gender' => 'Male',
+                    'age' => '1 yr',
+                ]
+            ]
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'customer' => [
+                'id' => $this->customer1->id,
+                'name' => 'Alice Updated',
+            ]
+        ]);
+
+        $this->customer1->refresh();
+        $this->assertEquals('Alice Updated', $this->customer1->name);
+        $this->assertEquals(1, $this->customer1->pets()->count());
+        $this->assertEquals('Milo', $this->customer1->pets()->first()->name);
     }
 }

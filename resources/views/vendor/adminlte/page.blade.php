@@ -10,6 +10,13 @@
     <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}">
     @stack('css')
     @yield('css')
+    @if(request()->query('is_iframe') == '1')
+    <style>
+        .main-sidebar, .main-header, .main-footer, .pos-keyboard-bar, .up-latency-banner-wrap { display: none !important; }
+        .content-wrapper { margin-left: 0 !important; margin-top: 0 !important; padding-top: 0 !important; }
+        body { padding-bottom: 0 !important; background-color: #f4f6f9 !important; }
+    </style>
+    @endif
 @stop
 
 @section('classes_body', $layoutHelper->makeBodyClasses())
@@ -69,7 +76,9 @@
         @endif
 
         @auth
-            <x-pos-keyboard-bar />
+            @if(request()->route() && (Str::endsWith(request()->route()->getName(), '.create') || Str::endsWith(request()->route()->getName(), '.edit')))
+                <x-pos-keyboard-bar />
+            @endif
         @endauth
 
     </div>

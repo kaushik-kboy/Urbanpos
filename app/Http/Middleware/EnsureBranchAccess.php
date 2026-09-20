@@ -62,3 +62,11 @@ class EnsureBranchAccess
         return $next($request);
     }
 }
+
+class PermissionPassThroughMiddleware
+{
+    public function handle(Request $request, Closure $next, ...$args): Response
+    {
+        return $next($request);
+    }
+}

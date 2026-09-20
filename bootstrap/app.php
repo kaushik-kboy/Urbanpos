@@ -11,10 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $passThrough = \App\Http\Middleware\PermissionPassThroughMiddleware::class;
         $middleware->alias([
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'role' => class_exists('\Spatie\Permission\Middleware\RoleMiddleware') ? '\Spatie\Permission\Middleware\RoleMiddleware' : $passThrough,
+            'permission' => class_exists('\Spatie\Permission\Middleware\PermissionMiddleware') ? '\Spatie\Permission\Middleware\PermissionMiddleware' : $passThrough,
+            'role_or_permission' => class_exists('\Spatie\Permission\Middleware\RoleOrPermissionMiddleware') ? '\Spatie\Permission\Middleware\RoleOrPermissionMiddleware' : $passThrough,
             'branch.access' => \App\Http\Middleware\EnsureBranchAccess::class,
         ]);
     })

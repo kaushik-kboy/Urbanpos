@@ -318,10 +318,6 @@ return [
 
         // Sidebar items:
         [
-            'type' => 'sidebar-menu-search',
-            'text' => 'search',
-        ],
-        [
             'text' => 'Dashboard',
             'url' => 'home',
             'icon' => 'fas fa-fw fa-tachometer-alt',
@@ -437,25 +433,25 @@ return [
             'submenu' => [
                 [
                     'text' => 'Sales Bill',
-                    'url' => 'sales/sales-bills',
+                    'url' => 'sales/sales-bills/create',
                     'icon' => 'fas fa-fw fa-cash-register',
                     'active' => ['sales/sales-bills*'],
                 ],
                 [
                     'text' => 'Sales Return',
-                    'url' => 'sales/sales-returns',
+                    'url' => 'sales/sales-returns/create',
                     'icon' => 'fas fa-fw fa-undo',
                     'active' => ['sales/sales-returns*'],
                 ],
                 [
                     'text' => 'Sales Quotation',
-                    'url' => 'sales/sales-quotations',
+                    'url' => 'sales/sales-quotations/create',
                     'icon' => 'fas fa-fw fa-file-signature',
                     'active' => ['sales/sales-quotations*'],
                 ],
                 [
                     'text' => 'Sales Order',
-                    'url' => 'sales/sales-orders',
+                    'url' => 'sales/sales-orders/create',
                     'icon' => 'fas fa-fw fa-shopping-basket',
                     'active' => ['sales/sales-orders*'],
                 ],
@@ -467,7 +463,7 @@ return [
                 ],
                 [
                     'text' => 'Delivery Note',
-                    'url' => 'sales/delivery-notes',
+                    'url' => 'sales/delivery-notes/create',
                     'icon' => 'fas fa-fw fa-truck',
                     'active' => ['sales/delivery-notes*'],
                 ],
@@ -493,25 +489,25 @@ return [
             'submenu' => [
                 [
                     'text' => 'Purchase Order',
-                    'url' => 'purchase/purchase-orders',
+                    'url' => 'purchase/purchase-orders/create',
                     'icon' => 'fas fa-fw fa-file-invoice',
                     'active' => ['purchase/purchase-orders*'],
                 ],
                 [
                     'text' => 'Receipt Note',
-                    'url' => 'purchase/purchase-receipt-notes',
+                    'url' => 'purchase/purchase-receipt-notes/create',
                     'icon' => 'fas fa-fw fa-receipt',
                     'active' => ['purchase/purchase-receipt-notes*'],
                 ],
                 [
                     'text' => 'Purchase Invoice',
-                    'url' => 'purchase/purchase-invoices',
+                    'url' => 'purchase/purchase-invoices/create',
                     'icon' => 'fas fa-fw fa-file-invoice-dollar',
                     'active' => ['purchase/purchase-invoices*'],
                 ],
                 [
                     'text' => 'Purchase Returns',
-                    'url' => 'purchase/purchase-returns',
+                    'url' => 'purchase/purchase-returns/create',
                     'icon' => 'fas fa-fw fa-undo-alt',
                     'active' => ['purchase/purchase-returns*'],
                 ],
@@ -528,7 +524,7 @@ return [
                 ],
                 [
                     'text' => 'Purchase Indent',
-                    'url' => 'purchase/purchase-indents',
+                    'url' => 'purchase/purchase-indents/create',
                     'icon' => 'fas fa-fw fa-clipboard-list',
                     'active' => ['purchase/purchase-indents*'],
                 ],
@@ -568,19 +564,19 @@ return [
             'submenu' => [
                 [
                     'text' => 'Opening Stock Entry',
-                    'url' => 'inventory/opening-stocks',
+                    'url' => 'inventory/opening-stocks/create',
                     'icon' => 'fas fa-fw fa-dolly',
                     'active' => ['inventory/opening-stocks*'],
                 ],
                 [
                     'text' => 'Damage Stock Entry',
-                    'url' => 'inventory/damage-stocks',
+                    'url' => 'inventory/damage-stocks/create',
                     'icon' => 'fas fa-fw fa-dumpster-fire',
                     'active' => ['inventory/damage-stocks*'],
                 ],
                 [
                     'text' => 'Stock Update Entry',
-                    'url' => 'inventory/stock-updates',
+                    'url' => 'inventory/stock-updates/create',
                     'icon' => 'fas fa-fw fa-sync-alt',
                     'active' => ['inventory/stock-updates*'],
                 ],
