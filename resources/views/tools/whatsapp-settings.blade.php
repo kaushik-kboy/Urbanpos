@@ -142,7 +142,8 @@
                                 <div class="col-md-4">
                                     <div class="form-group mb-2">
                                         <label for="template_lang" class="font-weight-bold text-dark">Language Code</label>
-                                        <input type="text" name="template_lang" id="template_lang" class="form-control" value="{{ old('template_lang', $settings->template_lang ?: 'en') }}" placeholder="en">
+                                        <input type="text" name="template_lang" id="template_lang" class="form-control" value="{{ old('template_lang', $settings->template_lang ?: 'en_US') }}" placeholder="en_US">
+                                        <small class="text-muted">Use <code>en_US</code> for Meta approved English templates</small>
                                     </div>
                                 </div>
                             </div>
