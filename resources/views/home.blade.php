@@ -507,6 +507,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // UI 2.0 Font & Color Defaults
+    Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
+    Chart.defaults.color = '#74839B';
+
     // 1. 30-Day Sales & Revenue Trend Chart
     const trendCtx = document.getElementById('salesTrendChart');
     if (trendCtx) {
@@ -522,24 +526,26 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         label: 'Daily Revenue (₹)',
                         data: trendRevenue,
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.12)',
+                        borderColor: '#1769E8', // UI 2.0 Primary Blue
+                        backgroundColor: 'rgba(23, 105, 232, 0.12)',
                         borderWidth: 2.5,
                         fill: true,
                         tension: 0.35,
                         pointRadius: 2,
                         pointHoverRadius: 6,
+                        pointBackgroundColor: '#1769E8',
                         yAxisID: 'y'
                     },
                     {
                         label: 'Bills Count',
                         data: trendBills,
-                        borderColor: '#28a745',
+                        borderColor: '#078B87', // UI 2.0 Teal
                         backgroundColor: 'transparent',
                         borderWidth: 1.8,
                         borderDash: [4, 4],
                         pointRadius: 2,
                         pointHoverRadius: 5,
+                        pointBackgroundColor: '#078B87',
                         tension: 0.2,
                         yAxisID: 'y1'
                     }
@@ -612,9 +618,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     datasets: [{
                         data: catAmounts,
                         backgroundColor: [
-                            '#007bff', '#28a745', '#17a2b8', '#ffc107', '#dc3545', '#6c757d'
+                            '#1769E8', '#078B87', '#F28C28', '#6C3BE8', '#168447', '#74839B'
                         ],
                         borderWidth: 2,
+                        borderColor: '#FFFFFF',
                         hoverOffset: 4
                     }]
                 },
@@ -624,9 +631,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: { boxWidth: 10, font: { size: 11 } }
+                            labels: { boxWidth: 10, font: { size: 11 }, color: '#0B1F52' }
                         },
                         tooltip: {
+                            backgroundColor: '#0B1F52',
                             callbacks: {
                                 label: function (ctx) {
                                     const val = Number(ctx.raw);
@@ -655,8 +663,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     datasets: [{
                         label: 'Units Sold',
                         data: itemQty,
-                        backgroundColor: 'rgba(40, 167, 69, 0.75)',
-                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(23, 105, 232, 0.8)',
+                        borderColor: '#1769E8',
                         borderWidth: 1,
                         borderRadius: 4
                     }]
@@ -668,6 +676,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            backgroundColor: '#0B1F52',
                             callbacks: {
                                 afterLabel: function (ctx) {
                                     const idx = ctx.dataIndex;
@@ -679,10 +688,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     scales: {
                         x: {
                             beginAtZero: true,
+                            grid: { color: '#EEF3FA' },
                             ticks: { font: { size: 10 }, precision: 0 }
                         },
                         y: {
-                            ticks: { font: { size: 10 } }
+                            grid: { display: false },
+                            ticks: { font: { size: 10 }, color: '#0B1F52' }
                         }
                     }
                 }
@@ -704,8 +715,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     label: 'Hourly Sales (₹)',
                     data: hourlyRevenue,
-                    backgroundColor: 'rgba(255, 193, 7, 0.75)',
-                    borderColor: '#ffc107',
+                    backgroundColor: 'rgba(7, 139, 135, 0.8)',
+                    borderColor: '#078B87',
                     borderWidth: 1,
                     borderRadius: 3
                 }]
@@ -716,6 +727,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: '#0B1F52',
                         callbacks: {
                             label: function (ctx) {
                                 return 'Sales: ₹' + Number(ctx.raw).toLocaleString('en-IN', { minimumFractionDigits: 2 });

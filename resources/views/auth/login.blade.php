@@ -3,7 +3,7 @@
 @section('title', 'Login')
 
 @section('css')
-    <style>body.login-page, body.register-page { height: 100vh !important; min-height: 100vh !important; }</style>
+    <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}?v=20260921_1">
 @stop
 
 @section('auth_header', 'Urbanpos Login')
