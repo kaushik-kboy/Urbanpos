@@ -210,6 +210,14 @@ class ChatOnClickWhatsAppService
             $json = $response->json();
 
             if ($response->successful() && ($json['success'] ?? false)) {
+                $deliveryStatus = $json['data']['status'] ?? 'sent';
+                if ($deliveryStatus === 'failed') {
+                    return [
+                        'success' => false,
+                        'error'   => 'ChatOnClick device reported delivery failed. Please verify WhatsApp device is active on ChatOnClick.',
+                    ];
+                }
+
                 return [
                     'success' => true,
                     'phone'   => $cleanPhone,
@@ -309,11 +317,16 @@ class ChatOnClickWhatsAppService
                     'name'     => 'language',
                     'contents' => $this->templateLang,
                 ],
-                [
-                    'name'     => 'variables',
-                    'contents' => json_encode([$customerName, $billNumber, $totalAmount, $publicUrl]),
-                ],
             ];
+
+            // ChatOnClick API expects variables[] array in multipart
+            $variables = [$customerName, $billNumber, $totalAmount, $publicUrl];
+            foreach ($variables as $var) {
+                $multipart[] = [
+                    'name'     => 'variables[]',
+                    'contents' => (string) $var,
+                ];
+            }
         } else {
             $message = $this->formatInvoiceMessage($salesBill);
             $multipart = [
@@ -344,6 +357,18 @@ class ChatOnClickWhatsAppService
             $json = $response->json();
 
             if ($response->successful() && ($json['success'] ?? false)) {
+                $deliveryStatus = $json['data']['status'] ?? 'sent';
+                if ($deliveryStatus === 'failed') {
+                    $templateErr = !empty($this->templateName) 
+                        ? "Template '{$this->templateName}' failed to deliver on ChatOnClick. Please verify the template is approved on ChatOnClick, or remove Template Name from Settings to use Direct Message mode."
+                        : "ChatOnClick reported message dispatch failed.";
+                    Log::warning("WhatsApp dispatch failed on ChatOnClick: " . $templateErr);
+                    return [
+                        'success' => false,
+                        'error'   => $templateErr,
+                    ];
+                }
+
                 Log::info("WhatsApp bill dispatched for Bill #{$salesBill->bill_number} to {$cleanPhone}", [
                     'wamid' => $json['data']['mid'] ?? null,
                 ]);
