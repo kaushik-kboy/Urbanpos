@@ -7,17 +7,26 @@ echo "=========================================================="
 echo " 🛡️  UrbanPOS Pre-Push Regression Guard Running..."
 echo "=========================================================="
 
-# 1. Check Blade Templates Compilation & Syntax
-echo ">> Checking Blade template syntax (php artisan view:clear)..."
+# 1. Check Blade Templates Syntax & Route Integrity
+echo ">> Checking Blade template syntax & route integrity..."
 php artisan view:clear > /dev/null 2>&1
+php artisan view:cache > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo ""
     echo "❌ PUSH BLOCKED: Blade template syntax or compilation error detected!"
-    echo "Run 'php artisan view:clear' manually to see the exact error."
+    echo "Run 'php artisan view:cache' manually to see the exact error."
     echo ""
     exit 1
 fi
-echo "   ✓ Blade view templates verified successfully."
+php vendor/bin/phpunit tests/Feature/BladeRouteIntegrityTest.php > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ PUSH BLOCKED: Invalid route() detected in Blade templates!"
+    echo "Run 'php artisan test --filter=BladeRouteIntegrityTest' to see the invalid routes."
+    echo ""
+    exit 1
+fi
+echo "   ✓ Blade view templates and route integrity verified successfully."
 
 # 2. Run Core POS Regression Test Suite
 echo ">> Running Core POS Regression Test Suite (composer test-pos)..."
