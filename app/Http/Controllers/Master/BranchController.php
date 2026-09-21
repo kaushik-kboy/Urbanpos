@@ -100,7 +100,7 @@ class BranchController extends Controller
             'enable_thirdparty_loyalty' => ['required', 'boolean'],
             'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
             'pan_no' => ['nullable', 'string', 'max:20'],
-            'gst_type' => ['required', 'in:Regular,Composite,Un Register'],
+            'gst_type' => ['required', 'string', 'max:100'],
             'gst_filing' => ['required', 'in:Monthly,Quarterly'],
             'status' => ['required', 'boolean'],
         ];

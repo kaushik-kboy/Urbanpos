@@ -69,6 +69,7 @@
         setupKeyboardShortcuts();
         loadHeldBills();
         renderCart();
+        initPosItemSearchModal();
         focusScanner();
     });
 
@@ -1289,6 +1290,13 @@
                 e.preventDefault();
                 document.querySelector('[data-mode="Card"]')?.click();
             }
+            // F2: Open Item Search Modal
+            else if (e.key === 'F2' || e.code === 'F2') {
+                e.preventDefault();
+                if (typeof window.openPosItemSearchModal === 'function') {
+                    window.openPosItemSearchModal();
+                }
+            }
         });
     }
 
@@ -1322,7 +1330,189 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // POS Item Search Modal (F2) Engine
+    function initPosItemSearchModal() {
+        const $modal = $('#pos-item-search-modal');
+        if (!$modal.length) return;
+
+        let debounceTimer = null;
+        let itemCache = {};
+
+        function openModal() {
+            $('#pos-isl-filter-name').val('');
+            $('#pos-isl-filter-code').val('');
+            $('#pos-isl-filter-expiry').val('');
+            $modal.modal('show');
+            $modal.one('shown.bs.modal', function () {
+                $('#pos-isl-filter-name').focus().select();
+            });
+            fetchItems();
+        }
+
+        window.openPosItemSearchModal = openModal;
+
+        // Filter inputs with debouncing
+        $('#pos-isl-filter-name, #pos-isl-filter-code, #pos-isl-filter-expiry').on('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchItems, 300);
+        });
+
+        $('#pos-isl-btn-clear').on('click', function () {
+            $('#pos-isl-filter-name, #pos-isl-filter-code, #pos-isl-filter-expiry').val('');
+            fetchItems();
+            $('#pos-isl-filter-name').focus();
+        });
+
+        // Keyboard navigation inside modal
+        $modal.on('keydown', function (e) {
+            let $rows = $('#pos-isl-items-body tr.isl-item-row:not(.isl-item-disabled)');
+            if (!$rows.length) return;
+
+            let $current = $rows.filter('.table-primary');
+            let idx = $rows.index($current);
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                idx = (idx + 1) >= $rows.length ? 0 : idx + 1;
+                $rows.removeClass('table-primary');
+                let $target = $rows.eq(idx).addClass('table-primary');
+                if ($target[0]) {
+                    $target[0].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                idx = (idx - 1) < 0 ? $rows.length - 1 : idx - 1;
+                $rows.removeClass('table-primary');
+                let $target = $rows.eq(idx).addClass('table-primary');
+                if ($target[0]) {
+                    $target[0].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                let $target = $current.length ? $current : $rows.first();
+                if ($target.length) {
+                    $target.trigger('click');
+                }
+            }
+        });
+
+        function fetchItems() {
+            let branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value) || 3;
+            let srch = ($('#pos-isl-filter-name').val() || '').trim();
+            let code = ($('#pos-isl-filter-code').val() || '').trim();
+            let expiry = ($('#pos-isl-filter-expiry').val() || '').trim();
+
+            let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
+
+            if (itemCache[cacheKey]) {
+                renderItems(itemCache[cacheKey]);
+                return;
+            }
+
+            $('#pos-isl-loading').removeClass('d-none');
+            $('#pos-isl-no-results').addClass('d-none');
+            $('#pos-isl-table-wrap').addClass('d-none');
+
+            let url = window.ISL_URL || '/sales/sales-bills/item-list';
+            let params = { branch_id: branchId, search: srch, code: code, expiry: expiry };
+
+            $.getJSON(url, params, function (res) {
+                $('#pos-isl-loading').addClass('d-none');
+                let items = res.items || [];
+                itemCache[cacheKey] = items;
+                setTimeout(() => { delete itemCache[cacheKey]; }, 60000);
+                renderItems(items);
+            }).fail(function () {
+                $('#pos-isl-loading').addClass('d-none');
+                $('#pos-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-exclamation-triangle fa-2x text-warning"></i>' +
+                    '<p class="mt-2 text-muted">Error loading items from server.</p>'
+                );
+            });
+        }
+
+        function renderItems(items) {
+            let $tbody = $('#pos-isl-items-body');
+            $tbody.empty();
+
+            if (!items || items.length === 0) {
+                $('#pos-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-inbox fa-2x text-muted"></i>' +
+                    '<p class="mt-2 text-muted">No items found matching criteria.</p>'
+                );
+                $('#pos-isl-table-wrap').addClass('d-none');
+                $('#pos-isl-count-label').text('');
+                return;
+            }
+
+            $('#pos-isl-no-results').addClass('d-none');
+            $('#pos-isl-table-wrap').removeClass('d-none');
+            $('#pos-isl-count-label').text(`Showing ${items.length} item(s)`);
+
+            let html = '';
+            items.forEach(function (it, idx) {
+                let expBadge = it.exp_date
+                    ? `<span class="badge badge-danger px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`
+                    : `<span class="text-muted">—</span>`;
+                let codeBadge = it.code
+                    ? `<span class="badge badge-secondary px-2 py-1">${escapeHtml(it.code)}</span>`
+                    : `<span class="text-muted">—</span>`;
+                let isAllowNeg = !!(it.allow_negative_stock);
+                let stockNum = parseFloat(it.qty || 0);
+                let isOutOfStock = stockNum <= 0 && !isAllowNeg;
+                let qtyBadge = isOutOfStock
+                    ? `<span class="badge badge-danger px-2 py-1">0 (Out)</span>`
+                    : (stockNum <= 0 && isAllowNeg
+                        ? `<span class="badge badge-warning px-2 py-1">${stockNum} (Allow Neg)</span>`
+                        : `<span class="badge badge-success px-2 py-1 font-weight-bold">${stockNum}</span>`);
+
+                let rowClass = isOutOfStock ? 'isl-item-row isl-item-disabled text-muted bg-light' : 'isl-item-row';
+                let rowStyle = isOutOfStock ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
+                let actionBtn = isOutOfStock
+                    ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock">
+                        <i class="fas fa-ban mr-1"></i>Out
+                       </button>`
+                    : `<button type="button" class="btn btn-success btn-xs px-2 isl-btn-select font-weight-bold">
+                        <i class="fas fa-cart-plus mr-1"></i>Add
+                       </button>`;
+
+                html += `
+                    <tr class="${rowClass} ${idx === 0 && !isOutOfStock ? 'table-primary' : ''}" style="${rowStyle}"
+                        data-item='${JSON.stringify(it).replace(/'/g, "&#39;")}'>
+                        <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                        <td class="align-middle font-weight-bold text-dark">
+                            ${escapeHtml(it.name)}
+                            ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : ''}
+                        </td>
+                        <td class="align-middle text-center">${codeBadge}</td>
+                        <td class="align-middle text-center">${expBadge}</td>
+                        <td class="align-middle text-right">${qtyBadge}</td>
+                        <td class="align-middle text-right font-weight-bold text-primary">₹${parseFloat(it.sell_price || 0).toFixed(2)}</td>
+                        <td class="align-middle text-right text-muted">₹${parseFloat(it.mrp || 0).toFixed(2)}</td>
+                        <td class="align-middle text-center">${actionBtn}</td>
+                    </tr>
+                `;
+            });
+
+            $tbody.html(html);
+
+            // Click row or Add button to select item
+            $tbody.find('.isl-item-row:not(.isl-item-disabled)').on('click', function (e) {
+                let rawItem = $(this).attr('data-item');
+                if (rawItem) {
+                    let it = JSON.parse(rawItem);
+                    addItemToCart(it);
+                    sound.success();
+                    showNotification(`Added "${it.name}" to cart`, 'success');
+                    $modal.modal('hide');
+                    setTimeout(focusScanner, 200);
+                }
+            });
+        }
+    }
+
     // Expose methods to window for inline onclick handlers
+    window.posAddItemToCart = addItemToCart;
     window.posEngine = {
         updateQty: updateItemQty,
         setQty: setItemQty,

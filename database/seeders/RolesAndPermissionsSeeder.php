@@ -34,6 +34,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Widened from edit-only to full CRUD — same Owner-only tier as before, just
         // consistently gated instead of leaving create/delete open to anyone.
         'gst-taxes' => ['create', 'edit', 'cancel'],
+        'gst-types' => ['create', 'edit', 'cancel'],
         'item-price-change' => ['edit'],
         // Owner-only (not in MANAGER_MODULES below) — a Manager granting roles could
         // otherwise assign themselves Owner, i.e. self-escalate privileges.
@@ -43,6 +44,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // MANAGER_MODULES below).
         'item-categories' => ['create', 'edit', 'cancel'],
         'item-category-values' => ['create', 'edit', 'cancel'],
+        'product-types' => ['create', 'edit', 'cancel'],
         'brands' => ['create', 'edit', 'cancel'],
         'uoms' => ['create', 'edit', 'cancel'],
         'customer-categories' => ['create', 'edit', 'cancel'],
@@ -92,9 +94,9 @@ class RolesAndPermissionsSeeder extends Seeder
     private const MANAGER_MODULES = [
         'purchase-invoices', 'purchase-returns', 'purchase-receipt-notes', 'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'sales-delivery-notes', 'damage-stocks',
         'opening-stocks', 'stock-updates', 'stock-transfers', 'bill-settlements', 'loyalty-programs',
-        'item-categories', 'item-category-values', 'brands', 'uoms',
+        'item-categories', 'item-category-values', 'product-types', 'brands', 'uoms',
         'customer-categories', 'customers', 'areas', 'pet-types', 'breeds', 'colors',
-        'suppliers', 'registers', 'tender-types', 'tender-type-values',
+        'suppliers', 'registers', 'tender-types', 'tender-type-values', 'gst-types',
         'purchase-orders', 'purchase-indents', 'repack', 'kit-preparation', 'kit-unpack', 'till',
     ];
 

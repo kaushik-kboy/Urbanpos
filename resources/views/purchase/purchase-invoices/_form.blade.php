@@ -601,11 +601,11 @@
             $sellInput.removeClass('border-danger text-danger border-warning text-warning').attr('title', '');
             if (cost > 0 && sell > 0 && sell <= cost) {
                 $sellInput.addClass('border-danger text-danger')
-                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') Cost Price (₹' + cost.toFixed(2) + ') se zyada honi chahiye!');
+                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must be greater than Cost Price (₹' + cost.toFixed(2) + ')!');
             } else if (mrp > 0 && sell > 0 && sell > mrp) {
                 // Validation 2: Sell Price must be <= MRP
                 $sellInput.addClass('border-warning text-warning')
-                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') MRP (₹' + mrp.toFixed(2) + ') se zyada nahi hona chahiye!');
+                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must not exceed MRP (₹' + mrp.toFixed(2) + ')!');
             }
 
             let $discPct = $row.find('.pinv-disc-percent');
@@ -827,7 +827,7 @@
             } else {
                 let diffText = (diff > 0 ? '+' : '') + diff.toFixed(2);
                 let msg = 'Diff: ₹' + diffText + ' (Supplier Inv: ₹' + invAmt.toFixed(2) + ' vs Final: ₹' + finalTotal.toFixed(2) + ')';
-                $statusDiv.html('<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + msg + ' — Dono same hona chahiye to hi save hoga</span>');
+                $statusDiv.html('<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + msg + ' — Both amounts must match to save</span>');
                 $badgeDiv.html('<span class="badge badge-danger px-3 py-2 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span>');
                 if (invAmtVal) {
                     $invAmtInput.removeClass('is-valid').addClass('is-invalid');
@@ -881,7 +881,7 @@
                     }
                 }
             } else {
-                // Not Required or Optional: validation nahi lagega!
+                // Not Required or Optional: no validation needed!
                 $expInput.prop('required', false).removeClass('border-danger');
                 $expBadge.addClass('d-none');
                 $expInput.attr('title', 'Expiry date (optional)');
@@ -1126,7 +1126,7 @@
 
             if (priceError) {
                 e.preventDefault();
-                alert("Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (\u20b9" + priceError.sell.toFixed(2) + ") Cost Price (\u20b9" + priceError.cost.toFixed(2) + ") se zyada hona chahiye!");
+                alert("Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (₹" + priceError.sell.toFixed(2) + ") must be greater than Cost Price (₹" + priceError.cost.toFixed(2) + ")!");
                 priceError.$input.focus().addClass('border-danger text-danger');
                 return false;
             }
@@ -1152,7 +1152,7 @@
 
             if (mrpError) {
                 e.preventDefault();
-                alert("Row #" + mrpError.row + " (" + mrpError.item + "):\nSell Price (₹" + mrpError.sell.toFixed(2) + ") MRP (₹" + mrpError.mrp.toFixed(2) + ") se zyada nahi hona chahiye!");
+                alert("Row #" + mrpError.row + " (" + mrpError.item + "):\nSell Price (₹" + mrpError.sell.toFixed(2) + ") must not exceed MRP (₹" + mrpError.mrp.toFixed(2) + ")!");
                 mrpError.$input.focus().addClass('border-warning text-warning');
                 return false;
             }
@@ -1164,7 +1164,7 @@
             if (invAmt > 0 && Math.abs(diff) > 0.01) {
                 e.preventDefault();
                 let diffMsg = (diff > 0 ? '+' : '') + diff.toFixed(2);
-                alert("Inv Amount (Supplier) [₹" + invAmt.toFixed(2) + "] and Final Amount [₹" + finalTotal.toFixed(2) + "] same ho to hi save hoga!\n\nDifference: ₹" + diffMsg);
+                alert("Supplier Invoice Amount [₹" + invAmt.toFixed(2) + "] must match the Final Amount [₹" + finalTotal.toFixed(2) + "] before saving!\n\nDifference: ₹" + diffMsg);
                 $('input[name="supplier_inv_amount"]').focus().addClass('is-invalid');
                 checkAmountMatch();
                 return false;

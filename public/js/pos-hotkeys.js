@@ -113,10 +113,20 @@
 
         switch (actionKey) {
             case 'search_item': {
-                // 1. If search modal is already open, focus its search input
+                // 1. If POS item search modal exists on page (POS terminal)
+                if ($('#pos-item-search-modal').length) {
+                    if (typeof window.openPosItemSearchModal === 'function') {
+                        window.openPosItemSearchModal();
+                    } else {
+                        $('#pos-item-search-modal').modal('show');
+                    }
+                    return;
+                }
+
+                // 2. If search modal is already open, focus its search input
                 let $openModal = $('.modal.show');
                 if ($openModal.length) {
-                    let $searchInput = $openModal.find('#isl-filter-name, #pinv-isl-filter-name, #st-isl-filter-name, input[type="text"]:visible').first();
+                    let $searchInput = $openModal.find('#isl-filter-name, #pos-isl-filter-name, #pinv-isl-filter-name, #st-isl-filter-name, input[type="text"]:visible').first();
                     if ($searchInput.length) {
                         $searchInput.focus().select();
                         return;

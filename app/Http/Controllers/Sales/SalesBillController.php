@@ -735,6 +735,14 @@ class SalesBillController extends Controller
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $sellPriceSub = $isSqlite
+            ? 'MIN(pi2.sell_price) AS sell_price'
+            : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS sell_price";
+        $mrpSub = $isSqlite
+            ? 'MIN(pi2.mrp) AS mrp'
+            : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS mrp";
+
         $sql = "
             SELECT
                 i.id,
@@ -761,8 +769,8 @@ class SalesBillController extends Controller
             LEFT JOIN (
                 SELECT pi2.item_id,
                        MIN(pi2.exp_date) AS exp_date,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS sell_price,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS mrp
+                       {$sellPriceSub},
+                       {$mrpSub}
                 FROM purchase_invoice_items pi2
                 INNER JOIN purchase_invoices pih
                         ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
@@ -787,8 +795,8 @@ class SalesBillController extends Controller
             $fbSql = "
                 SELECT pi2.item_id,
                        MIN(pi2.exp_date) AS exp_date,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS sell_price,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pi2.exp_date ASC SEPARATOR ','), ',', 1) AS mrp
+                       {$sellPriceSub},
+                       {$mrpSub}
                 FROM purchase_invoice_items pi2
                 WHERE pi2.item_id IN ({$ph})
                   AND pi2.exp_date IS NOT NULL

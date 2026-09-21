@@ -180,7 +180,7 @@ class SupplierController extends Controller
             'credit_balance' => ['required', 'numeric', 'min:0'],
             'credit_days' => ['required', 'integer', 'min:0'],
             'status' => ['required', 'boolean'],
-            'gst_type' => ['required', 'in:Regular,Composite,Un Register'],
+            'gst_type' => ['required', 'string', 'max:100'],
             'mail_type' => ['required', 'in:None,Inline HTML,CSV,SAP,EDI'],
             'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],

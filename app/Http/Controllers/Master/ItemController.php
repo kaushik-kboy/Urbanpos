@@ -102,8 +102,8 @@ class ItemController extends Controller
                     $item->hsn_code = (strlen($cleanedHsn) >= 4 && strlen($cleanedHsn) <= 8) ? $cleanedHsn : null;
                 }
 
-                // Ensure enum attributes are valid
-                if (!in_array($item->product_type, ['Standard', 'Serialized', 'Service Component', 'Gift Voucher'])) {
+                // Ensure product type is valid
+                if ($item->product_type && !\App\Models\ProductType::where('name', $item->product_type)->exists() && !in_array($item->product_type, ['Standard', 'Serialized', 'Service Component', 'Gift Voucher'])) {
                     $item->product_type = 'Standard';
                 }
                 if (!in_array($item->batch_expiry_details, ['Not Required', 'Optional', 'Mandatory', 'Days', 'Month'])) {
@@ -211,6 +211,7 @@ class ItemController extends Controller
             'brands' => Brand::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'gstTaxes' => GstTax::where('status', true)->orderBy('description')->pluck('description', 'id'),
+            'productTypes' => \App\Models\ProductType::where('status', true)->orderBy('name')->pluck('name', 'name'),
             'departmentValues' => $dept['values'],
             'categoryValues' => $cat['values'],
             'brandValues' => $brandVal['values'],
@@ -263,7 +264,7 @@ class ItemController extends Controller
             'alias' => ['nullable', 'string', 'max:255'],
             'brand_id' => ['nullable', 'exists:brands,id'],
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
-            'product_type' => ['required', 'in:Standard,Serialized,Service Component,Gift Voucher'],
+            'product_type' => ['required', 'string', 'max:100'],
             'cost_price' => ['required', 'numeric', 'min:0'],
             'landing_cost' => ['required', 'numeric', 'min:0'],
             'sell_price' => ['required', 'numeric', 'min:0'],

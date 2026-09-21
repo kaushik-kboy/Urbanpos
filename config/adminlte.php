@@ -332,6 +332,7 @@ return [
                     'submenu' => [
                         ['text' => 'Item Category', 'url' => 'master/item-categories', 'icon' => 'fas fa-fw fa-folder'],
                         ['text' => 'Item Category Values', 'url' => 'master/item-category-values', 'icon' => 'fas fa-fw fa-folder-open'],
+                        ['text' => 'Product Types', 'url' => 'master/product-types', 'icon' => 'fas fa-fw fa-cubes'],
                         ['text' => 'Brand', 'url' => 'master/brands', 'icon' => 'fas fa-fw fa-tag'],
                         ['text' => 'Item', 'url' => 'master/items', 'icon' => 'fas fa-fw fa-box'],
                         ['text' => 'Item Property Setting', 'url' => 'master/aux/item-property-setting', 'icon' => 'fas fa-fw fa-sliders-h'],
@@ -375,6 +376,7 @@ return [
                     'icon' => 'fas fa-fw fa-percent',
                     'submenu' => [
                         ['text' => 'GST Tax', 'url' => 'master/gst-taxes', 'icon' => 'fas fa-fw fa-receipt'],
+                        ['text' => 'GST Types', 'url' => 'master/gst-types', 'icon' => 'fas fa-fw fa-file-invoice'],
                         ['text' => 'GSTNo Restriction Master', 'url' => 'master/aux/gstno-restriction', 'icon' => 'fas fa-fw fa-shield-alt'],
                     ],
                 ],

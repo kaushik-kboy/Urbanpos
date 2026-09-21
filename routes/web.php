@@ -9,6 +9,8 @@ use App\Http\Controllers\Master\CustomerCategoryController;
 use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\FinancialYearController;
 use App\Http\Controllers\Master\GstTaxController;
+use App\Http\Controllers\Master\GstTypeController;
+use App\Http\Controllers\Master\ProductTypeController;
 use App\Http\Controllers\Master\ItemCategoryController;
 use App\Http\Controllers\Master\ItemCategoryValueController;
 use App\Http\Controllers\Master\ItemController;
@@ -88,6 +90,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     $masterResources = [
         'item-categories' => ItemCategoryController::class,
         'item-category-values' => ItemCategoryValueController::class,
+        'product-types' => ProductTypeController::class,
         'brands' => BrandController::class,
         'uoms' => UomController::class,
         'items' => ItemController::class,
@@ -103,6 +106,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         'tender-types' => TenderTypeController::class,
         'tender-type-values' => TenderTypeValueController::class,
         'gst-taxes' => GstTaxController::class,
+        'gst-types' => GstTypeController::class,
     ];
 
     Route::get('items/generate-barcode', [ItemController::class, 'generateBarcode'])->name('items.generate-barcode');

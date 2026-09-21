@@ -48,7 +48,15 @@
                 </x-select>
             </div>
             <div class="field-wrapper col-md-6" data-field="product_type" data-label="Product Type" data-default-order="6" data-core="1">
-                <x-select name="product_type" label="Product Type" :options="['Standard' => 'Standard', 'Serialized' => 'Serialized', 'Service Component' => 'Service Component', 'Gift Voucher' => 'Gift Voucher']" :selected="$i->product_type ?? 'Standard'" />
+                @php
+                    $prodTypes = isset($productTypes) && count($productTypes) > 0
+                        ? $productTypes
+                        : \App\Models\ProductType::where('status', true)->orderBy('name')->pluck('name', 'name');
+                    if ($prodTypes->isEmpty()) {
+                        $prodTypes = collect(['Standard' => 'Standard', 'Serialized' => 'Serialized', 'Service Component' => 'Service Component', 'Gift Voucher' => 'Gift Voucher']);
+                    }
+                @endphp
+                <x-select name="product_type" label="Product Type" :options="$prodTypes" :selected="$i->product_type ?? 'Standard'" />
             </div>
             <div class="field-wrapper col-md-6" data-field="cost_price" data-label="Cost Price" data-default-order="7" data-core="1">
                 <x-field name="cost_price" label="Cost Price" type="number" step="0.01" :value="$i->cost_price ?? 0" />
@@ -209,9 +217,15 @@
                     <div class="form-group col-md-6">
                         <label for="quick_supplier_gst_type" class="font-weight-bold small text-muted">GST Type</label>
                         <select class="form-control form-control-sm" id="quick_supplier_gst_type">
-                            <option value="Regular" selected>Regular</option>
-                            <option value="Composite">Composite</option>
-                            <option value="Un Register">Un Register</option>
+                            @php
+                                $itemGstTypes = \App\Models\GstType::where('status', true)->orderBy('name')->pluck('name', 'name');
+                                if ($itemGstTypes->isEmpty()) {
+                                    $itemGstTypes = collect(['Regular' => 'Regular', 'Composite' => 'Composite', 'Un Register' => 'Un Register']);
+                                }
+                            @endphp
+                            @foreach($itemGstTypes as $gtVal => $gtText)
+                                <option value="{{ $gtVal }}" {{ $gtVal === 'Regular' ? 'selected' : '' }}>{{ $gtText }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>

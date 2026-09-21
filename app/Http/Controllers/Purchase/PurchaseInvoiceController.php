@@ -333,7 +333,7 @@ class PurchaseInvoiceController extends Controller
 
         if ($supplierInvAmt > 0 && abs($supplierInvAmt - $finalAmount) > 0.01) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'supplier_inv_amount' => "Inv Amount (Supplier) [₹" . number_format($supplierInvAmt, 2) . "] and Final Amount [₹" . number_format($finalAmount, 2) . "] same ho to hi save hoga (Difference: ₹" . number_format($supplierInvAmt - $finalAmount, 2) . ").",
+                'supplier_inv_amount' => "Supplier Invoice Amount [₹" . number_format($supplierInvAmt, 2) . "] must match the Final Amount [₹" . number_format($finalAmount, 2) . "] (Difference: ₹" . number_format($supplierInvAmt - $finalAmount, 2) . ").",
             ]);
         }
     }
@@ -946,7 +946,7 @@ class PurchaseInvoiceController extends Controller
                         $rowNum = $idx + 1;
                         $v->errors()->add(
                             "items.{$idx}.sell_price",
-                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) MRP (₹{$mrp}) se zyada nahi hona chahiye (Sell price must be <= MRP)."
+                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must not exceed MRP (₹{$mrp}) (Sell price must be <= MRP)."
                         );
                     }
                 }

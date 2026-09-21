@@ -33,49 +33,53 @@ class ItemNullablePricingTest extends TestCase
     {
         \Illuminate\Support\Facades\Cache::flush();
 
-        \App\Models\FormFieldValidation::create([
-            'module_key' => 'items',
-            'field_name' => 'cost_price',
-            'field_label' => 'Cost Price',
-            'field_type' => 'number',
-            'is_required' => false,
-            'is_readonly' => false,
-            'block_future_date' => false,
-            'sort_order' => 5,
-        ]);
+        \App\Models\FormFieldValidation::updateOrCreate(
+            ['module_key' => 'items', 'field_name' => 'cost_price'],
+            [
+                'field_label' => 'Cost Price',
+                'field_type' => 'number',
+                'is_required' => false,
+                'is_readonly' => false,
+                'block_future_date' => false,
+                'sort_order' => 5,
+            ]
+        );
 
-        \App\Models\FormFieldValidation::create([
-            'module_key' => 'items',
-            'field_name' => 'sell_price',
-            'field_label' => 'Sell Price',
-            'field_type' => 'number',
-            'is_required' => false,
-            'is_readonly' => false,
-            'block_future_date' => false,
-            'sort_order' => 6,
-        ]);
+        \App\Models\FormFieldValidation::updateOrCreate(
+            ['module_key' => 'items', 'field_name' => 'sell_price'],
+            [
+                'field_label' => 'Sell Price',
+                'field_type' => 'number',
+                'is_required' => false,
+                'is_readonly' => false,
+                'block_future_date' => false,
+                'sort_order' => 6,
+            ]
+        );
 
-        \App\Models\FormFieldValidation::create([
-            'module_key' => 'items',
-            'field_name' => 'mrp',
-            'field_label' => 'MRP',
-            'field_type' => 'number',
-            'is_required' => false,
-            'is_readonly' => false,
-            'block_future_date' => false,
-            'sort_order' => 7,
-        ]);
+        \App\Models\FormFieldValidation::updateOrCreate(
+            ['module_key' => 'items', 'field_name' => 'mrp'],
+            [
+                'field_label' => 'MRP',
+                'field_type' => 'number',
+                'is_required' => false,
+                'is_readonly' => false,
+                'block_future_date' => false,
+                'sort_order' => 7,
+            ]
+        );
 
-        \App\Models\FormFieldValidation::create([
-            'module_key' => 'items',
-            'field_name' => 'landing_cost',
-            'field_label' => 'Landing Cost',
-            'field_type' => 'number',
-            'is_required' => false,
-            'is_readonly' => false,
-            'block_future_date' => false,
-            'sort_order' => 8,
-        ]);
+        \App\Models\FormFieldValidation::updateOrCreate(
+            ['module_key' => 'items', 'field_name' => 'landing_cost'],
+            [
+                'field_label' => 'Landing Cost',
+                'field_type' => 'number',
+                'is_required' => false,
+                'is_readonly' => false,
+                'block_future_date' => false,
+                'sort_order' => 8,
+            ]
+        );
 
         $gst = GstTax::firstOrCreate(['percentage' => 18], ['description' => 'GST 18%', 'status' => true]);
 

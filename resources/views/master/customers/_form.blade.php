@@ -62,7 +62,13 @@
                 <x-field name="sales_formula" label="Sales Formula" :value="$c->sales_formula ?? ''" />
             </div>
             <div class="field-wrapper col-md-6" data-field="gst_type" data-label="GST Type" data-default-order="15">
-                <x-select name="gst_type" label="GST Type" :options="['Regular' => 'Regular', 'Composite' => 'Composite', 'Un Register' => 'Un Register']" :selected="$c->gst_type ?? 'Un Register'" />
+                @php
+                    $gstTypeOptions = \App\Models\GstType::where('status', true)->orderBy('name')->pluck('name', 'name');
+                    if ($gstTypeOptions->isEmpty()) {
+                        $gstTypeOptions = collect(['Regular' => 'Regular', 'Composite' => 'Composite', 'Un Register' => 'Un Register']);
+                    }
+                @endphp
+                <x-select name="gst_type" label="GST Type" :options="$gstTypeOptions" :selected="$c->gst_type ?? 'Un Register'" />
             </div>
             <div class="field-wrapper col-md-6" data-field="sms_consent" data-label="I wish to receive SMS" data-default-order="16">
                 <x-bool-select name="sms_consent" label="I wish to receive SMS" :value="$c->sms_consent ?? true" true-label="Yes" false-label="No" />
@@ -73,8 +79,43 @@
     <div class="tab-pane" id="tab-contact">
         <x-field name="address1" label="Address1" :value="$c->address1 ?? ''" />
         <x-select name="area_id" label="Area" :options="$areas" :selected="$c->area_id ?? ''" placeholder="Select an area" />
-        <x-field name="city" label="City" :value="$c->city ?? ''" />
-        <x-field name="state" label="State" :value="$c->state ?? ''" />
+        <div class="form-group row">
+            <label for="customer_state" class="col-sm-3 col-form-label">State</label>
+            <div class="col-sm-6">
+                <select name="state" id="customer_state" class="form-control select2 @error('state') is-invalid @enderror">
+                    <option value="">-- Select State --</option>
+                    <optgroup label="⭐ Top States">
+                        <option value="Gujarat" @selected(old('state', $c->state ?? '') === 'Gujarat')>Gujarat</option>
+                        <option value="Rajasthan" @selected(old('state', $c->state ?? '') === 'Rajasthan')>Rajasthan</option>
+                        <option value="Maharashtra" @selected(old('state', $c->state ?? '') === 'Maharashtra')>Maharashtra</option>
+                    </optgroup>
+                    <optgroup label="Other States & UTs">
+                        @foreach(\App\Helpers\IndianStates::states() as $stVal => $stLabel)
+                            @if(!in_array($stVal, ['Gujarat', 'Rajasthan', 'Maharashtra']))
+                                <option value="{{ $stVal }}" @selected(old('state', $c->state ?? '') === $stVal)>{{ $stLabel }}</option>
+                            @endif
+                        @endforeach
+                    </optgroup>
+                </select>
+                @error('state')
+                    <span class="invalid-feedback d-block">{{ $message }}</span>
+                @enderror
+            </div>
+        </div>
+        <div class="form-group row">
+            <label for="customer_city" class="col-sm-3 col-form-label">City</label>
+            <div class="col-sm-6">
+                <select name="city" id="customer_city" class="form-control select2 @error('city') is-invalid @enderror">
+                    <option value="">-- Select City --</option>
+                    @if(!empty(old('city', $c->city ?? '')))
+                        <option value="{{ old('city', $c->city ?? '') }}" selected>{{ old('city', $c->city ?? '') }}</option>
+                    @endif
+                </select>
+                @error('city')
+                    <span class="invalid-feedback d-block">{{ $message }}</span>
+                @enderror
+            </div>
+        </div>
         <x-field name="country" label="Country" :value="$c->country ?? 'India'" />
         <x-field name="postal_code" label="Postal Code" :value="$c->postal_code ?? ''" />
         <x-field name="std_code" label="STD Code" :value="$c->std_code ?? ''" />
@@ -216,5 +257,13 @@
             row.style.display = 'none';
         });
     })();
+</script>
+<script src="{{ asset('js/indian-states-cities.js') }}"></script>
+<script>
+    $(document).ready(function () {
+        if (typeof initIndianStateCity === 'function') {
+            initIndianStateCity('#customer_state', '#customer_city', '{{ old('state', $c->state ?? '') }}', '{{ old('city', $c->city ?? '') }}');
+        }
+    });
 </script>
 @endpush

@@ -1504,7 +1504,7 @@
                         hasStockError = true;
                     } else if (qty <= 0) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
-                                 .attr('title', 'Quantity 0 se zyada honi chahiye.');
+                                 .attr('title', 'Quantity must be greater than 0.');
                         hasStockError = true;
                     } else {
                         $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
@@ -1583,7 +1583,7 @@
             let $saveBtn = $('button[type="submit"]');
 
             if (res.hasStockError || res.validItemCount === 0) {
-                let reason = res.validItemCount === 0 ? 'Kam se kam 1 item aur proper quantity dalein.' : 'Kuch items ki qty available stock se zyada hai ya invalid hai.';
+                let reason = res.validItemCount === 0 ? 'Please add at least 1 item with valid quantity.' : 'Some item quantities exceed available stock or are invalid.';
                 $saveBtn.attr('title', reason);
             } else {
                 $saveBtn.attr('title', '');
@@ -1766,7 +1766,7 @@
                     // Multiple Batches: Show modal with productname, code, sell price, qty and expiry!
                     // =========================================================
                     if (batches.length === 1) {
-                        // Agar single ho to expiry date automatic aani chahiye
+                        // If single batch exists, auto-populate expiry date
                         let singleBatch = batches[0];
                         if (singleBatch && singleBatch.exp_date) {
                             let cleanExp = singleBatch.exp_date.toString().substring(0, 10);
@@ -1998,14 +1998,14 @@
 
             if (validItems === 0) {
                 e.preventDefault();
-                alert('Kripya kam se kam ek item select karein aur uski quantity dalein.');
+                alert('Please select at least one item and enter a valid quantity.');
                 return false;
             }
 
             // Check customer is selected
             if (!$custSelect.val()) {
                 e.preventDefault();
-                alert('Kripya customer select karein.');
+                alert('Please select a customer.');
                 $custSelect.select2('open');
                 return false;
             }
@@ -2013,14 +2013,14 @@
             // Check branch is selected
             if (!$('[name="branch_id"]').val()) {
                 e.preventDefault();
-                alert('Kripya branch select karein.');
+                alert('Please select a branch.');
                 return false;
             }
 
             // Check bill date
             if (!$('input[name="bill_date"]').val()) {
                 e.preventDefault();
-                alert('Kripya bill date select karein.');
+                alert('Please select a bill date.');
                 return false;
             }
 
@@ -2115,7 +2115,7 @@
 
             let tendered = Math.round((cash + credit + card + wallet + rrn) * 100) / 100;
             if (tendered <= 0 && tenderBillTotal > 0) {
-                $('#tender-error').removeClass('d-none').text('Kripya payment amount enter karein.');
+                $('#tender-error').removeClass('d-none').text('Please enter payment amount.');
                 return;
             }
 
@@ -2135,7 +2135,7 @@
 
             let otherPayments = Math.round((credit + card + wallet + rrn) * 100) / 100;
             if (otherPayments > tenderBillTotal) {
-                $('#tender-error').removeClass('d-none').text('Payment amount (₹' + otherPayments.toFixed(2) + ') bill total (₹' + tenderBillTotal.toFixed(2) + ') se jyada nahi ho sakti.');
+                $('#tender-error').removeClass('d-none').text('Payment amount (₹' + otherPayments.toFixed(2) + ') cannot exceed bill total (₹' + tenderBillTotal.toFixed(2) + ').');
                 return;
             }
 

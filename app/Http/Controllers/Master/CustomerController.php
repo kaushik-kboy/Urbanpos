@@ -232,7 +232,7 @@ class CustomerController extends Controller
             'branch_id' => ['nullable', 'exists:branches,id'],
             'status' => ['required', 'boolean'],
             'sales_formula' => ['nullable', 'string', 'max:255'],
-            'gst_type' => ['required', 'in:Regular,Composite,Un Register'],
+            'gst_type' => ['required', 'string', 'max:100'],
             'sms_consent' => ['required', 'boolean'],
 
             // Contact Details

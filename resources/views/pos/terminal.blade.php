@@ -72,10 +72,13 @@
             
             <!-- Barcode Scanner Bar -->
             <div class="pos-scan-bar" id="posScannerContainer">
-                <div class="pos-scanner-input-group">
+                <div class="pos-scanner-input-group d-flex align-items-center">
                     <i class="fas fa-barcode pos-scanner-icon"></i>
-                    <input type="text" id="posScanInput" class="pos-scanner-input" placeholder="Scan Barcode or Search Item Name / SKU / Code... (Press F2)" autocomplete="off" autofocus>
-                    <span class="pos-scanner-tag"><i class="fas fa-bolt text-warning mr-1"></i>Auto Scan</span>
+                    <input type="text" id="posScanInput" class="pos-scanner-input flex-grow-1" placeholder="Scan Barcode or Search Item Name / SKU / Code... (Press F2 for Item List)" autocomplete="off" autofocus>
+                    <button type="button" class="btn btn-primary btn-sm px-3 ml-2 font-weight-bold shadow-sm text-nowrap" id="pos-btn-item-lookup" onclick="if(window.openPosItemSearchModal) window.openPosItemSearchModal();" title="Open Item List Popup (F2)" style="border-radius: 6px; height: 38px;">
+                        <i class="fas fa-search-plus mr-1"></i> Item List (F2)
+                    </button>
+                    <span class="pos-scanner-tag ml-2"><i class="fas fa-bolt text-warning mr-1"></i>Auto Scan</span>
                 </div>
                 <!-- Live Search Suggestions Dropdown -->
                 <div id="posSearchResults" class="pos-search-results"></div>
@@ -452,9 +455,15 @@
                                 <div class="col-md-3 mb-3">
                                     <label class="font-weight-600 small mb-1">GST Type</label>
                                     <select name="gst_type" id="posCust_gst_type" class="form-control form-control-sm">
-                                        <option value="Un Register" selected>Un Register</option>
-                                        <option value="Regular">Regular</option>
-                                        <option value="Composite">Composite</option>
+                                        @php
+                                            $posGstTypes = \App\Models\GstType::where('status', true)->orderBy('name')->pluck('name', 'name');
+                                            if ($posGstTypes->isEmpty()) {
+                                                $posGstTypes = collect(['Un Register' => 'Un Register', 'Regular' => 'Regular', 'Composite' => 'Composite']);
+                                            }
+                                        @endphp
+                                        @foreach($posGstTypes as $gtVal => $gtText)
+                                            <option value="{{ $gtVal }}" {{ $gtVal === 'Un Register' ? 'selected' : '' }}>{{ $gtText }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-3 mb-3">
@@ -491,12 +500,28 @@
                                 </div>
 
                                 <div class="col-md-4 mb-3">
-                                    <label class="font-weight-600 small mb-1">City</label>
-                                    <input type="text" name="city" id="posCust_city" class="form-control form-control-sm" placeholder="City">
+                                    <label class="font-weight-600 small mb-1">State</label>
+                                    <select name="state" id="posCust_state" class="form-control form-control-sm">
+                                        <option value="">-- Select State --</option>
+                                        <optgroup label="⭐ Top States">
+                                            <option value="Gujarat">Gujarat</option>
+                                            <option value="Rajasthan">Rajasthan</option>
+                                            <option value="Maharashtra">Maharashtra</option>
+                                        </optgroup>
+                                        <optgroup label="Other States & UTs">
+                                            @foreach(\App\Helpers\IndianStates::states() as $stVal => $stLabel)
+                                                @if(!in_array($stVal, ['Gujarat', 'Rajasthan', 'Maharashtra']))
+                                                    <option value="{{ $stVal }}">{{ $stLabel }}</option>
+                                                @endif
+                                            @endforeach
+                                        </optgroup>
+                                    </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="font-weight-600 small mb-1">State</label>
-                                    <input type="text" name="state" id="posCust_state" class="form-control form-control-sm" placeholder="State">
+                                    <label class="font-weight-600 small mb-1">City</label>
+                                    <select name="city" id="posCust_city" class="form-control form-control-sm">
+                                        <option value="">-- Select City --</option>
+                                    </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="font-weight-600 small mb-1">Country</label>
@@ -758,6 +783,95 @@
     </div>
 </div>
 
+<!-- Item Search & Selection Modal (F2) -->
+<div class="modal fade" id="pos-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="posItemSearchLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white py-2 px-3 align-items-center">
+                <h5 class="modal-title font-weight-bold mb-0" id="posItemSearchLabel" style="font-size: 1.1rem;">
+                    <i class="fas fa-boxes mr-2 text-warning"></i>Select Item (F2) — Real-time Stock Lookup
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3 bg-light">
+                <!-- Filters -->
+                <div class="row mb-3 bg-white p-2 rounded shadow-sm mx-0 align-items-center">
+                    <div class="col-md-5 mb-1 mb-md-0">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light text-primary font-weight-bold"><i class="fas fa-search"></i></span>
+                            </div>
+                            <input type="text" id="pos-isl-filter-name" class="form-control form-control-sm font-weight-bold" placeholder="Search product name, code or barcode…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-1 mb-md-0">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light"><i class="fas fa-barcode"></i></span>
+                            </div>
+                            <input type="text" id="pos-isl-filter-code" class="form-control form-control-sm" placeholder="Filter by code…" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-1 mb-md-0">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light"><i class="fas fa-calendar-alt"></i></span>
+                            </div>
+                            <input type="text" id="pos-isl-filter-expiry" class="form-control form-control-sm" placeholder="Expiry (YYYY-MM)" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <button type="button" id="pos-isl-btn-clear" class="btn btn-sm btn-outline-secondary font-weight-bold px-3">
+                            <i class="fas fa-times mr-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading / No-results states -->
+                <div id="pos-isl-loading" class="text-center py-4 d-none">
+                    <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2 text-muted font-weight-bold">Loading items from branch inventory…</p>
+                </div>
+                <div id="pos-isl-no-results" class="text-center py-4 d-none">
+                    <i class="fas fa-inbox fa-2x text-muted"></i>
+                    <p class="mt-2 text-muted font-weight-bold">No items found.</p>
+                </div>
+
+                <!-- Items Table -->
+                <div class="table-responsive bg-white rounded shadow-sm" id="pos-isl-table-wrap" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="pos-isl-items-table">
+                        <thead class="bg-dark text-white sticky-top" style="z-index: 2;">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Product Name</th>
+                                <th class="text-center" style="width: 130px;">Code / Barcode</th>
+                                <th class="text-center" style="width: 140px;">Expiry (Purchase Se)</th>
+                                <th class="text-right" style="width: 100px;">Qty (Stock)</th>
+                                <th class="text-right" style="width: 100px;">Sell Price</th>
+                                <th class="text-right" style="width: 100px;">MRP</th>
+                                <th class="text-center" style="width: 90px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pos-isl-items-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                    <small class="text-muted font-weight-bold" id="pos-isl-count-label"></small>
+                    <small class="text-muted"><kbd>↑</kbd> <kbd>↓</kbd> to Navigate &bull; <kbd>Enter</kbd> to Select &bull; <kbd>Esc</kbd> to Close</small>
+                </div>
+            </div>
+            <div class="modal-footer py-2 px-3 bg-white justify-content-between">
+                <span class="text-muted small"><i class="fas fa-info-circle mr-1 text-primary"></i>Active Branch: <strong class="text-dark">{{ $branch->name ?? 'Default Branch' }}</strong></span>
+                <button type="button" class="btn btn-secondary btn-sm px-3 font-weight-bold" data-dismiss="modal">Close (Esc)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -767,6 +881,7 @@
     window.APP_URL = "{{ url('/') }}";
     window.CSRF_TOKEN = "{{ csrf_token() }}";
     window.STORE_NAME = "{{ config('app.name', 'UrbanPOS') }}";
+    window.ISL_URL = "{{ route('sales.sales-bills.item-list') }}";
     window.CUSTOMER_SEARCH_URL = "{{ route('sales.sales-bills.customer-search') }}";
     window.CUSTOMER_INVOICES_URL = "{{ url('sales/sales-bills/customer-invoices') }}";
     window.CUSTOMER_EDIT_BASE_URL = "{{ url('master/customers') }}";
@@ -802,6 +917,14 @@
     }
 </script>
 
+<script src="{{ asset('js/indian-states-cities.js') }}"></script>
+<script>
+$(document).ready(function () {
+    if (typeof initIndianStateCity === 'function') {
+        initIndianStateCity('#posCust_state', '#posCust_city', '', '');
+    }
+});
+</script>
 <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ time() }}"></script>
 <script src="{{ asset('js/pos-terminal.js') }}?v={{ time() }}"></script>
 </body>
