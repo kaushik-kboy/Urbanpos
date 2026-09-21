@@ -34,7 +34,7 @@
                             <option value="{{ route('sales.sales-returns.index') }}">Sales &bull; Sales Return List</option>
                             <option value="{{ route('sales.sales-orders.create') }}">Sales &bull; Sales Order</option>
                             <option value="{{ route('sales.sales-quotations.create') }}">Sales &bull; Sales Quotation</option>
-                            <option value="{{ route('sales.sales-delivery-notes.create') }}">Sales &bull; Delivery Note</option>
+                            <option value="{{ route('sales.delivery-notes.create') }}">Sales &bull; Delivery Note</option>
                         </optgroup>
                         <optgroup label="📦 Purchase">
                             <option value="{{ route('purchase.purchase-invoices.create') }}">Purchase &bull; New Purchase Invoice</option>
@@ -80,9 +80,9 @@
                             <option value="{{ route('inventory.damage-stocks.index') }}">Inventory &bull; Damage Stock</option>
                         </optgroup>
                         <optgroup label="📈 Reports">
-                            <option value="{{ route('reports.dashboard') }}">Reports &bull; Reports Dashboard</option>
-                            <option value="{{ route('reports.analytics') }}">Reports &bull; Analytics Builder</option>
-                            <option value="{{ route('reports.daily-report') }}">Reports &bull; Daily Report</option>
+                            <option value="{{ route('reports.index') }}">Reports &bull; Reports Dashboard</option>
+                            <option value="{{ route('reports.analytics-builder') }}">Reports &bull; Analytics Builder</option>
+                            <option value="{{ route('reports.sales-summary') }}">Reports &bull; Sales Summary</option>
                         </optgroup>
                         <optgroup label="⚙️ Tools & System">
                             <option value="{{ route('tools.system-health.index') }}">Tools &bull; System Health</option>
