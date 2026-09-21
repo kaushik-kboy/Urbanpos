@@ -9,8 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         $all = FormFieldValidationSeeder::getFields();
+        $hasSection = \Illuminate\Support\Facades\Schema::hasColumn('form_field_validations', 'section');
 
         foreach ($all as $fieldData) {
+            if (! $hasSection) {
+                unset($fieldData['section']);
+            }
             FormFieldValidation::firstOrCreate(
                 [
                     'module_key' => $fieldData['module_key'],

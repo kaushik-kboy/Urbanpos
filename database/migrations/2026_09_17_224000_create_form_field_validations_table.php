@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('field_name', 100);
             $table->string('field_label', 150);
             $table->string('field_type', 50)->default('text'); // text, number, date, datetime, select
+            $table->string('section', 100)->nullable()->default('General');
             $table->boolean('is_required')->default(false);
             $table->boolean('is_readonly')->default(false);
             $table->boolean('block_future_date')->default(false);
