@@ -635,7 +635,7 @@ class SalesBillController extends Controller
 
         foreach ($totalQtyByItem as $itemId => $totalRequested) {
             $item = Item::find($itemId);
-            if (! $item) {
+            if (! $item || $item->allow_negative_stock) {
                 continue;
             }
 
@@ -735,6 +735,7 @@ class SalesBillController extends Controller
             SELECT
                 i.id,
                 i.name,
+                COALESCE(i.allow_negative_stock, 0) AS allow_negative_stock,
                 COALESCE(i.item_code, '')  AS item_code,
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
                 COALESCE(st.quantity, 0)   AS qty,
@@ -821,14 +822,15 @@ class SalesBillController extends Controller
             if ($expiry !== '' && (! $exp || strpos($exp, $expiry) === false)) continue;
 
             $result[] = [
-                'id'          => (int) $row->id,
-                'name'        => $row->name,
-                'code'        => $row->item_code ?: ($row->ean_upc_code ?: ''),
-                'exp_date'    => $exp,
-                'qty'         => (float) $row->qty,
-                'sell_price'  => (float) $row->sell_price,
-                'mrp'         => (float) $row->mrp,
-                'gst_percent' => (float) $row->gst_percent,
+                'id'                   => (int) $row->id,
+                'name'                 => $row->name,
+                'code'                 => $row->item_code ?: ($row->ean_upc_code ?: ''),
+                'exp_date'             => $exp,
+                'qty'                  => (float) $row->qty,
+                'sell_price'           => (float) $row->sell_price,
+                'mrp'                  => (float) $row->mrp,
+                'gst_percent'          => (float) $row->gst_percent,
+                'allow_negative_stock' => (bool) ($row->allow_negative_stock ?? false),
             ];
         }
 
@@ -1027,7 +1029,7 @@ class SalesBillController extends Controller
     private function formOptions(?SalesBill $salesBill = null, $convertedItems = null, ?int $explicitCustomerId = null): array
     {
         // 1. Initial customers (top 20 active plus selected customer if editing or converting)
-        $selectedCustId = old('customer_id', $explicitCustomerId ?? $salesBill?->customer_id);
+        $selectedCustId = old('customer_id', old('header.customer_id', $explicitCustomerId ?? $salesBill?->customer_id));
         $customers = Customer::where('status', true)
             ->orderBy('name')
             ->limit(20)
@@ -1041,8 +1043,10 @@ class SalesBillController extends Controller
             }
         }
 
-        // 2. Only load items that are currently in the bill (edit/convert mode), NOT all 8,597 items!
-        $existingItemIds = collect($salesBill?->items ?? ($convertedItems ?? []))->pluck('item_id')->filter()->unique();
+        // 2. Only load items that are currently in the bill (edit/convert mode/validation reload), NOT all 8,597 items!
+        $oldItems = old('items');
+        $oldItemIds = is_array($oldItems) ? collect($oldItems)->pluck('item_id')->filter() : collect();
+        $existingItemIds = collect($salesBill?->items ?? ($convertedItems ?? []))->pluck('item_id')->merge($oldItemIds)->filter()->unique();
         $items = $existingItemIds->isNotEmpty()
             ? Item::whereIn('id', $existingItemIds)->with('gstTax:id,percentage')->get([
                 'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id', 'batch_expiry_details', 'allow_negative_stock'

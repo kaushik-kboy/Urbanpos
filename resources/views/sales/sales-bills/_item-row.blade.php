@@ -9,6 +9,14 @@
             ? collect($items)->firstWhere('id', $selectedItemId)
             : null;
     }
+    if ($selectedItemId && !$selectedItem) {
+        $selectedItem = \App\Models\Item::with('gstTax:id,percentage')->find($selectedItemId);
+    }
+    $activeBranchId = $selectedBranch ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: 3));
+    $lineStock = isset($line->stock)
+        ? (float)$line->stock
+        : ($selectedItemId ? (float)(\App\Models\ItemStock::where('item_id', $selectedItemId)->where('branch_id', $activeBranchId)->value('quantity') ?? 0) : 0);
+
     $itemCodeVal = $line->code ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
     $qtyVal = isset($line->qty) && $line->qty != 0 ? ((float)$line->qty == (int)$line->qty ? (int)$line->qty : $line->qty) : '';
     $sellPriceVal = isset($line->sell_price) && $line->sell_price != 0 ? $line->sell_price : ($selectedItem?->sell_price > 0 ? $selectedItem->sell_price : '');
@@ -24,7 +32,7 @@
         $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
     }
 @endphp
-<tr data-stock="{{ $line->stock ?? 0 }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
+<tr data-stock="{{ $lineStock }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
     <td class="text-center align-middle font-weight-bold sb-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     <td style="min-width: 110px;">
         <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode">
@@ -42,7 +50,7 @@
                class="sb-item-select"
                value="{{ $selectedItemId }}"
                required>
-        <input type="hidden" class="sb-item-stock-val" value="{{ $line->stock ?? 0 }}">
+        <input type="hidden" name="items[{{ $index }}][stock]" class="sb-item-stock-val" value="{{ $lineStock }}">
     </td>
     <td style="width: 135px;">
         <div class="input-group input-group-sm">

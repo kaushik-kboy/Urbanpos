@@ -137,8 +137,11 @@ class SalesDeliveryNoteController extends Controller
             if ($dispatchedQty > 0) {
                 $stock = ItemStock::where('item_id', $line['item_id'])->where('branch_id', $branchId)->first();
                 $avail = $stock ? (float) $stock->quantity : 0;
+                $item = Item::find($line['item_id']);
+                if ($item && $item->allow_negative_stock) {
+                    continue;
+                }
                 if ($avail < $dispatchedQty) {
-                    $item = Item::find($line['item_id']);
                     $itemName = $item ? $item->name : "Item #{$line['item_id']}";
                     throw ValidationException::withMessages([
                         'items' => "Insufficient stock for '{$itemName}' in this branch. Available: {$avail}, requested dispatch: {$dispatchedQty}.",

@@ -2,9 +2,9 @@
     $bill = $salesBill ?? null;
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($bill?->items ?? ($convertedItems ?? collect()));
-    $selectedCust = $bill->customer_id ?? ($sourceQuotation->customer_id ?? ($sourceOrder->customer_id ?? ($sourceDeliveryNote->customer_id ?? '')));
-    $selectedBranch = $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ($sourceDeliveryNote->branch_id ?? '')));
-    $selectedSalesType = $bill->sales_type ?? ($sourceQuotation->sales_type ?? ($sourceOrder->sales_type ?? 'Local'));
+    $selectedCust = old('customer_id', old('header.customer_id', $bill->customer_id ?? ($sourceQuotation->customer_id ?? ($sourceOrder->customer_id ?? ($sourceDeliveryNote->customer_id ?? '')))));
+    $selectedBranch = old('branch_id', old('header.branch_id', $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ($sourceDeliveryNote->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: 3)))))));
+    $selectedSalesType = old('sales_type', old('header.sales_type', $bill->sales_type ?? ($sourceQuotation->sales_type ?? ($sourceOrder->sales_type ?? 'Local'))));
     $billNumberVal = old('bill_number', $bill->bill_number ?? ($nextBillNumber ?? ''));
 @endphp
 
@@ -1211,8 +1211,9 @@
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
                     : `<span class="text-muted">—</span>`;
-                let isOutOfStock = parseFloat(it.qty) <= 0;
-                let qtyClass = isOutOfStock ? 'text-danger font-weight-bold' : 'text-success font-weight-bold';
+                let isAllowNeg = !!(it.allow_negative_stock);
+                let isOutOfStock = parseFloat(it.qty) <= 0 && !isAllowNeg;
+                let qtyClass = isOutOfStock ? 'text-danger font-weight-bold' : (parseFloat(it.qty) <= 0 ? 'text-warning font-weight-bold' : 'text-success font-weight-bold');
                 let rowClass = isOutOfStock ? 'isl-item-row isl-item-disabled text-muted bg-light' : 'isl-item-row';
                 let rowStyle = isOutOfStock ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
                 let actionBtn = isOutOfStock
@@ -1232,9 +1233,10 @@
                         data-mrp="${it.mrp}"
                         data-gst="${it.gst_percent}"
                         data-qty="${it.qty}"
+                        data-allow-negative="${isAllowNeg ? '1' : '0'}"
                         data-exp="${it.exp_date || ''}">
                         <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name} ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : ''}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name} ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : '')}</td>
                         <td class="align-middle text-center">${codeBadge}</td>
                         <td class="align-middle text-center">${expBadge}</td>
                         <td class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}</td>
@@ -1263,7 +1265,8 @@
         $(document).on('click', '.isl-item-row, .isl-btn-select', function (e) {
             e.stopPropagation();
             let $row = $(this).hasClass('isl-item-row') ? $(this) : $(this).closest('tr');
-            if ($row.hasClass('isl-item-disabled') || parseFloat($row.data('qty')) <= 0) {
+            let allowNeg = $row.data('allow-negative') == 1 || $row.data('allow-negative-stock') == 1;
+            if ($row.hasClass('isl-item-disabled') || (parseFloat($row.data('qty')) <= 0 && !allowNeg)) {
                 return false;
             }
             let itemId   = $row.data('id');
@@ -1342,7 +1345,14 @@
             $('#sb-branch-badge').html('<i class="fas fa-store mr-1"></i> Active Branch: <strong>' + branchName + '</strong>');
         }
         updateBranchBadge();
-        $(document).on('change', 'select[name="branch_id"]', updateBranchBadge);
+        $(document).on('change', 'select[name="branch_id"]', function () {
+            let bId = $(this).val();
+            if (bId) {
+                localStorage.setItem('urbanpos_active_branch_id', bId);
+                islCache = {}; // clear cached search items for previous branch
+            }
+            updateBranchBadge();
+        });
 
         function updateRowNumbers() {
             $('#sb-items-body tr').each(function (idx) {
