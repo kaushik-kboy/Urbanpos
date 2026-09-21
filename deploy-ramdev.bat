@@ -19,7 +19,7 @@ echo ============================================
 echo.
 
 plink -pw "%SSH_PASS%" -P %SSH_PORT% -batch -hostkey "%SSH_HKEY%" %SSH_USER%@%SSH_HOST% ^
-  "cd %PROJECT% && echo '=== GIT PULL ===' && git pull origin main && echo '=== MIGRATE ===' && php artisan migrate --force && echo '=== CACHE CLEAR ===' && php artisan route:clear && php artisan config:clear && php artisan view:clear && php artisan cache:clear && echo '=== DONE ==='"
+  "cd %PROJECT% && echo '=== GIT PULL ===' && git pull origin main && echo '=== MIGRATE ===' && php artisan migrate --force && echo '=== SEED ===' && php artisan db:seed --class=FormFieldValidationSeeder --force && echo '=== CACHE CLEAR ===' && php artisan route:clear && php artisan config:clear && php artisan view:clear && php artisan cache:clear && echo '=== DONE ==='"
 
 echo.
 echo Deploy to Ramdevcar finished!
