@@ -220,3 +220,57 @@ Before any code can be pushed to GitHub or deployed to production, the automated
 - **PHP**: PHP 8.3 with OPcache enabled.
 - **Database**: MySQL 8.0 with InnoDB buffer optimization.
 - **Domain**: `https://pos.ramdevcar.shop`
+
+---
+
+## 12. Advanced Enterprise & Counter Security Modules (v2.1 Additions)
+
+### 12.1. POS Quick Lock Screen (Counter Security)
+- **Problem Addressed**: Counter abandonment vulnerabilities (cashier stepping away for physical stock retrieval or breaks, leaving open bills exposed to customer tampering or unauthorized discounts).
+- **Triggers**:
+  - **Manual Hotkey**: `Ctrl + L` triggers instant screen lock from anywhere on the POS terminal.
+  - **Header Action**: One-click padlock icon button in the POS terminal navigation header (`#btnPosLockScreen`).
+  - **Automatic Inactivity Lockout**: 3-minute idle watchdog auto-locks the screen if no mouse movement, touch, or keystrokes are registered.
+- **State Integrity**:
+  - Entire background DOM, active cart lines, selected customer, and held orders remain strictly preserved in memory.
+- **4-Digit Quick PIN Security**:
+  - Cashier enters their fast 4-digit numeric PIN (default auto-provisioned: `0000`).
+  - Supports physical keyboard numbers, numpad, or responsive on-screen touch keypad.
+  - **Rate Limiting**: Throttled to 5 consecutive attempts per minute with auto-lockout to prevent brute-force attacks.
+  - Self-service "Change PIN" modal allowing cashiers to update their security PIN on-the-fly.
+
+### 12.2. Dynamic UPI QR Code Generation (Counter & Thermal Receipts)
+- **Problem Addressed**: Manual cashier typing of bill amounts on static UPI QR stands often causes transaction delays, typos, and revenue under-collection during peak rush hours.
+- **Real-Time Dynamic QR Engine**:
+  - Branch-specific VPA configuration (`upi_id`, `upi_payee_name`) stored on the active branch profile.
+  - **POS Tender Modal (`F8`)**: As bill items are scanned or payment splits are adjusted, the system generates an NPCI-compliant URI:
+    ```
+    upi://pay?pa={VPA}&pn={PAYEE_NAME}&am={BILL_AMOUNT}&cu=INR&tn=Bill-{INVOICE_NO}
+    ```
+  - Instantly rendered on screen as a high-contrast QR code via Google Charts / native SVG QR generator.
+  - **80mm Thermal Receipt Layout**: Embedded dynamic QR printed at the foot of each thermal receipt for fast post-checkout scan-and-pay reconciliation.
+
+### 12.3. Direct Barcode Label & Sticker Printing System
+- **Problem Addressed**: Complex third-party software setups historically required to print barcode stickers for newly received purchase consignments.
+- **Direct Multi-Source Workflows**:
+  - **Purchase Invoice Inflow**: Single-click "Print Stickers" directly from Purchase Invoice list and show views (`/purchase/purchase-invoices/{id}`). Replicates the exact received quantities for every line item in the shipment.
+  - **Item Master On-Demand**: Custom quantity barcode printing directly from the Item Master index (`/master/items`).
+- **Standard Industry Thermal Formats**:
+  1. **50mm x 25mm (1-up Thermal Roll)**: Standard retail sticker with Store Name, Item Name, Barcode SVG, MRP, Selling Price, and Expiry Date.
+  2. **38mm x 25mm (2-up Thermal Roll)**: Compact dual-column roll for small packaging, pet accessories, and cosmetics.
+  3. **A4 Sheet (40 Labels / 4x10 Matrix)**: Standard Avery / sticker sheets designed for regular office laser and inkjet printers.
+- **Vector Barcode Rendering**: Rendered via client-side `JsBarcode` emitting crisp SVG vectors to ensure 100% first-pass read rates on all 1D laser scanners.
+
+### 12.4. Automated Database Backup & Disaster Recovery System
+- **Problem Addressed**: Hardware failure, ransomware, or server-side data corruption without reliable zero-maintenance backups.
+- **Dual-Engine CLI Command**: `php artisan db:backup {--clean}`
+  - **Engine 1 (`mysqldump`)**: Automatically locates and invokes `mysqldump` on Windows Laragon (`C:\laragon\bin\mysql\*\bin\mysqldump.exe`) and standard Linux systems.
+  - **Engine 2 (Streaming Fallback)**: High-speed PHP streaming exporter using `gzopen` and 500-row chunked database reads. Executes flawlessly in restricted shared hosting environments where `exec()` or `mysqldump` is disabled.
+- **Retention & Automated Scheduling**:
+  - Automated cron scheduled daily at `01:00 AM` (`routes/console.php`).
+  - Automatic pruning of database backup archives older than 14 days.
+- **Web Admin Console (`/tools/backups`)**:
+  - Dedicated administrative dashboard under `Tools > Database Backups`.
+  - Displays backup history, file sizes, creation timestamps, and download status.
+  - Single-click **"Generate Backup Now"** action for immediate on-demand snapshots.
+  - Authenticated and secure direct download and purge controls.
