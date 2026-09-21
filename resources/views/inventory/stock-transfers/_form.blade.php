@@ -18,14 +18,18 @@
 </div>
 
 <div class="row g-2 form-fields-grid mb-3" id="st-header-fields-grid">
+    @php
+        $selectedFromBranch = old('from_branch_id', $transfer->from_branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?? 3));
+    @endphp
     <div class="field-wrapper col-md-4" data-field="from_branch_id" data-label="From Branch" data-default-order="1" data-core="1">
-        <label for="from_branch_id" class="font-weight-bold">From Branch <span class="text-danger">*</span></label>
-        <select name="from_branch_id" id="from_branch_id" class="form-control select2" required>
-            <option value="">-- Select Branch --</option>
-            @foreach ($branches as $bId => $bName)
-                <option value="{{ $bId }}" @selected(old('from_branch_id', $transfer->from_branch_id ?? '') == $bId)>{{ $bName }}</option>
-            @endforeach
-        </select>
+        <label for="from_branch_id" class="font-weight-bold">From Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
+        <div class="input-group">
+            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedFromBranch] ?? 'Active Branch' }}">
+            <input type="hidden" name="from_branch_id" id="from_branch_id" value="{{ $selectedFromBranch }}">
+            <div class="input-group-append">
+                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
+            </div>
+        </div>
     </div>
     <div class="field-wrapper col-md-4" data-field="to_branch_id" data-label="To Branch" data-default-order="2" data-core="1">
         <label for="to_branch_id" class="font-weight-bold">To Branch <span class="text-danger">*</span></label>

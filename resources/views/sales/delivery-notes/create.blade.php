@@ -52,16 +52,18 @@
                         <label class="font-weight-bold">Dispatch Date <span class="text-danger">*</span></label>
                         <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', date('Y-m-d')) }}" required>
                     </div>
+                    @php
+                        $selectedBranch = old('branch_id', $sourceOrder->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?? 3));
+                    @endphp
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-                        <label class="font-weight-bold">Branch <span class="text-danger">*</span></label>
-                        <select name="branch_id" class="form-control select2" required>
-                            <option value="">-- Select Branch --</option>
-                            @foreach ($branches as $id => $name)
-                                <option value="{{ $id }}" {{ old('branch_id', $sourceOrder->branch_id ?? session('active_branch_id')) == $id ? 'selected' : '' }}>
-                                    {{ $name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
+                            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+                            <div class="input-group-append">
+                                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
+                            </div>
+                        </div>
                     </div>
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="customer_id" data-label="Customer" data-default-order="3" data-core="1">
                         <label class="font-weight-bold">Customer <span class="text-danger">*</span></label>
@@ -492,7 +494,7 @@ $(function () {
 
     // Fetch items from backend
     function fetchSdnItemList() {
-        let branchId = $('select[name="branch_id"]').val() || 3;
+        let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
         let srch = $.trim($('#sdn-isl-filter-name').val());
         let code = $.trim($('#sdn-isl-filter-code').val());
 
@@ -656,7 +658,7 @@ $(function () {
                 openSdnItemModal($row, '');
                 return;
             }
-            let branchId = $('select[name="branch_id"]').val() || 3;
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
                 if (item && item.id) {
                     applyItemToSdnRow($row, item);

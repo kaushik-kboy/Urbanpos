@@ -20,14 +20,18 @@
 </div>
 
 <div class="row g-2 form-fields-grid mb-3" id="ds-header-fields-grid">
+    @php
+        $selectedBranch = old('branch_id', $entry->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?? 3));
+    @endphp
     <div class="field-wrapper col-md-4" data-field="branch_id" data-label="Location / Branch" data-default-order="1" data-core="1">
-        <label for="branch_id" class="font-weight-bold">Location / Branch <span class="text-danger">*</span></label>
-        <select name="branch_id" id="branch_id" class="form-control select2" required>
-            <option value="">-- Select Branch --</option>
-            @foreach ($branches as $bId => $bName)
-                <option value="{{ $bId }}" @selected(($entry->branch_id ?? old('branch_id', 2)) == $bId)>{{ $bName }}</option>
-            @endforeach
-        </select>
+        <label for="branch_id" class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
+        <div class="input-group">
+            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
+            <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
+            <div class="input-group-append">
+                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
+            </div>
+        </div>
     </div>
     <div class="field-wrapper col-md-4" data-field="entry_date" data-label="Entry Date" data-default-order="2" data-core="1">
         <label for="entry_date" class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>

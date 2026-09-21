@@ -86,9 +86,18 @@
         </div>
     </div>
 
-    {{-- Branch --}}
+    {{-- Branch (Locked to Top Navbar Active Branch) --}}
     <div class="field-wrapper col-md-4" data-field="branch_id" data-default-order="3" data-core="1">
-        <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a branch" required />
+        <label class="font-weight-bold text-dark small mb-1">
+            <i class="fas fa-store mr-1 text-primary"></i> Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Controlled at Top Navbar</span>
+        </label>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control form-control-sm font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
+            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+            <div class="input-group-append">
+                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from the top navbar"><i class="fas fa-lock"></i></span>
+            </div>
+        </div>
     </div>
 
     {{-- Bill Date & Time --}}
@@ -863,7 +872,7 @@
                     sms_consent: 1,
                     email: $('#qc-email').val() || '',
                     address1: $('#qc-address').val() || '',
-                    branch_id: $('select[name="branch_id"]').val() || null
+                    branch_id: $('[name="branch_id"]').val() || null
                 },
                 success: function (res) {
                     if (res && res.customer) {
@@ -1148,7 +1157,7 @@
         }
 
         function fetchItemList() {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let srch   = $('#isl-filter-name').val().trim();
             let code   = $('#isl-filter-code').val().trim();
             let expiry = $('#isl-filter-expiry').val().trim();
@@ -1341,18 +1350,10 @@
 
 
         function updateBranchBadge() {
-            let branchName = $('select[name="branch_id"] option:selected').text() || 'URBAN PETS / MOTERA';
+            let branchName = $('input[name="branch_id"]').prev().val() || 'Active Branch';
             $('#sb-branch-badge').html('<i class="fas fa-store mr-1"></i> Active Branch: <strong>' + branchName + '</strong>');
         }
         updateBranchBadge();
-        $(document).on('change', 'select[name="branch_id"]', function () {
-            let bId = $(this).val();
-            if (bId) {
-                localStorage.setItem('urbanpos_active_branch_id', bId);
-                islCache = {}; // clear cached search items for previous branch
-            }
-            updateBranchBadge();
-        });
 
         function updateRowNumbers() {
             $('#sb-items-body tr').each(function (idx) {
@@ -1695,7 +1696,7 @@
 
         // Main Item Lookup Function
         function processItemLookup(query, $row, itemId) {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let $select = $row.find('.sb-item-select');
             let $desc = $row.find('.sb-item-desc');
             let $code = $row.find('.sb-item-code');
@@ -2010,7 +2011,7 @@
             }
 
             // Check branch is selected
-            if (!$('select[name="branch_id"]').val()) {
+            if (!$('[name="branch_id"]').val()) {
                 e.preventDefault();
                 alert('Kripya branch select karein.');
                 return false;
@@ -2346,7 +2347,7 @@
                             timestamp: Date.now(),
                             customer_id: $custSelect.val(),
                             customer_text: $custSelect.find('option:selected').text(),
-                            branch_id: $('select[name="branch_id"]').val(),
+                            branch_id: $('[name="branch_id"]').val(),
                             invoice_type: $('select[name="invoice_type"]').val(),
                             delivery_type: $('select[name="delivery_type"]').val(),
                             sales_type: $('select[name="sales_type"]').val(),

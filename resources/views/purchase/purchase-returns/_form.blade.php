@@ -22,14 +22,18 @@
                 @endforeach
             </select>
         </div>
+        @php
+            $selectedBranch = old('branch_id', $ret->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        @endphp
         <div class="field-wrapper col-md-3 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-            <label for="branch_id" class="font-weight-bold">Branch <span class="text-danger">*</span></label>
-            <select name="branch_id" id="branch_id" class="form-control select2" required>
-                <option value="">-- Select Branch --</option>
-                @foreach ($branches as $id => $name)
-                    <option value="{{ $id }}" @selected(old('branch_id', $ret->branch_id ?? '') == $id)>{{ $name }}</option>
-                @endforeach
-            </select>
+            <label for="branch_id" class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
+            <div class="input-group">
+                <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
+                <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
+                <div class="input-group-append">
+                    <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
+                </div>
+            </div>
         </div>
         <div class="field-wrapper col-md-2 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
             <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
@@ -528,7 +532,7 @@
         });
 
         function fetchPrItemList() {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let supplierId = $('#supplier_id').val();
             let invoiceId = $('#purchase_invoice_id').val();
             let srch = $.trim($('#pr-isl-filter-name').val());
@@ -692,7 +696,7 @@
                 return;
             }
 
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             $.getJSON(PR_LOOKUP_URL, {
                 query: query,
                 branch_id: branchId,

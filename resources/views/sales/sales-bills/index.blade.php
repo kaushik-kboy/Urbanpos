@@ -75,9 +75,9 @@
                     <div class="col-md-2 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Branch</label>
                         <select name="branch_id" class="form-control form-control-sm">
-                            <option value="">All Branches</option>
+                            <option value="all">All Branches</option>
                             @foreach ($branches as $id => $name)
-                                <option value="{{ $id }}" @selected(request('branch_id') == $id)>{{ $name }}</option>
+                                <option value="{{ $id }}" @selected(request('branch_id', session('active_branch_id', auth()->user()?->branch_id)) == $id)>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

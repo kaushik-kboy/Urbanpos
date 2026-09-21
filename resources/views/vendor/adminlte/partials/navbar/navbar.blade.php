@@ -25,33 +25,32 @@
         @auth
             @php
                 $user = auth()->user();
+                $allBranches = \App\Models\Branch::where('status', true)->orderBy('id')->get();
                 $reqBranch = request('branch_id');
-                if ($reqBranch !== null) {
-                    if ($reqBranch === 'all' || $reqBranch === '' || $reqBranch === '0') {
-                        $activeBranchId = 'all';
-                        session()->forget('active_branch_id');
-                    } else {
-                        $activeBranchId = (int) $reqBranch;
-                        session(['active_branch_id' => (int) $reqBranch]);
-                    }
+                if (!empty($reqBranch) && $reqBranch !== 'all' && $allBranches->contains('id', (int)$reqBranch)) {
+                    $activeBranchId = (int) $reqBranch;
+                    session(['active_branch_id' => $activeBranchId]);
                 } else {
                     $activeBranchId = session('active_branch_id');
+                    if (!$activeBranchId || !$allBranches->contains('id', (int)$activeBranchId)) {
+                        $activeBranchId = $user->branch_id ?: ($allBranches->firstWhere('id', 3)?->id ?? $allBranches->first()?->id ?? 3);
+                        session(['active_branch_id' => $activeBranchId]);
+                    }
                 }
-                $branches = \App\Models\Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
+                $activeBranchObj = $allBranches->firstWhere('id', (int)$activeBranchId) ?? $allBranches->first();
             @endphp
             <li class="nav-item d-flex align-items-center mr-2" id="top-navbar-branch-wrapper">
-                <span class="badge badge-primary px-2 py-1 mr-1 font-weight-bold" style="font-size: 0.82rem;">
-                    <i class="fas fa-store-alt mr-1"></i> Branch:
+                <span class="badge badge-primary px-2 py-1 mr-1 font-weight-bold" style="font-size: 0.85rem;">
+                    <i class="fas fa-store mr-1"></i> Branch:
                 </span>
                 @if ($user->branch_id !== null)
-                    <span class="badge badge-light border px-2 py-1 font-weight-bold text-dark">
-                        {{ $user->branch?->name ?? 'Assigned Branch' }}
+                    <span class="badge badge-light border px-2 py-1 font-weight-bold text-dark" style="font-size: 0.85rem;">
+                        {{ $user->branch?->name ?? ($activeBranchObj?->name ?? 'Assigned Branch') }}
                     </span>
                 @else
-                    <select id="top-navbar-branch-select" class="form-control form-control-sm font-weight-bold text-dark border-primary" style="width: auto; height: calc(1.5em + .5rem + 2px); min-width: 170px;">
-                        <option value="all" {{ empty($activeBranchId) || $activeBranchId === 'all' ? 'selected' : '' }}>All Branches (Consolidated)</option>
-                        @foreach ($branches as $id => $name)
-                            <option value="{{ $id }}" {{ (string)$activeBranchId === (string)$id ? 'selected' : '' }}>{{ $name }}</option>
+                    <select id="top-navbar-branch-select" class="form-control form-control-sm font-weight-bold text-dark border-primary shadow-sm" style="width: auto; height: calc(1.5em + .5rem + 2px); min-width: 190px;">
+                        @foreach ($allBranches as $b)
+                            <option value="{{ $b->id }}" {{ (int)$activeBranchId === (int)$b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                         @endforeach
                     </select>
                 @endif

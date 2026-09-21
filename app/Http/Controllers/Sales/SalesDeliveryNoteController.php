@@ -34,8 +34,14 @@ class SalesDeliveryNoteController extends Controller
         // Scope to branch if user has branch_id assigned and not an Owner
         if ($user && $user->branch_id && !$user->hasRole('Owner')) {
             $query->where('branch_id', $user->branch_id);
-        } elseif ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
+        } else {
+            $branchFilter = $request->has('branch_id')
+                ? $request->input('branch_id')
+                : session('active_branch_id', auth()->user()?->branch_id);
+
+            if (!empty($branchFilter) && $branchFilter !== 'all') {
+                $query->where('branch_id', $branchFilter);
+            }
         }
 
         if ($request->filled('search')) {

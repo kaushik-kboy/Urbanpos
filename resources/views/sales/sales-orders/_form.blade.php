@@ -3,7 +3,7 @@
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($order?->items ?? ($convertedItems ?? collect()));
     $selectedCust = $order->customer_id ?? ($sourceQuotation->customer_id ?? old('customer_id'));
-    $selectedBranch = $order->branch_id ?? ($sourceQuotation->branch_id ?? old('branch_id'));
+    $selectedBranch = old('branch_id', $order->branch_id ?? ($sourceQuotation->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: 3))));
     $selectedSalesType = $order->sales_type ?? ($sourceQuotation->sales_type ?? old('sales_type', 'Local'));
 @endphp
 
@@ -34,13 +34,14 @@
         </select>
     </div>
     <div class="field-wrapper col-md-3 form-group" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-        <label>Branch <span class="text-danger">*</span></label>
-        <select name="branch_id" class="form-control form-control-sm select2" required>
-            <option value="">Select a branch</option>
-            @foreach($branches as $id => $name)
-                <option value="{{ $id }}" @selected($selectedBranch == $id)>{{ $name }}</option>
-            @endforeach
-        </select>
+        <label>Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control form-control-sm font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
+            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+            <div class="input-group-append">
+                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
+            </div>
+        </div>
     </div>
     <div class="field-wrapper col-md-2 form-group" data-field="order_date" data-label="Order Date" data-default-order="3" data-core="1">
         <label>Order Date <span class="text-danger">*</span></label>
@@ -357,7 +358,7 @@ $(function() {
     });
 
     function fetchSoItemList() {
-        let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+        let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
         let srch = $.trim($('#so-isl-filter-name').val());
         let code = $.trim($('#so-isl-filter-code').val());
 

@@ -31,8 +31,18 @@
         <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$po->supplier_id ?? ''" placeholder="Select a supplier" required />
     </div>
 
+    @php
+        $selectedBranch = $po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? 3))));
+    @endphp
     <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-        <x-select name="branch_id" label="Branch" :options="$branches" :selected="$po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? ''))))" placeholder="Select a branch" required />
+        <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
+        <div class="input-group">
+            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
+            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+            <div class="input-group-append">
+                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
+            </div>
+        </div>
     </div>
 
     <div class="field-wrapper col-md-6" data-field="po_date" data-label="PO Date" data-default-order="3" data-core="1">
@@ -252,7 +262,7 @@
         const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
         const LOOKUP_URL = '{{ route("purchase.purchase-invoices.lookup-item") }}';
 
-        $('select[name="branch_id"]').on('change', function () {
+        $('[name="branch_id"]').on('change', function () {
             islCache = {};
             islLastKey = null;
         });
@@ -288,7 +298,7 @@
         }
 
         function fetchItemList() {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || '';
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || '';
             let srch     = $.trim($('#po-isl-filter-name').val());
             let code     = $.trim($('#po-isl-filter-code').val());
             let expiry   = $.trim($('#po-isl-filter-expiry').val());
@@ -589,7 +599,7 @@
             if (!query) return;
 
             let currentId = $row.find('.po-item-select').val();
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || '';
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || '';
 
             $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (data) {
                 if (data && data.id) {

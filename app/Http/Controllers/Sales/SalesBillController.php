@@ -75,8 +75,12 @@ class SalesBillController extends Controller
             $query->whereDate('bill_date', '<=', $request->input('date_to'));
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->input('branch_id'));
+        $branchFilter = $request->has('branch_id')
+            ? $request->input('branch_id')
+            : session('active_branch_id', auth()->user()?->branch_id);
+
+        if (!empty($branchFilter) && $branchFilter !== 'all') {
+            $query->where('branch_id', $branchFilter);
         }
 
         if ($request->filled('customer_id')) {

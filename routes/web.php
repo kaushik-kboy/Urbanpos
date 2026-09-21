@@ -82,7 +82,7 @@ Auth::routes();
 
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-Route::middleware('auth')->get('switch-branch/{branch}', \App\Http\Controllers\SwitchBranchController::class)->name('switch-branch');
+Route::middleware('auth')->get('switch-branch/{branch}', [\App\Http\Controllers\SwitchBranchController::class, 'switch'])->name('switch-branch');
 
 Route::middleware('auth')->prefix('master')->name('master.')->group(function () use ($gatedResource) {
     $masterResources = [
@@ -430,18 +430,7 @@ Route::middleware('auth')->prefix('finance')->name('finance.')->group(function (
     });
 });
 
-Route::middleware('auth')->post('/active-branch', function (\Illuminate\Http\Request $request) {
-    $branchId = $request->input('branch_id');
-    if ($branchId === 'all' || empty($branchId) || $branchId === '0') {
-        session()->forget('active_branch_id');
-    } else {
-        session(['active_branch_id' => (int) $branchId]);
-    }
-    return response()->json([
-        'status' => 'ok',
-        'active_branch_id' => session('active_branch_id', null),
-    ]);
-})->name('set-active-branch');
+Route::middleware('auth')->post('/active-branch', [\App\Http\Controllers\SwitchBranchController::class, 'setActiveBranch'])->name('active-branch');
 
 // User Dashboard Customizer Preferences
 Route::middleware('auth')->prefix('user/dashboard-preferences')->name('user.dashboard-preferences.')->group(function () {
