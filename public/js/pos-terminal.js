@@ -469,6 +469,11 @@
 
         // If Cash mode, update change due
         updateChangeDue();
+
+        // If UPI mode, update QR code in real time
+        if (state.tender_mode === 'UPI') {
+            generateUpiQrCode();
+        }
     }
 
     function updateChangeDue() {
@@ -488,10 +493,10 @@
         const total = computeTotals().grandTotal;
         if (qrAmount) qrAmount.textContent = '₹ ' + total.toFixed(2);
 
-        // Store VPA - default or configured
-        const vpa = window.STORE_VPA || 'chandakinfotech@icici';
-        const name = encodeURIComponent(window.STORE_NAME || 'UrbanPOS');
-        const upiUrl = `upi://pay?pa=${vpa}&pn=${name}&am=${total}&cu=INR`;
+        // Store VPA - active branch or default configured
+        const vpa = (window.BRANCH_UPI_ID || '').trim() || (window.STORE_VPA || 'chandakinfotech@icici');
+        const name = encodeURIComponent((window.BRANCH_UPI_NAME || '').trim() || (window.STORE_NAME || 'UrbanPOS'));
+        const upiUrl = `upi://pay?pa=${vpa}&pn=${name}&am=${total.toFixed(2)}&cu=INR&tn=UrbanPOS%20Bill`;
         const qrApi = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiUrl)}`;
         qrImg.src = qrApi;
     }
@@ -1511,7 +1516,157 @@
         }
     }
 
+    // ==========================================
+    // POS QUICK LOCK SCREEN & INACTIVITY ENGINE
+    // ==========================================
+    let isPosLocked = false;
+    let enteredPosPin = '';
+    let posInactivityTimeout = null;
+    const POS_INACTIVITY_LIMIT = 3 * 60 * 1000; // 3 minutes
+
+    function resetPosInactivityTimer() {
+        if (isPosLocked) return;
+        if (posInactivityTimeout) clearTimeout(posInactivityTimeout);
+        posInactivityTimeout = setTimeout(() => {
+            lockPosScreen();
+        }, POS_INACTIVITY_LIMIT);
+    }
+
+    ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+        window.addEventListener(evt, resetPosInactivityTimer, { passive: true });
+    });
+    resetPosInactivityTimer();
+
+    function lockPosScreen() {
+        isPosLocked = true;
+        enteredPosPin = '';
+        updatePinDots();
+        $('#posPinError').hide().text('');
+        $('#posLockOverlay').css('display', 'flex');
+        sound.pop();
+    }
+
+    function unlockPosScreen() {
+        if (enteredPosPin.length !== 4) return;
+
+        const $err = $('#posPinError');
+        $err.hide().text('');
+
+        $.ajax({
+            url: window.POS_LOCK_VERIFY_URL || (window.APP_URL + '/pos/verify-pin'),
+            method: 'POST',
+            data: {
+                pin: enteredPosPin,
+                _token: window.CSRF_TOKEN
+            },
+            success: function (resp) {
+                if (resp && resp.success) {
+                    isPosLocked = false;
+                    enteredPosPin = '';
+                    updatePinDots();
+                    $('#posLockOverlay').fadeOut(200);
+                    sound.success();
+                    showNotification('Terminal unlocked successfully!', 'success');
+                    resetPosInactivityTimer();
+                    setTimeout(focusScanner, 300);
+                } else {
+                    handlePinError(resp.message || 'Invalid PIN.');
+                }
+            },
+            error: function (xhr) {
+                let msg = 'Invalid PIN.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                handlePinError(msg);
+            }
+        });
+    }
+
+    function handlePinError(msg) {
+        sound.error();
+        enteredPosPin = '';
+        updatePinDots();
+        $('#posPinError').text(msg).show();
+        const $card = $('#posLockOverlay .card');
+        $card.addClass('animate__animated animate__shakeX');
+        setTimeout(() => $card.removeClass('animate__animated animate__shakeX'), 600);
+    }
+
+    function updatePinDots() {
+        const dots = document.querySelectorAll('#posPinDotsContainer .pos-pin-dot');
+        dots.forEach((dot, idx) => {
+            if (idx < enteredPosPin.length) {
+                dot.style.background = '#3b82f6';
+                dot.style.borderColor = '#2563eb';
+            } else {
+                dot.style.background = 'transparent';
+                dot.style.borderColor = '#94a3b8';
+            }
+        });
+    }
+
+    function handlePinInputDigit(digit) {
+        if (!isPosLocked) return;
+        if (enteredPosPin.length < 4) {
+            enteredPosPin += digit;
+            updatePinDots();
+            if (enteredPosPin.length === 4) {
+                setTimeout(unlockPosScreen, 100);
+            }
+        }
+    }
+
+    function handlePinBackspace() {
+        if (!isPosLocked) return;
+        if (enteredPosPin.length > 0) {
+            enteredPosPin = enteredPosPin.slice(0, -1);
+            updatePinDots();
+        }
+    }
+
+    function handlePinClear() {
+        if (!isPosLocked) return;
+        enteredPosPin = '';
+        updatePinDots();
+        $('#posPinError').hide();
+    }
+
+    $(document).on('click', '.pos-pin-btn', function () {
+        const d = $(this).attr('data-digit');
+        if (d !== undefined) handlePinInputDigit(d);
+    });
+    $('#posPinClearBtn').on('click', handlePinClear);
+    $('#posPinBackspaceBtn').on('click', handlePinBackspace);
+
+    window.addEventListener('keydown', function (e) {
+        if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
+            e.preventDefault();
+            lockPosScreen();
+            return;
+        }
+
+        if (isPosLocked) {
+            e.stopPropagation();
+            if (e.key >= '0' && e.key <= '9') {
+                e.preventDefault();
+                handlePinInputDigit(e.key);
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                handlePinBackspace();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                handlePinClear();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (enteredPosPin.length === 4) unlockPosScreen();
+            }
+        }
+    }, true);
+
     // Expose methods to window for inline onclick handlers
+    window.lockPosScreen = lockPosScreen;
+    window.unlockPosScreen = unlockPosScreen;
     window.posAddItemToCart = addItemToCart;
     window.posEngine = {
         updateQty: updateItemQty,

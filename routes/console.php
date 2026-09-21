@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('pos:heartbeat')->hourly();
 Schedule::command('pos:backup')->dailyAt('02:00');
+Schedule::command('db:backup --clean')->dailyAt('01:00');

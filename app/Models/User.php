@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'pos_pin',
         'branch_id',
     ];
 
@@ -42,6 +43,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'pos_pin',
         'remember_token',
     ];
 

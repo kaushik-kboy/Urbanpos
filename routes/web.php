@@ -110,6 +110,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     ];
 
     Route::get('items/generate-barcode', [ItemController::class, 'generateBarcode'])->name('items.generate-barcode');
+    Route::get('barcodes/print', [\App\Http\Controllers\Master\BarcodePrintController::class, 'printLabels'])->name('barcodes.print');
 
     foreach ($masterResources as $uri => $controller) {
         $gatedResource($uri, $controller, $uri);
@@ -272,6 +273,8 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
 });
 
 Route::middleware('auth')->get('pos', [\App\Http\Controllers\Sales\SalesBillController::class, 'posTerminal'])->name('pos.terminal');
+Route::middleware('auth')->post('pos/verify-pin', [\App\Http\Controllers\Pos\PosLockController::class, 'verifyPin'])->name('pos.verify-pin');
+Route::middleware('auth')->post('pos/update-pin', [\App\Http\Controllers\Pos\PosLockController::class, 'updatePin'])->name('pos.update-pin');
 
 Route::middleware('auth')->get('pos-ping', function () {
     return response()->json([
@@ -299,6 +302,12 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('system-health/backup/download/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'downloadBackup'])->name('system-health.backup.download');
     Route::delete('system-health/backup/{filename}', [\App\Http\Controllers\Tools\SystemHealthController::class, 'deleteBackup'])->name('system-health.backup.delete');
     Route::post('system-health/clear-laravel-log', [\App\Http\Controllers\Tools\SystemHealthController::class, 'clearLaravelLog'])->name('system-health.clear-log');
+
+    // Database Backups Management
+    Route::get('backups', [\App\Http\Controllers\Tools\DatabaseBackupController::class, 'index'])->name('backups.index');
+    Route::post('backups', [\App\Http\Controllers\Tools\DatabaseBackupController::class, 'create'])->name('backups.create');
+    Route::get('backups/download/{filename}', [\App\Http\Controllers\Tools\DatabaseBackupController::class, 'download'])->name('backups.download');
+    Route::delete('backups/{filename}', [\App\Http\Controllers\Tools\DatabaseBackupController::class, 'destroy'])->name('backups.destroy');
 
     // System Error & Exception Hub (Module-wise & Date-wise)
     Route::get('system-error-logs', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'index'])->name('system-error-logs.index');

@@ -15,6 +15,7 @@ class Branch extends Model
         'business_type', 'webstore', 'erp_code', 'country_code', 'license_id', 'cst',
         'website_link', 'social_media_link', 'enable_thirdparty_loyalty',
         'gst_no', 'pan_no', 'gst_type', 'gst_filing', 'status',
+        'upi_id', 'upi_payee_name',
     ];
 
     protected $casts = [

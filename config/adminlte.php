@@ -1019,6 +1019,12 @@ return [
                     'active' => ['tools/system-health*'],
                 ],
                 [
+                    'text' => 'Database Backups',
+                    'url' => 'tools/backups',
+                    'icon' => 'fas fa-fw fa-database text-primary',
+                    'active' => ['tools/backups*'],
+                ],
+                [
                     'text' => 'Manage Subscription',
                     'url' => 'tools/manage-subscription',
                     'icon' => 'fas fa-fw fa-certificate',

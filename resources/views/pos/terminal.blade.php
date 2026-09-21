@@ -55,6 +55,9 @@
             <div id="posClock" class="pos-meta-item font-weight-bold d-none d-lg-inline-flex">
                 00:00:00
             </div>
+            <button type="button" class="btn btn-warning btn-sm mr-2 font-weight-bold shadow-none" id="btnPosLockScreen" onclick="if(window.lockPosScreen) window.lockPosScreen();" title="Lock Screen (Ctrl + L)">
+                <i class="fas fa-lock mr-1"></i> Lock (Ctrl+L)
+            </button>
             <button type="button" class="btn btn-outline-light btn-sm mr-2 shadow-none" onclick="toggleFullscreen()" title="Toggle Fullscreen (F11)">
                 <i class="fas fa-expand"></i>
             </button>
@@ -872,6 +875,49 @@
     </div>
 </div>
 
+<!-- Fullscreen POS Quick Lock Screen Overlay -->
+<div id="posLockOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(14px); z-index: 999999; align-items: center; justify-content: center; flex-direction: column;">
+    <div class="card shadow-lg border-0 text-center" style="width: 360px; border-radius: 16px; background: #ffffff; padding: 28px 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);">
+        <div class="mb-3">
+            <div style="width: 70px; height: 70px; margin: 0 auto; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);">
+                <i class="fas fa-lock"></i>
+            </div>
+        </div>
+        <h4 class="font-weight-bold text-dark mb-1">Terminal Locked</h4>
+        <p class="text-muted small mb-3">Cashier: <strong class="text-dark">{{ auth()->user()->name }}</strong></p>
+
+        <!-- PIN Display Dots -->
+        <div class="d-flex justify-content-center align-items-center mb-3" id="posPinDotsContainer">
+            <span class="pos-pin-dot mr-2" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid #94a3b8; display: inline-block;"></span>
+            <span class="pos-pin-dot mr-2" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid #94a3b8; display: inline-block;"></span>
+            <span class="pos-pin-dot mr-2" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid #94a3b8; display: inline-block;"></span>
+            <span class="pos-pin-dot" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid #94a3b8; display: inline-block;"></span>
+        </div>
+
+        <div id="posPinError" class="alert alert-danger py-1 px-2 small font-weight-bold mb-3" style="display: none;"></div>
+
+        <!-- Numeric Keypad Grid -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="1">1</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="2">2</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="3">3</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="4">4</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="5">5</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="6">6</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="7">7</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="8">8</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="9">9</button>
+            <button type="button" class="btn btn-outline-danger font-weight-bold py-2" style="font-size: 14px; border-radius: 10px;" id="posPinClearBtn">Clear</button>
+            <button type="button" class="btn btn-light font-weight-bold pos-pin-btn py-2" style="font-size: 20px; border-radius: 10px;" data-digit="0">0</button>
+            <button type="button" class="btn btn-outline-secondary font-weight-bold py-2" style="font-size: 16px; border-radius: 10px;" id="posPinBackspaceBtn"><i class="fas fa-backspace"></i></button>
+        </div>
+
+        <div class="small text-muted">
+            <span>Enter 4-digit PIN to unlock. (Default: <code>0000</code>)</span>
+        </div>
+    </div>
+</div>
+
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -881,6 +927,9 @@
     window.APP_URL = "{{ url('/') }}";
     window.CSRF_TOKEN = "{{ csrf_token() }}";
     window.STORE_NAME = "{{ config('app.name', 'UrbanPOS') }}";
+    window.POS_LOCK_VERIFY_URL = "{{ route('pos.verify-pin') }}";
+    window.BRANCH_UPI_ID = "{{ $branch->upi_id ?? '' }}";
+    window.BRANCH_UPI_NAME = "{{ $branch->upi_payee_name ?? ($branch->name ?? 'UrbanPOS') }}";
     window.ISL_URL = "{{ route('sales.sales-bills.item-list') }}";
     window.CUSTOMER_SEARCH_URL = "{{ route('sales.sales-bills.customer-search') }}";
     window.CUSTOMER_INVOICES_URL = "{{ url('sales/sales-bills/customer-invoices') }}";
