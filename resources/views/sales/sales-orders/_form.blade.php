@@ -124,6 +124,8 @@
     </table>
 </div>
 
+<x-custom-fields-renderer :module="'SalesOrder'" :model="$order ?? null" :cardStyle="true" />
+
 <div class="row justify-content-end mt-3">
     <div class="col-md-4">
         <div class="card card-outline card-secondary shadow-sm">

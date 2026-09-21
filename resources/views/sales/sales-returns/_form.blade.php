@@ -179,6 +179,8 @@
     </div>
 </div>
 
+<x-custom-fields-renderer :module="'SalesReturn'" :model="$ret ?? null" :cardStyle="true" />
+
 <template id="sr-row-template">
     @include('sales.sales-returns._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>

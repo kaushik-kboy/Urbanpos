@@ -1,10 +1,10 @@
 @if($fields->isEmpty())
     <div class="p-4 text-center text-muted">
         <i class="fas fa-sliders-h fa-2x mb-2 text-secondary"></i>
-        <p class="mb-1 font-weight-bold">No custom fields defined for {{ $module }} yet.</p>
-        <p class="small text-muted mb-3">Click below to add your first custom attribute (e.g. {{ $module === 'Customer' ? '"Pet Microchip Number", "Breed", "Vaccination Expiry"' : '"Shelf / Rack Location", "Batch Expiry", "Bin Location"' }}).</p>
-        <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="openCreateModal('{{ $module }}')">
-            <i class="fas fa-plus mr-1"></i> Add {{ $module }} Field
+        <p class="mb-1 font-weight-bold">No custom fields defined for {{ $moduleLabel ?? $module }} yet.</p>
+        <p class="small text-muted mb-3">Add any extra fields needed without modifying database tables or running migrations.</p>
+        <button type="button" class="btn btn-outline-primary btn-sm px-3 shadow-sm" onclick="openCreateModal('{{ $module }}')">
+            <i class="fas fa-plus mr-1"></i> Add {{ $moduleLabel ?? $module }} Field
         </button>
     </div>
 @else

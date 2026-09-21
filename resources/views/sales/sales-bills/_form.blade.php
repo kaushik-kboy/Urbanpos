@@ -210,6 +210,8 @@
 <x-textarea name="remarks" label="Remarks" :value="$bill->remarks ?? ''" />
 <x-textarea name="message" label="Message" :value="$bill->message ?? ''" />
 
+<x-custom-fields-renderer :module="'SalesBill'" :model="$bill ?? null" :cardStyle="true" />
+
 <template id="sb-row-template">
     @include('sales.sales-bills._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>

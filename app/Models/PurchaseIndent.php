@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseIndent extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'indent_number',

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Supplier extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'name', 'currency', 'purchase_type', 'purchase_mode', 'credit_limit', 'credit_balance',

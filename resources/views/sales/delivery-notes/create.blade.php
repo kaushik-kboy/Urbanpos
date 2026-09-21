@@ -218,6 +218,8 @@
             </div>
         </div>
 
+        <x-custom-fields-renderer :module="'SalesDeliveryNote'" :model="null" :cardStyle="true" />
+
         <div class="card card-default shadow-sm mb-4">
             <div class="card-body p-3">
                 <div class="row align-items-center">

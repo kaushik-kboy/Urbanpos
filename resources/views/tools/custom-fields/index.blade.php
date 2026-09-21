@@ -8,10 +8,10 @@
             <h1 class="font-weight-bold text-dark mb-0">
                 <i class="fas fa-sliders-h text-primary mr-2"></i> Custom Fields Builder
             </h1>
-            <p class="text-muted mb-0 small">Add custom business fields to Customers and Items without modifying database tables or running migrations.</p>
+            <p class="text-muted mb-0 small">Add custom business fields to Masters, Sales, Purchase & Inventory without modifying database tables or running migrations.</p>
         </div>
         <div>
-            <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm font-weight-bold" data-toggle="modal" data-target="#addFieldModal" onclick="openCreateModal('{{ $activeTab }}')">
+            <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm font-weight-bold" data-toggle="modal" data-target="#addFieldModal" onclick="openCreateModal('{{ $activeModule }}')">
                 <i class="fas fa-plus mr-1"></i> Add Custom Field
             </button>
         </div>
@@ -28,55 +28,79 @@
         </div>
     @endif
 
-    <div class="card card-primary card-outline card-outline-tabs shadow-sm">
-        <div class="card-header p-0 border-bottom-0">
-            <ul class="nav nav-tabs" id="customFieldTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link font-weight-bold {{ $activeTab === 'Customer' ? 'active' : '' }}" id="tab-customer" data-toggle="pill" href="#customer-content" role="tab" aria-controls="customer-content" aria-selected="{{ $activeTab === 'Customer' ? 'true' : 'false' }}">
-                        <i class="fas fa-users text-info mr-1"></i> Customer Fields
-                        <span class="badge badge-secondary ml-1">{{ $customerFields->count() }}</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link font-weight-bold {{ $activeTab === 'Item' ? 'active' : '' }}" id="tab-item" data-toggle="pill" href="#item-content" role="tab" aria-controls="item-content" aria-selected="{{ $activeTab === 'Item' ? 'true' : 'false' }}">
-                        <i class="fas fa-boxes text-warning mr-1"></i> Item Master Fields
-                        <span class="badge badge-secondary ml-1">{{ $itemFields->count() }}</span>
-                    </a>
-                </li>
+    {{-- Category Tabs --}}
+    <div class="card card-primary card-outline card-outline-tabs shadow-sm mb-3">
+        <div class="card-header p-0 border-bottom-0 bg-white">
+            <ul class="nav nav-tabs" id="customFieldCategoryTabs" role="tablist">
+                @foreach($categories as $catName => $catData)
+                    @php
+                        $catFieldCount = 0;
+                        foreach(array_keys($catData['modules']) as $mKey) {
+                            $catFieldCount += ($fieldsByModule->get($mKey)?->count() ?? 0);
+                        }
+                        $isCatActive = ($activeCategory === $catName);
+                        $firstModuleInCat = array_key_first($catData['modules']);
+                    @endphp
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold {{ $isCatActive ? 'active border-top-primary' : 'text-secondary' }}"
+                           href="{{ route('tools.custom-fields.index', ['tab' => $isCatActive ? $activeModule : $firstModuleInCat]) }}"
+                           role="tab">
+                            <i class="{{ $catData['icon'] }} mr-1"></i> {{ $catName }}
+                            @if($catFieldCount > 0)
+                                <span class="badge badge-primary ml-1">{{ $catFieldCount }}</span>
+                            @else
+                                <span class="badge badge-light border ml-1 text-muted">0</span>
+                            @endif
+                        </a>
+                    </li>
+                @endforeach
             </ul>
         </div>
+
         <div class="card-body p-0">
-            <div class="tab-content" id="customFieldTabsContent">
-                {{-- Customer Fields Tab --}}
-                <div class="tab-pane fade {{ $activeTab === 'Customer' ? 'show active' : '' }}" id="customer-content" role="tabpanel" aria-labelledby="tab-customer">
-                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="font-weight-bold text-dark"><i class="fas fa-paw text-primary mr-1"></i> Pet & Customer Attributes</span>
-                            <span class="text-muted small ml-2">(e.g. Pet Microchip Number, Dog Breed, Age, Vaccination Date)</span>
-                        </div>
-                        <button type="button" class="btn btn-outline-primary btn-xs font-weight-bold px-2" onclick="openCreateModal('Customer')">
-                            <i class="fas fa-plus mr-1"></i> Add Customer Field
-                        </button>
-                    </div>
-
-                    @include('tools.custom-fields._table', ['fields' => $customerFields, 'module' => 'Customer'])
-                </div>
-
-                {{-- Item Fields Tab --}}
-                <div class="tab-pane fade {{ $activeTab === 'Item' ? 'show active' : '' }}" id="item-content" role="tabpanel" aria-labelledby="tab-item">
-                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="font-weight-bold text-dark"><i class="fas fa-warehouse text-warning mr-1"></i> Item & Inventory Attributes</span>
-                            <span class="text-muted small ml-2">(e.g. Rack / Shelf Location, Bin Number, Batch Expiry, Origin Country)</span>
-                        </div>
-                        <button type="button" class="btn btn-outline-warning btn-xs font-weight-bold px-2 text-dark" onclick="openCreateModal('Item')">
-                            <i class="fas fa-plus mr-1"></i> Add Item Field
-                        </button>
-                    </div>
-
-                    @include('tools.custom-fields._table', ['fields' => $itemFields, 'module' => 'Item'])
+            {{-- Sub-Module Pills for Active Category --}}
+            <div class="p-3 bg-light border-bottom">
+                <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
+                    <span class="font-weight-bold text-muted small text-uppercase mr-2">
+                        <i class="fas fa-layer-group mr-1"></i> {{ $activeCategory }} Modules:
+                    </span>
+                    @foreach($categories[$activeCategory]['modules'] as $modKey => $modLabel)
+                        @php
+                            $modCount = $fieldsByModule->get($modKey)?->count() ?? 0;
+                            $isModActive = ($activeModule === $modKey);
+                        @endphp
+                        <a href="{{ route('tools.custom-fields.index', ['tab' => $modKey]) }}"
+                           class="btn btn-sm {{ $isModActive ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-secondary bg-white' }}">
+                            {{ $modLabel }}
+                            <span class="badge {{ $isModActive ? 'badge-light text-primary' : 'badge-secondary' }} ml-1">
+                                {{ $modCount }}
+                            </span>
+                        </a>
+                    @endforeach
                 </div>
             </div>
+
+            {{-- Module Info & Action Header --}}
+            <div class="px-3 py-2 bg-white border-bottom d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="font-weight-bold text-dark" style="font-size: 0.95rem;">
+                        <i class="fas fa-cube text-primary mr-1"></i> {{ $allModules[$activeModule]['label'] }}
+                    </span>
+                    <span class="text-muted small ml-2 d-none d-md-inline">
+                        (Active fields will automatically appear on {{ $allModules[$activeModule]['label'] }} forms)
+                    </span>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-xs font-weight-bold px-2" onclick="openCreateModal('{{ $activeModule }}')">
+                    <i class="fas fa-plus mr-1"></i> Add Field
+                </button>
+            </div>
+
+            {{-- Fields Table --}}
+            @include('tools.custom-fields._table', [
+                'fields' => $fieldsByModule->get($activeModule, collect()),
+                'module' => $activeModule,
+                'moduleLabel' => $allModules[$activeModule]['label']
+            ])
         </div>
     </div>
 
@@ -97,16 +121,23 @@
                     <div class="modal-body py-3">
                         <div class="form-group mb-3">
                             <label class="font-weight-bold small text-muted text-uppercase mb-1">Target Module <span class="text-danger">*</span></label>
-                            <select name="module" id="add_module" class="form-control" required>
-                                <option value="Customer">Customer (Clients / Pet Owners)</option>
-                                <option value="Item">Item (Products / Inventory)</option>
+                            <select name="module" id="add_module" class="form-control font-weight-bold" required>
+                                @foreach($categories as $catName => $catData)
+                                    <optgroup label="── {{ $catName }} ──">
+                                        @foreach($catData['modules'] as $modKey => $modLabel)
+                                            <option value="{{ $modKey }}" {{ $activeModule === $modKey ? 'selected' : '' }}>
+                                                {{ $modLabel }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
                             </select>
                         </div>
 
                         <div class="form-group mb-3">
                             <label class="font-weight-bold small text-muted text-uppercase mb-1">Field Label / Name <span class="text-danger">*</span></label>
-                            <input type="text" name="field_name" id="add_field_name" class="form-control font-weight-bold" placeholder="e.g. Pet Microchip Number, Shelf Rack Location" required>
-                            <small class="text-muted">A technical field key (slug) will automatically be assigned.</small>
+                            <input type="text" name="field_name" id="add_field_name" class="form-control font-weight-bold" placeholder="e.g. Vet / Doctor Name, Delivery Slot, Bilty No, Vehicle No" required>
+                            <small class="text-muted">A technical field key (slug) will automatically be generated.</small>
                         </div>
 
                         <div class="row">
@@ -130,7 +161,7 @@
 
                         <div class="form-group mb-3 d-none" id="add_options_wrapper">
                             <label class="font-weight-bold small text-muted text-uppercase mb-1">Dropdown Options (Comma separated) <span class="text-danger">*</span></label>
-                            <textarea name="options" class="form-control" rows="2" placeholder="e.g. German Shepherd, Golden Retriever, Labrador, Persian Cat"></textarea>
+                            <textarea name="options" class="form-control" rows="2" placeholder="e.g. Morning (9AM-12PM), Afternoon (12PM-4PM), Evening (4PM-8PM)"></textarea>
                             <small class="text-muted">Separate available options with commas.</small>
                         </div>
 
@@ -245,7 +276,9 @@
 @section('js')
 <script>
 function openCreateModal(moduleName) {
-    document.getElementById('add_module').value = moduleName;
+    if (moduleName) {
+        document.getElementById('add_module').value = moduleName;
+    }
     $('#addFieldModal').modal('show');
 }
 

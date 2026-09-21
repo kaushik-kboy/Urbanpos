@@ -115,6 +115,8 @@
     </div>
 </div>
 
+<x-custom-fields-renderer :module="'DamageStock'" :model="$entry ?? null" :cardStyle="true" />
+
 {{-- Hidden Row Template for Add Row --}}
 <template id="row-template">
     @include('inventory.damage-stocks._item-row', ['index' => '__INDEX__', 'line' => null])

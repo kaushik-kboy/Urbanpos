@@ -174,6 +174,8 @@
 <x-textarea name="remarks" label="Remarks" :value="$inv->remarks ?? ''" />
 <x-textarea name="message" label="Message" :value="$inv->message ?? ''" />
 
+<x-custom-fields-renderer :module="'PurchaseInvoice'" :model="$inv ?? null" :cardStyle="true" />
+
 <template id="pinv-row-template">
     @include('purchase.purchase-invoices._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>

@@ -144,6 +144,8 @@
 <x-textarea name="remarks" label="Remarks" :value="$po->remarks ?? ($indent ? 'Requisition from Indent #' . $indent->indent_number . ($indent->remarks ? ' - ' . $indent->remarks : '') : '')" />
 <x-textarea name="message" label="Message" :value="$po->message ?? ''" />
 
+<x-custom-fields-renderer :module="'PurchaseOrder'" :model="$po ?? null" :cardStyle="true" />
+
 <template id="po-row-template">
     @include('purchase.purchase-orders._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>

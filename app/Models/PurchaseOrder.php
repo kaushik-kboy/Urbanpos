@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseOrder extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'po_number', 'po_date', 'supplier_id', 'branch_id', 'purchase_indent_id', 'purchase_type', 'c_form',

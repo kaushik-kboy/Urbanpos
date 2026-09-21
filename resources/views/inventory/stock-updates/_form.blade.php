@@ -60,6 +60,8 @@
 <hr>
 <x-textarea name="remarks" label="Remarks" :value="old('remarks', $entry->remarks ?? '')" />
 
+<x-custom-fields-renderer :module="'StockUpdate'" :model="$entry ?? null" :cardStyle="true" />
+
 <template id="row-template">
     @include('inventory.stock-updates._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>

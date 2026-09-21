@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StockUpdate extends Model
 {
-    use HasFactory, HasPostingLifecycle;
+    use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
 
     protected $fillable = ['update_number', 'branch_id', 'entry_date', 'remarks', 'status', 'posting_key'];
 

@@ -4,6 +4,7 @@
     <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#tab-general"><i class="fas fa-info-circle mr-1"></i> General</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-address"><i class="fas fa-map-marker-alt mr-1"></i> Address & Statutory</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-contacts"><i class="fas fa-users mr-1"></i> Contact Persons <span class="badge badge-primary ml-1" id="contact-count">{{ ($s->contacts ?? collect())->count() }}</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-custom-fields"><i class="fas fa-sliders-h text-primary mr-1"></i> Custom Fields</a></li>
 </ul>
 
 <div class="tab-content pt-3">
@@ -123,6 +124,13 @@
                     No additional contact persons added yet. Click <strong>"Add Contact Person"</strong> to add multiple contacts.
                 </div>
             @endforelse
+        </div>
+    </div>
+
+    <!-- Custom Fields Tab -->
+    <div class="tab-pane" id="tab-custom-fields">
+        <div class="p-2">
+            <x-custom-fields-renderer module="Supplier" :model="$s" :showHeader="false" colClass="col-md-6 col-12 mb-3" />
         </div>
     </div>
 </div>

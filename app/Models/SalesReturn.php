@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesReturn extends Model
 {
-    use HasFactory, HasPostingLifecycle;
+    use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'return_number', 'return_date', 'customer_id', 'branch_id', 'sales_bill_id',

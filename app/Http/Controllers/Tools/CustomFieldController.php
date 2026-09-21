@@ -9,30 +9,94 @@ use Illuminate\Support\Str;
 
 class CustomFieldController extends Controller
 {
+    public const CATEGORIES = [
+        'Masters' => [
+            'icon' => 'fas fa-database text-info',
+            'modules' => [
+                'Customer' => 'Customer Fields',
+                'Item' => 'Item Master Fields',
+                'Supplier' => 'Supplier / Vendor Fields',
+                'Branch' => 'Branch / Store Fields',
+            ],
+        ],
+        'Sales' => [
+            'icon' => 'fas fa-shopping-cart text-success',
+            'modules' => [
+                'SalesBill' => 'Sales Bill / POS Invoice',
+                'SalesReturn' => 'Sales Return / Credit Note',
+                'SalesOrder' => 'Sales Order',
+                'SalesQuotation' => 'Sales Quotation / Estimate',
+                'SalesDeliveryNote' => 'Sales Delivery Note / Challan',
+            ],
+        ],
+        'Purchase' => [
+            'icon' => 'fas fa-shopping-bag text-primary',
+            'modules' => [
+                'PurchaseInvoice' => 'Purchase Invoice / Bill',
+                'PurchaseOrder' => 'Purchase Order (PO)',
+                'PurchaseReturn' => 'Purchase Return / Debit Note',
+                'PurchaseReceiptNote' => 'Goods Receipt Note (GRN)',
+                'PurchaseIndent' => 'Purchase Indent / Requisition',
+            ],
+        ],
+        'Inventory' => [
+            'icon' => 'fas fa-warehouse text-warning',
+            'modules' => [
+                'StockTransfer' => 'Stock Transfer (Inter-Branch)',
+                'DamageStock' => 'Damage / Wastage Stock',
+                'OpeningStock' => 'Opening Stock Entry',
+                'StockUpdate' => 'Stock Adjustment / Update',
+            ],
+        ],
+    ];
+
+    public static function getAllModules(): array
+    {
+        $all = [];
+        foreach (self::CATEGORIES as $cat => $data) {
+            foreach ($data['modules'] as $key => $label) {
+                $all[$key] = [
+                    'label' => $label,
+                    'category' => $cat,
+                ];
+            }
+        }
+        return $all;
+    }
+
     public function index(Request $request)
     {
-        $activeTab = $request->input('tab', 'Customer');
-        if (! in_array($activeTab, ['Customer', 'Item'])) {
-            $activeTab = 'Customer';
+        $allModules = self::getAllModules();
+        $activeModule = $request->input('tab', 'Customer');
+
+        if (! isset($allModules[$activeModule])) {
+            $activeModule = 'Customer';
         }
 
-        $customerFields = CustomFieldDefinition::forModule('Customer')
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+        $activeCategory = $allModules[$activeModule]['category'];
 
-        $itemFields = CustomFieldDefinition::forModule('Item')
-            ->orderBy('sort_order')
+        $fieldsByModule = CustomFieldDefinition::orderBy('sort_order')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->groupBy('module');
 
-        return view('tools.custom-fields.index', compact('customerFields', 'itemFields', 'activeTab'));
+        $categories = self::CATEGORIES;
+
+        return view('tools.custom-fields.index', compact(
+            'categories',
+            'allModules',
+            'activeCategory',
+            'activeModule',
+            'fieldsByModule'
+        ));
     }
 
     public function store(Request $request)
     {
+        $allKeys = array_keys(self::getAllModules());
+
         $validated = $request->validate([
-            'module' => 'required|in:Customer,Item',
+            'module' => 'required|in:' . implode(',', $allKeys),
             'field_name' => 'required|string|max:100',
             'field_type' => 'required|in:text,number,date,select,textarea,checkbox',
             'options' => 'nullable|string', // Comma-separated or newline-separated

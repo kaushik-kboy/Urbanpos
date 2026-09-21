@@ -107,6 +107,8 @@
                     </div>
                 </div>
 
+                <x-custom-fields-renderer :module="'PurchaseIndent'" :model="null" :cardStyle="true" />
+
                 {{-- Summary Footer --}}
                 <div class="row justify-content-end">
                     <div class="col-md-5 col-lg-4">

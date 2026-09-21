@@ -6,6 +6,7 @@
 <ul class="nav nav-tabs" role="tablist">
     <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#tab-general">General</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-gst">GST</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-custom-fields"><i class="fas fa-sliders-h text-primary mr-1"></i> Custom Fields</a></li>
 </ul>
 
 <div class="tab-content pt-3">
@@ -99,5 +100,12 @@
         <x-field name="pan_no" label="Pan No" :value="$b->pan_no ?? ''" />
         <x-select name="gst_type" label="GST Type" :options="['Regular' => 'Regular', 'Composite' => 'Composite', 'Un Register' => 'Un Register']" :selected="$b->gst_type ?? 'Regular'" />
         <x-select name="gst_filing" label="GST Filing" :options="['Monthly' => 'Monthly', 'Quarterly' => 'Quarterly']" :selected="$b->gst_filing ?? 'Monthly'" />
+    </div>
+
+    <!-- Custom Fields Tab -->
+    <div class="tab-pane" id="tab-custom-fields">
+        <div class="p-2">
+            <x-custom-fields-renderer module="Branch" :model="$b" :showHeader="false" colClass="col-md-6 col-12 mb-3" />
+        </div>
     </div>
 </div>

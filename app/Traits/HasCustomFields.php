@@ -8,6 +8,18 @@ use App\Models\CustomFieldValue;
 trait HasCustomFields
 {
     /**
+     * Auto-boot hook to automatically persist custom fields submitted in HTTP request on model save.
+     */
+    public static function bootHasCustomFields()
+    {
+        static::saved(function ($model) {
+            if (function_exists('request') && request() && request()->has('custom_fields') && is_array(request()->input('custom_fields'))) {
+                $model->syncCustomFields(request()->input('custom_fields', []));
+            }
+        });
+    }
+
+    /**
      * Polymorphic relation to custom field values.
      */
     public function customFieldValues()

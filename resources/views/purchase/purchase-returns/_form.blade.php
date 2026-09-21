@@ -143,6 +143,8 @@
     </div>
 </div>
 
+<x-custom-fields-renderer :module="'PurchaseReturn'" :model="$ret ?? null" :cardStyle="true" />
+
 <template id="pr-row-template">
     @include('purchase.purchase-returns._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>

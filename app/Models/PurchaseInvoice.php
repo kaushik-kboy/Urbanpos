@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseInvoice extends Model
 {
-    use HasFactory, HasPostingLifecycle;
+    use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'invoice_number', 'invoice_date', 'supplier_id', 'branch_id', 'purchase_order_id',

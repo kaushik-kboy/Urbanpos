@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OpeningStock extends Model
 {
-    use HasFactory, HasPostingLifecycle;
+    use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'entry_number', 'branch_id', 'entry_date', 'total_qty', 'total', 'remarks', 'message',

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesBill extends Model
 {
-    use HasFactory, HasPostingLifecycle;
+    use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
 
     protected $fillable = [
         'bill_number', 'bill_date', 'customer_id', 'branch_id', 'sales_delivery_note_id', 'till_session_id', 'invoice_type', 'delivery_type',

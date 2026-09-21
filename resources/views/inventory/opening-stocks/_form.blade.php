@@ -113,6 +113,8 @@
     </div>
 </div>
 
+<x-custom-fields-renderer :module="'OpeningStock'" :model="$entry ?? null" :cardStyle="true" />
+
 <!-- Item Search & Description Lookup Modal -->
 <div class="modal fade" id="item-search-modal" tabindex="-1" role="dialog" aria-labelledby="itemSearchModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">

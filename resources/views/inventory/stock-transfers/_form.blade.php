@@ -101,6 +101,8 @@
     </div>
 </div>
 
+<x-custom-fields-renderer :module="'StockTransfer'" :model="$transfer ?? null" :cardStyle="true" />
+
 <!-- ============================================================
      ITEM SEARCH MODAL — identical to Sales Bill / Purchase Invoice
      ============================================================ -->
