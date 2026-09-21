@@ -681,9 +681,41 @@ $(document).ready(function () {
             }
         }
     });
-    if ($firstInvalidTab) {
-        $firstInvalidTab.tab('show');
+    // Client-side validation: Sell Price <= MRP
+    function validateSellPriceAndMrp() {
+        var $sell = $('#sell_price');
+        var $mrp = $('#mrp');
+        if (!$sell.length || !$mrp.length) return true;
+
+        var sellVal = parseFloat($sell.val()) || 0;
+        var mrpVal = parseFloat($mrp.val()) || 0;
+
+        $('#sell-price-mrp-error').remove();
+
+        if (mrpVal > 0 && sellVal > mrpVal) {
+            $sell.addClass('is-invalid');
+            var errHtml = '<span id="sell-price-mrp-error" class="text-danger small font-weight-bold d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Sell Price cannot exceed MRP (' + mrpVal.toFixed(2) + '). MRP must be >= Sell Price.</span>';
+            $sell.after(errHtml);
+            return false;
+        } else {
+            $sell.removeClass('is-invalid');
+            return true;
+        }
     }
+
+    $('#sell_price, #mrp').on('input change blur', function() {
+        validateSellPriceAndMrp();
+    });
+
+    $('form').has('#sell_price').on('submit', function(e) {
+        if (!validateSellPriceAndMrp()) {
+            e.preventDefault();
+            alert('Validation Error: Sell Price cannot be greater than MRP! Please check the General tab.');
+            $('a[href="#tab-general"]').tab('show');
+            $('#sell_price').focus();
+            return false;
+        }
+    });
 });
 </script>
 @endpush

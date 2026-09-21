@@ -608,48 +608,94 @@
             openItemModal($targetRow, '');
         });
 
-        $('#items-body').on('input change', '.item-qty', recalcTotals);
+        function validateBranchSelection() {
+            let fromBranch = $('#from_branch_id').val();
+            let toBranch = $('#to_branch_id').val();
+            let $toContainer = $('#to_branch_id').next('.select2-container').find('.select2-selection');
 
-        $('#add-row').on('click', function () {
-            let html = document.getElementById('row-template').innerHTML;
-            html = html.replaceAll('__INDEX__', rowIndex);
-            html = html.replaceAll('__SNO__', $('#items-body tr.item-row').length + 1);
-            const $newRow = $(html);
-            $('#items-body').append($newRow);
-            initRowSelect2($newRow);
-            reindexSno();
-            rowIndex++;
-            $newRow.find('.item-code-input').focus();
+            if (fromBranch && toBranch && fromBranch === toBranch) {
+                $toContainer.addClass('border-danger');
+                alert('Source (From) Branch and Destination (To) Branch cannot be the same!');
+                return false;
+            } else {
+                $toContainer.removeClass('border-danger');
+                return true;
+            }
+        }
+
+        $('#to_branch_id').on('change', function () {
+            validateBranchSelection();
         });
 
-        $('#items-body').on('click', '.row-remove', function () {
-            if ($('#items-body tr.item-row').length <= 1) {
-                alert('At least one item row is required.');
-                return;
+        $('#items-body').on('input change', '.item-qty', function () {
+            let q = parseFloat($(this).val()) || 0;
+            let avail = parseFloat($(this).closest('tr').find('.item-available').val()) || 0;
+            let itemId = $(this).closest('tr').find('.item-id-input').val();
+
+            if (itemId) {
+                if (q <= 0) {
+                    $(this).addClass('is-invalid border-danger text-danger').attr('title', 'Quantity must be greater than 0');
+                } else if (avail >= 0 && q > avail) {
+                    $(this).addClass('is-invalid border-danger text-danger').attr('title', `Quantity (${q}) exceeds available stock (${avail})`);
+                } else {
+                    $(this).removeClass('is-invalid border-danger text-danger').attr('title', '');
+                }
             }
-            $(this).closest('tr').remove();
-            reindexSno();
             recalcTotals();
         });
 
-        $('#from_branch_id').on('change', function () {
-            $('#from-branch-warning').addClass('d-none');
-            stIslCache = {};
-            $('#items-body tr.item-row').each(function () {
-                $(this).find('.item-available').val('0.000');
+        // Form Submit Handler
+        $('form').on('submit', function (e) {
+            let toBranch = $('#to_branch_id').val();
+            if (!toBranch) {
+                e.preventDefault();
+                alert('Please select a destination (To) branch.');
+                $('#to_branch_id').select2('open');
+                return false;
+            }
+
+            if (!validateBranchSelection()) {
+                e.preventDefault();
+                return false;
+            }
+
+            let hasError = false;
+            let validCount = 0;
+
+            $('#items-body tr.item-row').each(function (idx) {
+                let id = $(this).find('.item-id-input').val();
+                let $q = $(this).find('.item-qty');
+                let q = parseFloat($q.val()) || 0;
+                let avail = parseFloat($(this).find('.item-available').val()) || 0;
+
+                if (id) {
+                    if (q <= 0) {
+                        $q.addClass('is-invalid border-danger text-danger');
+                        alert(`Row #${idx + 1}: Quantity must be greater than 0.`);
+                        $q.focus();
+                        hasError = true;
+                        return false;
+                    }
+                    if (avail >= 0 && q > avail) {
+                        $q.addClass('is-invalid border-danger text-danger');
+                        alert(`Row #${idx + 1}: Transfer quantity (${q}) exceeds available stock (${avail}).`);
+                        $q.focus();
+                        hasError = true;
+                        return false;
+                    }
+                    validCount++;
+                }
             });
-        });
 
-        $('#items-body tr.item-row').each(function () {
-            initRowSelect2($(this));
-        });
-        recalcTotals();
+            if (hasError) {
+                e.preventDefault();
+                return false;
+            }
 
-        $('#transfer_date').on('change', function () {
-            const today = new Date().toISOString().split('T')[0];
-            if (this.value && this.value > today) {
-                alert('Future date is not allowed for Transfer Date!');
-                this.value = today;
+            if (validCount === 0) {
+                e.preventDefault();
+                alert('Please add at least one valid item with quantity > 0.');
+                return false;
             }
         });
 
@@ -663,7 +709,7 @@
             } else if (e.key === 'F6') {
                 e.preventDefault();
                 const form = document.getElementById('transfer-form');
-                if (form) form.submit();
+                if (form) $(form).trigger('submit');
             }
         });
     })();

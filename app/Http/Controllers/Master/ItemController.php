@@ -267,8 +267,8 @@ class ItemController extends Controller
             'product_type' => ['required', 'string', 'max:100'],
             'cost_price' => ['required', 'numeric', 'min:0'],
             'landing_cost' => ['required', 'numeric', 'min:0'],
-            'sell_price' => ['required', 'numeric', 'min:0'],
-            'mrp' => ['required', 'numeric', 'min:0'],
+            'sell_price' => ['required', 'numeric', 'min:0', 'lte:mrp'],
+            'mrp' => ['required', 'numeric', 'min:0', 'gte:sell_price'],
             'status' => ['required', 'boolean'],
             'store_pickup' => ['required', 'boolean'],
 
@@ -292,6 +292,8 @@ class ItemController extends Controller
         ];
 
         $messages = [
+            'sell_price.lte' => 'Selling price cannot exceed Maximum Retail Price (MRP). MRP must be greater than or equal to Selling Price.',
+            'mrp.gte' => 'Maximum Retail Price (MRP) must be greater than or equal to Selling Price.',
             'hsn_code.regex' => 'HSN Code must be between 4 and 8 digits (numeric).',
         ];
 

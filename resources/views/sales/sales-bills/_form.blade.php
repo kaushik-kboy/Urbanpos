@@ -626,10 +626,22 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons: Ok & Cancel -->
-                <div class="p-2 d-flex align-items-center bg-white" style="border-top: 1px solid #ced4da;">
-                    <button type="button" id="tender-ok-btn" class="tender-btn mr-2">Ok</button>
-                    <button type="button" class="tender-btn" data-dismiss="modal">Cancel</button>
+                <!-- Action Buttons: Save, Save & WhatsApp, Save & Print, Cancel (Task 5) -->
+                <div class="p-2 d-flex align-items-center bg-white justify-content-between" style="border-top: 1px solid #ced4da;">
+                    <div class="d-flex align-items-center">
+                        <button type="button" id="tender-save-btn" data-action="save" class="btn btn-success font-weight-bold px-3 mr-2">
+                            <i class="fas fa-save mr-1"></i> Save
+                        </button>
+                        <button type="button" id="tender-whatsapp-btn" data-action="whatsapp" class="btn text-white font-weight-bold px-3 mr-2" style="background-color: #25D366; border-color: #25D366;">
+                            <i class="fab fa-whatsapp mr-1"></i> Save & WhatsApp
+                        </button>
+                        <button type="button" id="tender-print-btn" data-action="print" class="btn btn-primary font-weight-bold px-3 mr-2">
+                            <i class="fas fa-print mr-1"></i> Save & Print
+                        </button>
+                        <button type="button" id="tender-cancel-btn" class="btn btn-secondary font-weight-bold px-3" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i> Cancel
+                        </button>
+                    </div>
                     <div id="tender-error" class="ml-3 text-danger font-weight-bold small d-none"></div>
                 </div>
 
@@ -1213,26 +1225,37 @@
 
             // Build rows in one string for faster DOM insertion
             let html = '';
+            let todayStr = new Date().toISOString().substring(0, 10);
             items.forEach(function (it, idx) {
+                let itExpStr = it.exp_date ? it.exp_date.toString().substring(0, 10) : '';
+                let isExpired = itExpStr && (itExpStr < todayStr);
+
                 let expBadge = it.exp_date
-                    ? `<span class="badge badge-danger px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`
+                    ? (isExpired
+                        ? `<span class="badge badge-danger px-2 py-1"><i class="fas fa-ban mr-1"></i>EXPIRED (${itExpStr})</span>`
+                        : `<span class="badge badge-info px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`)
                     : `<span class="text-muted">—</span>`;
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
                     : `<span class="text-muted">—</span>`;
                 let isAllowNeg = !!(it.allow_negative_stock);
                 let isOutOfStock = parseFloat(it.qty) <= 0 && !isAllowNeg;
+                let isBlocked = isOutOfStock || isExpired;
                 let qtyClass = isOutOfStock ? 'text-danger font-weight-bold' : (parseFloat(it.qty) <= 0 ? 'text-warning font-weight-bold' : 'text-success font-weight-bold');
-                let rowClass = isOutOfStock ? 'isl-item-row isl-item-disabled text-muted bg-light' : 'isl-item-row';
-                let rowStyle = isOutOfStock ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
-                let actionBtn = isOutOfStock
-                    ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock - Cannot select">
-                        <i class="fas fa-ban mr-1"></i>Out of Stock
+                let rowClass = isBlocked ? 'isl-item-row isl-item-disabled text-muted bg-light' : 'isl-item-row';
+                let rowStyle = isBlocked ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
+                let actionBtn = isExpired
+                    ? `<button type="button" class="btn btn-danger btn-xs px-2" disabled title="Expired Item - Cannot sell">
+                        <i class="fas fa-ban mr-1"></i>Expired
                        </button>`
-                    : `<button type="button" class="btn btn-success btn-xs px-2 isl-btn-select"
-                        data-id="${it.id}" data-code="${it.code}">
-                        <i class="fas fa-check mr-1"></i>Select
-                       </button>`;
+                    : (isOutOfStock
+                        ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock - Cannot select">
+                            <i class="fas fa-ban mr-1"></i>Out of Stock
+                           </button>`
+                        : `<button type="button" class="btn btn-success btn-xs px-2 isl-btn-select"
+                            data-id="${it.id}" data-code="${it.code}">
+                            <i class="fas fa-check mr-1"></i>Select
+                           </button>`);
 
                 html += `
                     <tr class="${rowClass}" style="${rowStyle}"
@@ -1245,7 +1268,7 @@
                         data-allow-negative="${isAllowNeg ? '1' : '0'}"
                         data-exp="${it.exp_date || ''}">
                         <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name} ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : '')}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name} ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}</td>
                         <td class="align-middle text-center">${codeBadge}</td>
                         <td class="align-middle text-center">${expBadge}</td>
                         <td class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}</td>
@@ -1286,8 +1309,8 @@
             sbItemSelectedInModal = true;
             sbCancellingRow = null;
 
-            // Fill code field and trigger the existing lookup (which handles expiry / batch)
-            activeSearchRow.find('.sb-item-code').val(itemCode || itemId);
+            // Fill code field with Item ID (Task 4) and trigger the existing lookup (which handles expiry / batch)
+            activeSearchRow.find('.sb-item-code').val(itemId);
             activeSearchRow.find('.sb-item-select').val(itemId);
             processItemLookup(null, activeSearchRow, itemId);
             $('#sb-item-search-modal').modal('hide');
@@ -1460,13 +1483,94 @@
                 $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
             }
 
+            // Real-time inline field validation (Task 11)
+            if (itemId) {
+                if (qty <= 0) {
+                    $qtyInput.addClass('border-danger text-danger is-invalid')
+                             .attr('title', 'Quantity must be greater than 0');
+                } else if (!isAllowNegative && stock >= 0 && qty > stock) {
+                    $qtyInput.addClass('border-danger text-danger is-invalid')
+                             .attr('title', 'Quantity exceeds available stock (' + formatDigits(stock) + ')');
+                } else {
+                    $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+
+                let $sell = $row.find('.sb-sell-price');
+                if (mrp > 0 && sellPrice > mrp) {
+                    $sell.addClass('border-danger text-danger is-invalid')
+                         .attr('title', 'Selling price cannot exceed MRP (₹' + mrp + ')');
+                } else {
+                    $sell.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+
+                let $discPctInput = $row.find('.sb-disc-percent');
+                if (discPct < 0 || discPct > 100) {
+                    $discPctInput.addClass('border-danger text-danger is-invalid')
+                                 .attr('title', 'Discount cannot exceed 100%');
+                } else {
+                    $discPctInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+
+                let $exp = $row.find('.sb-exp-date');
+                let expVal = $exp.val();
+                let todayStr = new Date().toISOString().substring(0, 10);
+                if (expVal && expVal.substring(0, 10) < todayStr) {
+                    $exp.addClass('border-danger bg-danger text-white is-invalid')
+                        .attr('title', 'Product is expired!');
+                } else {
+                    $exp.removeClass('border-danger bg-danger text-white is-invalid').attr('title', '');
+                }
+            }
+
             calculateTotals();
         }
 
-        // Validate stock and quantities across all rows
+        // Header Validation (Task 11)
+        function validateSbHeader(showAlert = false) {
+            let isValid = true;
+            let $cust = $('#customer_id');
+            let custVal = $cust.val();
+            let $custSelect2 = $cust.next('.select2-container').find('.select2-selection');
+
+            if (!custVal) {
+                $cust.addClass('is-invalid');
+                $custSelect2.addClass('border-danger');
+                if (showAlert) {
+                    alert('Please select a Customer first before entering items.');
+                    $cust.select2('open');
+                }
+                isValid = false;
+            } else {
+                $cust.removeClass('is-invalid');
+                $custSelect2.removeClass('border-danger');
+            }
+
+            let $branch = $('[name="branch_id"]');
+            if (!$branch.val()) {
+                if (showAlert && isValid) alert('Please select an active Branch.');
+                isValid = false;
+            }
+
+            let $date = $('input[name="bill_date"]');
+            if (!$date.val()) {
+                $date.addClass('is-invalid border-danger');
+                if (showAlert && isValid) {
+                    alert('Please select a Bill Date.');
+                    $date.focus();
+                }
+                isValid = false;
+            } else {
+                $date.removeClass('is-invalid border-danger');
+            }
+
+            return isValid;
+        }
+
+        // Validate stock, quantities, pricing, and expiry across all rows (Task 11)
         function validateStockErrors() {
             let itemTotals = {};
             let itemStocks = {};
+            let todayStr = new Date().toISOString().substring(0, 10);
 
             $('#sb-items-body tr').each(function () {
                 let itemId = $(this).find('.sb-item-select').val();
@@ -1483,14 +1587,19 @@
                 }
             });
 
-            let hasStockError = false;
+            let hasError = false;
+            let firstErrorMsg = '';
+            let firstErrorEl = null;
             let validItemCount = 0;
 
-            $('#sb-items-body tr').each(function () {
+            $('#sb-items-body tr').each(function (idx) {
                 let $row = $(this);
                 let itemId = $row.find('.sb-item-select').val();
                 let $qtyInput = $row.find('.sb-qty');
                 let qty = parseFloat($qtyInput.val()) || 0;
+                let sellPrice = parseFloat($row.find('.sb-sell-price').val()) || 0;
+                let mrp = parseFloat($row.find('.sb-mrp').val()) || 0;
+                let exp = $row.find('.sb-exp-date').val();
 
                 if (itemId) {
                     let totalQty = itemTotals[itemId] || 0;
@@ -1498,24 +1607,56 @@
                     let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
                                           ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
 
-                    if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock) {
-                        $qtyInput.addClass('border-danger text-danger is-invalid')
-                                 .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
-                        hasStockError = true;
-                    } else if (qty <= 0) {
+                    if (qty <= 0) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Quantity must be greater than 0.');
-                        hasStockError = true;
+                        hasError = true;
+                        if (!firstErrorMsg) {
+                            firstErrorMsg = `Row #${idx + 1}: Quantity must be greater than 0.`;
+                            firstErrorEl = $qtyInput;
+                        }
+                    } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock) {
+                        $qtyInput.addClass('border-danger text-danger is-invalid')
+                                 .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
+                        hasError = true;
+                        if (!firstErrorMsg) {
+                            firstErrorMsg = `Row #${idx + 1}: Quantity exceeds available stock (${formatDigits(stock)}).`;
+                            firstErrorEl = $qtyInput;
+                        }
                     } else {
                         $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                         validItemCount++;
+                    }
+
+                    if (mrp > 0 && sellPrice > mrp) {
+                        $row.find('.sb-sell-price').addClass('border-danger text-danger is-invalid');
+                        hasError = true;
+                        if (!firstErrorMsg) {
+                            firstErrorMsg = `Row #${idx + 1}: Selling price (₹${sellPrice}) cannot exceed MRP (₹${mrp}).`;
+                            firstErrorEl = $row.find('.sb-sell-price');
+                        }
+                    }
+
+                    if (exp && exp.substring(0, 10) < todayStr) {
+                        $row.find('.sb-exp-date').addClass('border-danger bg-danger text-white is-invalid');
+                        hasError = true;
+                        if (!firstErrorMsg) {
+                            firstErrorMsg = `Row #${idx + 1}: Product has expired (${exp}) and cannot be sold.`;
+                            firstErrorEl = $row.find('.sb-exp-date');
+                        }
                     }
                 } else {
                     $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                 }
             });
 
-            return { hasStockError: hasStockError, validItemCount: validItemCount };
+            return {
+                hasStockError: hasError,
+                hasError: hasError,
+                errorMsg: firstErrorMsg,
+                errorEl: firstErrorEl,
+                validItemCount: validItemCount
+            };
         }
 
         function calculateTotals(isManualRoundOff) {
@@ -1599,27 +1740,35 @@
             let $tbody = $('#modal-batches-body');
             $tbody.empty();
 
+            let todayBatchStr = new Date().toISOString().substring(0, 10);
             batches.forEach(function (b, idx) {
                 let pName = b.productname || item.name || 'Item';
                 let pCode = b.code || item.item_code || item.ean_upc_code || '—';
                 let expDisplay = b.exp_date || 'No Expiry';
+                let bExpStr = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
+                let isBatchExpired = bExpStr && (bExpStr < todayBatchStr);
                 let qtyNum = parseFloat(b.qty || 0);
                 let isBatchOOS = qtyNum <= 0;
+                let isBlocked = isBatchOOS || isBatchExpired;
                 let qtyDisplay = qtyNum.toFixed(3);
                 let sellDisplay = b.sell_price ? '₹' + parseFloat(b.sell_price).toFixed(2) : '—';
                 let mrpDisplay = b.mrp ? '₹' + parseFloat(b.mrp).toFixed(2) : '—';
-                let bRowClass = isBatchOOS ? 'batch-select-row batch-disabled text-muted bg-light' : 'batch-select-row';
-                let bRowStyle = isBatchOOS ? 'cursor: not-allowed; opacity: 0.65;' : 'cursor: pointer;';
-                let bActionBtn = isBatchOOS
-                    ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock">
-                        <i class="fas fa-ban mr-1"></i>Out of Stock
+                let bRowClass = isBlocked ? 'batch-select-row batch-disabled text-muted bg-light' : 'batch-select-row';
+                let bRowStyle = isBlocked ? 'cursor: not-allowed; opacity: 0.65;' : 'cursor: pointer;';
+                let bActionBtn = isBatchExpired
+                    ? `<button type="button" class="btn btn-danger btn-xs px-2" disabled title="Batch Expired">
+                        <i class="fas fa-ban mr-1"></i>Expired
                        </button>`
-                    : `<button type="button" class="btn btn-success btn-xs px-2 btn-apply-batch" 
-                        data-exp="${b.exp_date || ''}" 
-                        data-sell="${b.sell_price || ''}" 
-                        data-mrp="${b.mrp || ''}">
-                        <i class="fas fa-check mr-1"></i> Select
-                       </button>`;
+                    : (isBatchOOS
+                        ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock">
+                            <i class="fas fa-ban mr-1"></i>Out of Stock
+                           </button>`
+                        : `<button type="button" class="btn btn-success btn-xs px-2 btn-apply-batch" 
+                            data-exp="${b.exp_date || ''}" 
+                            data-sell="${b.sell_price || ''}" 
+                            data-mrp="${b.mrp || ''}">
+                            <i class="fas fa-check mr-1"></i> Select
+                           </button>`);
 
                 let tr = `
                     <tr class="${bRowClass}" style="${bRowStyle}" 
@@ -1627,11 +1776,11 @@
                         data-sell="${b.sell_price || ''}" 
                         data-mrp="${b.mrp || ''}"
                         data-qty="${qtyNum}"
-                        title="${isBatchOOS ? 'Batch out of stock' : 'Click to select this batch'}">
+                        title="${isBatchExpired ? 'Batch expired - cannot select' : (isBatchOOS ? 'Batch out of stock' : 'Click to select this batch')}">
                         <td class="align-middle text-center font-weight-bold">${idx + 1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${pName} ${isBatchOOS ? '<span class="badge badge-secondary ml-1 small">No Stock</span>' : ''}</td>
+                        <td class="align-middle font-weight-bold text-dark">${pName} ${isBatchExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isBatchOOS ? '<span class="badge badge-secondary ml-1 small">No Stock</span>' : '')}</td>
                         <td class="align-middle text-center"><span class="badge badge-secondary px-2 py-1">${pCode}</span></td>
-                        <td class="align-middle text-center font-weight-bold text-danger"><i class="far fa-calendar-alt mr-1"></i> ${expDisplay}</td>
+                        <td class="align-middle text-center font-weight-bold ${isBatchExpired ? 'text-danger font-weight-bolder' : 'text-primary'}"><i class="far fa-calendar-alt mr-1"></i> ${expDisplay}</td>
                         <td class="align-middle text-right font-weight-bold ${isBatchOOS ? 'text-danger' : ''}">${qtyDisplay}</td>
                         <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
                         <td class="align-middle text-right text-muted">${mrpDisplay}</td>
@@ -1653,6 +1802,11 @@
             if (!activeModalRow) return;
             if (exp) {
                 let cleanExp = exp.toString().substring(0, 10);
+                let todayStr = new Date().toISOString().substring(0, 10);
+                if (cleanExp < todayStr) {
+                    alert('Cannot select expired batch (Expired on ' + cleanExp + '). Selling expired products is prohibited.');
+                    return;
+                }
                 activeModalRow.find('.sb-exp-date').val(cleanExp);
             }
             if (sell && parseFloat(sell) > 0) activeModalRow.find('.sb-sell-price').val(parseFloat(sell).toFixed(2));
@@ -1728,9 +1882,8 @@
                     $row.data('batches', batches);
 
                     isSyncing = true;
-                    // Sync Code
-                    let codeVal = item.item_code || item.ean_upc_code || '';
-                    if (codeVal) $code.val(codeVal);
+                    // Sync Code: Task 4 requirement - display Item ID in code field even if scanned by EAN
+                    $code.val(item.id);
 
                     // Sync description display & hidden item id
                     $desc.val(item.name + (item.item_code ? ' [' + item.item_code + ']' : ''));
@@ -1969,11 +2122,35 @@
             recalcTender();
         });
 
+        // Guard adding items or focusing code if header is invalid (Task 11)
+        $(document).on('click focusin', '#sb-add-row, #sb-items-body input.sb-item-code', function (e) {
+            let custId = $('#customer_id').val();
+            if (!custId) {
+                e.preventDefault();
+                validateSbHeader(true);
+                return false;
+            }
+        });
+
+        $(document).on('change', '#customer_id', function () {
+            validateSbHeader(false);
+        });
+
+        $(document).on('change blur', 'input[name="bill_date"]', function () {
+            validateSbHeader(false);
+        });
+
         // Open tender modal when Save button clicked
         $(document).on('click', 'button[type="submit"]', function (e) {
             let $btn = $(this);
             let $form = $btn.closest('form');
             if (!$form.length) return;
+
+            // 1. Validate Header First (Task 11)
+            if (!validateSbHeader(true)) {
+                e.preventDefault();
+                return false;
+            }
 
             // Prune empty rows (where no item is selected) if multiple rows exist
             $('#sb-items-body tr').each(function () {
@@ -1986,41 +2163,21 @@
             updateRowNumbers();
             calculateTotals();
 
-            // Check if at least 1 valid item with qty > 0 exists
-            let validItems = 0;
-            $('#sb-items-body tr').each(function () {
-                let itemId = $(this).find('.sb-item-select').val();
-                let qty = parseFloat($(this).find('.sb-qty').val()) || 0;
-                if (itemId && qty > 0) {
-                    validItems++;
-                }
-            });
-
-            if (validItems === 0) {
+            // 2. Validate All Line Items (Task 11)
+            let valResult = validateStockErrors();
+            if (valResult.validItemCount === 0) {
                 e.preventDefault();
                 alert('Please select at least one item and enter a valid quantity.');
                 return false;
             }
 
-            // Check customer is selected
-            if (!$custSelect.val()) {
+            if (valResult.hasError) {
                 e.preventDefault();
-                alert('Please select a customer.');
-                $custSelect.select2('open');
-                return false;
-            }
-
-            // Check branch is selected
-            if (!$('[name="branch_id"]').val()) {
-                e.preventDefault();
-                alert('Please select a branch.');
-                return false;
-            }
-
-            // Check bill date
-            if (!$('input[name="bill_date"]').val()) {
-                e.preventDefault();
-                alert('Please select a bill date.');
+                alert('Cannot proceed: ' + valResult.errorMsg);
+                if (valResult.errorEl && valResult.errorEl.length) {
+                    valResult.errorEl.focus();
+                    if (valResult.errorEl[0].select) valResult.errorEl[0].select();
+                }
                 return false;
             }
 
@@ -2099,12 +2256,13 @@
 
             if (e.key === 'Enter') {
                 e.preventDefault();
-                $('#tender-ok-btn').trigger('click');
+                $('#tender-save-btn').trigger('click');
             }
         });
 
-        // Ok button clicked in Tender Modal
-        $('#tender-ok-btn').on('click', function () {
+        // Save / Tender Buttons Handler (Task 5)
+        $(document).on('click', '#tender-save-btn, #tender-whatsapp-btn, #tender-print-btn, #tender-ok-btn', function () {
+            let actionType = $(this).data('action') || 'save';
             $('#tender-error').addClass('d-none');
 
             let cash = parseFloat($('#tender-cash').val()) || 0;
@@ -2206,9 +2364,10 @@
                 });
             });
 
-            // Inject hidden payment inputs into form
+            // Inject hidden payment and save_action inputs into form
             let $form = $('#sales-bill-form').length ? $('#sales-bill-form') : $('form[action*="sales-bills"]').first();
             $form.find('input[name^="payments"]').remove();
+            $form.find('input[name="save_action"]').remove();
 
             payments.forEach(function (p, i) {
                 $form.append(`<input type="hidden" name="payments[${i}][tender_type_id]" value="${p.tender_type_id}">`);
@@ -2218,9 +2377,11 @@
                 $form.append(`<input type="hidden" name="payments[${i}][amount]" value="${p.amount}">`);
             });
 
+            $form.append(`<input type="hidden" name="save_action" value="${actionType}">`);
+
             // Use native form submit with double-submission lock
             if (window.PosScanGuard) {
-                window.PosScanGuard.lockSubmission($('#tender-ok-btn')[0]);
+                window.PosScanGuard.lockSubmission(this);
             }
 
             let submitted = false;
@@ -2406,7 +2567,7 @@
 
                     // Restore item fields
                     $newRow.find('.sb-item-select').val(it.item_id);
-                    $newRow.find('.sb-item-code').val(it.item_code);
+                    $newRow.find('.sb-item-code').val(it.item_id || it.item_code);
                     $newRow.find('.sb-item-desc').val(it.item_desc);
 
                     // Ensure qty is always a positive number (never negative)

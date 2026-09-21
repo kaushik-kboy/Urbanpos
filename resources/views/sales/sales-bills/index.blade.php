@@ -12,6 +12,16 @@
     @if (session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
+    @if (session('auto_print_url'))
+        <script>
+            window.open("{{ session('auto_print_url') }}", "_blank", "width=900,height=700");
+        </script>
+    @endif
+    @if (session('auto_whatsapp_url'))
+        <script>
+            window.open("{{ session('auto_whatsapp_url') }}", "_blank");
+        </script>
+    @endif
 
     <div class="@if(!request('is_iframe')) card card-default mb-3 shadow-none border @else mb-2 @endif">
         <div class="@if(!request('is_iframe')) card-body p-3 @endif">
@@ -134,6 +144,7 @@
                         <th>Mobile</th>
                         <th>Branch</th>
                         <th>Invoice Type</th>
+                        <th>Payment Mode</th>
                         <th>Total</th>
                         <th class="text-right">Actions</th>
                     </tr>
@@ -153,10 +164,23 @@
                             <td>{{ $bill->customer?->mobile }}</td>
                             <td>{{ $bill->branch?->name }}</td>
                             <td>{{ $bill->invoice_type }}</td>
+                            <td>
+                                @php
+                                    $payMode = $bill->payment_type;
+                                    if (!$payMode && $bill->relationLoaded('payments') && $bill->payments->count()) {
+                                        $payMode = $bill->payments->map(fn($p) => $p->tenderType?->name)->filter()->unique()->implode(', ');
+                                    }
+                                    $payMode = $payMode ?: 'Cash';
+                                @endphp
+                                <span class="badge badge-info px-2 py-1">{{ $payMode }}</span>
+                            </td>
                             <td class="font-weight-bold text-success">₹{{ number_format($bill->total, 2) }}</td>
                             <td class="text-right text-nowrap">
                                 @if(!request('is_iframe'))
-                                <button type="button" class="btn btn-xs btn-outline-success btn-whatsapp-index" data-url="{{ route('sales.sales-bills.send-whatsapp', $bill) }}" data-phone="{{ $bill->customer?->phone ?: $bill->customer?->mobile }}" title="Send WhatsApp Bill to Client" onclick="sendWhatsAppFromIndex(this)">
+                                <a href="{{ route('sales.sales-returns.create', ['customer_id' => $bill->customer_id, 'sales_bill_id' => $bill->id]) }}" class="btn btn-xs btn-outline-warning mr-1" title="Sales Return for this Bill">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                                <button type="button" class="btn btn-xs btn-outline-success btn-whatsapp-index mr-1" data-url="{{ route('sales.sales-bills.send-whatsapp', $bill) }}" data-phone="{{ $bill->customer?->phone ?: $bill->customer?->mobile }}" title="Send WhatsApp Bill to Client" onclick="sendWhatsAppFromIndex(this)">
                                     <i class="fab fa-whatsapp"></i>
                                 </button>
                                 <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-xs btn-outline-success" title="Thermal Receipt (80mm)">

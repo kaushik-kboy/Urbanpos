@@ -89,15 +89,20 @@
 
             <!-- Cart Table List -->
             <div class="pos-cart-container">
-                <table class="pos-cart-table">
+                <table class="pos-cart-table table table-sm table-hover mb-0">
                     <thead>
                         <tr>
                             <th class="text-center" style="width: 35px;">#</th>
-                            <th>Item Particulars</th>
-                            <th class="text-right" style="width: 90px;">Rate</th>
-                            <th class="text-center" style="width: 140px;">Quantity</th>
-                            <th class="text-right" style="width: 110px;">Amount</th>
-                            <th class="text-center" style="width: 40px;"></th>
+                            <th class="text-center" style="width: 65px;">Code</th>
+                            <th>Description</th>
+                            <th class="text-center" style="width: 100px;">Exp Date</th>
+                            <th class="text-center" style="width: 75px;">Qty</th>
+                            <th class="text-right" style="width: 80px;">Sell</th>
+                            <th class="text-right" style="width: 80px;">MRP</th>
+                            <th class="text-center" style="width: 75px;">Dis %</th>
+                            <th class="text-center" style="width: 80px;">Dis Amt</th>
+                            <th class="text-right" style="width: 95px;">Net Amount</th>
+                            <th class="text-center" style="width: 35px;"></th>
                         </tr>
                     </thead>
                     <tbody id="posCartBody">
@@ -159,13 +164,13 @@
                     <label class="font-weight-bold text-muted small text-uppercase mb-0">
                         <i class="fas fa-user mr-1 text-primary"></i> Customer
                     </label>
-                    <button type="button" id="posHeaderNewCustBtn" class="btn btn-link btn-xs p-0 text-decoration-none font-weight-bold">
-                        + New Customer
+                    <button type="button" id="posHeaderNewCustBtn" class="btn btn-outline-primary btn-xs font-weight-bold shadow-none px-2" style="border-radius: 4px;">
+                        <i class="fas fa-user-plus mr-1"></i> + New Customer
                     </button>
                 </div>
 
-                <!-- Customer Search Select (visible when choosing/changing customer) -->
-                <div id="posCustomerSearchWrapper" class="mb-2" style="{{ $defaultCustomer ? 'display: none;' : '' }}">
+                <!-- Customer Search Select (ALWAYS VISIBLE as in Sales Bill) -->
+                <div id="posCustomerSearchWrapper" class="mb-2">
                     <select id="posCustomerSelect" class="form-control form-control-sm select2">
                         @if($defaultCustomer)
                             <option value="{{ $defaultCustomer->id }}" selected>{{ $defaultCustomer->mobile ? "{$defaultCustomer->name} ({$defaultCustomer->mobile})" : $defaultCustomer->name }}</option>
@@ -186,11 +191,8 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-center">
-                            <button type="button" id="posEditCustomerBtn" class="pos-cust-btn text-primary mr-1" title="Edit Customer">
-                                <i class="fas fa-pen"></i>
-                            </button>
-                            <button type="button" id="posChangeCustomerBtn" class="pos-cust-btn text-secondary" title="Search / Change Customer">
-                                <i class="fas fa-search"></i>
+                            <button type="button" id="posEditCustomerBtn" class="btn btn-xs btn-outline-primary font-weight-bold px-2 py-1 shadow-none" title="Edit Customer Details">
+                                <i class="fas fa-edit mr-1"></i> Edit
                             </button>
                         </div>
                     </div>
@@ -270,17 +272,14 @@
                     <i class="fas fa-credit-card text-info"></i>
                     <span>Card (Alt+D)</span>
                 </button>
+                <button type="button" class="pos-tender-btn" data-mode="Split" id="posTenderSplitBtn">
+                    <i class="fas fa-layer-group text-warning"></i>
+                    <span>Split (Alt+S)</span>
+                </button>
             </div>
 
             <!-- Cash Tender Controls -->
             <div id="posCashSection">
-                <div class="pos-cash-chips">
-                    <button type="button" class="pos-cash-chip" data-val="exact">Exact</button>
-                    <button type="button" class="pos-cash-chip" data-val="100">+100</button>
-                    <button type="button" class="pos-cash-chip" data-val="200">+200</button>
-                    <button type="button" class="pos-cash-chip" data-val="500">+500</button>
-                    <button type="button" class="pos-cash-chip" data-val="2000">+2000</button>
-                </div>
                 <div class="form-group mb-2">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <label class="small font-weight-bold text-muted mb-0">Cash Tendered (₹)</label>
@@ -298,10 +297,55 @@
                 <div class="small text-muted">Supports PhonePe, Google Pay, Paytm & Any UPI App</div>
             </div>
 
-            <!-- Big Pay Button -->
-            <button type="button" id="posPayBtn" class="pos-pay-btn" disabled>
-                <i class="fas fa-check-circle mr-2"></i> Pay & Print (F6)
-            </button>
+            <!-- Split Payment Summary Section (Visible when Split is active) -->
+            <div id="posSplitSection" style="display: none;" class="p-3 bg-light rounded border mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="font-weight-bold text-dark mb-0 small text-uppercase"><i class="fas fa-layer-group mr-1 text-warning"></i> Split Breakdown</h6>
+                    <button type="button" class="btn btn-xs btn-outline-primary font-weight-bold" id="posEditSplitBtn">
+                        <i class="fas fa-edit mr-1"></i> Edit Split
+                    </button>
+                </div>
+                <div class="small">
+                    <div class="d-flex justify-content-between mb-1" id="posSplitRowCash" style="display: none;">
+                        <span class="text-muted"><i class="fas fa-money-bill-wave text-success mr-1"></i> Cash:</span>
+                        <strong class="text-dark" id="posSplitDispCash">₹ 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1" id="posSplitRowCard" style="display: none;">
+                        <span class="text-muted"><i class="fas fa-credit-card text-info mr-1"></i> Card:</span>
+                        <strong class="text-dark" id="posSplitDispCard">₹ 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1" id="posSplitRowWallet" style="display: none;">
+                        <span class="text-muted"><i class="fas fa-qrcode text-primary mr-1"></i> <span id="posSplitDispWalletType">UPI</span>:</span>
+                        <strong class="text-dark" id="posSplitDispWallet">₹ 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1" id="posSplitRowCredit" style="display: none;">
+                        <span class="text-muted"><i class="fas fa-hand-holding-usd text-danger mr-1"></i> Due/Credit:</span>
+                        <strong class="text-danger" id="posSplitDispCredit">₹ 0.00</strong>
+                    </div>
+                    <div class="border-top pt-1 mt-1 d-flex justify-content-between font-weight-bold">
+                        <span>Total Split:</span>
+                        <span class="text-success" id="posSplitDispTotal">₹ 0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Action Buttons (Task 5: Save, Save & WhatsApp, Save & Print, Cancel) -->
+            <div class="pos-save-actions-wrap mt-2">
+                <div class="d-flex mb-2" style="gap: 6px;">
+                    <button type="button" id="posBtnSaveOnly" class="btn btn-success font-weight-bold flex-fill py-2 shadow-sm" disabled title="Save Bill without print">
+                        <i class="fas fa-save mr-1"></i> Save
+                    </button>
+                    <button type="button" id="posBtnSaveWhatsApp" class="btn text-white font-weight-bold flex-fill py-2 shadow-sm" style="background-color: #25D366; border-color: #25D366;" disabled title="Save & Send WhatsApp invoice">
+                        <i class="fab fa-whatsapp mr-1"></i> Save & WhatsApp
+                    </button>
+                </div>
+                <button type="button" id="posPayBtn" class="pos-pay-btn mb-2" disabled>
+                    <i class="fas fa-print mr-2"></i> Save & Print (F6)
+                </button>
+                <button type="button" id="posBtnCancelTender" class="btn btn-outline-secondary btn-block btn-sm font-weight-bold py-1" title="Cancel / Reset tender">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+            </div>
 
         </aside>
 
@@ -875,6 +919,129 @@
     </div>
 </div>
 
+<!-- POS Split Payment / Multi-Tender Modal -->
+<div class="modal fade" id="posSplitModal" tabindex="-1" role="dialog" aria-labelledby="posSplitModalTitle" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 520px;">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header py-3 px-4 text-white" style="background-color: var(--pos-header-bg, #1e293b);">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-layer-group text-warning mr-2" style="font-size: 1.2rem;"></i>
+                    <h5 class="modal-title font-weight-bold mb-0" id="posSplitModalTitle">Split Payment (Multi-Tender)</h5>
+                </div>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.9;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            
+            <div class="modal-body p-4 bg-light">
+                <!-- Bill Amount Banner -->
+                <div class="d-flex justify-content-between align-items-center p-3 mb-3 bg-white rounded border shadow-sm">
+                    <div>
+                        <span class="text-muted small text-uppercase font-weight-bold">Bill Total</span>
+                        <h3 class="font-weight-bold text-dark mb-0" id="posSplitBillTotal">₹ 0.00</h3>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-muted small text-uppercase font-weight-bold">Remaining</span>
+                        <h4 class="font-weight-bold mb-0 text-danger" id="posSplitRemaining">₹ 0.00</h4>
+                    </div>
+                </div>
+
+                <!-- Split Input Rows -->
+                <div class="bg-white p-3 rounded border mb-3 shadow-sm">
+                    <!-- Cash Input -->
+                    <div class="form-group row mb-2 align-items-center">
+                        <label for="posSplitCashInput" class="col-sm-4 col-form-label font-weight-bold text-dark small mb-0">
+                            <i class="fas fa-money-bill-wave text-success mr-1"></i> Cash (Alt+A)
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text font-weight-bold">₹</span></div>
+                                <input type="number" step="any" min="0" id="posSplitCashInput" class="form-control font-weight-bold text-right split-input" placeholder="0.00" autocomplete="off">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-split-fill" type="button" data-target="#posSplitCashInput" title="Fill Remaining Balance">Max</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Input -->
+                    <div class="form-group row mb-2 align-items-center">
+                        <label for="posSplitCardInput" class="col-sm-4 col-form-label font-weight-bold text-dark small mb-0">
+                            <i class="fas fa-credit-card text-info mr-1"></i> Card (Alt+C)
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text font-weight-bold">₹</span></div>
+                                <input type="number" step="any" min="0" id="posSplitCardInput" class="form-control font-weight-bold text-right split-input" placeholder="0.00" autocomplete="off">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-split-fill" type="button" data-target="#posSplitCardInput" title="Fill Remaining Balance">Max</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- UPI / Wallet Input -->
+                    <div class="form-group row mb-2 align-items-center">
+                        <label for="posSplitWalletInput" class="col-sm-4 col-form-label font-weight-bold text-dark small mb-0">
+                            <i class="fas fa-qrcode text-primary mr-1"></i> UPI / Wallet (Alt+W)
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="input-group input-group-sm mb-1">
+                                <div class="input-group-prepend"><span class="input-group-text font-weight-bold">₹</span></div>
+                                <input type="number" step="any" min="0" id="posSplitWalletInput" class="form-control font-weight-bold text-right split-input" placeholder="0.00" autocomplete="off">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-split-fill" type="button" data-target="#posSplitWalletInput" title="Fill Remaining Balance">Max</button>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="small text-muted mr-2 font-weight-600">Type:</span>
+                                <select id="posSplitWalletType" class="form-control form-control-sm py-0" style="height: 28px; font-size: 0.82rem;">
+                                    <option value="GPAY" selected>Google Pay (GPAY)</option>
+                                    <option value="PHONEPE">PhonePe</option>
+                                    <option value="PAYTM">Paytm</option>
+                                    <option value="PINELAB">Pine Labs</option>
+                                    <option value="BHARATPE">BharatPe</option>
+                                    <option value="OTHER">Other UPI</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Credit / Due Input -->
+                    <div class="form-group row mb-0 align-items-center">
+                        <label for="posSplitCreditInput" class="col-sm-4 col-form-label font-weight-bold text-dark small mb-0">
+                            <i class="fas fa-hand-holding-usd text-danger mr-1"></i> Credit / Due
+                        </label>
+                        <div class="col-sm-8">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend"><span class="input-group-text font-weight-bold">₹</span></div>
+                                <input type="number" step="any" min="0" id="posSplitCreditInput" class="form-control font-weight-bold text-right split-input" placeholder="0.00" autocomplete="off">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary btn-split-fill" type="button" data-target="#posSplitCreditInput" title="Fill Remaining Balance">Max</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Notice -->
+                <div id="posSplitAlert" class="alert alert-danger py-2 px-3 mb-0 small font-weight-bold d-none">
+                    <i class="fas fa-exclamation-triangle mr-1"></i> <span id="posSplitAlertText"></span>
+                </div>
+            </div>
+
+            <div class="modal-footer py-2 px-4 bg-white d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary font-weight-bold btn-sm" data-dismiss="modal">
+                    Cancel (Esc)
+                </button>
+                <button type="button" id="posSplitConfirmBtn" class="btn btn-success font-weight-bold px-4 btn-sm">
+                    <i class="fas fa-check-circle mr-1"></i> Confirm Split (Enter)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Fullscreen POS Quick Lock Screen Overlay -->
 <div id="posLockOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(14px); z-index: 999999; align-items: center; justify-content: center; flex-direction: column;">
     <div class="card shadow-lg border-0 text-center" style="width: 360px; border-radius: 16px; background: #ffffff; padding: 28px 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);">
@@ -942,6 +1109,7 @@
         'pets_summary' => $defaultPetSummary,
     ] : null) !!};
     window.EDIT_BILL = {!! isset($editBill) ? json_encode($editBill) : 'null' !!};
+    window.TENDER_TYPES = {!! json_encode($tenderTypes ?? []) !!};
 
     // Digital Clock
     function updateClock() {

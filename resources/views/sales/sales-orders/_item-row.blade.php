@@ -8,8 +8,7 @@
         $selectedItem = is_array($items) || $items instanceof \Illuminate\Support\Collection
             ? collect($items)->firstWhere('id', $selectedItemId)
             : null;
-    }
-    $itemCodeVal = data_get($line, 'code') ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
+    $itemCodeVal = $selectedItemId ?: ($selectedItem ? $selectedItem->id : (data_get($line, 'code') ?? ''));
     $selectedItemName = $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '';
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
     $sellPriceVal = isset($line->sell_price) && $line->sell_price != 0 ? $line->sell_price : ($selectedItem?->sell_price > 0 ? $selectedItem->sell_price : '');

@@ -39,7 +39,7 @@ class SalesBillController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesBill::with(['customer', 'branch'])->orderByDesc('id');
+        $query = SalesBill::with(['customer', 'branch', 'payments.tenderType'])->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -352,7 +352,34 @@ class SalesBillController extends Controller
             \Illuminate\Support\Facades\Log::error("Auto WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
         }
 
-        return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$whatsappNotice}");
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'id' => $salesBill->id,
+                'bill_number' => $salesBill->bill_number,
+                'total' => $salesBill->total,
+                'customer' => $salesBill->customer,
+                'message' => "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$whatsappNotice}",
+            ]);
+        }
+
+        $saveAction = $request->input('save_action', 'save');
+        $redirect = redirect()->route('sales.sales-bills.index')
+            ->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$whatsappNotice}");
+
+        if ($saveAction === 'print') {
+            $redirect->with('auto_print_url', route('sales.sales-bills.receipt', $salesBill));
+        } elseif ($saveAction === 'whatsapp') {
+            $mobile = preg_replace('/\D/', '', $salesBill->customer?->mobile ?? '');
+            if ($mobile) {
+                if (strlen($mobile) === 10) $mobile = '91' . $mobile;
+                $publicUrl = route('sales.sales-bills.receipt', $salesBill);
+                $msg = urlencode("Hello " . ($salesBill->customer->name ?? 'Customer') . ", thank you for your purchase! Your invoice #{$salesBill->bill_number} for Rs. " . number_format($salesBill->total, 2) . " is ready: " . $publicUrl);
+                $redirect->with('auto_whatsapp_url', "https://api.whatsapp.com/send?phone={$mobile}&text={$msg}");
+            }
+        }
+
+        return $redirect;
     }
 
     public function edit(SalesBill $salesBill)
@@ -683,6 +710,12 @@ class SalesBillController extends Controller
         $where  = ['i.status = 1'];
         $params = [$branchId, $branchId];
 
+        // Filter by customer purchases if customer_id is provided (Task 6 for Sales Return)
+        if ($customerId = (int) $request->input('customer_id')) {
+            $where[] = 'i.id IN (SELECT DISTINCT sbi.item_id FROM sales_bill_items sbi INNER JOIN sales_bills sb ON sbi.sales_bill_id = sb.id WHERE sb.customer_id = ? AND (sb.status IS NULL OR sb.status != "Cancelled"))';
+            $params[] = $customerId;
+        }
+
         $orderSql    = 'i.name ASC';
         $orderParams = [];
 
@@ -852,7 +885,7 @@ class SalesBillController extends Controller
     public function lookupItem(Request $request)
     {
         $itemId = $request->input('item_id');
-        $query = trim((string) $request->input('query', ''));
+        $query = trim((string) ($request->input('query') ?: $request->input('q', '')));
         $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
 
         $item = null;
@@ -1258,6 +1291,29 @@ class SalesBillController extends Controller
             'payments.*.tender_type_value_id' => ['nullable', 'exists:tender_type_values,id'],
             'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
         ]);
+
+        $todayStr = now()->toDateString();
+        $expiredItems = [];
+        foreach ($validated['items'] as $line) {
+            if (!empty($line['exp_date'])) {
+                try {
+                    $expDate = \Illuminate\Support\Carbon::parse($line['exp_date'])->toDateString();
+                    if ($expDate < $todayStr) {
+                        $itemModel = Item::find($line['item_id']);
+                        $itemName = $itemModel ? $itemModel->name : "Item #{$line['item_id']}";
+                        $expiredItems[] = "{$itemName} (Expired: {$expDate})";
+                    }
+                } catch (\Exception $e) {
+                    // Ignore date parsing failure here, rule 'date' will capture it
+                }
+            }
+        }
+
+        if (!empty($expiredItems)) {
+            throw ValidationException::withMessages([
+                'items' => 'Cannot sell expired products: ' . implode(', ', $expiredItems) . '. Selling expired items is not permitted.',
+            ]);
+        }
 
         return ['header' => $header, 'items' => $validated['items'], 'payments' => $paymentsValidated['payments'] ?? []];
     }

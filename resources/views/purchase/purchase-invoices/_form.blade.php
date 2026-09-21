@@ -608,6 +608,24 @@
                           .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must not exceed MRP (₹' + mrp.toFixed(2) + ')!');
             }
 
+            // Real-time inline field validation (Task 11)
+            let $qtyInput = $row.find('.pinv-qty');
+            let $costInput = $row.find('.pinv-cost');
+            let itemId = $row.find('.pinv-item-select').val();
+            if (itemId) {
+                if (qty <= 0) {
+                    $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', 'Quantity must be greater than 0');
+                } else {
+                    $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+
+                if (cost <= 0) {
+                    $costInput.addClass('border-danger text-danger is-invalid').attr('title', 'Cost price must be greater than 0');
+                } else {
+                    $costInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+            }
+
             let $discPct = $row.find('.pinv-disc-percent');
             let $discAmt = $row.find('.pinv-disc-amount');
 
@@ -1267,6 +1285,60 @@
             if (this.value && this.value > today) {
                 alert('Future date is not allowed for ' + ($(this).closest('.form-group').find('label').text().trim().replace('*', '').trim() || 'Date') + '!');
                 this.value = today;
+            }
+        });
+
+        // Form Submit Guard (Task 11)
+        $('form').on('submit', function (e) {
+            let supp = $('select[name="supplier_id"]').val();
+            let $suppContainer = $('select[name="supplier_id"]').next('.select2-container').find('.select2-selection');
+            if (!supp) {
+                e.preventDefault();
+                $suppContainer.addClass('border-danger');
+                alert('Please select a Supplier for this purchase invoice.');
+                $('select[name="supplier_id"]').select2('open');
+                return false;
+            } else {
+                $suppContainer.removeClass('border-danger');
+            }
+
+            let hasError = false;
+            let validRows = 0;
+            $('#pinv-items-body tr').each(function (idx) {
+                let id = $(this).find('.pinv-item-select').val();
+                let $q = $(this).find('.pinv-qty');
+                let q = parseFloat($q.val()) || 0;
+                let $cost = $(this).find('.pinv-cost');
+                let cost = parseFloat($cost.val()) || 0;
+
+                if (id) {
+                    if (q <= 0) {
+                        $q.addClass('is-invalid border-danger');
+                        alert(`Row #${idx + 1}: Quantity must be greater than 0.`);
+                        $q.focus();
+                        hasError = true;
+                        return false;
+                    }
+                    if (cost <= 0) {
+                        $cost.addClass('is-invalid border-danger');
+                        alert(`Row #${idx + 1}: Cost price must be greater than 0.`);
+                        $cost.focus();
+                        hasError = true;
+                        return false;
+                    }
+                    validRows++;
+                }
+            });
+
+            if (hasError) {
+                e.preventDefault();
+                return false;
+            }
+
+            if (validRows === 0) {
+                e.preventDefault();
+                alert('Please add at least one valid item with quantity > 0.');
+                return false;
             }
         });
 

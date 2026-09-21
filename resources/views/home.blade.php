@@ -512,6 +512,21 @@
     line-height: 1.25;
     margin-top: 4px;
 }
+/* Dashboard Search Keyboard Selection */
+#dashboardSearchResults .dropdown-item.is-selected {
+    background-color: #1769E8 !important;
+    color: #ffffff !important;
+}
+#dashboardSearchResults .dropdown-item.is-selected .text-dark,
+#dashboardSearchResults .dropdown-item.is-selected .text-muted {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+#dashboardSearchResults .dropdown-item.is-selected .icon-container {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+#dashboardSearchResults .dropdown-item.is-selected .icon-container i {
+    color: #ffffff !important;
+}
 @media (max-width: 576px) {
     .dashboard-shortcut-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -531,6 +546,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (searchInput && searchResults) {
         const links = [];
+        let activeIndex = -1;
+
+        function updateSelection(items) {
+            items.forEach((item, idx) => {
+                if (idx === activeIndex) {
+                    item.classList.add('is-selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('is-selected');
+                }
+            });
+        }
+
         document.querySelectorAll('.nav-sidebar .nav-item > .nav-link').forEach(link => {
             const url = link.getAttribute('href');
             if (!url || url === '#' || url === 'javascript:void(0)') return;
@@ -553,6 +581,7 @@ document.addEventListener('DOMContentLoaded', function () {
         searchInput.addEventListener('input', function(e) {
             const query = e.target.value.toLowerCase().trim();
             searchResults.innerHTML = '';
+            activeIndex = -1;
 
             if (query.length === 0) {
                 searchResults.style.display = 'none';
@@ -562,10 +591,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const filtered = links.filter(link => link.text.toLowerCase().includes(query));
 
             if (filtered.length > 0) {
-                filtered.forEach(link => {
+                filtered.forEach((link, idx) => {
                     const a = document.createElement('a');
                     a.className = 'dropdown-item d-flex align-items-center py-2 border-bottom';
                     a.href = link.url;
+                    a.setAttribute('data-index', idx);
                     a.innerHTML = `
                         <div class="icon-container rounded bg-light mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
                             <i class="${link.icon} text-primary" style="font-size: 1.1rem;"></i>
@@ -575,6 +605,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             <small class="text-muted">${link.url.replace(window.location.origin, '')}</small>
                         </div>
                     `;
+                    a.addEventListener('mouseenter', function() {
+                        activeIndex = idx;
+                        const items = searchResults.querySelectorAll('.dropdown-item');
+                        updateSelection(items);
+                    });
                     searchResults.appendChild(a);
                 });
             } else {
@@ -589,9 +624,45 @@ document.addEventListener('DOMContentLoaded', function () {
             searchResults.style.display = 'block';
         });
 
+        searchInput.addEventListener('keydown', function(e) {
+            const items = searchResults.querySelectorAll('.dropdown-item');
+            if (!items || items.length === 0 || searchResults.style.display === 'none') {
+                return;
+            }
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (activeIndex < items.length - 1) {
+                    activeIndex++;
+                } else {
+                    activeIndex = 0; // Wrap around to top
+                }
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (activeIndex > 0) {
+                    activeIndex--;
+                } else {
+                    activeIndex = items.length - 1; // Wrap around to bottom
+                }
+                updateSelection(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeIndex >= 0 && activeIndex < items.length) {
+                    items[activeIndex].click();
+                } else if (items.length > 0) {
+                    items[0].click();
+                }
+            } else if (e.key === 'Escape') {
+                searchResults.style.display = 'none';
+                activeIndex = -1;
+            }
+        });
+
         document.addEventListener('click', function(e) {
             if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                 searchResults.style.display = 'none';
+                activeIndex = -1;
             }
         });
 

@@ -216,6 +216,7 @@ class StockTransferController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.id' => ['required', 'exists:stock_transfer_items,id'],
             'items.*.received_qty' => ['required', 'numeric', 'min:0'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
         ]);
 
         DB::transaction(function () use ($validated, $stockTransfer) {
@@ -245,7 +246,17 @@ class StockTransferController extends Controller
                 $line->update(['received_qty' => $receivedQty]);
             }
 
-            $stockTransfer->update(['status' => 'Received', 'received_at' => now()]);
+            $receiveRemarks = trim($validated['remarks'] ?? '');
+            $newRemarks = $stockTransfer->remarks;
+            if (!empty($receiveRemarks)) {
+                $newRemarks = !empty($newRemarks) ? ($newRemarks . " | Inward: " . $receiveRemarks) : "Inward: " . $receiveRemarks;
+            }
+
+            $stockTransfer->update([
+                'status' => 'Received',
+                'received_at' => now(),
+                'remarks' => $newRemarks,
+            ]);
         });
 
         return redirect()->route('inventory.stock-transfers.pending-receipt')->with('status', "Stock Transfer #{$stockTransfer->transfer_number} received successfully.");
@@ -556,11 +567,27 @@ class StockTransferController extends Controller
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
         ]);
 
-        $items = collect($validated['items'])->map(function ($line) {
-            $line['exp_date'] = $this->normalizeDate($line['exp_date'] ?? null);
+        $todayStr = now()->toDateString();
+        $expiredItems = [];
+
+        $items = collect($validated['items'])->map(function ($line) use ($todayStr, &$expiredItems) {
+            $normalizedExp = $this->normalizeDate($line['exp_date'] ?? null);
+            $line['exp_date'] = $normalizedExp;
+
+            if (!empty($normalizedExp) && $normalizedExp < $todayStr) {
+                $item = Item::find($line['item_id']);
+                $itemName = $item ? $item->name : "Item #{$line['item_id']}";
+                $expiredItems[] = "{$itemName} (Expired on {$normalizedExp})";
+            }
 
             return $line;
         })->all();
+
+        if (!empty($expiredItems)) {
+            throw ValidationException::withMessages([
+                'items' => 'Cannot transfer out expired products: ' . implode(', ', $expiredItems) . '. Transfer of expired items is not permitted.',
+            ]);
+        }
 
         return ['header' => $header, 'items' => $items];
     }

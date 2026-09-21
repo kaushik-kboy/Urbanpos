@@ -45,10 +45,22 @@
                         @endforeach
                     </tbody>
                 </table>
-                <p class="text-muted small mb-0">
+                @if($stockTransfer->remarks)
+                    <div class="alert alert-light border small py-2 px-3 mb-3">
+                        <strong><i class="fas fa-info-circle text-info mr-1"></i> Outward Remarks:</strong> {{ $stockTransfer->remarks }}
+                    </div>
+                @endif
+                <p class="text-muted small mb-3">
                     If the received quantity is less than dispatched, the shortfall is recorded as "lost in transit" —
                     only the actually-received quantity is added to this branch's stock.
                 </p>
+
+                <div class="form-group mb-0">
+                    <label for="receive_remarks" class="font-weight-bold small text-dark">
+                        <i class="fas fa-comment-dots mr-1 text-primary"></i> Receipt / Inward Remarks (Optional):
+                    </label>
+                    <textarea name="remarks" id="receive_remarks" rows="2" class="form-control" placeholder="Enter remarks on receipt, package condition, damage, or discrepancy notes..."></textarea>
+                </div>
             </div>
             <div class="card-footer">
                 <button type="submit" class="btn btn-primary">Confirm Receipt</button>

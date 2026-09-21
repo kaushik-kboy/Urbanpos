@@ -127,6 +127,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     // Users & Roles — Owner-only for create/edit/delete; index/create-form/edit-form/show
     // stay open to any authenticated user so staff can at least see who has access.
     $gatedResource('users', \App\Http\Controllers\Master\UserController::class, 'users');
+    $gatedResource('roles', \App\Http\Controllers\Master\RoleController::class, 'users');
 
     // Financial Years — no destroy action exists (there's no "financial-years.cancel"
     // permission, and $gatedResource always wires one), so this is a bespoke block

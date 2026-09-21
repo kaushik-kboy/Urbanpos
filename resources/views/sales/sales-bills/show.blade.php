@@ -31,6 +31,9 @@
                 <i class="fas fa-print mr-1"></i> Print (A4)
             </button>
             @if ($salesBill->status !== 'Cancelled')
+                <a href="{{ route('sales.sales-returns.create', ['customer_id' => $salesBill->customer_id, 'sales_bill_id' => $salesBill->id]) }}" class="btn btn-warning btn-sm mr-1 shadow-sm font-weight-bold" title="Create Sales Return for this Bill">
+                    <i class="fas fa-undo mr-1"></i> Sales Return
+                </a>
                 <a href="{{ route('sales.sales-bills.edit', $salesBill) }}" class="btn btn-outline-primary btn-sm mr-1">
                     <i class="fas fa-pen mr-1"></i> Edit
                 </a>

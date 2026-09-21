@@ -122,8 +122,20 @@ class ItemPriceChangeController extends Controller
             'prices.*.mrp' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $item = Item::findOrFail($request->input('item_id'));
         $prices = $request->input('prices', []);
+
+        // Validate sell_price <= mrp for each branch
+        foreach ($prices as $branchId => $priceData) {
+            $sp = (float)($priceData['sell_price'] ?? 0);
+            $mrp = (float)($priceData['mrp'] ?? 0);
+            if ($sp > $mrp) {
+                return back()->withErrors([
+                    'prices' => "Selling price ({$sp}) cannot exceed Maximum Retail Price MRP ({$mrp}). MRP must be greater than or equal to Selling Price."
+                ])->withInput();
+            }
+        }
+
+        $item = Item::findOrFail($request->input('item_id'));
 
         // All branches (and the item's own default price fields) must land together —
         // a failure partway through must not leave some branches repriced and others not.

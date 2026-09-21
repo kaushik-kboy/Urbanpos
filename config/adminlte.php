@@ -955,7 +955,8 @@ return [
                     'text' => 'Configuration',
                     'icon' => 'fas fa-fw fa-cogs',
                     'submenu' => [
-                        ['text' => 'Role Master', 'url' => 'master/users', 'icon' => 'fas fa-fw fa-user-shield'],
+                        ['text' => 'User Master', 'url' => 'master/users', 'icon' => 'fas fa-fw fa-users-cog', 'active' => ['master/users*']],
+                        ['text' => 'Role & Permission Master', 'url' => 'master/roles', 'icon' => 'fas fa-fw fa-user-shield', 'active' => ['master/roles*']],
                         ['text' => 'Financial Years', 'url' => 'master/financial-years', 'icon' => 'fas fa-fw fa-calendar-alt'],
                         ['text' => 'Userwise Configuration', 'url' => 'tools/userwise-config', 'icon' => 'fas fa-fw fa-user-cog'],
                         ['text' => 'Business Configuration', 'url' => 'tools/business-config', 'icon' => 'fas fa-fw fa-briefcase'],

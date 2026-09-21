@@ -77,9 +77,16 @@ class SalesReturnController extends Controller
         return view('sales.sales-returns.index', compact('salesReturns', 'branches', 'customers', 'returnModes'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('sales.sales-returns.create', $this->formOptions());
+        $presetCustId = $request->filled('customer_id') ? (int) $request->input('customer_id') : null;
+        $presetBillId = $request->filled('sales_bill_id') ? (int) $request->input('sales_bill_id') : null;
+
+        $options = $this->formOptions(null, $presetCustId, $presetBillId);
+        $options['presetCustomerId'] = $presetCustId;
+        $options['presetBillId'] = $presetBillId;
+
+        return view('sales.sales-returns.create', $options);
     }
 
     public function store(Request $request)
@@ -268,9 +275,9 @@ class SalesReturnController extends Controller
         );
     }
 
-    private function formOptions(?SalesReturn $salesReturn = null): array
+    private function formOptions(?SalesReturn $salesReturn = null, ?int $presetCustomerId = null, ?int $presetBillId = null): array
     {
-        $custId = old('customer_id', $salesReturn?->customer_id);
+        $custId = old('customer_id', $salesReturn?->customer_id ?? $presetCustomerId);
         $customers = Customer::where('status', true)
             ->orderBy('name')
             ->limit(50)
@@ -289,7 +296,15 @@ class SalesReturnController extends Controller
                 ->where(fn($q) => $q->whereNull('status')->orWhere('status', '!=', 'Cancelled'))
                 ->latest('bill_date')
                 ->pluck('bill_number', 'id')
+                ->all()
             : [];
+
+        if ($presetBillId && !isset($salesBills[$presetBillId])) {
+            $pb = SalesBill::find($presetBillId);
+            if ($pb) {
+                $salesBills[$pb->id] = $pb->bill_number;
+            }
+        }
 
         return [
             'customers' => $customers,
@@ -312,7 +327,17 @@ class SalesReturnController extends Controller
             $discPercent = (float) ($line['disc_percent'] ?? 0);
             $discAmount = (float) ($line['disc_amount'] ?? 0);
 
-            $tax = $this->taxEngine->calculate($qty, $sellPrice, $item, $discPercent, $discAmount, 0.0, $isInterstate);
+            // GST included in price (Tax Inclusive) matching Sales Bill (Task 7)
+            $tax = $this->taxEngine->calculate(
+                $qty,
+                $sellPrice,
+                $item,
+                $discPercent,
+                $discAmount,
+                0.0,
+                $isInterstate,
+                isTaxInclusive: true
+            );
 
             return [
                 'item_id' => $line['item_id'],
@@ -408,6 +433,28 @@ class SalesReturnController extends Controller
                         ]);
                     }
                 }
+            }
+        }
+
+        // Enforce Task 6: Only items purchased by this customer can be returned
+        $customerId = (int) ($header['customer_id'] ?? 0);
+        if ($customerId > 0) {
+            $itemIds = collect($validated['items'])->pluck('item_id')->unique()->all();
+            $purchasedItemIds = \App\Models\SalesBillItem::whereIn('item_id', $itemIds)
+                ->whereHas('salesBill', function ($q) use ($customerId) {
+                    $q->where('customer_id', $customerId)
+                      ->where(fn($sq) => $sq->whereNull('status')->orWhere('status', '!=', 'Cancelled'));
+                })
+                ->pluck('item_id')
+                ->unique()
+                ->all();
+
+            $invalidItems = array_diff($itemIds, $purchasedItemIds);
+            if (!empty($invalidItems)) {
+                $names = Item::whereIn('id', $invalidItems)->pluck('name')->implode(', ');
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'items' => ["Cannot return item(s) [{$names}]: This customer has not purchased them."]
+                ]);
             }
         }
 

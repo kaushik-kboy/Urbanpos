@@ -486,6 +486,27 @@ $(function() {
         let net = taxable + gstAmt;
 
         $row.find('.sq-row-net').text(net.toFixed(2));
+
+        // Real-time inline field validation (Task 11)
+        let $qtyInput = $row.find('.sq-qty');
+        let itemId = $row.find('.sq-item-select').val();
+        let mrp = parseFloat($row.find('.sq-mrp').val()) || 0;
+        let $priceInput = $row.find('.sq-sell-price');
+
+        if (itemId) {
+            if (qty <= 0) {
+                $qtyInput.addClass('is-invalid border-danger text-danger').attr('title', 'Quantity must be greater than 0');
+            } else {
+                $qtyInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
+            }
+
+            if (mrp > 0 && price > mrp) {
+                $priceInput.addClass('is-invalid border-danger text-danger').attr('title', `Selling price cannot exceed MRP (₹${mrp})`);
+            } else {
+                $priceInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
+            }
+        }
+
         recalcSummary();
     }
 
@@ -532,6 +553,60 @@ $(function() {
             recalcRow($(this));
         });
     }
+
+    // Form Submit Guard (Task 11)
+    $('form').on('submit', function (e) {
+        let cust = $('select[name="customer_id"]').val();
+        let $custContainer = $('select[name="customer_id"]').next('.select2-container').find('.select2-selection');
+        if (!cust) {
+            e.preventDefault();
+            $custContainer.addClass('border-danger');
+            alert('Please select a Customer for this quotation.');
+            $('select[name="customer_id"]').select2('open');
+            return false;
+        } else {
+            $custContainer.removeClass('border-danger');
+        }
+
+        let hasError = false;
+        let validRows = 0;
+        $('#sq-items-body tr').each(function (idx) {
+            let id = $(this).find('.sq-item-select').val();
+            let $q = $(this).find('.sq-qty');
+            let q = parseFloat($q.val()) || 0;
+            let p = parseFloat($(this).find('.sq-sell-price').val()) || 0;
+            let m = parseFloat($(this).find('.sq-mrp').val()) || 0;
+
+            if (id) {
+                if (q <= 0) {
+                    $q.addClass('is-invalid border-danger');
+                    alert(`Row #${idx + 1}: Quantity must be greater than 0.`);
+                    $q.focus();
+                    hasError = true;
+                    return false;
+                }
+                if (m > 0 && p > m) {
+                    $(this).find('.sq-sell-price').addClass('is-invalid border-danger');
+                    alert(`Row #${idx + 1}: Selling price cannot exceed MRP.`);
+                    $(this).find('.sq-sell-price').focus();
+                    hasError = true;
+                    return false;
+                }
+                validRows++;
+            }
+        });
+
+        if (hasError) {
+            e.preventDefault();
+            return false;
+        }
+
+        if (validRows === 0) {
+            e.preventDefault();
+            alert('Please add at least one valid item with quantity > 0.');
+            return false;
+        }
+    });
 
     recalcAll();
 });

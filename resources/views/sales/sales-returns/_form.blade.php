@@ -18,8 +18,12 @@
         <label for="customer_id" class="font-weight-bold">Customer <span class="text-danger">*</span></label>
         <select name="customer_id" id="customer_id" class="form-control select2" required>
             <option value="">-- Select Customer --</option>
+            @php
+                $selectedCustId = old('customer_id', $ret->customer_id ?? ($presetCustomerId ?? ''));
+                $selectedBillId = old('sales_bill_id', $ret->sales_bill_id ?? ($presetBillId ?? ''));
+            @endphp
             @foreach ($customers as $id => $name)
-                <option value="{{ $id }}" @selected(old('customer_id', $ret->customer_id ?? '') == $id)>{{ $name }}</option>
+                <option value="{{ $id }}" @selected($selectedCustId == $id)>{{ $name }}</option>
             @endforeach
         </select>
     </div>
@@ -52,7 +56,7 @@
         <select name="sales_bill_id" id="sales_bill_id" class="form-control select2">
             <option value="">-- No Original Bill / Direct Return --</option>
             @foreach ($salesBills as $id => $no)
-                <option value="{{ $id }}" @selected(old('sales_bill_id', $ret->sales_bill_id ?? '') == $id)>{{ $no }}</option>
+                <option value="{{ $id }}" @selected($selectedBillId == $id)>{{ $no }}</option>
             @endforeach
         </select>
         <small class="text-muted">Bill select karte hi items automatically load ho jayenge.</small>
@@ -277,6 +281,14 @@
         let srCancellingRow = null;
 
         $(document).off('click focus', '.sr-item-code').on('click focus', '.sr-item-code', function (e) {
+            let custId = $('#customer_id').val();
+            if (!custId) {
+                if (e.type === 'click') {
+                    alert('Please select a Customer first. Items are restricted to products purchased by that customer.');
+                    $('#customer_id').select2('open');
+                }
+                return;
+            }
             if ($('#sales_bill_id').val()) {
                 if (e.type === 'click') {
                     alert('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
@@ -312,19 +324,20 @@
         function srFetchItemList() {
             let srch = $('#sr-isl-filter-name').val().trim();
             let code = $('#sr-isl-filter-code').val().trim();
+            let custId = $('#customer_id').val() || '';
 
             if (!srch && !code) {
                 $('#sr-isl-loading').addClass('d-none');
                 $('#sr-isl-table-wrap').addClass('d-none');
                 $('#sr-isl-no-results').removeClass('d-none').html(
                     '<i class="fas fa-keyboard fa-2x text-muted"></i>' +
-                    '<p class="mt-2 text-muted">Start typing to search items…</p>'
+                    '<p class="mt-2 text-muted">Start typing to search customer purchased items…</p>'
                 );
                 $('#sr-isl-count-label').text('');
                 return;
             }
 
-            let cacheKey = srch + '|' + code;
+            let cacheKey = srch + '|' + code + '|' + custId;
             if (srIslCache[cacheKey]) {
                 srRenderItems(srIslCache[cacheKey]);
                 return;
@@ -334,7 +347,7 @@
             $('#sr-isl-no-results').addClass('d-none');
             $('#sr-isl-table-wrap').addClass('d-none');
 
-            $.getJSON(SR_ISL_URL, { search: srch, code: code }, function (res) {
+            $.getJSON(SR_ISL_URL, { search: srch, code: code, customer_id: custId }, function (res) {
                 $('#sr-isl-loading').addClass('d-none');
                 srIslCache[cacheKey] = res.items || [];
                 setTimeout(function () { delete srIslCache[cacheKey]; }, 60000);
@@ -414,7 +427,7 @@
             srItemSelectedInModal = true;
             srCancellingRow = null;
 
-            srActiveSearchRow.find('.sr-item-code').val(itemCode || itemId);
+            srActiveSearchRow.find('.sr-item-code').val(itemId);
             srActiveSearchRow.find('.sr-item-desc').val(itemName + (itemCode ? ' [' + itemCode + ']' : ''));
             srActiveSearchRow.find('.sr-item-select').val(itemId);
             srActiveSearchRow.find('.sr-exp-date').val(exp || '');
@@ -485,13 +498,30 @@
                 }
             }
 
-            const taxable = Math.max(0, base - discAmount);
-            const gstAmount = Math.round((taxable * gstPercent / 100) * 100) / 100;
-            const net = taxable + gstAmount;
+            // GST included in price (Tax-Inclusive matching Sales Bill - Task 7)
+            const net = Math.max(0, base - discAmount);
+            const taxable = gstPercent > 0 ? (net / (1 + (gstPercent / 100))) : net;
+            const gstAmount = Math.round((net - taxable) * 100) / 100;
 
             const netSpan = row.querySelector('.sr-net-amount');
             if (netSpan) {
                 netSpan.innerText = net.toFixed(2);
+            }
+
+            // Real-time inline field validation (Task 11)
+            const qtyInput = row.querySelector('.sr-qty');
+            if (qtyInput) {
+                const maxQty = parseFloat(qtyInput.getAttribute('data-original-qty') || qtyInput.getAttribute('max')) || 0;
+                if (qty <= 0) {
+                    qtyInput.classList.add('is-invalid', 'border-danger');
+                    qtyInput.title = 'Quantity must be greater than 0';
+                } else if (maxQty > 0 && qty > maxQty) {
+                    qtyInput.classList.add('is-invalid', 'border-danger');
+                    qtyInput.title = `Return quantity cannot exceed original bill quantity (${maxQty})`;
+                } else {
+                    qtyInput.classList.remove('is-invalid', 'border-danger');
+                    qtyInput.title = '';
+                }
             }
 
             return { qty, price, discAmount, taxable, gstAmount, net };
@@ -695,9 +725,9 @@
 
             const codeInput = row.querySelector('.sr-item-code');
             if (codeInput) {
-                codeInput.value = item.item_code || '';
+                codeInput.value = item.item_id;
                 codeInput.readOnly = true;
-                codeInput.title = 'Item from Sales Bill (cannot be changed)';
+                codeInput.title = 'Item ID from Sales Bill (cannot be changed)';
             }
 
             const descInput = row.querySelector('.sr-item-desc');
@@ -847,9 +877,57 @@
             });
         }
 
+        // Header Validation (Task 11)
+        function validateSrHeader(showAlert = false) {
+            let isValid = true;
+            let $cust = $('#customer_id');
+            let custVal = $cust.val();
+            let $custContainer = $cust.next('.select2-container').find('.select2-selection');
+
+            if (!custVal) {
+                $cust.addClass('is-invalid');
+                $custContainer.addClass('border-danger');
+                if (showAlert) {
+                    alert('Please select a Customer first before entering return items.');
+                    $cust.select2('open');
+                }
+                isValid = false;
+            } else {
+                $cust.removeClass('is-invalid');
+                $custContainer.removeClass('border-danger');
+            }
+
+            let $date = $('#return_date');
+            if (!$date.val()) {
+                $date.addClass('is-invalid border-danger');
+                if (showAlert && isValid) {
+                    alert('Please select a Return Date.');
+                    $date.focus();
+                }
+                isValid = false;
+            } else {
+                $date.removeClass('is-invalid border-danger');
+            }
+
+            return isValid;
+        }
+
+        $(document).on('click focusin', '#sr-add-row, #btn-add-bill-item, #btn-add-all-bill-items, #sr-items-body .sr-item-code', function (e) {
+            if (!$('#customer_id').val()) {
+                e.preventDefault();
+                validateSrHeader(true);
+                return false;
+            }
+        });
+
         $('#customer_id').on('change', function () {
+            validateSrHeader(false);
             let custId = $(this).val();
             loadCustomerBills(custId);
+        });
+
+        $('#return_date').on('change blur', function () {
+            validateSrHeader(false);
         });
 
         let initialCustId = $('#customer_id').val();
@@ -861,8 +939,13 @@
             loadBillItems(initialBillId, true);
         }
 
-        // Form Submit Handler: prune invalid rows and re-index contiguous names
+        // Form Submit Handler: validate header, prune invalid rows and re-index contiguous names
         $('form').on('submit', function (e) {
+            if (!validateSrHeader(true)) {
+                e.preventDefault();
+                return false;
+            }
+
             let hasBill = !!$('#sales_bill_id').val();
             let validRows = 0;
             let hasError = false;
@@ -919,6 +1002,14 @@
                 window.location.reload();
             }
         });
+
+        @if(!empty($selectedBillId))
+            setTimeout(function() {
+                if ($('#sales_bill_id').val()) {
+                    $('#sales_bill_id').trigger('change');
+                }
+            }, 300);
+        @endif
     })();
 </script>
 @endpush
