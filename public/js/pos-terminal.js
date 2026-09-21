@@ -551,6 +551,8 @@
                     itemToAdd.exp_date = data.batches[0].exp_date;
                     if (data.batches[0].sell_price > 0) itemToAdd.sell_price = data.batches[0].sell_price;
                     if (data.batches[0].mrp > 0) itemToAdd.mrp = data.batches[0].mrp;
+                } else if (data.item.exp_date) {
+                    itemToAdd.exp_date = data.item.exp_date;
                 }
             } else if (Array.isArray(data) && data.length > 0) {
                 itemToAdd = data[0];

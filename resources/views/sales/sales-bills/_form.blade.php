@@ -1312,6 +1312,10 @@
             // Fill code field with Item ID (Task 4) and trigger the existing lookup (which handles expiry / batch)
             activeSearchRow.find('.sb-item-code').val(itemId);
             activeSearchRow.find('.sb-item-select').val(itemId);
+            let itemExp = $row.data('exp');
+            if (itemExp) {
+                activeSearchRow.find('.sb-exp-date').val(itemExp.toString().substring(0, 10));
+            }
             processItemLookup(null, activeSearchRow, itemId);
             $('#sb-item-search-modal').modal('hide');
         });
@@ -1915,16 +1919,20 @@
 
                     // =========================================================
                     // BATCH / EXPIRY SELECTION LOGIC:
-                    // Single Expiry: Auto-fill expiry date!
-                    // Multiple Batches: Show modal with productname, code, sell price, qty and expiry!
+                    // Auto-fill expiry date from purchase records!
                     // =========================================================
+                    let bestExp = '';
+                    if (batches.length > 0 && batches[0].exp_date) {
+                        bestExp = batches[0].exp_date.toString().substring(0, 10);
+                    } else if (item.exp_date) {
+                        bestExp = item.exp_date.toString().substring(0, 10);
+                    }
+                    if (bestExp) {
+                        $exp.val(bestExp);
+                    }
+
                     if (batches.length === 1) {
-                        // If single batch exists, auto-populate expiry date
                         let singleBatch = batches[0];
-                        if (singleBatch && singleBatch.exp_date) {
-                            let cleanExp = singleBatch.exp_date.toString().substring(0, 10);
-                            $exp.val(cleanExp);
-                        }
                         if (singleBatch && singleBatch.sell_price > 0) {
                             $sell.val(parseFloat(singleBatch.sell_price).toFixed(2));
                         }
@@ -1936,10 +1944,9 @@
                         saveBillDraft();
                         setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
                     } else if (batches.length > 1) {
-                        // Multiple batches exist: show button and pop up selection modal!
+                        // Multiple batches exist: prefill earliest expiry and show button/modal
                         $batchWrap.removeClass('d-none');
                         showBatchModal($row, item, batches);
-                        // Draft will be saved when user picks batch from modal
                     } else {
                         $batchWrap.addClass('d-none');
                         calculateRow($row, 'base');

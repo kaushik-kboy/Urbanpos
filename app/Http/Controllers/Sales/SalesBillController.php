@@ -1009,6 +1009,25 @@ class SalesBillController extends Controller
 
         $batches = array_values($grouped);
 
+        $defaultExp = null;
+        if (!empty($batches)) {
+            $defaultExp = $batches[0]['exp_date'];
+        } else {
+            $latestPurchaseExp = \App\Models\PurchaseInvoiceItem::where('item_id', $item->id)
+                ->whereNotNull('exp_date')
+                ->where('exp_date', '!=', '')
+                ->where('exp_date', '!=', '0000-00-00')
+                ->latest('id')
+                ->value('exp_date');
+            if ($latestPurchaseExp) {
+                try {
+                    $defaultExp = \Carbon\Carbon::parse($latestPurchaseExp)->format('Y-m-d');
+                } catch (\Exception $e) {
+                    $defaultExp = substr((string) $latestPurchaseExp, 0, 10);
+                }
+            }
+        }
+
         return response()->json([
             'found' => true,
             'item' => [
@@ -1019,6 +1038,7 @@ class SalesBillController extends Controller
                 'cost_price' => (float) ($item->cost_price ?? 0),
                 'sell_price' => (float) ($item->sell_price ?? 0),
                 'mrp' => (float) ($item->mrp ?? 0),
+                'exp_date' => $defaultExp,
                 'stock' => $stock,
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
                 'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
@@ -1136,9 +1156,26 @@ class SalesBillController extends Controller
                 isTaxInclusive: true
             );
 
+            $lineExp = $this->normalizeDate($line['exp_date'] ?? null);
+            if (! $lineExp) {
+                $purchaseExp = \App\Models\PurchaseInvoiceItem::where('item_id', $item->id)
+                    ->whereNotNull('exp_date')
+                    ->where('exp_date', '!=', '')
+                    ->where('exp_date', '!=', '0000-00-00')
+                    ->latest('id')
+                    ->value('exp_date');
+                if ($purchaseExp) {
+                    try {
+                        $lineExp = \Illuminate\Support\Carbon::parse($purchaseExp)->toDateString();
+                    } catch (\Exception $e) {
+                        $lineExp = substr((string) $purchaseExp, 0, 10);
+                    }
+                }
+            }
+
             return [
                 'item_id' => $line['item_id'],
-                'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
+                'exp_date' => $lineExp,
                 'qty' => $qty,
                 'sell_price' => $sellPrice,
                 'mrp' => (float) ($line['mrp'] ?? 0),

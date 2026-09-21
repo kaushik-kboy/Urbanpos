@@ -53,4 +53,32 @@ class BladeRouteIntegrityTest extends TestCase
 
         $this->assertEmpty($missingRoutes, $errorMsg);
     }
+
+    /**
+     * Compile every Blade view in the application and verify it has valid PHP syntax with zero ParseErrors.
+     */
+    public function test_all_blade_templates_compile_with_zero_php_parse_errors(): void
+    {
+        $viewPath = resource_path('views');
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($viewPath));
+        $blade = app('blade.compiler');
+        $errors = [];
+
+        foreach ($files as $file) {
+            if ($file->isDir() || ! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            $content = file_get_contents($file->getPathname());
+            try {
+                $compiled = $blade->compileString($content);
+                token_get_all($compiled, TOKEN_PARSE);
+            } catch (\ParseError $e) {
+                $relPath = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $errors[] = "{$relPath}: {$e->getMessage()}";
+            }
+        }
+
+        $this->assertEmpty($errors, "Detected PHP parse errors in Blade templates:\n" . implode("\n", $errors));
+    }
 }

@@ -8,6 +8,7 @@
         $selectedItem = is_array($items) || $items instanceof \Illuminate\Support\Collection
             ? collect($items)->firstWhere('id', $selectedItemId)
             : null;
+    }
     $itemCodeVal = $selectedItemId ?: ($selectedItem ? $selectedItem->id : (data_get($line, 'code') ?? ''));
     $selectedItemName = $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '';
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
