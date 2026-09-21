@@ -59,7 +59,7 @@ class DatabaseBackupCommand extends Command
             $targetGz   = $targetSql . '.gz';
             $dumpBin = $this->getMysqldumpBinary();
 
-            if ($dumpBin) {
+            if ($dumpBin && function_exists('exec')) {
                 $pwdFlag = ($password !== '' && ! is_null($password)) ? '--password=' . escapeshellarg($password) : '';
                 $cmd = sprintf(
                     '%s --user=%s %s --host=%s --port=%s --skip-comments --quick %s > %s 2>&1',
@@ -72,7 +72,7 @@ class DatabaseBackupCommand extends Command
                     escapeshellarg($targetSql)
                 );
 
-                exec($cmd, $output, $resultCode);
+                @exec($cmd, $output, $resultCode);
 
                 if ($resultCode === 0 && File::exists($targetSql) && filesize($targetSql) > 0) {
                     $sqlContent = file_get_contents($targetSql);
@@ -80,14 +80,14 @@ class DatabaseBackupCommand extends Command
                     File::delete($targetSql);
                     $this->info("MySQL database backup compressed to: {$targetGz}");
                 } else {
-                    $this->warn('mysqldump execution failed, using internal table exporter fallback...');
+                    $this->warn('mysqldump execution failed or unavailable, using streaming internal table exporter fallback...');
                     if (File::exists($targetSql)) {
                         File::delete($targetSql);
                     }
                     $this->fallbackExport($targetGz);
                 }
             } else {
-                $this->info('mysqldump binary not found in PATH, using high-speed internal table exporter...');
+                $this->info('mysqldump binary / exec not available, using streaming internal table exporter...');
                 $this->fallbackExport($targetGz);
             }
         }
@@ -100,28 +100,34 @@ class DatabaseBackupCommand extends Command
     }
 
     /**
-     * Fallback database exporter using Laravel DB connection.
+     * Fallback database exporter using Laravel DB connection with memory-efficient streaming.
      */
     protected function fallbackExport(string $targetGz): void
     {
         $tables = \Illuminate\Support\Facades\Schema::getTableListing();
-        $output = "-- UrbanPOS Automated Database Backup\n-- Generated: " . date('Y-m-d H:i:s') . "\n\nSET FOREIGN_KEY_CHECKS=0;\n";
+        $gz = gzopen($targetGz, 'w9');
+        gzwrite($gz, "-- UrbanPOS Automated Database Backup\n-- Generated: " . date('Y-m-d H:i:s') . "\n\nSET FOREIGN_KEY_CHECKS=0;\n");
 
         foreach ($tables as $table) {
-            $rows = DB::table($table)->get();
-            $output .= "\n-- Table: `{$table}`\n";
-            foreach ($rows as $row) {
-                $rowArray = (array) $row;
-                $cols = implode('`, `', array_keys($rowArray));
-                $vals = implode(', ', array_map(function ($val) {
-                    return is_null($val) ? 'NULL' : "'" . addslashes((string) $val) . "'";
-                }, array_values($rowArray)));
-                $output .= "INSERT INTO `{$table}` (`{$cols}`) VALUES ({$vals});\n";
+            gzwrite($gz, "\n-- Table: `{$table}`\n");
+            try {
+                DB::table($table)->orderByRaw('1')->chunk(500, function ($rows) use ($gz, $table) {
+                    foreach ($rows as $row) {
+                        $rowArray = (array) $row;
+                        $cols = implode('`, `', array_keys($rowArray));
+                        $vals = implode(', ', array_map(function ($val) {
+                            return is_null($val) ? 'NULL' : "'" . addslashes((string) $val) . "'";
+                        }, array_values($rowArray)));
+                        gzwrite($gz, "INSERT INTO `{$table}` (`{$cols}`) VALUES ({$vals});\n");
+                    }
+                });
+            } catch (\Throwable $e) {
+                // Ignore view or virtual table errors if any
             }
         }
-        $output .= "\nSET FOREIGN_KEY_CHECKS=1;\n";
+        gzwrite($gz, "\nSET FOREIGN_KEY_CHECKS=1;\n");
+        gzclose($gz);
 
-        file_put_contents($targetGz, gzencode($output, 9));
         $this->info("Fallback backup exported to: {$targetGz}");
     }
 
