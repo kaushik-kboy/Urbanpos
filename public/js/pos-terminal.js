@@ -135,15 +135,16 @@
 
     function setupEventListeners() {
         // Scanner Barcode / Query input
-        let searchTimeout = null;
-        scanInput.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
-            clearTimeout(searchTimeout);
-            if (query.length >= 2) {
-                searchTimeout = setTimeout(() => searchItems(query), 180);
-            } else {
-                hideSearchResults();
+        // Mouse click on barcode input opens item lookup popup
+        scanInput.addEventListener('click', (e) => {
+            if (typeof window.openPosItemSearchModal === 'function') {
+                window.openPosItemSearchModal(scanInput.value.trim());
             }
+        });
+
+        // Hide floating dropdown on typing to keep barcode scanning direct and clean
+        scanInput.addEventListener('input', (e) => {
+            hideSearchResults();
         });
 
         // Tab & Enter on scanInput opens item modal or scans (Task 5)
@@ -405,26 +406,36 @@
         const cashSection = document.getElementById('posCashSection');
         const upiSection = document.getElementById('posUpiSection');
         const splitSection = document.getElementById('posSplitSection');
+        const creditSection = document.getElementById('posCreditSection');
         if (!cashSection || !upiSection) return;
 
         if (state.tender_mode === 'Cash') {
             cashSection.style.display = 'block';
             upiSection.style.display = 'none';
             if (splitSection) splitSection.style.display = 'none';
+            if (creditSection) creditSection.style.display = 'none';
         } else if (state.tender_mode === 'UPI') {
             cashSection.style.display = 'none';
             upiSection.style.display = 'block';
             if (splitSection) splitSection.style.display = 'none';
+            if (creditSection) creditSection.style.display = 'none';
             generateUpiQrCode();
+        } else if (state.tender_mode === 'Credit') {
+            cashSection.style.display = 'none';
+            upiSection.style.display = 'none';
+            if (splitSection) splitSection.style.display = 'none';
+            if (creditSection) creditSection.style.display = 'block';
         } else if (state.tender_mode === 'Split') {
             cashSection.style.display = 'none';
             upiSection.style.display = 'none';
             if (splitSection) splitSection.style.display = 'block';
+            if (creditSection) creditSection.style.display = 'none';
             openSplitPaymentModal();
         } else {
             cashSection.style.display = 'none';
             upiSection.style.display = 'none';
             if (splitSection) splitSection.style.display = 'none';
+            if (creditSection) creditSection.style.display = 'none';
         }
     }
 
@@ -1069,15 +1080,13 @@
                 }
             });
 
-            // Enter key in Select2 search field when no results found -> open Add Customer Modal
+            // Enter key in Select2 search field when no results found -> close without auto-opening modal
             $(document).on('keydown', '.select2-search__field', function (e) {
                 if (e.key === 'Enter') {
                     const hasResults = $('.select2-results__option:not(.select2-results__message)').length > 0;
                     if (!hasResults) {
                         e.preventDefault();
-                        const term = lastCustomerSearchTerm || $(this).val() || '';
                         $custSelect.select2('close');
-                        openAddCustomerModalWithTerm(term);
                     }
                 }
             });
@@ -1256,13 +1265,34 @@
         $('#posSelectedCustMobile span').text(customer.mobile || 'No mobile');
         $('#posEditCustomerBtn').attr('data-id', customer.id);
 
-        // Update Pet Name(s) above total invoices
+        // Update Pet Name(s) & Breed Type
         const petSummary = customer.pets_summary || (customer.pets && customer.pets.length ? customer.pets.map(p => p.display || p.name).filter(Boolean).join(', ') : '');
         if (petSummary) {
             $('#posSelectedCustPetsText').text(petSummary);
             $('#posSelectedCustPets').show();
+
+            if (customer.pets && customer.pets.length) {
+                let tbodyHtml = '';
+                customer.pets.forEach(function (p) {
+                    tbodyHtml += `<tr>
+                        <td class="py-1 px-2 font-weight-bold">${escapeHtml(p.name || '—')}</td>
+                        <td class="py-1 px-2 text-primary font-weight-bold">${escapeHtml(p.breed || '—')}</td>
+                        <td class="py-1 px-2 text-muted">${escapeHtml(p.type || 'Pet')}</td>
+                    </tr>`;
+                });
+                $('#posCustPetsTableBody').html(tbodyHtml);
+                $('#posSelectedCustPetsTableContainer').show();
+            } else {
+                $('#posSelectedCustPetsTableContainer').hide();
+            }
         } else {
             $('#posSelectedCustPets').hide();
+            $('#posSelectedCustPetsTableContainer').hide();
+        }
+
+        // Load Customer Favorites
+        if (customer.id) {
+            loadCustomerFavorites(customer.id);
         }
     }
 
@@ -1520,6 +1550,126 @@
         }
     });
 
+    // =========================================================================
+    // Customer Favorite Products (Top Purchased Items)
+    // =========================================================================
+    let currentCustomerFavorites = [];
+    let filteredCustomerFavorites = [];
+
+    async function loadCustomerFavorites(custId) {
+        if (!custId) return;
+        try {
+            const resp = await fetch(`${window.APP_URL || ''}/pos/customer-favorites/${custId}`);
+            const data = await resp.json();
+            if (data && data.success) {
+                currentCustomerFavorites = data.items || [];
+                filteredCustomerFavorites = [...currentCustomerFavorites];
+                $('#posCustomerFavoritesCount').text(currentCustomerFavorites.length ? `⭐ ${currentCustomerFavorites.length}` : '⭐ 0');
+            }
+        } catch (e) {
+            console.error('Failed to load customer favorites', e);
+        }
+    }
+
+    function openCustomerFavoritesModal() {
+        const custId = $('#posCustomerSelect').val() || $('#posCustId').val();
+        if (!custId) {
+            alert('Please select a customer first.');
+            return;
+        }
+
+        $('#cfmSearchInput').val('');
+        $('#cfmLoadingState').removeClass('d-none');
+        $('#cfmEmptyState').addClass('d-none');
+        $('#cfmTableContainer').addClass('d-none');
+        $('#posCustomerFavoritesModal').modal('show');
+
+        fetch(`${window.APP_URL || ''}/pos/customer-favorites/${custId}`)
+            .then(res => res.json())
+            .then(data => {
+                $('#cfmLoadingState').addClass('d-none');
+                currentCustomerFavorites = (data && data.items) ? data.items : [];
+                filteredCustomerFavorites = [...currentCustomerFavorites];
+                $('#posCustomerFavoritesCount').text(currentCustomerFavorites.length ? `⭐ ${currentCustomerFavorites.length}` : '⭐ 0');
+                renderCustomerFavoritesTable();
+            })
+            .catch(err => {
+                $('#cfmLoadingState').addClass('d-none');
+                $('#cfmEmptyState').removeClass('d-none');
+                console.error(err);
+            });
+    }
+
+    function renderCustomerFavoritesTable() {
+        const $tbody = $('#cfmTableBody');
+        $tbody.empty();
+
+        if (filteredCustomerFavorites.length === 0) {
+            $('#cfmEmptyState').removeClass('d-none');
+            $('#cfmTableContainer').addClass('d-none');
+            return;
+        }
+
+        $('#cfmEmptyState').addClass('d-none');
+        $('#cfmTableContainer').removeClass('d-none');
+
+        filteredCustomerFavorites.forEach(function (itm, idx) {
+            const stockVal = parseFloat(itm.stock || 0);
+            const stockBadge = stockVal > 0 
+                ? `<span class="badge badge-success px-2 py-1">${stockVal.toFixed(0)}</span>`
+                : `<span class="badge badge-danger px-2 py-1">0</span>`;
+
+            const itemJson = JSON.stringify(itm).replace(/"/g, '&quot;');
+            const rowHtml = `<tr>
+                <td class="text-center align-middle">${idx + 1}</td>
+                <td class="align-middle font-weight-bold text-dark">${escapeHtml(itm.name)}</td>
+                <td class="text-center align-middle font-weight-bold text-monospace">${escapeHtml(itm.item_code || itm.ean_upc_code || '—')}</td>
+                <td class="text-right align-middle font-weight-bold text-success">₹${parseFloat(itm.sell_price || 0).toFixed(2)}</td>
+                <td class="text-center align-middle">${stockBadge}</td>
+                <td class="text-center align-middle font-weight-bold text-dark bg-warning-light">${parseFloat(itm.total_qty || 0).toFixed(1)}</td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-primary btn-xs px-2 py-1 btn-add-fav-to-cart" data-item="${itemJson}">
+                        <i class="fas fa-plus mr-1"></i> Add
+                    </button>
+                </td>
+            </tr>`;
+            $tbody.append(rowHtml);
+        });
+    }
+
+    $(document).on('click', '#posViewCustomerFavoritesBtn', function (e) {
+        e.preventDefault();
+        openCustomerFavoritesModal();
+    });
+
+    $(document).on('input', '#cfmSearchInput', function () {
+        const q = $(this).val().toLowerCase().trim();
+        filteredCustomerFavorites = currentCustomerFavorites.filter(item => {
+            return (item.name && item.name.toLowerCase().includes(q)) ||
+                   (item.item_code && item.item_code.toLowerCase().includes(q)) ||
+                   (item.ean_upc_code && item.ean_upc_code.toLowerCase().includes(q));
+        });
+        renderCustomerFavoritesTable();
+    });
+
+    $(document).on('click', '.btn-add-fav-to-cart', function (e) {
+        e.preventDefault();
+        const raw = $(this).attr('data-item');
+        if (raw) {
+            try {
+                const itemData = JSON.parse(raw);
+                addItemToCart(itemData);
+                const $btn = $(this);
+                $btn.removeClass('btn-primary').addClass('btn-success').html('<i class="fas fa-check mr-1"></i> Added');
+                setTimeout(() => {
+                    $btn.removeClass('btn-success').addClass('btn-primary').html('<i class="fas fa-plus mr-1"></i> Add');
+                }, 1200);
+            } catch (err) {
+                console.error('Error parsing item data', err);
+            }
+        }
+    });
+
     // Customer Loyalty Load
     async function loadCustomerLoyalty(custId) {
         const badge = document.getElementById('posLoyaltyBadge');
@@ -1691,6 +1841,8 @@
             }
         } else if (state.tender_mode === 'Card') {
             payments.push({ tender_type_id: cardTender.id, amount: totals.grandTotal });
+        } else if (state.tender_mode === 'Credit') {
+            payments.push({ tender_type_id: creditTender.id, amount: totals.grandTotal });
         } else if (state.tender_mode === 'UPI') {
             let walletValueId = null;
             if (walletTender && walletTender.values && walletTender.values.length) {
@@ -1830,6 +1982,11 @@
             else if (e.altKey && e.code === 'KeyD') {
                 e.preventDefault();
                 document.querySelector('[data-mode="Card"]')?.click();
+            }
+            // ALT+E: Credit
+            else if (e.altKey && (e.code === 'KeyE' || e.key === 'e' || e.key === 'E')) {
+                e.preventDefault();
+                document.querySelector('[data-mode="Credit"]')?.click();
             }
             // ALT+S: Split
             else if (e.altKey && (e.code === 'KeyS' || e.key === 's' || e.key === 'S')) {
@@ -2015,7 +2172,7 @@
                 let qtyBadge = isOutOfStock
                     ? `<span class="badge badge-danger px-2 py-1">0 (Out)</span>`
                     : (stockNum <= 0 && isAllowNeg
-                        ? `<span class="badge badge-warning px-2 py-1">${stockNum} (Allow Neg)</span>`
+                        ? `<span class="badge badge-warning px-2 py-1 font-weight-bold">0</span>`
                         : `<span class="badge badge-success px-2 py-1 font-weight-bold">${stockNum}</span>`);
 
                 let isBlocked = isOutOfStock || isExpired;

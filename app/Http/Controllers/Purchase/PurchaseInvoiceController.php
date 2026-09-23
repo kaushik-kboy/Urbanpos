@@ -776,6 +776,31 @@ class PurchaseInvoiceController extends Controller
         ];
     }
 
+    public function checkSupplierInv(Request $request)
+    {
+        $supplierId = $request->query('supplier_id');
+        $invNo = strtoupper(trim((string) $request->query('supplier_inv_no')));
+        $ignoreId = $request->query('ignore_id');
+
+        if (!$supplierId || !$invNo) {
+            return response()->json([
+                'is_duplicate' => false,
+            ]);
+        }
+
+        $isDuplicate = PurchaseInvoice::where('supplier_id', $supplierId)
+            ->where('supplier_inv_no', $invNo)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists();
+
+        return response()->json([
+            'is_duplicate' => $isDuplicate,
+            'message' => $isDuplicate 
+                ? "Supplier Invoice Number '{$invNo}' is already recorded for this supplier."
+                : null,
+        ]);
+    }
+
     private function validateData(Request $request, ?int $id = null): array
     {
         if ($request->filled('supplier_inv_no')) {

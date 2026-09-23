@@ -76,12 +76,14 @@
             <!-- Barcode Scanner Bar -->
             <div class="pos-scan-bar" id="posScannerContainer">
                 <div class="pos-scanner-input-group d-flex align-items-center">
-                    <i class="fas fa-barcode pos-scanner-icon"></i>
-                    <input type="text" id="posScanInput" class="pos-scanner-input flex-grow-1" placeholder="Scan Barcode or Search Item Name / SKU / Code... (Press F2 for Item List)" autocomplete="off" autofocus>
-                    <button type="button" class="btn btn-primary btn-sm px-3 ml-2 font-weight-bold shadow-sm text-nowrap" id="pos-btn-item-lookup" onclick="if(window.openPosItemSearchModal) window.openPosItemSearchModal();" title="Open Item List Popup (F2)" style="border-radius: 6px; height: 38px;">
+                    <div class="pos-scanner-field-wrapper position-relative flex-grow-1">
+                        <i class="fas fa-barcode pos-scanner-icon"></i>
+                        <input type="text" id="posScanInput" class="pos-scanner-input w-100" placeholder="Scan Barcode or Search Item Name / SKU / Code... (Click or Press F2 for Item List)" autocomplete="off" autofocus>
+                        <span class="pos-scanner-tag"><i class="fas fa-bolt text-warning mr-1"></i>Auto Scan</span>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm px-3 ml-2 font-weight-bold shadow-sm text-nowrap d-flex align-items-center" id="pos-btn-item-lookup" onclick="if(window.openPosItemSearchModal) window.openPosItemSearchModal();" title="Open Item List Popup (F2)" style="border-radius: 8px; height: 48px; font-size: 0.95rem;">
                         <i class="fas fa-search-plus mr-1"></i> Item List (F2)
                     </button>
-                    <span class="pos-scanner-tag ml-2"><i class="fas fa-bolt text-warning mr-1"></i>Auto Scan</span>
                 </div>
                 <!-- Live Search Suggestions Dropdown -->
                 <div id="posSearchResults" class="pos-search-results"></div>
@@ -164,9 +166,6 @@
                     <label class="font-weight-bold text-muted small text-uppercase mb-0">
                         <i class="fas fa-user mr-1 text-primary"></i> Customer
                     </label>
-                    <button type="button" id="posHeaderNewCustBtn" class="btn btn-outline-primary btn-xs font-weight-bold shadow-none px-2" style="border-radius: 4px;">
-                        <i class="fas fa-user-plus mr-1"></i> + New Customer
-                    </button>
                 </div>
 
                 <!-- Customer Search Select (ALWAYS VISIBLE as in Sales Bill) -->
@@ -191,36 +190,71 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-center">
-                            <button type="button" id="posEditCustomerBtn" class="btn btn-xs btn-outline-primary font-weight-bold px-2 py-1 shadow-none" title="Edit Customer Details">
-                                <i class="fas fa-edit mr-1"></i> Edit
+                            <button type="button" id="posEditCustomerBtn" class="btn btn-sm btn-outline-primary p-1 shadow-none" title="Edit Customer Details" style="width: 32px; height: 32px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-edit" style="font-size: 0.95rem;"></i>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Customer Pet Details (Above Invoices) -->
+                    <!-- Customer Pet Details (Above Invoices & Favorites) -->
                     @php
-                        $defaultPetSummary = $defaultCustomer && $defaultCustomer->pets ? $defaultCustomer->pets->map(fn($p) => $p->name ? ($p->petType ? "{$p->name} ({$p->petType->name})" : $p->name) : ($p->petType?->name ?? 'Pet'))->filter()->implode(', ') : '';
+                        $defaultPetSummary = $defaultCustomer && $defaultCustomer->pets ? $defaultCustomer->pets->map(fn($p) => $p->name ? ($p->breed?->name ? "{$p->name} ({$p->breed->name})" : ($p->petType?->name ? "{$p->name} ({$p->petType->name})" : $p->name)) : ($p->breed?->name ?? ($p->petType?->name ?? 'Pet')))->filter()->implode(', ') : '';
                     @endphp
                     <div id="posSelectedCustPets" class="pos-selected-cust-pets mt-2 pt-2 border-top" style="{{ $defaultPetSummary ? '' : 'display: none;' }}">
-                        <div class="d-flex align-items-center text-dark small">
+                        <div class="d-flex align-items-center text-dark small mb-1">
                             <i class="fas fa-paw text-warning mr-2" style="font-size: 0.95rem;"></i>
-                            <span class="font-weight-600 text-muted mr-1">Pet:</span>
+                            <span class="font-weight-600 text-muted mr-1">Pet & Breed:</span>
                             <span class="font-weight-bold text-dark text-truncate" id="posSelectedCustPetsText">
                                 {{ $defaultPetSummary }}
                             </span>
                         </div>
+                        <div id="posSelectedCustPetsTableContainer" class="mt-1" style="{{ $defaultCustomer && $defaultCustomer->pets && $defaultCustomer->pets->count() > 0 ? '' : 'display: none;' }}">
+                            <table class="table table-xs table-bordered table-striped mb-0 text-dark small" id="posCustPetsMiniTable" style="font-size: 0.78rem;">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="py-1 px-2">Pet Name</th>
+                                        <th class="py-1 px-2">Breed Type</th>
+                                        <th class="py-1 px-2">Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="posCustPetsTableBody">
+                                    @if($defaultCustomer && $defaultCustomer->pets)
+                                        @foreach($defaultCustomer->pets as $pet)
+                                            <tr>
+                                                <td class="py-1 px-2 font-weight-bold">{{ $pet->name ?: '—' }}</td>
+                                                <td class="py-1 px-2 text-primary">{{ $pet->breed?->name ?: '—' }}</td>
+                                                <td class="py-1 px-2 text-muted">{{ $pet->petType?->name ?: 'Pet' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    @endif
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Total Invoices Button / Section -->
+                <!-- Customer Quick Actions: Invoices & Favorites -->
                 <div id="posCustomerInvoicesSection" class="pos-cust-invoices-section mt-2" style="{{ $defaultCustomer ? '' : 'display: none;' }}">
-                    <button type="button" id="posViewCustomerInvoicesBtn" class="pos-total-invoices-btn w-100 d-flex justify-content-between align-items-center" title="Click to view customer invoices">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-file-invoice text-info mr-2" style="font-size: 1.05rem;"></i>
-                            <span class="font-weight-600 text-dark small">Total Invoices</span>
+                    <div class="row g-1">
+                        <div class="col-6 pr-1">
+                            <button type="button" id="posViewCustomerInvoicesBtn" class="pos-total-invoices-btn w-100 d-flex justify-content-between align-items-center py-1 px-2" title="Click to view customer invoices">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-file-invoice text-info mr-1" style="font-size: 0.95rem;"></i>
+                                    <span class="font-weight-600 text-dark small">Invoices</span>
+                                </div>
+                                <span class="badge badge-light border font-weight-bold text-dark px-1" id="posCustomerTotalInvoicesCount">0</span>
+                            </button>
                         </div>
-                        <span class="badge badge-light border font-weight-bold text-dark px-2 py-1" id="posCustomerTotalInvoicesCount">0</span>
-                    </button>
+                        <div class="col-6 pl-1">
+                            <button type="button" id="posViewCustomerFavoritesBtn" class="pos-total-invoices-btn w-100 d-flex justify-content-between align-items-center py-1 px-2 border-warning" title="Click to view favorite purchased products">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-star text-warning mr-1" style="font-size: 0.95rem;"></i>
+                                    <span class="font-weight-600 text-dark small">Favorites</span>
+                                </div>
+                                <span class="badge badge-warning text-dark font-weight-bold px-1" id="posCustomerFavoritesCount">⭐ Top</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="posLoyaltyBadge" class="badge badge-light border px-2 py-1 mt-2 text-dark font-weight-bold w-100 text-left" style="display: none;">
@@ -272,10 +306,20 @@
                     <i class="fas fa-credit-card text-info"></i>
                     <span>Card (Alt+D)</span>
                 </button>
+                <button type="button" class="pos-tender-btn" data-mode="Credit" id="posTenderCreditBtn">
+                    <i class="fas fa-hand-holding-usd text-danger"></i>
+                    <span>Credit (Alt+E)</span>
+                </button>
                 <button type="button" class="pos-tender-btn" data-mode="Split" id="posTenderSplitBtn">
                     <i class="fas fa-layer-group text-warning"></i>
                     <span>Split (Alt+S)</span>
                 </button>
+            </div>
+
+            <!-- Credit Tender Controls -->
+            <div id="posCreditSection" style="display: none;" class="p-3 bg-light rounded border mb-2 text-center">
+                <div class="text-danger font-weight-bold mb-1"><i class="fas fa-hand-holding-usd mr-1"></i> Customer Credit Sale</div>
+                <div class="small text-muted">The bill amount will be debited to customer's account balance.</div>
             </div>
 
             <!-- Cash Tender Controls -->
@@ -830,6 +874,71 @@
     </div>
 </div>
 
+<!-- Customer Favorite Products Modal -->
+<div class="modal fade" id="posCustomerFavoritesModal" tabindex="-1" role="dialog" aria-labelledby="posCustomerFavoritesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document" style="max-width: 840px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="modal-title font-weight-bold mb-0 text-white" id="posCustomerFavoritesModalLabel">
+                        <i class="fas fa-star text-warning mr-2"></i>Favorite Products Purchased
+                    </h5>
+                    <small class="text-light" id="cfmSubtitle">Customer's top purchased items (Click "+ Add" to add to current bill)</small>
+                </div>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="outline: none;">
+                    <span aria-hidden="true" style="font-size: 1.5rem;">&times;</span>
+                </button>
+            </div>
+            
+            <div class="modal-body p-3">
+                <!-- Search Filter in Favorites -->
+                <div class="input-group input-group-sm mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                    </div>
+                    <input type="text" id="cfmSearchInput" class="form-control" placeholder="Filter favorite items by name or code..." autocomplete="off">
+                </div>
+
+                <!-- Loading State -->
+                <div id="cfmLoadingState" class="text-center py-4 d-none">
+                    <i class="fas fa-circle-notch fa-spin fa-2x text-warning"></i>
+                    <p class="mt-2 text-muted small">Loading favorite products...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="cfmEmptyState" class="text-center py-4 d-none">
+                    <i class="fas fa-shopping-basket fa-2x text-muted mb-2"></i>
+                    <p class="text-muted small mb-0">No purchase history found for this customer.</p>
+                </div>
+
+                <!-- Favorites Table -->
+                <div class="table-responsive" id="cfmTableContainer" style="max-height: 420px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="cfmTable">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 40px;" class="text-center">#</th>
+                                <th>Product Name</th>
+                                <th style="width: 120px;" class="text-center">Code</th>
+                                <th style="width: 100px;" class="text-right">Price</th>
+                                <th style="width: 90px;" class="text-center">Stock</th>
+                                <th style="width: 130px;" class="text-center bg-warning text-dark font-weight-bold">Purchased Qty</th>
+                                <th style="width: 90px;" class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cfmTableBody">
+                            <!-- Populated via AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 px-4 pb-3 pt-0 justify-content-end">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Item Search & Selection Modal (F2) -->
 <div class="modal fade" id="pos-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="posItemSearchLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
@@ -1091,7 +1200,19 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    window.APP_URL = "{{ url('/') }}";
+    window.APP_URL = (function() {
+        var url = "{{ url('/') }}";
+        if (window.location.protocol === 'https:' && url.indexOf('http:') === 0) {
+            url = url.replace(/^http:/, 'https:');
+        }
+        try {
+            var u = new URL(url);
+            if (u.hostname !== window.location.hostname) {
+                return window.location.origin + u.pathname.replace(/\/+$/, '');
+            }
+        } catch (e) {}
+        return url.replace(/\/+$/, '');
+    })();
     window.CSRF_TOKEN = "{{ csrf_token() }}";
     window.STORE_NAME = "{{ config('app.name', 'UrbanPOS') }}";
     window.POS_LOCK_VERIFY_URL = "{{ route('pos.verify-pin') }}";

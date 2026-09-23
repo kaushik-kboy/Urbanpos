@@ -9,12 +9,30 @@
     const LATENCY_CRITICAL_THRESHOLD = 3000;   // ms
     const LATENCY_FAIR_THRESHOLD = 600;        // ms
     const PING_INTERVAL = 30000;               // 30s
-    const PING_URL = (window.APP_URL ? window.APP_URL.replace(/\/$/, '') : '') + '/pos-ping';
 
     let lastLatency = null;
     let currentStatus = 'optimal'; // optimal | fair | slow | offline
     let isChecking = false;
     let pingTimer = null;
+    let consecutiveFailures = 0;
+    const MAX_FAILURES_BEFORE_OFFLINE = 2;
+
+    function getPingUrl() {
+        const origin = window.location.origin;
+        let base = window.APP_URL ? window.APP_URL.replace(/\/+$/, '') : origin;
+        if (window.location.protocol === 'https:' && base.startsWith('http:')) {
+            base = base.replace(/^http:/, 'https:');
+        }
+        try {
+            const parsed = new URL(base, origin);
+            if (parsed.hostname !== window.location.hostname) {
+                return origin + parsed.pathname.replace(/\/+$/, '') + '/pos-ping';
+            }
+            return parsed.origin + parsed.pathname.replace(/\/+$/, '') + '/pos-ping';
+        } catch (e) {
+            return origin + '/pos-ping';
+        }
+    }
 
     function classifyLatency(ms) {
         if (ms === null || ms === undefined || isNaN(ms)) return 'offline';
@@ -37,7 +55,12 @@
             banner.style.display = 'flex';
             if (iconEl) iconEl.className = 'fas fa-exclamation-triangle fa-2x text-danger mr-3 animate-pulse';
             if (titleEl) titleEl.textContent = 'Network Disconnected / Offline';
-            if (descEl) descEl.textContent = 'Cannot reach the UrbanPOS server. Please verify your internet/Wi-Fi connection before saving bills.';
+            if (descEl) {
+                const isPos = window.location.pathname.includes('/pos');
+                descEl.textContent = isPos
+                    ? 'Cannot reach the UrbanPOS server. Please verify your internet/Wi-Fi connection before saving bills.'
+                    : 'Cannot reach the UrbanPOS server. Please verify your internet/Wi-Fi connection.';
+            }
             if (badgeEl) {
                 badgeEl.className = 'badge badge-danger px-2 py-1 ml-auto font-weight-bold';
                 badgeEl.textContent = 'OFFLINE';
@@ -93,11 +116,16 @@
         if (isChecking) return;
 
         if (!navigator.onLine) {
+            consecutiveFailures = MAX_FAILURES_BEFORE_OFFLINE;
             lastLatency = null;
             currentStatus = 'offline';
             updateBannerUI('offline', null);
             updateIndicatorUI('offline', null);
             dispatchLatencyEvent(null, 'offline');
+            return;
+        }
+
+        if (document.visibilityState === 'hidden') {
             return;
         }
 
@@ -110,8 +138,9 @@
         const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         try {
-            const separator = PING_URL.includes('?') ? '&' : '?';
-            const response = await fetch(`${PING_URL}${separator}_t=${Date.now()}`, {
+            const pingUrl = getPingUrl();
+            const separator = pingUrl.includes('?') ? '&' : '?';
+            const response = await fetch(`${pingUrl}${separator}_t=${Date.now()}`, {
                 method: 'GET',
                 cache: 'no-store',
                 headers: {
@@ -128,6 +157,7 @@
             }
 
             const elapsed = Math.round(performance.now() - startTime);
+            consecutiveFailures = 0;
             lastLatency = elapsed;
             currentStatus = classifyLatency(elapsed);
 
@@ -136,11 +166,27 @@
             dispatchLatencyEvent(elapsed, currentStatus);
         } catch (err) {
             clearTimeout(timeoutId);
-            lastLatency = null;
-            currentStatus = 'offline';
-            updateBannerUI('offline', null);
-            updateIndicatorUI('offline', null);
-            dispatchLatencyEvent(null, 'offline');
+
+            if (err.name === 'AbortError' && document.visibilityState === 'hidden') {
+                return;
+            }
+
+            consecutiveFailures++;
+
+            if (consecutiveFailures >= MAX_FAILURES_BEFORE_OFFLINE || !navigator.onLine) {
+                lastLatency = null;
+                currentStatus = 'offline';
+                updateBannerUI('offline', null);
+                updateIndicatorUI('offline', null);
+                dispatchLatencyEvent(null, 'offline');
+            } else {
+                // First failure: retry once after 1200ms before sounding false alarm
+                setTimeout(() => {
+                    if (!isChecking && consecutiveFailures > 0 && consecutiveFailures < MAX_FAILURES_BEFORE_OFFLINE) {
+                        checkLatency();
+                    }
+                }, 1200);
+            }
         } finally {
             isChecking = false;
             if (btnRetry) btnRetry.disabled = false;

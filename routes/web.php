@@ -154,6 +154,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
 });
 
 Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () use ($gatedResource) {
+    Route::get('purchase-invoices/check-supplier-inv', [PurchaseInvoiceController::class, 'checkSupplierInv'])->name('purchase-invoices.check-supplier-inv');
     Route::get('purchase-invoices/item-list', [PurchaseInvoiceController::class, 'itemList'])->name('purchase-invoices.item-list');
     Route::get('purchase-invoices/lookup-item', [PurchaseInvoiceController::class, 'lookupItem'])->name('purchase-invoices.lookup-item');
     Route::get('purchase-invoices/item-details/{item}', [PurchaseInvoiceController::class, 'itemDetails'])->name('purchase-invoices.item-details');
@@ -274,6 +275,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
 });
 
 Route::middleware('auth')->get('pos', [\App\Http\Controllers\Sales\SalesBillController::class, 'posTerminal'])->name('pos.terminal');
+Route::middleware('auth')->get('pos/customer-favorites/{customerId}', [\App\Http\Controllers\Sales\SalesBillController::class, 'customerFavorites'])->name('pos.customer-favorites');
 Route::middleware('auth')->post('pos/verify-pin', [\App\Http\Controllers\Pos\PosLockController::class, 'verifyPin'])->name('pos.verify-pin');
 Route::middleware('auth')->post('pos/update-pin', [\App\Http\Controllers\Pos\PosLockController::class, 'updatePin'])->name('pos.update-pin');
 

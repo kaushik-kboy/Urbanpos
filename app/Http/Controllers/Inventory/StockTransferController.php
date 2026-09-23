@@ -316,7 +316,10 @@ class StockTransferController extends Controller
         }
 
         $limit  = 100;
-        $where  = ['i.status = 1'];
+        $where  = [
+            'i.status = 1',
+            'COALESCE(st.quantity, 0) > 0',
+        ];
         $params = [$branchId, $branchId];
 
         $orderSql    = 'i.name ASC';
@@ -457,6 +460,9 @@ class StockTransferController extends Controller
         $branchId = (int) $request->input('branch_id');
 
         $items = Item::where('status', true)
+            ->whereHas('stocks', function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId)->where('quantity', '>', 0);
+            })
             ->with([
                 'gstTax',
                 'brand',
@@ -482,6 +488,7 @@ class StockTransferController extends Controller
                 'code' => $item->ean_upc_code ?: ($item->item_code ?: ''),
                 'brand' => $item->brand?->name ?? '-',
                 'available_qty' => (float) ($stock?->quantity ?? 0),
+                'exp_date' => $this->resolveItemExpiry($item, $stock),
             ];
         }));
     }
@@ -509,6 +516,22 @@ class StockTransferController extends Controller
         }
 
         $stock = $item->stocks->first();
+        $avail = (float) ($stock?->quantity ?? 0);
+        if ($avail <= 0) {
+            return response()->json([
+                'found' => false,
+                'error' => "Product '{$item->name}' has 0 available stock in this branch. Cannot transfer.",
+            ]);
+        }
+
+        $expDate = $this->resolveItemExpiry($item, $stock);
+        if ($expDate && $expDate < now()->toDateString()) {
+            return response()->json([
+                'found' => false,
+                'error' => "Product '{$item->name}' has expired on {$expDate}. Transfer of expired items is not permitted.",
+            ]);
+        }
+
         $displayCode = $item->ean_upc_code ?: ($item->item_code ? "Item: {$item->item_code}" : "");
         $codeStr = $displayCode ? " [{$displayCode}]" : "";
 
@@ -519,9 +542,34 @@ class StockTransferController extends Controller
                 'name' => $item->name,
                 'text' => "{$item->name}{$codeStr}",
                 'code' => $item->ean_upc_code ?: ($item->item_code ?: ''),
-                'available_qty' => (float) ($stock?->quantity ?? 0),
+                'available_qty' => $avail,
+                'exp_date' => $expDate,
             ],
         ]);
+    }
+
+    private function resolveItemExpiry(Item $item, ?ItemStock $stock): ?string
+    {
+        if (!empty($stock?->exp_date) && (string)$stock->exp_date !== '0000-00-00') {
+            try {
+                return \Carbon\Carbon::parse($stock->exp_date)->format('Y-m-d');
+            } catch (\Throwable) {}
+        }
+
+        $fbExp = DB::table('purchase_invoice_items')
+            ->where('item_id', $item->id)
+            ->whereNotNull('exp_date')
+            ->whereNotIn('exp_date', ['', '0000-00-00'])
+            ->orderBy('id', 'desc')
+            ->value('exp_date');
+
+        if ($fbExp) {
+            try {
+                return \Carbon\Carbon::parse($fbExp)->format('Y-m-d');
+            } catch (\Throwable) {}
+        }
+
+        return null;
     }
 
     private function nextNumber(): string
@@ -540,6 +588,24 @@ class StockTransferController extends Controller
 
     private function validateData(Request $request): array
     {
+        // 1. Pre-normalize transfer_date (handles DD/MM/YYYY and DDMMYYYY)
+        if ($request->filled('transfer_date')) {
+            $request->merge(['transfer_date' => $this->normalizeDate($request->input('transfer_date'))]);
+        }
+
+        // 2. Pre-filter items to drop empty rows and pre-normalize exp_date before validation
+        if ($request->has('items') && is_array($request->input('items'))) {
+            $filteredItems = array_values(array_filter($request->input('items'), function ($line) {
+                return !empty($line['item_id']) && (!isset($line['qty']) || (float)$line['qty'] > 0);
+            }));
+            foreach ($filteredItems as $k => $item) {
+                if (!empty($item['exp_date'])) {
+                    $filteredItems[$k]['exp_date'] = $this->normalizeDate($item['exp_date']);
+                }
+            }
+            $request->merge(['items' => $filteredItems]);
+        }
+
         $today = date('Y-m-d');
         $headerRules = [
             'transfer_date' => ['required', 'date', "before_or_equal:{$today}"],

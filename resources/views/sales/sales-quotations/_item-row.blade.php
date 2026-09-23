@@ -59,7 +59,7 @@
         <input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm sq-disc-amount text-right" autocomplete="off" placeholder="0.00">
     </td>
     <td style="width: 85px;">
-        <input type="number" step="0.01" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm sq-gst-percent text-right" autocomplete="off" placeholder="0%">
+        <input type="number" step="0.01" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" readonly tabindex="-1" class="form-control form-control-sm sq-gst-percent text-right bg-light" autocomplete="off" placeholder="0%" title="GST % (Read-only)">
     </td>
     <td style="width: 120px;" class="text-right align-middle font-weight-bold text-success sq-row-net">{{ $netAmtVal }}</td>
     <td style="width: 35px;" class="text-center align-middle">

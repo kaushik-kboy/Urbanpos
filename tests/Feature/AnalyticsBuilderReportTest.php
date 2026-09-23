@@ -250,7 +250,8 @@ class AnalyticsBuilderReportTest extends TestCase
         ]));
 
         $response->assertOk();
-        $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
+        $contentType = $response->headers->get('Content-Type') ?? '';
+        $this->assertTrue(str_contains($contentType, 'application/vnd.ms-excel') || str_contains($contentType, 'text/csv'));
         $this->assertStringContainsString('attachment;', $response->headers->get('Content-Disposition'));
     }
 

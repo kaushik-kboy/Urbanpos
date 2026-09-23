@@ -140,7 +140,7 @@
                             </div>
                             <div class="mt-2 mt-md-0">
                                 <button type="button" class="btn btn-outline-success btn-sm font-weight-bold mr-1" id="btn-export-item-csv">
-                                    <i class="fas fa-file-excel mr-1"></i> Export to Excel / CSV
+                                    <i class="fas fa-file-excel mr-1"></i> Export to Excel (.xls)
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                                     <i class="fas fa-print mr-1"></i> Print

@@ -26,7 +26,7 @@
                 <x-field name="currency" label="Currency" :value="$s->currency ?? 'INR'" />
             </div>
             <div class="field-wrapper col-md-6" data-field="purchase_type" data-label="Purchase Type" data-default-order="3" data-core="1">
-                <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate', 'Import' => 'Import']" :selected="$s->purchase_type ?? 'Local'" />
+                <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$s->purchase_type ?? 'Local'" />
             </div>
             <div class="field-wrapper col-md-6" data-field="purchase_mode" data-label="Purchase Mode" data-default-order="4">
                 <x-select name="purchase_mode" label="Purchase Mode" :options="['Credit' => 'Credit', 'Cash' => 'Cash', 'Consignment' => 'Consignment']" :selected="$s->purchase_mode ?? 'Credit'" />
@@ -281,6 +281,20 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof initIndianStateCity === 'function') {
         initIndianStateCity('#state', '#city', '{{ old('state', $s->state ?? '') }}', '{{ old('city', $s->city ?? '') }}');
     }
+
+    // Auto-update Purchase Type based on GST number state code (24 = Local, other = Interstate)
+    function updatePurchaseTypeFromGst() {
+        var gst = ($('#gst_no').val() || '').trim();
+        if (gst.length >= 2) {
+            var stateCode = gst.substring(0, 2);
+            if (stateCode === '24') {
+                $('#purchase_type').val('Local').trigger('change');
+            } else if (/^\d{2}$/.test(stateCode)) {
+                $('#purchase_type').val('Interstate').trigger('change');
+            }
+        }
+    }
+    $('#gst_no').on('input change blur', updatePurchaseTypeFromGst);
 });
 </script>
 <script src="{{ asset('js/indian-states-cities.js') }}"></script>

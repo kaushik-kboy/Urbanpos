@@ -75,7 +75,7 @@
     <td><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][mrp]" value="{{ $mrp }}" class="form-control form-control-sm po-mrp text-right" placeholder="0.00" autocomplete="off"></td>
     <td><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][disc_percent]" value="{{ $discPercent }}" class="form-control form-control-sm po-disc-percent text-right" placeholder="0" autocomplete="off"></td>
     <td><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][disc_amount]" value="{{ $discAmount }}" class="form-control form-control-sm po-disc-amount text-right" placeholder="0.00" autocomplete="off"></td>
-    <td><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][gst_percent]" value="{{ $gstPercent }}" class="form-control form-control-sm po-gst text-right" placeholder="0" autocomplete="off"></td>
+    <td><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][gst_percent]" value="{{ $gstPercent }}" readonly tabindex="-1" class="form-control form-control-sm po-gst text-right bg-light" placeholder="0" autocomplete="off" title="GST % (Read-only)"></td>
     <td class="text-right align-middle font-weight-bold text-success" style="width:115px;">
         ₹<span class="po-row-net">0.00</span>
     </td>

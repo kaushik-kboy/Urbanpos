@@ -17,6 +17,30 @@ class Controller extends BaseController
      */
     protected function normalizeDate(?string $value): ?string
     {
-        return $value ? \Illuminate\Support\Carbon::parse($value)->format('Y-m-d') : null;
+        if (empty($value)) {
+            return null;
+        }
+        $v = trim((string) $value);
+        if (empty($v)) {
+            return null;
+        }
+
+        // 8 digits like 10012026 (DDMMYYYY)
+        if (preg_match('/^(\d{2})(\d{2})(\d{4})$/', $v, $m)) {
+            return "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+
+        // Separated DD/MM/YYYY or DD-MM-YYYY
+        if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/', $v, $m)) {
+            $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+            return "{$m[3]}-{$month}-{$day}";
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($v)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return $v;
+        }
     }
 }

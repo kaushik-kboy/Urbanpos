@@ -41,14 +41,14 @@
 
                     <div class="field-wrapper col-md-2 col-sm-6 mb-3" data-field="indent_date" data-label="Indent Date" data-default-order="2" data-core="1">
                         <label class="font-weight-bold">Indent Date <span class="text-danger">*</span></label>
-                        <input type="date" name="indent_date" id="indent_date" class="form-control form-control-sm"
-                               value="{{ old('indent_date', now()->format('Y-m-d')) }}" required>
+                        <input type="text" name="indent_date" id="indent_date" class="form-control form-control-sm datepicker"
+                               value="{{ old('indent_date', now()->format('Y-m-d')) }}" placeholder="DD/MM/YYYY or YYYY-MM-DD" required autocomplete="off">
                     </div>
 
                     <div class="field-wrapper col-md-2 col-sm-6 mb-3" data-field="required_by_date" data-label="Required By Date" data-default-order="3">
                         <label class="font-weight-bold">Required By Date</label>
-                        <input type="date" name="required_by_date" id="required_by_date" class="form-control form-control-sm"
-                               value="{{ old('required_by_date', now()->addDays(3)->format('Y-m-d')) }}">
+                        <input type="text" name="required_by_date" id="required_by_date" class="form-control form-control-sm datepicker"
+                               value="{{ old('required_by_date', now()->addDays(3)->format('Y-m-d')) }}" placeholder="DD/MM/YYYY or YYYY-MM-DD" autocomplete="off">
                     </div>
 
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="department" data-label="Department" data-default-order="4" data-core="1">
@@ -90,13 +90,14 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th style="width: 40px;" class="text-center">#</th>
-                                        <th style="min-width: 260px;">Item / Product <span class="text-danger">*</span></th>
-                                        <th style="width: 120px;" class="text-center">Branch Stock</th>
-                                        <th style="width: 130px;">Req. Qty <span class="text-danger">*</span></th>
-                                        <th style="width: 130px;">Est. Unit Cost (₹)</th>
-                                        <th style="width: 140px;" class="text-right">Est. Total (₹)</th>
+                                        <th style="width: 140px;">Code / Barcode <span class="text-danger">*</span></th>
+                                        <th style="min-width: 240px;">Item Description</th>
+                                        <th style="width: 110px;" class="text-center">Branch Stock</th>
+                                        <th style="width: 120px;">Req. Qty <span class="text-danger">*</span></th>
+                                        <th style="width: 120px;">Est. Unit Cost (₹)</th>
+                                        <th style="width: 130px;" class="text-right">Est. Total (₹)</th>
                                         <th>Reason / Note</th>
-                                        <th style="width: 50px;" class="text-center"></th>
+                                        <th style="width: 45px;" class="text-center"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="indent-items-body">
@@ -147,15 +148,12 @@
     <template id="indent-row-template">
         <tr class="indent-row" data-index="__INDEX__">
             <td class="text-center align-middle row-number">__NUM__</td>
-            <td>
-                <select name="items[__INDEX__][item_id]" class="form-control form-control-sm item-select" required>
-                    <option value="">-- Choose Item --</option>
-                    @foreach ($items as $itm)
-                        <option value="{{ $itm->id }}" data-cost="{{ $itm->cost_price }}" data-code="{{ $itm->item_code }}">
-                            {{ $itm->item_code }} - {{ $itm->name }}
-                        </option>
-                    @endforeach
-                </select>
+            <td style="min-width: 130px;">
+                <input type="text" class="form-control form-control-sm indent-item-code font-weight-bold" placeholder="Code / Barcode" autocomplete="off" title="Enter item code, or click to search">
+            </td>
+            <td style="min-width: 220px;">
+                <input type="text" class="form-control form-control-sm indent-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" placeholder="Product Description (auto-filled)">
+                <input type="hidden" name="items[__INDEX__][item_id]" class="indent-item-select" required>
             </td>
             <td class="text-center align-middle">
                 <span class="badge badge-light border stock-badge font-weight-normal px-2 py-1">0.00</span>
@@ -180,91 +178,165 @@
         </tr>
     </template>
 
+    <!-- Item Search Popup Modal -->
+    <div class="modal fade" id="indent-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="indentItemSearchLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h5 class="modal-title" id="indentItemSearchLabel">
+                        <i class="fas fa-search mr-2"></i>Select Item for Requisition
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                </div>
+                                <input type="text" id="indent-isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                                </div>
+                                <input type="text" id="indent-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-right">
+                            <button type="button" id="indent-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-times mr-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div id="indent-isl-loading" class="text-center py-4 d-none">
+                        <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                        <p class="mt-2 text-muted">Loading items…</p>
+                    </div>
+                    <div id="indent-isl-no-results" class="text-center py-4 d-none">
+                        <i class="fas fa-inbox fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">No items found.</p>
+                    </div>
+                    <div class="table-responsive" id="indent-isl-table-wrap" style="max-height: 420px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered table-hover mb-0" id="indent-isl-items-table">
+                            <thead class="bg-dark text-white">
+                                <tr>
+                                    <th class="text-center" style="width: 40px;">#</th>
+                                    <th>Product Name</th>
+                                    <th class="text-center" style="width: 130px;">Code</th>
+                                    <th class="text-right" style="width: 100px;">Cost Price</th>
+                                    <th class="text-right" style="width: 100px;">Sell Price</th>
+                                    <th class="text-right" style="width: 100px;">MRP</th>
+                                    <th class="text-right" style="width: 90px;">Stock</th>
+                                    <th class="text-center" style="width: 80px;">Select</th>
+                                </tr>
+                            </thead>
+                            <tbody id="indent-isl-items-body"></tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted mt-2 d-block" id="indent-isl-count-label"></small>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @push('js')
     <script>
-        (function() {
+        $(document).ready(function () {
             let rowIndex = 0;
+            let activeSearchRow = null;
+            let islDebounce = null;
+            let islCache = {};
+            let islLastKey = null;
+            let islModalOpen = false;
+            let islModalClosing = false;
+            let islSelectedIdx = -1;
+
+            const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
+            const LOOKUP_URL = '{{ route("purchase.purchase-invoices.lookup-item") }}';
+            const STOCK_URL = '{{ route("purchase.purchase-indents.item-stock") }}';
+
             const tbody = document.getElementById('indent-items-body');
             const template = document.getElementById('indent-row-template').innerHTML;
             const branchSelect = document.getElementById('branch_id');
 
-            function addRow(prefillItemId = null, prefillQty = 1) {
+            function addRow(prefillItem = null) {
                 const html = template
                     .replaceAll('__INDEX__', rowIndex)
                     .replaceAll('__NUM__', tbody.children.length + 1);
                 
-                const tr = document.createElement('tbody');
-                tr.innerHTML = html;
-                const newRow = tr.firstElementChild;
-                tbody.appendChild(newRow);
+                const $newRow = $(html);
+                $('#indent-items-body').append($newRow);
 
-                if (prefillItemId) {
-                    const select = newRow.querySelector('.item-select');
-                    select.value = prefillItemId;
-                    newRow.querySelector('.qty-input').value = prefillQty;
-                    onItemChanged(newRow);
+                if (prefillItem && prefillItem.id) {
+                    populateRow($newRow, prefillItem);
                 }
 
                 rowIndex++;
                 reindexRows();
                 calculateTotals();
+                return $newRow;
             }
 
             function reindexRows() {
-                const rows = tbody.querySelectorAll('.indent-row');
-                rows.forEach((row, i) => {
-                    const numCell = row.querySelector('.row-number');
-                    if (numCell) numCell.textContent = i + 1;
+                $('#indent-items-body tr.indent-row').each(function (i) {
+                    $(this).find('.row-number').text(i + 1);
                 });
             }
 
-            function onItemChanged(row) {
-                const select = row.querySelector('.item-select');
-                const itemId = select.value;
-                const branchId = branchSelect.value;
-                const stockBadge = row.querySelector('.stock-badge');
-                const costInput = row.querySelector('.cost-input');
-
+            function fetchLiveStock(itemId, branchId, $badge) {
                 if (!itemId) {
-                    stockBadge.textContent = '0.00';
-                    stockBadge.className = 'badge badge-light border stock-badge font-weight-normal px-2 py-1';
-                    costInput.value = '';
-                    calculateRowTotal(row);
+                    $badge.text('0.00').attr('class', 'badge badge-light border stock-badge font-weight-normal px-2 py-1');
                     return;
                 }
-
-                const opt = select.selectedOptions[0];
-                const defaultCost = opt ? opt.getAttribute('data-cost') : 0;
-                if (!costInput.value || parseFloat(costInput.value) <= 0) {
-                    costInput.value = defaultCost ? parseFloat(defaultCost).toFixed(2) : '0.00';
-                }
-
-                // AJAX fetch live stock
-                fetch(`{{ route('purchase.purchase-indents.item-stock') }}?item_id=${itemId}&branch_id=${branchId}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        const stock = parseFloat(data.current_stock) || 0;
-                        stockBadge.textContent = stock.toFixed(2);
-                        if (stock <= 0) {
-                            stockBadge.className = 'badge badge-danger px-2 py-1';
-                        } else if (stock <= 5) {
-                            stockBadge.className = 'badge badge-warning px-2 py-1';
-                        } else {
-                            stockBadge.className = 'badge badge-success px-2 py-1';
-                        }
-                    })
-                    .catch(() => {
-                        stockBadge.textContent = '0.00';
-                    });
-
-                calculateRowTotal(row);
+                $.getJSON(STOCK_URL, { item_id: itemId, branch_id: branchId }, function (data) {
+                    const stock = parseFloat(data.current_stock) || 0;
+                    $badge.text(stock.toFixed(2));
+                    if (stock <= 0) {
+                        $badge.attr('class', 'badge badge-danger px-2 py-1');
+                    } else if (stock <= 5) {
+                        $badge.attr('class', 'badge badge-warning px-2 py-1');
+                    } else {
+                        $badge.attr('class', 'badge badge-success px-2 py-1');
+                    }
+                }).fail(function () {
+                    $badge.text('0.00').attr('class', 'badge badge-light border stock-badge font-weight-normal px-2 py-1');
+                });
             }
 
-            function calculateRowTotal(row) {
-                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-                const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+            function populateRow($row, data) {
+                if (!data || !data.id) return;
+                const codeVal = data.item_code || data.code || data.ean_upc_code || '';
+                $row.find('.indent-item-code').val(codeVal);
+                $row.find('.indent-item-desc').val(data.name + (codeVal ? ' [' + codeVal + ']' : ''));
+                $row.find('.indent-item-select').val(data.id);
+
+                if (parseFloat(data.cost_price) > 0) {
+                    $row.find('.cost-input').val(parseFloat(data.cost_price).toFixed(2));
+                }
+
+                const branchId = $('#branch_id').val() || '';
+                fetchLiveStock(data.id, branchId, $row.find('.stock-badge'));
+
+                calculateRowTotal($row);
+                setTimeout(function () {
+                    $row.find('.qty-input').focus().select();
+                }, 50);
+            }
+
+            function calculateRowTotal($row) {
+                const qty = parseFloat($row.find('.qty-input').val()) || 0;
+                const cost = parseFloat($row.find('.cost-input').val()) || 0;
                 const total = Math.round(qty * cost * 100) / 100;
-                row.querySelector('.line-total').textContent = '₹' + total.toFixed(2);
+                $row.find('.line-total').text('₹' + total.toFixed(2));
                 calculateTotals();
             }
 
@@ -273,10 +345,11 @@
                 let totalQty = 0;
                 let totalAmount = 0;
 
-                tbody.querySelectorAll('.indent-row').forEach(row => {
-                    const itemId = row.querySelector('.item-select').value;
-                    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-                    const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+                $('#indent-items-body tr.indent-row').each(function () {
+                    const $r = $(this);
+                    const itemId = $r.find('.indent-item-select').val();
+                    const qty = parseFloat($r.find('.qty-input').val()) || 0;
+                    const cost = parseFloat($r.find('.cost-input').val()) || 0;
 
                     if (itemId && qty > 0) {
                         totalItems++;
@@ -285,53 +358,282 @@
                     }
                 });
 
-                document.getElementById('summary-total-items').textContent = totalItems;
-                document.getElementById('summary-total-qty').textContent = totalQty.toFixed(2);
-                document.getElementById('summary-total-amount').textContent = '₹' + (Math.round(totalAmount * 100) / 100).toFixed(2);
+                $('#summary-total-items').text(totalItems);
+                $('#summary-total-qty').text(totalQty.toFixed(2));
+                $('#summary-total-amount').text('₹' + (Math.round(totalAmount * 100) / 100).toFixed(2));
             }
 
-            // Events
-            document.getElementById('btn-add-row').addEventListener('click', () => addRow());
+            /* ================================================================
+               ITEM SEARCH MODAL (Shared with Purchase module)
+               ================================================================ */
+            function fetchItemList() {
+                let nameQ = $.trim($('#indent-isl-filter-name').val());
+                let codeQ = $.trim($('#indent-isl-filter-code').val());
+                let branchId = $('#branch_id').val() || '';
+                let cacheKey = branchId + '|' + nameQ + '|' + codeQ;
 
-            tbody.addEventListener('change', function(e) {
-                const row = e.target.closest('.indent-row');
-                if (!row) return;
-                if (e.target.classList.contains('item-select')) {
-                    onItemChanged(row);
+                if (cacheKey === islLastKey && islCache[cacheKey]) {
+                    renderItemList(islCache[cacheKey]);
+                    return;
+                }
+
+                $('#indent-isl-loading').removeClass('d-none');
+                $('#indent-isl-no-results').addClass('d-none');
+                $('#indent-isl-table-wrap').addClass('d-none');
+
+                $.ajax({
+                    url: ISL_URL,
+                    data: { name: nameQ, code: codeQ, branch_id: branchId },
+                    dataType: 'json',
+                    success: function (items) {
+                        islCache[cacheKey] = items;
+                        islLastKey = cacheKey;
+                        $('#indent-isl-loading').addClass('d-none');
+                        renderItemList(items);
+                    },
+                    error: function () {
+                        $('#indent-isl-loading').addClass('d-none');
+                        $('#indent-isl-no-results').removeClass('d-none');
+                    }
+                });
+            }
+
+            function renderItemList(items) {
+                let $tbody = $('#indent-isl-items-body');
+                $tbody.empty();
+
+                if (!items || items.length === 0) {
+                    $('#indent-isl-no-results').removeClass('d-none');
+                    $('#indent-isl-table-wrap').addClass('d-none');
+                    $('#indent-isl-count-label').text('');
+                    islSelectedIdx = -1;
+                    return;
+                }
+
+                $('#indent-isl-no-results').addClass('d-none');
+                $('#indent-isl-table-wrap').removeClass('d-none');
+                $('#indent-isl-count-label').text('Showing ' + items.length + ' item(s)');
+
+                items.forEach(function (itm, i) {
+                    let cost = parseFloat(itm.cost_price || 0).toFixed(2);
+                    let sell = parseFloat(itm.sell_price || 0).toFixed(2);
+                    let mrp = parseFloat(itm.mrp || 0).toFixed(2);
+                    let stock = Math.round(parseFloat(itm.stock || 0));
+                    let code = itm.item_code || itm.code || '';
+
+                    let row = '<tr class="indent-isl-item-row" style="cursor: pointer;" ' +
+                        'data-id="' + itm.id + '" ' +
+                        'data-name="' + $('<div>').text(itm.name).html() + '" ' +
+                        'data-code="' + $('<div>').text(code).html() + '" ' +
+                        'data-cost="' + cost + '" ' +
+                        'data-sell="' + sell + '" ' +
+                        'data-mrp="' + mrp + '" ' +
+                        'data-stock="' + stock + '">' +
+                        '<td class="text-center align-middle">' + (i + 1) + '</td>' +
+                        '<td class="align-middle font-weight-bold">' + $('<div>').text(itm.name).html() + '</td>' +
+                        '<td class="text-center align-middle font-weight-bold text-monospace">' + code + '</td>' +
+                        '<td class="text-right align-middle">₹' + cost + '</td>' +
+                        '<td class="text-right align-middle">₹' + sell + '</td>' +
+                        '<td class="text-right align-middle">₹' + mrp + '</td>' +
+                        '<td class="text-right align-middle font-weight-bold text-info">' + stock + '</td>' +
+                        '<td class="text-center align-middle">' +
+                            '<button type="button" class="btn btn-primary btn-xs px-2 indent-isl-btn-select">Select</button>' +
+                        '</td>' +
+                    '</tr>';
+                    $tbody.append(row);
+                });
+
+                islSelectedIdx = items.length > 0 ? 0 : -1;
+                updateModalHighlight();
+            }
+
+            function updateModalHighlight() {
+                let $rows = $('#indent-isl-items-body tr.indent-isl-item-row');
+                $rows.removeClass('table-primary');
+                if (islSelectedIdx >= 0 && islSelectedIdx < $rows.length) {
+                    let $target = $rows.eq(islSelectedIdx);
+                    $target.addClass('table-primary');
+                    let container = $('#indent-isl-table-wrap')[0];
+                    let rowEl = $target[0];
+                    if (container && rowEl) {
+                        let cTop = container.scrollTop;
+                        let cBottom = cTop + container.clientHeight;
+                        let rTop = rowEl.offsetTop;
+                        let rBottom = rTop + rowEl.clientHeight;
+                        if (rTop < cTop) container.scrollTop = rTop;
+                        else if (rBottom > cBottom) container.scrollTop = rBottom - container.clientHeight;
+                    }
+                }
+            }
+
+            $('#indent-isl-filter-name, #indent-isl-filter-code').on('input', function () {
+                clearTimeout(islDebounce);
+                islDebounce = setTimeout(fetchItemList, 250);
+            });
+
+            $('#indent-isl-btn-clear').on('click', function () {
+                $('#indent-isl-filter-name').val('');
+                $('#indent-isl-filter-code').val('');
+                fetchItemList();
+                $('#indent-isl-filter-name').focus();
+            });
+
+            $('#indent-isl-filter-name, #indent-isl-filter-code').on('keydown', function (e) {
+                let $rows = $('#indent-isl-items-body tr.indent-isl-item-row');
+                if ($rows.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    islSelectedIdx = Math.min(islSelectedIdx + 1, $rows.length - 1);
+                    updateModalHighlight();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    islSelectedIdx = Math.max(islSelectedIdx - 1, 0);
+                    updateModalHighlight();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (islSelectedIdx >= 0 && islSelectedIdx < $rows.length) {
+                        $rows.eq(islSelectedIdx).trigger('click');
+                    } else if ($rows.length === 1) {
+                        $rows.eq(0).trigger('click');
+                    }
                 }
             });
 
-            tbody.addEventListener('input', function(e) {
-                const row = e.target.closest('.indent-row');
-                if (!row) return;
-                if (e.target.classList.contains('qty-input') || e.target.classList.contains('cost-input')) {
-                    calculateRowTotal(row);
-                }
+            // Open modal on Code/Barcode field click or focus
+            $(document).off('click focus', '.indent-item-code').on('click focus', '.indent-item-code', function (e) {
+                if (islModalOpen || islModalClosing) return;
+                let $row = $(this).closest('tr');
+                if (e.type === 'focus' && $row.find('.indent-item-select').val()) return;
+                activeSearchRow = $row;
+                let prefill = $.trim($(this).val());
+                $('#indent-isl-filter-name').val(prefill);
+                $('#indent-isl-filter-code').val('');
+                fetchItemList();
+                islModalOpen = true;
+                $('#indent-item-search-modal').modal('show');
+                $('#indent-item-search-modal').one('shown.bs.modal', function () {
+                    $('#indent-isl-filter-name').focus().select();
+                    if (prefill) fetchItemList();
+                });
             });
 
-            tbody.addEventListener('click', function(e) {
-                const btn = e.target.closest('.remove-row-btn');
-                if (!btn) return;
-                const row = btn.closest('.indent-row');
-                if (tbody.children.length <= 1) {
+            $('#indent-item-search-modal').on('show.bs.modal', function () {
+                islModalOpen = true;
+                islModalClosing = false;
+            });
+
+            $('#indent-item-search-modal').on('hide.bs.modal', function () {
+                islModalOpen = false;
+                islModalClosing = true;
+            });
+
+            $('#indent-item-search-modal').on('hidden.bs.modal', function () {
+                islModalOpen = false;
+                islModalClosing = true;
+                setTimeout(function () { islModalClosing = false; }, 350);
+            });
+
+            // Selecting row in modal
+            $(document).on('click', '.indent-isl-item-row, .indent-isl-btn-select', function (e) {
+                e.stopPropagation();
+                let $tr = $(this).hasClass('indent-isl-item-row') ? $(this) : $(this).closest('tr');
+                let itemData = {
+                    id: $tr.data('id'),
+                    name: $tr.data('name'),
+                    code: $tr.data('code'),
+                    cost_price: $tr.data('cost'),
+                    sell_price: $tr.data('sell'),
+                    mrp: $tr.data('mrp'),
+                    stock: $tr.data('stock')
+                };
+
+                if (!activeSearchRow || !itemData.id) return;
+                let $targetRow = activeSearchRow;
+                populateRow($targetRow, itemData);
+                $('#indent-item-search-modal').modal('hide');
+                setTimeout(function () {
+                    $targetRow.find('.qty-input').focus().select();
+                }, 120);
+            });
+
+            // Direct barcode / code entry on Enter or blur
+            $(document).on('change blur keydown', '.indent-item-code', function (e) {
+                if (e.type === 'keydown' && e.key === 'F2') {
+                    e.preventDefault();
+                    $(this).trigger('click');
+                    return;
+                }
+                if (e.type === 'keydown' && e.key !== 'Enter') return;
+                if (e.type === 'keydown' && e.key === 'Enter') e.preventDefault();
+
+                let $input = $(this);
+                let $row = $input.closest('tr');
+                let query = $.trim($input.val());
+                if (!query) {
+                    if (e.type === 'keydown' && e.key === 'Enter') {
+                        $input.trigger('click');
+                    }
+                    return;
+                }
+
+                let branchId = $('#branch_id').val() || '';
+                $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (data) {
+                    if (data && data.id) {
+                        populateRow($row, data);
+                    } else {
+                        // Open modal with prefilled search
+                        $input.trigger('click');
+                    }
+                }).fail(function () {
+                    $input.trigger('click');
+                });
+            });
+
+            // Row calculation events
+            $(document).on('input', '.qty-input, .cost-input', function () {
+                calculateRowTotal($(this).closest('tr'));
+            });
+
+            // Remove row button
+            $(document).on('click', '.remove-row-btn', function () {
+                if ($('#indent-items-body tr.indent-row').length <= 1) {
                     alert('An indent must have at least one line item.');
                     return;
                 }
-                row.remove();
+                $(this).closest('tr').remove();
                 reindexRows();
                 calculateTotals();
             });
 
-            branchSelect.addEventListener('change', function() {
-                tbody.querySelectorAll('.indent-row').forEach(row => {
-                    onItemChanged(row);
+            // Add row button
+            $('#btn-add-row').on('click', function () {
+                let $newRow = addRow();
+                setTimeout(function () {
+                    $newRow.find('.indent-item-code').focus().trigger('click');
+                }, 80);
+            });
+
+            // Branch change refreshes all stocks
+            $('#branch_id').on('change', function () {
+                const branchId = $(this).val();
+                islCache = {};
+                islLastKey = null;
+                $('#indent-items-body tr.indent-row').each(function () {
+                    const $r = $(this);
+                    const itemId = $r.find('.indent-item-select').val();
+                    if (itemId) {
+                        fetchLiveStock(itemId, branchId, $r.find('.stock-badge'));
+                    }
                 });
             });
 
-            // Initial rows
-            addRow();
-            addRow();
-        })();
+            // Initialize default row and focus code
+            let $firstRow = addRow();
+            setTimeout(function () {
+                $firstRow.find('.indent-item-code').focus();
+            }, 100);
+        });
     </script>
     @endpush
 @stop

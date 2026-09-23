@@ -353,31 +353,36 @@ class SmartAnalyticsController extends Controller
             ])
             ->orderBy('sales_bills.bill_date', 'asc');
 
+        $filename = 'item_sales_' . ($item->item_code ?: $item->id) . '_' . date('Ymd_His') . '.xls';
         $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="item_sales_' . $item->item_code . '_' . date('Ymd_His') . '.csv"',
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
         return response()->stream(function () use ($salesQuery, $item) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Product:', $item->name, 'Code:', $item->item_code]);
-            fputcsv($handle, ['Bill No', 'Date & Time', 'Customer', 'Qty Sold', 'Unit Rate', 'Discount', 'Net Total']);
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<style>th { background-color: #2c3e50; color: #ffffff; font-weight: bold; border: 1px solid #000; padding: 6px; } td { border: 1px solid #ddd; padding: 5px; }</style>';
+            echo '</head><body>';
+            echo '<p><strong>Product:</strong> ' . htmlspecialchars($item->name) . ' | <strong>Code:</strong> ' . htmlspecialchars($item->item_code ?? '') . '</p>';
+            echo '<table border="1">';
+            echo '<thead><tr><th>Bill No</th><th>Date & Time</th><th>Customer</th><th>Qty Sold</th><th>Unit Rate</th><th>Discount</th><th>Net Total</th></tr></thead><tbody>';
 
-            $salesQuery->chunk(200, function ($rows) use ($handle) {
+            $salesQuery->chunk(200, function ($rows) {
                 foreach ($rows as $row) {
-                    fputcsv($handle, [
-                        $row->bill_number,
-                        $row->bill_date,
-                        $row->customer_name ?: 'Walk-in Customer',
-                        $row->qty,
-                        $row->sell_price,
-                        $row->disc_amount,
-                        $row->net_amount,
-                    ]);
+                    echo '<tr>';
+                    echo '<td>' . htmlspecialchars($row->bill_number) . '</td>';
+                    echo '<td>' . htmlspecialchars($row->bill_date) . '</td>';
+                    echo '<td>' . htmlspecialchars($row->customer_name ?: 'Walk-in Customer') . '</td>';
+                    echo '<td>' . htmlspecialchars((string) $row->qty) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) $row->sell_price) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) $row->disc_amount) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) $row->net_amount) . '</td>';
+                    echo '</tr>';
                 }
             });
 
-            fclose($handle);
+            echo '</tbody></table></body></html>';
         }, 200, $headers);
     }
 }

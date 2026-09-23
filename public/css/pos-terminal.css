@@ -129,24 +129,31 @@ html, body {
 }
 
 .pos-scanner-input-group {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.pos-scanner-field-wrapper {
     position: relative;
     display: flex;
     align-items: center;
+    flex-grow: 1;
 }
 
-.pos-scanner-icon {
+.pos-scanner-field-wrapper .pos-scanner-icon {
     position: absolute;
     left: 14px;
     color: var(--pos-primary);
     font-size: 1.2rem;
     pointer-events: none;
-    z-index: 10;
+    z-index: 5;
 }
 
-.pos-scanner-input {
+.pos-scanner-field-wrapper .pos-scanner-input {
     height: 48px;
     padding-left: 46px;
-    padding-right: 100px;
+    padding-right: 110px;
     font-size: 1rem;
     font-weight: 500;
     border: 1.5px solid var(--pos-border);
@@ -155,17 +162,20 @@ html, body {
     transition: all 0.2s ease;
     background: #FFFFFF;
     color: var(--pos-text-main);
+    cursor: pointer;
 }
 
-.pos-scanner-input:focus {
+.pos-scanner-field-wrapper .pos-scanner-input:focus {
     border-color: var(--pos-primary);
     outline: none;
     box-shadow: 0 0 0 3px rgba(23, 105, 232, 0.15);
 }
 
-.pos-scanner-tag {
+.pos-scanner-field-wrapper .pos-scanner-tag {
     position: absolute;
     right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 0.72rem;
     font-weight: 700;
     background: #FFF7EE;
@@ -173,6 +183,32 @@ html, body {
     border: 1px solid #FDE3C8;
     padding: 3px 8px;
     border-radius: 6px;
+    pointer-events: none;
+    z-index: 5;
+    white-space: nowrap;
+}
+
+/* Hide number input stepper arrows/spinners across POS terminal (Qty, Dis %, Dis Amt, Split inputs) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+.pos-qty-input::-webkit-outer-spin-button,
+.pos-qty-input::-webkit-inner-spin-button,
+.pos-disc-percent::-webkit-outer-spin-button,
+.pos-disc-percent::-webkit-inner-spin-button,
+.pos-disc-amount::-webkit-outer-spin-button,
+.pos-disc-amount::-webkit-inner-spin-button,
+.split-input::-webkit-outer-spin-button,
+.split-input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+input[type="number"],
+.pos-qty-input,
+.pos-disc-percent,
+.pos-disc-amount,
+.split-input {
+    -moz-appearance: textfield !important;
 }
 
 /* Cart Table Container */
@@ -476,7 +512,7 @@ html, body {
 /* Tender Modes Pills */
 .pos-tender-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
     margin-bottom: 12px;
 }
@@ -527,6 +563,13 @@ html, body {
     background: #E7F8F6;
     color: #078B87;
     box-shadow: 0 2px 6px rgba(7, 139, 135, 0.15);
+}
+
+.pos-tender-btn[data-mode="Credit"].active {
+    border-color: #DC2626;
+    background: #FEECEB;
+    color: #DC2626;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.15);
 }
 
 .pos-tender-btn[data-mode="Split"].active {

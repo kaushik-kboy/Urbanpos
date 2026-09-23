@@ -8,7 +8,11 @@
     $itemCodeVal = $line->code ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
     $expDateVal = '';
     if (!empty($line->exp_date)) {
-        $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
+        try {
+            $expDateVal = \Carbon\Carbon::parse($line->exp_date)->format('d/m/Y');
+        } catch (\Throwable) {
+            $expDateVal = (string) $line->exp_date;
+        }
     }
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
     $availableVal = isset($line->available_qty) ? number_format((float)$line->available_qty, 3, '.', '') : '0.000';
@@ -33,7 +37,7 @@
     </td>
     <td style="min-width: 260px;">
         <select name="items[{{ $index }}][item_id]"
-                class="form-control form-control-sm item-select"
+                class="form-control form-control-sm item-select item-id-input"
                 style="width: 100%;"
                 required>
             <option value="">Search item name / code...</option>
@@ -47,10 +51,13 @@
         </select>
     </td>
     <td style="min-width: 130px;">
-        <input type="date"
+        <input type="text"
                name="items[{{ $index }}][exp_date]"
                value="{{ $expDateVal }}"
-               class="form-control form-control-sm">
+               class="form-control form-control-sm item-exp-date text-center font-weight-bold bg-light"
+               placeholder="DD/MM/YYYY"
+               autocomplete="off"
+               title="Expiry Date (DD/MM/YYYY)">
     </td>
     <td style="min-width: 100px;">
         <input type="text" class="form-control form-control-sm item-available text-right bg-light" value="{{ $availableVal }}" readonly tabindex="-1">

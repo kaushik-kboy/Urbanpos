@@ -32,37 +32,22 @@
                         <input type="hidden" name="mode" value="{{ request('mode') }}">
                     @endif
                 @endif
+                <input type="hidden" name="search_column" value="all">
                 @if(request('is_iframe'))
                     <div class="col-md-5 col-sm-6 mb-2">
-                        <label class="small font-weight-bold mb-1">Search Filter</label>
+                        <label class="small font-weight-bold mb-1">Search</label>
                         <div class="input-group input-group-sm">
-                            <select name="search_column" class="form-control form-control-sm" style="max-width: 100px;">
-                                <option value="all" @selected(request('search_column') == 'all')>All</option>
-                                <option value="bill_number" @selected(request('search_column') == 'bill_number')>Bill No</option>
-                                <option value="customer_name" @selected(request('search_column') == 'customer_name')>Customer</option>
-                                <option value="mobile" @selected(request('search_column') == 'mobile')>Mobile</option>
-                                <option value="amount" @selected(request('search_column') == 'amount')>Amount</option>
-                            </select>
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search..." value="{{ request('search') }}">
+                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile..." value="{{ request('search') }}" autofocus>
                             <div class="input-group-append">
                                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
-                                <a href="{{ route('sales.sales-bills.index', ['is_iframe' => 1, 'mode' => request('mode')]) }}" class="btn btn-secondary"><i class="fas fa-undo"></i></a>
+                                <a href="{{ route('sales.sales-bills.index', ['is_iframe' => 1, 'mode' => request('mode')]) }}" class="btn btn-secondary" title="Reset Search"><i class="fas fa-undo"></i></a>
                             </div>
                         </div>
                     </div>
                 @else
                     <div class="col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Search</label>
-                        <div class="input-group input-group-sm">
-                            <select name="search_column" class="form-control form-control-sm" style="max-width: 100px;">
-                                <option value="all" @selected(request('search_column') == 'all')>All</option>
-                                <option value="bill_number" @selected(request('search_column') == 'bill_number')>Bill No</option>
-                                <option value="customer_name" @selected(request('search_column') == 'customer_name')>Customer</option>
-                                <option value="mobile" @selected(request('search_column') == 'mobile')>Mobile</option>
-                                <option value="amount" @selected(request('search_column') == 'amount')>Amount</option>
-                            </select>
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search bills..." value="{{ request('search') }}">
-                        </div>
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile..." value="{{ request('search') }}">
                     </div>
                     <div class="col-md-2 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">From Date</label>
@@ -166,7 +151,7 @@
                             <td>{{ $bill->invoice_type }}</td>
                             <td>
                                 @php
-                                    $payMode = $bill->payment_type;
+                                    $payMode = ($bill->payment_type && strtolower(trim($bill->payment_type)) !== 'none') ? $bill->payment_type : null;
                                     if (!$payMode && $bill->relationLoaded('payments') && $bill->payments->count()) {
                                         $payMode = $bill->payments->map(fn($p) => $p->tenderType?->name)->filter()->unique()->implode(', ');
                                     }

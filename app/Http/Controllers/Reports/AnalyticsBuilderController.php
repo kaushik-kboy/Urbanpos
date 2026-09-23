@@ -152,28 +152,32 @@ class AnalyticsBuilderController extends Controller
             $data = $this->querySalesAnalytics($groupBy, $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, null);
         }
 
-        $filename = 'Custom_Report_' . $groupBy . '_' . date('Ymd_His') . '.csv';
+        $filename = 'Custom_Report_' . $groupBy . '_' . date('Ymd_His') . '.xls';
 
         return response()->streamDownload(function () use ($data, $groupBy) {
-            $handle = fopen('php://output', 'w');
-            // Write UTF-8 BOM for Excel compatibility
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-            $headers = array_map(fn($col) => $col['label'], $data['columns']);
-            fputcsv($handle, $headers);
-
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Report</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            echo '<style>th { background-color: #2c3e50; color: #ffffff; font-weight: bold; border: 1px solid #000; padding: 6px; } td { border: 1px solid #ddd; padding: 5px; }</style>';
+            echo '</head><body>';
+            echo '<table border="1">';
+            echo '<thead><tr>';
+            foreach ($data['columns'] as $col) {
+                echo '<th>' . htmlspecialchars($col['label']) . '</th>';
+            }
+            echo '</tr></thead><tbody>';
             foreach ($data['rows'] as $row) {
-                $line = [];
+                echo '<tr>';
                 foreach ($data['columns'] as $col) {
                     $key = $col['key'];
-                    $line[] = $row->{$key} ?? '';
+                    $val = $row->{$key} ?? '';
+                    echo '<td>' . htmlspecialchars((string) $val) . '</td>';
                 }
-                fputcsv($handle, $line);
+                echo '</tr>';
             }
-
-            fclose($handle);
+            echo '</tbody></table></body></html>';
         }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
@@ -604,12 +608,18 @@ class AnalyticsBuilderController extends Controller
      */
     public function searchItems(Request $request): JsonResponse
     {
-        $term = $request->query('q', '');
-        $items = Item::where('name', 'LIKE', "%{$term}%")
-            ->orWhere('item_code', 'LIKE', "%{$term}%")
-            ->orWhere('ean_upc_code', 'LIKE', "%{$term}%")
-            ->limit(30)
-            ->get(['id', 'name', 'item_code', 'sell_price']);
+        $term = trim((string) ($request->query('q') ?? $request->query('term', '')));
+        $query = Item::query();
+
+        if ($term !== '') {
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'LIKE', "%{$term}%")
+                  ->orWhere('item_code', 'LIKE', "%{$term}%")
+                  ->orWhere('ean_upc_code', 'LIKE', "%{$term}%");
+            });
+        }
+
+        $items = $query->limit(40)->get(['id', 'name', 'item_code', 'sell_price']);
 
         $formatted = $items->map(fn($item) => [
             'id' => $item->id,
@@ -624,12 +634,18 @@ class AnalyticsBuilderController extends Controller
      */
     public function searchSuppliers(Request $request): JsonResponse
     {
-        $term = $request->query('q', '');
-        $suppliers = Supplier::where('name', 'LIKE', "%{$term}%")
-            ->orWhere('mobile', 'LIKE', "%{$term}%")
-            ->orWhere('city', 'LIKE', "%{$term}%")
-            ->limit(30)
-            ->get(['id', 'name', 'mobile', 'city']);
+        $term = trim((string) ($request->query('q') ?? $request->query('term', '')));
+        $query = Supplier::query();
+
+        if ($term !== '') {
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'LIKE', "%{$term}%")
+                  ->orWhere('mobile', 'LIKE', "%{$term}%")
+                  ->orWhere('city', 'LIKE', "%{$term}%");
+            });
+        }
+
+        $suppliers = $query->limit(40)->get(['id', 'name', 'mobile', 'city']);
 
         $formatted = $suppliers->map(fn($s) => [
             'id' => $s->id,
@@ -644,16 +660,23 @@ class AnalyticsBuilderController extends Controller
      */
     public function searchCustomers(Request $request): JsonResponse
     {
-        $term = $request->query('q', '');
-        $customers = Customer::where('name', 'LIKE', "%{$term}%")
-            ->orWhere('phone', 'LIKE', "%{$term}%")
-            ->orWhere('customer_code', 'LIKE', "%{$term}%")
-            ->limit(30)
-            ->get(['id', 'name', 'phone']);
+        $term = trim((string) ($request->query('q') ?? $request->query('term', '')));
+        $query = Customer::query();
+
+        if ($term !== '') {
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'LIKE', "%{$term}%")
+                  ->orWhere('mobile', 'LIKE', "%{$term}%")
+                  ->orWhere('phone', 'LIKE', "%{$term}%")
+                  ->orWhere('customer_code', 'LIKE', "%{$term}%");
+            });
+        }
+
+        $customers = $query->limit(40)->get(['id', 'name', 'mobile', 'phone']);
 
         $formatted = $customers->map(fn($c) => [
             'id' => $c->id,
-            'text' => "{$c->name}" . ($c->phone ? " ({$c->phone})" : ''),
+            'text' => "{$c->name}" . (($c->mobile ?: $c->phone) ? " (" . ($c->mobile ?: $c->phone) . ")" : ''),
         ]);
 
         return response()->json(['results' => $formatted]);

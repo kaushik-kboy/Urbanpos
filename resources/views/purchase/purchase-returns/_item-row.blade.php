@@ -52,7 +52,7 @@
         <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][disc_amount]" value="{{ $discAmount }}" class="form-control form-control-sm text-right pr-disc-amount" placeholder="0.00">
     </td>
     <td style="width: 85px;">
-        <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][gst_percent]" value="{{ $gstPercent }}" class="form-control form-control-sm text-right pr-gst-percent" placeholder="0">
+        <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][gst_percent]" value="{{ $gstPercent }}" readonly tabindex="-1" class="form-control form-control-sm text-right pr-gst-percent bg-light" placeholder="0" title="GST % (Read-only)">
     </td>
     <td class="text-right align-middle font-weight-bold text-dark" style="width: 110px;">
         ₹<span class="pr-net-amount">{{ number_format((float) $netAmount, 2) }}</span>

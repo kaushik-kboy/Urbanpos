@@ -681,38 +681,70 @@ $(document).ready(function () {
             }
         }
     });
-    // Client-side validation: Sell Price <= MRP
-    function validateSellPriceAndMrp() {
+    // Client-side validation: Cost Price <= Landing Cost <= Sell Price <= MRP
+    function validatePricingHierarchy() {
+        var $cost = $('#cost_price');
+        var $landing = $('#landing_cost');
         var $sell = $('#sell_price');
         var $mrp = $('#mrp');
-        if (!$sell.length || !$mrp.length) return true;
+        if (!$sell.length || !$mrp.length) return { isValid: true };
 
+        var costVal = parseFloat($cost.val()) || 0;
+        var landingVal = parseFloat($landing.val()) || 0;
         var sellVal = parseFloat($sell.val()) || 0;
         var mrpVal = parseFloat($mrp.val()) || 0;
 
-        $('#sell-price-mrp-error').remove();
+        $('#pricing-hierarchy-error, #sell-price-mrp-error, #landing-cost-error, #sell-price-error').remove();
+        $cost.removeClass('is-invalid');
+        $landing.removeClass('is-invalid');
+        $sell.removeClass('is-invalid');
+        $mrp.removeClass('is-invalid');
 
-        if (mrpVal > 0 && sellVal > mrpVal) {
-            $sell.addClass('is-invalid');
-            var errHtml = '<span id="sell-price-mrp-error" class="text-danger small font-weight-bold d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Sell Price cannot exceed MRP (' + mrpVal.toFixed(2) + '). MRP must be >= Sell Price.</span>';
-            $sell.after(errHtml);
-            return false;
-        } else {
-            $sell.removeClass('is-invalid');
-            return true;
+        var isValid = true;
+        var firstErrorField = null;
+
+        // 1. Landing Cost >= Cost Price
+        if (costVal > 0 && landingVal > 0 && landingVal < costVal) {
+            $landing.addClass('is-invalid');
+            $landing.after('<span id="landing-cost-error" class="text-danger small font-weight-bold d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Landing Cost (₹' + landingVal.toFixed(2) + ') must be greater than or equal to Cost Price (₹' + costVal.toFixed(2) + ').</span>');
+            isValid = false;
+            if (!firstErrorField) firstErrorField = $landing;
         }
+
+        // 2. Sell Price >= Landing Cost (or Cost Price)
+        var benchmark = landingVal > 0 ? landingVal : costVal;
+        if (benchmark > 0 && sellVal > 0 && sellVal < benchmark) {
+            $sell.addClass('is-invalid');
+            var label = landingVal > 0 ? 'Landing Cost (₹' + landingVal.toFixed(2) + ')' : 'Cost Price (₹' + costVal.toFixed(2) + ')';
+            $sell.after('<span id="sell-price-error" class="text-danger small font-weight-bold d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Sell Price (₹' + sellVal.toFixed(2) + ') must be greater than or equal to ' + label + '.</span>');
+            isValid = false;
+            if (!firstErrorField) firstErrorField = $sell;
+        }
+
+        // 3. MRP >= Sell Price
+        if (mrpVal > 0 && sellVal > 0 && mrpVal < sellVal) {
+            $mrp.addClass('is-invalid');
+            $mrp.after('<span id="sell-price-mrp-error" class="text-danger small font-weight-bold d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>MRP (₹' + mrpVal.toFixed(2) + ') must be greater than or equal to Sell Price (₹' + sellVal.toFixed(2) + ').</span>');
+            isValid = false;
+            if (!firstErrorField) firstErrorField = $mrp;
+        }
+
+        return { isValid: isValid, field: firstErrorField };
     }
 
-    $('#sell_price, #mrp').on('input change blur', function() {
-        validateSellPriceAndMrp();
+    $('#cost_price, #landing_cost, #sell_price, #mrp').on('input change blur', function() {
+        validatePricingHierarchy();
     });
 
     $('form').has('#sell_price').on('submit', function(e) {
-        if (!validateSellPriceAndMrp()) {
+        var res = validatePricingHierarchy();
+        if (!res.isValid) {
             e.preventDefault();
-            alert('Validation Error: Sell Price cannot be greater than MRP! Please check the General tab.');
+            alert('Price Validation Error:\n\nRules: Cost Price \u2264 Landing Cost \u2264 Sell Price \u2264 MRP\n\nPlease check the pricing fields in the General tab.');
             $('a[href="#tab-general"]').tab('show');
-            $('#sell_price').focus();
+            if (res.field) {
+                res.field.focus();
+            }
             return false;
         }
     });

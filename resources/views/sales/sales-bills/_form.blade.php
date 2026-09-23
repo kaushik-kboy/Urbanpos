@@ -129,7 +129,7 @@
 
     {{-- Payment Type --}}
     <div class="field-wrapper col-md-4" data-field="payment_type" data-default-order="9">
-        <x-field name="payment_type" label="Payment Type" :value="$bill->payment_type ?? 'None'" />
+        <x-select name="payment_type" label="Payment Mode" :options="['Cash' => 'Cash', 'UPI' => 'UPI', 'Card' => 'Card', 'Credit' => 'Credit', 'Bank Transfer' => 'Bank Transfer', 'Cheque' => 'Cheque']" :selected="old('payment_type', ($bill && $bill->payment_type && strtolower($bill->payment_type) !== 'none') ? $bill->payment_type : 'Cash')" />
     </div>
 </div>
 
@@ -204,7 +204,14 @@
 <button type="button" id="sb-add-row" class="btn btn-link btn-sm font-weight-bold"><i class="fas fa-plus-circle"></i> Add Row</button>
 
 <hr>
-<h5 class="mb-3"><i class="fas fa-calculator mr-1 text-primary"></i> Bill Totals</h5>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="fas fa-calculator mr-1 text-primary"></i> Bill Totals & Notes</h5>
+    <x-form-layout-customizer 
+        form-key="sales_bills.additional" 
+        container-id="sb-additional-fields-grid" 
+        button-text="Customize Layout" 
+        button-class="btn btn-outline-primary btn-xs font-weight-bold shadow-sm" />
+</div>
 
 <div class="alert alert-light border py-2 d-flex justify-content-between align-items-center mb-3">
     <div>
@@ -214,12 +221,26 @@
     <div id="sb-total-items-badge"><span class="badge badge-secondary px-3 py-2">0 Items</span></div>
 </div>
 
-<x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="$bill->round_off ?? 0" />
-<x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$bill->total_extra_cess ?? 0" />
-<x-field name="gst_calamity_cess" label="GST Calamity Cess" type="number" step="0.01" :value="$bill->gst_calamity_cess ?? 0" />
-<x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$bill->total_weight ?? 0" />
-<x-textarea name="remarks" label="Remarks" :value="$bill->remarks ?? ''" />
-<x-textarea name="message" label="Message" :value="$bill->message ?? ''" />
+<div class="row g-2 form-fields-grid" id="sb-additional-fields-grid">
+    <div class="field-wrapper col-md-6" data-field="round_off" data-label="Round off Amount" data-default-order="1">
+        <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="$bill->round_off ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="2">
+        <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$bill->total_extra_cess ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="gst_calamity_cess" data-label="GST Calamity Cess" data-default-order="3">
+        <x-field name="gst_calamity_cess" label="GST Calamity Cess" type="number" step="0.01" :value="$bill->gst_calamity_cess ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="4">
+        <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$bill->total_weight ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="remarks" data-label="Remarks" data-default-order="5">
+        <x-textarea name="remarks" label="Remarks" :value="$bill->remarks ?? ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="message" data-label="Message" data-default-order="6">
+        <x-textarea name="message" label="Message" :value="$bill->message ?? ''" />
+    </div>
+</div>
 
 <x-custom-fields-renderer :module="'SalesBill'" :model="$bill ?? null" :cardStyle="true" />
 
@@ -243,7 +264,7 @@
             </div>
             <div class="modal-body p-3">
                 <!-- Filters -->
-                <div class="row mb-3">
+                <div class="row mb-3 align-items-center">
                     <div class="col-md-4">
                         <div class="input-group input-group-sm">
                             <div class="input-group-prepend">
@@ -261,11 +282,11 @@
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="input-group input-group-sm">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
-                            </div>
-                            <input type="text" id="isl-filter-expiry" class="form-control" placeholder="Filter expiry (YYYY-MM)…" autocomplete="off">
+                        <div class="custom-control custom-checkbox ml-1">
+                            <input type="checkbox" class="custom-control-input" id="isl-filter-show-all">
+                            <label class="custom-control-label font-weight-bold text-dark small" for="isl-filter-show-all" style="cursor: pointer;">
+                                <i class="fas fa-boxes text-primary mr-1"></i> Show All (Stock + Non-Stock)
+                            </label>
                         </div>
                     </div>
                     <div class="col-md-2 text-right">
@@ -292,11 +313,10 @@
                             <tr>
                                 <th class="text-center" style="width: 40px;">#</th>
                                 <th>Product Name</th>
-                                <th class="text-center" style="width: 120px;">Code</th>
-                                <th class="text-center" style="width: 130px;">Expiry (Purchase Se)</th>
-                                <th class="text-right" style="width: 90px;">Qty (Stock)</th>
-                                <th class="text-right" style="width: 95px;">Sell Price</th>
-                                <th class="text-right" style="width: 95px;">MRP</th>
+                                <th class="text-center" style="width: 140px;">Code</th>
+                                <th class="text-right" style="width: 100px;">Qty (Stock)</th>
+                                <th class="text-right" style="width: 105px;">Sell Price</th>
+                                <th class="text-right" style="width: 105px;">MRP</th>
                                 <th class="text-center" style="width: 80px;">Select</th>
                             </tr>
                         </thead>
@@ -1144,13 +1164,18 @@
 
 
         // Debounced filter inputs — 400ms to avoid firing on every keystroke
-        $('#isl-filter-name, #isl-filter-code, #isl-filter-expiry').on('input', function () {
+        $('#isl-filter-name, #isl-filter-code').on('input', function () {
             clearTimeout(islDebounce);
             islDebounce = setTimeout(fetchItemList, 400);
         });
 
+        $('#isl-filter-show-all').on('change', function () {
+            fetchItemList();
+        });
+
         $('#isl-btn-clear').on('click', function () {
-            $('#isl-filter-name, #isl-filter-code, #isl-filter-expiry').val('');
+            $('#isl-filter-name, #isl-filter-code').val('');
+            $('#isl-filter-show-all').prop('checked', false);
             fetchItemList();
         });
 
@@ -1172,17 +1197,17 @@
 
         function fetchItemList() {
             let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            let srch   = $('#isl-filter-name').val().trim();
-            let code   = $('#isl-filter-code').val().trim();
-            let expiry = $('#isl-filter-expiry').val().trim();
+            let srch    = $('#isl-filter-name').val().trim();
+            let code    = $('#isl-filter-code').val().trim();
+            let showAll = $('#isl-filter-show-all').is(':checked') ? 1 : 0;
 
-            // No filter — show hint, skip AJAX
-            if (! srch && ! code && ! expiry) {
-                showHintState('Start typing to search items\u2026');
+            // No filter — show hint, skip AJAX unless showAll is checked
+            if (! srch && ! code && ! showAll) {
+                showHintState('Start typing to search items or check "Show All"…');
                 return;
             }
 
-            let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
+            let cacheKey = branchId + '|' + srch + '|' + code + '|' + showAll;
 
             // Return cached result if available (same query, same branch)
             if (islCache[cacheKey]) {
@@ -1194,7 +1219,7 @@
             }
 
             islLastKey = cacheKey;
-            let params = { branch_id: branchId, search: srch, code: code, expiry: expiry };
+            let params = { branch_id: branchId, search: srch, code: code, show_all: showAll };
 
             $('#isl-loading').removeClass('d-none');
             $('#isl-no-results').addClass('d-none');
@@ -1232,11 +1257,6 @@
                 let itExpStr = it.exp_date ? it.exp_date.toString().substring(0, 10) : '';
                 let isExpired = itExpStr && (itExpStr < todayStr);
 
-                let expBadge = it.exp_date
-                    ? (isExpired
-                        ? `<span class="badge badge-danger px-2 py-1"><i class="fas fa-ban mr-1"></i>EXPIRED (${itExpStr})</span>`
-                        : `<span class="badge badge-info px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`)
-                    : `<span class="text-muted">—</span>`;
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
                     : `<span class="text-muted">—</span>`;
@@ -1272,7 +1292,6 @@
                         <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
                         <td class="align-middle font-weight-bold text-dark">${it.name} ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}</td>
                         <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-center">${expBadge}</td>
                         <td class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}</td>
                         <td class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '\u20b9' + parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
                         <td class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9' + parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>

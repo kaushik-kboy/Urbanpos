@@ -119,6 +119,9 @@ class DynamicValidationService
                             'available', 'qty', 'unit', 'sell_price', 'mrp', 'cost_price', 'disc_percent',
                             'disc_amount', 'tax_type', 'gst_percent', 'gst_tax_amount', 'cess_percent',
                             'cess_amount', 'net_amount', 'batch_no', 'serial_no', 'hsn_code', 'taxable_value',
+                            'free_qty', 'requested_qty', 'estimated_cost', 'ordered_qty', 'received_qty',
+                            'accepted_qty', 'rejected_qty', 'unit_cost', 'scheme_disc_percent', 'scheme_amount',
+                            'scheme_others', 'line_total',
                         ];
                         if (($config->section ?? '') === 'Line Items' || in_array($fieldName, $lineItemFields, true)) {
                             continue;

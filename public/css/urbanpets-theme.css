@@ -1465,6 +1465,33 @@ body {
     box-shadow: 0 0 0 3px rgba(23, 105, 232, 0.12) !important;
 }
 
+.select2-container .select2-selection.is-invalid,
+.select2-container--bootstrap4.is-invalid .select2-selection,
+.select2-container--default.is-invalid .select2-selection {
+    border-color: #e3342f !important;
+    box-shadow: 0 0 0 3px rgba(227, 52, 47, 0.18) !important;
+    background-color: #fff9f9 !important;
+}
+
+/* Sequential Real-Time Validation Feedback & Shake */
+.up-sequential-feedback {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #e3342f;
+    margin-top: 4px;
+    display: block;
+}
+
+@keyframes upFieldShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+
+.up-field-shake {
+    animation: upFieldShake 0.35s ease-in-out !important;
+}
+
 .select2-dropdown {
     border: 1px solid var(--up-border) !important;
     border-radius: 8px !important;

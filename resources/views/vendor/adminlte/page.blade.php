@@ -90,7 +90,19 @@
     @auth
     <script>
         window.POS_HOTKEYS = @json(\App\Models\FunctionKeyMapping::getActiveMappings());
-        window.APP_URL = "{{ url('/') }}";
+        window.APP_URL = (function() {
+            var url = "{{ url('/') }}";
+            if (window.location.protocol === 'https:' && url.indexOf('http:') === 0) {
+                url = url.replace(/^http:/, 'https:');
+            }
+            try {
+                var u = new URL(url);
+                if (u.hostname !== window.location.hostname) {
+                    return window.location.origin + u.pathname.replace(/\/+$/, '');
+                }
+            } catch (e) {}
+            return url.replace(/\/+$/, '');
+        })();
         window.exportTableToCSV = function(tableId, filename) {
             // If the table is paginated, download the full dataset from server preserving active filters
             if (document.querySelector('.pagination, .pagination-sm')) {
@@ -138,5 +150,6 @@
     <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/pos-latency-monitor.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/pos-telemetry.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/form-sequential-validator.js') }}?v={{ time() }}"></script>
     @endauth
 @stop

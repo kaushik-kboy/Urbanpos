@@ -51,15 +51,10 @@
 
     {{-- Fast Action Command Center (Dynamic Auto-Fill Grid) --}}
     <div class="card card-outline card-secondary shadow-sm mb-4">
-        <div class="card-header py-2 bg-light d-flex justify-content-between align-items-center">
+        <div class="card-header py-2 bg-light">
             <h3 class="card-title text-sm font-weight-bold text-uppercase text-secondary mb-0">
                 <i class="fas fa-bolt mr-1 text-warning"></i> Fast Action Command Center
             </h3>
-            <div class="card-tools">
-                <button type="button" class="btn btn-tool text-xs font-weight-bold" data-toggle="modal" data-target="#dashboardCustomizerModal" title="Customize Buttons">
-                    <i class="fas fa-sliders-h mr-1 text-primary"></i> Customize
-                </button>
-            </div>
         </div>
         <div class="card-body py-3">
             <div class="dashboard-shortcut-grid">

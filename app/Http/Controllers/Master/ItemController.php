@@ -257,6 +257,33 @@ class ItemController extends Controller
             ? ['nullable', 'string', 'max:100', 'unique:items,ean_upc_code,'.$item->id]
             : ['nullable', 'string', 'max:100', 'unique:items,ean_upc_code'];
 
+        $landingRules = ['required', 'numeric', 'min:0'];
+        if ($request->filled('cost_price')) {
+            $landingRules[] = 'gte:cost_price';
+        }
+
+        $sellRules = ['required', 'numeric', 'min:0'];
+        if ($request->filled('landing_cost')) {
+            $sellRules[] = 'gte:landing_cost';
+        }
+        if ($request->filled('cost_price')) {
+            $sellRules[] = 'gte:cost_price';
+        }
+        if ($request->filled('mrp')) {
+            $sellRules[] = 'lte:mrp';
+        }
+
+        $mrpRules = ['required', 'numeric', 'min:0'];
+        if ($request->filled('sell_price')) {
+            $mrpRules[] = 'gte:sell_price';
+        }
+        if ($request->filled('landing_cost')) {
+            $mrpRules[] = 'gte:landing_cost';
+        }
+        if ($request->filled('cost_price')) {
+            $mrpRules[] = 'gte:cost_price';
+        }
+
         $rules = [
             // General
             'ean_upc_code' => $eanRule,
@@ -266,9 +293,9 @@ class ItemController extends Controller
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'product_type' => ['required', 'string', 'max:100'],
             'cost_price' => ['required', 'numeric', 'min:0'],
-            'landing_cost' => ['required', 'numeric', 'min:0'],
-            'sell_price' => ['required', 'numeric', 'min:0', 'lte:mrp'],
-            'mrp' => ['required', 'numeric', 'min:0', 'gte:sell_price'],
+            'landing_cost' => $landingRules,
+            'sell_price' => $sellRules,
+            'mrp' => $mrpRules,
             'status' => ['required', 'boolean'],
             'store_pickup' => ['required', 'boolean'],
 
@@ -292,8 +319,10 @@ class ItemController extends Controller
         ];
 
         $messages = [
-            'sell_price.lte' => 'Selling price cannot exceed Maximum Retail Price (MRP). MRP must be greater than or equal to Selling Price.',
-            'mrp.gte' => 'Maximum Retail Price (MRP) must be greater than or equal to Selling Price.',
+            'landing_cost.gte' => 'Landing Cost must be greater than or equal to Cost Price.',
+            'sell_price.gte' => 'Sell Price must be greater than or equal to Landing Cost and Cost Price.',
+            'sell_price.lte' => 'Sell Price cannot exceed MRP. MRP must be greater than or equal to Sell Price.',
+            'mrp.gte' => 'MRP must be greater than or equal to Sell Price, Landing Cost and Cost Price.',
             'hsn_code.regex' => 'HSN Code must be between 4 and 8 digits (numeric).',
         ];
 

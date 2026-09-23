@@ -153,24 +153,24 @@
                     {{-- 3. DATE PRESETS & FILTERS --}}
                     <div class="col-md-4 mb-3">
                         <label class="font-weight-bold small text-dark"><i class="fas fa-calendar-alt text-warning mr-1"></i> 3. Date Presets:</label>
-                        <div class="btn-group btn-group-sm btn-group-toggle d-flex mb-2" data-toggle="buttons">
+                        <div class="btn-group btn-group-sm btn-group-toggle d-flex mb-2" data-toggle="buttons" id="date-preset-group">
                             <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="today"> Today
+                                <input type="radio" name="date_preset" value="today" autocomplete="off"> Today
                             </label>
                             <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="this_week"> Week
+                                <input type="radio" name="date_preset" value="this_week" autocomplete="off"> Week
                             </label>
                             <label class="btn btn-outline-secondary flex-fill active">
-                                <input type="radio" name="date_preset" value="this_month" checked> This Month
+                                <input type="radio" name="date_preset" value="this_month" checked autocomplete="off"> This Month
                             </label>
                             <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="last_month"> Last Mo.
+                                <input type="radio" name="date_preset" value="last_month" autocomplete="off"> Last Mo.
                             </label>
                             <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="all_time"> All Time
+                                <input type="radio" name="date_preset" value="all_time" autocomplete="off"> All Time
                             </label>
                             <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="custom"> Custom
+                                <input type="radio" name="date_preset" value="custom" autocomplete="off"> Custom
                             </label>
                         </div>
                         <div class="row d-none" id="custom-date-row">
@@ -187,7 +187,7 @@
                 {{-- SECONDARY FILTERS ROW --}}
                 <div class="row pt-2 border-top">
                     {{-- Branch Filter --}}
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <label class="small text-muted mb-1"><i class="fas fa-store-alt mr-1"></i> Branch:</label>
                         <select class="form-control form-control-sm" id="branch_id" name="branch_id">
                             <option value="">All Branches</option>
@@ -210,7 +210,7 @@
                     </div>
 
                     {{-- Specific Supplier Filter --}}
-                    <div class="col-md-3 mb-2" id="filter-supplier-col">
+                    <div class="col-md-2 mb-2" id="filter-supplier-col">
                         <label class="small text-muted mb-1"><i class="fas fa-truck mr-1"></i> Filter Supplier:</label>
                         <select class="form-control form-control-sm select2-ajax" id="supplier_id" name="supplier_id">
                             @if($initialSupplier)
@@ -221,8 +221,20 @@
                         </select>
                     </div>
 
+                    {{-- Specific Customer Filter --}}
+                    <div class="col-md-3 mb-2" id="filter-customer-col">
+                        <label class="small text-muted mb-1"><i class="fas fa-user mr-1"></i> Filter Customer:</label>
+                        <select class="form-control form-control-sm select2-ajax" id="customer_id" name="customer_id">
+                            @if($initialCustomer)
+                                <option value="{{ $initialCustomer->id }}" selected>{{ $initialCustomer->name }} {{ ($initialCustomer->mobile ?: $initialCustomer->phone) ? '(' . ($initialCustomer->mobile ?: $initialCustomer->phone) . ')' : '' }}</option>
+                            @else
+                                <option value="">-- All Customers --</option>
+                            @endif
+                        </select>
+                    </div>
+
                     {{-- Limit & Sort --}}
-                    <div class="col-md-3 mb-2">
+                    <div class="col-md-2 mb-2">
                         <label class="small text-muted mb-1"><i class="fas fa-sort-amount-down mr-1"></i> Ranking & Limit:</label>
                         <div class="input-group input-group-sm">
                             <select class="form-control" id="limit" name="limit">
@@ -267,7 +279,7 @@
 
                         {{-- EXPORTS --}}
                         <button type="button" class="btn btn-sm btn-outline-success font-weight-bold mr-1" id="btn-export-csv">
-                            <i class="fas fa-file-excel mr-1"></i> Export CSV
+                            <i class="fas fa-file-excel mr-1"></i> Export XLS
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()">
                             <i class="fas fa-print mr-1"></i> Print
@@ -451,7 +463,7 @@ $(document).ready(function() {
     let chartType = 'bar';
     let lastResponseData = null;
 
-    // Initialize Select2 AJAX for Item search
+    // Initialize Select2 AJAX for Item search (by Code, Barcode, or Name)
     $('#item_id').select2({
         theme: 'bootstrap4',
         placeholder: '-- Search Item by Code or Name --',
@@ -460,6 +472,9 @@ $(document).ready(function() {
             url: '{{ route("reports.analytics-builder.search-items") }}',
             dataType: 'json',
             delay: 250,
+            data: function (params) {
+                return { q: params.term, term: params.term };
+            },
             processResults: function (data) {
                 return { results: data.results };
             },
@@ -476,6 +491,9 @@ $(document).ready(function() {
             url: '{{ route("reports.analytics-builder.search-suppliers") }}',
             dataType: 'json',
             delay: 250,
+            data: function (params) {
+                return { q: params.term, term: params.term };
+            },
             processResults: function (data) {
                 return { results: data.results };
             },
@@ -483,9 +501,40 @@ $(document).ready(function() {
         }
     });
 
-    // Date Preset Radio change
+    // Initialize Select2 AJAX for Customer search
+    $('#customer_id').select2({
+        theme: 'bootstrap4',
+        placeholder: '-- Search Customer by Name or Mobile --',
+        allowClear: true,
+        ajax: {
+            url: '{{ route("reports.analytics-builder.search-customers") }}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return { q: params.term, term: params.term };
+            },
+            processResults: function (data) {
+                return { results: data.results };
+            },
+            cache: true
+        }
+    });
+
+    // Robust Date Preset Radio click & change handling
+    $('#date-preset-group label').on('click', function(e) {
+        let $label = $(this);
+        let $radio = $label.find('input[name="date_preset"]');
+        $('#date-preset-group label').removeClass('active');
+        $label.addClass('active');
+        $radio.prop('checked', true).trigger('change');
+    });
+
     $('input[name="date_preset"]').on('change', function() {
-        if ($(this).val() === 'custom') {
+        let val = $('input[name="date_preset"]:checked').val() || $(this).val();
+        let $parentLabel = $(this).closest('label');
+        $('#date-preset-group label').removeClass('active');
+        $parentLabel.addClass('active');
+        if (val === 'custom') {
             $('#custom-date-row').removeClass('d-none');
         } else {
             $('#custom-date-row').addClass('d-none');

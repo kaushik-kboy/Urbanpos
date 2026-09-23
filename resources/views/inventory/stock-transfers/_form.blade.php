@@ -42,7 +42,7 @@
     </div>
     <div class="field-wrapper col-md-4" data-field="transfer_date" data-label="Transfer Date" data-default-order="3" data-core="1">
         <label for="transfer_date" class="font-weight-bold">Transfer Date <span class="text-danger">*</span></label>
-        <input type="date" name="transfer_date" id="transfer_date" class="form-control" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required>
+        <input type="text" name="transfer_date" id="transfer_date" class="form-control datepicker font-weight-bold" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('d/m/Y')) }}" placeholder="DD/MM/YYYY (e.g. 10012026)" data-date-format="d/m/Y" required autocomplete="off">
     </div>
 </div>
 
@@ -224,8 +224,54 @@
             return $('#from_branch_id').val() || '';
         }
 
+        function formatToDisplayDate(val) {
+            if (!val) return '';
+            val = String(val).trim();
+            if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) return val;
+            if (/^\d{4}-\d{2}-\d{2}/.test(val)) {
+                let parts = val.substring(0, 10).split('-');
+                return parts[2] + '/' + parts[1] + '/' + parts[0];
+            }
+            if (typeof window.parseFastDate === 'function') {
+                let p = window.parseFastDate(val, 'DD/MM/YYYY');
+                if (p) return p;
+            }
+            return val;
+        }
+
+        function isExpiredDate(val) {
+            if (!val) return false;
+            let d = null;
+            val = String(val).trim();
+            if (/^\d{4}-\d{2}-\d{2}/.test(val)) {
+                let parts = val.substring(0, 10).split('-');
+                d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) {
+                let parts = val.split('/');
+                d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+            } else if (/^\d{8}$/.test(val)) {
+                let dNum = parseInt(val.substring(0, 2), 10);
+                let mNum = parseInt(val.substring(2, 4), 10);
+                let yNum = parseInt(val.substring(4, 8), 10);
+                d = new Date(yNum, mNum - 1, dNum);
+            }
+            if (d && !isNaN(d.getTime())) {
+                let today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return d < today;
+            }
+            return false;
+        }
+
         function applyItemToRow($row, item) {
-            if (!$row || !$row.length) return;
+            if (!$row || !$row.length) return false;
+
+            if (item.exp_date && isExpiredDate(item.exp_date)) {
+                let formattedExp = formatToDisplayDate(item.exp_date);
+                alert('Expiry Validation Error:\n\nProduct "' + (item.name || 'Selected Item') + '" has expired on ' + formattedExp + '!\nTransfer of expired products is not permitted.');
+                return false;
+            }
+
             const $select = $row.find('.item-select');
             const displayCode = item.code || item.barcode || '';
             const codeStr = displayCode ? " [" + displayCode + "]" : "";
@@ -238,7 +284,10 @@
             $row.find('.item-available').val(avail.toFixed(3));
 
             if (item.exp_date) {
-                $row.find('input[type="date"]').val(item.exp_date);
+                let formattedExp = formatToDisplayDate(item.exp_date);
+                $row.find('.item-exp-date, input[name*="[exp_date]"]').val(formattedExp);
+            } else {
+                $row.find('.item-exp-date, input[name*="[exp_date]"]').val('');
             }
 
             const $qty = $row.find('.item-qty');
@@ -250,6 +299,7 @@
             setTimeout(function() {
                 $qty.focus().select();
             }, 80);
+            return true;
         }
 
         function showHintState(msg) {
@@ -322,8 +372,11 @@
 
             let html = '';
             items.forEach(function (it, idx) {
+                let isExpired = it.exp_date && isExpiredDate(it.exp_date);
                 let expBadge = it.exp_date
-                    ? `<span class="badge badge-danger px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`
+                    ? (isExpired
+                        ? `<span class="badge badge-danger px-2 py-1"><i class="fas fa-ban mr-1"></i>EXPIRED (${formatToDisplayDate(it.exp_date)})</span>`
+                        : `<span class="badge badge-info px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${formatToDisplayDate(it.exp_date)}</span>`)
                     : `<span class="text-muted">—</span>`;
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>`
@@ -331,16 +384,21 @@
                 
                 let qtyAvailable = parseFloat(it.available_qty !== undefined ? it.available_qty : (it.qty || 0));
                 let isOutOfStock = qtyAvailable <= 0;
+                let isBlocked = isOutOfStock || isExpired;
                 let qtyClass = isOutOfStock ? 'text-danger font-weight-bold' : 'text-success font-weight-bold';
-                let rowClass = isOutOfStock ? 'st-isl-item-row st-isl-item-disabled text-muted bg-light' : 'st-isl-item-row';
-                let rowStyle = isOutOfStock ? 'cursor: not-allowed; opacity: 0.65;' : 'cursor: pointer;';
-                let actionBtn = isOutOfStock
-                    ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock - Cannot select">
+                let rowClass = isBlocked ? 'st-isl-item-row st-isl-item-disabled text-muted bg-light' : 'st-isl-item-row';
+                let rowStyle = isBlocked ? 'cursor: not-allowed; opacity: 0.65;' : 'cursor: pointer;';
+                let actionBtn = isExpired
+                    ? `<button type="button" class="btn btn-danger btn-xs px-2" disabled title="Product is Expired - Cannot transfer">
+                        <i class="fas fa-ban mr-1"></i>Expired
+                       </button>`
+                    : (isOutOfStock
+                        ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock - Cannot select">
                         <i class="fas fa-ban mr-1"></i>Out of Stock
                        </button>`
                     : `<button type="button" class="btn btn-success btn-xs px-2 st-isl-btn-select">
                         <i class="fas fa-check mr-1"></i>Select
-                       </button>`;
+                       </button>`);
 
                 html += `
                     <tr class="${rowClass}" style="${rowStyle}"
@@ -465,23 +523,33 @@
         let stItemSelectedInModal = false;
         let stLastSelectedRow = null;
 
-        // Clicking row or Select button picks item (unless out of stock)
+        // Clicking row or Select button picks item (unless out of stock or expired)
         $(document).on('click', '.st-isl-item-row, .st-isl-btn-select', function (e) {
             e.stopPropagation();
             let $row = $(this).hasClass('st-isl-item-row') ? $(this) : $(this).closest('tr');
+            let item = $row.data('item');
+            if (!item) return false;
+
+            if (item.exp_date && isExpiredDate(item.exp_date)) {
+                alert('Expiry Validation Error:\n\nProduct "' + (item.name || 'Selected Item') + '" has expired on ' + formatToDisplayDate(item.exp_date) + '!\nTransfer of expired products is not permitted.');
+                return false;
+            }
+
             if ($row.hasClass('st-isl-item-disabled')) {
                 return false;
             }
-            let item = $row.data('item');
-            let avail = parseFloat(item ? (item.available_qty !== undefined ? item.available_qty : (item.qty || 0)) : 0);
+            let avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
             if (avail <= 0) {
+                alert('Product "' + (item.name || 'Selected Item') + '" has 0 available stock in this branch.');
                 return false;
             }
             if (item && activeTargetRow) {
+                if (applyItemToRow(activeTargetRow, item) === false) {
+                    return false;
+                }
                 stItemSelectedInModal = true;
                 stCancellingRow = null;
                 stLastSelectedRow = activeTargetRow;
-                applyItemToRow(activeTargetRow, item);
                 $('#st-item-search-modal').modal('hide');
             }
         });
@@ -580,8 +648,115 @@
             $select.on('select2:clear', function () {
                 $row.find('.item-code-input').val('');
                 $row.find('.item-available').val('0.000');
+                $row.find('.item-exp-date').val('');
             });
         }
+
+        // Initialize Select2 on any pre-rendered item rows
+        $('#items-body tr.item-row').each(function () {
+            initRowSelect2($(this));
+        });
+
+        // Add Row Handler
+        function addNewRow() {
+            let tpl = document.getElementById('row-template');
+            if (!tpl) return null;
+            let html = tpl.innerHTML.replace(/__INDEX__/g, rowIndex);
+            let $newRow = $(html);
+            $('#items-body').append($newRow);
+            rowIndex++;
+            reindexSno();
+            initRowSelect2($newRow);
+            return $newRow;
+        }
+
+        $('#add-row').on('click', function (e) {
+            e.preventDefault();
+            let $newRow = addNewRow();
+            if ($newRow) {
+                setTimeout(function () {
+                    $newRow.find('.item-code-input').focus();
+                }, 50);
+            }
+        });
+
+        // Row Remove Handler
+        $('#items-body').on('click', '.row-remove', function (e) {
+            e.preventDefault();
+            if ($('#items-body tr.item-row').length > 1) {
+                $(this).closest('tr.item-row').remove();
+                reindexSno();
+                recalcTotals();
+            } else {
+                let $row = $(this).closest('tr.item-row');
+                $row.find('.item-code-input').val('');
+                $row.find('.item-select').val(null).trigger('change');
+                $row.find('.item-exp-date').val('');
+                $row.find('.item-available').val('0.000');
+                $row.find('.item-qty').val('');
+                recalcTotals();
+            }
+        });
+
+        // Barcode / Code input: pressing Enter directly fetches item or opens modal
+        $(document).on('keydown', '.item-code-input', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                let code = $(this).val().trim();
+                let $row = $(this).closest('tr');
+                if (!code) {
+                    openItemModal($row, '');
+                    return;
+                }
+                $.getJSON(itemByCodeUrl, { code: code, branch_id: currentFromBranch() }, function (res) {
+                    if (res && res.found && res.item) {
+                        if (res.item.exp_date && isExpiredDate(res.item.exp_date)) {
+                            alert('Expiry Validation Error:\n\nProduct "' + res.item.name + '" has expired on ' + formatToDisplayDate(res.item.exp_date) + '!\nTransfer of expired products is not permitted.');
+                            return;
+                        }
+                        applyItemToRow($row, res.item);
+                    } else if (res && res.error) {
+                        alert('Stock Transfer Error:\n\n' + res.error);
+                    } else {
+                        openItemModal($row, code);
+                    }
+                }).fail(function () {
+                    openItemModal($row, code);
+                });
+            }
+        });
+
+        // Expiry Date input: auto-format to DD/MM/YYYY on blur or Enter/Tab, and validate not expired
+        $(document).on('change blur', '.item-exp-date', function () {
+            let val = $(this).val();
+            if (val) {
+                let formatted = formatToDisplayDate(val);
+                $(this).val(formatted);
+                if (isExpiredDate(formatted)) {
+                    $(this).addClass('is-invalid');
+                    alert('Expiry Validation Error:\n\nExpired date (' + formatted + ') entered! Transfer of expired products is not allowed.');
+                    $(this).val('').focus();
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            }
+        });
+        $(document).on('keydown', '.item-exp-date', function (e) {
+            if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+                let val = $(this).val();
+                if (val) {
+                    let formatted = formatToDisplayDate(val);
+                    $(this).val(formatted);
+                    if (isExpiredDate(formatted)) {
+                        $(this).addClass('is-invalid');
+                        alert('Expiry Validation Error:\n\nExpired date (' + formatted + ') entered! Transfer of expired products is not allowed.');
+                        $(this).val('').focus();
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                }
+            }
+        });
 
         function recalcTotals() {
             let totalQty = 0;
@@ -594,6 +769,7 @@
         function reindexSno() {
             $('#items-body tr.item-row').each(function (idx) {
                 $(this).find('.row-sno').text(idx + 1);
+                $(this).attr('data-row', idx);
             });
         }
 
@@ -630,7 +806,7 @@
         $('#items-body').on('input change', '.item-qty', function () {
             let q = parseFloat($(this).val()) || 0;
             let avail = parseFloat($(this).closest('tr').find('.item-available').val()) || 0;
-            let itemId = $(this).closest('tr').find('.item-id-input').val();
+            let itemId = $(this).closest('tr').find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
 
             if (itemId) {
                 if (q <= 0) {
@@ -659,14 +835,24 @@
                 return false;
             }
 
+            // Remove any trailing completely empty rows if there is more than 1 row
+            $('#items-body tr.item-row').each(function () {
+                let id = $(this).find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                if (!id && $('#items-body tr.item-row').length > 1) {
+                    $(this).remove();
+                }
+            });
+            reindexSno();
+
             let hasError = false;
             let validCount = 0;
 
             $('#items-body tr.item-row').each(function (idx) {
-                let id = $(this).find('.item-id-input').val();
-                let $q = $(this).find('.item-qty');
+                let $row = $(this);
+                let id = $row.find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                let $q = $row.find('.item-qty');
                 let q = parseFloat($q.val()) || 0;
-                let avail = parseFloat($(this).find('.item-available').val()) || 0;
+                let avail = parseFloat($row.find('.item-available').val()) || 0;
 
                 if (id) {
                     if (q <= 0) {

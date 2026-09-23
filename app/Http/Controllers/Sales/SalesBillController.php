@@ -339,17 +339,20 @@ class SalesBillController extends Controller
             \Illuminate\Support\Facades\Log::error("Auto E-Invoice exception for bill {$salesBill->bill_number}: " . $e->getMessage());
         }
 
+        $saveAction = $request->input('save_action', 'save');
         $whatsappNotice = '';
-        try {
-            $waSettings = \App\Models\WhatsAppSetting::current();
-            if ($waSettings->is_active && $waSettings->auto_send_on_bill) {
-                $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
-                if ($waResult['success'] ?? false) {
-                    $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
+        if ($saveAction === 'whatsapp' || $request->boolean('send_whatsapp')) {
+            try {
+                $waSettings = \App\Models\WhatsAppSetting::current();
+                if ($waSettings->is_active) {
+                    $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
+                    if ($waResult['success'] ?? false) {
+                        $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
+                    }
                 }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
             }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Auto WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
         }
 
         if ($request->wantsJson()) {
@@ -363,7 +366,6 @@ class SalesBillController extends Controller
             ]);
         }
 
-        $saveAction = $request->input('save_action', 'save');
         $redirect = redirect()->route('sales.sales-bills.index')
             ->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$whatsappNotice}");
 
@@ -552,12 +554,17 @@ class SalesBillController extends Controller
 
         $customer->load(['pets.petType', 'pets.breed']);
         $pets = $customer->pets->map(function ($p) {
+            $breedName = $p->breed?->name ?? '';
+            $typeName = $p->petType?->name ?? '';
+            $disp = $p->name 
+                ? ($breedName ? "{$p->name} ({$breedName})" : ($typeName ? "{$p->name} ({$typeName})" : $p->name)) 
+                : ($breedName ?: ($typeName ?: 'Pet'));
             return [
                 'id' => $p->id,
                 'name' => $p->name,
-                'type' => $p->petType?->name,
-                'breed' => $p->breed?->name,
-                'display' => $p->name ? ($p->petType ? "{$p->name} ({$p->petType->name})" : $p->name) : ($p->petType?->name ?? 'Pet'),
+                'type' => $typeName,
+                'breed' => $breedName,
+                'display' => $disp,
             ];
         });
 
@@ -570,6 +577,80 @@ class SalesBillController extends Controller
             'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
             'total_invoices' => count($bills),
             'invoices' => $bills,
+        ]);
+    }
+
+    public function customerFavorites(int $customerId, Request $request): JsonResponse
+    {
+        $branchId = $request->query('branch_id') ?: (session('active_branch_id') ?: auth()->user()?->branch_id);
+
+        $topItems = DB::table('sales_bill_items')
+            ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+            ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
+            ->leftJoin('gst_taxes', 'items.gst_tax_id', '=', 'gst_taxes.id')
+            ->where('sales_bills.customer_id', $customerId)
+            ->where('sales_bills.status', '!=', 'Cancelled')
+            ->select([
+                'items.id',
+                'items.name',
+                'items.item_code',
+                'items.ean_upc_code',
+                'items.sell_price',
+                'items.mrp',
+                'items.cost_price',
+                'items.gst_tax_id',
+                'gst_taxes.percentage as gst_percentage',
+                DB::raw('SUM(sales_bill_items.qty) as total_qty'),
+                DB::raw('COUNT(DISTINCT sales_bills.id) as bills_count'),
+                DB::raw('MAX(sales_bills.bill_date) as last_purchased_date'),
+            ])
+            ->groupBy(
+                'items.id',
+                'items.name',
+                'items.item_code',
+                'items.ean_upc_code',
+                'items.sell_price',
+                'items.mrp',
+                'items.cost_price',
+                'items.gst_tax_id',
+                'gst_taxes.percentage'
+            )
+            ->orderByDesc('total_qty')
+            ->limit(20)
+            ->get();
+
+        $formatted = $topItems->map(function ($item) use ($branchId) {
+            $stock = 0.0;
+            if ($branchId) {
+                $stock = (float) (DB::table('item_stocks')
+                    ->where('item_id', $item->id)
+                    ->where('branch_id', $branchId)
+                    ->value('quantity') ?? 0);
+            }
+            if ($stock <= 0) {
+                $stock = (float) (DB::table('item_stocks')->where('item_id', $item->id)->sum('quantity') ?? 0);
+            }
+
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'item_code' => $item->item_code,
+                'ean_upc_code' => $item->ean_upc_code,
+                'sell_price' => (float) $item->sell_price,
+                'mrp' => (float) $item->mrp,
+                'cost_price' => (float) $item->cost_price,
+                'gst_tax_id' => $item->gst_tax_id,
+                'gst_percentage' => (float) ($item->gst_percentage ?? 0),
+                'total_qty' => (float) $item->total_qty,
+                'bills_count' => (int) $item->bills_count,
+                'last_purchased_date' => $item->last_purchased_date ? date('d M Y', strtotime($item->last_purchased_date)) : '',
+                'stock' => $stock,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'items' => $formatted,
         ]);
     }
 
@@ -698,17 +779,23 @@ class SalesBillController extends Controller
         $search   = trim((string) $request->input('search', ''));
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));
+        $showAll  = $request->boolean('show_all');
 
-        // Require at least 1 character to avoid loading 8000+ items on every open
-        $hasFilter = $search !== '' || $code !== '' || $expiry !== '';
+        // Require at least 1 character to avoid loading 8000+ items on every open (or show_all checked)
+        $hasFilter = $search !== '' || $code !== '' || $expiry !== '' || $showAll;
         if (! $hasFilter) {
-            return response()->json(['items' => [], 'hint' => 'Type to search items\u2026']);
+            return response()->json(['items' => [], 'hint' => 'Type to search items…']);
         }
 
         // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
         $limit  = 100;
         $where  = ['i.status = 1'];
         $params = [$branchId, $branchId];
+
+        // By default show only products in stock (quantity > 0 or allow_negative_stock) unless show_all is checked
+        if (! $showAll) {
+            $where[] = '(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1)';
+        }
 
         // Filter by customer purchases if customer_id is provided (Task 6 for Sales Return)
         if ($customerId = (int) $request->input('customer_id')) {
@@ -1053,7 +1140,7 @@ class SalesBillController extends Controller
         $q = trim((string) $request->input('q', ''));
 
         $customers = Customer::where('status', true)
-            ->with(['pets.petType'])
+            ->with(['pets.petType', 'pets.breed'])
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('name', 'like', "%{$q}%")
@@ -1069,11 +1156,17 @@ class SalesBillController extends Controller
             ->get()
             ->map(function ($c) {
                 $pets = $c->pets->map(function ($p) {
+                    $breedName = $p->breed?->name ?? '';
+                    $typeName = $p->petType?->name ?? '';
+                    $disp = $p->name 
+                        ? ($breedName ? "{$p->name} ({$breedName})" : ($typeName ? "{$p->name} ({$typeName})" : $p->name)) 
+                        : ($breedName ?: ($typeName ?: 'Pet'));
                     return [
                         'id' => $p->id,
                         'name' => $p->name,
-                        'type' => $p->petType?->name,
-                        'display' => $p->name ? ($p->petType ? "{$p->name} ({$p->petType->name})" : $p->name) : ($p->petType?->name ?? 'Pet'),
+                        'type' => $typeName,
+                        'breed' => $breedName,
+                        'display' => $disp,
                     ];
                 });
 
@@ -1309,6 +1402,9 @@ class SalesBillController extends Controller
         }
 
         $header['bill_date'] = \Illuminate\Support\Carbon::parse($header['bill_date'])->format('Y-m-d H:i:s');
+        if (empty($header['payment_type']) || strtolower(trim($header['payment_type'])) === 'none') {
+            $header['payment_type'] = 'Cash';
+        }
 
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],

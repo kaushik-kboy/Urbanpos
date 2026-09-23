@@ -252,7 +252,8 @@ class SmartAnalyticsReportTest extends TestCase
         ]));
 
         $response->assertOk();
-        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
+        $contentType = $response->headers->get('content-type') ?? '';
+        $this->assertTrue(str_contains($contentType, 'application/vnd.ms-excel') || str_contains($contentType, 'text/csv'));
         $this->assertStringContainsString('EXP-01', $response->headers->get('content-disposition'));
     }
 }

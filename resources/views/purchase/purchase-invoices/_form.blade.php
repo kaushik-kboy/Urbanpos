@@ -83,7 +83,13 @@
     </div>
 
     <div class="field-wrapper col-md-6" data-field="supplier_inv_no" data-label="Inv No (Supplier)" data-default-order="9">
-        <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase();" placeholder="e.g. INV-2026-001" />
+        <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase();" placeholder="e.g. INV-2026-001" required data-check-url="{{ route('purchase.purchase-invoices.check-supplier-inv') }}" data-invoice-id="{{ $inv?->id ?? '' }}" />
+        <div class="form-group row mt-n2 mb-2" id="supplier-inv-feedback-container" style="display: none;">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-6">
+                <div id="supplier-inv-feedback" class="small font-weight-bold text-danger"></div>
+            </div>
+        </div>
     </div>
 
     <div class="field-wrapper col-md-6" data-field="supplier_inv_date" data-label="Inv Date (Supplier)" data-default-order="10">
@@ -279,6 +285,69 @@
         let islLastKey = null;
         let islModalOpen = false;
         const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
+
+        const supplierPurchaseTypes = @json(\App\Models\Supplier::pluck('purchase_type', 'id'));
+
+        // Auto-set purchase_type based on supplier's purchase_type
+        $('#supplier_id').on('change', function () {
+            let sId = $(this).val();
+            if (sId && supplierPurchaseTypes[sId]) {
+                let pType = supplierPurchaseTypes[sId];
+                if (pType === 'Local' || pType === 'Interstate') {
+                    $('#purchase_type').val(pType).trigger('change');
+                }
+            }
+            validateSupplierInvNo();
+        });
+
+        // Real-time Supplier Invoice Number validation & duplication check
+        let suppInvDebounce = null;
+        function validateSupplierInvNo() {
+            let $input = $('#supplier_inv_no');
+            let $feedbackContainer = $('#supplier-inv-feedback-container');
+            let $feedback = $('#supplier-inv-feedback');
+            let invNo = $.trim($input.val()).toUpperCase();
+            let suppId = $('#supplier_id').val();
+            let ignoreId = $input.data('invoice-id') || '';
+            let checkUrl = $input.data('check-url');
+
+            if (!invNo) {
+                $input.addClass('is-invalid border-danger').removeClass('is-valid');
+                $feedback.text('Supplier Invoice Number is required before moving forward.').show();
+                $feedbackContainer.show();
+                return false;
+            }
+
+            if (!suppId) {
+                $input.removeClass('is-invalid is-valid border-danger');
+                $feedbackContainer.hide();
+                return true;
+            }
+
+            $.getJSON(checkUrl, { supplier_id: suppId, supplier_inv_no: invNo, ignore_id: ignoreId }, function (res) {
+                if (res.is_duplicate) {
+                    $input.addClass('is-invalid border-danger').removeClass('is-valid');
+                    let msg = res.message || `Supplier Invoice Number '${invNo}' is already recorded for this supplier.`;
+                    $feedback.text(msg).show();
+                    $feedbackContainer.show();
+                    alert(msg);
+                } else {
+                    $input.removeClass('is-invalid border-danger').addClass('is-valid');
+                    $feedback.text('').hide();
+                    $feedbackContainer.hide();
+                }
+            });
+            return true;
+        }
+
+        $('#supplier_inv_no').on('blur change', function () {
+            validateSupplierInvNo();
+        });
+
+        $('#supplier_inv_no').on('input', function () {
+            clearTimeout(suppInvDebounce);
+            suppInvDebounce = setTimeout(validateSupplierInvNo, 400);
+        });
 
         function focusExpDateField($row) {
             if (!$row || !$row.length) return;
@@ -1300,6 +1369,24 @@
                 return false;
             } else {
                 $suppContainer.removeClass('border-danger');
+            }
+
+            let $suppInvInput = $('#supplier_inv_no');
+            let suppInvVal = $.trim($suppInvInput.val());
+            if (!suppInvVal) {
+                e.preventDefault();
+                $suppInvInput.addClass('is-invalid border-danger');
+                $('#supplier-inv-feedback').text('Supplier Invoice Number is required before saving.').show();
+                $('#supplier-inv-feedback-container').show();
+                alert('Supplier Invoice Number is required before saving.');
+                $suppInvInput.focus();
+                return false;
+            }
+            if ($suppInvInput.hasClass('is-invalid')) {
+                e.preventDefault();
+                alert('Please resolve the Supplier Invoice Number error before saving.');
+                $suppInvInput.focus();
+                return false;
             }
 
             let hasError = false;
