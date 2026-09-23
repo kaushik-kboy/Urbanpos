@@ -144,7 +144,7 @@ class PurchaseOrderController extends Controller
 
     public function edit(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load('items');
+        $purchaseOrder->load('items.item.gstTax');
 
         return view('purchase.purchase-orders.edit', array_merge(['purchaseOrder' => $purchaseOrder], $this->formOptions($purchaseOrder)));
     }

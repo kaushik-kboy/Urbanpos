@@ -86,7 +86,7 @@
                         <label>Branch <span class="text-danger">*</span></label>
                         <select name="branch_id" id="branch-select" class="form-control form-control-sm select2" required>
                             @foreach($branches as $id => $name)
-                                <option value="{{ $id }}" @selected(old('branch_id', session('active_branch_id', 3)) == $id)>{{ $name }}</option>
+                                <option value="{{ $id }}" @selected(old('branch_id', session('active_branch_id', \App\Models\Branch::value('id') ?? 1)) == $id)>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

@@ -3,7 +3,7 @@
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($bill?->items ?? ($convertedItems ?? collect()));
     $selectedCust = old('customer_id', old('header.customer_id', $bill->customer_id ?? ($sourceQuotation->customer_id ?? ($sourceOrder->customer_id ?? ($sourceDeliveryNote->customer_id ?? '')))));
-    $selectedBranch = old('branch_id', old('header.branch_id', $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ($sourceDeliveryNote->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: 3)))))));
+    $selectedBranch = old('branch_id', old('header.branch_id', $bill->branch_id ?? ($sourceQuotation->branch_id ?? ($sourceOrder->branch_id ?? ($sourceDeliveryNote->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1))))))));
     $selectedSalesType = old('sales_type', old('header.sales_type', $bill->sales_type ?? ($sourceQuotation->sales_type ?? ($sourceOrder->sales_type ?? 'Local'))));
     $billNumberVal = old('bill_number', $bill->bill_number ?? ($nextBillNumber ?? ''));
 @endphp

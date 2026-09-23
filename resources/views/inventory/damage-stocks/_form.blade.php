@@ -21,7 +21,7 @@
 
 <div class="row g-2 form-fields-grid mb-3" id="ds-header-fields-grid">
     @php
-        $selectedBranch = old('branch_id', $entry->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $selectedBranch = old('branch_id', $entry->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
     <div class="field-wrapper col-md-4" data-field="branch_id" data-label="Location / Branch" data-default-order="1" data-core="1">
         <label for="branch_id" class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>

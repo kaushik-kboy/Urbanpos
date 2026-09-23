@@ -3,7 +3,7 @@
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($order?->items ?? ($convertedItems ?? collect()));
     $selectedCust = $order->customer_id ?? ($sourceQuotation->customer_id ?? old('customer_id'));
-    $selectedBranch = old('branch_id', $order->branch_id ?? ($sourceQuotation->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: 3))));
+    $selectedBranch = old('branch_id', $order->branch_id ?? ($sourceQuotation->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)))));
     $selectedSalesType = $order->sales_type ?? ($sourceQuotation->sales_type ?? old('sales_type', 'Local'));
 @endphp
 

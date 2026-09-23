@@ -19,7 +19,7 @@
 
 <div class="row g-2 form-fields-grid mb-3" id="st-header-fields-grid">
     @php
-        $selectedFromBranch = old('from_branch_id', $transfer->from_branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $selectedFromBranch = old('from_branch_id', $transfer->from_branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
     <div class="field-wrapper col-md-4" data-field="from_branch_id" data-label="From Branch" data-default-order="1" data-core="1">
         <label for="from_branch_id" class="font-weight-bold">From Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>

@@ -80,13 +80,14 @@ class StockTransferController extends Controller
         $fromBranchId = (int) $data['header']['from_branch_id'];
         $toBranchId = (int) $data['header']['to_branch_id'];
 
-        $this->assertStockAvailable($data['items'], $fromBranchId);
-
         $fromBranch = Branch::findOrFail($fromBranchId);
         $toBranch = Branch::findOrFail($toBranchId);
         $isInterstate = $fromBranch->state !== $toBranch->state;
 
         $stockTransfer = DB::transaction(function () use ($data, $fromBranchId, $toBranchId, $isInterstate) {
+            // assertStockAvailable is inside the transaction so lockForUpdate() is effective:
+            // concurrent transfers for the same items are serialized at the database row level.
+            $this->assertStockAvailable($data['items'], $fromBranchId);
             $stockTransfer = StockTransfer::create([
                 'transfer_number' => $this->nextNumber(),
                 'transfer_date' => $data['header']['transfer_date'],
@@ -293,7 +294,10 @@ class StockTransferController extends Controller
                 continue;
             }
 
-            $available = (float) (ItemStock::where('item_id', $itemId)->where('branch_id', $fromBranchId)->value('quantity') ?? 0);
+            $available = (float) (ItemStock::where('item_id', $itemId)
+                ->where('branch_id', $fromBranchId)
+                ->lockForUpdate()
+                ->value('quantity') ?? 0);
             if (round($totalRequested, 4) > round($available, 4)) {
                 throw ValidationException::withMessages([
                     'items' => "Insufficient stock for \"{$item->name}\" at source branch: available {$available}, requested {$totalRequested}.",
@@ -304,7 +308,7 @@ class StockTransferController extends Controller
 
     public function itemList(Request $request)
     {
-        $branchId = (int) ($request->input('branch_id') ?: $request->input('from_branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $branchId = (int) ($request->input('branch_id') ?: $request->input('from_branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
         $search   = trim((string) $request->input('search', ''));
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));

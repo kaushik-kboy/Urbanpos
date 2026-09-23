@@ -147,9 +147,9 @@
             document.body.removeChild(link);
         };
     </script>
-    <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ time() }}"></script>
-    <script src="{{ asset('js/pos-latency-monitor.js') }}?v={{ time() }}"></script>
-    <script src="{{ asset('js/pos-telemetry.js') }}?v={{ time() }}"></script>
-    <script src="{{ asset('js/form-sequential-validator.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ file_exists(public_path('js/pos-hotkeys.js')) ? filemtime(public_path('js/pos-hotkeys.js')) : '1.0' }}"></script>
+    <script src="{{ asset('js/pos-latency-monitor.js') }}?v={{ file_exists(public_path('js/pos-latency-monitor.js')) ? filemtime(public_path('js/pos-latency-monitor.js')) : '1.0' }}"></script>
+    <script src="{{ asset('js/pos-telemetry.js') }}?v={{ file_exists(public_path('js/pos-telemetry.js')) ? filemtime(public_path('js/pos-telemetry.js')) : '1.0' }}"></script>
+    <script src="{{ asset('js/form-sequential-validator.js') }}?v={{ file_exists(public_path('js/form-sequential-validator.js')) ? filemtime(public_path('js/form-sequential-validator.js')) : '1.0' }}"></script>
     @endauth
 @stop

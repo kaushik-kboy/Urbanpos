@@ -4,11 +4,17 @@
     }
     $selectedItemId = $line->item_id ?? null;
     $selectedItem = null;
-    if ($selectedItemId && isset($items)) {
+    // 1) Prefer the pre-loaded Eloquent relation (avoids any DB query during edit)
+    if ($selectedItemId && isset($line->item) && $line->item instanceof \App\Models\Item) {
+        $selectedItem = $line->item;
+    }
+    // 2) Fall back to scanning the $items collection passed from the create form
+    if (!$selectedItem && $selectedItemId && isset($items)) {
         $selectedItem = is_array($items) || $items instanceof \Illuminate\Support\Collection
             ? collect($items)->firstWhere('id', $selectedItemId)
             : null;
     }
+    // 3) Last resort: single query (only fires when neither relation nor collection has the item)
     if ($selectedItemId && ! $selectedItem) {
         $selectedItem = \App\Models\Item::with('gstTax:id,percentage')->find($selectedItemId);
     }

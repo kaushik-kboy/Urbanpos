@@ -18,9 +18,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
 
     <!-- UrbanPets UI 2.0 Design Tokens & Theme -->
-    <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}?v={{ time() }}">
+    <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}?v={{ file_exists(public_path('css/urbanpets-theme.css')) ? filemtime(public_path('css/urbanpets-theme.css')) : '1.0' }}">
     <!-- Custom POS Terminal Styles -->
-    <link rel="stylesheet" href="{{ asset('css/pos-terminal.css') }}?v={{ time() }}">
+    <link rel="stylesheet" href="{{ asset('css/pos-terminal.css') }}?v={{ file_exists(public_path('css/pos-terminal.css')) ? filemtime(public_path('css/pos-terminal.css')) : '1.0' }}">
 </head>
 <body class="pos-terminal-body">
 
@@ -1263,7 +1263,7 @@ $(document).ready(function () {
     }
 });
 </script>
-<script src="{{ asset('js/pos-hotkeys.js') }}?v={{ time() }}"></script>
-<script src="{{ asset('js/pos-terminal.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('js/pos-hotkeys.js') }}?v={{ file_exists(public_path('js/pos-hotkeys.js')) ? filemtime(public_path('js/pos-hotkeys.js')) : '1.0' }}"></script>
+<script src="{{ asset('js/pos-terminal.js') }}?v={{ file_exists(public_path('js/pos-terminal.js')) ? filemtime(public_path('js/pos-terminal.js')) : '1.0' }}"></script>
 </body>
 </html>

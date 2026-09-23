@@ -32,7 +32,7 @@
     </div>
 
     @php
-        $selectedBranch = $po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? 3))));
+        $selectedBranch = $po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?: (\App\Models\Branch::value('id') ?? 1)))));
     @endphp
     <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
         <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>

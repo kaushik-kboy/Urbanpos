@@ -753,6 +753,7 @@ class SalesBillController extends Controller
 
             $available = (float) (ItemStock::where('item_id', $itemId)
                 ->where('branch_id', $branchId)
+                ->lockForUpdate()
                 ->value('quantity') ?? 0);
 
             if (round($totalRequested, 4) > round($available, 4)) {
@@ -775,7 +776,7 @@ class SalesBillController extends Controller
 
     public function itemList(Request $request)
     {
-        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
         $search   = trim((string) $request->input('search', ''));
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));

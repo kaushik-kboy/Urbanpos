@@ -12,7 +12,7 @@
     if ($selectedItemId && !$selectedItem) {
         $selectedItem = \App\Models\Item::with('gstTax:id,percentage')->find($selectedItemId);
     }
-    $activeBranchId = $selectedBranch ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: 3));
+    $activeBranchId = $selectedBranch ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     $lineStock = isset($line->stock)
         ? (float)$line->stock
         : ($selectedItemId ? (float)(\App\Models\ItemStock::where('item_id', $selectedItemId)->where('branch_id', $activeBranchId)->value('quantity') ?? 0) : 0);

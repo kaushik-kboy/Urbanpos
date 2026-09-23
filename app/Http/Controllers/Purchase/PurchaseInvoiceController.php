@@ -215,7 +215,7 @@ class PurchaseInvoiceController extends Controller
 
     public function edit(PurchaseInvoice $purchaseInvoice)
     {
-        $purchaseInvoice->load('items');
+        $purchaseInvoice->load('items.item.gstTax');
 
         return view('purchase.purchase-invoices.edit', array_merge(['purchaseInvoice' => $purchaseInvoice], $this->formOptions($purchaseInvoice)));
     }

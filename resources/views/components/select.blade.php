@@ -3,7 +3,7 @@
 @php
     $isRequired = $required || $attributes->has('required');
     if (in_array($name, ['branch_id', 'from_branch_id']) && (empty($selected) || $selected === '')) {
-        $selected = session('active_branch_id', auth()->user()?->branch_id ?? 3);
+        $selected = session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1));
     }
     $hasAddon = !empty($addon) || (isset($slot) && !empty((string) $slot));
 @endphp
