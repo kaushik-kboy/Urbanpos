@@ -1475,9 +1475,6 @@
                         <a href="${inv.view_url}" target="_blank" class="cim-action-btn" title="View Bill Receipt (Opens in new tab)">
                             <i class="far fa-eye"></i>
                         </a>
-                        <a href="${inv.edit_url}" target="_blank" class="cim-action-btn" title="Edit Bill (Opens in new tab)">
-                            <i class="far fa-edit"></i>
-                        </a>
                         <a href="${inv.print_url}" target="_blank" class="cim-action-btn" title="Print Bill (Opens in new tab)">
                             <i class="fas fa-print"></i>
                         </a>

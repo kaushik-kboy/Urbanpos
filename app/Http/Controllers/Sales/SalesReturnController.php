@@ -202,10 +202,16 @@ class SalesReturnController extends Controller
         });
 
         return response()->json([
-            'customer_id' => $salesBill->customer_id,
-            'branch_id' => $salesBill->branch_id,
-            'sales_type' => $salesBill->sales_type,
-            'items' => $items,
+            'customer_id'  => $salesBill->customer_id,
+            'branch_id'    => $salesBill->branch_id,
+            'sales_type'   => $salesBill->sales_type,
+            'bill_number'  => $salesBill->bill_number,
+            'bill_date'    => $salesBill->bill_date ? $salesBill->bill_date->format('d-m-Y') : '',
+            'bill_total'   => (float) ($salesBill->total ?? 0),
+            'disc_amount'  => (float) ($salesBill->disc_amount ?? 0),
+            'total_gst'    => (float) ($salesBill->total_gst ?? 0),
+            'round_off'    => (float) ($salesBill->round_off ?? 0),
+            'items'        => $items,
         ]);
     }
 

@@ -33,9 +33,11 @@
             container-id="sb-header-fields-grid" 
             button-text="Customize Layout" 
             button-class="btn btn-outline-primary btn-xs font-weight-bold mr-2 shadow-sm" />
+        @if(empty($bill?->id))
         <button type="button" id="btn-customer-invoices" class="btn btn-outline-info btn-sm font-weight-bold" disabled title="Select a customer first to view their invoice history">
             <i class="fas fa-file-invoice mr-1"></i> Invoices <span id="badge-cust-invoices-count" class="badge badge-info ml-1 d-none">0</span>
         </button>
+        @endif
     </div>
 </div>
 <input type="hidden" name="posting_key" id="sb-posting-key" value="{{ old('posting_key', (string) \Illuminate\Support\Str::uuid()) }}">

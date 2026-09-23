@@ -75,6 +75,22 @@
 {{-- Smart Bill Item Picker: shown when a Sales Bill is selected --}}
 <div id="sr-bill-picker-wrap" class="card border-primary mb-3 bg-light shadow-sm" style="display: none;">
     <div class="card-body py-2 px-3">
+        {{-- Invoice Summary Row --}}
+        <div id="sr-bill-summary" class="alert alert-info py-2 px-3 mb-2 d-none">
+            <div class="d-flex flex-wrap align-items-center justify-content-between">
+                <div>
+                    <i class="fas fa-file-invoice mr-1"></i>
+                    <strong>Original Invoice:</strong>
+                    <span id="sr-bill-summary-num" class="font-weight-bold text-dark ml-1"></span>
+                    <span class="text-muted small ml-2" id="sr-bill-summary-date"></span>
+                </div>
+                <div class="d-flex flex-wrap mt-1 mt-md-0">
+                    <span class="mr-3"><span class="text-muted small">Discount:</span> <strong class="text-danger" id="sr-bill-summary-disc">₹0.00</strong></span>
+                    <span class="mr-3"><span class="text-muted small">GST:</span> <strong class="text-primary" id="sr-bill-summary-gst">₹0.00</strong></span>
+                    <span><span class="text-muted small">Invoice Total:</span> <strong class="text-success h6 mb-0" id="sr-bill-summary-total">₹0.00</strong></span>
+                </div>
+            </div>
+        </div>
         <div class="row align-items-center">
             <div class="col-md-7 mb-2 mb-md-0">
                 <label class="small font-weight-bold text-primary mb-1">
@@ -670,6 +686,16 @@
                     $('#sales_type').val(data.sales_type).trigger('change');
                 }
 
+                // Populate invoice summary panel
+                if (data.bill_number) {
+                    $('#sr-bill-summary-num').text(data.bill_number);
+                    $('#sr-bill-summary-date').text(data.bill_date ? '(' + data.bill_date + ')' : '');
+                    $('#sr-bill-summary-disc').text('₹' + parseFloat(data.disc_amount || 0).toFixed(2));
+                    $('#sr-bill-summary-gst').text('₹' + parseFloat(data.total_gst || 0).toFixed(2));
+                    $('#sr-bill-summary-total').text('₹' + parseFloat(data.bill_total || 0).toFixed(2));
+                    $('#sr-bill-summary').removeClass('d-none');
+                }
+
                 cachedBillItems = data.items || [];
 
                 // Populate smart item picker dropdown
@@ -695,8 +721,14 @@
                     });
                     recalculateAll();
                 } else {
-                    // Show helpful instruction placeholder
-                    tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-primary mr-1"></i> Original Sales Bill loaded (${cachedBillItems.length} items). Select the item being returned from the dropdown above, or click <strong>Add All Bill Items</strong>.</td></tr>`;
+                    // Auto-add all items to the return table (coming from Sales Bill show page)
+                    tbody.innerHTML = '';
+                    cachedBillItems.forEach(item => {
+                        appendBillItemRow(item, item.original_qty);
+                    });
+                    if (cachedBillItems.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-primary mr-1"></i> Original Sales Bill loaded (${cachedBillItems.length} items). Select the item being returned from the dropdown above, or click <strong>Add All Bill Items</strong>.</td></tr>`;
+                    }
                     recalculateAll();
                 }
             })
@@ -823,6 +855,7 @@
             } else {
                 $('#sr-add-row').show();
                 $('#sr-bill-picker-wrap').slideUp(200);
+                $('#sr-bill-summary').addClass('d-none');
                 cachedBillItems = [];
                 $('#sr-items-body .sr-item-row').each(function () {
                     $(this).find('.sr-qty').removeAttr('max').removeAttr('data-original-qty');
@@ -842,10 +875,11 @@
 
         // Customer Sales Bills filter: only show invoices belonging to selected customer
         let customerBillsLoading = false;
-        function loadCustomerBills(customerId, selectedBillId = null) {
+        function loadCustomerBills(customerId, selectedBillId = null, onDone = null) {
             let $billSelect = $('#sales_bill_id');
             if (!customerId) {
                 $billSelect.html('<option value="">-- No Original Bill / Direct Return --</option>').trigger('change');
+                if (onDone) onDone(null);
                 return;
             }
 
@@ -874,6 +908,7 @@
                 }
                 customerBillsLoading = false;
                 updateBillModeUI();
+                if (onDone) onDone($billSelect.val());
             });
         }
 
@@ -931,9 +966,14 @@
         });
 
         let initialCustId = $('#customer_id').val();
-        let initialBillId = '{{ old("sales_bill_id", $ret->sales_bill_id ?? "") }}';
+        let initialBillId = '{{ old("sales_bill_id", $ret?->sales_bill_id ?? ($presetBillId ?? "")) }}';
         if (initialCustId) {
-            loadCustomerBills(initialCustId, initialBillId);
+            loadCustomerBills(initialCustId, initialBillId, function(resolvedBillId) {
+                // After customer bills are loaded, auto-trigger bill items if a bill is pre-selected
+                if (resolvedBillId) {
+                    loadBillItems(resolvedBillId, false);
+                }
+            });
         } else if (initialBillId) {
             updateBillModeUI();
             loadBillItems(initialBillId, true);
@@ -1003,13 +1043,6 @@
             }
         });
 
-        @if(!empty($selectedBillId))
-            setTimeout(function() {
-                if ($('#sales_bill_id').val()) {
-                    $('#sales_bill_id').trigger('change');
-                }
-            }, 300);
-        @endif
     })();
 </script>
 @endpush
