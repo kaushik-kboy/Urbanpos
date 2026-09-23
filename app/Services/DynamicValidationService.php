@@ -114,8 +114,13 @@ class DynamicValidationService
                         $targetField = "items.*.{$alias}";
                     } else {
                         // Line-item / grid fields should not be dynamically injected into a header-only rules array
-                        $lineItemFields = ['item_code', 'item_name', 'available', 'qty', 'exp_date', 'barcode', 'description'];
-                        if (in_array($fieldName, $lineItemFields, true)) {
+                        $lineItemFields = [
+                            'code', 'item_code', 'barcode', 'item_name', 'description', 'des', 'exp_date',
+                            'available', 'qty', 'unit', 'sell_price', 'mrp', 'cost_price', 'disc_percent',
+                            'disc_amount', 'tax_type', 'gst_percent', 'gst_tax_amount', 'cess_percent',
+                            'cess_amount', 'net_amount', 'batch_no', 'serial_no', 'hsn_code', 'taxable_value',
+                        ];
+                        if (($config->section ?? '') === 'Line Items' || in_array($fieldName, $lineItemFields, true)) {
                             continue;
                         }
 
