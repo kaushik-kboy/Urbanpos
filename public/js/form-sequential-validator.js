@@ -110,8 +110,8 @@
         const field = $field[0];
         if (!field) return { valid: true };
 
-        // 0. Active asynchronous duplicate error
-        if ($field.data('has-duplicate-error')) {
+        // 0. Active asynchronous duplicate error (covers both async check flag and synchronous gate flag)
+        if ($field.data('has-duplicate-error') || $field.data('is-duplicate') === true) {
             return { valid: false, message: $field.data('duplicate-error-message') || 'This value already exists.' };
         }
 
@@ -408,7 +408,9 @@
         const $t = $(target);
         if ($t.is('a') || $t.closest('a').length) return true;
         if ($t.is('button[type="reset"], .btn-reset-form, [data-dismiss], .close, .btn-secondary, .btn-default')) return true;
-        if ($t.closest('[data-dismiss], .main-sidebar, .main-header, .modal, .dropdown-menu, .nav-tabs, .nav-pills, .open-item-modal, .pr-search-btn, #btn-add-row, #add-row, .row-remove, .pinv-remove-row, .po-remove-row, .sr-row-remove, .so-remove-row, .sq-remove-row, .remove-row-btn').length) return true;
+        // NOTE: .open-item-modal, .pr-search-btn, #btn-add-row, #add-row are intentionally NOT in safe bypass
+        // so that item-add buttons and item-search modals are blocked until header fields (e.g. supplier_inv_no) are valid.
+        if ($t.closest('[data-dismiss], .main-sidebar, .main-header, .modal-backdrop, .dropdown-menu, .nav-tabs, .nav-pills, .row-remove, .pinv-remove-row, .po-remove-row, .sr-row-remove, .so-remove-row, .sq-remove-row, .remove-row-btn').length) return true;
         return false;
     }
 

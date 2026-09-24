@@ -302,7 +302,7 @@
 
         // Real-time Supplier Invoice Number validation & duplication check
         let suppInvDebounce = null;
-        function validateSupplierInvNo() {
+        function validateSupplierInvNo(callback) {
             let $input = $('#supplier_inv_no');
             let $feedbackContainer = $('#supplier-inv-feedback-container');
             let $feedback = $('#supplier-inv-feedback');
@@ -313,20 +313,31 @@
 
             if (!invNo) {
                 $input.addClass('is-invalid border-danger').removeClass('is-valid');
+                $input.data('is-duplicate', false);
+                $input.removeData('verified-key');
                 $feedback.text('Supplier Invoice Number is required before moving forward.').show();
                 $feedbackContainer.show();
+                if (callback) callback(false);
                 return false;
             }
 
             if (!suppId) {
                 $input.removeClass('is-invalid is-valid border-danger');
+                $input.data('is-duplicate', false);
+                $input.removeData('verified-key');
                 $feedbackContainer.hide();
+                if (callback) callback(true);
                 return true;
             }
 
+            let checkKey = suppId + ':' + invNo;
             $.getJSON(checkUrl, { supplier_id: suppId, supplier_inv_no: invNo, ignore_id: ignoreId }, function (res) {
-                if (res.is_duplicate) {
+                if (res && res.is_duplicate) {
                     $input.addClass('is-invalid border-danger').removeClass('is-valid');
+                    $input.data('is-duplicate', true);
+                    $input.data('has-duplicate-error', true);
+                    $input.data('duplicate-error-message', res.message);
+                    $input.data('verified-key', checkKey);
                     let msg = res.message || `Supplier Invoice Number '${invNo}' is already recorded for this supplier.`;
                     if (res.edit_url) {
                         $feedback.html(`${msg} <a href="${res.edit_url}" target="_blank" class="ml-1 text-primary font-weight-bold" style="text-decoration: underline;"><i class="fas fa-external-link-alt"></i> View ${res.existing_invoice_number || 'Invoice'}</a>`).show();
@@ -334,12 +345,136 @@
                         $feedback.text(msg).show();
                     }
                     $feedbackContainer.show();
+                    if (callback) callback(false);
                 } else {
                     $input.removeClass('is-invalid border-danger').addClass('is-valid');
+                    $input.data('is-duplicate', false);
+                    $input.data('has-duplicate-error', false);
+                    $input.removeData('duplicate-error-message');
+                    $input.data('verified-key', checkKey);
+                    $feedback.text('').hide();
+                    $feedbackContainer.hide();
+                    if (callback) callback(true);
+                }
+            });
+            return true;
+        }
+
+        function triggerFieldShake($el) {
+            if (!$el || !$el.length) return;
+            $el.removeClass('up-field-shake');
+            void $el[0].offsetWidth;
+            $el.addClass('up-field-shake');
+            setTimeout(function () {
+                $el.removeClass('up-field-shake');
+            }, 400);
+        }
+
+        // Strict Gatekeeper: No user can proceed to items until Supplier & Inv No (Supplier) are valid & verified unique!
+        function canProceedToItems(silent) {
+            let $supp = $('#supplier_id');
+            let suppId = $supp.val();
+            let $suppInv = $('#supplier_inv_no');
+            let invNo = $.trim($suppInv.val()).toUpperCase();
+            let $feedbackContainer = $('#supplier-inv-feedback-container');
+            let $feedback = $('#supplier-inv-feedback');
+
+            // 1. Supplier must be selected
+            if (!suppId) {
+                if (!silent) {
+                    $supp.next('.select2-container').find('.select2-selection').addClass('is-invalid border-danger');
+                    triggerFieldShake($supp.next('.select2-container').find('.select2-selection'));
+                    if (window.toastr) {
+                        window.toastr.warning('Please select a Supplier first before proceeding to items.', 'Supplier Required');
+                    }
+                    $supp.select2('open');
+                }
+                return false;
+            }
+
+            // 2. Inv No (Supplier) must be filled
+            if (!invNo) {
+                $suppInv.addClass('is-invalid border-danger').removeClass('is-valid');
+                $feedback.text('Supplier Invoice Number is required before moving forward.').show();
+                $feedbackContainer.show();
+                triggerFieldShake($suppInv);
+                if (!silent) {
+                    if (window.toastr) {
+                        window.toastr.warning('Supplier Invoice Number is required before entering items.', 'Invoice Number Required');
+                    }
+                    $suppInv.focus();
+                }
+                return false;
+            }
+
+            // 3. Duplicate check - if already marked as duplicate
+            if ($suppInv.data('is-duplicate') === true || $suppInv.data('has-duplicate-error') === true) {
+                let msg = $feedback.text() || `Supplier Invoice Number '${invNo}' is already recorded for this supplier.`;
+                triggerFieldShake($suppInv);
+                if (!silent) {
+                    if (window.toastr) {
+                        window.toastr.error(msg, 'Duplicate Invoice Number');
+                    }
+                    $suppInv.focus();
+                }
+                return false;
+            }
+
+            // 4. If current supplier:invNo pair has not been verified yet, verify synchronously
+            let currentCheckKey = suppId + ':' + invNo;
+            if ($suppInv.data('verified-key') !== currentCheckKey) {
+                let isDup = false;
+                let dupMsg = '';
+                let editUrl = '';
+                let existingInv = '';
+                let ignoreId = $suppInv.data('invoice-id') || '';
+                let checkUrl = $suppInv.data('check-url');
+
+                $.ajax({
+                    url: checkUrl,
+                    method: 'GET',
+                    async: false,
+                    data: { supplier_id: suppId, supplier_inv_no: invNo, ignore_id: ignoreId },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res && res.is_duplicate) {
+                            isDup = true;
+                            dupMsg = res.message || `Supplier Invoice Number '${invNo}' is already recorded for this supplier.`;
+                            editUrl = res.edit_url;
+                            existingInv = res.existing_invoice_number;
+                        }
+                    }
+                });
+
+                if (isDup) {
+                    $suppInv.addClass('is-invalid border-danger').removeClass('is-valid');
+                    $suppInv.data('is-duplicate', true);
+                    $suppInv.data('has-duplicate-error', true);
+                    $suppInv.data('verified-key', currentCheckKey);
+                    if (editUrl) {
+                        $feedback.html(`${dupMsg} <a href="${editUrl}" target="_blank" class="ml-1 text-primary font-weight-bold" style="text-decoration: underline;"><i class="fas fa-external-link-alt"></i> View ${existingInv || 'Invoice'}</a>`).show();
+                    } else {
+                        $feedback.text(dupMsg).show();
+                    }
+                    $feedbackContainer.show();
+                    triggerFieldShake($suppInv);
+                    if (!silent) {
+                        if (window.toastr) {
+                            window.toastr.error(dupMsg, 'Duplicate Invoice Number');
+                        }
+                        $suppInv.focus();
+                    }
+                    return false;
+                } else {
+                    $suppInv.removeClass('is-invalid border-danger').addClass('is-valid');
+                    $suppInv.data('is-duplicate', false);
+                    $suppInv.data('has-duplicate-error', false);
+                    $suppInv.data('verified-key', currentCheckKey);
                     $feedback.text('').hide();
                     $feedbackContainer.hide();
                 }
-            });
+            }
+
             return true;
         }
 
@@ -348,8 +483,19 @@
         });
 
         $('#supplier_inv_no').on('input', function () {
+            $(this).removeData('verified-key');
             clearTimeout(suppInvDebounce);
             suppInvDebounce = setTimeout(validateSupplierInvNo, 400);
+        });
+
+        $('#supplier_inv_no').on('keydown', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                if (!canProceedToItems()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
         });
 
         function focusExpDateField($row) {
@@ -556,7 +702,13 @@
             $('#pinv-item-search-modal').modal('hide');
         });
 
-        $('#pinv-item-search-modal').on('show.bs.modal', function() {
+        $('#pinv-item-search-modal').on('show.bs.modal', function(e) {
+            if (!canProceedToItems()) {
+                e.preventDefault();
+                e.stopPropagation();
+                islModalOpen = false;
+                return false;
+            }
             islModalOpen = true;
             islModalClosing = false;
             itemSelectedInModal = false;
@@ -615,8 +767,15 @@
             }
         });
 
-        // Open modal on Code/Barcode field CLICK or FOCUS; do not reopen if item already selected
+        // Open modal on Code/Barcode field CLICK or FOCUS; blocked if Supplier or Inv No invalid
         $(document).off('click focus', '.pinv-item-code').on('click focus', '.pinv-item-code', function (e) {
+            if (!canProceedToItems()) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                $(this).blur();
+                return false;
+            }
             if (islModalOpen || islModalClosing) return;
             let $row = $(this).closest('tr');
             if (e.type === 'focus' && $row.find('.pinv-item-select').val()) return;
@@ -633,6 +792,17 @@
                 $('#pinv-isl-filter-name').focus().select();
                 if (prefill) fetchItemList();
             });
+        });
+
+        // Universal guard for any click/focus inside items table
+        $(document).on('mousedown focusin', '#pinv-items-table input, #pinv-items-table select, #pinv-items-table .select2-selection, #pinv-items-table button:not(.pinv-remove-row)', function (e) {
+            if (!canProceedToItems()) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                $(this).blur();
+                return false;
+            }
         });
 
         // Disable browser autocomplete dropdown on all number and text inputs in form
@@ -1272,6 +1442,9 @@
         }
 
         function addPinvRowAndOpenSearchModal() {
+            if (!canProceedToItems()) {
+                return;
+            }
             let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#pinv-items-body');
             let $newRow = $(html);
@@ -1312,7 +1485,12 @@
         });
 
         // 5. Add Row
-        $('#pinv-add-row').on('click', function () {
+        $('#pinv-add-row').on('click', function (e) {
+            if (!canProceedToItems()) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
             let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#pinv-items-body');
             let $newRow = $(html);
