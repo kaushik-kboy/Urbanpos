@@ -444,8 +444,8 @@
             }
             .format-50x38_2up .barcode-label-pair {
                 width: 102mm !important;
-                height: 37.5mm !important;
-                max-height: 37.5mm !important;
+                height: 36.5mm !important;
+                max-height: 36.5mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 display: flex !important;
@@ -462,8 +462,8 @@
             }
             .format-50x38_2up .barcode-label-card {
                 width: 49.5mm !important;
-                height: 37.5mm !important;
-                max-height: 37.5mm !important;
+                height: 36.5mm !important;
+                max-height: 36.5mm !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
                 overflow: hidden !important;
@@ -686,8 +686,8 @@
                 <i class="fas fa-exclamation-triangle text-dark mr-2" style="font-size: 22px;"></i>
                 <span class="small font-weight-bold text-dark">
                     <strong>TSC TE244 (2-Up Roll) Print Guide:</strong> &nbsp;
-                    1. Layout = <span class="badge badge-danger" style="font-size: 11px;">PORTRAIT</span> (Landscape nahi rakhna hai) &nbsp;|&nbsp;
-                    2. Paper Size = <strong>102 x 25 mm</strong> (ya 102 x 38 mm) &nbsp;|&nbsp;
+                    1. Layout = <span class="badge badge-success" style="font-size: 12px;">LANDSCAPE</span> (Kyunki 102mm roll width badi hai. Agar kabhi ghoom ke aaye to Landscape/Portrait switch karein) &nbsp;|&nbsp;
+                    2. Paper Size = <strong>102 x 38 mm</strong> &nbsp;|&nbsp;
                     3. Margins = <strong>None</strong> &nbsp;|&nbsp;
                     4. Headers & Footers = <strong>OFF (Uncheck)</strong>
                 </span>
@@ -852,8 +852,8 @@
                         <div class="card-body py-2">
                             <ul class="mb-0 pl-3">
                                 <li><strong>Destination:</strong> Select <code>TSC TE244</code></li>
-                                <li><strong>Layout:</strong> <span class="badge badge-danger">PORTRAIT</span> (Landscape nahi rakhna hai, Portrait se print sidha aayega)</li>
-                                <li><strong>Paper size:</strong> <code>102x25 mm</code> (jo step 2 me banaya)</li>
+                                <li><strong>Layout:</strong> <span class="badge badge-success">LANDSCAPE</span> (Kyunki 102mm roll width badi hai. Agar kabhi ghoom ke aaye to Landscape/Portrait switch karein)</li>
+                                <li><strong>Paper size:</strong> <code>102x38 mm</code> (jo step 2 me banaya)</li>
                                 <li><strong>Margins:</strong> <code>None</code> (0)</li>
                                 <li><strong>Scale:</strong> <code>100%</code> (Custom -> 100)</li>
                                 <li><strong>Headers and Footers:</strong> <code>Uncheck (OFF)</code></li>
