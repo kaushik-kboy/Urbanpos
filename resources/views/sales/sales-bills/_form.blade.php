@@ -2061,12 +2061,58 @@
             $newRow.find('.sb-item-code').focus();
         });
 
+        // Strict stock validation for sales bill quantity
+        function validateSbQty($qtyInput, showAlert = true) {
+            let $row = $qtyInput.closest('tr');
+            let itemId = $row.find('.sb-item-select').val();
+            if (!itemId) return true;
+
+            let qty = parseFloat($qtyInput.val()) || 0;
+            let stockVal = $row.find('.sb-item-stock-val').val();
+            if (stockVal === undefined || stockVal === '') stockVal = $row.data('stock');
+            let stock = parseFloat(stockVal) || 0;
+
+            let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
+                                  ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
+
+            if (!isAllowNegative && stock >= 0) {
+                let totalForItem = 0;
+                $('#sb-items-body tr').each(function () {
+                    if ($(this).find('.sb-item-select').val() === itemId) {
+                        totalForItem += parseFloat($(this).find('.sb-qty').val()) || 0;
+                    }
+                });
+
+                if (totalForItem > stock) {
+                    $qtyInput.addClass('border-danger text-danger is-invalid');
+                    if (showAlert) {
+                        alert('Stock is only ' + formatDigits(stock) + '. Quantity (' + formatDigits(totalForItem) + ') cannot exceed available stock!');
+                        setTimeout(function () { $qtyInput.focus().select(); }, 10);
+                    }
+                    return false;
+                }
+            }
+            $qtyInput.removeClass('border-danger text-danger is-invalid');
+            return true;
+        }
+
         // Fast POS keyboard flow: Qty -> Disc % -> Disc Amt -> next row (if exists)
         $(document).on('keydown', '.sb-qty', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                $(this).closest('tr').find('.sb-disc-percent').focus().select();
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                if (!validateSbQty($(this), true)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $(this).closest('tr').find('.sb-disc-percent').focus().select();
+                }
             }
+        });
+
+        $(document).on('change', '.sb-qty', function () {
+            validateSbQty($(this), true);
         });
 
         $(document).on('keydown', '.sb-disc-percent', function (e) {

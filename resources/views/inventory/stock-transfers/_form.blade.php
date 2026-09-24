@@ -249,6 +249,16 @@
             } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) {
                 let parts = val.split('/');
                 d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+            } else if (/^\d{4}-\d{2}$/.test(val)) {
+                let parts = val.split('-');
+                let y = parseInt(parts[0], 10);
+                let m = parseInt(parts[1], 10);
+                d = new Date(y, m, 0, 23, 59, 59);
+            } else if (/^\d{1,2}\/\d{4}$/.test(val)) {
+                let parts = val.split('/');
+                let m = parseInt(parts[0], 10);
+                let y = parseInt(parts[1], 10);
+                d = new Date(y, m, 0, 23, 59, 59);
             } else if (/^\d{8}$/.test(val)) {
                 let dNum = parseInt(val.substring(0, 2), 10);
                 let mNum = parseInt(val.substring(2, 4), 10);
@@ -803,7 +813,45 @@
             validateBranchSelection();
         });
 
-        $('#items-body').on('input change', '.item-qty', function () {
+        function validateStQty($input, showAlert = true) {
+            let $row = $input.closest('tr');
+            let itemId = $row.find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+            if (!itemId) return true;
+
+            let q = parseFloat($input.val()) || 0;
+            let avail = parseFloat($row.find('.item-available').val()) || 0;
+            let itemName = $row.find('.item-desc-input, .item-select option:selected').text() || 'Selected Item';
+
+            // Check total across rows for same item
+            let totalForItem = 0;
+            $('#items-body tr.item-row').each(function () {
+                let rId = $(this).find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                if (rId == itemId) {
+                    totalForItem += parseFloat($(this).find('.item-qty').val()) || 0;
+                }
+            });
+
+            if (avail >= 0 && totalForItem > avail) {
+                $input.addClass('is-invalid border-danger text-danger');
+                if (showAlert) {
+                    alert('Stock is only ' + avail.toFixed(3) + ' for ' + itemName.trim() + '.\nTransfer quantity (' + totalForItem.toFixed(3) + ') cannot exceed available stock!');
+                    setTimeout(function () { $input.focus().select(); }, 10);
+                }
+                return false;
+            } else if (q <= 0) {
+                $input.addClass('is-invalid border-danger text-danger');
+                if (showAlert) {
+                    alert('Quantity must be greater than 0.');
+                    setTimeout(function () { $input.focus().select(); }, 10);
+                }
+                return false;
+            } else {
+                $input.removeClass('is-invalid border-danger text-danger');
+                return true;
+            }
+        }
+
+        $('#items-body').on('input', '.item-qty', function () {
             let q = parseFloat($(this).val()) || 0;
             let avail = parseFloat($(this).closest('tr').find('.item-available').val()) || 0;
             let itemId = $(this).closest('tr').find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
@@ -818,6 +866,30 @@
                 }
             }
             recalcTotals();
+        });
+
+        // Block Tab or Enter if quantity exceeds available stock
+        $(document).on('keydown', '.item-qty', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                if (!validateStQty($(this), true)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let $nextRow = $(this).closest('tr.item-row').next('tr.item-row');
+                    if ($nextRow.length) {
+                        $nextRow.find('.item-code-input').focus();
+                    } else {
+                        $('#add-row').trigger('click');
+                    }
+                }
+            }
+        });
+
+        $(document).on('change', '.item-qty', function () {
+            validateStQty($(this), true);
         });
 
         // Form Submit Handler
@@ -869,6 +941,17 @@
                         hasError = true;
                         return false;
                     }
+
+                    // Strict Expiry check on submit
+                    let exp = $row.find('.item-exp-date').val();
+                    if (exp && isExpiredDate(exp)) {
+                        $row.find('.item-exp-date').addClass('is-invalid border-danger');
+                        alert(`Row #${idx + 1}: Cannot transfer expired item (Expiry: ${exp})!`);
+                        $row.find('.item-exp-date').focus();
+                        hasError = true;
+                        return false;
+                    }
+
                     validCount++;
                 }
             });
