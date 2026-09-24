@@ -81,7 +81,7 @@
             <table class="table table-striped mb-0" id="purchaseInvoicesTable">
                 <thead>
                     <tr>
-                        <th>Invoice No</th>
+                        <th>Supplier Inv No.</th>
                         <th>GRN No</th>
                         <th>Invoice Date</th>
                         <th>Supplier</th>
@@ -94,7 +94,12 @@
                 <tbody>
                     @forelse ($purchaseInvoices as $invoice)
                         <tr>
-                            <td><strong>{{ $invoice->invoice_number }}</strong></td>
+                            <td>
+                                <strong>{{ $invoice->supplier_inv_no ?: '-' }}</strong>
+                                @if($invoice->invoice_number)
+                                    <br><small class="text-muted">{{ $invoice->invoice_number }}</small>
+                                @endif
+                            </td>
                             <td><span class="badge badge-light border text-dark font-weight-bold">{{ $invoice->grn_number ?: '-' }}</span></td>
                             <td>{{ $invoice->invoice_date->format('d-m-Y') }}</td>
                             <td>{{ $invoice->supplier?->name }}</td>

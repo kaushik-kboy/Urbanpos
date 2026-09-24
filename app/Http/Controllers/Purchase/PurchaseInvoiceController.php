@@ -806,6 +806,60 @@ class PurchaseInvoiceController extends Controller
         ]);
     }
 
+    /**
+     * AJAX endpoint: return previous purchase invoices for a given supplier with search & date filters.
+     */
+    public function supplierInvoices(Request $request, Supplier $supplier)
+    {
+        $query = PurchaseInvoice::where('supplier_id', $supplier->id)
+            ->latest('invoice_date')
+            ->latest('id');
+
+        if ($request->filled('search')) {
+            $term = trim((string) $request->input('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('invoice_number', 'like', "%{$term}%")
+                  ->orWhere('supplier_inv_no', 'like', "%{$term}%")
+                  ->orWhere('grn_number', 'like', "%{$term}%");
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('invoice_date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('invoice_date', '<=', $request->input('date_to'));
+        }
+
+        $invoices = $query->limit(100)->get()
+            ->map(function ($inv) {
+                $dateFormatted = $inv->invoice_date 
+                    ? $inv->invoice_date->format('d-m-Y') 
+                    : ($inv->supplier_inv_date ? $inv->supplier_inv_date->format('d-m-Y') : ($inv->created_at ? $inv->created_at->format('d-m-Y') : '-'));
+
+                return [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'supplier_inv_no' => $inv->supplier_inv_no ?: '-',
+                    'date' => $dateFormatted,
+                    'amount' => number_format((float) ($inv->supplier_inv_amount ?: $inv->total), 2),
+                    'total' => number_format((float) $inv->total, 2),
+                    'view_url' => route('purchase.purchase-invoices.show', $inv->id),
+                ];
+            });
+
+        return response()->json([
+            'supplier' => [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+            ],
+            'count' => $invoices->count(),
+            'invoices' => $invoices,
+        ]);
+    }
+
+
     private function validateData(Request $request, ?int $id = null): array
     {
         if ($request->filled('supplier_inv_no')) {

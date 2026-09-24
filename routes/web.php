@@ -155,6 +155,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
 
 Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function () use ($gatedResource) {
     Route::get('purchase-invoices/check-supplier-inv', [PurchaseInvoiceController::class, 'checkSupplierInv'])->name('purchase-invoices.check-supplier-inv');
+    Route::get('purchase-invoices/supplier-invoices/{supplier}', [PurchaseInvoiceController::class, 'supplierInvoices'])->name('purchase-invoices.supplier-invoices');
     Route::get('purchase-invoices/item-list', [PurchaseInvoiceController::class, 'itemList'])->name('purchase-invoices.item-list');
     Route::get('purchase-invoices/lookup-item', [PurchaseInvoiceController::class, 'lookupItem'])->name('purchase-invoices.lookup-item');
     Route::get('purchase-invoices/item-details/{item}', [PurchaseInvoiceController::class, 'itemDetails'])->name('purchase-invoices.item-details');

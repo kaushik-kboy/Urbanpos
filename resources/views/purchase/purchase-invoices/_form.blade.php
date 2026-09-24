@@ -56,6 +56,15 @@
 
     <div class="field-wrapper col-md-6" data-field="supplier_id" data-label="Supplier" data-default-order="2" data-core="1">
         <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$selectedSupplier" placeholder="Select a Supplier" required />
+        <div class="form-group row mt-n2 mb-2" id="supplier-prev-inv-wrapper">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-6">
+                <a href="javascript:void(0);" id="btn-supplier-prev-invoices" class="small font-weight-bold text-muted disabled-link" style="pointer-events: none; opacity: 0.5; text-decoration: none;" title="Select a supplier to view previous invoices">
+                    <i class="fas fa-history mr-1 text-info"></i> <span id="supplier-prev-inv-text">View Previous Invoices</span>
+                    <span id="supplier-prev-inv-badge" class="badge badge-info ml-1 d-none">0</span>
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="3" data-core="1">
@@ -275,6 +284,77 @@
     </div>
 </div>
 
+<!-- ============================================================
+     SUPPLIER PREVIOUS INVOICES MODAL
+     ============================================================ -->
+<div class="modal fade" id="supplier-prev-invoices-modal" tabindex="-1" role="dialog" aria-labelledby="supplierPrevInvoicesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-dark text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="supplierPrevInvoicesLabel">
+                    <i class="fas fa-history text-info mr-2"></i>Previous Invoices &mdash; <span id="spi-modal-supplier-name" class="text-warning"></span>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <!-- Filters -->
+                <div class="card card-light card-outline mb-3 p-2 bg-light border">
+                    <div class="row align-items-end g-2">
+                        <div class="col-md-5 col-12 mb-1">
+                            <label class="small font-weight-bold mb-1">Search by Invoice Number</label>
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                </div>
+                                <input type="text" id="spi-filter-search" class="form-control" placeholder="Inv No / Supplier Inv No..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-1">
+                            <label class="small font-weight-bold mb-1">From Date</label>
+                            <input type="date" id="spi-filter-from" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3 col-6 mb-1">
+                            <label class="small font-weight-bold mb-1">To Date</label>
+                            <input type="date" id="spi-filter-to" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-1 col-6 mb-1">
+                            <button type="button" id="spi-filter-reset" class="btn btn-outline-secondary btn-sm btn-block" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table: date, invoice no, amount, view -->
+                <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-striped table-hover mb-0" id="spi-modal-table">
+                        <thead class="bg-secondary text-white sticky-top">
+                            <tr>
+                                <th style="width: 130px;">Date</th>
+                                <th>Invoice No</th>
+                                <th class="text-right" style="width: 140px;">Amount</th>
+                                <th class="text-center" style="width: 90px;">View</th>
+                            </tr>
+                        </thead>
+                        <tbody id="spi-modal-tbody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <small class="text-muted" id="spi-modal-count-info"></small>
+                    <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Clicking 'View' opens invoice in a new tab.</small>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('js')
 <script>
     $(document).ready(function () {
@@ -307,15 +387,138 @@
         }
 
         $('#supplier_id').on('change', function () {
-            applySupplierPurchaseType($(this).val());
+            let val = $(this).val();
+            applySupplierPurchaseType(val);
             validateSupplierInvNo();
+            updateSupplierPrevInvoicesLink(val);
         });
 
-        // On page load: if supplier already selected (edit mode), lock purchase_type immediately
+        // Supplier Previous Invoices link & modal logic
+        const supplierInvoicesRouteTemplate = "{{ route('purchase.purchase-invoices.supplier-invoices', ':id') }}";
+
+        function updateSupplierPrevInvoicesLink(suppId) {
+            let $link = $('#btn-supplier-prev-invoices');
+            let $badge = $('#supplier-prev-inv-badge');
+            if (suppId) {
+                $link.removeClass('text-muted disabled-link')
+                     .addClass('text-primary font-weight-bold')
+                     .css({'pointer-events': 'auto', 'opacity': '1', 'cursor': 'pointer'})
+                     .attr('title', 'Click to view previous invoices of this supplier');
+
+                // Quick load count
+                let url = supplierInvoicesRouteTemplate.replace(':id', suppId);
+                $.getJSON(url, function (res) {
+                    if (res && res.invoices) {
+                        let count = res.invoices.length;
+                        $badge.text(count + (count >= 100 ? '+' : '')).removeClass('d-none');
+                    }
+                }).fail(function () {
+                    $badge.addClass('d-none');
+                });
+            } else {
+                $link.addClass('text-muted disabled-link')
+                     .removeClass('text-primary')
+                     .css({'pointer-events': 'none', 'opacity': '0.5', 'cursor': 'not-allowed'})
+                     .attr('title', 'Select a supplier to view previous invoices');
+                $badge.addClass('d-none').text('0');
+            }
+        }
+
+        // On page load: if supplier already selected (edit mode), lock purchase_type & enable previous invoices link
         (function () {
             let initialSuppId = $('#supplier_id').val();
-            if (initialSuppId) applySupplierPurchaseType(initialSuppId);
+            if (initialSuppId) {
+                applySupplierPurchaseType(initialSuppId);
+                updateSupplierPrevInvoicesLink(initialSuppId);
+            }
         })();
+
+        // Click on Previous Invoices link opens modal
+        $('#btn-supplier-prev-invoices').on('click', function (e) {
+            e.preventDefault();
+            let suppId = $('#supplier_id').val();
+            if (!suppId) return;
+
+            let suppText = $('#supplier_id option:selected').text();
+            $('#spi-modal-supplier-name').text(suppText);
+            $('#spi-filter-search').val('');
+            $('#spi-filter-from').val('');
+            $('#spi-filter-to').val('');
+            $('#supplier-prev-invoices-modal').modal('show');
+            loadSupplierPreviousInvoices(suppId);
+        });
+
+        let spiFilterDebounce = null;
+        function loadSupplierPreviousInvoices(suppId) {
+            if (!suppId) return;
+            let $tbody = $('#spi-modal-tbody');
+            let $countInfo = $('#spi-modal-count-info');
+
+            $tbody.html('<tr><td colspan="4" class="text-center text-primary py-4"><i class="fas fa-spinner fa-spin fa-2x mb-2 d-block"></i>Loading previous invoices...</td></tr>');
+            $countInfo.text('Loading...');
+
+            let url = supplierInvoicesRouteTemplate.replace(':id', suppId);
+            let params = {
+                search: $('#spi-filter-search').val(),
+                date_from: $('#spi-filter-from').val(),
+                date_to: $('#spi-filter-to').val()
+            };
+
+            $.getJSON(url, params, function (res) {
+                $tbody.empty();
+                if (!res || !res.invoices || res.invoices.length === 0) {
+                    $tbody.html('<tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-folder-open fa-2x mb-2 d-block text-secondary"></i>No previous invoices found for this supplier matching filter.</td></tr>');
+                    $countInfo.text('Showing 0 invoices');
+                    return;
+                }
+
+                $countInfo.text('Showing ' + res.invoices.length + ' invoice(s)');
+
+                res.invoices.forEach(function (inv) {
+                    let supplierInvNoBadge = inv.supplier_inv_no && inv.supplier_inv_no !== '-'
+                        ? '<span class="badge badge-light border text-dark font-weight-bold">' + $('<div>').text(inv.supplier_inv_no).html() + '</span>'
+                        : '<span class="text-muted">-</span>';
+
+                    let sysInv = inv.invoice_number ? '<br><small class="text-muted">Sys: ' + $('<div>').text(inv.invoice_number).html() + '</small>' : '';
+
+                    let row = '<tr>' +
+                        '<td class="align-middle text-nowrap"><i class="far fa-calendar-alt text-muted mr-1"></i> ' + (inv.date || '-') + '</td>' +
+                        '<td class="align-middle">' + supplierInvNoBadge + sysInv + '</td>' +
+                        '<td class="align-middle text-right font-weight-bold text-nowrap">₹ ' + inv.amount + '</td>' +
+                        '<td class="align-middle text-center">' +
+                            '<a href="' + inv.view_url + '" target="_blank" class="btn btn-xs btn-outline-info" title="View Invoice in New Tab">' +
+                                '<i class="fas fa-eye mr-1"></i> View' +
+                            '</a>' +
+                        '</td>' +
+                    '</tr>';
+                    $tbody.append(row);
+                });
+            }).fail(function () {
+                $tbody.html('<tr><td colspan="4" class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>Failed to load previous invoices. Please try again.</td></tr>');
+                $countInfo.text('');
+            });
+        }
+
+        $('#spi-filter-search').on('input', function () {
+            clearTimeout(spiFilterDebounce);
+            spiFilterDebounce = setTimeout(function () {
+                let suppId = $('#supplier_id').val();
+                loadSupplierPreviousInvoices(suppId);
+            }, 300);
+        });
+
+        $('#spi-filter-from, #spi-filter-to').on('change', function () {
+            let suppId = $('#supplier_id').val();
+            loadSupplierPreviousInvoices(suppId);
+        });
+
+        $('#spi-filter-reset').on('click', function () {
+            $('#spi-filter-search').val('');
+            $('#spi-filter-from').val('');
+            $('#spi-filter-to').val('');
+            let suppId = $('#supplier_id').val();
+            loadSupplierPreviousInvoices(suppId);
+        });
 
         // Real-time Supplier Invoice Number validation & duplication check
         let suppInvDebounce = null;
