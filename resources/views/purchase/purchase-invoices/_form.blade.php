@@ -67,7 +67,7 @@
     </div>
 
     <div class="field-wrapper col-md-6" data-field="purchase_type" data-label="Purchase Type" data-default-order="5" data-core="1">
-        <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
+        <x-select name="purchase_type" id="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
     </div>
 
     <div class="field-wrapper col-md-6" data-field="c_form" data-label="C-Form" data-default-order="6">
@@ -288,17 +288,33 @@
 
         const supplierPurchaseTypes = @json(\App\Models\Supplier::pluck('purchase_type', 'id'));
 
-        // Auto-set purchase_type based on supplier's purchase_type
-        $('#supplier_id').on('change', function () {
-            let sId = $(this).val();
+        // Auto-set purchase_type based on supplier's purchase_type (supplier master drives this)
+        function applySupplierPurchaseType(sId) {
             if (sId && supplierPurchaseTypes[sId]) {
                 let pType = supplierPurchaseTypes[sId];
                 if (pType === 'Local' || pType === 'Interstate') {
                     $('#purchase_type').val(pType).trigger('change');
+                    $('#purchase_type').prop('disabled', true).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'none','background':'#e9ecef','opacity':'0.85'});
+                    if (!$('#purchase_type_locked_note').length) {
+                        $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted"><i class="fas fa-lock mr-1"></i>Auto-set from Supplier Master</small>');
+                    }
                 }
+            } else {
+                $('#purchase_type').prop('disabled', false).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'','background':'','opacity':''});
+                $('#purchase_type_locked_note').remove();
             }
+        }
+
+        $('#supplier_id').on('change', function () {
+            applySupplierPurchaseType($(this).val());
             validateSupplierInvNo();
         });
+
+        // On page load: if supplier already selected (edit mode), lock purchase_type immediately
+        (function () {
+            let initialSuppId = $('#supplier_id').val();
+            if (initialSuppId) applySupplierPurchaseType(initialSuppId);
+        })();
 
         // Real-time Supplier Invoice Number validation & duplication check
         let suppInvDebounce = null;
@@ -794,8 +810,54 @@
             });
         });
 
-        // Universal guard for any click/focus inside items table
-        $(document).on('mousedown focusin', '#pinv-items-table input, #pinv-items-table select, #pinv-items-table .select2-selection, #pinv-items-table button:not(.pinv-remove-row)', function (e) {
+        // -----------------------------------------------------------------------
+        // CAPTURE-PHASE gate: native addEventListener with capture=true
+        // runs BEFORE any jQuery bubble-phase handler, so mouse clicks on the
+        // items table are killed stone-dead when the gate is not yet open.
+        // -----------------------------------------------------------------------
+        let _pinvGateDenied = false;
+        const _pinvTableEl = document.getElementById('pinv-items-table');
+        if (_pinvTableEl) {
+            _pinvTableEl.addEventListener('mousedown', function (e) {
+                // Allow remove-row buttons
+                if (e.target && (e.target.closest('.pinv-remove-row') || e.target.closest('[data-dismiss]'))) return;
+                if (!canProceedToItems()) {
+                    _pinvGateDenied = true;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    // Clear flag after this tick so click is also blocked
+                    setTimeout(function () { _pinvGateDenied = false; }, 300);
+                    return false;
+                }
+            }, true); // capture phase
+
+            _pinvTableEl.addEventListener('click', function (e) {
+                if (_pinvGateDenied) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            }, true); // capture phase
+
+            _pinvTableEl.addEventListener('focus', function (e) {
+                if (!canProceedToItems(true)) {
+                    // Allow remove-row
+                    if (e.target && e.target.closest && e.target.closest('.pinv-remove-row')) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    if (e.target && typeof e.target.blur === 'function') {
+                        setTimeout(function () { e.target.blur(); }, 0);
+                    }
+                    return false;
+                }
+            }, true); // capture phase
+        }
+
+        // Universal guard for any click/focus inside items table (jQuery backup layer)
+        $(document).on('mousedown focusin click', '#pinv-items-table input, #pinv-items-table select, #pinv-items-table .select2-selection, #pinv-items-table button:not(.pinv-remove-row)', function (e) {
             if (!canProceedToItems()) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -804,6 +866,7 @@
                 return false;
             }
         });
+
 
         // Disable browser autocomplete dropdown on all number and text inputs in form
         $('#pinv-items-table input, form input').attr('autocomplete', 'off');
@@ -1365,7 +1428,9 @@
 
         // 4. Form Submit Guard
         $('form').on('submit', function (e) {
-            // Rule: Check Sell Price > Cost Price on all item rows
+            // Always re-enable purchase_type so its value gets submitted even if disabled
+            $('#purchase_type').prop('disabled', false);
+
             let priceError = null;
             $('#pinv-items-body tr').each(function (idx) {
                 let $r = $(this);
