@@ -13,7 +13,7 @@
             </div>
         </div>
         <div>
-            <a href="{{ route('master.barcodes.print', ['purchase_invoice_id' => $purchaseInvoice->id, 'format' => '50x25_2up']) }}" target="_blank" class="btn btn-warning btn-sm font-weight-bold mr-1">
+            <a href="{{ route('master.barcodes.print', ['purchase_invoice_id' => $purchaseInvoice->id, 'format' => '50x38_2up']) }}" target="_blank" class="btn btn-warning btn-sm font-weight-bold mr-1">
                 <i class="fas fa-barcode mr-1"></i> Print Stickers (TSC TE244)
             </a>
             <a href="{{ route('purchase.purchase-invoices.print', $purchaseInvoice) }}" target="_blank" class="btn btn-primary btn-sm mr-1">

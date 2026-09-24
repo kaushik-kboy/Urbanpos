@@ -110,7 +110,7 @@ class BarcodePrintController extends Controller
      */
     private function resolveLabelsAndStore(Request $request): array
     {
-        $format = $request->query('format', $request->input('format', '50x25_2up'));
+        $format = $request->query('format', $request->input('format', '50x38_2up'));
         $storeName = config('app.name', 'UrbanPOS');
         $labels = [];
         $branchId = null;
