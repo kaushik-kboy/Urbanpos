@@ -101,7 +101,7 @@
         if (window.INITIAL_CUSTOMER && window.INITIAL_CUSTOMER.id) {
             state.customer_id = window.INITIAL_CUSTOMER.id;
         } else {
-            state.customer_id = document.getElementById('posCustomerSelect')?.value || null;
+            state.customer_id = null;
         }
 
         if (window.EDIT_BILL) {
@@ -1620,15 +1620,28 @@
                 : `<span class="badge badge-danger px-2 py-1">0</span>`;
 
             const itemJson = JSON.stringify(itm).replace(/"/g, '&quot;');
+            const totalQty = parseFloat(itm.total_qty || 0);
+            const totalAmount = parseFloat(itm.total_amount || 0);
+
             const rowHtml = `<tr>
                 <td class="text-center align-middle">${idx + 1}</td>
-                <td class="align-middle font-weight-bold text-dark">${escapeHtml(itm.name)}</td>
+                <td class="align-middle">
+                    <div class="font-weight-bold text-dark" style="font-size: 0.95rem;">${escapeHtml(itm.name)}</div>
+                    <div class="text-muted small mt-1">
+                        <span class="text-success font-weight-bold mr-2">₹${totalAmount.toFixed(2)} total</span>
+                        <span class="badge badge-warning text-dark font-weight-bold">${totalQty.toFixed(0)} pcs</span>
+                        ${itm.bills_count ? `<span class="ml-1 text-muted">(${itm.bills_count} bills)</span>` : ''}
+                    </div>
+                </td>
                 <td class="text-center align-middle font-weight-bold text-monospace">${escapeHtml(itm.item_code || itm.ean_upc_code || '—')}</td>
-                <td class="text-right align-middle font-weight-bold text-success">₹${parseFloat(itm.sell_price || 0).toFixed(2)}</td>
+                <td class="text-right align-middle font-weight-bold text-primary">₹${parseFloat(itm.sell_price || 0).toFixed(2)}</td>
                 <td class="text-center align-middle">${stockBadge}</td>
-                <td class="text-center align-middle font-weight-bold text-dark bg-warning-light">${parseFloat(itm.total_qty || 0).toFixed(1)}</td>
                 <td class="text-center align-middle">
-                    <button type="button" class="btn btn-primary btn-xs px-2 py-1 btn-add-fav-to-cart" data-item="${itemJson}">
+                    <div class="font-weight-bold text-dark">${totalQty.toFixed(0)} pcs</div>
+                    <div class="small font-weight-bold text-success">₹${totalAmount.toFixed(2)} total</div>
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-primary btn-sm px-2 py-1 btn-add-fav-to-cart font-weight-bold" data-item="${itemJson}">
                         <i class="fas fa-plus mr-1"></i> Add
                     </button>
                 </td>
@@ -1926,6 +1939,11 @@
                 state.cart = [];
                 state.cash_received = 0;
                 state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
+                state.customer_id = null;
+                $('#posCustomerSelect').val(null).trigger('change.select2');
+                $('#posSelectedCustomerBox').hide();
+                $('#posCustomerInvoicesSection').hide();
+                $('#posLoyaltyBadge').hide();
                 $('#posSplitRowCash, #posSplitRowCard, #posSplitRowWallet, #posSplitRowCredit').hide();
                 $('#posSplitDispTotal').text('₹ 0.00');
                 
@@ -2044,7 +2062,7 @@
         function openModal() {
             $('#pos-isl-filter-name').val('');
             $('#pos-isl-filter-code').val('');
-            $('#pos-isl-filter-expiry').val('');
+            $('#pos-isl-filter-all-products').prop('checked', false);
             $modal.modal('show');
             $modal.one('shown.bs.modal', function () {
                 $('#pos-isl-filter-name').focus().select();
@@ -2055,13 +2073,19 @@
         window.openPosItemSearchModal = openModal;
 
         // Filter inputs with debouncing
-        $('#pos-isl-filter-name, #pos-isl-filter-code, #pos-isl-filter-expiry').on('input', function () {
+        $('#pos-isl-filter-name, #pos-isl-filter-code').on('input', function () {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(fetchItems, 300);
         });
 
+        // Show All Products (Zero Stock Bhi) checkbox toggle
+        $('#pos-isl-filter-all-products').on('change', function () {
+            fetchItems();
+        });
+
         $('#pos-isl-btn-clear').on('click', function () {
-            $('#pos-isl-filter-name, #pos-isl-filter-code, #pos-isl-filter-expiry').val('');
+            $('#pos-isl-filter-name, #pos-isl-filter-code').val('');
+            $('#pos-isl-filter-all-products').prop('checked', false);
             fetchItems();
             $('#pos-isl-filter-name').focus();
         });
@@ -2103,9 +2127,9 @@
             let branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value) || 3;
             let srch = ($('#pos-isl-filter-name').val() || '').trim();
             let code = ($('#pos-isl-filter-code').val() || '').trim();
-            let expiry = ($('#pos-isl-filter-expiry').val() || '').trim();
+            let showAll = $('#pos-isl-filter-all-products').is(':checked') ? 1 : 0;
 
-            let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
+            let cacheKey = branchId + '|' + srch + '|' + code + '|' + showAll;
 
             if (itemCache[cacheKey]) {
                 renderItems(itemCache[cacheKey]);
@@ -2117,7 +2141,7 @@
             $('#pos-isl-table-wrap').addClass('d-none');
 
             let url = window.ISL_URL || '/sales/sales-bills/item-list';
-            let params = { branch_id: branchId, search: srch, code: code, expiry: expiry };
+            let params = { branch_id: branchId, search: srch, code: code, show_all: showAll };
 
             $.getJSON(url, params, function (res) {
                 $('#pos-isl-loading').addClass('d-none');
@@ -2158,11 +2182,6 @@
                 let itExpStr = it.exp_date ? it.exp_date.toString().substring(0, 10) : '';
                 let isExpired = itExpStr && (itExpStr < todayStr);
 
-                let expBadge = it.exp_date
-                    ? (isExpired
-                        ? `<span class="badge badge-danger px-2 py-1"><i class="fas fa-ban mr-1"></i>EXPIRED (${itExpStr})</span>`
-                        : `<span class="badge badge-info px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${it.exp_date}</span>`)
-                    : `<span class="text-muted">—</span>`;
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${escapeHtml(it.code)}</span>`
                     : `<span class="text-muted">—</span>`;
@@ -2199,7 +2218,6 @@
                             ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : '')}
                         </td>
                         <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-center">${expBadge}</td>
                         <td class="align-middle text-right">${qtyBadge}</td>
                         <td class="align-middle text-right font-weight-bold text-primary">₹${parseFloat(it.sell_price || 0).toFixed(2)}</td>
                         <td class="align-middle text-right text-muted">₹${parseFloat(it.mrp || 0).toFixed(2)}</td>

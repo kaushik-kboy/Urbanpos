@@ -171,6 +171,7 @@
                 <!-- Customer Search Select (ALWAYS VISIBLE as in Sales Bill) -->
                 <div id="posCustomerSearchWrapper" class="mb-2">
                     <select id="posCustomerSelect" class="form-control form-control-sm select2">
+                        <option value="">-- Search customer by name, mobile, pet... --</option>
                         @if($defaultCustomer)
                             <option value="{{ $defaultCustomer->id }}" selected>{{ $defaultCustomer->mobile ? "{$defaultCustomer->name} ({$defaultCustomer->mobile})" : $defaultCustomer->name }}</option>
                         @endif
@@ -970,16 +971,16 @@
                             <input type="text" id="pos-isl-filter-code" class="form-control form-control-sm" placeholder="Filter by code…" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-2 mb-1 mb-md-0">
-                        <div class="input-group input-group-sm">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text bg-light"><i class="fas fa-calendar-alt"></i></span>
-                            </div>
-                            <input type="text" id="pos-isl-filter-expiry" class="form-control form-control-sm" placeholder="Expiry (YYYY-MM)" autocomplete="off">
+                    <div class="col-md-3 mb-1 mb-md-0 d-flex align-items-center">
+                        <div class="custom-control custom-checkbox ml-1">
+                            <input type="checkbox" class="custom-control-input" id="pos-isl-filter-all-products">
+                            <label class="custom-control-label font-weight-bold text-dark small" for="pos-isl-filter-all-products" style="cursor: pointer; user-select: none;">
+                                <i class="fas fa-layer-group text-primary mr-1"></i>Show All Products (Zero Stock Bhi)
+                            </label>
                         </div>
                     </div>
-                    <div class="col-md-2 text-right">
-                        <button type="button" id="pos-isl-btn-clear" class="btn btn-sm btn-outline-secondary font-weight-bold px-3">
+                    <div class="col-md-1 text-right">
+                        <button type="button" id="pos-isl-btn-clear" class="btn btn-sm btn-outline-secondary font-weight-bold px-2 w-100" title="Clear Filters">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
                     </div>
@@ -1002,9 +1003,8 @@
                             <tr>
                                 <th class="text-center" style="width: 40px;">#</th>
                                 <th>Product Name</th>
-                                <th class="text-center" style="width: 130px;">Code / Barcode</th>
-                                <th class="text-center" style="width: 140px;">Expiry (Purchase Se)</th>
-                                <th class="text-right" style="width: 100px;">Qty (Stock)</th>
+                                <th class="text-center" style="width: 140px;">Code / Barcode</th>
+                                <th class="text-right" style="width: 110px;">Qty (Stock)</th>
                                 <th class="text-right" style="width: 100px;">Sell Price</th>
                                 <th class="text-right" style="width: 100px;">MRP</th>
                                 <th class="text-center" style="width: 90px;">Action</th>

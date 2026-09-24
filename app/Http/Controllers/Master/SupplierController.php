@@ -153,6 +153,17 @@ class SupplierController extends Controller
 
     private function validateData(Request $request, ?Supplier $supplier = null): array
     {
+        $rawName = $request->input('name');
+        if ($rawName !== null) {
+            $request->merge(['name' => trim(preg_replace('/\s+/', ' ', (string) $rawName))]);
+        }
+
+        $rawGst = $request->input('gst_no');
+        if ($rawGst !== null) {
+            $rawGst = strtoupper(trim(preg_replace('/\s+/', '', (string) $rawGst)));
+            $request->merge(['gst_no' => $rawGst === '' ? null : $rawGst]);
+        }
+
         $request->merge([
             'currency' => $request->input('currency') ?: 'INR',
             'purchase_type' => $request->input('purchase_type') ?: 'Local',
@@ -165,14 +176,20 @@ class SupplierController extends Controller
             'mail_type' => $request->input('mail_type') ?: 'None',
         ]);
 
-        foreach (['mobile', 'phone', 'email', 'gst_no', 'address', 'city', 'state', 'postal_code', 'country', 'aadhar_no', 'pan_no'] as $optField) {
-            if ($request->input($optField) === '') {
-                $request->merge([$optField => null]);
+        foreach (['mobile', 'phone', 'email', 'address', 'city', 'state', 'postal_code', 'country', 'aadhar_no', 'pan_no'] as $optField) {
+            if ($request->has($optField)) {
+                $val = trim((string) $request->input($optField));
+                $request->merge([$optField => $val === '' ? null : $val]);
             }
         }
 
         $rules = [
-            'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('suppliers', 'name')->ignore($supplier?->id)],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('suppliers', 'name')->ignore($supplier?->id),
+            ],
             'currency' => ['required', 'string', 'max:10'],
             'purchase_type' => ['required', 'in:Local,Interstate,Import'],
             'purchase_mode' => ['required', 'in:Credit,Cash,Consignment'],
@@ -192,13 +209,50 @@ class SupplierController extends Controller
             'mobile' => ['nullable', 'string', 'digits:10'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
-            'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
+            'gst_no' => [
+                'nullable',
+                'string',
+                'size:15',
+                'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/',
+                \Illuminate\Validation\Rule::unique('suppliers', 'gst_no')->ignore($supplier?->id),
+            ],
         ];
 
-        $messages = [];
+        $messages = [
+            'name.unique' => 'A supplier with this name already exists.',
+            'gst_no.unique' => 'This GST number is already registered with another supplier.',
+            'gst_no.regex' => 'The GST number format is invalid (e.g. 24AAAAA0000A1Z5).',
+        ];
+
         app(\App\Services\DynamicValidationService::class)->applyTo('suppliers', $rules, $messages, $supplier?->id);
 
+        // Always re-guarantee uniqueness of Name and GST No even if dynamic validation configs differ
+        $this->ensureUniqueValidationRule($rules, 'name', 'suppliers', 'name', $supplier?->id);
+        if (!empty($request->input('gst_no'))) {
+            $this->ensureUniqueValidationRule($rules, 'gst_no', 'suppliers', 'gst_no', $supplier?->id);
+        }
+
         return $request->validate($rules, $messages);
+    }
+
+    private function ensureUniqueValidationRule(array &$rules, string $field, string $table, string $column, mixed $ignoreId = null): void
+    {
+        $hasUnique = false;
+        if (isset($rules[$field]) && is_array($rules[$field])) {
+            foreach ($rules[$field] as $r) {
+                if ($r instanceof \Illuminate\Validation\Rules\Unique || (is_string($r) && str_starts_with($r, 'unique'))) {
+                    $hasUnique = true;
+                    break;
+                }
+            }
+        }
+        if (!$hasUnique) {
+            $uniqueRule = \Illuminate\Validation\Rule::unique($table, $column);
+            if ($ignoreId) {
+                $uniqueRule->ignore($ignoreId);
+            }
+            $rules[$field][] = $uniqueRule;
+        }
     }
 
     protected function importModel(): string

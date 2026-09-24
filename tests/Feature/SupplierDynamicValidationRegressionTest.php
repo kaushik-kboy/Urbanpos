@@ -216,4 +216,60 @@ class SupplierDynamicValidationRegressionTest extends TestCase
             session('errors')->first('gst_no')
         );
     }
+
+    public function test_duplicate_supplier_name_is_strictly_prevented(): void
+    {
+        Supplier::create([
+            'name' => 'Royal Canin Distributors',
+            'purchase_type' => 'Local',
+            'purchase_mode' => 'Credit',
+            'gst_type' => 'Regular',
+            'status' => 1,
+        ]);
+
+        // Attempt exact duplicate name
+        $response1 = $this->post(route('master.suppliers.store'), [
+            'name' => 'Royal Canin Distributors',
+            'purchase_type' => 'Local',
+            'purchase_mode' => 'Credit',
+            'gst_type' => 'Regular',
+            'status' => 1,
+        ]);
+        $response1->assertSessionHasErrors('name');
+
+        // Attempt duplicate name with whitespace
+        $response2 = $this->post(route('master.suppliers.store'), [
+            'name' => '  Royal Canin Distributors  ',
+            'purchase_type' => 'Local',
+            'purchase_mode' => 'Credit',
+            'gst_type' => 'Regular',
+            'status' => 1,
+        ]);
+        $response2->assertSessionHasErrors('name');
+    }
+
+    public function test_duplicate_supplier_gst_is_strictly_prevented_by_default(): void
+    {
+        $gstin = '24ABCDE1234F1Z5';
+        Supplier::create([
+            'name' => 'Supplier One',
+            'gst_no' => $gstin,
+            'purchase_type' => 'Local',
+            'purchase_mode' => 'Credit',
+            'gst_type' => 'Regular',
+            'status' => 1,
+        ]);
+
+        // Attempt duplicate GST on different supplier name
+        $response = $this->post(route('master.suppliers.store'), [
+            'name' => 'Supplier Two',
+            'gst_no' => strtolower($gstin), // Should be normalized and still blocked as duplicate
+            'purchase_type' => 'Local',
+            'purchase_mode' => 'Credit',
+            'gst_type' => 'Regular',
+            'status' => 1,
+        ]);
+        $response->assertSessionHasErrors('gst_no');
+        $this->assertDatabaseMissing('suppliers', ['name' => 'Supplier Two']);
+    }
 }

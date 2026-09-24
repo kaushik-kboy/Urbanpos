@@ -147,9 +147,8 @@ class SalesBillController extends Controller
             $options['defaultCustomerId'] = $defaultCustId;
             $options['defaultCustomer'] = $editBill->customer;
         } else {
-            $defaultCustId = $walkInCust?->id ?? ($options['customers']->keys()->first() ?? null);
-            $options['defaultCustomerId'] = $defaultCustId;
-            $options['defaultCustomer'] = $defaultCustId ? Customer::with(['pets.petType'])->find($defaultCustId) : null;
+            $options['defaultCustomerId'] = null;
+            $options['defaultCustomer'] = null;
         }
 
         return view('pos.terminal', $options);
@@ -601,6 +600,7 @@ class SalesBillController extends Controller
                 'items.gst_tax_id',
                 'gst_taxes.percentage as gst_percentage',
                 DB::raw('SUM(sales_bill_items.qty) as total_qty'),
+                DB::raw('SUM(sales_bill_items.net_amount) as total_amount'),
                 DB::raw('COUNT(DISTINCT sales_bills.id) as bills_count'),
                 DB::raw('MAX(sales_bills.bill_date) as last_purchased_date'),
             ])
@@ -615,8 +615,9 @@ class SalesBillController extends Controller
                 'items.gst_tax_id',
                 'gst_taxes.percentage'
             )
+            ->orderByDesc('bills_count')
             ->orderByDesc('total_qty')
-            ->limit(20)
+            ->limit(30)
             ->get();
 
         $formatted = $topItems->map(function ($item) use ($branchId) {
@@ -642,6 +643,7 @@ class SalesBillController extends Controller
                 'gst_tax_id' => $item->gst_tax_id,
                 'gst_percentage' => (float) ($item->gst_percentage ?? 0),
                 'total_qty' => (float) $item->total_qty,
+                'total_amount' => (float) ($item->total_amount ?? 0),
                 'bills_count' => (int) $item->bills_count,
                 'last_purchased_date' => $item->last_purchased_date ? date('d M Y', strtotime($item->last_purchased_date)) : '',
                 'stock' => $stock,
@@ -781,12 +783,6 @@ class SalesBillController extends Controller
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));
         $showAll  = $request->boolean('show_all');
-
-        // Require at least 1 character to avoid loading 8000+ items on every open (or show_all checked)
-        $hasFilter = $search !== '' || $code !== '' || $expiry !== '' || $showAll;
-        if (! $hasFilter) {
-            return response()->json(['items' => [], 'hint' => 'Type to search items…']);
-        }
 
         // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
         $limit  = 100;
