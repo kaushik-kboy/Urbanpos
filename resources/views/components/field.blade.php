@@ -31,10 +31,11 @@
                     @if($hasAddon)
                         {!! $addon !!}{{ $slot }}
                     @else
-                        <button type="button" class="btn btn-outline-secondary btn-date-mode-toggle d-flex align-items-center py-1 px-2" style="border-color: #ced4da; background-color: #f8f9fa;">
-                            <span class="date-mode-label mr-2"><i class="fas fa-keyboard text-primary mr-1"></i><span class="small font-weight-bold text-dark">Manual</span></span>
-                            <span class="btn-open-datepicker text-muted mr-2" title="Click to Open Calendar Picker"><i class="fas fa-calendar-alt"></i></span>
-                            <span class="btn-date-settings-modal text-secondary" title="Configure Date Format & Entry Mode"><i class="fas fa-cog"></i></span>
+                        <button type="button" class="btn btn-outline-secondary btn-open-datepicker py-1 px-2" title="Click to Open Calendar Picker" style="border-color: #ced4da; background-color: #f8f9fa;">
+                            <i class="fas fa-calendar-alt text-primary"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-date-settings-modal py-1 px-2" data-toggle="modal" data-target="#urbanpos-date-settings-modal" title="Date Settings: Hath se likhna / Calendar / Formats" style="border-color: #ced4da; background-color: #e9ecef;">
+                            <i class="fas fa-cog text-dark"></i>
                         </button>
                     @endif
                 </div>

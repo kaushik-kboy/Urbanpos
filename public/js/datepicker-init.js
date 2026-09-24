@@ -484,32 +484,46 @@
             '    </div>' +
             '</div>';
 
-        $('body').append(modalHtml);
-
-        // Open modal button listener
-        $(document).on('click', '.btn-date-settings-modal', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var mode = DateConfig.getMode();
-            var fmt = DateConfig.getFormat();
-
-            $('input[name="date_pref_mode"][value="' + mode + '"]').prop('checked', true);
-            $('input[name="date_pref_fmt"][value="' + fmt + '"]').prop('checked', true);
-
-            $('#urbanpos-date-settings-modal').modal('show');
-        });
-
-        // Save preferences
-        $(document).on('click', '.btn-save-date-settings', function () {
-            var selectedMode = $('input[name="date_pref_mode"]:checked').val() || 'manual';
-            var selectedFmt = $('input[name="date_pref_fmt"]:checked').val() || 'DD-MM-YYYY';
-
-            DateConfig.setMode(selectedMode);
-            DateConfig.setFormat(selectedFmt);
-
-            $('#urbanpos-date-settings-modal').modal('hide');
-        });
+        if (!$('#urbanpos-date-settings-modal').length) {
+            $('body').append(modalHtml);
+        }
     }
+
+    /* ==========================================================================
+       6. Interactive Date Settings Modal Handlers
+       ========================================================================== */
+    // Open calendar picker button listener
+    $(document).on('click', '.btn-open-datepicker', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $group = $(this).closest('.input-group');
+        var $input = $group.find('.datepicker, input[data-date-field="true"]');
+        var drp = $input.data('daterangepicker');
+        if (drp) {
+            drp.show();
+        } else {
+            $input.trigger('focus');
+        }
+    });
+
+    // Populate active choices when Date Settings modal opens
+    $(document).on('show.bs.modal', '#urbanpos-date-settings-modal', function () {
+        var mode = DateConfig.getMode();
+        var fmt = DateConfig.getFormat();
+        $('input[name="date_pref_mode"][value="' + mode + '"]').prop('checked', true);
+        $('input[name="date_pref_fmt"][value="' + fmt + '"]').prop('checked', true);
+    });
+
+    // Save preferences from modal
+    $(document).on('click', '.btn-save-date-settings', function () {
+        var selectedMode = $('input[name="date_pref_mode"]:checked').val() || 'manual';
+        var selectedFmt = $('input[name="date_pref_fmt"]:checked').val() || 'DD-MM-YYYY';
+
+        DateConfig.setMode(selectedMode);
+        DateConfig.setFormat(selectedFmt);
+
+        $('#urbanpos-date-settings-modal').modal('hide');
+    });
 
     /* ==========================================================================
        7. Initializer

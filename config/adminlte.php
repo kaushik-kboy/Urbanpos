@@ -1186,7 +1186,7 @@ return [
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/datepicker-init.js?v=20260921_1',
+                    'location' => 'js/datepicker-init.js?v=20260924_2',
                 ],
             ],
         ],
