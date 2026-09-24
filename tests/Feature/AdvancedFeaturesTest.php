@@ -93,6 +93,8 @@ class AdvancedFeaturesTest extends TestCase
         $response->assertOk();
         $response->assertSee('Pet Shampoo 250ml');
         $response->assertSee('8901234567890');
+        $response->assertSee(route('master.items.index'));
+        $response->assertSee('Items Listing');
     }
 
     public function test_barcode_label_print_for_purchase_invoice(): void

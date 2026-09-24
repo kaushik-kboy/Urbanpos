@@ -242,10 +242,19 @@
     <!-- Toolbar -->
     <div class="print-toolbar d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
-            <button type="button" class="btn btn-secondary btn-sm mr-3 font-weight-bold" onclick="window.history.back();">
-                <i class="fas fa-arrow-left mr-1"></i> Back
-            </button>
-            <h5 class="mb-0 font-weight-bold text-dark mr-3">
+            <a href="{{ route('master.items.index') }}" class="btn btn-primary btn-sm mr-2 font-weight-bold shadow-sm">
+                <i class="fas fa-boxes mr-1"></i> Items Listing
+            </a>
+            @if(request()->filled('purchase_invoice_id'))
+                <a href="{{ route('purchase.purchase-invoices.show', request('purchase_invoice_id')) }}" class="btn btn-outline-secondary btn-sm mr-2 font-weight-bold">
+                    <i class="fas fa-file-invoice mr-1"></i> Back to Invoice
+                </a>
+            @else
+                <button type="button" class="btn btn-outline-secondary btn-sm mr-2 font-weight-bold" onclick="if (window.opener) { window.close(); } else { window.location.href='{{ route('master.items.index') }}'; }">
+                    <i class="fas fa-arrow-left mr-1"></i> Back
+                </button>
+            @endif
+            <h5 class="mb-0 font-weight-bold text-dark mx-2">
                 <i class="fas fa-barcode text-primary mr-2"></i>Barcode Labels
             </h5>
             <span class="badge badge-primary px-3 py-2 font-weight-bold" style="font-size: 13px;">
@@ -282,7 +291,9 @@
                 <i class="fas fa-barcode text-muted" style="font-size: 48px;"></i>
                 <h4 class="mt-3 font-weight-bold text-secondary">No Items Selected for Label Printing</h4>
                 <p class="text-muted">Select items from Item Master or open a Purchase Invoice to print labels.</p>
-                <button type="button" class="btn btn-primary font-weight-bold mt-2" onclick="window.history.back();">Go Back</button>
+                <a href="{{ route('master.items.index') }}" class="btn btn-primary font-weight-bold mt-2">
+                    <i class="fas fa-boxes mr-1"></i> Go to Items Listing
+                </a>
             </div>
         @else
             <div class="labels-container">
