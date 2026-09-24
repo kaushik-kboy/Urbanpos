@@ -491,8 +491,24 @@
                 }
             }
 
+            // 5. Inv Amount (Supplier) must be filled and > 0
+            let $invAmt = $('input[name="supplier_inv_amount"]');
+            let invAmtVal = parseFloat($.trim($invAmt.val()));
+            if (!$invAmt.val() || isNaN(invAmtVal) || invAmtVal <= 0) {
+                $invAmt.addClass('is-invalid border-danger').removeClass('is-valid');
+                triggerFieldShake($invAmt);
+                if (!silent) {
+                    if (window.toastr) {
+                        window.toastr.warning('Inv Amount (Supplier) is required before entering items.', 'Invoice Amount Required');
+                    }
+                    $invAmt.focus();
+                }
+                return false;
+            }
+
             return true;
         }
+
 
         $('#supplier_inv_no').on('blur change', function () {
             validateSupplierInvNo();
