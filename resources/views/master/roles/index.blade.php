@@ -104,20 +104,23 @@
                                 @endif
                             </td>
                             <td class="text-center text-nowrap">
-                                <a href="{{ route('master.roles.edit', $r) }}" class="btn btn-xs btn-primary font-weight-bold px-2 py-1 mr-1" title="Configure Permissions Matrix">
-                                    <i class="fas fa-edit mr-1"></i> Permissions
+                                <a href="{{ route('master.roles.edit', $r) }}"
+                                   class="btn btn-sm btn-outline-primary mr-1"
+                                   title="Configure Permissions Matrix">
+                                    <i class="fas fa-key mr-1"></i> Permissions
                                 </a>
 
                                 @if(! $isProtected)
                                     <form action="{{ route('master.roles.destroy', $r) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete role \'{{ $r->name }}\'? This cannot be undone.');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-xs btn-outline-danger font-weight-bold px-2 py-1" title="Delete Role">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Role">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
                                 @endif
                             </td>
+
                         </tr>
                     @empty
                         <tr>
