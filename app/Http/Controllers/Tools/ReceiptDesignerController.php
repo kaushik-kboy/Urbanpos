@@ -144,7 +144,11 @@ class ReceiptDesignerController extends Controller
             ]);
         }
 
-        return redirect()->route('tools.receipt-designer.index', ['doc' => $docType])
+        $redirectUrl = $docType === 'sales_bill'
+            ? route('tools.receipt-designer.index')
+            : route('tools.receipt-designer.index', ['doc' => $docType]);
+
+        return redirect($redirectUrl)
             ->with('success', "{$typeLabel} print settings updated successfully!");
     }
 }

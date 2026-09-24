@@ -80,7 +80,7 @@ class ReceiptDesignerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->user)->post(route('tools.receipt-designer.update'), $payload);
-        $response->assertRedirect(route('tools.receipt-designer.index', ['doc' => 'sales_bill']));
+        $response->assertRedirect(route('tools.receipt-designer.index'));
         $response->assertSessionHas('success');
 
         $settings = ReceiptSetting::current();
