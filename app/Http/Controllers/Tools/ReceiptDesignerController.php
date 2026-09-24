@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Tools;
 use App\Http\Controllers\Controller;
 use App\Models\ReceiptSetting;
 use App\Models\SalesBill;
+use App\Models\StockTransfer;
+use App\Models\PurchaseInvoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,25 +16,56 @@ class ReceiptDesignerController extends Controller
 {
     /**
      * Display Receipt Designer live split-screen editor.
+     * Supports multiple document types via ?doc=sales_bill|stock_transfer|...
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $settings = ReceiptSetting::current();
+        $supportedTypes = ReceiptSetting::supportedTypes();
+        $docType = $request->input('doc', 'sales_bill');
 
-        // Sample bill for live interactive preview
-        $sampleBill = SalesBill::with(['items.item', 'customer.pets', 'branch', 'payments.tenderType'])
-            ->latest('id')
-            ->first();
+        // Fallback to sales_bill if unknown type passed
+        if (!array_key_exists($docType, $supportedTypes)) {
+            $docType = 'sales_bill';
+        }
 
-        return view('tools.receipt-designer', compact('settings', 'sampleBill'));
+        $settings = ReceiptSetting::forDocument($docType);
+
+        // Load a real sample record for live preview based on document type
+        $sampleBill     = null;
+        $sampleTransfer = null;
+        $samplePurchase = null;
+
+        if ($docType === 'sales_bill') {
+            $sampleBill = SalesBill::with(['items.item', 'customer.pets', 'branch', 'payments.tenderType'])
+                ->latest('id')
+                ->first();
+        } elseif ($docType === 'stock_transfer') {
+            $sampleTransfer = StockTransfer::with(['items.item', 'fromBranch', 'toBranch'])
+                ->latest('id')
+                ->first();
+        } elseif ($docType === 'purchase_invoice') {
+            $samplePurchase = PurchaseInvoice::with(['items.item', 'supplier', 'branch'])
+                ->latest('id')
+                ->first();
+        }
+
+        return view('tools.receipt-designer', compact(
+            'settings',
+            'docType',
+            'supportedTypes',
+            'sampleBill',
+            'sampleTransfer',
+            'samplePurchase'
+        ));
     }
 
     /**
-     * Save updated receipt design configurations.
+     * Save updated receipt design configurations for a specific document type.
      */
     public function update(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
+            'document_type'          => 'nullable|string|max:50',
             'store_name'             => 'required|string|max:100',
             'tagline'                => 'nullable|string|max:150',
             'show_logo'              => 'nullable|boolean',
@@ -58,9 +91,16 @@ class ReceiptDesignerController extends Controller
             'custom_css'             => 'nullable|string|max:2000',
         ]);
 
-        $settings = ReceiptSetting::current();
+        $supportedTypes = ReceiptSetting::supportedTypes();
+        $docType = $validated['document_type'] ?? 'sales_bill';
+        if (!array_key_exists($docType, $supportedTypes)) {
+            $docType = 'sales_bill';
+        }
+
+        $settings = ReceiptSetting::forDocument($docType);
 
         $data = [
+            'document_type'          => $docType,
             'store_name'             => trim($validated['store_name']),
             'tagline'                => !empty($validated['tagline']) ? trim($validated['tagline']) : null,
             'show_logo'              => $request->boolean('show_logo'),
@@ -94,15 +134,17 @@ class ReceiptDesignerController extends Controller
 
         $settings->update($data);
 
+        $typeLabel = $supportedTypes[$docType]['label'] ?? $docType;
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
-                'success' => true,
-                'message' => 'Receipt design & print settings updated successfully!',
+                'success'  => true,
+                'message'  => "{$typeLabel} print settings updated successfully!",
                 'settings' => $settings,
             ]);
         }
 
-        return redirect()->route('tools.receipt-designer.index')
-            ->with('success', 'Receipt design & print settings updated successfully! All future bills and receipts will use this format.');
+        return redirect()->route('tools.receipt-designer.index', ['doc' => $docType])
+            ->with('success', "{$typeLabel} print settings updated successfully!");
     }
 }

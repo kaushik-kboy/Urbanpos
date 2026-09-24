@@ -80,7 +80,7 @@ class ReceiptDesignerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->user)->post(route('tools.receipt-designer.update'), $payload);
-        $response->assertRedirect(route('tools.receipt-designer.index'));
+        $response->assertRedirect(route('tools.receipt-designer.index', ['doc' => 'sales_bill']));
         $response->assertSessionHas('success');
 
         $settings = ReceiptSetting::current();
@@ -94,6 +94,37 @@ class ReceiptDesignerTest extends TestCase
         $this->assertEquals('58mm', $settings->paper_size);
         $this->assertEquals('small', $settings->font_size);
         $this->assertStringContainsString('No exchange on vaccines', $settings->footer_policy);
+    }
+
+    public function test_user_can_switch_tabs_and_update_stock_transfer_settings(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('tools.receipt-designer.index', ['doc' => 'stock_transfer']));
+        $response->assertStatus(200);
+        $response->assertSee('Stock Transfer Note Print Designer');
+        $response->assertSee('STOCK TRANSFER NOTE');
+
+        $payload = [
+            'document_type'  => 'stock_transfer',
+            'store_name'     => 'URBAN PETS LOGISTICS HUB',
+            'tagline'        => 'Inter-Branch Stock Movement',
+            'paper_size'     => 'a4',
+            'font_size'      => 'normal',
+            'footer_policy'  => 'Inspect all items immediately upon delivery.',
+            'footer_note'    => 'Official Transfer Challan',
+        ];
+
+        $response = $this->actingAs($this->user)->post(route('tools.receipt-designer.update'), $payload);
+        $response->assertRedirect(route('tools.receipt-designer.index', ['doc' => 'stock_transfer']));
+        $response->assertSessionHas('success');
+
+        $transferSettings = ReceiptSetting::forDocument('stock_transfer');
+        $this->assertEquals('URBAN PETS LOGISTICS HUB', $transferSettings->store_name);
+        $this->assertEquals('a4', $transferSettings->paper_size);
+        $this->assertEquals('Official Transfer Challan', $transferSettings->footer_note);
+
+        // Sales bill settings must remain untouched
+        $salesSettings = ReceiptSetting::forDocument('sales_bill');
+        $this->assertNotEquals('URBAN PETS LOGISTICS HUB', $salesSettings->store_name);
     }
 
     public function test_receipt_renders_dynamic_customizer_settings(): void

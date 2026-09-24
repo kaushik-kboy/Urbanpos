@@ -1,24 +1,34 @@
 @extends('adminlte::page')
 
-@section('title', 'Invoice Print Designer (बिल प्रिंट कस्टमाइज़र)')
+@section('title', 'Print Designer — ' . ($supportedTypes[$docType]['label'] ?? 'Receipt'))
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center flex-wrap">
         <div>
             <h1 class="font-weight-bold text-dark mb-1">
-                <i class="fas fa-print text-warning mr-2"></i> Invoice Print Designer <span class="text-muted" style="font-size: 18px; font-weight: normal;">(बिल प्रिंट कस्टमाइज़र)</span>
+                <i class="{{ $supportedTypes[$docType]['icon'] ?? 'fas fa-print' }} text-warning mr-2"></i> {{ $supportedTypes[$docType]['label'] ?? 'Receipt' }} Print Designer <span class="text-muted" style="font-size: 18px; font-weight: normal;">(प्रिंट कस्टमाइज़र)</span>
             </h1>
             <p class="text-muted small mb-0">
-                Customize store headers, multi-line address, HSN visibility, UPI payment QR code, return policies & paper width without any developer dependency.
+                Customize store headers, multi-line address, HSN visibility, return policies & paper width for <strong>{{ $supportedTypes[$docType]['label'] ?? 'Receipt' }}</strong>.
             </p>
         </div>
         <div class="mt-2 mt-md-0">
             <button type="button" class="btn btn-outline-primary btn-sm shadow-sm font-weight-bold mr-2" onclick="printSampleReceipt()">
                 <i class="fas fa-print mr-1"></i> Print Sample Receipt
             </button>
-            <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
-                <i class="fas fa-arrow-left mr-1"></i> Back to Bills
-            </a>
+            @if($docType === 'stock_transfer')
+                <a href="{{ route('inventory.stock-transfers.index') }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Stock Transfers
+                </a>
+            @elseif($docType === 'purchase_invoice')
+                <a href="{{ route('purchase.purchase-invoices.index') }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Purchase Invoices
+                </a>
+            @else
+                <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Bills
+                </a>
+            @endif
         </div>
     </div>
 @stop
@@ -47,8 +57,35 @@
         </div>
     @endif
 
+    {{-- ── Document Type Tab Switcher ─────────────────────────────────── --}}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex align-items-center flex-wrap">
+                <span class="font-weight-bold small text-dark mr-3">
+                    <i class="fas fa-layer-group text-warning mr-1"></i> Print Settings For:
+                </span>
+                @foreach($supportedTypes as $typeKey => $typeMeta)
+                    <a href="{{ route('tools.receipt-designer.index', ['doc' => $typeKey]) }}"
+                       class="btn btn-sm mr-2 mb-1 font-weight-bold {{ $typeKey === $docType ? 'btn-' . $typeMeta['color'] : 'btn-outline-' . $typeMeta['color'] }}"
+                       title="{{ $typeMeta['label'] }}">
+                        <i class="{{ $typeMeta['icon'] }} mr-1"></i>
+                        {{ $typeMeta['label'] }}
+                        @if($typeKey === $docType)
+                            <i class="fas fa-check ml-1" style="font-size:10px;"></i>
+                        @endif
+                    </a>
+                @endforeach
+                <span class="ml-auto small text-muted">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Each document type has its own independent print settings.
+                </span>
+            </div>
+        </div>
+    </div>
+
     <form id="receipt-designer-form" action="{{ route('tools.receipt-designer.update') }}" method="POST" enctype="multipart/form-data">
         @csrf
+        <input type="hidden" name="document_type" value="{{ $docType }}">
         <div class="row">
             {{-- Left Column: Settings Customizer --}}
             <div class="col-lg-7 col-md-12 mb-4">
@@ -327,130 +364,372 @@
 
                             <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
 
-                            <div class="text-center font-weight-bold text-uppercase" style="font-size: 12px; letter-spacing: 1px;">
-                                TAX INVOICE
-                            </div>
+                            @if($docType === 'stock_transfer')
+                                <div class="text-center font-weight-bold text-uppercase" style="font-size: 12px; letter-spacing: 1px;">
+                                    STOCK TRANSFER NOTE (स्टॉक ट्रांसफर चालान)
+                                </div>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Stock Transfer Meta --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.3;">
+                                    <tr>
+                                        <td style="font-weight: bold;">Transfer #: {{ $sampleTransfer?->transfer_number ?: 'ST-2026-0001' }}</td>
+                                        <td style="text-align: right;">Date: {{ $sampleTransfer?->transfer_date ? $sampleTransfer->transfer_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">From: <strong>{{ $sampleTransfer?->fromBranch?->name ?: 'Central Warehouse (Main)' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">To: <strong>{{ $sampleTransfer?->toBranch?->name ?: 'City Outlet Branch' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Status: <span class="badge badge-success">{{ $sampleTransfer?->status ?: 'Completed' }}</span></td>
+                                        <td style="text-align: right;">Mode: Delivery Van</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Transfer Itemized Table --}}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px dashed #000;">
+                                            <th style="text-align: left; padding: 4px 0;">Item Description</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 45px;">Qty</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Cost</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if($sampleTransfer && $sampleTransfer->items->isNotEmpty())
+                                            @foreach($sampleTransfer->items->take(3) as $idx => $tItem)
+                                                <tr>
+                                                    <td colspan="4" style="font-weight: bold; padding-top: 4px;">
+                                                        {{ $idx + 1 }}. {{ $tItem->item?->name ?? 'Sample Item' }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="color: #444; font-size: 10px;">
+                                                        [{{ $tItem->item?->item_code ?? 'ITM-01' }}]
+                                                        <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $tItem->item?->hsn_code ?? '23091000' }})</span>
+                                                    </td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($tItem->qty, 3) }}</td>
+                                                    <td style="text-align: right;">₹{{ number_format($tItem->unit_cost, 2) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">₹{{ number_format($tItem->qty * $tItem->unit_cost, 2) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @else
+                                            <tr>
+                                                <td colspan="4" style="font-weight: bold; padding-top: 4px;">1. Royal Canin Maxi Puppy 4kg</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color: #444; font-size: 10px;">
+                                                    [RC-MP-04] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23091000)</span>
+                                                </td>
+                                                <td style="text-align: right; font-weight: bold;">5.000</td>
+                                                <td style="text-align: right;">₹1,950.00</td>
+                                                <td style="text-align: right; font-weight: bold;">₹9,750.00</td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="4" style="font-weight: bold; padding-top: 4px;">2. Pedigree Adult Meat & Rice 3kg</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color: #444; font-size: 10px;">
+                                                    [PED-AD-03] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23099090)</span>
+                                                </td>
+                                                <td style="text-align: right; font-weight: bold;">10.000</td>
+                                                <td style="text-align: right;">₹450.00</td>
+                                                <td style="text-align: right; font-weight: bold;">₹4,500.00</td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Transfer Totals --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.4;">
+                                    <tr>
+                                        <td>Total Items / Transferred Qty:</td>
+                                        <td style="text-align: right; font-weight: bold;">{{ $sampleTransfer ? $sampleTransfer->items->count() : '2' }} / {{ $sampleTransfer ? number_format($sampleTransfer->items->sum('qty'), 3) : '15.000' }}</td>
+                                    </tr>
+                                    <tr id="prev_tax_split_cgst" style="{{ $settings->show_tax_breakup ? '' : 'display: none;' }}">
+                                        <td colspan="2" style="font-size: 10px; color: #555;">[Inter-branch transfer under Section 25]</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                <table style="width: 100%; font-size: 14px; font-weight: 900;">
+                                    <tr>
+                                        <td>TOTAL VALUE:</td>
+                                        <td style="text-align: right;">₹{{ $sampleTransfer ? number_format($sampleTransfer->total_value, 2) : '14,250.00' }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                {{-- Signatures for Stock Transfer --}}
+                                <div style="margin-top: 20px; font-size: 10px; display: flex; justify-content: space-between;">
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Dispatched By (Sender)
+                                    </div>
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Received By (Receiver)
+                                    </div>
+                                </div>
+                            @elseif($docType === 'purchase_invoice')
+                                <div class="text-center font-weight-bold text-uppercase" style="font-size: 12px; letter-spacing: 1px;">
+                                    PURCHASE INVOICE / GOODS INWARD (खरीद बिल)
+                                </div>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Purchase Meta --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.3;">
+                                    <tr>
+                                        <td style="font-weight: bold;">Invoice #: {{ $samplePurchase?->invoice_number ?: 'PI-2026-0012' }}</td>
+                                        <td style="text-align: right;">Date: {{ $samplePurchase?->invoice_date ? $samplePurchase->invoice_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">Supplier: <strong>{{ $samplePurchase?->supplier?->name ?: 'Mars Petcare India Pvt Ltd' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">Supplier GST: <strong>{{ $samplePurchase?->supplier?->gst_number ?: '24AABCM9988Z1Z2' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Branch: {{ $samplePurchase?->branch?->name ?: 'Main Store' }}</td>
+                                        <td style="text-align: right;">Type: Regular Tax Inv</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Purchase Itemized Table --}}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px dashed #000;">
+                                            <th style="text-align: left; padding: 4px 0;">Item Description</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 45px;">Qty</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Cost</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if($samplePurchase && $samplePurchase->items->isNotEmpty())
+                                            @foreach($samplePurchase->items->take(3) as $idx => $pItem)
+                                                <tr>
+                                                    <td colspan="4" style="font-weight: bold; padding-top: 4px;">
+                                                        {{ $idx + 1 }}. {{ $pItem->item?->name ?? 'Sample Item' }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="color: #444; font-size: 10px;">
+                                                        [{{ $pItem->item?->item_code ?? 'ITM-01' }}]
+                                                        <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $pItem->item?->hsn_code ?? '23091000' }})</span>
+                                                    </td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($pItem->qty, 3) }}</td>
+                                                    <td style="text-align: right;">₹{{ number_format($pItem->cost_price, 2) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">₹{{ number_format($pItem->total_amount ?? ($pItem->qty * $pItem->cost_price), 2) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @else
+                                            <tr>
+                                                <td colspan="4" style="font-weight: bold; padding-top: 4px;">1. Royal Canin Maxi Puppy 4kg</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color: #444; font-size: 10px;">
+                                                    [RC-MP-04] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23091000)</span> (GST 18%)
+                                                </td>
+                                                <td style="text-align: right; font-weight: bold;">10.000</td>
+                                                <td style="text-align: right;">₹1,800.00</td>
+                                                <td style="text-align: right; font-weight: bold;">₹18,000.00</td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="4" style="font-weight: bold; padding-top: 4px;">2. Pedigree Gravy Meat 100g Pouch</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color: #444; font-size: 10px;">
+                                                    [PED-GRV-100] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23099090)</span> (GST 18%)
+                                                </td>
+                                                <td style="text-align: right; font-weight: bold;">50.000</td>
+                                                <td style="text-align: right;">₹32.00</td>
+                                                <td style="text-align: right; font-weight: bold;">₹1,600.00</td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Purchase Totals --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.4;">
+                                    <tr>
+                                        <td>Total Items / Qty:</td>
+                                        <td style="text-align: right; font-weight: bold;">{{ $samplePurchase ? $samplePurchase->items->count() : '2' }} / {{ $samplePurchase ? number_format($samplePurchase->items->sum('qty'), 3) : '60.000' }}</td>
+                                    </tr>
+                                    <tr id="prev_taxable_row">
+                                        <td>Taxable Subtotal:</td>
+                                        <td style="text-align: right;">₹{{ $samplePurchase ? number_format($samplePurchase->taxable_amount ?? ($samplePurchase->total_amount * 0.84), 2) : '16,610.17' }}</td>
+                                    </tr>
+                                    <tr id="prev_tax_split_cgst" style="{{ $settings->show_tax_breakup ? '' : 'display: none;' }}">
+                                        <td>CGST:</td>
+                                        <td style="text-align: right;">₹{{ $samplePurchase ? number_format(($samplePurchase->total_gst ?? 2989.83) / 2, 2) : '1,494.91' }}</td>
+                                    </tr>
+                                    <tr id="prev_tax_split_sgst" style="{{ $settings->show_tax_breakup ? '' : 'display: none;' }}">
+                                        <td>SGST:</td>
+                                        <td style="text-align: right;">₹{{ $samplePurchase ? number_format(($samplePurchase->total_gst ?? 2989.83) / 2, 2) : '1,494.91' }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                <table style="width: 100%; font-size: 14px; font-weight: 900;">
+                                    <tr>
+                                        <td>NET INVOICE PAYABLE:</td>
+                                        <td style="text-align: right;">₹{{ $samplePurchase ? number_format($samplePurchase->total_amount ?? 19600.00, 2) : '19,600.00' }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                {{-- Signatures for Purchase --}}
+                                <div style="margin-top: 20px; font-size: 10px; display: flex; justify-content: space-between;">
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Goods Received By
+                                    </div>
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Authorized Signatory
+                                    </div>
+                                </div>
+                            @else
+                                <div class="text-center font-weight-bold text-uppercase" style="font-size: 12px; letter-spacing: 1px;">
+                                    TAX INVOICE (कर चालान)
+                                </div>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Bill Meta --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.3;">
+                                    <tr>
+                                        <td style="font-weight: bold;">Bill No: {{ $sampleBill?->bill_number ?: 'SB-2026-0009' }}</td>
+                                        <td style="text-align: right;">Date: {{ now()->format('d/m/Y') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Time: {{ now()->format('h:i A') }}</td>
+                                        <td style="text-align: right;">POS Counter</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">
+                                            Cust: <strong>{{ $sampleBill?->customer?->name ?: 'Ankit Sharma' }}</strong> ({{ $sampleBill?->customer?->phone ?: '9898012345' }})
+                                            <div id="prev_pet_row" style="color: #2c3e50; font-weight: bold; {{ $settings->show_customer_pet_name ? '' : 'display: none;' }}">
+                                                🐾 Pet: {{ $sampleBill?->customer?->pets?->first()?->name ?: 'Bruno (Golden Retriever)' }}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Itemized Table --}}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px dashed #000;">
+                                            <th style="text-align: left; padding: 4px 0;">Item Description</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 45px;">Qty</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Rate</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Net</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{-- Sample Item 1 --}}
+                                        <tr>
+                                            <td colspan="4" style="font-weight: bold; padding-top: 4px;">
+                                                1. Royal Canin Maxi Puppy 4kg
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #444; font-size: 10px;">
+                                                [RC-MP-04] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23091000)</span> (GST 18%)
+                                            </td>
+                                            <td style="text-align: right; font-weight: bold;">1.000</td>
+                                            <td style="text-align: right;">₹2,450.00</td>
+                                            <td style="text-align: right; font-weight: bold;">₹2,450.00</td>
+                                        </tr>
+                                        <tr id="prev_disc_sample_1" style="{{ $settings->show_discount ? '' : 'display: none;' }}">
+                                            <td colspan="4" style="text-align: right; font-size: 10px; color: #666; font-style: italic;">
+                                                Disc: -₹150.00 (6.12%)
+                                            </td>
+                                        </tr>
+
+                                        {{-- Sample Item 2 --}}
+                                        <tr>
+                                            <td colspan="4" style="font-weight: bold; padding-top: 4px;">
+                                                2. Gnawlers Calcium Milk Bones
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #444; font-size: 10px;">
+                                                [GNW-CMB] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23099090)</span> (GST 12%)
+                                            </td>
+                                            <td style="text-align: right; font-weight: bold;">2.000</td>
+                                            <td style="text-align: right;">₹180.00</td>
+                                            <td style="text-align: right; font-weight: bold;">₹360.00</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Totals --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.4;">
+                                    <tr>
+                                        <td>Total Items / Qty:</td>
+                                        <td style="text-align: right; font-weight: bold;">2 / 3.000</td>
+                                    </tr>
+                                    <tr id="prev_taxable_row">
+                                        <td>Taxable Subtotal:</td>
+                                        <td style="text-align: right;">₹2,298.30</td>
+                                    </tr>
+                                    <tr id="prev_tax_split_cgst" style="{{ $settings->show_tax_breakup ? '' : 'display: none;' }}">
+                                        <td>CGST:</td>
+                                        <td style="text-align: right;">₹180.85</td>
+                                    </tr>
+                                    <tr id="prev_tax_split_sgst" style="{{ $settings->show_tax_breakup ? '' : 'display: none;' }}">
+                                        <td>SGST:</td>
+                                        <td style="text-align: right;">₹180.85</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Round Off:</td>
+                                        <td style="text-align: right;">₹0.00</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                <table style="width: 100%; font-size: 15px; font-weight: 900;">
+                                    <tr>
+                                        <td>GRAND TOTAL:</td>
+                                        <td style="text-align: right;">₹2,660.00</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                {{-- Payment Row --}}
+                                <table style="width: 100%; font-size: 11px; margin-bottom: 4px;">
+                                    <tr>
+                                        <td style="font-weight: bold;">Paid by:</td>
+                                        <td style="text-align: right; font-weight: bold;">Cash / UPI</td>
+                                    </tr>
+                                </table>
+                            @endif
 
                             <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
 
-                            {{-- Bill Meta --}}
-                            <table style="width: 100%; font-size: 11px; line-height: 1.3;">
-                                <tr>
-                                    <td style="font-weight: bold;">Bill No: {{ $sampleBill?->bill_number ?: 'SB-2026-0009' }}</td>
-                                    <td style="text-align: right;">Date: {{ now()->format('d/m/Y') }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Time: {{ now()->format('h:i A') }}</td>
-                                    <td style="text-align: right;">POS Counter</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="2">
-                                        Cust: <strong>{{ $sampleBill?->customer?->name ?: 'Ankit Sharma' }}</strong> ({{ $sampleBill?->customer?->phone ?: '9898012345' }})
-                                        <div id="prev_pet_row" style="color: #2c3e50; font-weight: bold; {{ $settings->show_customer_pet_name ? '' : 'display: none;' }}">
-                                            🐾 Pet: {{ $sampleBill?->customer?->pets?->first()?->name ?: 'Bruno (Golden Retriever)' }}
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
-
-                            {{-- Itemized Table --}}
-                            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                                <thead>
-                                    <tr style="border-bottom: 1px dashed #000;">
-                                        <th style="text-align: left; padding: 4px 0;">Item Description</th>
-                                        <th style="text-align: right; padding: 4px 0; width: 45px;">Qty</th>
-                                        <th style="text-align: right; padding: 4px 0; width: 55px;">Rate</th>
-                                        <th style="text-align: right; padding: 4px 0; width: 55px;">Net</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {{-- Sample Item 1 --}}
-                                    <tr>
-                                        <td colspan="4" style="font-weight: bold; padding-top: 4px;">
-                                            1. Royal Canin Maxi Puppy 4kg
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="color: #444; font-size: 10px;">
-                                            [RC-MP-04] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23091000)</span> (GST 18%)
-                                        </td>
-                                        <td style="text-align: right; font-weight: bold;">1.000</td>
-                                        <td style="text-align: right;">₹2,450.00</td>
-                                        <td style="text-align: right; font-weight: bold;">₹2,450.00</td>
-                                    </tr>
-                                    <tr id="prev_disc_sample_1" style="{{ $settings->show_discount ? '' : 'display: none;' }}">
-                                        <td colspan="4" style="text-align: right; font-size: 10px; color: #666; font-style: italic;">
-                                            Disc: -₹150.00 (6.12%)
-                                        </td>
-                                    </tr>
-
-                                    {{-- Sample Item 2 --}}
-                                    <tr>
-                                        <td colspan="4" style="font-weight: bold; padding-top: 4px;">
-                                            2. Gnawlers Calcium Milk Bones
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="color: #444; font-size: 10px;">
-                                            [GNW-CMB] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23099090)</span> (GST 12%)
-                                        </td>
-                                        <td style="text-align: right; font-weight: bold;">2.000</td>
-                                        <td style="text-align: right;">₹180.00</td>
-                                        <td style="text-align: right; font-weight: bold;">₹360.00</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
-
-                            {{-- Totals --}}
-                            <table style="width: 100%; font-size: 11px; line-height: 1.4;">
-                                <tr>
-                                    <td>Total Items / Qty:</td>
-                                    <td style="text-align: right; font-weight: bold;">2 / 3.000</td>
-                                </tr>
-                                <tr id="prev_taxable_row">
-                                    <td>Taxable Subtotal:</td>
-                                    <td style="text-align: right;">₹2,298.30</td>
-                                </tr>
-                                <tr id="prev_tax_split_cgst" style="{{ $settings->show_tax_breakup ? '' : 'display: none;' }}">
-                                    <td>CGST:</td>
-                                    <td style="text-align: right;">₹180.85</td>
-                                </tr>
-                                <tr id="prev_tax_split_sgst" style="{{ $settings->show_tax_breakup ? '' : 'display: none;' }}">
-                                    <td>SGST:</td>
-                                    <td style="text-align: right;">₹180.85</td>
-                                </tr>
-                                <tr>
-                                    <td>Round Off:</td>
-                                    <td style="text-align: right;">₹0.00</td>
-                                </tr>
-                            </table>
-
-                            <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
-
-                            <table style="width: 100%; font-size: 15px; font-weight: 900;">
-                                <tr>
-                                    <td>GRAND TOTAL:</td>
-                                    <td style="text-align: right;">₹2,660.00</td>
-                                </tr>
-                            </table>
-
-                            <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
-
-                            {{-- Payment Row --}}
-                            <table style="width: 100%; font-size: 11px; margin-bottom: 4px;">
-                                <tr>
-                                    <td style="font-weight: bold;">Paid by:</td>
-                                    <td style="text-align: right; font-weight: bold;">Cash / UPI</td>
-                                </tr>
-                            </table>
-
-                            <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
-
-                            {{-- Dynamic UPI QR Preview --}}
+                            {{-- Dynamic UPI QR Preview (When docType is sales_bill) --}}
+                            @if($docType === 'sales_bill')
                             <div id="prev_upi_container" class="text-center my-2" style="{{ $settings->show_upi_qr ? '' : 'display: none;' }}">
                                 <div style="font-weight: bold; font-size: 11px; margin-bottom: 3px;">
                                     <i class="fas fa-qrcode mr-1"></i> SCAN TO PAY VIA UPI
@@ -462,12 +741,13 @@
                                 <div style="font-size: 9px; color: #555;">(GPay, PhonePe, Paytm, BHIM)</div>
                                 <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
                             </div>
+                            @endif
 
                             {{-- Barcode Section --}}
                             <div id="prev_barcode_container" class="text-center my-2" style="{{ $settings->show_barcode ? '' : 'display: none;' }}">
                                 <div style="display: inline-block; height: 32px; width: 170px; background: repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 4px, #000 4px, #000 5px, #fff 5px, #fff 8px);"></div>
                                 <div style="font-size: 10px; font-weight: bold; letter-spacing: 1px; margin-top: 2px;">
-                                    * {{ $sampleBill?->bill_number ?: 'SB-2026-0009' }} *
+                                    * {{ $docType === 'stock_transfer' ? ($sampleTransfer?->transfer_number ?: 'ST-2026-0001') : ($docType === 'purchase_invoice' ? ($samplePurchase?->invoice_number ?: 'PI-2026-0012') : ($sampleBill?->bill_number ?: 'SB-2026-0009')) }} *
                                 </div>
                             </div>
 
@@ -621,46 +901,57 @@
         }
     });
 
-    document.getElementById('input_show_customer_pet_name').addEventListener('change', function() {
-        document.getElementById('prev_pet_row').style.display = this.checked ? 'block' : 'none';
+    document.getElementById('input_show_customer_pet_name')?.addEventListener('change', function() {
+        const petRow = document.getElementById('prev_pet_row');
+        if (petRow) petRow.style.display = this.checked ? 'block' : 'none';
     });
 
-    document.getElementById('input_show_hsn_code').addEventListener('change', function() {
+    document.getElementById('input_show_hsn_code')?.addEventListener('change', function() {
         const checked = this.checked;
         document.querySelectorAll('.prev_hsn_tag').forEach(el => {
             el.style.display = checked ? 'inline' : 'none';
         });
     });
 
-    document.getElementById('input_show_tax_breakup').addEventListener('change', function() {
+    document.getElementById('input_show_tax_breakup')?.addEventListener('change', function() {
         const display = this.checked ? 'table-row' : 'none';
-        document.getElementById('prev_tax_split_cgst').style.display = display;
-        document.getElementById('prev_tax_split_sgst').style.display = display;
+        const cgstRow = document.getElementById('prev_tax_split_cgst');
+        const sgstRow = document.getElementById('prev_tax_split_sgst');
+        if (cgstRow) cgstRow.style.display = display;
+        if (sgstRow) sgstRow.style.display = display;
     });
 
-    document.getElementById('input_show_discount').addEventListener('change', function() {
-        document.getElementById('prev_disc_sample_1').style.display = this.checked ? 'table-row' : 'none';
+    document.getElementById('input_show_discount')?.addEventListener('change', function() {
+        const discRow = document.getElementById('prev_disc_sample_1');
+        if (discRow) discRow.style.display = this.checked ? 'table-row' : 'none';
     });
 
-    document.getElementById('input_show_barcode').addEventListener('change', function() {
-        document.getElementById('prev_barcode_container').style.display = this.checked ? 'block' : 'none';
+    document.getElementById('input_show_barcode')?.addEventListener('change', function() {
+        const barBox = document.getElementById('prev_barcode_container');
+        if (barBox) barBox.style.display = this.checked ? 'block' : 'none';
     });
 
-    document.getElementById('input_show_upi_qr').addEventListener('change', function() {
-        document.getElementById('prev_upi_container').style.display = this.checked ? 'block' : 'none';
+    document.getElementById('input_show_upi_qr')?.addEventListener('change', function() {
+        const upiBox = document.getElementById('prev_upi_container');
+        if (upiBox) upiBox.style.display = this.checked ? 'block' : 'none';
     });
 
     function updateUpiQr() {
-        const upiId = document.getElementById('input_upi_id').value.trim() || '7383056626@okbizaxis';
-        const payeeName = document.getElementById('input_upi_payee_name').value.trim() || document.getElementById('input_store_name').value.trim() || 'Urban Pets';
-        document.getElementById('prev_upi_vpa_text').textContent = 'UPI: ' + upiId;
+        const upiBox = document.getElementById('prev_upi_container');
+        const prevUpiVpa = document.getElementById('prev_upi_vpa_text');
+        const prevUpiImg = document.getElementById('prev_upi_qr_img');
+        if (!prevUpiVpa || !prevUpiImg) return;
+
+        const upiId = document.getElementById('input_upi_id')?.value.trim() || '7383056626@okbizaxis';
+        const payeeName = document.getElementById('input_upi_payee_name')?.value.trim() || document.getElementById('input_store_name')?.value.trim() || 'Urban Pets';
+        prevUpiVpa.textContent = 'UPI: ' + upiId;
         
         const upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=2660.00&tr=SB-2026-0009&tn=Bill%20SB-2026-0009&cu=INR`;
-        document.getElementById('prev_upi_qr_img').src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=${encodeURIComponent(upiString)}`;
+        prevUpiImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=${encodeURIComponent(upiString)}`;
     }
 
-    document.getElementById('input_upi_id').addEventListener('input', updateUpiQr);
-    document.getElementById('input_upi_payee_name').addEventListener('input', updateUpiQr);
+    document.getElementById('input_upi_id')?.addEventListener('input', updateUpiQr);
+    document.getElementById('input_upi_payee_name')?.addEventListener('input', updateUpiQr);
 
     document.getElementById('input_paper_size').addEventListener('change', updatePreviewLayout);
     document.getElementById('input_font_size').addEventListener('change', updatePreviewLayout);
@@ -675,40 +966,44 @@
 
     function resetToDefaults() {
         if (!confirm('Reset all receipt customizations to factory defaults?')) return;
-        document.getElementById('input_store_name').value = 'URBAN PETS';
-        document.getElementById('input_tagline').value = 'Complete Pet Care & Supplies';
-        document.getElementById('input_show_logo').checked = false;
-        document.getElementById('input_header_address').value = '';
-        document.getElementById('input_phone').value = '7383056626';
-        document.getElementById('input_phone_alt').value = '';
-        document.getElementById('input_gstin').value = '';
-        document.getElementById('input_show_customer_pet_name').checked = true;
-        document.getElementById('input_show_hsn_code').checked = true;
-        document.getElementById('input_show_tax_breakup').checked = true;
-        document.getElementById('input_show_discount').checked = true;
-        document.getElementById('input_show_upi_qr').checked = true;
-        document.getElementById('input_upi_id').value = '7383056626@okbizaxis';
-        document.getElementById('input_upi_payee_name').value = 'Urban Pets';
-        document.getElementById('input_show_barcode').checked = true;
-        document.getElementById('input_paper_size').value = '80mm';
-        document.getElementById('input_font_size').value = 'normal';
-        document.getElementById('input_footer_policy').value = "Exchange valid within 7 days with original bill.\nNo return on opened treats, medicines or frozen food.";
-        document.getElementById('input_footer_note').value = "Thank you for shopping at Urban Pets!\n*** Have an Awesome Day! ***";
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+        const trigger = (id, ev = 'input') => { document.getElementById(id)?.dispatchEvent(new Event(ev)); };
+
+        setVal('input_store_name', 'URBAN PETS');
+        setVal('input_tagline', 'Complete Pet Care & Supplies');
+        setCheck('input_show_logo', false);
+        setVal('input_header_address', '');
+        setVal('input_phone', '7383056626');
+        setVal('input_phone_alt', '');
+        setVal('input_gstin', '');
+        setCheck('input_show_customer_pet_name', true);
+        setCheck('input_show_hsn_code', true);
+        setCheck('input_show_tax_breakup', true);
+        setCheck('input_show_discount', true);
+        setCheck('input_show_upi_qr', true);
+        setVal('input_upi_id', '7383056626@okbizaxis');
+        setVal('input_upi_payee_name', 'Urban Pets');
+        setCheck('input_show_barcode', true);
+        setVal('input_paper_size', '{{ $docType === "stock_transfer" ? "a4" : "80mm" }}');
+        setVal('input_font_size', 'normal');
+        setVal('input_footer_policy', "{{ $docType === 'stock_transfer' ? 'Goods dispatched in sound condition.\nPlease inspect all items upon receipt.' : 'Exchange valid within 7 days with original bill.\nNo return on opened treats, medicines or frozen food.' }}");
+        setVal('input_footer_note', "{{ $docType === 'stock_transfer' ? 'Internal Transfer Note — Not For Commercial Sale' : 'Thank you for shopping at Urban Pets!\n*** Have an Awesome Day! ***' }}");
 
         // Trigger updates
-        document.getElementById('input_store_name').dispatchEvent(new Event('input'));
-        document.getElementById('input_tagline').dispatchEvent(new Event('input'));
-        document.getElementById('input_phone').dispatchEvent(new Event('input'));
-        document.getElementById('input_phone_alt').dispatchEvent(new Event('input'));
-        document.getElementById('input_show_customer_pet_name').dispatchEvent(new Event('change'));
-        document.getElementById('input_show_hsn_code').dispatchEvent(new Event('change'));
-        document.getElementById('input_show_tax_breakup').dispatchEvent(new Event('change'));
-        document.getElementById('input_show_discount').dispatchEvent(new Event('change'));
-        document.getElementById('input_show_barcode').dispatchEvent(new Event('change'));
-        document.getElementById('input_show_upi_qr').dispatchEvent(new Event('change'));
-        document.getElementById('input_paper_size').dispatchEvent(new Event('change'));
-        document.getElementById('input_footer_policy').dispatchEvent(new Event('input'));
-        document.getElementById('input_footer_note').dispatchEvent(new Event('input'));
+        trigger('input_store_name');
+        trigger('input_tagline');
+        trigger('input_phone');
+        trigger('input_phone_alt');
+        trigger('input_show_customer_pet_name', 'change');
+        trigger('input_show_hsn_code', 'change');
+        trigger('input_show_tax_breakup', 'change');
+        trigger('input_show_discount', 'change');
+        trigger('input_show_barcode', 'change');
+        trigger('input_show_upi_qr', 'change');
+        trigger('input_paper_size', 'change');
+        trigger('input_footer_policy');
+        trigger('input_footer_note');
     }
 
     function printSampleReceipt() {

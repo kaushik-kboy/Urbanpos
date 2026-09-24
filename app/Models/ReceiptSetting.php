@@ -12,6 +12,7 @@ class ReceiptSetting extends Model
     protected $table = 'receipt_settings';
 
     protected $fillable = [
+        'document_type',
         'store_name',
         'tagline',
         'logo_path',
@@ -49,35 +50,78 @@ class ReceiptSetting extends Model
     ];
 
     /**
-     * Get or create the singleton receipt settings row.
+     * All supported document types with their label and icon.
+     * Add a new entry here to instantly support a new document type
+     * in the Receipt Designer — no other code changes needed.
+     */
+    public static function supportedTypes(): array
+    {
+        return [
+            'sales_bill' => [
+                'label' => 'Sales Bill / Invoice',
+                'icon'  => 'fas fa-file-invoice',
+                'color' => 'primary',
+            ],
+            'stock_transfer' => [
+                'label' => 'Stock Transfer Note',
+                'icon'  => 'fas fa-exchange-alt',
+                'color' => 'warning',
+            ],
+            'purchase_invoice' => [
+                'label' => 'Purchase Invoice',
+                'icon'  => 'fas fa-shopping-cart',
+                'color' => 'success',
+            ],
+        ];
+    }
+
+    /**
+     * Get or create the receipt settings row for a specific document type.
+     * Falls back to sales_bill defaults for new document types so
+     * branding is pre-filled (Store Name, logo, phone, etc.).
+     */
+    public static function forDocument(string $documentType = 'sales_bill'): self
+    {
+        // Get base defaults from sales_bill row (branding shared)
+        $base = static::where('document_type', 'sales_bill')->first();
+
+        return static::firstOrCreate(
+            ['document_type' => $documentType],
+            [
+                'store_name'             => $base?->store_name             ?? 'URBAN PETS',
+                'tagline'                => $base?->tagline                ?? 'Complete Pet Care & Supplies',
+                'logo_path'              => $base?->logo_path              ?? null,
+                'logo_width'             => $base?->logo_width             ?? 120,
+                'show_logo'              => $base?->show_logo              ?? false,
+                'header_address'         => $base?->header_address         ?? null,
+                'phone'                  => $base?->phone                  ?? null,
+                'phone_alt'              => $base?->phone_alt              ?? null,
+                'email'                  => $base?->email                  ?? null,
+                'gstin'                  => $base?->gstin                  ?? null,
+                'show_customer_pet_name' => false,
+                'show_hsn_code'          => true,
+                'show_tax_breakup'       => $documentType === 'sales_bill',
+                'show_discount'          => false,
+                'show_upi_qr'            => false,
+                'upi_id'                 => $base?->upi_id                 ?? null,
+                'upi_payee_name'         => $base?->upi_payee_name         ?? null,
+                'show_barcode'           => false,
+                'paper_size'             => $documentType === 'stock_transfer' ? 'a4' : ($base?->paper_size ?? '80mm'),
+                'font_size'              => $base?->font_size              ?? 'normal',
+                'footer_policy'          => null,
+                'footer_note'            => null,
+                'custom_css'             => null,
+            ]
+        );
+    }
+
+    /**
+     * Legacy alias — returns sales_bill settings.
+     * Kept for backward compatibility with existing print templates.
      */
     public static function current(): self
     {
-        return static::firstOrCreate([], [
-            'store_name'             => 'URBAN PETS',
-            'tagline'                => 'Complete Pet Care & Supplies',
-            'logo_path'              => null,
-            'logo_width'             => 120,
-            'show_logo'              => false,
-            'header_address'         => null, // Falls back to branch address if null
-            'phone'                  => '7383056626',
-            'phone_alt'              => null,
-            'email'                  => null,
-            'gstin'                  => null, // Falls back to branch GST if null
-            'show_customer_pet_name' => true,
-            'show_hsn_code'          => true,
-            'show_tax_breakup'       => true,
-            'show_discount'          => true,
-            'show_upi_qr'            => true,
-            'upi_id'                 => '7383056626@okbizaxis',
-            'upi_payee_name'         => 'Urban Pets',
-            'show_barcode'           => true,
-            'paper_size'             => '80mm',
-            'font_size'              => 'normal',
-            'footer_policy'          => "Exchange valid within 7 days with original bill.\nNo return on opened treats, medicines or frozen food.",
-            'footer_note'            => "Thank you for shopping at Urban Pets!\n*** Have an Awesome Day! ***",
-            'custom_css'             => null,
-        ]);
+        return static::forDocument('sales_bill');
     }
 
     /**
@@ -88,7 +132,7 @@ class ReceiptSetting extends Model
         $upiId = $this->upi_id ?: '7383056626@okbizaxis';
         $payeeName = $this->upi_payee_name ?: $this->store_name ?: 'Urban Pets';
         $formattedAmount = number_format($amount, 2, '.', '');
-        
+
         $upiString = "upi://pay?pa=" . rawurlencode($upiId)
             . "&pn=" . rawurlencode($payeeName)
             . "&am=" . $formattedAmount

@@ -66,8 +66,12 @@
             .no-print { display: none !important; }
             body { margin: 0; }
         }
+        {!! $receiptSettings->custom_css ?? '' !!}
     </style>
 </head>
+@php
+    $receiptSettings = \App\Models\ReceiptSetting::forDocument('purchase_invoice');
+@endphp
 <body>
     <div class="no-print" style="text-align: right;">
         <button onclick="window.print()" class="btn-print">Print Invoice</button>
@@ -76,11 +80,21 @@
     <table class="header-table" style="margin-bottom: 12px;">
         <tr>
             <td style="width: 60%; vertical-align: top;">
+                @if($receiptSettings->show_logo && $receiptSettings->logo_path)
+                    <img src="{{ asset($receiptSettings->logo_path) }}" alt="{{ $receiptSettings->store_name }}" style="max-width: {{ $receiptSettings->logo_width ?? 120 }}px; height: auto; margin-bottom: 6px;"><br>
+                @endif
                 <div class="header-title">PURCHASE INVOICE</div>
-                <div class="font-bold" style="font-size: 14px;">{{ $purchaseInvoice->branch?->name ?? config('app.name', 'UrbanPOS') }}</div>
-                <div>{{ $purchaseInvoice->branch?->address ?? '' }}</div>
-                @if($purchaseInvoice->branch?->phone)<div>Phone: {{ $purchaseInvoice->branch->phone }}</div>@endif
-                @if($purchaseInvoice->branch?->gst_number)<div>GSTIN: <strong>{{ $purchaseInvoice->branch->gst_number }}</strong></div>@endif
+                <div class="font-bold" style="font-size: 14px;">{{ $receiptSettings->store_name ?: ($purchaseInvoice->branch?->name ?? config('app.name', 'UrbanPOS')) }}</div>
+                @if($receiptSettings->tagline)
+                    <div style="font-size: 11px; color: #555; font-weight: bold;">{{ $receiptSettings->tagline }}</div>
+                @endif
+                <div>{!! nl2br(e($receiptSettings->header_address ?: ($purchaseInvoice->branch?->address ?? ''))) !!}</div>
+                @if($receiptSettings->phone || $purchaseInvoice->branch?->phone)
+                    <div>Phone: {{ $receiptSettings->phone ?: $purchaseInvoice->branch?->phone }}</div>
+                @endif
+                @if($receiptSettings->gstin || $purchaseInvoice->branch?->gst_number)
+                    <div>GSTIN: <strong>{{ $receiptSettings->gstin ?: $purchaseInvoice->branch?->gst_number }}</strong></div>
+                @endif
             </td>
             <td style="width: 40%; vertical-align: top; text-align: right;">
                 <div style="font-size: 14px; font-weight: bold;">Invoice #: {{ $purchaseInvoice->invoice_number }}</div>
@@ -216,5 +230,23 @@
         <div class="sign-line">Prepared / Received By</div>
         <div class="sign-line">Authorized Signatory</div>
     </div>
+
+    @if($receiptSettings->footer_policy || $receiptSettings->footer_note)
+        <div style="margin-top: 25px; font-size: 11px; color: #444; border-top: 1px dashed #999; padding-top: 10px; text-align: center;">
+            @if($receiptSettings->footer_policy)
+                <div style="white-space: pre-line; margin-bottom: 4px;">{!! nl2br(e($receiptSettings->footer_policy)) !!}</div>
+            @endif
+            @if($receiptSettings->footer_note)
+                <div style="font-weight: bold; white-space: pre-line;">{!! nl2br(e($receiptSettings->footer_note)) !!}</div>
+            @endif
+        </div>
+    @endif
+
+    @if($receiptSettings->show_barcode)
+        <div style="text-align: center; margin-top: 20px;">
+            <div style="display: inline-block; height: 32px; width: 180px; background: repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 4px, #000 4px, #000 5px, #fff 5px, #fff 8px);"></div>
+            <div style="font-size: 10px; font-weight: bold; letter-spacing: 1px; margin-top: 2px;">* {{ $purchaseInvoice->invoice_number }} *</div>
+        </div>
+    @endif
 </body>
 </html>
