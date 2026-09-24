@@ -788,15 +788,20 @@ class PurchaseInvoiceController extends Controller
             ]);
         }
 
-        $isDuplicate = PurchaseInvoice::where('supplier_id', $supplierId)
+        $existing = PurchaseInvoice::where('supplier_id', $supplierId)
             ->where('supplier_inv_no', $invNo)
             ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->exists();
+            ->first();
+
+        $editUrl = $existing ? route('purchase.purchase-invoices.edit', $existing->id) : null;
 
         return response()->json([
-            'is_duplicate' => $isDuplicate,
-            'message' => $isDuplicate 
-                ? "Supplier Invoice Number '{$invNo}' is already recorded for this supplier."
+            'is_duplicate' => (bool) $existing,
+            'existing_invoice_id' => $existing?->id,
+            'existing_invoice_number' => $existing?->invoice_number,
+            'edit_url' => $editUrl,
+            'message' => $existing 
+                ? "Supplier Invoice Number '{$invNo}' is already recorded in {$existing->invoice_number} for this supplier."
                 : null,
         ]);
     }

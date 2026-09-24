@@ -328,9 +328,12 @@
                 if (res.is_duplicate) {
                     $input.addClass('is-invalid border-danger').removeClass('is-valid');
                     let msg = res.message || `Supplier Invoice Number '${invNo}' is already recorded for this supplier.`;
-                    $feedback.text(msg).show();
+                    if (res.edit_url) {
+                        $feedback.html(`${msg} <a href="${res.edit_url}" target="_blank" class="ml-1 text-primary font-weight-bold" style="text-decoration: underline;"><i class="fas fa-external-link-alt"></i> View ${res.existing_invoice_number || 'Invoice'}</a>`).show();
+                    } else {
+                        $feedback.text(msg).show();
+                    }
                     $feedbackContainer.show();
-                    alert(msg);
                 } else {
                     $input.removeClass('is-invalid border-danger').addClass('is-valid');
                     $feedback.text('').hide();
