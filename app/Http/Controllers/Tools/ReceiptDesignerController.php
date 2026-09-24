@@ -84,7 +84,7 @@ class ReceiptDesignerController extends Controller
             'upi_id'                 => 'nullable|string|max:100',
             'upi_payee_name'         => 'nullable|string|max:100',
             'show_barcode'           => 'nullable|boolean',
-            'paper_size'             => 'required|in:80mm,58mm,a4,a5',
+            'paper_size'             => 'required|in:80mm,58mm,102mm,a4,a5',
             'font_size'              => 'required|in:small,normal,large',
             'footer_policy'          => 'nullable|string|max:2000',
             'footer_note'            => 'nullable|string|max:1000',

@@ -219,4 +219,21 @@ class ReceiptDesignerTest extends TestCase
         $response->assertSee('Strict 5 day return on accessories only.');
         $response->assertSee('Have a magical day with your pet!');
     }
+
+    public function test_user_can_set_102mm_paper_size_for_tsc_thermal_printer(): void
+    {
+        $payload = [
+            'document_type' => 'sales_bill',
+            'store_name'    => 'URBAN PETS TSC STORE',
+            'paper_size'    => '102mm',
+            'font_size'     => 'normal',
+        ];
+
+        $response = $this->actingAs($this->user)->post(route('tools.receipt-designer.update'), $payload);
+        $response->assertRedirect(route('tools.receipt-designer.index'));
+        $response->assertSessionHas('success');
+
+        $settings = ReceiptSetting::current();
+        $this->assertEquals('102mm', $settings->paper_size);
+    }
 }

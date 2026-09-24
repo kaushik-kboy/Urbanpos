@@ -151,6 +151,15 @@ class AdvancedFeaturesTest extends TestCase
         $response->assertOk();
         $response->assertSee('Chew Toy Large');
         $response->assertSee('Total: 5 Stickers');
+
+        // Test 102x64 TSC TE244 thermal label format
+        $responseTsc = $this->actingAs($this->admin)->get(route('master.barcodes.print', [
+            'purchase_invoice_id' => $pi->id,
+            'format'              => '102x64',
+        ]));
+        $responseTsc->assertOk();
+        $responseTsc->assertSee('format-102x64');
+        $responseTsc->assertSee('102x63.5 mm (TSC TE244)');
     }
 
     public function test_database_backup_console_management(): void

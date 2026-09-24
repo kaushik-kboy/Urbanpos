@@ -28,6 +28,67 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
 
+        /* 102x63.5mm Label Style (TSC TE244 4" x 2.5" Thermal Roll) */
+        .format-102x64 .barcode-label-card {
+            width: 102mm;
+            height: 63.5mm;
+            padding: 2.5mm 4mm;
+            box-sizing: border-box;
+            border: 1px dashed #94a3b8;
+            margin: 3mm auto;
+            background: #ffffff;
+            page-break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            text-align: center;
+            border-radius: 4px;
+        }
+        .format-102x64 .label-store-name {
+            font-size: 11pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #0f172a;
+            border-bottom: 1px dashed #cbd5e1;
+            padding-bottom: 1mm;
+        }
+        .format-102x64 .label-item-name {
+            font-size: 11pt;
+            font-weight: 700;
+            line-height: 1.25;
+            max-height: 2.5em;
+            margin: 1mm 0;
+            color: #1e293b;
+        }
+        .format-102x64 .label-barcode-svg {
+            height: 24mm;
+            width: 90%;
+            margin: 0 auto;
+        }
+        .format-102x64 .label-prices {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10.5pt;
+            font-weight: 700;
+            line-height: 1.2;
+            border-top: 1.5px solid #0f172a;
+            padding-top: 1.5mm;
+            margin-top: 1mm;
+        }
+        .format-102x64 .label-mrp {
+            font-size: 9.5pt;
+            text-decoration: line-through;
+            color: #64748b;
+        }
+        .format-102x64 .label-sell {
+            font-size: 13pt;
+            font-weight: 900;
+            color: #047857;
+        }
+
         /* 50x25mm Label Style (Standard 1-Up Roll) */
         .format-50x25 .barcode-label-card {
             width: 50mm;
@@ -149,6 +210,17 @@
                 margin: 0 !important;
                 page-break-after: always;
             }
+            .format-102x64 {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .format-102x64 .barcode-label-card {
+                margin: 0 auto !important;
+                page-break-after: always;
+                break-after: page;
+                width: 102mm !important;
+                height: 63.5mm !important;
+            }
             .format-a4 .labels-container {
                 box-shadow: none !important;
                 padding: 0 !important;
@@ -156,6 +228,14 @@
             }
         }
     </style>
+    @if($format === '102x64')
+    <style>
+        @page {
+            size: 102mm 63.5mm;
+            margin: 0;
+        }
+    </style>
+    @endif
 </head>
 <body class="format-{{ $format }}">
 
@@ -175,6 +255,9 @@
 
         <div class="d-flex align-items-center">
             <div class="btn-group btn-group-sm mr-3">
+                <a href="{{ request()->fullUrlWithQuery(['format' => '102x64']) }}" class="btn btn-outline-primary {{ $format === '102x64' ? 'active' : '' }}">
+                    <i class="fas fa-tag mr-1"></i> 102x63.5 mm (TSC TE244)
+                </a>
                 <a href="{{ request()->fullUrlWithQuery(['format' => '50x25']) }}" class="btn btn-outline-primary {{ $format === '50x25' ? 'active' : '' }}">
                     50x25 mm (1-Up Roll)
                 </a>
@@ -216,7 +299,7 @@
                             @endif
                             <span class="label-sell">Price: ₹{{ number_format($lbl['sell_price'], 2) }}</span>
                             @if(!empty($lbl['exp_date']))
-                                <span class="small text-muted">EXP: {{ $lbl['exp_date'] }}</span>
+                                <span class="small text-muted font-weight-bold">EXP: {{ $lbl['exp_date'] }}</span>
                             @endif
                         </div>
                     </div>
@@ -227,6 +310,8 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            const is102x64 = document.body.classList.contains('format-102x64');
+
             // Render Code128 barcodes via JsBarcode
             document.querySelectorAll('.label-barcode-svg').forEach(function (svgEl) {
                 let code = svgEl.getAttribute('data-barcode');
@@ -234,12 +319,12 @@
                     try {
                         JsBarcode(svgEl, code, {
                             format: "CODE128",
-                            width: 1.2,
-                            height: 28,
+                            width: is102x64 ? 1.8 : 1.2,
+                            height: is102x64 ? 54 : 28,
                             displayValue: true,
-                            fontSize: 9,
+                            fontSize: is102x64 ? 13 : 9,
                             margin: 1,
-                            textMargin: 0
+                            textMargin: is102x64 ? 2 : 0
                         });
                     } catch (e) {
                         console.warn("Could not render barcode for code:", code, e);

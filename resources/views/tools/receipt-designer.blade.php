@@ -264,6 +264,7 @@
                                 <select name="paper_size" id="input_paper_size" class="form-control font-weight-bold">
                                     <option value="80mm" {{ old('paper_size', $settings->paper_size) === '80mm' ? 'selected' : '' }}>80mm (Standard 3-Inch Thermal Roll)</option>
                                     <option value="58mm" {{ old('paper_size', $settings->paper_size) === '58mm' ? 'selected' : '' }}>58mm (Small 2-Inch Compact Thermal Roll)</option>
+                                    <option value="102mm" {{ old('paper_size', $settings->paper_size) === '102mm' ? 'selected' : '' }}>102mm / 4-Inch (TSC TE244 Thermal Roll / Wide Slip)</option>
                                     <option value="a4" {{ old('paper_size', $settings->paper_size) === 'a4' ? 'selected' : '' }}>A4 (Full Sheet Office / Laser)</option>
                                     <option value="a5" {{ old('paper_size', $settings->paper_size) === 'a5' ? 'selected' : '' }}>A5 (Half Sheet Voucher Slip)</option>
                                 </select>
@@ -782,6 +783,10 @@
         width: 58mm !important;
         max-width: 240px !important;
     }
+    .preview-paper-102mm {
+        width: 102mm !important;
+        max-width: 410px !important;
+    }
     .preview-paper-a4 {
         width: 100% !important;
         max-width: 580px !important;
@@ -820,10 +825,13 @@
         const fontSize = document.getElementById('input_font_size').value;
 
         // Apply width class
-        previewBox.classList.remove('preview-paper-80mm', 'preview-paper-58mm', 'preview-paper-a4', 'preview-paper-a5');
+        previewBox.classList.remove('preview-paper-80mm', 'preview-paper-58mm', 'preview-paper-102mm', 'preview-paper-a4', 'preview-paper-a5');
         if (paperSize === '58mm') {
             previewBox.classList.add('preview-paper-58mm');
             previewSizeBadge.textContent = '58mm Roll';
+        } else if (paperSize === '102mm') {
+            previewBox.classList.add('preview-paper-102mm');
+            previewSizeBadge.textContent = '102mm (TSC 4")';
         } else if (paperSize === 'a4') {
             previewBox.classList.add('preview-paper-a4');
             previewSizeBadge.textContent = 'A4 Sheet';

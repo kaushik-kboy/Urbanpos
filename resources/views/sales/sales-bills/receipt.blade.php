@@ -3,15 +3,17 @@
     $paperSize = $receiptSettings->paper_size ?? '80mm';
     $fontSize = $receiptSettings->font_size ?? 'normal';
     $containerWidth = match($paperSize) {
-        '58mm' => '58mm',
-        'a4'   => '100%',
-        'a5'   => '100%',
+        '58mm'  => '58mm',
+        '102mm' => '102mm',
+        'a4'    => '100%',
+        'a5'    => '100%',
         default => '80mm',
     };
     $containerMaxWidth = match($paperSize) {
-        '58mm' => '240px',
-        'a4'   => '700px',
-        'a5'   => '500px',
+        '58mm'  => '240px',
+        '102mm' => '410px',
+        'a4'    => '700px',
+        'a5'    => '500px',
         default => '320px',
     };
     $baseFontSize = match($fontSize) {
@@ -20,9 +22,10 @@
         default => '12px',
     };
     $pageSizeRule = match($paperSize) {
-        '58mm' => '58mm auto',
-        'a4'   => 'A4 portrait',
-        'a5'   => 'A5 portrait',
+        '58mm'  => '58mm auto',
+        '102mm' => '102mm auto',
+        'a4'    => 'A4 portrait',
+        'a5'    => 'A5 portrait',
         default => '80mm auto',
     };
 @endphp
