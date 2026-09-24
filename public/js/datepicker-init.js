@@ -213,8 +213,12 @@
             return;
         }
 
-        var minDate = $input.attr('min') || undefined;
-        var maxDate = $input.attr('max') || undefined;
+        var minDateAttr = $input.attr('min');
+        var maxDateAttr = $input.attr('max');
+        var minDate = minDateAttr ? moment(minDateAttr, ['YYYY-MM-DD', 'DD-MM-YYYY', 'DD/MM/YYYY']) : undefined;
+        var maxDate = maxDateAttr ? moment(maxDateAttr, ['YYYY-MM-DD', 'DD-MM-YYYY', 'DD/MM/YYYY']) : undefined;
+        if (minDate && !minDate.isValid()) minDate = undefined;
+        if (maxDate && !maxDate.isValid()) maxDate = undefined;
 
         var momentFmt = currentFormat === 'DD/MM/YYYY' ? 'DD/MM/YYYY' : (currentFormat === 'YYYY-MM-DD' ? 'YYYY-MM-DD' : 'DD-MM-YYYY');
 
@@ -296,16 +300,6 @@
         // Setup input-group append button actions
         var $group = $input.closest('.input-group');
         if ($group.length) {
-            // Calendar icon click opens picker for user convenience
-            $group.find('.btn-open-datepicker, .btn-date-mode-toggle, .input-group-text').css('cursor', 'pointer').off('click.dp-icon').on('click.dp-icon', function (e) {
-                // If clicking settings icon inside, don't open picker
-                if ($(e.target).closest('.btn-date-settings-modal').length) return;
-                var p = $input.data('daterangepicker');
-                if (p) {
-                    p.show();
-                }
-            });
-
             // Update badge / icon state if toggle button exists
             updateFieldAddonUI($group, mode);
         }
@@ -503,6 +497,16 @@
             drp.show();
         } else {
             $input.trigger('focus');
+        }
+    });
+
+    // Open date settings modal gear button listener
+    $(document).on('click', '.btn-date-settings-modal', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $modal = $('#urbanpos-date-settings-modal');
+        if ($modal.length) {
+            $modal.modal('show');
         }
     });
 

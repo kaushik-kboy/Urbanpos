@@ -32,10 +32,10 @@
                         {!! $addon !!}{{ $slot }}
                     @else
                         <button type="button" class="btn btn-outline-secondary btn-open-datepicker py-1 px-2" title="Click to Open Calendar Picker" style="border-color: #ced4da; background-color: #f8f9fa;">
-                            <i class="fas fa-calendar-alt text-primary"></i>
+                            <i class="fas fa-calendar-alt text-primary" style="pointer-events: none;"></i>
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-date-settings-modal py-1 px-2" data-toggle="modal" data-target="#urbanpos-date-settings-modal" title="Date Settings: Hath se likhna / Calendar / Formats" style="border-color: #ced4da; background-color: #e9ecef;">
-                            <i class="fas fa-cog text-dark"></i>
+                            <i class="fas fa-cog text-dark" style="pointer-events: none;"></i>
                         </button>
                     @endif
                 </div>

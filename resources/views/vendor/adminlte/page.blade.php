@@ -79,10 +79,12 @@
             @if(request()->route() && (Str::endsWith(request()->route()->getName(), '.create') || Str::endsWith(request()->route()->getName(), '.edit') || Str::contains(request()->route()->getName(), 'pos.terminal')))
                 <x-pos-keyboard-bar />
             @endif
-            <x-date-settings-modal />
         @endauth
 
     </div>
+    @auth
+        <x-date-settings-modal />
+    @endauth
 @stop
 
 @section('adminlte_js')

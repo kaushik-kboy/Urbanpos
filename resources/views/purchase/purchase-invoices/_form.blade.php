@@ -1352,22 +1352,23 @@
         checkAmountMatch();
 
         // Prevent future dates on invoice_date, grn_date, supplier_inv_date
-        $('#invoice_date, #grn_date, #supplier_inv_date').on('change', function () {
-            const today = new Date().toISOString().split('T')[0];
-            if (this.value) {
-                let parts = typeof window.parseDateParts === 'function' ? window.parseDateParts(this.value) : null;
-                let isoVal = parts 
-                    ? (parts.year + '-' + String(parts.month).padStart(2, '0') + '-' + String(parts.day).padStart(2, '0')) 
-                    : this.value;
-                if (isoVal > today) {
+        $('#invoice_date, #grn_date, #supplier_inv_date').on('change blur', function () {
+            if (!this.value) return;
+            let parts = typeof window.parseDateParts === 'function' ? window.parseDateParts(this.value) : null;
+            if (parts) {
+                let pad = n => n < 10 ? '0' + n : String(n);
+                let isoVal = parts.year + '-' + pad(parts.month) + '-' + pad(parts.day);
+                let now = new Date();
+                let todayIso = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+                if (isoVal > todayIso) {
                     let fieldName = $(this).closest('.form-group').find('label').text().trim().replace('*', '').trim() || 'Date';
-                    alert('Future date is not allowed for ' + fieldName + '!');
-                    let now = new Date();
+                    if (window.toastr) {
+                        window.toastr.warning('Future date is not allowed for ' + fieldName + '. Date reset to today.');
+                    }
                     let todayFormatted = typeof window.formatParts === 'function' && typeof window.UrbanPosDateConfig !== 'undefined'
                         ? window.formatParts({ day: now.getDate(), month: now.getMonth() + 1, year: now.getFullYear() }, window.UrbanPosDateConfig.getFormat())
-                        : today;
+                        : todayIso;
                     this.value = todayFormatted;
-                    $(this).trigger('change');
                 }
             }
         });

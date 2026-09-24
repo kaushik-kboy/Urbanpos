@@ -255,10 +255,20 @@
         }
 
         // 3. Block future date validation
-        if ($field.data('block-future-date') || $field.attr('max') === new Date().toISOString().split('T')[0]) {
-            if (val && String(val).trim() !== '') {
-                const todayStr = new Date().toISOString().split('T')[0];
-                if (String(val).trim() > todayStr) {
+        var maxAttr = $field.attr('max');
+        var blockFuture = $field.data('block-future-date') || Boolean(maxAttr);
+        if (blockFuture && val && String(val).trim() !== '') {
+            var rawStr = String(val).trim();
+            // Validate only if complete date parseable (avoids premature errors during numeric typing)
+            var dateParts = typeof window.parseDateParts === 'function' ? window.parseDateParts(rawStr) : null;
+            if (dateParts) {
+                var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+                var inputIso = dateParts.year + '-' + pad(dateParts.month) + '-' + pad(dateParts.day);
+                var now = new Date();
+                var todayIso = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+                var maxIso = (maxAttr && /^\d{4}-\d{2}-\d{2}$/.test(maxAttr)) ? maxAttr : todayIso;
+
+                if (inputIso > maxIso) {
                     return { valid: false, message: 'Future date is not allowed for this field.' };
                 }
             }
