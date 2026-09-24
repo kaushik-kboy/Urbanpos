@@ -1,5 +1,5 @@
 @php
-    $receiptSettings = \App\Models\ReceiptSetting::current();
+    $receiptSettings = \App\Models\ReceiptSetting::forDocument('sales_bill', $salesBill->branch_id ?? null);
     $paperSize = $receiptSettings->paper_size ?? '80mm';
     $fontSize = $receiptSettings->font_size ?? 'normal';
     $containerWidth = match($paperSize) {

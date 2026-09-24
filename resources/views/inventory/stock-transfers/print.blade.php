@@ -1,3 +1,6 @@
+@php
+    $receiptSettings = \App\Models\ReceiptSetting::forDocument('stock_transfer', $stockTransfer->from_branch_id ?? null);
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -69,9 +72,6 @@
         {!! $receiptSettings->custom_css ?? '' !!}
     </style>
 </head>
-@php
-    $receiptSettings = \App\Models\ReceiptSetting::forDocument('stock_transfer');
-@endphp
 <body>
     <div class="no-print" style="text-align: right;">
         <button onclick="window.print()" class="btn-print">Print Transfer Note</button>

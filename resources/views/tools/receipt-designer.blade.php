@@ -57,28 +57,40 @@
         </div>
     @endif
 
-    {{-- ── Document Type Tab Switcher ─────────────────────────────────── --}}
+    {{-- ── Document Type Tab Switcher & Branch Selector ─────────────────── --}}
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body py-2 px-3">
-            <div class="d-flex align-items-center flex-wrap">
-                <span class="font-weight-bold small text-dark mr-3">
-                    <i class="fas fa-layer-group text-warning mr-1"></i> Print Settings For:
-                </span>
-                @foreach($supportedTypes as $typeKey => $typeMeta)
-                    <a href="{{ route('tools.receipt-designer.index', ['doc' => $typeKey]) }}"
-                       class="btn btn-sm mr-2 mb-1 font-weight-bold {{ $typeKey === $docType ? 'btn-' . $typeMeta['color'] : 'btn-outline-' . $typeMeta['color'] }}"
-                       title="{{ $typeMeta['label'] }}">
-                        <i class="{{ $typeMeta['icon'] }} mr-1"></i>
-                        {{ $typeMeta['label'] }}
-                        @if($typeKey === $docType)
-                            <i class="fas fa-check ml-1" style="font-size:10px;"></i>
-                        @endif
-                    </a>
-                @endforeach
-                <span class="ml-auto small text-muted">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Each document type has its own independent print settings.
-                </span>
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                <div class="d-flex align-items-center flex-wrap mr-3">
+                    <span class="font-weight-bold small text-dark mr-3">
+                        <i class="fas fa-layer-group text-warning mr-1"></i> Print Settings For:
+                    </span>
+                    @foreach($supportedTypes as $typeKey => $typeMeta)
+                        <a href="{{ route('tools.receipt-designer.index', array_filter(['doc' => $typeKey, 'branch_id' => $selectedBranchId])) }}"
+                           class="btn btn-sm mr-2 mb-1 font-weight-bold {{ $typeKey === $docType ? 'btn-' . $typeMeta['color'] : 'btn-outline-' . $typeMeta['color'] }}"
+                           title="{{ $typeMeta['label'] }}">
+                            <i class="{{ $typeMeta['icon'] }} mr-1"></i>
+                            {{ $typeMeta['label'] }}
+                            @if($typeKey === $docType)
+                                <i class="fas fa-check ml-1" style="font-size:10px;"></i>
+                            @endif
+                        </a>
+                    @endforeach
+                </div>
+
+                {{-- Branch Selector --}}
+                <div class="d-flex align-items-center my-1 ml-auto">
+                    <label for="receipt-branch-select" class="small font-weight-bold text-dark mb-0 mr-2 text-nowrap">
+                        <i class="fas fa-store-alt text-primary mr-1"></i> Branch (ब्रांच):
+                    </label>
+                    <select id="receipt-branch-select" class="form-control form-control-sm font-weight-bold border-primary shadow-sm" style="min-width: 190px;" onchange="window.location.href = this.value;">
+                        @foreach($branches as $b)
+                            <option value="{{ route('tools.receipt-designer.index', ['doc' => $docType, 'branch_id' => $b->id]) }}" {{ $selectedBranchId == $b->id ? 'selected' : '' }}>
+                                {{ $b->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -86,6 +98,7 @@
     <form id="receipt-designer-form" action="{{ route('tools.receipt-designer.update') }}" method="POST" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="document_type" value="{{ $docType }}">
+        <input type="hidden" name="branch_id" value="{{ $selectedBranchId }}">
         <div class="row">
             {{-- Left Column: Settings Customizer --}}
             <div class="col-lg-7 col-md-12 mb-4">

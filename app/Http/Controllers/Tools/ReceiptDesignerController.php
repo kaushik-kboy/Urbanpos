@@ -28,31 +28,44 @@ class ReceiptDesignerController extends Controller
             $docType = 'sales_bill';
         }
 
-        $settings = ReceiptSetting::forDocument($docType);
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        $selectedBranchId = $request->filled('branch_id')
+            ? (int) $request->input('branch_id')
+            : (session('active_branch_id', auth()->user()?->branch_id) ?: ($branches->first()?->id ?? null));
 
-        // Load a real sample record for live preview based on document type
+        $settings = ReceiptSetting::forDocument($docType, $selectedBranchId);
+
+        // Load a real sample record for live preview based on document type and branch
         $sampleBill     = null;
         $sampleTransfer = null;
         $samplePurchase = null;
 
         if ($docType === 'sales_bill') {
             $sampleBill = SalesBill::with(['items.item', 'customer.pets', 'branch', 'payments.tenderType'])
+                ->when($selectedBranchId, fn ($q) => $q->where('branch_id', $selectedBranchId))
                 ->latest('id')
-                ->first();
+                ->first()
+                ?? SalesBill::with(['items.item', 'customer.pets', 'branch', 'payments.tenderType'])->latest('id')->first();
         } elseif ($docType === 'stock_transfer') {
             $sampleTransfer = StockTransfer::with(['items.item', 'fromBranch', 'toBranch'])
+                ->when($selectedBranchId, fn ($q) => $q->where('from_branch_id', $selectedBranchId))
                 ->latest('id')
-                ->first();
+                ->first()
+                ?? StockTransfer::with(['items.item', 'fromBranch', 'toBranch'])->latest('id')->first();
         } elseif ($docType === 'purchase_invoice') {
             $samplePurchase = PurchaseInvoice::with(['items.item', 'supplier', 'branch'])
+                ->when($selectedBranchId, fn ($q) => $q->where('branch_id', $selectedBranchId))
                 ->latest('id')
-                ->first();
+                ->first()
+                ?? PurchaseInvoice::with(['items.item', 'supplier', 'branch'])->latest('id')->first();
         }
 
         return view('tools.receipt-designer', compact(
             'settings',
             'docType',
             'supportedTypes',
+            'branches',
+            'selectedBranchId',
             'sampleBill',
             'sampleTransfer',
             'samplePurchase'
@@ -66,6 +79,7 @@ class ReceiptDesignerController extends Controller
     {
         $validated = $request->validate([
             'document_type'          => 'nullable|string|max:50',
+            'branch_id'              => 'nullable|exists:branches,id',
             'store_name'             => 'required|string|max:100',
             'tagline'                => 'nullable|string|max:150',
             'show_logo'              => 'nullable|boolean',
@@ -97,10 +111,13 @@ class ReceiptDesignerController extends Controller
             $docType = 'sales_bill';
         }
 
-        $settings = ReceiptSetting::forDocument($docType);
+        $branchId = !empty($validated['branch_id']) ? (int) $validated['branch_id'] : null;
+
+        $settings = ReceiptSetting::forDocument($docType, $branchId);
 
         $data = [
             'document_type'          => $docType,
+            'branch_id'              => $branchId,
             'store_name'             => trim($validated['store_name']),
             'tagline'                => !empty($validated['tagline']) ? trim($validated['tagline']) : null,
             'show_logo'              => $request->boolean('show_logo'),
@@ -135,20 +152,24 @@ class ReceiptDesignerController extends Controller
         $settings->update($data);
 
         $typeLabel = $supportedTypes[$docType]['label'] ?? $docType;
+        $branchName = $branchId ? (\App\Models\Branch::find($branchId)?->name ?? "Branch #{$branchId}") : 'All Branches';
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success'  => true,
-                'message'  => "{$typeLabel} print settings updated successfully!",
+                'message'  => "{$typeLabel} print settings for {$branchName} updated successfully!",
                 'settings' => $settings,
             ]);
         }
 
-        $redirectUrl = $docType === 'sales_bill'
-            ? route('tools.receipt-designer.index')
-            : route('tools.receipt-designer.index', ['doc' => $docType]);
+        $redirectParams = ['doc' => $docType];
+        if ($branchId) {
+            $redirectParams['branch_id'] = $branchId;
+        }
+
+        $redirectUrl = route('tools.receipt-designer.index', $redirectParams);
 
         return redirect($redirectUrl)
-            ->with('success', "{$typeLabel} print settings updated successfully!");
+            ->with('success', "{$typeLabel} print settings for {$branchName} updated successfully!");
     }
 }

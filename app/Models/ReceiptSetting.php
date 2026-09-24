@@ -13,6 +13,7 @@ class ReceiptSetting extends Model
 
     protected $fillable = [
         'document_type',
+        'branch_id',
         'store_name',
         'tagline',
         'logo_path',
@@ -49,6 +50,11 @@ class ReceiptSetting extends Model
         'show_barcode'           => 'boolean',
     ];
 
+    public function branch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
     /**
      * All supported document types with their label and icon.
      * Add a new entry here to instantly support a new document type
@@ -76,41 +82,63 @@ class ReceiptSetting extends Model
     }
 
     /**
-     * Get or create the receipt settings row for a specific document type.
-     * Falls back to sales_bill defaults for new document types so
-     * branding is pre-filled (Store Name, logo, phone, etc.).
+     * Get or create the receipt settings row for a specific document type and branch.
+     * Falls back to general defaults or branch master info if not yet configured.
      */
-    public static function forDocument(string $documentType = 'sales_bill'): self
+    public static function forDocument(string $documentType = 'sales_bill', ?int $branchId = null): self
     {
-        // Get base defaults from sales_bill row (branding shared)
-        $base = static::where('document_type', 'sales_bill')->first();
+        if ($branchId) {
+            $specific = static::where('document_type', $documentType)
+                ->where('branch_id', $branchId)
+                ->first();
+
+            if ($specific) {
+                return $specific;
+            }
+        }
+
+        // Get base template for this document_type (or sales_bill)
+        $base = static::where('document_type', $documentType)->whereNull('branch_id')->first()
+            ?? static::where('document_type', $documentType)->first()
+            ?? static::where('document_type', 'sales_bill')->first();
+
+        // Branch info if branchId provided
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $branchAddress = null;
+        if ($branch) {
+            $addrParts = array_filter([$branch->address_line1, $branch->address_line2, $branch->city, $branch->state, $branch->postal_code]);
+            $branchAddress = !empty($addrParts) ? implode("\n", $addrParts) : null;
+        }
 
         return static::firstOrCreate(
-            ['document_type' => $documentType],
             [
-                'store_name'             => $base?->store_name             ?? 'URBAN PETS',
+                'document_type' => $documentType,
+                'branch_id'     => $branchId,
+            ],
+            [
+                'store_name'             => $branch?->name                 ?? ($base?->store_name             ?? 'URBAN POS'),
                 'tagline'                => $base?->tagline                ?? 'Complete Pet Care & Supplies',
                 'logo_path'              => $base?->logo_path              ?? null,
                 'logo_width'             => $base?->logo_width             ?? 120,
                 'show_logo'              => $base?->show_logo              ?? false,
-                'header_address'         => $base?->header_address         ?? null,
-                'phone'                  => $base?->phone                  ?? null,
-                'phone_alt'              => $base?->phone_alt              ?? null,
-                'email'                  => $base?->email                  ?? null,
-                'gstin'                  => $base?->gstin                  ?? null,
+                'header_address'         => $branchAddress                 ?? ($base?->header_address         ?? null),
+                'phone'                  => $branch?->phone ?: ($base?->phone ?? null),
+                'phone_alt'              => $branch?->mobile ?: ($base?->phone_alt ?? null),
+                'email'                  => $branch?->email ?: ($base?->email ?? null),
+                'gstin'                  => $branch?->gst_no ?: ($base?->gstin ?? null),
                 'show_customer_pet_name' => false,
                 'show_hsn_code'          => true,
                 'show_tax_breakup'       => $documentType === 'sales_bill',
                 'show_discount'          => false,
                 'show_upi_qr'            => false,
-                'upi_id'                 => $base?->upi_id                 ?? null,
-                'upi_payee_name'         => $base?->upi_payee_name         ?? null,
+                'upi_id'                 => $branch?->upi_id ?: ($base?->upi_id ?? null),
+                'upi_payee_name'         => $branch?->upi_payee_name ?: ($base?->upi_payee_name ?? null),
                 'show_barcode'           => false,
-                'paper_size'             => $documentType === 'stock_transfer' ? 'a4' : ($base?->paper_size ?? '80mm'),
+                'paper_size'             => in_array($documentType, ['stock_transfer', 'purchase_invoice']) ? 'a4' : ($base?->paper_size ?? '80mm'),
                 'font_size'              => $base?->font_size              ?? 'normal',
-                'footer_policy'          => null,
-                'footer_note'            => null,
-                'custom_css'             => null,
+                'footer_policy'          => $base?->footer_policy          ?? null,
+                'footer_note'            => $base?->footer_note            ?? null,
+                'custom_css'             => $base?->custom_css             ?? null,
             ]
         );
     }
@@ -119,9 +147,9 @@ class ReceiptSetting extends Model
      * Legacy alias — returns sales_bill settings.
      * Kept for backward compatibility with existing print templates.
      */
-    public static function current(): self
+    public static function current(?int $branchId = null): self
     {
-        return static::forDocument('sales_bill');
+        return static::forDocument('sales_bill', $branchId);
     }
 
     /**
