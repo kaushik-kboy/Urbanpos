@@ -162,23 +162,49 @@
 </div>
 @endif
 
+@php
+    $sbItemColumns = [
+        'seq'          => ['label' => '#', 'default' => true],
+        'code'         => ['label' => 'Code / Barcode', 'default' => true],
+        'item'         => ['label' => 'Item Description', 'default' => true],
+        'expiry'       => ['label' => 'Exp Date', 'default' => true],
+        'qty'          => ['label' => 'Qty', 'default' => true],
+        'sell_price'   => ['label' => 'Sell Price', 'default' => true],
+        'mrp'          => ['label' => 'MRP', 'default' => true],
+        'disc_percent' => ['label' => 'Disc %', 'default' => true],
+        'disc_amt'     => ['label' => 'Disc Amt', 'default' => true],
+        'gst_percent'  => ['label' => 'GST %', 'default' => true],
+        'gst_amt'      => ['label' => 'GST Amt', 'default' => true],
+        'net_amt'      => ['label' => 'Net Amount', 'default' => true],
+        'actions'      => ['label' => 'Actions', 'default' => true],
+    ];
+@endphp
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-boxes mr-1 text-primary"></i> Bill Items</h6>
+    <x-table-column-customizer
+        table-key="sales.sales-bills.items"
+        table-id="sb-items-table"
+        :columns="$sbItemColumns"
+    />
+</div>
+
 <div class="table-responsive">
-    <table class="table table-sm table-bordered" id="sb-items-table">
+    <table class="table table-sm table-bordered table-items-dense" id="sb-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width: 35px;" class="text-center">#</th>
-                <th style="width: 120px;">Code / Barcode</th>
-                <th style="min-width: 230px;">Item Description</th>
-                <th style="width: 140px;">Exp Date</th>
-                <th style="width: 85px;" class="text-right">Qty</th>
-                <th style="width: 100px;" class="text-right">Sell Price</th>
-                <th style="width: 100px;" class="text-right">MRP</th>
-                <th style="width: 80px;" class="text-right">Disc %</th>
-                <th style="width: 95px;" class="text-right">Disc Amt</th>
-                <th style="width: 75px;" class="text-right">GST %</th>
-                <th style="width: 85px;" class="text-right" title="Included GST Amount">GST Amt</th>
-                <th style="width: 105px;" class="text-right">Net Amount</th>
-                <th style="width: 35px;" class="text-center"></th>
+                <th style="width: 35px;" class="text-center" data-col-key="seq">#</th>
+                <th style="width: 120px;" data-col-key="code">Code / Barcode</th>
+                <th style="min-width: 230px;" data-col-key="item">Item Description</th>
+                <th style="width: 140px;" data-col-key="expiry">Exp Date</th>
+                <th style="width: 85px;" class="text-right" data-col-key="qty">Qty</th>
+                <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
+                <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width: 80px;" class="text-right" data-col-key="disc_percent">Disc %</th>
+                <th style="width: 95px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width: 75px;" class="text-right" data-col-key="gst_percent">GST %</th>
+                <th style="width: 85px;" class="text-right" title="Included GST Amount" data-col-key="gst_amt">GST Amt</th>
+                <th style="width: 105px;" class="text-right" data-col-key="net_amt">Net Amount</th>
+                <th style="width: 35px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="sb-items-body">
@@ -1122,8 +1148,11 @@
             });
         }
 
-        // Open modal on click or focus; do NOT trigger on passive focus if item already selected
-        $(document).off('click focus', '.sb-item-code').on('click focus', '.sb-item-code', function (e) {
+        // Open modal on keydown (Enter / F2) or focus when blank (Disabled on mouse click)
+        $(document).off('click focus keydown', '.sb-item-code').on('click focus keydown', '.sb-item-code', function (e) {
+            if (e.type === 'click') return; // Do not open on mouse click!
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+            if (e.type === 'keydown') e.preventDefault();
             if (islModalOpen || islModalClosing || isSyncing) return;
             let $row = $(this).closest('tr');
             if (e.type === 'focus' && $row.find('.sb-item-select').val()) return;

@@ -67,29 +67,50 @@
     </div>
 
 <hr>
+@php
+    $prItemColumns = [
+        'code'         => ['label' => 'Code / Barcode', 'default' => true],
+        'item'         => ['label' => 'Description', 'default' => true],
+        'expiry'       => ['label' => 'Exp Date', 'default' => true],
+        'qty'          => ['label' => 'Qty', 'default' => true],
+        'cost_price'   => ['label' => 'Cost Price', 'default' => true],
+        'disc_percent' => ['label' => 'Disc %', 'default' => true],
+        'disc_amt'     => ['label' => 'Disc Amt', 'default' => true],
+        'gst_percent'  => ['label' => 'GST %', 'default' => true],
+        'net_amt'      => ['label' => 'Net Amount', 'default' => true],
+        'actions'      => ['label' => 'Actions', 'default' => true],
+    ];
+@endphp
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0 font-weight-bold text-dark">
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
     </h5>
-    <button type="button" id="pr-add-row" class="btn btn-outline-primary btn-sm font-weight-bold">
-        <i class="fas fa-plus-circle mr-1"></i> Add Item Line
-    </button>
+    <div class="d-flex align-items-center">
+        <x-table-column-customizer
+            table-key="purchase.purchase-returns.items"
+            table-id="pr-items-table"
+            :columns="$prItemColumns"
+        />
+        <button type="button" id="pr-add-row" class="btn btn-outline-primary btn-sm font-weight-bold ml-2">
+            <i class="fas fa-plus-circle mr-1"></i> Add Item Line
+        </button>
+    </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table table-sm table-bordered table-hover" id="pr-items-table">
+    <table class="table table-sm table-bordered table-hover table-items-dense" id="pr-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width: 170px;">Code / Barcode <span class="text-danger">*</span></th>
-                <th style="min-width: 220px;">Item Description</th>
-                <th style="width: 130px;">Exp Date</th>
-                <th style="width: 95px;" class="text-right">Qty <span class="text-danger">*</span></th>
-                <th style="width: 110px;" class="text-right">Cost Price <span class="text-danger">*</span></th>
-                <th style="width: 85px;" class="text-right">Disc %</th>
-                <th style="width: 95px;" class="text-right">Disc Amt</th>
-                <th style="width: 85px;" class="text-right">GST %</th>
-                <th style="width: 110px;" class="text-right">Net Amount</th>
-                <th style="width: 40px;" class="text-center"></th>
+                <th style="width: 170px;" data-col-key="code">Code / Barcode <span class="text-danger">*</span></th>
+                <th style="min-width: 220px;" data-col-key="item">Item Description</th>
+                <th style="width: 130px;" data-col-key="expiry">Exp Date</th>
+                <th style="width: 95px;" class="text-right" data-col-key="qty">Qty <span class="text-danger">*</span></th>
+                <th style="width: 110px;" class="text-right" data-col-key="cost_price">Cost Price <span class="text-danger">*</span></th>
+                <th style="width: 85px;" class="text-right" data-col-key="disc_percent">Disc %</th>
+                <th style="width: 95px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width: 85px;" class="text-right" data-col-key="gst_percent">GST %</th>
+                <th style="width: 110px;" class="text-right" data-col-key="net_amt">Net Amount</th>
+                <th style="width: 40px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="pr-items-body">
@@ -358,7 +379,9 @@
             let supplierId = $('#supplier_id').val();
             let invoiceId = $('#purchase_invoice_id').val();
             if (!supplierId && !invoiceId) {
-                alert('Please select a Supplier first.');
+                if (window.toastr) {
+                    toastr.warning('Please select a Supplier first before proceeding to items.', 'Supplier Required');
+                }
                 if ($('#supplier_id').hasClass('select2-hidden-accessible')) {
                     $('#supplier_id').select2('open');
                 } else {
@@ -384,9 +407,10 @@
         }
 
         /* ----------------------------------------------------------------
-           ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
+           ITEM SEARCH MODAL (Triggered on Focus/Tab or Enter, NOT on Mouse Click)
            ---------------------------------------------------------------- */
         $(document).off('click focus', '.pr-item-code').on('click focus', '.pr-item-code', function (e) {
+            if (e.type === 'click') return; // Do not open popup on mouse click
             if (prModalOpen || prModalClosing) return;
             let $row = $(this).closest('tr');
             if (e.type === 'focus' && $row.find('.pr-item-id').val()) return;
@@ -686,7 +710,9 @@
             let invoiceId = $('#purchase_invoice_id').val();
 
             if (!supplierId && !invoiceId) {
-                alert('Please select a Supplier first.');
+                if (window.toastr) {
+                    toastr.warning('Please select a Supplier first before adding items.', 'Supplier Required');
+                }
                 $input.val('');
                 if ($('#supplier_id').hasClass('select2-hidden-accessible')) {
                     $('#supplier_id').select2('open');

@@ -59,6 +59,7 @@ class TillSessionController extends Controller
         $data = $request->validate([
             'register_id' => ['required', 'exists:registers,id'],
             'opening_cash' => ['required', 'numeric', 'min:0'],
+            'opened_at' => ['nullable', 'date'],
         ]);
 
         $register = Register::findOrFail($data['register_id']);
@@ -69,12 +70,14 @@ class TillSessionController extends Controller
             ]);
         }
 
+        $openedAt = !empty($data['opened_at']) ? \Carbon\Carbon::parse($data['opened_at']) : now();
+
         $tillSession = TillSession::create([
             'register_id' => $register->id,
             'branch_id' => $register->branch_id,
             'user_id' => $request->user()->id,
             'opening_cash' => $data['opening_cash'],
-            'opened_at' => now(),
+            'opened_at' => $openedAt,
             'status' => 'Open',
         ]);
 
@@ -115,10 +118,12 @@ class TillSessionController extends Controller
 
         $data = $request->validate([
             'actual_cash' => ['required', 'numeric', 'min:0'],
+            'closed_at' => ['nullable', 'date'],
         ]);
 
         $expectedCash = $this->computeExpectedCash($tillSession);
         $variance = round((float) $data['actual_cash'] - $expectedCash, 2);
+        $closedAt = !empty($data['closed_at']) ? \Carbon\Carbon::parse($data['closed_at']) : now();
 
         $tillSession->update([
             'status' => 'Closed',
@@ -126,7 +131,7 @@ class TillSessionController extends Controller
             'actual_cash' => $data['actual_cash'],
             'variance' => $variance,
             'closed_by_id' => $request->user()->id,
-            'closed_at' => now(),
+            'closed_at' => $closedAt,
         ]);
 
         return redirect()->route('till.sessions.show', $tillSession)->with('status', 'Till closed.');

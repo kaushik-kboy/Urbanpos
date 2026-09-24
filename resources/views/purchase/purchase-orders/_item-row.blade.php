@@ -32,11 +32,11 @@
     $gstPercent = data_get($line, 'gst_percent', ($selectedItem?->gstTax?->percentage > 0 ? $selectedItem->gstTax->percentage : 0));
 @endphp
 <tr>
-    <td class="text-center align-middle font-weight-bold po-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
-    <td style="min-width: 110px;">
-        <input type="text" class="form-control form-control-sm po-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode, or click to search">
+    <td class="text-center align-middle font-weight-bold po-sr-no" data-col-key="sr">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
+    <td style="min-width: 110px;" data-col-key="code">
+        <input type="text" class="form-control form-control-sm po-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode">
     </td>
-    <td style="min-width: 220px;">
+    <td style="min-width: 220px;" data-col-key="desc">
         <input type="text"
                class="form-control form-control-sm po-item-desc bg-light font-weight-bold text-truncate"
                readonly
@@ -50,7 +50,7 @@
                value="{{ $itemId }}"
                required>
     </td>
-    <td style="width: 85px;">
+    <td style="width: 85px;" data-col-key="stock">
         @php
             $itemStockVal = 0;
             if ($itemId) {
@@ -74,18 +74,18 @@
                placeholder="0"
                title="Current stock in this branch">
     </td>
-    <td><input type="number" step="0.001" min="0.001" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm po-qty text-right font-weight-bold" placeholder="Qty" required autocomplete="off"></td>
-    <td><input type="number" step="0.001" min="0" name="items[{{ $rowId }}][free_qty]" value="{{ $freeQty }}" class="form-control form-control-sm po-free-qty text-right" placeholder="0" autocomplete="off"></td>
-    <td><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm po-cost text-right font-weight-bold" placeholder="0.00" required autocomplete="off"></td>
-    <td><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][sell_price]" value="{{ $sellPrice }}" class="form-control form-control-sm po-sell text-right" placeholder="0.00" autocomplete="off"></td>
-    <td><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][mrp]" value="{{ $mrp }}" class="form-control form-control-sm po-mrp text-right" placeholder="0.00" autocomplete="off"></td>
-    <td><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][disc_percent]" value="{{ $discPercent }}" class="form-control form-control-sm po-disc-percent text-right" placeholder="0" autocomplete="off"></td>
-    <td><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][disc_amount]" value="{{ $discAmount }}" class="form-control form-control-sm po-disc-amount text-right" placeholder="0.00" autocomplete="off"></td>
-    <td><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][gst_percent]" value="{{ $gstPercent }}" readonly tabindex="-1" class="form-control form-control-sm po-gst text-right bg-light" placeholder="0" autocomplete="off" title="GST % (Read-only)"></td>
-    <td class="text-right align-middle font-weight-bold text-success" style="width:115px;">
+    <td data-col-key="qty"><input type="number" step="0.001" min="0.001" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm po-qty text-right font-weight-bold" placeholder="Qty" required autocomplete="off"></td>
+    <td data-col-key="free"><input type="number" step="0.001" min="0" name="items[{{ $rowId }}][free_qty]" value="{{ $freeQty }}" class="form-control form-control-sm po-free-qty text-right" placeholder="0" autocomplete="off"></td>
+    <td data-col-key="cost"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm po-cost text-right font-weight-bold" placeholder="0.00" required autocomplete="off"></td>
+    <td data-col-key="sell"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][sell_price]" value="{{ $sellPrice }}" class="form-control form-control-sm po-sell text-right" placeholder="0.00" autocomplete="off"></td>
+    <td data-col-key="mrp"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][mrp]" value="{{ $mrp }}" class="form-control form-control-sm po-mrp text-right" placeholder="0.00" autocomplete="off"></td>
+    <td data-col-key="disc_pct"><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][disc_percent]" value="{{ $discPercent }}" class="form-control form-control-sm po-disc-percent text-right" placeholder="0" autocomplete="off"></td>
+    <td data-col-key="disc_amt"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][disc_amount]" value="{{ $discAmount }}" class="form-control form-control-sm po-disc-amount text-right" placeholder="0.00" autocomplete="off"></td>
+    <td data-col-key="gst"><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][gst_percent]" value="{{ $gstPercent }}" readonly tabindex="-1" class="form-control form-control-sm po-gst text-right bg-light" placeholder="0" autocomplete="off" title="GST % (Read-only)"></td>
+    <td class="text-right align-middle font-weight-bold text-success" style="width:115px;" data-col-key="net">
         ₹<span class="po-row-net">0.00</span>
     </td>
-    <td class="text-center align-middle">
+    <td class="text-center align-middle" data-col-key="action">
         <button type="button" class="btn btn-xs btn-outline-danger po-remove-row" title="Remove row"><i class="fas fa-times"></i></button>
     </td>
 </tr>

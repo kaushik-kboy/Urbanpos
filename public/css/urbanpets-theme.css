@@ -2443,6 +2443,61 @@ input.datepicker:focus {
     box-shadow: 0 0 0 3px rgba(23, 105, 232, 0.15) !important;
 }
 
+/* ==========================================================================
+   Compact & Dense Input Styling for Item Tables (Prevents Value Truncation)
+   ========================================================================== */
+.table-items-dense,
+.table-items-dense input.form-control-sm,
+table[id*="items-table"] input.form-control-sm,
+.po-item-table input.form-control-sm,
+.pinv-table input.form-control-sm,
+.rn-item-table input.form-control-sm,
+.pr-item-table input.form-control-sm,
+.so-item-table input.form-control-sm,
+.sq-item-table input.form-control-sm,
+.st-item-table input.form-control-sm {
+    padding: 3px 5px !important;
+    font-size: 12.5px !important;
+    height: 29px !important;
+    min-height: 29px !important;
+    line-height: 1.2 !important;
+}
+
+/* Remove up/down spinners on numbers in item tables to give full room to digits */
+.table-items-dense input[type=number]::-webkit-inner-spin-button,
+.table-items-dense input[type=number]::-webkit-outer-spin-button,
+table[id*="items-table"] input[type=number]::-webkit-inner-spin-button,
+table[id*="items-table"] input[type=number]::-webkit-outer-spin-button,
+.po-item-table input[type=number]::-webkit-inner-spin-button,
+.po-item-table input[type=number]::-webkit-outer-spin-button,
+.pinv-table input[type=number]::-webkit-inner-spin-button,
+.pinv-table input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+.table-items-dense input[type=number],
+table[id*="items-table"] input[type=number],
+.po-item-table input[type=number],
+.pinv-table input[type=number] {
+    -moz-appearance: textfield !important;
+}
+
+/* Table cell spacing for dense grid */
+.table-items-dense td,
+table[id*="items-table"] td {
+    padding: 4px 4px !important;
+    vertical-align: middle !important;
+}
+
+.table-items-dense th,
+table[id*="items-table"] th {
+    padding: 6px 5px !important;
+    font-size: 12px !important;
+    letter-spacing: 0.2px;
+}
+
+
 
 
 

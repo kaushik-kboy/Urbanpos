@@ -69,28 +69,50 @@
 </div>
 
 <hr>
+@php
+    $sqItemColumns = [
+        'seq'          => ['label' => '#', 'default' => true],
+        'code'         => ['label' => 'Code / Barcode', 'default' => true],
+        'item'         => ['label' => 'Item Description', 'default' => true],
+        'qty'          => ['label' => 'Qty', 'default' => true],
+        'sell_price'   => ['label' => 'Sell Price', 'default' => true],
+        'mrp'          => ['label' => 'MRP', 'default' => true],
+        'disc_percent' => ['label' => 'Disc %', 'default' => true],
+        'disc_amt'     => ['label' => 'Disc Amt', 'default' => true],
+        'gst_percent'  => ['label' => 'GST %', 'default' => true],
+        'net_amt'      => ['label' => 'Net Amount', 'default' => true],
+        'actions'      => ['label' => 'Actions', 'default' => true],
+    ];
+@endphp
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0 text-primary font-weight-bold"><i class="fas fa-boxes mr-1"></i> Line Items</h5>
-    <button type="button" class="btn btn-sm btn-outline-primary" id="sq-add-row-btn">
-        <i class="fas fa-plus mr-1"></i> Add Row
-    </button>
+    <div class="d-flex align-items-center">
+        <x-table-column-customizer
+            table-key="sales.sales-quotations.items"
+            table-id="sq-items-table"
+            :columns="$sqItemColumns"
+        />
+        <button type="button" class="btn btn-sm btn-outline-primary ml-2" id="sq-add-row-btn">
+            <i class="fas fa-plus mr-1"></i> Add Row
+        </button>
+    </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table table-sm table-bordered" id="sq-items-table">
+    <table class="table table-sm table-bordered table-items-dense" id="sq-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width: 35px;" class="text-center">#</th>
-                <th style="width: 130px;">Code / Barcode</th>
-                <th style="min-width: 250px;">Item Description</th>
-                <th style="width: 100px;" class="text-right">Qty</th>
-                <th style="width: 120px;" class="text-right">Sell Price</th>
-                <th style="width: 110px;" class="text-right">MRP</th>
-                <th style="width: 90px;" class="text-right">Disc %</th>
-                <th style="width: 100px;" class="text-right">Disc Amt</th>
-                <th style="width: 85px;" class="text-right">GST %</th>
-                <th style="width: 120px;" class="text-right">Net Amount</th>
-                <th style="width: 35px;" class="text-center"></th>
+                <th style="width: 35px;" class="text-center" data-col-key="seq">#</th>
+                <th style="width: 130px;" data-col-key="code">Code / Barcode</th>
+                <th style="min-width: 250px;" data-col-key="item">Item Description</th>
+                <th style="width: 100px;" class="text-right" data-col-key="qty">Qty</th>
+                <th style="width: 120px;" class="text-right" data-col-key="sell_price">Sell Price</th>
+                <th style="width: 110px;" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width: 90px;" class="text-right" data-col-key="disc_percent">Disc %</th>
+                <th style="width: 100px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width: 85px;" class="text-right" data-col-key="gst_percent">GST %</th>
+                <th style="width: 120px;" class="text-right" data-col-key="net_amt">Net Amount</th>
+                <th style="width: 35px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="sq-items-body">
@@ -273,7 +295,10 @@ $(function() {
        ---------------------------------------------------------------- */
     let sqCancellingRow = null;
 
-    $(document).off('click focus', '.sq-item-code').on('click focus', '.sq-item-code', function (e) {
+    $(document).off('click focus keydown', '.sq-item-code').on('click focus keydown', '.sq-item-code', function (e) {
+        if (e.type === 'click') return; // Do not open on mouse click!
+        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+        if (e.type === 'keydown') e.preventDefault();
         if (sqModalOpen || sqModalClosing) return;
         let $row = $(this).closest('tr');
         if (e.type === 'focus' && $row.find('.sq-item-select').val()) return;

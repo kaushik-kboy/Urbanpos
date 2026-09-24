@@ -40,6 +40,11 @@
                     <i class="fas fa-search-dollar mr-1"></i> 🎯 Single Item Monthly Sales
                 </button>
 
+                {{-- User exact requirement: Supplier Invoices Count & Purchases --}}
+                <button type="button" class="btn btn-sm btn-outline-dark font-weight-bold mr-1 mb-1 preset-btn" data-preset="supplier_invoices">
+                    <i class="fas fa-file-invoice-dollar text-primary mr-1"></i> 🏭 Supplier Invoice Summary
+                </button>
+
                 <button type="button" class="btn btn-sm btn-outline-success font-weight-bold mr-1 mb-1 preset-btn" data-preset="top_selling">
                     <i class="fas fa-fire mr-1"></i> 🚀 Top Selling Items
                 </button>
@@ -103,6 +108,7 @@
                         <select class="form-control form-control-sm font-weight-bold text-primary" id="group_by" name="group_by">
                             <option value="item">📦 By Item / Product</option>
                             <option value="item_supplier">🚚 By Item ⇄ Supplier Sourcing (Traceability)</option>
+                            <option value="supplier">🏭 By Supplier (Invoice Count & Purchases)</option>
                             <option value="customer">👤 By Customer (Sales & Visits)</option>
                             <option value="category">📂 By Category / Sub-category</option>
                             <option value="brand">🏷️ By Brand / Manufacturer</option>
@@ -468,12 +474,13 @@ $(document).ready(function() {
         theme: 'bootstrap4',
         placeholder: '-- Search Item by Code or Name --',
         allowClear: true,
+        minimumInputLength: 0,
         ajax: {
             url: '{{ route("reports.analytics-builder.search-items") }}',
             dataType: 'json',
             delay: 250,
             data: function (params) {
-                return { q: params.term, term: params.term };
+                return { q: params.term || '', term: params.term || '' };
             },
             processResults: function (data) {
                 return { results: data.results };
@@ -487,12 +494,13 @@ $(document).ready(function() {
         theme: 'bootstrap4',
         placeholder: '-- Search Supplier by Name or City --',
         allowClear: true,
+        minimumInputLength: 0,
         ajax: {
             url: '{{ route("reports.analytics-builder.search-suppliers") }}',
             dataType: 'json',
             delay: 250,
             data: function (params) {
-                return { q: params.term, term: params.term };
+                return { q: params.term || '', term: params.term || '' };
             },
             processResults: function (data) {
                 return { results: data.results };
@@ -506,12 +514,13 @@ $(document).ready(function() {
         theme: 'bootstrap4',
         placeholder: '-- Search Customer by Name or Mobile --',
         allowClear: true,
+        minimumInputLength: 0,
         ajax: {
             url: '{{ route("reports.analytics-builder.search-customers") }}',
             dataType: 'json',
             delay: 250,
             data: function (params) {
-                return { q: params.term, term: params.term };
+                return { q: params.term || '', term: params.term || '' };
             },
             processResults: function (data) {
                 return { results: data.results };
@@ -555,6 +564,9 @@ $(document).ready(function() {
         let desc = 'Aggregates data by selected dimension.';
         if (val === 'item_supplier') {
             desc = '📦 Item ⇄ Supplier Traceability: Shows which suppliers supplied each item, inward quantity, last purchase rate, and invoices.';
+            $('#m_margin').prop('checked', false);
+        } else if (val === 'supplier') {
+            desc = '🏭 Supplier Invoices Summary: Shows how many invoices were issued by each supplier, total purchase value, items inwarded, and average bill value.';
             $('#m_margin').prop('checked', false);
         } else if (val === 'item') {
             desc = 'Aggregates each item\'s sold quantity, total revenue, discount, and profit margin.';
@@ -663,7 +675,7 @@ $(document).ready(function() {
                                        data-subid="${row.supplier_id || ''}" 
                                        data-name="${row.group_name || row.item_name}" 
                                        title="Click to view underlying transactions in modal">
-                                       <i class="fas fa-search-plus mr-1"></i>${val} ${col.key === 'invoice_count' ? 'Invoices' : 'Bills'}
+                                       <i class="fas fa-search-plus mr-1"></i>${val} ${col.key === 'invoice_count' || resp.group_by === 'supplier' ? 'Invoices' : 'Bills'}
                                </button>`;
                     }
                 }
@@ -792,6 +804,11 @@ $(document).ready(function() {
             $('#sort_dir').val('desc');
         } else if (preset === 'single_item') {
             $('#group_by').val('item').trigger('change');
+            $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+            $('#limit').val('all');
+            $('#sort_dir').val('desc');
+        } else if (preset === 'supplier_invoices') {
+            $('#group_by').val('supplier').trigger('change');
             $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
             $('#limit').val('all');
             $('#sort_dir').val('desc');
@@ -1092,6 +1109,48 @@ $(document).ready(function() {
                             </a>
                             <a href="${r.receipt_url}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Open Receipt in New Tab">
                                 <i class="fas fa-receipt mr-1"></i> Receipt ↗
+                            </a>
+                        </td>
+                    </tr>
+                `);
+            });
+
+        } else if (resp.group_by === 'supplier') {
+            $thead.html(`
+                <tr>
+                    <th class="text-center" style="width: 45px;">#</th>
+                    <th>Invoice Number</th>
+                    <th>Invoice Date</th>
+                    <th>Branch</th>
+                    <th class="text-center">Total Qty</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-right">Invoice Total (₹)</th>
+                    <th class="text-center" style="width: 100px;">Action</th>
+                </tr>
+            `);
+
+            if (resp.records.length === 0) {
+                $tbody.html('<tr><td colspan="8" class="text-center py-4 text-muted">No purchase invoices found for this supplier.</td></tr>');
+                return;
+            }
+
+            resp.records.forEach(function(r, idx) {
+                $tbody.append(`
+                    <tr>
+                        <td class="text-center text-muted font-weight-bold">${idx + 1}</td>
+                        <td class="font-weight-bold">
+                            <a href="${r.view_url}" target="_blank" class="text-primary" title="Open Purchase Bill in New Tab">
+                                ${r.invoice_number} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
+                            </a>
+                        </td>
+                        <td>${r.formatted_date}</td>
+                        <td>${r.branch_name}</td>
+                        <td class="text-center font-weight-bold">${parseFloat(r.total_qty || 0).toFixed(2)}</td>
+                        <td class="text-center"><span class="badge badge-light border font-weight-bold">${r.status || 'Active'}</span></td>
+                        <td class="text-right font-weight-bold text-success">${r.formatted_amount}</td>
+                        <td class="text-center">
+                            <a href="${r.view_url}" target="_blank" class="btn btn-xs btn-outline-primary font-weight-bold" title="Open Invoice">
+                                View ↗
                             </a>
                         </td>
                     </tr>

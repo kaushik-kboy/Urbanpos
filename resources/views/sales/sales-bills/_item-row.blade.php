@@ -33,11 +33,11 @@
     }
 @endphp
 <tr data-stock="{{ $lineStock }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
-    <td class="text-center align-middle font-weight-bold sb-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
-    <td style="min-width: 110px;">
-        <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter item code or barcode">
+    <td class="text-center align-middle font-weight-bold sb-sr-no" data-col-key="seq">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
+    <td style="min-width: 110px;" data-col-key="code">
+        <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter or F2 to search item">
     </td>
-    <td style="min-width: 220px;">
+    <td style="min-width: 220px;" data-col-key="item">
         <input type="text"
                class="form-control form-control-sm sb-item-desc bg-light font-weight-bold text-truncate"
                readonly
@@ -52,7 +52,7 @@
                required>
         <input type="hidden" name="items[{{ $index }}][stock]" class="sb-item-stock-val" value="{{ $lineStock }}">
     </td>
-    <td style="width: 135px;">
+    <td style="width: 135px;" data-col-key="expiry">
         <div class="input-group input-group-sm">
             <input type="date"
                    name="items[{{ $index }}][exp_date]"
@@ -69,29 +69,29 @@
             </div>
         </div>
     </td>
-    <td style="width: 85px;">
+    <td style="width: 85px;" data-col-key="qty">
         <input type="number" step="any" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sb-qty font-weight-bold text-right" required autocomplete="off" placeholder="Qty">
     </td>
-    <td style="width: 100px;">
+    <td style="width: 100px;" data-col-key="sell_price">
         <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" readonly tabindex="-1" class="form-control form-control-sm sb-sell-price text-right bg-light" required autocomplete="off" placeholder="0.00" title="Sell Price (Read-only)">
     </td>
-    <td style="width: 100px;">
+    <td style="width: 100px;" data-col-key="mrp">
         <input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" readonly tabindex="-1" class="form-control form-control-sm sb-mrp text-right bg-light" autocomplete="off" placeholder="0.00" title="MRP (Read-only)">
     </td>
-    <td style="width: 80px;">
+    <td style="width: 80px;" data-col-key="disc_percent">
         <input type="number" step="any" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm sb-disc-percent text-right" autocomplete="off" placeholder="0%">
     </td>
-    <td style="width: 95px;">
+    <td style="width: 95px;" data-col-key="disc_amt">
         <input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm sb-disc-amount text-right" autocomplete="off" placeholder="0.00">
     </td>
-    <td style="width: 75px;">
+    <td style="width: 75px;" data-col-key="gst_percent">
         <input type="text" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" readonly tabindex="-1" class="form-control form-control-sm sb-gst-percent text-right bg-light" autocomplete="off" placeholder="0%" title="GST % (Read-only)">
     </td>
-    <td style="width: 85px;">
+    <td style="width: 85px;" data-col-key="gst_amt">
         <input type="text" class="form-control form-control-sm sb-gst-tax-amount text-right bg-light font-weight-bold" readonly tabindex="-1" value="{{ $gstTaxAmtVal }}" placeholder="0.00" title="Included GST Amount">
     </td>
-    <td style="width: 105px;" class="text-right align-middle font-weight-bold text-success sb-row-net">{{ $netAmtVal }}</td>
-    <td style="width: 35px;" class="text-center align-middle">
+    <td style="width: 105px;" class="text-right align-middle font-weight-bold text-success sb-row-net" data-col-key="net_amt">{{ $netAmtVal }}</td>
+    <td style="width: 35px;" class="text-center align-middle" data-col-key="actions">
         <button type="button" tabindex="-1" class="btn btn-xs btn-outline-danger sb-remove-row"><i class="fas fa-times"></i></button>
     </td>
 </tr>

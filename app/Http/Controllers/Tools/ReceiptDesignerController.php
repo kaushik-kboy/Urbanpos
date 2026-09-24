@@ -28,7 +28,7 @@ class ReceiptDesignerController extends Controller
             $docType = 'sales_bill';
         }
 
-        $branches = \App\Models\Branch::orderBy('name')->get();
+        $branches = \App\Models\Branch::where('status', true)->orderBy('name')->get();
         $selectedBranchId = $request->filled('branch_id')
             ? (int) $request->input('branch_id')
             : (session('active_branch_id', auth()->user()?->branch_id) ?: ($branches->first()?->id ?? null));

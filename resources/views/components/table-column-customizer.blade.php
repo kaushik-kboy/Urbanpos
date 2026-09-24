@@ -259,6 +259,24 @@
             applyPreferences(savedPrefs);
         }
 
+        // Observe table body for dynamically added rows (Add Row button, barcode scan, template clones)
+        const tBody = table.querySelector('tbody');
+        if (tBody && window.MutationObserver) {
+            let isApplying = false;
+            const rowObserver = new MutationObserver(() => {
+                if (isApplying) return;
+                isApplying = true;
+                setTimeout(() => {
+                    tagBodyCells();
+                    if (savedPrefs && savedPrefs.length > 0) {
+                        applyPreferences(savedPrefs);
+                    }
+                    isApplying = false;
+                }, 15);
+            });
+            rowObserver.observe(tBody, { childList: true });
+        }
+
         // 4. Populate Modal List when Modal is opened
         const modal = wrapper.querySelector('.modal');
         const listContainer = wrapper.querySelector('.col-customizer-list');

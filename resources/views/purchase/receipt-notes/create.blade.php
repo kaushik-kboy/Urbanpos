@@ -107,26 +107,49 @@
         <div class="card card-default shadow-sm mb-3">
             <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
                 <h3 class="card-title font-weight-bold"><i class="fas fa-boxes mr-1"></i> Inward Goods & Inspection Grid</h3>
-                <button type="button" class="btn btn-xs btn-primary" id="add-row-btn">
-                    <i class="fas fa-plus mr-1"></i> Add Item Line
-                </button>
+                @php
+                    $grnItemColumns = [
+                        'seq'        => ['label' => '#', 'default' => true],
+                        'item'       => ['label' => 'Item Description', 'default' => true],
+                        'ordered'    => ['label' => 'Ordered', 'default' => true],
+                        'received'   => ['label' => 'Received', 'default' => true],
+                        'accepted'   => ['label' => 'Accepted', 'default' => true],
+                        'rejected'   => ['label' => 'Rejected', 'default' => true],
+                        'cost'       => ['label' => 'Unit Cost', 'default' => true],
+                        'mrp'        => ['label' => 'MRP', 'default' => true],
+                        'batch'      => ['label' => 'Batch No', 'default' => true],
+                        'exp_date'   => ['label' => 'Expiry Date', 'default' => true],
+                        'line_total' => ['label' => 'Line Total', 'default' => true],
+                        'actions'    => ['label' => 'Actions', 'default' => true],
+                    ];
+                @endphp
+                <div class="d-flex align-items-center">
+                    <x-table-column-customizer
+                        table-key="purchase.receipt-notes.items"
+                        table-id="grn-items-table"
+                        :columns="$grnItemColumns"
+                    />
+                    <button type="button" class="btn btn-xs btn-primary ml-2" id="add-row-btn">
+                        <i class="fas fa-plus mr-1"></i> Add Item Line
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0 table-responsive">
-                <table class="table table-bordered table-sm mb-0" id="grn-items-table">
+                <table class="table table-bordered table-sm mb-0 table-items-dense" id="grn-items-table">
                     <thead class="thead-light">
                         <tr class="text-center">
-                            <th style="width: 40px;">#</th>
-                            <th style="min-width: 250px;">Item Description</th>
-                            <th style="width: 100px;">Ordered</th>
-                            <th style="width: 110px;">Received <span class="text-danger">*</span></th>
-                            <th style="width: 110px;">Accepted <span class="text-danger">*</span></th>
-                            <th style="width: 90px;">Rejected</th>
-                            <th style="width: 110px;">Unit Cost (₹)</th>
-                            <th style="width: 100px;">MRP (₹)</th>
-                            <th style="width: 110px;">Batch No</th>
-                            <th style="width: 130px;">Expiry Date</th>
-                            <th style="width: 120px;" class="text-right">Line Total</th>
-                            <th style="width: 40px;"></th>
+                            <th style="width: 40px;" data-col-key="seq">#</th>
+                            <th style="min-width: 250px;" data-col-key="item">Item Description</th>
+                            <th style="width: 100px;" data-col-key="ordered">Ordered</th>
+                            <th style="width: 110px;" data-col-key="received">Received <span class="text-danger">*</span></th>
+                            <th style="width: 110px;" data-col-key="accepted">Accepted <span class="text-danger">*</span></th>
+                            <th style="width: 90px;" data-col-key="rejected">Rejected</th>
+                            <th style="width: 110px;" data-col-key="cost">Unit Cost (₹)</th>
+                            <th style="width: 100px;" data-col-key="mrp">MRP (₹)</th>
+                            <th style="width: 110px;" data-col-key="batch">Batch No</th>
+                            <th style="width: 130px;" data-col-key="exp_date">Expiry Date</th>
+                            <th style="width: 120px;" class="text-right" data-col-key="line_total">Line Total</th>
+                            <th style="width: 40px;" data-col-key="actions"></th>
                         </tr>
                     </thead>
                     <tbody id="grn-items-body">
@@ -150,8 +173,8 @@
                                 $exp = $r->exp_date ?? '';
                             @endphp
                             <tr class="grn-item-row" data-index="{{ $idx }}">
-                                <td class="text-center align-middle row-number">{{ $idx + 1 }}</td>
-                                <td>
+                                <td class="text-center align-middle row-number" data-col-key="seq">{{ $idx + 1 }}</td>
+                                <td data-col-key="item">
                                     <input type="hidden" name="items[{{ $idx }}][purchase_order_item_id]" value="{{ $poItemId }}">
                                     <select name="items[{{ $idx }}][item_id]" class="form-control form-control-sm select2 item-select" required>
                                         <option value="">-- Select Item --</option>
@@ -162,32 +185,32 @@
                                         @endforeach
                                     </select>
                                 </td>
-                                <td>
+                                <td data-col-key="ordered">
                                     <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
                                 </td>
-                                <td>
+                                <td data-col-key="received">
                                     <input type="number" step="0.001" min="0" name="items[{{ $idx }}][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" value="{{ $received }}" placeholder="0.00" required>
                                 </td>
-                                <td>
+                                <td data-col-key="accepted">
                                     <input type="number" step="0.001" min="0" name="items[{{ $idx }}][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" value="{{ $accepted }}" placeholder="0.00" required>
                                 </td>
-                                <td>
+                                <td data-col-key="rejected">
                                     <input type="number" step="0.001" min="0" name="items[{{ $idx }}][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected" value="{{ $rejected }}" readonly tabindex="-1">
                                 </td>
-                                <td>
+                                <td data-col-key="cost">
                                     <input type="number" step="0.0001" min="0" name="items[{{ $idx }}][unit_cost]" class="form-control form-control-sm text-right row-cost" value="{{ $cost }}" placeholder="0.00" required>
                                 </td>
-                                <td>
+                                <td data-col-key="mrp">
                                     <input type="number" step="0.01" min="0" name="items[{{ $idx }}][mrp]" class="form-control form-control-sm text-right row-mrp" value="{{ $mrp }}" placeholder="0.00">
                                 </td>
-                                <td>
+                                <td data-col-key="batch">
                                     <input type="text" name="items[{{ $idx }}][batch_no]" class="form-control form-control-sm" value="{{ $batch }}" placeholder="Batch">
                                 </td>
-                                <td>
+                                <td data-col-key="exp_date">
                                     <input type="date" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm" value="{{ $exp }}">
                                 </td>
-                                <td class="text-right align-middle font-weight-bold text-primary row-total">₹0.00</td>
-                                <td class="text-center align-middle">
+                                <td class="text-right align-middle font-weight-bold text-primary row-total" data-col-key="line_total">₹0.00</td>
+                                <td class="text-center align-middle" data-col-key="actions">
                                     <button type="button" class="btn btn-xs btn-outline-danger remove-row-btn" title="Remove line"><i class="fas fa-trash"></i></button>
                                 </td>
                             </tr>
@@ -233,8 +256,8 @@
     {{-- Template for dynamic rows --}}
     <template id="row-template">
         <tr class="grn-item-row" data-index="__INDEX__">
-            <td class="text-center align-middle row-number">__NUMBER__</td>
-            <td>
+            <td class="text-center align-middle row-number" data-col-key="seq">__NUMBER__</td>
+            <td data-col-key="item">
                 <input type="hidden" name="items[__INDEX__][purchase_order_item_id]" value="">
                 <select name="items[__INDEX__][item_id]" class="form-control form-control-sm item-select" required>
                     <option value="">-- Select Item --</option>
@@ -245,32 +268,32 @@
                     @endforeach
                 </select>
             </td>
-            <td>
+            <td data-col-key="ordered">
                 <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
             </td>
-            <td>
+            <td data-col-key="received">
                 <input type="number" step="0.001" min="0" name="items[__INDEX__][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" placeholder="0.00" required>
             </td>
-            <td>
+            <td data-col-key="accepted">
                 <input type="number" step="0.001" min="0" name="items[__INDEX__][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" placeholder="0.00" required>
             </td>
-            <td>
+            <td data-col-key="rejected">
                 <input type="number" step="0.001" min="0" name="items[__INDEX__][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected" value="0" readonly tabindex="-1">
             </td>
-            <td>
+            <td data-col-key="cost">
                 <input type="number" step="0.0001" min="0" name="items[__INDEX__][unit_cost]" class="form-control form-control-sm text-right row-cost" placeholder="0.00" required>
             </td>
-            <td>
+            <td data-col-key="mrp">
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][mrp]" class="form-control form-control-sm text-right row-mrp" placeholder="0.00">
             </td>
-            <td>
+            <td data-col-key="batch">
                 <input type="text" name="items[__INDEX__][batch_no]" class="form-control form-control-sm" placeholder="Batch">
             </td>
-            <td>
+            <td data-col-key="exp_date">
                 <input type="date" name="items[__INDEX__][exp_date]" class="form-control form-control-sm">
             </td>
-            <td class="text-right align-middle font-weight-bold text-primary row-total">₹0.00</td>
-            <td class="text-center align-middle">
+            <td class="text-right align-middle font-weight-bold text-primary row-total" data-col-key="line_total">₹0.00</td>
+            <td class="text-center align-middle" data-col-key="actions">
                 <button type="button" class="btn btn-xs btn-outline-danger remove-row-btn" title="Remove line"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
@@ -349,6 +372,20 @@
                 $row.find('.row-mrp').val(mrp);
             }
             recalculate();
+        });
+
+        // Tab on MRP on last row adds a new row automatically
+        $('#grn-items-body').on('keydown', '.row-mrp', function (e) {
+            if (e.key === 'Tab' && !e.shiftKey) {
+                let $currentRow = $(this).closest('tr');
+                let $nextRow = $currentRow.next('tr');
+                if (!$nextRow.length) {
+                    e.preventDefault();
+                    $('#add-row-btn').trigger('click');
+                    let $newRow = $('#grn-items-body tr.grn-item-row:last');
+                    $newRow.find('.item-select').select2('open');
+                }
+            }
         });
 
         // Add row

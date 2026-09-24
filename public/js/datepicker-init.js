@@ -396,8 +396,16 @@
        ========================================================================== */
     function applyFastDateFormatting($input) {
         if ($input.hasClass('daterange') || $input.data('mode') === 'range') return;
+        var inputType = ($input.attr('type') || '').toLowerCase();
+        if (inputType === 'datetime-local') return;
+
         var val = ($input.val() || '').trim();
-        if (!val) return;
+        if (!val) {
+            if ($input.prop('required')) {
+                $input.addClass('is-invalid');
+            }
+            return;
+        }
 
         var parts = parseDateParts(val);
         if (parts) {
@@ -419,7 +427,7 @@
     // Auto-format on typing exact 8 raw digits (e.g. 10042026)
     $(document).on('input', '.datepicker, input[type="date"], input[name*="date"], input[id*="date"]', function () {
         var $this = $(this);
-        if ($this.hasClass('daterange') || $this.data('mode') === 'range') return;
+        if ($this.attr('type') === 'datetime-local' || $this.hasClass('daterange') || $this.data('mode') === 'range') return;
 
         var raw = ($this.val() || '').trim();
         // If user typed 8 digits without separators
@@ -432,14 +440,16 @@
         }
     });
 
-    // Format on Enter, Tab, or Blur
+    // Format on Enter, Tab, or Blur without clearing existing valid date
     $(document).on('keydown', '.datepicker, input[type="date"], input[name*="date"], input[id*="date"]', function (e) {
+        if ($(this).attr('type') === 'datetime-local') return;
         if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
             applyFastDateFormatting($(this));
         }
     });
 
     $(document).on('blur', '.datepicker, input[type="date"], input[name*="date"], input[id*="date"]', function () {
+        if ($(this).attr('type') === 'datetime-local') return;
         applyFastDateFormatting($(this));
     });
 

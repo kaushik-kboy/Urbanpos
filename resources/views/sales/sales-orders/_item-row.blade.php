@@ -20,16 +20,16 @@
     $netAmtVal = isset($line->net_amount) && $line->net_amount != 0 ? number_format($line->net_amount, 2) : '';
 @endphp
 <tr>
-    <td class="text-center align-middle font-weight-bold so-sr-no">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
-    <td style="width: 130px;">
+    <td class="text-center align-middle font-weight-bold so-sr-no" data-col-key="seq">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
+    <td style="width: 130px;" data-col-key="code">
         <input type="text"
                class="form-control form-control-sm so-item-code font-weight-bold"
                value="{{ $itemCodeVal }}"
                autocomplete="off"
                placeholder="Code / Barcode"
-               title="Click or Tab to search item">
+               title="Enter or F2 to search item">
     </td>
-    <td style="min-width: 220px;">
+    <td style="min-width: 220px;" data-col-key="item">
         <input type="text"
                class="form-control form-control-sm so-item-desc bg-light font-weight-bold text-truncate"
                readonly
@@ -43,26 +43,26 @@
                value="{{ $selectedItemId }}"
                required>
     </td>
-    <td style="width: 100px;">
+    <td style="width: 100px;" data-col-key="qty">
         <input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm so-qty font-weight-bold text-right" required autocomplete="off" placeholder="Qty">
     </td>
-    <td style="width: 120px;">
+    <td style="width: 120px;" data-col-key="sell_price">
         <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm so-sell-price text-right" required autocomplete="off" placeholder="0.00">
     </td>
-    <td style="width: 110px;">
+    <td style="width: 110px;" data-col-key="mrp">
         <input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm so-mrp text-right" autocomplete="off" placeholder="0.00">
     </td>
-    <td style="width: 90px;">
+    <td style="width: 90px;" data-col-key="disc_percent">
         <input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm so-disc-percent text-right" autocomplete="off" placeholder="0%">
     </td>
-    <td style="width: 100px;">
+    <td style="width: 100px;" data-col-key="disc_amt">
         <input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm so-disc-amount text-right" autocomplete="off" placeholder="0.00">
     </td>
-    <td style="width: 85px;">
+    <td style="width: 85px;" data-col-key="gst_percent">
         <input type="number" step="0.01" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" readonly tabindex="-1" class="form-control form-control-sm so-gst-percent text-right bg-light" autocomplete="off" placeholder="0%" title="GST % (Read-only)">
     </td>
-    <td style="width: 120px;" class="text-right align-middle font-weight-bold text-success so-row-net">{{ $netAmtVal }}</td>
-    <td style="width: 35px;" class="text-center align-middle">
+    <td style="width: 120px;" class="text-right align-middle font-weight-bold text-success so-row-net" data-col-key="net_amt">{{ $netAmtVal }}</td>
+    <td style="width: 35px;" class="text-center align-middle" data-col-key="actions">
         <button type="button" class="btn btn-xs btn-outline-danger so-remove-row"><i class="fas fa-times"></i></button>
     </td>
 </tr>

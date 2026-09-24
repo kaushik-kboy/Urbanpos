@@ -18,16 +18,17 @@
     $availableVal = isset($line->available_qty) ? number_format((float)$line->available_qty, 3, '.', '') : '0.000';
 @endphp
 <tr class="item-row" data-row="{{ $index }}">
-    <td class="text-center align-middle bg-light">
+    <td class="text-center align-middle bg-light" data-col-key="seq">
         <span class="row-sno font-weight-bold">{{ is_numeric($index) ? $index + 1 : '__SNO__' }}</span>
     </td>
-    <td style="min-width: 145px;">
+    <td style="min-width: 145px;" data-col-key="code">
         <div class="input-group input-group-sm">
             <input type="text"
                    class="form-control form-control-sm item-code-input"
                    placeholder="Scan/Code"
                    value="{{ $itemCodeVal }}"
-                   autocomplete="off">
+                   autocomplete="off"
+                   title="Enter or F2 to search item">
             <div class="input-group-append">
                 <button type="button" class="btn btn-outline-secondary btn-sm open-item-modal" title="Search Items Popup (F2)" tabindex="-1">
                     <i class="fas fa-search"></i>
@@ -35,7 +36,7 @@
             </div>
         </div>
     </td>
-    <td style="min-width: 260px;">
+    <td style="min-width: 260px;" data-col-key="item">
         <select name="items[{{ $index }}][item_id]"
                 class="form-control form-control-sm item-select item-id-input"
                 style="width: 100%;"
@@ -50,7 +51,7 @@
             @endif
         </select>
     </td>
-    <td style="min-width: 130px;">
+    <td style="min-width: 130px;" data-col-key="expiry">
         <input type="text"
                name="items[{{ $index }}][exp_date]"
                value="{{ $expDateVal }}"
@@ -59,10 +60,10 @@
                autocomplete="off"
                title="Expiry Date (DD/MM/YYYY)">
     </td>
-    <td style="min-width: 100px;">
+    <td style="min-width: 100px;" data-col-key="available">
         <input type="text" class="form-control form-control-sm item-available text-right bg-light" value="{{ $availableVal }}" readonly tabindex="-1">
     </td>
-    <td style="min-width: 90px;">
+    <td style="min-width: 90px;" data-col-key="qty">
         <input type="number"
                step="0.001"
                min="0.001"
@@ -72,7 +73,7 @@
                placeholder="0"
                required>
     </td>
-    <td class="text-center align-middle" style="width: 45px;">
+    <td class="text-center align-middle" style="width: 45px;" data-col-key="actions">
         <button type="button" class="btn btn-xs btn-outline-danger row-remove" title="Delete row">
             <i class="fas fa-trash-alt"></i>
         </button>

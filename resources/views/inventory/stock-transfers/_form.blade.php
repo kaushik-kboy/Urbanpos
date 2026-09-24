@@ -55,8 +55,24 @@
         <h6 class="m-0 font-weight-bold text-dark">
             <i class="fas fa-dolly-flatbed mr-1"></i> Transfer Items
         </h6>
-        <div>
-            <button type="button" id="btn-quick-item-search" class="btn btn-outline-info btn-xs px-2 mr-1" title="Open Item Search Modal (F2)">
+        @php
+            $stItemColumns = [
+                'seq'       => ['label' => 'S.No', 'default' => true],
+                'code'      => ['label' => 'Code / Barcode', 'default' => true],
+                'item'      => ['label' => 'Item Description', 'default' => true],
+                'expiry'    => ['label' => 'Exp Dt', 'default' => true],
+                'available' => ['label' => 'Available', 'default' => true],
+                'qty'       => ['label' => 'Qty', 'default' => true],
+                'actions'   => ['label' => 'Actions', 'default' => true],
+            ];
+        @endphp
+        <div class="d-flex align-items-center">
+            <x-table-column-customizer
+                table-key="inventory.stock-transfers.items"
+                table-id="items-table"
+                :columns="$stItemColumns"
+            />
+            <button type="button" id="btn-quick-item-search" class="btn btn-outline-info btn-xs px-2 mx-1" title="Open Item Search Modal (F2)">
                 <i class="fas fa-search mr-1"></i> Search Item (F2)
             </button>
             <button type="button" id="add-row" class="btn btn-primary btn-xs px-2">
@@ -66,16 +82,16 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
-            <table class="table table-sm table-bordered table-hover mb-0" id="items-table" style="min-width: 900px; font-size: 0.875rem;">
+            <table class="table table-sm table-bordered table-hover mb-0 table-items-dense" id="items-table" style="min-width: 900px; font-size: 0.875rem;">
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
-                        <th style="width: 45px;">S.No</th>
-                        <th style="width: 155px;">Code / Barcode</th>
-                        <th style="width: 270px;">Item Description</th>
-                        <th style="width: 135px;">Exp Dt</th>
-                        <th style="width: 100px;">Available</th>
-                        <th style="width: 90px;">Qty</th>
-                        <th style="width: 45px;"></th>
+                        <th style="width: 45px;" data-col-key="seq">S.No</th>
+                        <th style="width: 155px;" data-col-key="code">Code / Barcode</th>
+                        <th style="width: 270px;" data-col-key="item">Item Description</th>
+                        <th style="width: 135px;" data-col-key="expiry">Exp Dt</th>
+                        <th style="width: 100px;" data-col-key="available">Available</th>
+                        <th style="width: 90px;" data-col-key="qty">Qty</th>
+                        <th style="width: 45px;" data-col-key="actions"></th>
                     </tr>
                 </thead>
                 <tbody id="items-body">
@@ -619,8 +635,11 @@
             activeTargetRow = null;
         });
 
-        // Trigger item search modal on click or focus; do NOT trigger on passive focus if item already selected
-        $(document).off('click focus', '.item-code-input').on('click focus', '.item-code-input', function (e) {
+        // Trigger item search modal on keydown (Enter / F2) or focus when blank; disabled on mouse click
+        $(document).off('click focus keydown', '.item-code-input').on('click focus keydown', '.item-code-input', function (e) {
+            if (e.type === 'click') return; // Do not open on mouse click!
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+            if (e.type === 'keydown') e.preventDefault();
             if (stModalOpen || stModalClosing) return;
             let $row = $(this).closest('tr');
             if (e.type === 'focus' && $row.find('.item-id-input').val()) return;

@@ -115,30 +115,52 @@
     </div>
 </div>
 
+@php
+    $srItemColumns = [
+        'code'         => ['label' => 'Code / Barcode', 'default' => true],
+        'item'         => ['label' => 'Item Description', 'default' => true],
+        'expiry'       => ['label' => 'Exp Date', 'default' => true],
+        'qty'          => ['label' => 'Qty', 'default' => true],
+        'sell_price'   => ['label' => 'Sell Price', 'default' => true],
+        'mrp'          => ['label' => 'MRP', 'default' => true],
+        'disc_percent' => ['label' => 'Disc %', 'default' => true],
+        'disc_amt'     => ['label' => 'Disc Amt', 'default' => true],
+        'gst_percent'  => ['label' => 'GST %', 'default' => true],
+        'net_amt'      => ['label' => 'Net Amount', 'default' => true],
+        'actions'      => ['label' => 'Actions', 'default' => true],
+    ];
+@endphp
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0 font-weight-bold text-dark">
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
     </h5>
-    <button type="button" id="sr-add-row" class="btn btn-outline-primary btn-sm font-weight-bold">
-        <i class="fas fa-plus-circle mr-1"></i> Add Item Line
-    </button>
+    <div class="d-flex align-items-center">
+        <x-table-column-customizer
+            table-key="sales.sales-returns.items"
+            table-id="sr-items-table"
+            :columns="$srItemColumns"
+        />
+        <button type="button" id="sr-add-row" class="btn btn-outline-primary btn-sm font-weight-bold ml-2">
+            <i class="fas fa-plus-circle mr-1"></i> Add Item Line
+        </button>
+    </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table table-sm table-bordered table-hover" id="sr-items-table">
+    <table class="table table-sm table-bordered table-hover table-items-dense" id="sr-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width: 115px;">Code / Barcode</th>
-                <th style="min-width: 220px;">Item Description <span class="text-danger">*</span></th>
-                <th style="width: 135px;">Exp Date</th>
-                <th style="width: 90px;" class="text-right">Qty <span class="text-danger">*</span></th>
-                <th style="width: 110px;" class="text-right">Sell Price <span class="text-danger">*</span></th>
-                <th style="width: 100px;" class="text-right">MRP</th>
-                <th style="width: 85px;" class="text-right">Disc %</th>
-                <th style="width: 100px;" class="text-right">Disc Amt</th>
-                <th style="width: 75px;" class="text-right">GST %</th>
-                <th style="width: 115px;" class="text-right">Net Amount</th>
-                <th style="width: 40px;" class="text-center"></th>
+                <th style="width: 115px;" data-col-key="code">Code / Barcode</th>
+                <th style="min-width: 220px;" data-col-key="item">Item Description <span class="text-danger">*</span></th>
+                <th style="width: 135px;" data-col-key="expiry">Exp Date</th>
+                <th style="width: 90px;" class="text-right" data-col-key="qty">Qty <span class="text-danger">*</span></th>
+                <th style="width: 110px;" class="text-right" data-col-key="sell_price">Sell Price <span class="text-danger">*</span></th>
+                <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width: 85px;" class="text-right" data-col-key="disc_percent">Disc %</th>
+                <th style="width: 100px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width: 75px;" class="text-right" data-col-key="gst_percent">GST %</th>
+                <th style="width: 115px;" class="text-right" data-col-key="net_amt">Net Amount</th>
+                <th style="width: 40px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="sr-items-body">
@@ -296,17 +318,24 @@
            ---------------------------------------------------------------- */
         let srCancellingRow = null;
 
-        $(document).off('click focus', '.sr-item-code').on('click focus', '.sr-item-code', function (e) {
+        $(document).off('click focus keydown', '.sr-item-code').on('click focus keydown', '.sr-item-code', function (e) {
+            if (e.type === 'click') return; // Do not open on mouse click!
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+            if (e.type === 'keydown') e.preventDefault();
             let custId = $('#customer_id').val();
             if (!custId) {
-                if (e.type === 'click') {
+                if (typeof toastr !== 'undefined') {
+                    toastr.warning('Please select a Customer first. Items are restricted to products purchased by that customer.');
+                } else {
                     alert('Please select a Customer first. Items are restricted to products purchased by that customer.');
-                    $('#customer_id').select2('open');
                 }
+                $('#customer_id').select2('open');
                 return;
             }
             if ($('#sales_bill_id').val()) {
-                if (e.type === 'click') {
+                if (typeof toastr !== 'undefined') {
+                    toastr.info('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
+                } else {
                     alert('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
                 }
                 return;

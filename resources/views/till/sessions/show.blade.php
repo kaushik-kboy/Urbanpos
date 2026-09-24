@@ -62,6 +62,7 @@
                         @csrf
                         <div class="card-body">
                             <x-field name="actual_cash" label="Actual Cash Counted" type="number" step="0.01" col="8" />
+                            <x-field name="closed_at" label="Shift End / Closed At (Manual / Auto)" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" col="8" />
                         </div>
                         <div class="card-footer">
                             <button type="submit" class="btn btn-danger btn-sm">Close Till</button>

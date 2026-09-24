@@ -20,7 +20,7 @@
 @endphp
 <tr class="sr-item-row" data-row-index="{{ $rowId }}">
     {{-- Code / Barcode --}}
-    <td style="min-width: 115px;">
+    <td style="min-width: 115px;" data-col-key="code">
         <input type="text"
                class="form-control form-control-sm sr-item-code font-weight-bold"
                value="{{ $rowId === '__INDEX__' ? '' : $itemCode }}"
@@ -29,7 +29,7 @@
                title="Enter item code or barcode">
     </td>
     {{-- Description (readonly, auto-filled) --}}
-    <td style="min-width: 220px;">
+    <td style="min-width: 220px;" data-col-key="item">
         <input type="text"
                class="form-control form-control-sm sr-item-desc bg-light text-truncate"
                readonly
@@ -43,14 +43,14 @@
                required>
     </td>
     {{-- Exp Date --}}
-    <td style="width: 135px;">
+    <td style="width: 135px;" data-col-key="expiry">
         <input type="date" name="items[{{ $rowId }}][exp_date]"
                value="{{ $rowId === '__INDEX__' ? '' : $expDate }}"
                class="form-control form-control-sm sr-exp-date bg-light"
                readonly tabindex="-1">
     </td>
     {{-- Qty --}}
-    <td style="width: 100px;">
+    <td style="width: 100px;" data-col-key="qty">
         <input type="number" step="0.001" min="0.001"
                name="items[{{ $rowId }}][qty]"
                value="{{ $rowId === '__INDEX__' ? '' : $qty }}"
@@ -60,7 +60,7 @@
         <small class="text-muted d-block text-right sr-max-qty-label" style="font-size: 10px;"></small>
     </td>
     {{-- Sell Price --}}
-    <td style="width: 110px;">
+    <td style="width: 110px;" data-col-key="sell_price">
         <input type="number" step="0.01" min="0"
                name="items[{{ $rowId }}][sell_price]"
                value="{{ $rowId === '__INDEX__' ? '' : $sellPrice }}"
@@ -69,7 +69,7 @@
                readonly tabindex="-1">
     </td>
     {{-- MRP --}}
-    <td style="width: 100px;">
+    <td style="width: 100px;" data-col-key="mrp">
         <input type="number" step="0.01" min="0"
                name="items[{{ $rowId }}][mrp]"
                value="{{ $rowId === '__INDEX__' ? '' : $mrp }}"
@@ -78,7 +78,7 @@
                readonly tabindex="-1">
     </td>
     {{-- Disc % --}}
-    <td style="width: 85px;">
+    <td style="width: 85px;" data-col-key="disc_percent">
         <input type="number" step="0.01" min="0" max="100"
                name="items[{{ $rowId }}][disc_percent]"
                value="{{ $rowId === '__INDEX__' ? '' : $discPercent }}"
@@ -86,7 +86,7 @@
                placeholder="0" autocomplete="off">
     </td>
     {{-- Disc Amt --}}
-    <td style="width: 100px;">
+    <td style="width: 100px;" data-col-key="disc_amt">
         <input type="number" step="0.01" min="0"
                name="items[{{ $rowId }}][disc_amount]"
                value="{{ $rowId === '__INDEX__' ? '' : $discAmount }}"
@@ -94,7 +94,7 @@
                placeholder="0.00" autocomplete="off">
     </td>
     {{-- GST % --}}
-    <td style="width: 75px;">
+    <td style="width: 75px;" data-col-key="gst_percent">
         <input type="number" step="0.01" min="0"
                name="items[{{ $rowId }}][gst_percent]"
                value="{{ $rowId === '__INDEX__' ? '' : $gstPercent }}"
@@ -103,11 +103,11 @@
                readonly tabindex="-1">
     </td>
     {{-- Net Amount --}}
-    <td class="text-right align-middle font-weight-bold text-dark" style="width: 115px;">
+    <td class="text-right align-middle font-weight-bold text-dark" style="width: 115px;" data-col-key="net_amt">
         ₹<span class="sr-net-amount">{{ $rowId === '__INDEX__' ? '0.00' : number_format((float) $netAmount, 2) }}</span>
     </td>
     {{-- Remove --}}
-    <td class="text-center align-middle" style="width: 40px;">
+    <td class="text-center align-middle" style="width: 40px;" data-col-key="actions">
         <button type="button" class="btn btn-xs btn-outline-danger sr-row-remove" title="Remove row">
             <i class="fas fa-times"></i>
         </button>

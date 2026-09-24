@@ -75,7 +75,7 @@ class AnalyticsBuilderController extends Controller
         if ($groupBy === 'item_supplier') {
             $result = $this->queryItemSupplierSourcing($from, $to, $branchId, $itemId, $supplierId, $sortBy, $sortDir, $limit);
         } else {
-            $result = $this->querySalesAnalytics($groupBy, $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, $limit);
+            $result = $this->querySalesAnalytics($groupBy, $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, $limit, $supplierId);
         }
 
         return response()->json(array_merge([
@@ -95,7 +95,7 @@ class AnalyticsBuilderController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
-            'group_by' => 'required|string|in:item,customer,category,brand,cashier,payment_mode,date,item_supplier',
+            'group_by' => 'required|string|in:item,customer,category,brand,cashier,payment_mode,date,item_supplier,supplier',
             'metrics' => 'required|array',
             'filters' => 'nullable|array',
         ]);
@@ -149,7 +149,7 @@ class AnalyticsBuilderController extends Controller
         if ($groupBy === 'item_supplier') {
             $data = $this->queryItemSupplierSourcing($from, $to, $branchId, $itemId, $supplierId, $sortBy, $sortDir, null);
         } else {
-            $data = $this->querySalesAnalytics($groupBy, $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, null);
+            $data = $this->querySalesAnalytics($groupBy, $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, null, $supplierId);
         }
 
         $filename = 'Custom_Report_' . $groupBy . '_' . date('Ymd_His') . '.xls';
@@ -304,14 +304,46 @@ class AnalyticsBuilderController extends Controller
     }
 
     /**
-     * Query Standard Sales Analytics by Dynamic Group By
+     * Query Standard Sales / Purchase Analytics by Dynamic Group By
      */
-    protected function querySalesAnalytics($groupBy, array $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, $limit): array
+    protected function querySalesAnalytics($groupBy, array $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, $limit, $supplierId = null): array
     {
         $columns = [];
         $query = null;
 
         switch ($groupBy) {
+            case 'supplier':
+                $query = DB::table('purchase_invoices')
+                    ->join('suppliers', 'purchase_invoices.supplier_id', '=', 'suppliers.id')
+                    ->where('purchase_invoices.status', '!=', 'Cancelled')
+                    ->selectRaw('
+                        suppliers.id as group_id,
+                        suppliers.name as group_name,
+                        COALESCE(suppliers.mobile, suppliers.city, "-") as group_subtext,
+                        COUNT(DISTINCT purchase_invoices.id) as bill_count,
+                        SUM(purchase_invoices.total) as total_sales,
+                        SUM(COALESCE(purchase_invoices.disc_amount, 0)) as total_disc,
+                        0 as total_profit,
+                        MAX(purchase_invoices.invoice_date) as last_date,
+                        SUM(COALESCE(purchase_invoices.total_qty, 0)) as total_qty
+                    ')
+                    ->groupBy('suppliers.id', 'suppliers.name', 'suppliers.mobile', 'suppliers.city');
+
+                if ($supplierId) {
+                    $query->where('purchase_invoices.supplier_id', $supplierId);
+                }
+                if ($itemId) {
+                    $query->whereExists(function ($q) use ($itemId) {
+                        $q->select(DB::raw(1))
+                            ->from('purchase_invoice_items')
+                            ->whereColumn('purchase_invoice_items.purchase_invoice_id', 'purchase_invoices.id')
+                            ->where('purchase_invoice_items.item_id', $itemId);
+                    });
+                }
+                $groupLabel = 'Supplier Name';
+                $subtextLabel = 'Mobile / City';
+                break;
+
             case 'customer':
                 $query = DB::table('sales_bills')
                     ->join('customers', 'sales_bills.customer_id', '=', 'customers.id')
@@ -330,6 +362,14 @@ class AnalyticsBuilderController extends Controller
 
                 if ($customerId) {
                     $query->where('sales_bills.customer_id', $customerId);
+                }
+                if ($itemId) {
+                    $query->whereExists(function ($q) use ($itemId) {
+                        $q->select(DB::raw(1))
+                            ->from('sales_bill_items')
+                            ->whereColumn('sales_bill_items.sales_bill_id', 'sales_bills.id')
+                            ->where('sales_bill_items.item_id', $itemId);
+                    });
                 }
                 $groupLabel = 'Customer Name';
                 $subtextLabel = 'Phone';
@@ -467,11 +507,20 @@ class AnalyticsBuilderController extends Controller
                 break;
         }
 
-        if ($from && $to) {
-            $query->whereBetween('sales_bills.bill_date', [$from, $to]);
-        }
-        if ($branchId) {
-            $query->where('sales_bills.branch_id', $branchId);
+        if ($groupBy === 'supplier') {
+            if ($from && $to) {
+                $query->whereBetween('purchase_invoices.invoice_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $query->where('purchase_invoices.branch_id', $branchId);
+            }
+        } else {
+            if ($from && $to) {
+                $query->whereBetween('sales_bills.bill_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $query->where('sales_bills.branch_id', $branchId);
+            }
         }
 
         // Sorting
@@ -491,26 +540,47 @@ class AnalyticsBuilderController extends Controller
             $columns[] = ['key' => 'group_subtext', 'label' => $subtextLabel];
         }
 
-        if (in_array('qty', $metrics, true)) {
-            $columns[] = ['key' => 'formatted_qty', 'label' => 'Quantity Sold'];
-        }
-        if (in_array('sales_value', $metrics, true)) {
-            $columns[] = ['key' => 'formatted_sales', 'label' => 'Total Sales Value (₹)'];
-        }
-        if (in_array('discount', $metrics, true)) {
-            $columns[] = ['key' => 'formatted_disc', 'label' => 'Discount (₹)'];
-        }
-        if (in_array('margin', $metrics, true)) {
-            $columns[] = ['key' => 'formatted_profit', 'label' => 'Gross Profit / Margin'];
-        }
-        if (in_array('bill_count', $metrics, true)) {
-            $columns[] = ['key' => 'bill_count', 'label' => 'Bill Count'];
-        }
-        if (in_array('aov', $metrics, true)) {
-            $columns[] = ['key' => 'formatted_aov', 'label' => 'Avg Order Value (AOV)'];
-        }
-        if (in_array('last_date', $metrics, true)) {
-            $columns[] = ['key' => 'formatted_last_date', 'label' => 'Last Transaction'];
+        if ($groupBy === 'supplier') {
+            if (in_array('qty', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_qty', 'label' => 'Items Inwarded (Qty)'];
+            }
+            if (in_array('sales_value', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_sales', 'label' => 'Total Purchase Value (₹)'];
+            }
+            if (in_array('discount', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_disc', 'label' => 'Discount Received (₹)'];
+            }
+            if (in_array('bill_count', $metrics, true)) {
+                $columns[] = ['key' => 'bill_count', 'label' => 'Invoice Count'];
+            }
+            if (in_array('aov', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_aov', 'label' => 'Avg Invoice Value (₹)'];
+            }
+            if (in_array('last_date', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_last_date', 'label' => 'Last Invoice Date'];
+            }
+        } else {
+            if (in_array('qty', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_qty', 'label' => 'Quantity Sold'];
+            }
+            if (in_array('sales_value', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_sales', 'label' => 'Total Sales Value (₹)'];
+            }
+            if (in_array('discount', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_disc', 'label' => 'Discount (₹)'];
+            }
+            if (in_array('margin', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_profit', 'label' => 'Gross Profit / Margin'];
+            }
+            if (in_array('bill_count', $metrics, true)) {
+                $columns[] = ['key' => 'bill_count', 'label' => 'Bill Count'];
+            }
+            if (in_array('aov', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_aov', 'label' => 'Avg Order Value (AOV)'];
+            }
+            if (in_array('last_date', $metrics, true)) {
+                $columns[] = ['key' => 'formatted_last_date', 'label' => 'Last Transaction'];
+            }
         }
 
         // Aggregations
@@ -792,6 +862,61 @@ class AnalyticsBuilderController extends Controller
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
                 $totalQty += (float) $inv->qty;
                 $totalAmount += (float) $inv->net_amount;
+            }
+
+            $records = $invoices;
+            $summary = [
+                'total_qty' => number_format($totalQty, 2),
+                'total_amount' => '₹ ' . number_format($totalAmount, 2),
+                'count' => count($invoices),
+            ];
+
+        } elseif ($groupBy === 'supplier') {
+            $supplier = Supplier::find($groupId);
+            $title = 'Purchase Invoices for: ' . ($supplier ? $supplier->name : 'Supplier #' . $groupId);
+
+            $query = DB::table('purchase_invoices')
+                ->leftJoin('branches', 'purchase_invoices.branch_id', '=', 'branches.id')
+                ->where('purchase_invoices.status', '!=', 'Cancelled')
+                ->where('purchase_invoices.supplier_id', $groupId);
+
+            if ($from && $to) {
+                $query->whereBetween('purchase_invoices.invoice_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $query->where('purchase_invoices.branch_id', $branchId);
+            }
+            $itemId = $request->input('item_id');
+            if ($itemId) {
+                $query->whereExists(function ($q) use ($itemId) {
+                    $q->select(DB::raw(1))
+                        ->from('purchase_invoice_items')
+                        ->whereColumn('purchase_invoice_items.purchase_invoice_id', 'purchase_invoices.id')
+                        ->where('purchase_invoice_items.item_id', $itemId);
+                });
+            }
+
+            $invoices = $query->selectRaw('
+                purchase_invoices.id as invoice_id,
+                purchase_invoices.invoice_number,
+                purchase_invoices.invoice_date,
+                COALESCE(branches.name, "Main") as branch_name,
+                purchase_invoices.total_qty,
+                purchase_invoices.total,
+                purchase_invoices.status
+            ')
+            ->orderBy('purchase_invoices.invoice_date', 'desc')
+            ->limit(100)
+            ->get();
+
+            $totalQty = 0;
+            $totalAmount = 0;
+            foreach ($invoices as $inv) {
+                $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-M-Y');
+                $inv->formatted_amount = '₹ ' . number_format($inv->total, 2);
+                $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
+                $totalQty += (float) $inv->total_qty;
+                $totalAmount += (float) $inv->total;
             }
 
             $records = $invoices;

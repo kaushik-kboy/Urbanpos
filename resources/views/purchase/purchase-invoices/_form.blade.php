@@ -117,29 +117,57 @@
 </div>
 
 <hr>
-<h5 class="mb-3">Items</h5>
+@php
+    $pinvItemColumns = [
+        'seq'          => ['label' => '#', 'default' => true],
+        'code'         => ['label' => 'Code', 'default' => true],
+        'item'         => ['label' => 'Description', 'default' => true],
+        'expiry'       => ['label' => 'Exp Date', 'default' => true],
+        'qty'          => ['label' => 'Qty', 'default' => true],
+        'free'         => ['label' => 'Free', 'default' => true],
+        'cost_price'   => ['label' => 'Cost Price', 'default' => true],
+        'sell_price'   => ['label' => 'Sell Price', 'default' => true],
+        'mrp'          => ['label' => 'MRP', 'default' => true],
+        'margin'       => ['label' => 'Margin %', 'default' => true],
+        'profit'       => ['label' => 'Profit %', 'default' => true],
+        'disc_percent' => ['label' => 'Disc %', 'default' => true],
+        'disc_amt'     => ['label' => 'Disc Amt', 'default' => true],
+        'gst_percent'  => ['label' => 'GST %', 'default' => true],
+        'gst_amt'      => ['label' => 'GST Amt', 'default' => true],
+        'net_amt'      => ['label' => 'Net Amt', 'default' => true],
+        'actions'      => ['label' => 'Actions', 'default' => true],
+    ];
+@endphp
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Items</h5>
+    <x-table-column-customizer
+        table-key="purchase.purchase-invoices.items"
+        table-id="pinv-items-table"
+        :columns="$pinvItemColumns"
+    />
+</div>
 
 <div class="table-responsive">
-    <table class="table table-sm table-bordered" id="pinv-items-table">
+    <table class="table table-sm table-bordered table-items-dense" id="pinv-items-table">
         <thead style="font-size:0.75rem;">
             <tr>
-                <th style="width:28px;" class="text-center px-1">#</th>
-                <th style="width:80px;" class="px-1">Code</th>
-                <th style="min-width:150px; max-width:190px;" class="px-1">Description</th>
-                <th style="width:110px;" class="px-1">Exp Date</th>
-                <th style="width:62px;" class="px-1">Qty</th>
-                <th style="width:52px;" class="px-1">Free</th>
-                <th style="width:82px;" class="px-1">Cost Price</th>
-                <th style="width:82px;" class="px-1">Sell Price</th>
-                <th style="width:78px;" class="px-1">MRP</th>
-                <th style="width:62px;" class="px-1" title="Margin %">Margin %</th>
-                <th style="width:62px;" class="px-1" title="Profit %">Profit %</th>
-                <th style="width:55px;" class="px-1">Disc %</th>
-                <th style="width:68px;" class="px-1">Disc Amt</th>
-                <th style="width:52px;" class="px-1">GST %</th>
-                <th style="width:72px;" class="px-1">GST Amt</th>
-                <th style="width:82px;" class="text-right px-1">Net Amt</th>
-                <th style="width:28px;" class="px-1"></th>
+                <th style="width:28px;" class="text-center px-1" data-col-key="seq">#</th>
+                <th style="width:80px;" class="px-1" data-col-key="code">Code</th>
+                <th style="min-width:150px; max-width:190px;" class="px-1" data-col-key="item">Description</th>
+                <th style="width:110px;" class="px-1" data-col-key="expiry">Exp Date</th>
+                <th style="width:62px;" class="px-1" data-col-key="qty">Qty</th>
+                <th style="width:52px;" class="px-1" data-col-key="free">Free</th>
+                <th style="width:82px;" class="px-1" data-col-key="cost_price">Cost Price</th>
+                <th style="width:82px;" class="px-1" data-col-key="sell_price">Sell Price</th>
+                <th style="width:78px;" class="px-1" data-col-key="mrp">MRP</th>
+                <th style="width:62px;" class="px-1" title="Margin %" data-col-key="margin">Margin %</th>
+                <th style="width:62px;" class="px-1" title="Profit %" data-col-key="profit">Profit %</th>
+                <th style="width:55px;" class="px-1" data-col-key="disc_percent">Disc %</th>
+                <th style="width:68px;" class="px-1" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width:52px;" class="px-1" data-col-key="gst_percent">GST %</th>
+                <th style="width:72px;" class="px-1" data-col-key="gst_amt">GST Amt</th>
+                <th style="width:82px;" class="text-right px-1" data-col-key="net_amt">Net Amt</th>
+                <th style="width:28px;" class="px-1" data-col-key="actions"></th>
             </tr>
         </thead>
 
@@ -179,16 +207,18 @@
     <div id="final-amount-match-badge"></div>
 </div>
 
-<x-field name="freight" label="Freight" type="number" step="0.01" :value="isset($inv->freight) && $inv->freight != 0 ? $inv->freight : ''" />
-<x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="isset($inv->scheme_item_disc_amt) && $inv->scheme_item_disc_amt != 0 ? $inv->scheme_item_disc_amt : ''" />
-<x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="isset($inv->scheme_item_disc_percent) && $inv->scheme_item_disc_percent != 0 ? $inv->scheme_item_disc_percent : ''" />
-<x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
-<x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="isset($inv->other_disc_amt) && $inv->other_disc_amt != 0 ? $inv->other_disc_amt : ''" />
-<x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="isset($inv->total_extra_cess) && $inv->total_extra_cess != 0 ? $inv->total_extra_cess : ''" />
-<x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
-<x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="isset($inv->total_weight) && $inv->total_weight != 0 ? $inv->total_weight : ''" />
-<x-textarea name="remarks" label="Remarks" :value="$inv->remarks ?? ''" />
-<x-textarea name="message" label="Message" :value="$inv->message ?? ''" />
+<x-form-layout-customizer form-key="purchase_invoices.totals">
+    <x-field name="freight" label="Freight" type="number" step="0.01" :value="isset($inv->freight) && $inv->freight != 0 ? $inv->freight : ''" />
+    <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="isset($inv->scheme_item_disc_amt) && $inv->scheme_item_disc_amt != 0 ? $inv->scheme_item_disc_amt : ''" />
+    <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="isset($inv->scheme_item_disc_percent) && $inv->scheme_item_disc_percent != 0 ? $inv->scheme_item_disc_percent : ''" />
+    <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
+    <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="isset($inv->other_disc_amt) && $inv->other_disc_amt != 0 ? $inv->other_disc_amt : ''" />
+    <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="isset($inv->total_extra_cess) && $inv->total_extra_cess != 0 ? $inv->total_extra_cess : ''" />
+    <x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
+    <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="isset($inv->total_weight) && $inv->total_weight != 0 ? $inv->total_weight : ''" />
+    <x-textarea name="remarks" label="Remarks" :value="$inv->remarks ?? ''" />
+    <x-textarea name="message" label="Message" :value="$inv->message ?? ''" />
+</x-form-layout-customizer>
 
 <x-custom-fields-renderer :module="'PurchaseInvoice'" :model="$inv ?? null" :cardStyle="true" />
 
@@ -1003,8 +1033,11 @@
             }
         });
 
-        // Open modal on Code/Barcode field CLICK or FOCUS; blocked if Supplier or Inv No invalid
-        $(document).off('click focus', '.pinv-item-code').on('click focus', '.pinv-item-code', function (e) {
+        // Open modal on Code/Barcode field: blocked if Supplier or Inv No invalid; disabled on mouse click (Enter / F2 / focus when empty)
+        $(document).off('click focus keydown', '.pinv-item-code').on('click focus keydown', '.pinv-item-code', function (e) {
+            if (e.type === 'click') return; // Do not open on mouse click!
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+            if (e.type === 'keydown') e.preventDefault();
             if (!canProceedToItems()) {
                 e.preventDefault();
                 e.stopPropagation();

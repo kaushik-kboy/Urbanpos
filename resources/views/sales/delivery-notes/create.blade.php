@@ -118,25 +118,47 @@
         <div class="card card-default shadow-sm mb-3">
             <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
                 <h3 class="card-title font-weight-bold"><i class="fas fa-boxes mr-1"></i> Dispatched Goods Grid</h3>
-                <button type="button" class="btn btn-xs btn-primary" id="add-row-btn">
-                    <i class="fas fa-plus mr-1"></i> Add Item Line
-                </button>
+                @php
+                    $sdnItemColumns = [
+                        'seq'        => ['label' => '#', 'default' => true],
+                        'code'       => ['label' => 'Code / Barcode', 'default' => true],
+                        'item'       => ['label' => 'Item Description', 'default' => true],
+                        'ordered'    => ['label' => 'Ordered Qty', 'default' => true],
+                        'dispatched' => ['label' => 'Dispatched Qty', 'default' => true],
+                        'price'      => ['label' => 'Unit Price', 'default' => true],
+                        'mrp'        => ['label' => 'MRP', 'default' => true],
+                        'batch'      => ['label' => 'Batch No', 'default' => true],
+                        'exp_date'   => ['label' => 'Expiry Date', 'default' => true],
+                        'line_total' => ['label' => 'Line Total', 'default' => true],
+                        'actions'    => ['label' => 'Actions', 'default' => true],
+                    ];
+                @endphp
+                <div class="d-flex align-items-center">
+                    <x-table-column-customizer
+                        table-key="sales.delivery-notes.items"
+                        table-id="sdn-items-table"
+                        :columns="$sdnItemColumns"
+                    />
+                    <button type="button" class="btn btn-xs btn-primary ml-2" id="add-row-btn">
+                        <i class="fas fa-plus mr-1"></i> Add Item Line
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0 table-responsive">
-                <table class="table table-bordered table-sm mb-0" id="sdn-items-table">
+                <table class="table table-bordered table-sm mb-0 table-items-dense" id="sdn-items-table">
                     <thead class="thead-light">
                         <tr class="text-center">
-                            <th style="width: 40px;">#</th>
-                            <th style="width: 155px;">Code / Barcode</th>
-                            <th style="min-width: 250px;">Item Description</th>
-                            <th style="width: 110px;">Ordered Qty</th>
-                            <th style="width: 130px;">Dispatched Qty <span class="text-danger">*</span></th>
-                            <th style="width: 120px;">Unit Price (₹) <span class="text-danger">*</span></th>
-                            <th style="width: 110px;">MRP (₹)</th>
-                            <th style="width: 120px;">Batch No</th>
-                            <th style="width: 130px;">Expiry Date</th>
-                            <th style="width: 130px;" class="text-right">Line Total</th>
-                            <th style="width: 40px;"></th>
+                            <th style="width: 40px;" data-col-key="seq">#</th>
+                            <th style="width: 155px;" data-col-key="code">Code / Barcode</th>
+                            <th style="min-width: 250px;" data-col-key="item">Item Description</th>
+                            <th style="width: 110px;" data-col-key="ordered">Ordered Qty</th>
+                            <th style="width: 130px;" data-col-key="dispatched">Dispatched Qty <span class="text-danger">*</span></th>
+                            <th style="width: 120px;" data-col-key="price">Unit Price (₹) <span class="text-danger">*</span></th>
+                            <th style="width: 110px;" data-col-key="mrp">MRP (₹)</th>
+                            <th style="width: 120px;" data-col-key="batch">Batch No</th>
+                            <th style="width: 130px;" data-col-key="exp_date">Expiry Date</th>
+                            <th style="width: 130px;" class="text-right" data-col-key="line_total">Line Total</th>
+                            <th style="width: 40px;" data-col-key="actions"></th>
                         </tr>
                     </thead>
                     <tbody id="sdn-items-body">
@@ -161,16 +183,16 @@
                                 $exp = $r->exp_date ?? '';
                             @endphp
                             <tr class="sdn-item-row" data-index="{{ $idx }}">
-                                <td class="text-center align-middle row-number">{{ $idx + 1 }}</td>
-                                <td style="min-width: 145px;">
+                                <td class="text-center align-middle row-number" data-col-key="seq">{{ $idx + 1 }}</td>
+                                <td style="min-width: 145px;" data-col-key="code">
                                     <input type="text" 
                                            class="form-control form-control-sm sdn-item-code" 
                                            value="{{ $displayCode }}" 
                                            placeholder="Code / Barcode" 
                                            autocomplete="off"
-                                           title="Enter code or click/tab to search">
+                                           title="Enter or F2 to search">
                                 </td>
-                                <td>
+                                <td data-col-key="item">
                                     <input type="hidden" name="items[{{ $idx }}][sales_order_item_id]" value="{{ $soItemId }}">
                                     <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-select sdn-item-id" value="{{ $itemId }}" required>
                                     <input type="text" 
@@ -181,26 +203,26 @@
                                            placeholder="Product Description (auto-filled)"
                                            title="Product description (auto-filled on code entry)">
                                 </td>
-                                <td>
+                                <td data-col-key="ordered">
                                     <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
                                 </td>
-                                <td>
+                                <td data-col-key="dispatched">
                                     <input type="number" step="0.001" min="0.001" name="items[{{ $idx }}][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="{{ $dispatched }}" placeholder="0.00" required>
                                 </td>
-                                <td>
+                                <td data-col-key="price">
                                     <input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm text-right row-price" value="{{ $price }}" placeholder="0.00" required>
                                 </td>
-                                <td>
+                                <td data-col-key="mrp">
                                     <input type="number" step="0.01" min="0" name="items[{{ $idx }}][mrp]" class="form-control form-control-sm text-right row-mrp" value="{{ $mrp }}" placeholder="0.00">
                                 </td>
-                                <td>
+                                <td data-col-key="batch">
                                     <input type="text" name="items[{{ $idx }}][batch_no]" class="form-control form-control-sm" value="{{ $batch }}" placeholder="Batch">
                                 </td>
-                                <td>
+                                <td data-col-key="exp_date">
                                     <input type="date" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm" value="{{ $exp }}">
                                 </td>
-                                <td class="text-right align-middle font-weight-bold text-success row-total">₹0.00</td>
-                                <td class="text-center align-middle">
+                                <td class="text-right align-middle font-weight-bold text-success row-total" data-col-key="line_total">₹0.00</td>
+                                <td class="text-center align-middle" data-col-key="actions">
                                     <button type="button" class="btn btn-xs btn-outline-danger remove-row-btn" title="Remove line"><i class="fas fa-trash"></i></button>
                                 </td>
                             </tr>
@@ -243,16 +265,16 @@
     {{-- Template for new row --}}
     <template id="row-template">
         <tr class="sdn-item-row" data-index="__INDEX__">
-            <td class="text-center align-middle row-number">__NUM__</td>
-            <td style="min-width: 145px;">
+            <td class="text-center align-middle row-number" data-col-key="seq">__NUM__</td>
+            <td style="min-width: 145px;" data-col-key="code">
                 <input type="text" 
                        class="form-control form-control-sm sdn-item-code" 
                        value="" 
                        placeholder="Code / Barcode" 
                        autocomplete="off"
-                       title="Enter code or click/tab to search">
+                       title="Enter or F2 to search">
             </td>
-            <td>
+            <td data-col-key="item">
                 <input type="hidden" name="items[__INDEX__][sales_order_item_id]" value="">
                 <input type="hidden" name="items[__INDEX__][item_id]" class="item-select sdn-item-id" value="" required>
                 <input type="text" 
@@ -263,26 +285,26 @@
                        placeholder="Product Description (auto-filled)"
                        title="Product description (auto-filled on code entry)">
             </td>
-            <td>
+            <td data-col-key="ordered">
                 <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
             </td>
-            <td>
+            <td data-col-key="dispatched">
                 <input type="number" step="0.001" min="0.001" name="items[__INDEX__][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="" placeholder="0.00" required>
             </td>
-            <td>
+            <td data-col-key="price">
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][unit_price]" class="form-control form-control-sm text-right row-price" value="0.00" placeholder="0.00" required>
             </td>
-            <td>
+            <td data-col-key="mrp">
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][mrp]" class="form-control form-control-sm text-right row-mrp" value="" placeholder="0.00">
             </td>
-            <td>
+            <td data-col-key="batch">
                 <input type="text" name="items[__INDEX__][batch_no]" class="form-control form-control-sm" value="" placeholder="Batch">
             </td>
-            <td>
+            <td data-col-key="exp_date">
                 <input type="date" name="items[__INDEX__][exp_date]" class="form-control form-control-sm" value="">
             </td>
-            <td class="text-right align-middle font-weight-bold text-success row-total">₹0.00</td>
-            <td class="text-center align-middle">
+            <td class="text-right align-middle font-weight-bold text-success row-total" data-col-key="line_total">₹0.00</td>
+            <td class="text-center align-middle" data-col-key="actions">
                 <button type="button" class="btn btn-xs btn-outline-danger remove-row-btn" title="Remove line"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
@@ -433,8 +455,11 @@ $(function () {
         });
     }
 
-    // Trigger modal on click or focus of .sdn-item-code (Tab key or Click)
-    $(document).off('click focus', '.sdn-item-code').on('click focus', '.sdn-item-code', function (e) {
+    // Trigger modal on keydown (Enter / F2) or focus when blank (Disabled on mouse click)
+    $(document).off('click focus keydown', '.sdn-item-code').on('click focus keydown', '.sdn-item-code', function (e) {
+        if (e.type === 'click') return; // Do not open on mouse click!
+        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+        if (e.type === 'keydown') e.preventDefault();
         if (sdnModalOpen || sdnModalClosing) return;
         let $row = $(this).closest('tr');
         if (e.type === 'focus' && $row.find('.sdn-item-id').val()) return;

@@ -78,19 +78,7 @@
                     @endforeach
                 </div>
 
-                {{-- Branch Selector --}}
-                <div class="d-flex align-items-center my-1 ml-auto">
-                    <label for="receipt-branch-select" class="small font-weight-bold text-dark mb-0 mr-2 text-nowrap">
-                        <i class="fas fa-store-alt text-primary mr-1"></i> Branch (ब्रांच):
-                    </label>
-                    <select id="receipt-branch-select" class="form-control form-control-sm font-weight-bold border-primary shadow-sm" style="min-width: 190px;" onchange="window.location.href = this.value;">
-                        @foreach($branches as $b)
-                            <option value="{{ route('tools.receipt-designer.index', ['doc' => $docType, 'branch_id' => $b->id]) }}" {{ $selectedBranchId == $b->id ? 'selected' : '' }}>
-                                {{ $b->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                {{-- Branch is globally managed from the top navigation bar --}}
             </div>
         </div>
     </div>

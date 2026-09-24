@@ -22,7 +22,7 @@
     $netAmount = data_get($line, 'net_amount', 0);
 @endphp
 <tr class="pr-item-row" data-row-index="{{ $rowId }}">
-    <td style="min-width: 140px;">
+    <td style="min-width: 140px;" data-col-key="code">
         <input type="hidden" name="items[{{ $rowId }}][item_id]" class="pr-item-id" value="{{ $itemId }}" required>
         <div class="input-group input-group-sm">
             <input type="text" class="form-control form-control-sm pr-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Enter code or click/tab to search">
@@ -33,31 +33,31 @@
             </div>
         </div>
     </td>
-    <td style="min-width: 220px;">
+    <td style="min-width: 220px;" data-col-key="item">
         <input type="text" class="form-control form-control-sm pr-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">
     </td>
-    <td style="width: 130px;">
+    <td style="width: 130px;" data-col-key="expiry">
         <input type="date" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm pr-exp-date">
     </td>
-    <td style="width: 95px;">
+    <td style="width: 95px;" data-col-key="qty">
         <input type="number" step="0.001" min="0.001" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm text-right pr-qty font-weight-bold" placeholder="0.000" required>
     </td>
-    <td style="width: 110px;">
+    <td style="width: 110px;" data-col-key="cost_price">
         <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm text-right pr-cost font-weight-bold" placeholder="0.00" required>
     </td>
-    <td style="width: 85px;">
+    <td style="width: 85px;" data-col-key="disc_percent">
         <input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][disc_percent]" value="{{ $discPercent }}" class="form-control form-control-sm text-right pr-disc-percent" placeholder="0">
     </td>
-    <td style="width: 95px;">
+    <td style="width: 95px;" data-col-key="disc_amt">
         <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][disc_amount]" value="{{ $discAmount }}" class="form-control form-control-sm text-right pr-disc-amount" placeholder="0.00">
     </td>
-    <td style="width: 85px;">
+    <td style="width: 85px;" data-col-key="gst_percent">
         <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][gst_percent]" value="{{ $gstPercent }}" readonly tabindex="-1" class="form-control form-control-sm text-right pr-gst-percent bg-light" placeholder="0" title="GST % (Read-only)">
     </td>
-    <td class="text-right align-middle font-weight-bold text-dark" style="width: 110px;">
+    <td class="text-right align-middle font-weight-bold text-dark" style="width: 110px;" data-col-key="net_amt">
         ₹<span class="pr-net-amount">{{ number_format((float) $netAmount, 2) }}</span>
     </td>
-    <td class="text-center align-middle" style="width: 40px;">
+    <td class="text-center align-middle" style="width: 40px;" data-col-key="actions">
         <button type="button" class="btn btn-xs btn-outline-danger pr-row-remove" title="Remove row">
             <i class="fas fa-times"></i>
         </button>

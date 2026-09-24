@@ -23,28 +23,47 @@
 </div>
 
 <hr>
+@php
+    $suItemColumns = [
+        'code'          => ['label' => 'Code / Barcode', 'default' => true],
+        'item'          => ['label' => 'Item Description', 'default' => true],
+        'expiry'        => ['label' => 'Exp Dt', 'default' => true],
+        'qty'           => ['label' => 'Qty (physical)', 'default' => true],
+        'current_stock' => ['label' => 'Current Stock', 'default' => true],
+        'sell_price'    => ['label' => 'Sell Price', 'default' => true],
+        'mrp'           => ['label' => 'MRP', 'default' => true],
+        'actions'       => ['label' => 'Actions', 'default' => true],
+    ];
+@endphp
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h5 class="mb-0 font-weight-bold"><i class="fas fa-boxes mr-1 text-primary"></i> Physical Count Items</h5>
         <p class="text-muted small mb-0">Enter the physically counted Qty. Current Stock is read from the system at the moment you Save, and the difference is posted as a +/- adjustment.</p>
     </div>
-    <button type="button" id="add-row" class="btn btn-outline-primary btn-sm font-weight-bold">
-        <i class="fas fa-plus-circle mr-1"></i> Add Item Line
-    </button>
+    <div class="d-flex align-items-center">
+        <x-table-column-customizer
+            table-key="inventory.stock-updates.items"
+            table-id="items-table"
+            :columns="$suItemColumns"
+        />
+        <button type="button" id="add-row" class="btn btn-outline-primary btn-sm font-weight-bold ml-2">
+            <i class="fas fa-plus-circle mr-1"></i> Add Item Line
+        </button>
+    </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table table-sm table-bordered table-hover" id="items-table">
+    <table class="table table-sm table-bordered table-hover table-items-dense" id="items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width: 170px;">Code / Barcode <span class="text-danger">*</span></th>
-                <th style="min-width: 220px;">Item Description</th>
-                <th style="width: 130px;">Exp Dt</th>
-                <th style="width: 110px;" class="text-right">Qty (physical) <span class="text-danger">*</span></th>
-                <th style="width: 100px;" class="text-right">Current Stock</th>
-                <th style="width: 100px;" class="text-right">Sell Price</th>
-                <th style="width: 100px;" class="text-right">MRP</th>
-                <th style="width: 40px;" class="text-center"></th>
+                <th style="width: 170px;" data-col-key="code">Code / Barcode <span class="text-danger">*</span></th>
+                <th style="min-width: 220px;" data-col-key="item">Item Description</th>
+                <th style="width: 130px;" data-col-key="expiry">Exp Dt</th>
+                <th style="width: 110px;" class="text-right" data-col-key="qty">Qty (physical) <span class="text-danger">*</span></th>
+                <th style="width: 100px;" class="text-right" data-col-key="current_stock">Current Stock</th>
+                <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
+                <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width: 40px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="items-body">
@@ -196,7 +215,10 @@
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
            ---------------------------------------------------------------- */
-        $(document).off('click focus', '.su-item-code').on('click focus', '.su-item-code', function (e) {
+        $(document).off('click focus keydown', '.su-item-code').on('click focus keydown', '.su-item-code', function (e) {
+            if (e.type === 'click') return; // Do not open on mouse click!
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+            if (e.type === 'keydown') e.preventDefault();
             if (suModalOpen || suModalClosing) return;
             let $row = $(this).closest('tr');
             if (e.type === 'focus' && $row.find('.su-item-id').val()) return;

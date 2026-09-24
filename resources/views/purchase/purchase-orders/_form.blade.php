@@ -3,6 +3,7 @@
     $indent = $indent ?? null;
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($initialItems ?? ($po?->items ?? collect()));
+    $supplierPurchaseTypes = \App\Models\Supplier::pluck('purchase_type', 'id')->filter();
 @endphp
 
 @if ($indent)
@@ -72,27 +73,36 @@
 <hr>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Items</h5>
-    <span class="badge badge-info px-3 py-2"><i class="fas fa-info-circle mr-1"></i> Click Code/Barcode to open Item Search</span>
+    <div class="d-flex align-items-center">
+        <x-table-column-customizer
+            table-key="purchase.purchase-orders.items"
+            table-id="po-items-table"
+            button-class="btn btn-xs btn-outline-secondary mr-2 shadow-sm font-weight-bold"
+            button-text="Columns"
+            title="Show/Hide & Arrange Item Columns"
+        />
+        <span class="badge badge-info px-3 py-2"><i class="fas fa-keyboard mr-1"></i> Press Enter on Code/Barcode to open Item Search</span>
+    </div>
 </div>
 
 <div class="table-responsive">
-    <table class="table table-sm table-bordered" id="po-items-table">
+    <table class="table table-sm table-bordered table-items-dense" id="po-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width:35px" class="text-center">#</th>
-                <th style="width:120px">Code / Barcode</th>
-                <th style="min-width:220px">Item Description</th>
-                <th style="width:85px" class="text-right">Stock</th>
-                <th style="width:90px" class="text-right">Qty</th>
-                <th style="width:90px" class="text-right">Free</th>
-                <th style="width:105px" class="text-right">Cost Price</th>
-                <th style="width:105px" class="text-right">Sell Price</th>
-                <th style="width:100px" class="text-right">MRP</th>
-                <th style="width:80px" class="text-right">Disc %</th>
-                <th style="width:100px" class="text-right">Disc Amt</th>
-                <th style="width:80px" class="text-right">GST%</th>
-                <th style="width:115px" class="text-right font-weight-bold text-success">Net Amount</th>
-                <th style="width:40px"></th>
+                <th style="width:35px" class="text-center" data-col-key="sr" data-can-hide="false">#</th>
+                <th style="width:120px" data-col-key="code" data-can-hide="false">Code / Barcode</th>
+                <th style="min-width:220px" data-col-key="desc" data-can-hide="false">Item Description</th>
+                <th style="width:85px" class="text-right" data-col-key="stock">Stock</th>
+                <th style="width:90px" class="text-right" data-col-key="qty" data-can-hide="false">Qty</th>
+                <th style="width:90px" class="text-right" data-col-key="free">Free</th>
+                <th style="width:105px" class="text-right" data-col-key="cost">Cost Price</th>
+                <th style="width:105px" class="text-right" data-col-key="sell">Sell Price</th>
+                <th style="width:100px" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width:80px" class="text-right" data-col-key="disc_pct">Disc %</th>
+                <th style="width:100px" class="text-right" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width:80px" class="text-right" data-col-key="gst">GST%</th>
+                <th style="width:115px" class="text-right font-weight-bold text-success" data-col-key="net" data-can-hide="false">Net Amount</th>
+                <th style="width:40px" data-col-key="action" data-can-hide="false"></th>
             </tr>
         </thead>
         <tbody id="po-items-body">
@@ -105,12 +115,12 @@
         <tfoot class="bg-light font-weight-bold">
             <tr>
                 <td colspan="4" class="text-right align-middle">Totals:</td>
-                <td class="text-right align-middle text-primary" id="po-footer-qty">0</td>
-                <td class="text-right align-middle text-muted" id="po-footer-free">0</td>
+                <td class="text-right align-middle text-primary" id="po-footer-qty" data-col-key="qty">0</td>
+                <td class="text-right align-middle text-muted" id="po-footer-free" data-col-key="free">0</td>
                 <td colspan="4"></td>
-                <td class="text-right align-middle text-danger" id="po-footer-disc">0.00</td>
+                <td class="text-right align-middle text-danger" id="po-footer-disc" data-col-key="disc_amt">0.00</td>
                 <td></td>
-                <td class="text-right align-middle text-success h6 mb-0" id="po-footer-net">0.00</td>
+                <td class="text-right align-middle text-success h6 mb-0" id="po-footer-net" data-col-key="net">0.00</td>
                 <td></td>
             </tr>
         </tfoot>
@@ -144,15 +154,41 @@
 </div>
 
 <hr>
-<h5 class="mb-3"><i class="fas fa-calculator mr-1 text-primary"></i> Totals</h5>
-<x-field name="freight" label="Freight" type="number" step="0.01" :value="$po->freight ?? 0" />
-<x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="$po->round_off ?? 0" />
-<x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="$po->scheme_item_disc_amt ?? 0" />
-<x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="$po->other_disc_amt ?? 0" />
-<x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$po->total_extra_cess ?? 0" />
-<x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$po->total_weight ?? 0" />
-<x-textarea name="remarks" label="Remarks" :value="$po->remarks ?? ($indent ? 'Requisition from Indent #' . $indent->indent_number . ($indent->remarks ? ' - ' . $indent->remarks : '') : '')" />
-<x-textarea name="message" label="Message" :value="$po->message ?? ''" />
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Charges</h5>
+    <x-form-layout-customizer
+        form-key="purchase_orders.totals"
+        container-id="po-totals-fields-grid"
+        title="Customize Purchase Order Totals Layout"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid" id="po-totals-fields-grid">
+    <div class="field-wrapper col-md-6" data-field="freight" data-label="Freight" data-default-order="1">
+        <x-field name="freight" label="Freight" type="number" step="0.01" :value="$po->freight ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="round_off" data-label="Round off Amount" data-default-order="2">
+        <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="$po->round_off ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="scheme_item_disc_amt" data-label="Scheme ItemDiscAmt" data-default-order="3">
+        <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="$po->scheme_item_disc_amt ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="other_disc_amt" data-label="OtherDiscAmt" data-default-order="4">
+        <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="$po->other_disc_amt ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="5">
+        <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$po->total_extra_cess ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="6">
+        <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$po->total_weight ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
+        <x-textarea name="remarks" label="Remarks" :value="$po->remarks ?? ($indent ? 'Requisition from Indent #' . $indent->indent_number . ($indent->remarks ? ' - ' . $indent->remarks : '') : '')" />
+    </div>
+    <div class="field-wrapper col-md-12" data-field="message" data-label="Message" data-default-order="8">
+        <x-textarea name="message" label="Message" :value="$po->message ?? ''" />
+    </div>
+</div>
 
 <x-custom-fields-renderer :module="'PurchaseOrder'" :model="$po ?? null" :cardStyle="true" />
 
@@ -500,8 +536,11 @@
             $('#po-item-search-modal').modal('hide');
         });
 
-        // Open modal on Code/Barcode field click or focus
-        $(document).off('click focus', '.po-item-code').on('click focus', '.po-item-code', function (e) {
+        // Open modal on Code/Barcode field: Mouse Click disabled (Task 5 & 8)
+        $(document).off('click focus keydown', '.po-item-code').on('click focus keydown', '.po-item-code', function (e) {
+            if (e.type === 'click') return; // Do not open on mouse click!
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
+            if (e.type === 'keydown') e.preventDefault();
             if (islModalOpen || islModalClosing) return;
             let $row = $(this).closest('tr');
             if (e.type === 'focus' && $row.find('.po-item-select').val()) return;
@@ -710,16 +749,16 @@
             rowIndex++;
             updateRowNumbers();
             setTimeout(function () {
-                $newRow.find('.po-item-code').focus().trigger('click');
+                $newRow.find('.po-item-code').focus();
+                $newRow.find('.po-item-code').trigger($.Event('keydown', { key: 'Enter' }));
             }, 60);
         }
 
-        // Last columns: pressing Tab or Enter advances to next row or adds a new row and opens search modal
-        $(document).on('keydown', '.po-gst, .po-disc-amount', function (e) {
+        // Last columns: pressing Tab or Enter on po-mrp, po-disc-amount, or po-gst advances to next row or adds a new row and opens search modal
+        $(document).on('keydown', '.po-gst, .po-disc-amount, .po-mrp', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
                 let $nextRow = $currentRow.next('tr');
-                // Both disc-amount and gst: Tab or Enter opens new row (or goes to next)
                 if (!$nextRow.length) {
                     e.preventDefault();
                     addPoRowAndOpenSearchModal();
@@ -748,6 +787,26 @@
             $(this).closest('tr').remove();
             updateRowNumbers();
         });
+
+        // Task 4 & 9: Auto-fill Supplier Purchase Type and lock it
+        const supplierPurchaseTypes = @json($supplierPurchaseTypes);
+        function applySupplierPurchaseType() {
+            let sId = $('#supplier_id').val();
+            if (sId && supplierPurchaseTypes[sId]) {
+                let pType = supplierPurchaseTypes[sId];
+                $('#purchase_type').val(pType).trigger('change');
+                $('#purchase_type').prop('disabled', true).addClass('bg-light');
+                if (!$('#hidden-purchase-type').length) {
+                    $('<input type="hidden" name="purchase_type" id="hidden-purchase-type">').appendTo('#po-header-fields-grid');
+                }
+                $('#hidden-purchase-type').val(pType);
+            } else {
+                $('#purchase_type').prop('disabled', false).removeClass('bg-light');
+                $('#hidden-purchase-type').remove();
+            }
+        }
+        $('#supplier_id').on('change', applySupplierPurchaseType);
+        applySupplierPurchaseType();
 
         // Submit Loader
         $('form').on('submit', function () {
