@@ -58,6 +58,9 @@
                     <button type="button" class="btn btn-xs btn-outline-success font-weight-bold mr-1 mb-1 token-chip" data-token="{FY}">
                         {FY} <small class="text-muted">({{ ((int)now()->format('m') >= 4 ? now()->format('y').'-'.((int)now()->format('y')+1) : ((int)now()->format('y')-1).'-'.now()->format('y')) }})</small>
                     </button>
+                    <button type="button" class="btn btn-xs btn-outline-success font-weight-bold mr-1 mb-1 token-chip" data-token="{FY_NUM}">
+                        {FY_NUM} <small class="text-muted">({{ ((int)now()->format('m') >= 4 ? now()->format('y').((int)now()->format('y')+1) : ((int)now()->format('y')-1).now()->format('y')) }})</small>
+                    </button>
                     <button type="button" class="btn btn-xs btn-outline-info font-weight-bold mr-1 mb-1 token-chip" data-token="{BRANCH}">
                         {BRANCH} <small class="text-muted">(Code)</small>
                     </button>
@@ -132,7 +135,7 @@
                                            required 
                                            placeholder="e.g. SB-{YEAR}- or MOT-{FY}-"
                                            data-key="{{ $key }}">
-                                    <small class="text-muted">Use {YEAR}, {YY}, {FY}, {BRANCH}, {MONTH}</small>
+                                    <small class="text-muted">Use {YEAR}, {YY}, {FY}, {FY_NUM}, {FY_LONG}, {BRANCH}, {MONTH}</small>
                                 </div>
 
                                 {{-- Starting / Next Number --}}
