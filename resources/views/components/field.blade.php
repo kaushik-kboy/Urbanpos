@@ -15,7 +15,7 @@
     </label>
     <div class="col-sm-{{ $col }}">
         @if($type === 'date')
-            <div class="input-group">
+            <div class="input-group urbanpos-date-group" data-date-field-wrapper="true">
                 <input
                     type="text"
                     id="{{ $name }}"
@@ -23,14 +23,19 @@
                     @if($required || $attributes->has('required')) required @endif
                     {{ $attributes->merge(['class' => 'form-control datepicker ' . ($errors->has($name) ? 'is-invalid' : '')]) }}
                     value="{{ $computedValue }}"
-                    placeholder="YYYY-MM-DD"
+                    placeholder="DD-MM-YYYY (e.g. 10042026)"
                     autocomplete="off"
+                    data-date-field="true"
                 >
                 <div class="input-group-append">
                     @if($hasAddon)
                         {!! $addon !!}{{ $slot }}
                     @else
-                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        <button type="button" class="btn btn-outline-secondary btn-date-mode-toggle d-flex align-items-center py-1 px-2" style="border-color: #ced4da; background-color: #f8f9fa;">
+                            <span class="date-mode-label mr-2"><i class="fas fa-keyboard text-primary mr-1"></i><span class="small font-weight-bold text-dark">Manual</span></span>
+                            <span class="btn-open-datepicker text-muted mr-2" title="Click to Open Calendar Picker"><i class="fas fa-calendar-alt"></i></span>
+                            <span class="btn-date-settings-modal text-secondary" title="Configure Date Format & Entry Mode"><i class="fas fa-cog"></i></span>
+                        </button>
                     @endif
                 </div>
             </div>

@@ -815,6 +815,32 @@ class PurchaseInvoiceController extends Controller
             $request->merge(['invoice_number' => strtoupper(trim((string) $request->input('invoice_number')))]);
         }
 
+        foreach (['invoice_date', 'grn_date', 'supplier_inv_date'] as $dateField) {
+            if ($request->filled($dateField)) {
+                $normalized = \App\Helpers\DateHelper::normalize($request->input($dateField));
+                if ($normalized) {
+                    $request->merge([$dateField => $normalized]);
+                }
+            }
+        }
+
+        if ($request->has('items') && is_array($request->input('items'))) {
+            $items = $request->input('items');
+            $itemsUpdated = false;
+            foreach ($items as &$itm) {
+                if (!empty($itm['exp_date'])) {
+                    $normExp = \App\Helpers\DateHelper::normalize($itm['exp_date']);
+                    if ($normExp) {
+                        $itm['exp_date'] = $normExp;
+                        $itemsUpdated = true;
+                    }
+                }
+            }
+            if ($itemsUpdated) {
+                $request->merge(['items' => $items]);
+            }
+        }
+
         $today = date('Y-m-d');
         $headerRules = [
             'invoice_date' => ['required', 'date', "before_or_equal:{$today}"],

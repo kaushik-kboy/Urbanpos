@@ -1354,9 +1354,21 @@
         // Prevent future dates on invoice_date, grn_date, supplier_inv_date
         $('#invoice_date, #grn_date, #supplier_inv_date').on('change', function () {
             const today = new Date().toISOString().split('T')[0];
-            if (this.value && this.value > today) {
-                alert('Future date is not allowed for ' + ($(this).closest('.form-group').find('label').text().trim().replace('*', '').trim() || 'Date') + '!');
-                this.value = today;
+            if (this.value) {
+                let parts = typeof window.parseDateParts === 'function' ? window.parseDateParts(this.value) : null;
+                let isoVal = parts 
+                    ? (parts.year + '-' + String(parts.month).padStart(2, '0') + '-' + String(parts.day).padStart(2, '0')) 
+                    : this.value;
+                if (isoVal > today) {
+                    let fieldName = $(this).closest('.form-group').find('label').text().trim().replace('*', '').trim() || 'Date';
+                    alert('Future date is not allowed for ' + fieldName + '!');
+                    let now = new Date();
+                    let todayFormatted = typeof window.formatParts === 'function' && typeof window.UrbanPosDateConfig !== 'undefined'
+                        ? window.formatParts({ day: now.getDate(), month: now.getMonth() + 1, year: now.getFullYear() }, window.UrbanPosDateConfig.getFormat())
+                        : today;
+                    this.value = todayFormatted;
+                    $(this).trigger('change');
+                }
             }
         });
 
