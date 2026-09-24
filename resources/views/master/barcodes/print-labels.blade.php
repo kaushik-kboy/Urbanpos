@@ -6,6 +6,8 @@
     <title>Print Barcode Stickers - {{ $storeName }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
     <style>
@@ -332,6 +334,16 @@
             border: none !important;
         }
 
+        body.rotate-90 .barcode-label-card {
+            transform: rotate(90deg);
+        }
+        body.rotate-180 .barcode-label-card {
+            transform: rotate(180deg);
+        }
+        body.rotate-270 .barcode-label-card {
+            transform: rotate(270deg);
+        }
+
         /* ── Print Media Queries ───────────────────────────────────────────── */
         @media print {
             .print-toolbar, .print-instructions, .no-print {
@@ -356,6 +368,20 @@
             }
             .barcode-label-empty {
                 visibility: hidden !important;
+            }
+
+            body.test-print-mode .barcode-label-pair:not(:first-child) {
+                display: none !important;
+            }
+
+            body.rotate-90 .barcode-label-card {
+                transform: rotate(90deg);
+            }
+            body.rotate-180 .barcode-label-card {
+                transform: rotate(180deg);
+            }
+            body.rotate-270 .barcode-label-card {
+                transform: rotate(270deg);
             }
 
             /* 50x25mm 2-Up */
@@ -588,13 +614,32 @@
                 </a>
             </div>
 
-            {{-- TSPL Raw Download for TSC TE244 --}}
-            <a href="{{ route('master.barcodes.tspl', request()->query()) }}" class="btn btn-info btn-sm font-weight-bold mr-2 my-1 shadow-sm" title="Download native TSPL command file for TSC TE244 raw printing">
-                <i class="fas fa-file-download mr-1"></i> TSPL File (.prn)
-            </a>
+            {{-- Rotation Selector --}}
+            <div class="btn-group btn-group-sm mr-2 my-1">
+                <button type="button" class="btn btn-outline-secondary font-weight-bold dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-sync-alt mr-1"></i> <span id="rotLabel">Rotation: 0°</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right shadow">
+                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(0)"><i class="fas fa-arrow-up mr-2 text-primary"></i> 0° Sidha (Normal Portrait)</a>
+                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(90)"><i class="fas fa-arrow-right mr-2 text-warning"></i> 90° Ghumao (Clockwise)</a>
+                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(180)"><i class="fas fa-arrow-down mr-2 text-danger"></i> 180° Inverted (Ulta)</a>
+                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(270)"><i class="fas fa-arrow-left mr-2 text-info"></i> 270° Ghumao (Counter-CW)</a>
+                </div>
+            </div>
 
+            {{-- Guide Modal Trigger --}}
+            <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" data-toggle="modal" data-target="#tscSetupModal">
+                <i class="fas fa-wrench mr-1"></i> TSC Setup Guide
+            </button>
+
+            {{-- Test Print (1 Row Only) --}}
+            <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" onclick="printTestRow()" title="Sirf 2 stickers test ke liye print karein taaki roll na kharab ho">
+                <i class="fas fa-vial mr-1"></i> Test 1 Row (2 Stickers)
+            </button>
+
+            {{-- Main Print All Stickers --}}
             <button type="button" class="btn btn-success font-weight-bold shadow-sm px-4 my-1" onclick="window.print();">
-                <i class="fas fa-print mr-2"></i> Print Stickers
+                <i class="fas fa-print mr-2"></i> Print All Stickers
             </button>
         </div>
     </div>
@@ -707,8 +752,132 @@
         @endif
     </div>
 
+    <!-- TSC TE244 Setup Modal -->
+    <div class="modal fade" id="tscSetupModal" tabindex="-1" role="dialog" aria-labelledby="tscSetupModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white py-3">
+                    <h5 class="modal-title font-weight-bold" id="tscSetupModalLabel">
+                        <i class="fas fa-print text-warning mr-2"></i> TSC TE244 (2-Up Barcode Roll) Step-by-Step Setup Guide
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-4" style="font-size: 14px; line-height: 1.6;">
+                    <div class="alert alert-info py-2 px-3 mb-3">
+                        <strong>Aapke Roll me 1 row me 2 stickers bagal-bagal hain (50x25mm ya 50x38mm).</strong><br>
+                        Print <strong>sideways (ghoom ke)</strong> ya <strong>blank roll bahar nikalne</strong> se bachne ke liye sirf ye 3 steps check karein:
+                    </div>
+
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-light font-weight-bold text-primary">
+                            <i class="fas fa-magic mr-1"></i> STEP 1: Printer Hardware Calibrate Karein (Blank Roll / Paper Fenkte Rehne se Bachne Ke Liye)
+                        </div>
+                        <div class="card-body py-2">
+                            <ol class="mb-0 pl-3">
+                                <li>Printer ko peeche ke button se <strong>POWER OFF</strong> karein.</li>
+                                <li>Front panel par <strong>PAUSE</strong> button (ya FEED button) ko ungli se daba kar rakhein.</li>
+                                <li>Button dabaye hue hi printer ko peeche se <strong>POWER ON</strong> karein.</li>
+                                <li>Jaise hi printer paper ko aage khiskana shuru kare aur light blink ho, button chhod dein.</li>
+                                <li>Printer 2-3 stickers nikal kar exact gap par ruk jayega (Sensor calibrate ho gaya).</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 border-success">
+                        <div class="card-header bg-light font-weight-bold text-success">
+                            <i class="fas fa-cogs mr-1"></i> STEP 2: Windows me TSC TE244 Driver Settings (Sirf 1 baar karni hoti hai)
+                        </div>
+                        <div class="card-body py-2">
+                            <ol class="mb-0 pl-3">
+                                <li>Windows Start menu me search karein <strong>"Printers & Scanners"</strong> aur open karein.</li>
+                                <li><strong>TSC TE244</strong> printer par click karein -> <strong>Printing Preferences</strong>.</li>
+                                <li><strong>Page Setup</strong> tab me click karein <strong>New...</strong>:
+                                    <ul>
+                                        <li>Name: <code>102x25</code> (ya <code>102x38</code>)</li>
+                                        <li>Width: <strong>102.0 mm</strong> (roll ki total choudai)</li>
+                                        <li>Height: <strong>25.0 mm</strong> (ya sticker ki height jaise 38.0 mm)</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Stock</strong> tab me:
+                                    <ul>
+                                        <li>Type: <strong>Labels with Gaps</strong> (Gap height: <strong>2.0 mm</strong>)</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Apply</strong> aur <strong>OK</strong> par click karein.</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 border-warning">
+                        <div class="card-header bg-light font-weight-bold text-dark">
+                            <i class="fas fa-desktop mr-1"></i> STEP 3: Chrome Print Dialog Settings (Ctrl + P)
+                        </div>
+                        <div class="card-body py-2">
+                            <ul class="mb-0 pl-3">
+                                <li><strong>Destination:</strong> Select <code>TSC TE244</code></li>
+                                <li><strong>Layout:</strong> <span class="badge badge-danger">PORTRAIT</span> (Landscape nahi rakhna hai, Portrait se print sidha aayega)</li>
+                                <li><strong>Paper size:</strong> <code>102x25 mm</code> (jo step 2 me banaya)</li>
+                                <li><strong>Margins:</strong> <code>None</code> (0)</li>
+                                <li><strong>Scale:</strong> <code>100%</code> (Custom -> 100)</li>
+                                <li><strong>Headers and Footers:</strong> <code>Uncheck (OFF)</code></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 mb-0 font-weight-bold">
+                        💡 Roll bachane ke liye pehle <strong>"Test 1 Row (2 Stickers)"</strong> button dabakar test karein!
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-warning font-weight-bold" onclick="$('#tscSetupModal').modal('hide'); printTestRow();">
+                        <i class="fas fa-vial mr-1"></i> Test 1 Row Print Karein
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function setRotation(deg) {
+            document.body.classList.remove('rotate-0', 'rotate-90', 'rotate-180', 'rotate-270');
+            if (deg > 0) {
+                document.body.classList.add('rotate-' + deg);
+            }
+            const labels = {
+                0: 'Rotation: 0°',
+                90: 'Rotation: 90°',
+                180: 'Rotation: 180°',
+                270: 'Rotation: 270°'
+            };
+            const labelEl = document.getElementById('rotLabel');
+            if (labelEl) {
+                labelEl.innerText = labels[deg] || 'Rotation: ' + deg + '°';
+            }
+            try {
+                localStorage.setItem('urbanpos_barcode_rotation', deg);
+            } catch (e) {}
+        }
+
+        function printTestRow() {
+            document.body.classList.add('test-print-mode');
+            window.print();
+            setTimeout(function () {
+                document.body.classList.remove('test-print-mode');
+            }, 1200);
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
+            // Restore saved rotation preference
+            try {
+                const savedRot = parseInt(localStorage.getItem('urbanpos_barcode_rotation') || '0', 10);
+                if (savedRot) {
+                    setRotation(savedRot);
+                }
+            } catch (e) {}
+
             const is102x64 = document.body.classList.contains('format-102x64');
             const is50x38 = document.body.classList.contains('format-50x38_2up');
             const is50x50 = document.body.classList.contains('format-50x50_2up');
