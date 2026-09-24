@@ -241,6 +241,57 @@ class SalesReturnController extends Controller
     }
 
     /**
+     * AJAX endpoint: return total qty sold for an item (optionally per customer).
+     * Used by SR form when no specific sales bill is selected — prevents return qty > total sold qty.
+     */
+    public function itemSoldQty(Request $request)
+    {
+        $itemId    = $request->integer('item_id');
+        $customerId = $request->integer('customer_id');
+        $ignoreReturnId = $request->integer('ignore_return_id'); // for edit mode
+
+        if (!$itemId) {
+            return response()->json(['total_sold' => null, 'already_returned' => 0, 'available' => null]);
+        }
+
+        $soldQuery = SalesBillItem::where('item_id', $itemId)
+            ->whereHas('salesBill', function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereNull('status')->orWhere('status', '!=', 'Cancelled');
+                });
+            });
+
+        if ($customerId) {
+            $soldQuery->whereHas('salesBill', function ($q) use ($customerId) {
+                $q->where('customer_id', $customerId);
+            });
+        }
+
+        $totalSold = (float) $soldQuery->sum('qty');
+
+        // Calculate already returned qty (from other returns)
+        $returnedQuery = \App\Models\SalesReturnItem::where('item_id', $itemId);
+        if ($ignoreReturnId) {
+            $returnedQuery->where('sales_return_id', '!=', $ignoreReturnId);
+        }
+        if ($customerId) {
+            $returnedQuery->whereHas('salesReturn', function ($q) use ($customerId) {
+                $q->where('customer_id', $customerId);
+            });
+        }
+        $alreadyReturned = (float) $returnedQuery->sum('qty');
+
+        $available = max(0, $totalSold - $alreadyReturned);
+
+        return response()->json([
+            'total_sold'       => $totalSold,
+            'already_returned' => $alreadyReturned,
+            'available'        => $available,
+        ]);
+    }
+
+
+    /**
      * Restores stock at the ORIGINAL sale's cost_at_sale when the return is linked to a
      * sales bill (per foundation spec: a return restores the original cost basis, not
      * today's average) — falls back to cost-neutral (current average) when unlinked.

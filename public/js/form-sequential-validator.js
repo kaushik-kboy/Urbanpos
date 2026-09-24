@@ -70,6 +70,11 @@
         if ($field.prop('disabled') || $field.prop('readonly')) {
             return false;
         }
+        // Fields marked as sequential-optional are skipped in sequential blocking
+        // (still validated at submit, but don't block Tab/click progression)
+        if ($field.data('sequential-optional') || $field.attr('data-sequential-optional') === '1') {
+            return false;
+        }
         if ($field.is(':hidden') && !$field.hasClass('select2-hidden-accessible')) {
             return false;
         }
@@ -85,6 +90,7 @@
         }
         return false;
     }
+
 
     // Check if element belongs to a table item row
     function isLineItemField($field) {

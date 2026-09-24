@@ -443,7 +443,8 @@
             srItemSelectedInModal = true;
             srCancellingRow = null;
 
-            srActiveSearchRow.find('.sr-item-code').val(itemId);
+            // Show internal item_code in Code column, not the numeric ID or barcode
+            srActiveSearchRow.find('.sr-item-code').val(itemCode || ('#' + itemId));
             srActiveSearchRow.find('.sr-item-desc').val(itemName + (itemCode ? ' [' + itemCode + ']' : ''));
             srActiveSearchRow.find('.sr-item-select').val(itemId);
             srActiveSearchRow.find('.sr-exp-date').val(exp || '');
@@ -457,6 +458,18 @@
             srActiveSearchRow.find('.sr-qty').val('').focus();
             $('#sr-item-search-modal').modal('hide');
         });
+
+        // Enter key in SR modal search filter selects first visible item row
+        $(document).on('keydown', '#sr-isl-filter-name, #sr-isl-filter-code', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                let $first = $('#sr-isl-results-body .sr-isl-item-row:visible').first();
+                if ($first.length) {
+                    $first.trigger('click');
+                }
+            }
+        });
+
 
         let srItemSelectedInModal = false;
 
@@ -621,16 +634,67 @@
             }
         });
 
-        // Cap return quantity to original bill quantity
+        // Cap return quantity:
+
+        // 1) If bill selected: cap by original_qty on that row (already set via data-original-qty)
+        // 2) If NO bill selected: AJAX validate against total sold qty for item+customer
+        const SR_SOLD_QTY_URL = '{{ route("sales.sales-returns.item-sold-qty") }}';
+        let srQtyDebounce = {};
+
         $(document).on('input change', '.sr-qty', function () {
-            let maxQty = parseFloat($(this).attr('data-original-qty') || $(this).attr('max'));
-            let currentVal = parseFloat($(this).val()) || 0;
-            if (maxQty > 0 && currentVal > maxQty) {
-                alert(`Return quantity cannot exceed original bill quantity (${maxQty}). Quantity adjusted.`);
-                $(this).val(maxQty);
+            let $input = $(this);
+            let $row = $input.closest('tr');
+            let maxQty = parseFloat($input.attr('data-original-qty') || $input.attr('max'));
+            let currentVal = parseFloat($input.val()) || 0;
+
+            // Case 1: bill is selected — use data-original-qty cap (existing logic)
+            if ($('#sales_bill_id').val()) {
+                if (maxQty > 0 && currentVal > maxQty) {
+                    if (window.toastr) {
+                        window.toastr.warning(`Return qty cannot exceed bill qty (${maxQty}). Adjusted.`, 'Qty Limit');
+                    }
+                    $input.val(maxQty);
+                }
+                recalculateAll();
+                return;
             }
+
+            // Case 2: no bill selected — AJAX check against total sold
+            let itemId = $row.find('.sr-item-select').val();
+            if (!itemId) {
+                recalculateAll();
+                return;
+            }
+            let customerId = $('#customer_id').val() || '';
+            let rowKey = $row.index();
+            clearTimeout(srQtyDebounce[rowKey]);
+            srQtyDebounce[rowKey] = setTimeout(function () {
+                $.getJSON(SR_SOLD_QTY_URL, { item_id: itemId, customer_id: customerId }, function (res) {
+                    if (res && res.available !== null) {
+                        let avail = parseFloat(res.available);
+                        // Update max on the input
+                        $input.attr('data-max-no-bill', avail);
+                        let $maxLabel = $row.find('.sr-max-qty-label');
+                        if ($maxLabel.length) {
+                            $maxLabel.text('Max: ' + avail.toFixed(3)).show();
+                        }
+                        if (currentVal > avail) {
+                            if (window.toastr) {
+                                window.toastr.warning(
+                                    `Return qty (${currentVal}) exceeds total available to return (${avail.toFixed(3)}) for this item. Adjusted.`,
+                                    'Qty Limit'
+                                );
+                            }
+                            $input.val(avail > 0 ? avail.toFixed(3) : 0).addClass('border-warning');
+                            setTimeout(() => $input.removeClass('border-warning'), 2000);
+                        }
+                        recalculateAll();
+                    }
+                });
+            }, 400);
             recalculateAll();
         });
+
 
         document.getElementById('round_off')?.addEventListener('input', recalculateAll);
         document.getElementById('total_extra_cess')?.addEventListener('input', recalculateAll);

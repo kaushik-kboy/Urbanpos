@@ -71,12 +71,14 @@
                     <i class="fas fa-user-plus mr-1"></i> + New Customer
                 </button>
             </div>
-            <select name="customer_id" id="customer_id" class="form-control select2">
+            {{-- No `required` attr: customer can be added before or after items in sales bills --}}
+            <select name="customer_id" id="customer_id" class="form-control select2" data-sequential-optional="1">
                 <option value="">-- Search Customer by Name or Mobile --</option>
                 @foreach ($customers as $id => $name)
                     <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
                 @endforeach
             </select>
+
         </div>
         <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-2 shadow-sm align-items-center justify-content-between">
             <div>
@@ -2151,14 +2153,9 @@
         });
 
         // Guard adding items or focusing code if header is invalid (Task 11)
-        $(document).on('click focusin', '#sb-add-row, #sb-items-body input.sb-item-code', function (e) {
-            let custId = $('#customer_id').val();
-            if (!custId) {
-                e.preventDefault();
-                validateSbHeader(true);
-                return false;
-            }
-        });
+        // Customer is optional during item entry - can be added before or after items
+        // (No blocking gate here — customer is validated at submit time only)
+
 
         $(document).on('change', '#customer_id', function () {
             validateSbHeader(false);

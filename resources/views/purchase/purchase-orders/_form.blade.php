@@ -719,11 +719,13 @@
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
                 let $nextRow = $currentRow.next('tr');
-                if ($(this).hasClass('po-gst') || e.key === 'Enter') {
-                    if (!$nextRow.length) {
-                        e.preventDefault();
-                        addPoRowAndOpenSearchModal();
-                    }
+                // Both disc-amount and gst: Tab or Enter opens new row (or goes to next)
+                if (!$nextRow.length) {
+                    e.preventDefault();
+                    addPoRowAndOpenSearchModal();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $nextRow.find('.po-item-code').focus();
                 }
             }
         });
