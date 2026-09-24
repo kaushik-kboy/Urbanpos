@@ -185,10 +185,83 @@
     window.formatParts = formatParts;
 
     /* ==========================================================================
-       3. Date Picker Setup & Mode Enforcement
+       3. Universal Date Field Detector & UI Button Wrapper
+       ========================================================================== */
+    function isDateFieldName(name) {
+        if (!name) return false;
+        var lower = String(name).toLowerCase();
+        var dateFieldExact = [
+            'from', 'to', 'from_date', 'to_date', 'date_from', 'date_to',
+            'invoice_date', 'grn_date', 'supplier_inv_date', 'order_date',
+            'expected_delivery_date', 'delivery_date', 'lr_date', 'return_date',
+            'quotation_date', 'valid_until', 'transport_doc_date', 'po_date',
+            'due_date', 'payment_date', 'cheque_date', 'exp_date', 'dob', 'anniversary'
+        ];
+        if (dateFieldExact.indexOf(lower) !== -1) return true;
+        if (lower.indexOf('date') !== -1 || lower.indexOf('[exp_date]') !== -1) {
+            if (/^(candidates?|consolidated|update_rate)/i.test(lower)) return false;
+            return true;
+        }
+        return false;
+    }
+
+    function ensureDateAddonButtons($input) {
+        // Skip range pickers, hidden, readonly, or disabled inputs
+        if ($input.hasClass('daterange') || $input.data('mode') === 'range' || $input.is(':hidden') || $input.is('[readonly]') || $input.is('[disabled]')) {
+            return;
+        }
+
+        // Already has buttons or wrapper
+        if ($input.closest('.urbanpos-date-group').length || $input.parent().find('.btn-open-datepicker').length) {
+            return;
+        }
+
+        var $parent = $input.parent();
+        var isTableCell = $input.closest('td, th').length > 0;
+        var isSm = isTableCell || $input.hasClass('form-control-sm');
+        var btnSizeClass = isSm ? 'btn-sm py-0 px-1' : 'py-1 px-2';
+        var iconSizeStyle = isSm ? 'font-size: 11px; pointer-events: none;' : 'pointer-events: none;';
+
+        var buttonsHtml = 
+            '<div class="input-group-append">' +
+            '    <button type="button" class="btn btn-outline-secondary btn-open-datepicker ' + btnSizeClass + '" title="Click to Open Calendar Picker" style="border-color: #ced4da; background-color: #f8f9fa;">' +
+            '        <i class="fas fa-calendar-alt text-primary" style="' + iconSizeStyle + '"></i>' +
+            '    </button>' +
+            '    <button type="button" class="btn btn-outline-secondary btn-date-settings-modal ' + btnSizeClass + '" data-toggle="modal" data-target="#urbanpos-date-settings-modal" title="Date Settings: Hath se likhna / Calendar / Formats" style="border-color: #ced4da; background-color: #e9ecef;">' +
+            '        <i class="fas fa-cog text-dark" style="' + iconSizeStyle + '"></i>' +
+            '    </button>' +
+            '</div>';
+
+        if ($parent.hasClass('input-group')) {
+            var $append = $parent.find('.input-group-append');
+            if ($append.length) {
+                $append.append(
+                    '<button type="button" class="btn btn-outline-secondary btn-open-datepicker ' + btnSizeClass + '" title="Click to Open Calendar Picker" style="border-color: #ced4da; background-color: #f8f9fa;">' +
+                    '    <i class="fas fa-calendar-alt text-primary" style="' + iconSizeStyle + '"></i>' +
+                    '</button>' +
+                    '<button type="button" class="btn btn-outline-secondary btn-date-settings-modal ' + btnSizeClass + '" data-toggle="modal" data-target="#urbanpos-date-settings-modal" title="Date Settings: Hath se likhna / Calendar / Formats" style="border-color: #ced4da; background-color: #e9ecef;">' +
+                    '    <i class="fas fa-cog text-dark" style="' + iconSizeStyle + '"></i>' +
+                    '</button>'
+                );
+            } else {
+                $parent.append(buttonsHtml);
+            }
+            $parent.addClass('urbanpos-date-group');
+        } else {
+            var groupClass = isSm ? 'input-group input-group-sm urbanpos-date-group' : 'input-group urbanpos-date-group';
+            $input.wrap('<div class="' + groupClass + '" data-date-field-wrapper="true"></div>');
+            $input.after(buttonsHtml);
+        }
+    }
+
+    /* ==========================================================================
+       4. Date Picker Setup & Mode Enforcement
        ========================================================================== */
     function setupDatePicker($input) {
         if (typeof $.fn.daterangepicker === 'undefined') return;
+
+        // Automatically attach calendar and settings buttons across all pages
+        ensureDateAddonButtons($input);
 
         var isRange = $input.data('mode') === 'range' || $input.hasClass('daterange');
         var currentFormat = DateConfig.getFormat();
@@ -535,14 +608,25 @@
     function initAll(context) {
         var $scope = context ? $(context) : $(document);
 
-        // Convert any native input[type="date"] to text with datepicker class
-        $scope.find('input[type="date"]').each(function () {
+        // 1. Convert any native input[type="date"] to text with datepicker class (skip readonly/hidden)
+        $scope.find('input[type="date"]:not([readonly]):not([type="hidden"])').each(function () {
             var $el = $(this);
             $el.attr('type', 'text').addClass('datepicker').attr('data-date-field', 'true');
         });
 
-        // Initialize all .datepicker and [data-toggle="datepicker"] inputs
-        $scope.find('.datepicker, [data-toggle="datepicker"]').each(function () {
+        // 2. Identify text inputs that represent date fields by name/id (skip readonly/hidden)
+        $scope.find('input[type="text"]:not([readonly]):not([type="hidden"]), input:not([type]):not([readonly]):not([type="hidden"])').each(function () {
+            var $el = $(this);
+            if ($el.hasClass('datepicker') || $el.hasClass('daterange') || $el.data('date-field')) return;
+            var name = ($el.attr('name') || '').toLowerCase();
+            var id = ($el.attr('id') || '').toLowerCase();
+            if (isDateFieldName(name) || isDateFieldName(id)) {
+                $el.addClass('datepicker').attr('data-date-field', 'true');
+            }
+        });
+
+        // 3. Initialize all .datepicker, [data-toggle="datepicker"], and [data-date-field="true"] inputs
+        $scope.find('.datepicker, [data-toggle="datepicker"], [data-date-field="true"]').each(function () {
             setupDatePicker($(this));
         });
 
@@ -561,12 +645,20 @@
         initAll(target || document);
     });
 
-    $(document).on('focus click', '.datepicker:not(.picker-ready), input[type="date"]', function () {
+    $(document).on('focus click', '.datepicker:not(.picker-ready), input[type="date"]:not([readonly]), input[data-date-field="true"]:not(.picker-ready)', function () {
         var $this = $(this);
         if ($this.attr('type') === 'date') {
             $this.attr('type', 'text').addClass('datepicker').attr('data-date-field', 'true');
         }
         setupDatePicker($this);
+    });
+
+    // Ensure date inputs format correctly before submitting any form
+    $(document).on('submit', 'form', function () {
+        var $form = $(this);
+        $form.find('.datepicker, [data-date-field="true"]').each(function () {
+            applyFastDateFormatting($(this));
+        });
     });
 
 })(jQuery);
