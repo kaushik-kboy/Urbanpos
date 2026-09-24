@@ -70,20 +70,20 @@
             border-radius: 3px;
         }
         .format-50x25_2up .label-store-name {
-            font-size: 6.5pt;
+            font-size: 8pt;
             font-weight: 800;
             text-transform: uppercase;
-            line-height: 1;
+            line-height: 1.1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             color: #000;
         }
         .format-50x25_2up .label-item-name {
-            font-size: 7pt;
-            font-weight: 700;
-            line-height: 1.1;
-            max-height: 2.2em;
+            font-size: 8.5pt;
+            font-weight: 800;
+            line-height: 1.15;
+            max-height: 2.3em;
             overflow: hidden;
             margin: 0.3mm 0;
             color: #000;
@@ -93,11 +93,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 0;
+            margin: 0.2mm 0;
         }
         .format-50x25_2up .label-barcode-svg {
             max-width: 98%;
-            max-height: 10.5mm;
+            max-height: 13mm;
             width: auto;
             height: auto;
             display: block;
@@ -107,19 +107,19 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 6.5pt;
+            font-size: 7.5pt;
             font-weight: 700;
-            line-height: 1;
-            border-top: 0.5px solid #000;
+            line-height: 1.1;
+            border-top: 0.8px solid #000;
             padding-top: 0.5mm;
         }
         .format-50x25_2up .label-mrp {
-            font-size: 6pt;
+            font-size: 7pt;
             text-decoration: line-through;
-            color: #475569;
+            color: #334155;
         }
         .format-50x25_2up .label-sell {
-            font-size: 7.5pt;
+            font-size: 10.5pt;
             font-weight: 900;
             color: #000;
         }
@@ -152,27 +152,50 @@
             border-radius: 3px;
         }
         .format-50x38_2up .label-store-name {
-            font-size: 8pt;
+            font-size: 9pt;
             font-weight: 800;
             text-transform: uppercase;
         }
         .format-50x38_2up .label-item-name {
-            font-size: 8pt;
-            font-weight: 700;
-            line-height: 1.15;
-            max-height: 2.3em;
+            font-size: 10pt;
+            font-weight: 800;
+            line-height: 1.2;
+            max-height: 2.4em;
         }
         .format-50x38_2up .label-barcode-svg {
             max-width: 98%;
-            max-height: 16mm;
+            max-height: 19mm;
         }
         .format-50x38_2up .label-prices {
-            font-size: 8pt;
+            font-size: 9pt;
+            font-weight: 700;
         }
         .format-50x38_2up .label-sell {
-            font-size: 9.5pt;
+            font-size: 13.5pt;
             font-weight: 900;
         }
+
+        /* ── Scale Size Modifiers (Normal / Large / Extra Large) ───────────── */
+        body.scale-large .format-50x25_2up .label-store-name { font-size: 9pt; }
+        body.scale-large .format-50x25_2up .label-item-name { font-size: 9.5pt; font-weight: 900; }
+        body.scale-large .format-50x25_2up .label-barcode-svg { max-height: 14mm; }
+        body.scale-large .format-50x25_2up .label-sell { font-size: 12pt; }
+        body.scale-large .format-50x25_2up .label-mrp { font-size: 8pt; }
+
+        body.scale-xl .format-50x25_2up .label-store-name { font-size: 10pt; }
+        body.scale-xl .format-50x25_2up .label-item-name { font-size: 10.5pt; font-weight: 900; }
+        body.scale-xl .format-50x25_2up .label-barcode-svg { max-height: 15mm; }
+        body.scale-xl .format-50x25_2up .label-sell { font-size: 13.5pt; }
+
+        body.scale-large .format-50x38_2up .label-store-name { font-size: 10.5pt; }
+        body.scale-large .format-50x38_2up .label-item-name { font-size: 11.5pt; font-weight: 900; }
+        body.scale-large .format-50x38_2up .label-barcode-svg { max-height: 22mm; }
+        body.scale-large .format-50x38_2up .label-sell { font-size: 15.5pt; }
+
+        body.scale-xl .format-50x38_2up .label-store-name { font-size: 12pt; }
+        body.scale-xl .format-50x38_2up .label-item-name { font-size: 13pt; font-weight: 900; }
+        body.scale-xl .format-50x38_2up .label-barcode-svg { max-height: 25mm; }
+        body.scale-xl .format-50x38_2up .label-sell { font-size: 17.5pt; }
 
         /* ── 50x50mm 2-Up ─────────────────────────────────────────────────── */
         .format-50x50_2up .barcode-label-pair {
@@ -627,6 +650,18 @@
                 </div>
             </div>
 
+            {{-- Text & Barcode Size / Scale Selector --}}
+            <div class="btn-group btn-group-sm mr-2 my-1">
+                <button type="button" class="btn btn-outline-dark font-weight-bold dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-text-height mr-1"></i> <span id="scaleLabel">Size: Bada (Large)</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right shadow">
+                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setScale('normal')">Chota (Normal)</a>
+                    <a class="dropdown-item font-weight-bold text-primary" href="javascript:void(0)" onclick="setScale('large')"><i class="fas fa-check text-primary mr-1"></i> Bada (Large - Recommended)</a>
+                    <a class="dropdown-item font-weight-bold text-success" href="javascript:void(0)" onclick="setScale('xl')"><i class="fas fa-expand-arrows-alt text-success mr-1"></i> Bahut Bada (Extra Large)</a>
+                </div>
+            </div>
+
             {{-- Guide Modal Trigger --}}
             <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" data-toggle="modal" data-target="#tscSetupModal">
                 <i class="fas fa-wrench mr-1"></i> TSC Setup Guide
@@ -861,6 +896,24 @@
             } catch (e) {}
         }
 
+        function setScale(scaleName) {
+            document.body.classList.remove('scale-normal', 'scale-large', 'scale-xl');
+            document.body.classList.add('scale-' + scaleName);
+            const labels = {
+                'normal': 'Size: Chota (Normal)',
+                'large': 'Size: Bada (Large)',
+                'xl': 'Size: Extra Large'
+            };
+            const el = document.getElementById('scaleLabel');
+            if (el) {
+                el.innerText = labels[scaleName] || 'Size: ' + scaleName;
+            }
+            try {
+                localStorage.setItem('urbanpos_barcode_scale', scaleName);
+            } catch (e) {}
+            renderAllBarcodes();
+        }
+
         function printTestRow() {
             document.body.classList.add('test-print-mode');
             window.print();
@@ -869,36 +922,34 @@
             }, 1200);
         }
 
-        document.addEventListener("DOMContentLoaded", function () {
-            // Restore saved rotation preference
-            try {
-                const savedRot = parseInt(localStorage.getItem('urbanpos_barcode_rotation') || '0', 10);
-                if (savedRot) {
-                    setRotation(savedRot);
-                }
-            } catch (e) {}
-
+        function renderAllBarcodes() {
             const is102x64 = document.body.classList.contains('format-102x64');
             const is50x38 = document.body.classList.contains('format-50x38_2up');
             const is50x50 = document.body.classList.contains('format-50x50_2up');
-            const is2Up = document.body.classList.contains('format-50x25_2up') || is50x38 || is50x50;
+            const isScaleLarge = document.body.classList.contains('scale-large');
+            const isScaleXl = document.body.classList.contains('scale-xl');
 
-            let barWidth = 1.1;
-            let barHeight = 22;
-            let fontSize = 8.5;
+            let barWidth = 1.35;
+            let barHeight = 28;
+            let fontSize = 9.5;
 
             if (is102x64) {
                 barWidth = 2.0;
                 barHeight = 58;
                 fontSize = 13;
             } else if (is50x38) {
-                barWidth = 1.3;
-                barHeight = 36;
-                fontSize = 10;
+                barWidth = isScaleXl ? 1.6 : (isScaleLarge ? 1.45 : 1.3);
+                barHeight = isScaleXl ? 52 : (isScaleLarge ? 44 : 36);
+                fontSize = isScaleXl ? 12.5 : (isScaleLarge ? 11 : 10);
             } else if (is50x50) {
-                barWidth = 1.4;
-                barHeight = 44;
-                fontSize = 11;
+                barWidth = isScaleXl ? 1.65 : 1.45;
+                barHeight = isScaleXl ? 54 : 46;
+                fontSize = 12;
+            } else {
+                // 50x25_2up or 1-Up
+                barWidth = isScaleXl ? 1.5 : (isScaleLarge ? 1.35 : 1.15);
+                barHeight = isScaleXl ? 32 : (isScaleLarge ? 28 : 22);
+                fontSize = isScaleXl ? 10.5 : (isScaleLarge ? 9.5 : 8.5);
             }
 
             // Render crisp, scannable barcodes with JsBarcode
@@ -906,7 +957,6 @@
                 let code = (svgEl.getAttribute('data-barcode') || '').trim();
                 if (!code) return;
 
-                // Detect standard 13-digit EAN, 8-digit EAN, or fallback Code128
                 let isEan13 = /^\d{13}$/.test(code);
                 let isEan8  = /^\d{8}$/.test(code);
                 let targetFormat = isEan13 ? "EAN13" : (isEan8 ? "EAN8" : "CODE128");
@@ -940,6 +990,24 @@
                     }
                 }
             });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Restore saved rotation preference
+            try {
+                const savedRot = parseInt(localStorage.getItem('urbanpos_barcode_rotation') || '0', 10);
+                if (savedRot) {
+                    setRotation(savedRot);
+                }
+            } catch (e) {}
+
+            // Restore saved scale preference (default to 'large' for bold readable text)
+            try {
+                const savedScale = localStorage.getItem('urbanpos_barcode_scale') || 'large';
+                setScale(savedScale);
+            } catch (e) {
+                renderAllBarcodes();
+            }
         });
     </script>
 </body>
