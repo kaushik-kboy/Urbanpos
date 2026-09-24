@@ -29,11 +29,17 @@ class BarcodePrintController extends Controller
      */
     public function downloadTspl(Request $request)
     {
-        [$labels, $storeName] = $this->resolveLabelsAndStore($request);
+        [$labels, $storeName, $format] = $this->resolveLabelsAndStore($request);
 
-        // 102mm x 63.5mm (4" x 2.5") with 2mm gap at 203 DPI (8 dots/mm)
-        // 102mm = 816 dots, 63.5mm = 508 dots
-        $output = "SIZE 102 mm, 63.5 mm\r\n";
+        $is2Up = str_ends_with($format, '_2up') || $format === '38x25';
+        $rowHeightMm = match ($format) {
+            '50x38_2up' => 38,
+            '50x50_2up' => 50,
+            '102x64'    => 63.5,
+            default     => 25,
+        };
+
+        $output = "SIZE 102 mm, {$rowHeightMm} mm\r\n";
         $output .= "GAP 2 mm, 0 mm\r\n";
         $output .= "DIRECTION 1\r\n";
         $output .= "REFERENCE 0,0\r\n";
@@ -42,29 +48,55 @@ class BarcodePrintController extends Controller
         $output .= "SET CUTTER OFF\r\n";
         $output .= "SET TEAR ON\r\n";
 
-        foreach ($labels as $lbl) {
-            $cleanStore = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $storeName), 0, 36);
-            $cleanName  = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl['name']), 0, 38);
-            $cleanCode  = preg_replace('/[^A-Za-z0-9]/', '', $lbl['barcode']);
-            $mrpText    = 'MRP: Rs. ' . number_format($lbl['mrp'], 2);
-            $priceText  = 'PRICE: Rs. ' . number_format($lbl['sell_price'], 2);
+        if ($is2Up) {
+            $chunks = array_chunk($labels, 2);
+            foreach ($chunks as $pair) {
+                $output .= "CLS\r\n";
 
-            $output .= "CLS\r\n";
-            // Header Store Name centered around dot 408
-            $output .= "TEXT 408,24,\"3\",0,1,1,2,\"{$cleanStore}\"\r\n";
-            // Product Name
-            $output .= "TEXT 50,70,\"3\",0,1,1,\"{$cleanName}\"\r\n";
-            // Code128 Barcode: X=80, Y=125, height=90 dots, human-readable=1, narrow=2, wide=4
-            $output .= "BARCODE 80,125,\"128\",90,1,0,2,4,\"{$cleanCode}\"\r\n";
-            // Price info
-            if ($lbl['mrp'] > $lbl['sell_price']) {
-                $output .= "TEXT 50,250,\"3\",0,1,1,\"{$mrpText}\"\r\n";
+                // Label 1 (Left Column: X = 20)
+                $lbl1 = $pair[0];
+                $name1 = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl1['name']), 0, 24);
+                $code1 = preg_replace('/[^A-Za-z0-9]/', '', $lbl1['barcode']);
+                $price1 = 'Rs. ' . number_format($lbl1['sell_price'], 2);
+
+                $output .= "TEXT 20,10,\"2\",0,1,1,\"{$name1}\"\r\n";
+                $output .= "BARCODE 20,35,\"128\",45,1,0,2,2,\"{$code1}\"\r\n";
+                $output .= "TEXT 20,115,\"3\",0,1,1,\"{$price1}\"\r\n";
+
+                // Label 2 (Right Column: X = 430)
+                if (isset($pair[1])) {
+                    $lbl2 = $pair[1];
+                    $name2 = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl2['name']), 0, 24);
+                    $code2 = preg_replace('/[^A-Za-z0-9]/', '', $lbl2['barcode']);
+                    $price2 = 'Rs. ' . number_format($lbl2['sell_price'], 2);
+
+                    $output .= "TEXT 430,10,\"2\",0,1,1,\"{$name2}\"\r\n";
+                    $output .= "BARCODE 430,35,\"128\",45,1,0,2,2,\"{$code2}\"\r\n";
+                    $output .= "TEXT 430,115,\"3\",0,1,1,\"{$price2}\"\r\n";
+                }
+                $output .= "PRINT 1\r\n";
             }
-            $output .= "TEXT 450,245,\"4\",0,1,1,\"{$priceText}\"\r\n";
-            if (!empty($lbl['exp_date'])) {
-                $output .= "TEXT 50,300,\"2\",0,1,1,\"EXP: {$lbl['exp_date']}\"\r\n";
+        } else {
+            foreach ($labels as $lbl) {
+                $cleanStore = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $storeName), 0, 36);
+                $cleanName  = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl['name']), 0, 38);
+                $cleanCode  = preg_replace('/[^A-Za-z0-9]/', '', $lbl['barcode']);
+                $mrpText    = 'MRP: Rs. ' . number_format($lbl['mrp'], 2);
+                $priceText  = 'PRICE: Rs. ' . number_format($lbl['sell_price'], 2);
+
+                $output .= "CLS\r\n";
+                $output .= "TEXT 408,24,\"3\",0,1,1,2,\"{$cleanStore}\"\r\n";
+                $output .= "TEXT 50,70,\"3\",0,1,1,\"{$cleanName}\"\r\n";
+                $output .= "BARCODE 80,125,\"128\",90,1,0,2,4,\"{$cleanCode}\"\r\n";
+                if ($lbl['mrp'] > $lbl['sell_price']) {
+                    $output .= "TEXT 50,250,\"3\",0,1,1,\"{$mrpText}\"\r\n";
+                }
+                $output .= "TEXT 450,245,\"4\",0,1,1,\"{$priceText}\"\r\n";
+                if (!empty($lbl['exp_date'])) {
+                    $output .= "TEXT 50,300,\"2\",0,1,1,\"EXP: {$lbl['exp_date']}\"\r\n";
+                }
+                $output .= "PRINT 1\r\n";
             }
-            $output .= "PRINT 1\r\n";
         }
 
         return response($output, 200, [
@@ -78,7 +110,7 @@ class BarcodePrintController extends Controller
      */
     private function resolveLabelsAndStore(Request $request): array
     {
-        $format = $request->query('format', $request->input('format', '102x64'));
+        $format = $request->query('format', $request->input('format', '50x25_2up'));
         $storeName = config('app.name', 'UrbanPOS');
         $labels = [];
         $branchId = null;
