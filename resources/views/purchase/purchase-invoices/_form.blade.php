@@ -112,27 +112,28 @@
 
 <div class="table-responsive">
     <table class="table table-sm table-bordered" id="pinv-items-table">
-        <thead>
+        <thead style="font-size:0.75rem;">
             <tr>
-                <th style="width: 35px;" class="text-center">#</th>
-                <th style="width: 110px;">Code</th>
-                <th style="min-width: 220px;">Description</th>
-                <th style="width: 125px;">Exp Date</th>
-                <th style="width: 85px;">Qty</th>
-                <th style="width: 80px;">Free</th>
-                <th style="width: 95px;">Cost Price</th>
-                <th style="width: 95px;">Sell Price</th>
-                <th style="width: 95px;">MRP</th>
-                <th style="width: 85px;" title="Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100">Margin %</th>
-                <th style="width: 85px;" title="Profit % = Profit Amount ÷ Cost Price × 100">Profit %</th>
-                <th style="width: 80px;">Disc %</th>
-                <th style="width: 90px;">Disc Amt</th>
-                <th style="width: 75px;">GST %</th>
-                <th style="width: 95px;">GST Tax Amt</th>
-                <th style="width: 105px;" class="text-right">Net Amount</th>
-                <th style="width: 35px;"></th>
+                <th style="width:28px;" class="text-center px-1">#</th>
+                <th style="width:80px;" class="px-1">Code</th>
+                <th style="min-width:150px; max-width:190px;" class="px-1">Description</th>
+                <th style="width:110px;" class="px-1">Exp Date</th>
+                <th style="width:62px;" class="px-1">Qty</th>
+                <th style="width:52px;" class="px-1">Free</th>
+                <th style="width:82px;" class="px-1">Cost Price</th>
+                <th style="width:82px;" class="px-1">Sell Price</th>
+                <th style="width:78px;" class="px-1">MRP</th>
+                <th style="width:62px;" class="px-1" title="Margin %">Margin %</th>
+                <th style="width:62px;" class="px-1" title="Profit %">Profit %</th>
+                <th style="width:55px;" class="px-1">Disc %</th>
+                <th style="width:68px;" class="px-1">Disc Amt</th>
+                <th style="width:52px;" class="px-1">GST %</th>
+                <th style="width:72px;" class="px-1">GST Amt</th>
+                <th style="width:82px;" class="text-right px-1">Net Amt</th>
+                <th style="width:28px;" class="px-1"></th>
             </tr>
         </thead>
+
         <tbody id="pinv-items-body">
             @forelse ($existingItems as $index => $line)
                 @include('purchase.purchase-invoices._item-row', ['items' => $items, 'index' => $index, 'line' => $line])
@@ -1200,7 +1201,12 @@
 
             if (batchExpiry === 'Mandatory' || batchExpiry === 'Days' || batchExpiry === 'Month') {
                 $expInput.prop('required', true).addClass('border-danger');
-                $expBadge.removeClass('d-none').html('<i class="fas fa-exclamation-circle"></i> ' + (batchExpiry === 'Mandatory' ? 'Required' : batchExpiry));
+                // Only show badge if date is NOT already filled
+                if (!$expInput.val()) {
+                    $expBadge.removeClass('d-none').html('<i class="fas fa-exclamation-circle"></i> ' + (batchExpiry === 'Mandatory' ? 'Required' : batchExpiry));
+                } else {
+                    $expBadge.addClass('d-none');
+                }
                 $expInput.attr('title', 'Expiry date is mandatory for this item (' + batchExpiry + ')');
 
                 // Auto-fill expiry date from shelf life if date is empty
@@ -1244,10 +1250,9 @@
 
             $.getJSON('{{ route("purchase.purchase-invoices.lookup-item") }}', params, function (data) {
                 if (data && data.id) {
-                    let codeVal = data.item_code || data.ean_upc_code || '';
-                    if (codeVal) {
-                        $code.val(codeVal);
-                    }
+                    // Show item_code (internal code); never show barcode/EAN in Code column
+                    let codeVal = data.item_code || ('#' + data.id);
+                    $code.val(codeVal);
 
                     $select.val(data.id);
                     $select.attr('data-batch-expiry', data.batch_expiry_details || 'Not Required');
@@ -1365,6 +1370,22 @@
                 $(this).closest('tr').find('.pinv-qty').focus().select();
             }
         });
+
+        // Hide "Required" badge when exp date is filled; show again if cleared (for mandatory items)
+        $(document).on('change input', '.pinv-exp-date', function () {
+            let $row = $(this).closest('tr');
+            let $badge = $row.find('.pinv-exp-badge');
+            let $input = $(this);
+            let isRequired = $input.prop('required');
+            if ($input.val()) {
+                $badge.addClass('d-none');
+                $input.removeClass('border-danger').addClass('border-success');
+            } else if (isRequired) {
+                $badge.removeClass('d-none');
+                $input.addClass('border-danger').removeClass('border-success');
+            }
+        });
+
 
         // 3. Real-time Calculation Listeners
         $(document).on('input', '.pinv-qty, .pinv-cost, .pinv-sell, .pinv-mrp', function () {
