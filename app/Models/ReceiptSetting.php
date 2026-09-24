@@ -68,15 +68,25 @@ class ReceiptSetting extends Model
                 'icon'  => 'fas fa-file-invoice',
                 'color' => 'primary',
             ],
-            'stock_transfer' => [
-                'label' => 'Stock Transfer Note',
-                'icon'  => 'fas fa-exchange-alt',
-                'color' => 'warning',
+            'sales_return' => [
+                'label' => 'Sales Return',
+                'icon'  => 'fas fa-undo-alt',
+                'color' => 'danger',
             ],
             'purchase_invoice' => [
                 'label' => 'Purchase Invoice',
                 'icon'  => 'fas fa-shopping-cart',
                 'color' => 'success',
+            ],
+            'purchase_return' => [
+                'label' => 'Purchase Return',
+                'icon'  => 'fas fa-reply',
+                'color' => 'secondary',
+            ],
+            'stock_transfer' => [
+                'label' => 'Stock Transfer Note',
+                'icon'  => 'fas fa-exchange-alt',
+                'color' => 'warning',
             ],
         ];
     }

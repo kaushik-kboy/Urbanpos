@@ -617,6 +617,195 @@
                                         Authorized Signatory
                                     </div>
                                 </div>
+                            @elseif($docType === 'sales_return')
+                                <div class="text-center font-weight-bold text-uppercase text-danger" style="font-size: 12px; letter-spacing: 1px;">
+                                    SALES RETURN / CREDIT NOTE (बिक्री वापसी रसीद)
+                                </div>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Sales Return Meta --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.3;">
+                                    <tr>
+                                        <td style="font-weight: bold;">Return #: {{ $sampleSalesReturn?->return_number ?: 'SR-2026-0004' }}</td>
+                                        <td style="text-align: right;">Date: {{ $sampleSalesReturn?->return_date ? $sampleSalesReturn->return_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">Orig Bill: <strong>{{ $sampleSalesReturn?->salesBill?->bill_number ?: 'SB-2026-0009' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">
+                                            Customer: <strong>{{ $sampleSalesReturn?->customer?->name ?: 'Walking Customer' }}</strong>
+                                            @if($sampleSalesReturn?->customer?->phone) ({{ $sampleSalesReturn->customer->phone }}) @endif
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Refund Mode: <span class="badge badge-warning">{{ $sampleSalesReturn?->return_mode ?: 'Cash Refund' }}</span></td>
+                                        <td style="text-align: right;">Branch: {{ $sampleSalesReturn?->branch?->name ?: 'Main Branch' }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Sales Return Item Table --}}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px dashed #000;">
+                                            <th style="text-align: left; padding: 4px 0;">Returned Item</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 45px;">Qty</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Rate</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Refund</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if($sampleSalesReturn && $sampleSalesReturn->items->isNotEmpty())
+                                            @foreach($sampleSalesReturn->items->take(3) as $idx => $srItem)
+                                                <tr>
+                                                    <td colspan="4" style="font-weight: bold; padding-top: 4px;">
+                                                        {{ $idx + 1 }}. {{ $srItem->item?->name ?? 'Returned Item' }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="color: #444; font-size: 10px;">
+                                                        [{{ $srItem->item?->item_code ?? 'ITM-01' }}]
+                                                        <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $srItem->item?->hsn_code ?? '23091000' }})</span>
+                                                    </td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($srItem->qty ?? $srItem->quantity, 2) }}</td>
+                                                    <td style="text-align: right;">₹{{ number_format($srItem->unit_price ?? $srItem->rate, 2) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">₹{{ number_format(($srItem->qty ?? $srItem->quantity) * ($srItem->unit_price ?? $srItem->rate), 2) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @else
+                                            <tr>
+                                                <td colspan="4" style="font-weight: bold; padding-top: 4px;">1. Drools Adult Dog Food 3kg</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color: #444; font-size: 10px;">
+                                                    [DRL-AD-03] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23091000)</span>
+                                                </td>
+                                                <td style="text-align: right; font-weight: bold;">1.00</td>
+                                                <td style="text-align: right;">₹850.00</td>
+                                                <td style="text-align: right; font-weight: bold;">₹850.00</td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                <table style="width: 100%; font-size: 14px; font-weight: 900;">
+                                    <tr>
+                                        <td>NET REFUND AMOUNT:</td>
+                                        <td style="text-align: right; color: #b91c1c;">₹{{ $sampleSalesReturn ? number_format($sampleSalesReturn->total, 2) : '850.00' }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                {{-- Signatures for Sales Return --}}
+                                <div style="margin-top: 20px; font-size: 10px; display: flex; justify-content: space-between;">
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Customer Signature
+                                    </div>
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Store Manager
+                                    </div>
+                                </div>
+                            @elseif($docType === 'purchase_return')
+                                <div class="text-center font-weight-bold text-uppercase text-secondary" style="font-size: 12px; letter-spacing: 1px;">
+                                    PURCHASE RETURN / DEBIT NOTE (खरीद वापसी चालान)
+                                </div>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Purchase Return Meta --}}
+                                <table style="width: 100%; font-size: 11px; line-height: 1.3;">
+                                    <tr>
+                                        <td style="font-weight: bold;">Return #: {{ $samplePurchaseReturn?->return_number ?: 'PR-2026-0002' }}</td>
+                                        <td style="text-align: right;">Date: {{ $samplePurchaseReturn?->return_date ? $samplePurchaseReturn->return_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">Return To: <strong>{{ $samplePurchaseReturn?->supplier?->name ?: 'Royal Canin India Pvt Ltd' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2">Supplier GST: <strong>{{ $samplePurchaseReturn?->supplier?->gst_number ?: '24AABCR1234Q1Z9' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Orig Inv: {{ $samplePurchaseReturn?->purchaseInvoice?->invoice_number ?: 'PI-2026-0012' }}</td>
+                                        <td style="text-align: right;">Branch: {{ $samplePurchaseReturn?->branch?->name ?: 'Main Store' }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                {{-- Purchase Return Item Table --}}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px dashed #000;">
+                                            <th style="text-align: left; padding: 4px 0;">Item Description</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 45px;">Qty</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Cost</th>
+                                            <th style="text-align: right; padding: 4px 0; width: 55px;">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if($samplePurchaseReturn && $samplePurchaseReturn->items->isNotEmpty())
+                                            @foreach($samplePurchaseReturn->items->take(3) as $idx => $prItem)
+                                                <tr>
+                                                    <td colspan="4" style="font-weight: bold; padding-top: 4px;">
+                                                        {{ $idx + 1 }}. {{ $prItem->item?->name ?? 'Returned Item' }}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="color: #444; font-size: 10px;">
+                                                        [{{ $prItem->item?->item_code ?? 'ITM-01' }}]
+                                                        <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $prItem->item?->hsn_code ?? '23091000' }})</span>
+                                                    </td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($prItem->qty, 3) }}</td>
+                                                    <td style="text-align: right;">₹{{ number_format($prItem->cost_price, 2) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">₹{{ number_format($prItem->total_amount ?? ($prItem->qty * $prItem->cost_price), 2) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        @else
+                                            <tr>
+                                                <td colspan="4" style="font-weight: bold; padding-top: 4px;">1. Pedigree Meat & Rice 3kg (Damaged)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="color: #444; font-size: 10px;">
+                                                    [PED-AD-03] <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: 23091000)</span>
+                                                </td>
+                                                <td style="text-align: right; font-weight: bold;">2.000</td>
+                                                <td style="text-align: right;">₹420.00</td>
+                                                <td style="text-align: right; font-weight: bold;">₹840.00</td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
+
+                                <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                <table style="width: 100%; font-size: 14px; font-weight: 900;">
+                                    <tr>
+                                        <td>TOTAL DEBIT AMOUNT:</td>
+                                        <td style="text-align: right;">₹{{ $samplePurchaseReturn ? number_format($samplePurchaseReturn->total, 2) : '840.00' }}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="border-top: 1px double #000; border-bottom: 1px double #000; height: 4px; margin: 6px 0;"></div>
+
+                                {{-- Signatures for Purchase Return --}}
+                                <div style="margin-top: 20px; font-size: 10px; display: flex; justify-content: space-between;">
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Supplier Agent / Courier
+                                    </div>
+                                    <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
+                                        Store Manager
+                                    </div>
+                                </div>
                             @else
                                 <div class="text-center font-weight-bold text-uppercase" style="font-size: 12px; letter-spacing: 1px;">
                                     TAX INVOICE (कर चालान)

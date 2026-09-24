@@ -236,4 +236,15 @@ class ReceiptDesignerTest extends TestCase
         $settings = ReceiptSetting::current();
         $this->assertEquals('102mm', $settings->paper_size);
     }
+
+    public function test_receipt_designer_supports_sales_return_and_purchase_return(): void
+    {
+        $responseSr = $this->actingAs($this->user)->get(route('tools.receipt-designer.index', ['doc' => 'sales_return']));
+        $responseSr->assertStatus(200);
+        $responseSr->assertSee('Sales Return');
+
+        $responsePr = $this->actingAs($this->user)->get(route('tools.receipt-designer.index', ['doc' => 'purchase_return']));
+        $responsePr->assertStatus(200);
+        $responsePr->assertSee('Purchase Return');
+    }
 }

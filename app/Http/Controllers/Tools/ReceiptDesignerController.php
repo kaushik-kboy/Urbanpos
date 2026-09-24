@@ -35,10 +35,11 @@ class ReceiptDesignerController extends Controller
 
         $settings = ReceiptSetting::forDocument($docType, $selectedBranchId);
 
-        // Load a real sample record for live preview based on document type and branch
-        $sampleBill     = null;
-        $sampleTransfer = null;
-        $samplePurchase = null;
+        $sampleBill           = null;
+        $sampleTransfer       = null;
+        $samplePurchase       = null;
+        $sampleSalesReturn    = null;
+        $samplePurchaseReturn = null;
 
         if ($docType === 'sales_bill') {
             $sampleBill = SalesBill::with(['items.item', 'customer.pets', 'branch', 'payments.tenderType'])
@@ -46,6 +47,12 @@ class ReceiptDesignerController extends Controller
                 ->latest('id')
                 ->first()
                 ?? SalesBill::with(['items.item', 'customer.pets', 'branch', 'payments.tenderType'])->latest('id')->first();
+        } elseif ($docType === 'sales_return') {
+            $sampleSalesReturn = \App\Models\SalesReturn::with(['items.item', 'customer', 'branch', 'salesBill'])
+                ->when($selectedBranchId, fn ($q) => $q->where('branch_id', $selectedBranchId))
+                ->latest('id')
+                ->first()
+                ?? \App\Models\SalesReturn::with(['items.item', 'customer', 'branch', 'salesBill'])->latest('id')->first();
         } elseif ($docType === 'stock_transfer') {
             $sampleTransfer = StockTransfer::with(['items.item', 'fromBranch', 'toBranch'])
                 ->when($selectedBranchId, fn ($q) => $q->where('from_branch_id', $selectedBranchId))
@@ -58,6 +65,12 @@ class ReceiptDesignerController extends Controller
                 ->latest('id')
                 ->first()
                 ?? PurchaseInvoice::with(['items.item', 'supplier', 'branch'])->latest('id')->first();
+        } elseif ($docType === 'purchase_return') {
+            $samplePurchaseReturn = \App\Models\PurchaseReturn::with(['items.item', 'supplier', 'branch', 'purchaseInvoice'])
+                ->when($selectedBranchId, fn ($q) => $q->where('branch_id', $selectedBranchId))
+                ->latest('id')
+                ->first()
+                ?? \App\Models\PurchaseReturn::with(['items.item', 'supplier', 'branch', 'purchaseInvoice'])->latest('id')->first();
         }
 
         return view('tools.receipt-designer', compact(
@@ -68,7 +81,9 @@ class ReceiptDesignerController extends Controller
             'selectedBranchId',
             'sampleBill',
             'sampleTransfer',
-            'samplePurchase'
+            'samplePurchase',
+            'sampleSalesReturn',
+            'samplePurchaseReturn'
         ));
     }
 

@@ -1,3 +1,6 @@
+@php
+    $receiptSettings = \App\Models\ReceiptSetting::forDocument('purchase_return', $purchaseReturn->branch_id ?? null);
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -66,6 +69,7 @@
             .no-print { display: none !important; }
             body { margin: 0; }
         }
+        {!! $receiptSettings->custom_css ?? '' !!}
     </style>
 </head>
 <body>
@@ -76,11 +80,15 @@
     <table class="header-table" style="margin-bottom: 12px;">
         <tr>
             <td style="width: 60%; vertical-align: top;">
+                @if($receiptSettings->show_logo && $receiptSettings->logo_path)
+                    <img src="{{ asset($receiptSettings->logo_path) }}" alt="{{ $receiptSettings->store_name }}" style="max-width: {{ $receiptSettings->logo_width ?? 120 }}px; height: auto; margin-bottom: 6px;"><br>
+                @endif
                 <div class="header-title">PURCHASE DEBIT NOTE / RETURN</div>
-                <div class="font-bold" style="font-size: 14px;">{{ $purchaseReturn->branch?->name ?? config('app.name', 'UrbanPOS') }}</div>
-                <div>{{ $purchaseReturn->branch?->address ?? '' }}</div>
-                @if($purchaseReturn->branch?->phone)<div>Phone: {{ $purchaseReturn->branch->phone }}</div>@endif
-                @if($purchaseReturn->branch?->gst_number)<div>GSTIN: <strong>{{ $purchaseReturn->branch->gst_number }}</strong></div>@endif
+                <div class="font-bold" style="font-size: 15px;">{{ $receiptSettings->store_name ?: ($purchaseReturn->branch?->name ?? config('app.name', 'UrbanPOS')) }}</div>
+                @if($receiptSettings->tagline)<div style="font-size: 11px; font-weight: bold; color: #555;">{{ $receiptSettings->tagline }}</div>@endif
+                <div>{!! nl2br(e($receiptSettings->header_address ?: $purchaseReturn->branch?->address)) !!}</div>
+                @if($receiptSettings->phone || $purchaseReturn->branch?->phone)<div>Phone: {{ $receiptSettings->phone ?: $purchaseReturn->branch?->phone }}</div>@endif
+                @if($receiptSettings->gstin || $purchaseReturn->branch?->gst_number)<div>GSTIN: <strong>{{ $receiptSettings->gstin ?: $purchaseReturn->branch?->gst_number }}</strong></div>@endif
             </td>
             <td style="width: 40%; vertical-align: top; text-align: right;">
                 <div style="font-size: 14px; font-weight: bold;">Return #: {{ $purchaseReturn->return_number }}</div>
@@ -88,6 +96,7 @@
                 @if($purchaseReturn->purchaseInvoice)<div>Orig Inv: <strong>{{ $purchaseReturn->purchaseInvoice->invoice_number }}</strong></div>@endif
                 @if($purchaseReturn->supplier_debit_note_no)<div>Debit Note #: {{ $purchaseReturn->supplier_debit_note_no }}</div>@endif
                 <div>Type: {{ $purchaseReturn->purchase_type ?? 'Local' }}</div>
+                <div>Branch: <strong>{{ $purchaseReturn->branch?->name }}</strong></div>
             </td>
         </tr>
     </table>
@@ -156,6 +165,17 @@
     @if($purchaseReturn->remarks)
         <div style="margin-top: 15px; border: 1px dashed #666; padding: 8px; font-size: 11px;">
             <strong>Remarks:</strong> {{ $purchaseReturn->remarks }}
+        </div>
+    @endif
+
+    @if($receiptSettings->footer_policy || $receiptSettings->footer_note)
+        <div style="margin-top: 15px; border-top: 1px dashed #777; padding-top: 8px; font-size: 11px;">
+            @if($receiptSettings->footer_policy)
+                <div style="white-space: pre-line; margin-bottom: 4px;">{!! nl2br(e($receiptSettings->footer_policy)) !!}</div>
+            @endif
+            @if($receiptSettings->footer_note)
+                <div style="font-weight: bold; white-space: pre-line;">{!! nl2br(e($receiptSettings->footer_note)) !!}</div>
+            @endif
         </div>
     @endif
 
