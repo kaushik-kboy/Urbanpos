@@ -1187,13 +1187,18 @@
                 sbMouseDown = false;
             });
 
-        // Tab starts from first field (customer_id) on page load
+        // Tab starts from first field (customer_id on create, first item on edit)
         setTimeout(function () {
+            let isEditMode = Boolean('{{ $bill->id ?? "" }}');
             let $cust = $('#customer_id');
-            if ($cust.length && $cust.data('select2')) {
-                $cust.data('select2').$container.find('.select2-selection').focus();
-            } else if ($cust.length) {
-                $cust.focus();
+            if (isEditMode) {
+                $('#sb-items-body tr:first .sb-item-code').focus();
+            } else {
+                if ($cust.length && $cust.data('select2')) {
+                    $cust.data('select2').$container.find('.select2-selection').focus();
+                } else if ($cust.length) {
+                    $cust.focus();
+                }
             }
         }, 150);
 
@@ -1975,7 +1980,7 @@
         let isSyncing = false;
 
         // Main Item Lookup Function
-        function processItemLookup(query, $row, itemId) {
+        function processItemLookup(query, $row, itemId, isInitial = false) {
             let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let $select = $row.find('.sb-item-select');
             let $desc = $row.find('.sb-item-desc');
@@ -2026,11 +2031,13 @@
                     }
 
                     // Set Sell Price, MRP, GST %
-                    if (item.sell_price > 0 && (!$sell.val() || parseFloat($sell.val()) === 0)) {
-                        $sell.val(parseFloat(item.sell_price).toFixed(2));
-                    }
-                    if (item.mrp > 0 && (!$mrp.val() || parseFloat($mrp.val()) === 0)) {
-                        $mrp.val(parseFloat(item.mrp).toFixed(2));
+                    if (!isInitial) {
+                        if (item.sell_price > 0 && (!$sell.val() || parseFloat($sell.val()) === 0)) {
+                            $sell.val(parseFloat(item.sell_price).toFixed(2));
+                        }
+                        if (item.mrp > 0 && (!$mrp.val() || parseFloat($mrp.val()) === 0)) {
+                            $mrp.val(parseFloat(item.mrp).toFixed(2));
+                        }
                     }
                     if (item.gst_percent !== undefined && item.gst_percent !== null) {
                         $gst.val(formatDigits(item.gst_percent));
@@ -2039,41 +2046,49 @@
                         $row.find('.sb-qty').val('1');
                     }
 
-                    // =========================================================
-                    // BATCH / EXPIRY SELECTION LOGIC:
-                    // Auto-fill expiry date from purchase records!
-                    // =========================================================
-                    let bestExp = '';
-                    if (batches.length > 0 && batches[0].exp_date) {
-                        bestExp = batches[0].exp_date.toString().substring(0, 10);
-                    } else if (item.exp_date) {
-                        bestExp = item.exp_date.toString().substring(0, 10);
-                    }
-                    if (bestExp) {
-                        $exp.val(bestExp);
+                    // Auto-fill expiry date only for newly scanned/chosen items (not during initial edit load)
+                    if (!isInitial) {
+                        let bestExp = '';
+                        if (batches.length > 0 && batches[0].exp_date) {
+                            bestExp = batches[0].exp_date.toString().substring(0, 10);
+                        } else if (item.exp_date) {
+                            bestExp = item.exp_date.toString().substring(0, 10);
+                        }
+                        if (bestExp) {
+                            $exp.val(bestExp);
+                        }
                     }
 
                     if (batches.length === 1) {
                         let singleBatch = batches[0];
-                        if (singleBatch && singleBatch.sell_price > 0) {
-                            $sell.val(parseFloat(singleBatch.sell_price).toFixed(2));
-                        }
-                        if (singleBatch && singleBatch.mrp > 0) {
-                            $mrp.val(parseFloat(singleBatch.mrp).toFixed(2));
+                        if (!isInitial) {
+                            if (singleBatch && singleBatch.sell_price > 0) {
+                                $sell.val(parseFloat(singleBatch.sell_price).toFixed(2));
+                            }
+                            if (singleBatch && singleBatch.mrp > 0) {
+                                $mrp.val(parseFloat(singleBatch.mrp).toFixed(2));
+                            }
                         }
                         $batchWrap.addClass('d-none');
                         calculateRow($row, 'base');
-                        saveBillDraft();
-                        setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
+                        if (!isInitial) {
+                            saveBillDraft();
+                            setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
+                        }
                     } else if (batches.length > 1) {
-                        // Multiple batches exist: prefill earliest expiry and show button/modal
+                        // Multiple batches exist: show button so user can change if needed
                         $batchWrap.removeClass('d-none');
-                        showBatchModal($row, item, batches);
+                        // NEVER auto-open batch modal on initial page load of existing bills!
+                        if (!isInitial) {
+                            showBatchModal($row, item, batches);
+                        }
                     } else {
                         $batchWrap.addClass('d-none');
                         calculateRow($row, 'base');
-                        saveBillDraft();
-                        setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
+                        if (!isInitial) {
+                            saveBillDraft();
+                            setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
+                        }
                     }
 
                     calculateRow($row, 'base');
@@ -2260,7 +2275,7 @@
             calculateRow($r, 'initial');
             let itemId = $r.find('.sb-item-select').val();
             if (itemId) {
-                processItemLookup(null, $r, itemId);
+                processItemLookup(null, $r, itemId, true);
             }
         });
         calculateTotals();

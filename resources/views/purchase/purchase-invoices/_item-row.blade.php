@@ -73,6 +73,7 @@
         <input type="date"
                name="items[{{ $index }}][exp_date]"
                value="{{ $expDateVal }}"
+               min="{{ date('Y-m-d') }}"
                class="form-control form-control-sm pinv-exp-date {{ ($isExpRequired && !$expDateVal) ? 'border-danger' : ($isExpRequired && $expDateVal ? 'border-success' : '') }}"
                autocomplete="off"
                title="{{ $isExpRequired ? 'Expiry date is mandatory for this item' : 'Expiry date (optional)' }}"

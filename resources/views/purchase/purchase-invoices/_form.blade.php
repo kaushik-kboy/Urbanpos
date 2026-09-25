@@ -1053,15 +1053,25 @@
                 pinvMouseDown = false;
             });
 
-        // Tab starts from supplier on page load
+        // Tab starts from invoice_date on page load (Task 2)
         setTimeout(function () {
-            let $supplier = $('#supplier_id');
-            if ($supplier.length && $supplier.data('select2')) {
-                $supplier.data('select2').$container.find('.select2-selection').focus();
-            } else if ($supplier.length) {
-                $supplier.focus();
+            let $first = $('#invoice_date');
+            if ($first.length) {
+                $first.focus();
             }
         }, 150);
+
+        $('#invoice_date').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                let $supp = $('#supplier_id');
+                if ($supp.length && $supp.data('select2')) {
+                    $supp.data('select2').$container.find('.select2-selection').focus();
+                } else if ($supp.length) {
+                    $supp.focus();
+                }
+            }
+        });
 
         // -----------------------------------------------------------------------
         // CAPTURE-PHASE gate: native addEventListener with capture=true
@@ -1609,26 +1619,72 @@
             }
         });
 
-        // Advance to Qty when Enter is pressed on Exp Date
-        $(document).on('keydown', '.pinv-exp-date', function (e) {
-            if (e.key === 'Enter' || e.keyCode === 13) {
-                e.preventDefault();
-                $(this).closest('tr').find('.pinv-qty').focus().select();
+        function getTodayIsoString() {
+            let now = new Date();
+            let pad = n => n < 10 ? '0' + n : String(n);
+            return now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+        }
+
+        function validatePinvExpDate($input, showToast = false) {
+            let val = $input.val();
+            let $row = $input.closest('tr');
+            let $badge = $row.find('.pinv-exp-badge');
+            let isRequired = $input.prop('required');
+            let todayStr = getTodayIsoString();
+
+            if (val && val < todayStr) {
+                $input.addClass('border-danger is-invalid').removeClass('border-success');
+                $badge.removeClass('d-none').addClass('text-danger').html('<i class="fas fa-exclamation-triangle"></i> Expired (Past Date)');
+                if (showToast && window.toastr) {
+                    toastr.clear();
+                    toastr.error('Expiry date cannot be in the past! Please select today or a future date.', 'Invalid Expiry Date');
+                }
+                return false;
             }
+
+            if (val) {
+                $badge.addClass('d-none');
+                $input.removeClass('border-danger is-invalid').addClass('border-success');
+                return true;
+            }
+
+            if (isRequired) {
+                $badge.removeClass('d-none').addClass('text-danger').html('<i class="fas fa-exclamation-circle"></i> Required');
+                $input.addClass('border-danger').removeClass('border-success is-invalid');
+                return false;
+            }
+
+            $badge.addClass('d-none');
+            $input.removeClass('border-danger border-success is-invalid');
+            return true;
+        }
+
+        // Validate immediately when expiry date is changed/input
+        $(document).on('change input blur', '.pinv-exp-date', function (e) {
+            let showToast = (e.type === 'change' || e.type === 'blur');
+            validatePinvExpDate($(this), showToast);
         });
 
-        // Hide "Required" badge when exp date is filled; show again if cleared (for mandatory items)
-        $(document).on('change input', '.pinv-exp-date', function () {
-            let $row = $(this).closest('tr');
-            let $badge = $row.find('.pinv-exp-badge');
-            let $input = $(this);
-            let isRequired = $input.prop('required');
-            if ($input.val()) {
-                $badge.addClass('d-none');
-                $input.removeClass('border-danger').addClass('border-success');
-            } else if (isRequired) {
-                $badge.removeClass('d-none');
-                $input.addClass('border-danger').removeClass('border-success');
+        // Tab & Enter navigation on Exp Date:
+        // If date is in the past, block navigation ("tab aage hi nahi jayga")!
+        $(document).on('keydown', '.pinv-exp-date', function (e) {
+            let isTab = (e.key === 'Tab' && !e.shiftKey);
+            let isEnter = (e.key === 'Enter' || e.keyCode === 13);
+
+            if (isTab || isEnter) {
+                let isValid = validatePinvExpDate($(this), true);
+                if (!isValid && $(this).val()) {
+                    // Past date entered: block Tab/Enter navigation completely
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $(this).focus();
+                    return false;
+                }
+                if (isEnter) {
+                    e.preventDefault();
+                    $(this).closest('tr').find('.pinv-qty').focus().select();
+                }
             }
         });
 
@@ -2010,6 +2066,33 @@
                         hasError = true;
                         return false;
                     }
+                    let $exp = $(this).find('.pinv-exp-date');
+                    let expVal = $exp.val();
+                    let todayStr = getTodayIsoString();
+                    if (expVal && expVal < todayStr) {
+                        $exp.addClass('is-invalid border-danger');
+                        let errMsg = `Row #${idx + 1}: Expiry date (${expVal}) cannot be in the past!`;
+                        if (window.toastr) {
+                            toastr.error(errMsg, 'Invalid Expiry Date');
+                        } else {
+                            alert(errMsg);
+                        }
+                        $exp.focus();
+                        hasError = true;
+                        return false;
+                    }
+                    if ($exp.prop('required') && !expVal) {
+                        $exp.addClass('is-invalid border-danger');
+                        let errMsg = `Row #${idx + 1}: Expiry date is required for this item.`;
+                        if (window.toastr) {
+                            toastr.error(errMsg, 'Expiry Date Required');
+                        } else {
+                            alert(errMsg);
+                        }
+                        $exp.focus();
+                        hasError = true;
+                        return false;
+                    }
                     validRows++;
                 }
             });
@@ -2042,14 +2125,6 @@
                 window.location.reload();
             }
         });
-
-        // Global autofocus on the first field of the form
-        setTimeout(function () {
-            let $first = $('#invoice_date');
-            if ($first.length) {
-                $first.focus();
-            }
-        }, 150);
     });
 </script>
 @endpush

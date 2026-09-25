@@ -25,6 +25,7 @@
             class="{{ $buttonClass }}" 
             data-toggle="modal" 
             data-target="#{{ $modalId }}" 
+            tabindex="-1"
             title="{{ $title }}">
         @if($showIcon) <i class="{{ $icon }}"></i> @endif
         @if(!empty($buttonText)) <span class="ml-1">{{ $buttonText }}</span> @endif
