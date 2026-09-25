@@ -14,10 +14,14 @@ class LoyaltyPointsUpdateController extends Controller
     public function __construct(
         private LoyaltyService $loyaltyService
     ) {}
-
     public function index(Request $request)
     {
-        $customers = Customer::where('status', true)->orderBy('name')->get(['id', 'name', 'phone']);
+        $selectedCustomerId = $request->input('customer_id');
+        $selectedCustomer = $selectedCustomerId ? Customer::find($selectedCustomerId) : null;
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'phone']);
+        if ($selectedCustomer && !$customers->contains('id', $selectedCustomer->id)) {
+            $customers->prepend($selectedCustomer);
+        }
 
         $query = CustomerLoyaltyPoint::with(['customer', 'creator'])
             ->whereIn('type', ['Adjustment_Add', 'Adjustment_Deduct'])

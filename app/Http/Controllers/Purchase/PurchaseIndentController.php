@@ -63,7 +63,12 @@ class PurchaseIndentController extends Controller
     public function create()
     {
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
-        $items = Item::where('status', true)->orderBy('name')->get(['id', 'item_code', 'name', 'cost_price', 'sell_price']);
+        // Resolve only items from old() on validation error \u2014 never full catalogue at 1-crore scale.
+        $oldItems   = old('items');
+        $oldItemIds = is_array($oldItems) ? collect($oldItems)->pluck('item_id')->filter()->unique() : collect();
+        $items = $oldItemIds->isNotEmpty()
+            ? Item::whereIn('id', $oldItemIds)->orderBy('name')->get(['id', 'item_code', 'name', 'cost_price', 'sell_price'])
+            : collect();
         $departments = ['Store / Retail', 'Warehouse', 'Pharmacy', 'Grocery', 'Pet Care', 'Bakery', 'Stationery', 'General'];
         $priorities = ['Low', 'Medium', 'High', 'Urgent'];
 

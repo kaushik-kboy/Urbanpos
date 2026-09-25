@@ -189,6 +189,23 @@
 @push('js')
 <script>
 $(function () {
+    $('#customer_id').select2({
+        theme: 'bootstrap4',
+        placeholder: '-- Type name or mobile to search --',
+        minimumInputLength: 1,
+        ajax: {
+            url: '{{ route("sales.sales-bills.customer-search") }}',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ q: params.term }),
+            processResults: data => ({
+                results: (data || []).map(c => ({ id: c.id, text: c.text || c.name }))
+            }),
+            cache: true,
+        },
+        allowClear: true,
+    });
+
     $('#customer_id').on('change', function () {
         var customerId = $(this).val();
         if (!customerId) {

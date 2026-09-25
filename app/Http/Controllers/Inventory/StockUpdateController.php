@@ -302,7 +302,7 @@ class StockUpdateController extends Controller
     {
         return [
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
-            'items' => Item::orderBy('name')->pluck('name', 'id'),
+            'items' => collect(),
         ];
     }
 

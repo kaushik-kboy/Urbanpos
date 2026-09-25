@@ -13,12 +13,12 @@ use App\Models\StockLedger;
 use App\Models\Supplier;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PurchaseReturnTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $manager;
     private Branch $branch;
@@ -38,6 +38,11 @@ class PurchaseReturnTest extends TestCase
 
         $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%', 'description' => 'GST 18%', 'status' => true]);
 
+        $this->supplier = Supplier::firstOrCreate(
+            ['name' => 'Return Test Supplier'],
+            ['phone' => '9988776655', 'state' => 'Maharashtra', 'credit_limit' => 50000]
+        );
+
         $this->item = Item::firstOrCreate(
             ['item_code' => 'RET-TEST-001'],
             [
@@ -45,18 +50,20 @@ class PurchaseReturnTest extends TestCase
                 'cost_price' => 100,
                 'sell_price' => 150,
                 'mrp' => 160,
+                'supplier_id' => $this->supplier->id,
                 'gst_tax_id' => $gst->id,
                 'tax_inclusive' => false,
             ]
         );
 
-        $this->supplier = Supplier::firstOrCreate(
-            ['name' => 'Return Test Supplier'],
-            ['phone' => '9988776655', 'state' => 'Maharashtra', 'credit_limit' => 50000]
-        );
-
         $this->manager = User::factory()->create(['branch_id' => $this->branch->id]);
         $this->manager->assignRole('Manager');
+
+        \App\Models\ItemStock::create([
+            'item_id' => $this->item->id,
+            'branch_id' => $this->branch->id,
+            'quantity' => 100,
+        ]);
     }
 
     public function test_purchase_return_reduces_stock_and_posts_correct_journal(): void
@@ -223,6 +230,11 @@ class PurchaseReturnTest extends TestCase
 
     public function test_sales_bill_show_and_thermal_receipt_render(): void
     {
+        \App\Models\ReceiptSetting::updateOrCreate(
+            ['document_type' => 'sales_bill', 'branch_id' => $this->branch->id],
+            ['store_name' => 'URBAN PETS']
+        );
+
         $customer = \App\Models\Customer::firstOrCreate(['phone' => '9999977777'], ['name' => 'Receipt Customer']);
         $bill = \App\Models\SalesBill::create([
             'bill_number' => 'BILL-RCPT-01',

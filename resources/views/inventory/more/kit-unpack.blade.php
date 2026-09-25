@@ -36,11 +36,8 @@
                     <div class="col-md-5">
                         <div class="form-group">
                             <label>Master Kit Product to Unpack</label>
-                            <select name="kit_item_id" class="form-control select2" required>
-                                <option value="">-- Select Kit Product to Disassemble --</option>
-                                @foreach ($items as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
+                            <select name="kit_item_id" class="form-control item-search-select2" required style="width:100%">
+                                <option value="">-- Type to search kit item --</option>
                             </select>
                         </div>
                     </div>
@@ -69,11 +66,8 @@
                         <tbody id="unpack-body">
                             <tr>
                                 <td>
-                                    <select name="components[0][item_id]" class="form-control form-control-sm" required>
-                                        <option value="">-- Select Component Item --</option>
-                                        @foreach ($items as $id => $name)
-                                            <option value="{{ $id }}">{{ $name }}</option>
-                                        @endforeach
+                                    <select name="components[0][item_id]" class="form-control form-control-sm item-search-select2" required style="width:100%">
+                                        <option value="">-- Type to search component --</option>
                                     </select>
                                 </td>
                                 <td>
@@ -103,14 +97,36 @@
 
 @section('js')
 <script>
+    const ITEM_SEARCH_URL = '{{ route("sales.sales-bills.item-list") }}';
+
+    function initItemSelect2(el) {
+        $(el).select2({
+            theme: 'bootstrap4',
+            placeholder: 'Type to search item…',
+            minimumInputLength: 1,
+            ajax: {
+                url: ITEM_SEARCH_URL,
+                dataType: 'json',
+                delay: 250,
+                data: params => ({ search: params.term, show_all: 1 }),
+                processResults: data => ({
+                    results: (data.items || []).map(i => ({ id: i.id, text: i.name + (i.item_code ? ' [' + i.item_code + ']' : '') }))
+                }),
+                cache: true,
+            },
+            allowClear: true,
+        });
+    }
+
+    $('.item-search-select2').each(function() { initItemSelect2(this); });
+
     let compIdx = 1;
     $('#btn-add-comp').on('click', function() {
-        let options = $('#unpack-body tr:first select').html();
-        let row = `
+        const row = `
             <tr>
                 <td>
-                    <select name="components[${compIdx}][item_id]" class="form-control form-control-sm" required>
-                        ${options}
+                    <select name="components[${compIdx}][item_id]" class="form-control form-control-sm item-search-select2" required style="width:100%">
+                        <option value="">-- Type to search component --</option>
                     </select>
                 </td>
                 <td>
@@ -121,7 +137,9 @@
                 </td>
             </tr>
         `;
-        $('#unpack-body').append(row);
+        const $row = $(row);
+        $('#unpack-body').append($row);
+        initItemSelect2($row.find('.item-search-select2'));
         compIdx++;
     });
 

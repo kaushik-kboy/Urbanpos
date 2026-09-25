@@ -71,7 +71,8 @@ class SalesReturnController extends Controller
 
         $salesReturns = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');
-        $customers = Customer::orderBy('name')->pluck('name', 'id');
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $returnModes = ['Cash', 'Credit Note', 'Replacement'];
 
         return view('sales.sales-returns.index', compact('salesReturns', 'branches', 'customers', 'returnModes'));
@@ -393,8 +394,8 @@ class SalesReturnController extends Controller
 
         return [
             'customers' => $customers,
-            'branches' => Branch::orderBy('name')->pluck('name', 'id'),
-            'items' => Item::orderBy('name')->pluck('name', 'id'),
+            'branches'  => Branch::orderBy('name')->pluck('name', 'id'),
+            'items'     => collect(), // Items resolved per-bill via AJAX — never load full catalogue
             'salesBills' => $salesBills,
         ];
     }

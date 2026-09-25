@@ -80,7 +80,8 @@ class SalesDeliveryNoteController extends Controller
 
         $deliveryNotes = $query->latest('delivery_date')->latest('id')->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
-        $customers = Customer::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $statuses = ['Dispatched', 'Invoiced', 'Cancelled'];
 
         return view('sales.delivery-notes.index', compact('deliveryNotes', 'branches', 'customers', 'statuses'));
@@ -329,7 +330,7 @@ class SalesDeliveryNoteController extends Controller
         );
     }
 
-    private function formOptions(Request $request): array
+    private function formOptions(Request $request, $existingNote = null, $convertedItems = null): array
     {
         $user = $request->user();
         $branchQuery = Branch::where('status', true)->orderBy('name');
@@ -337,10 +338,27 @@ class SalesDeliveryNoteController extends Controller
             $branchQuery->where('id', $user->branch_id);
         }
 
+        // Only load items in this delivery note / converted order — never full catalogue.
+        $oldItems    = old('items');
+        $oldItemIds  = is_array($oldItems) ? collect($oldItems)->pluck('item_id')->filter() : collect();
+        $existingIds = collect($existingNote?->items ?? ($convertedItems ?? []))->pluck('item_id')->merge($oldItemIds)->filter()->unique();
+        $items       = $existingIds->isNotEmpty()
+            ? Item::whereIn('id', $existingIds)->get(['id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp'])
+            : collect();
+
+        $selectedCustId = old('customer_id', $existingNote?->customer_id);
+        $customers = Customer::where('status', true)->orderBy('name')->limit(20)
+            ->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+        if ($selectedCustId && ! isset($customers[$selectedCustId])) {
+            $sel = Customer::find($selectedCustId);
+            if ($sel) $customers->put($sel->id, $sel->mobile ? "{$sel->name} ({$sel->mobile})" : $sel->name);
+        }
+
         return [
-            'customers' => Customer::options(),
-            'branches' => $branchQuery->pluck('name', 'id'),
-            'items' => Item::where('status', true)->orderBy('name')->get(['id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp']),
+            'customers'  => $customers,
+            'branches'   => $branchQuery->pluck('name', 'id'),
+            'items'      => $items,
             'salesOrders' => SalesOrder::whereNotIn('status', ['Cancelled', 'Converted'])->latest('order_date')->pluck('order_number', 'id'),
         ];
     }

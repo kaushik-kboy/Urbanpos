@@ -1163,7 +1163,7 @@ return [
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/select2-init.js?v=20260917_branch2',
+                    'location' => 'js/select2-init.js?v=20260925_fix_focus_open',
                 ],
             ],
         ],

@@ -13,12 +13,12 @@ use App\Models\SalesBill;
 use App\Models\User;
 use App\Services\Loyalty\LoyaltyService;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class LoyaltyProgramTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $manager;
     private Branch $branch;
@@ -32,6 +32,7 @@ class LoyaltyProgramTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->branch = Branch::firstOrCreate(
             ['id' => 3],

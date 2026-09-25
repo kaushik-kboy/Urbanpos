@@ -307,7 +307,7 @@ class PurchaseReceiptNoteController extends Controller
         return $num;
     }
 
-    private function formOptions(?int $supplierId = null, ?int $selectedPoId = null): array
+    private function formOptions(?int $supplierId = null, ?int $selectedPoId = null, $existingNote = null): array
     {
         $purchaseOrders = collect();
         if ($supplierId) {
@@ -322,10 +322,18 @@ class PurchaseReceiptNoteController extends Controller
                 ->pluck('po_number', 'id');
         }
 
+        // Only load items in this receipt note (edit) — never the full catalogue.
+        $oldItems    = old('items');
+        $oldItemIds  = is_array($oldItems) ? collect($oldItems)->pluck('item_id')->filter() : collect();
+        $existingIds = collect($existingNote?->items ?? [])->pluck('item_id')->merge($oldItemIds)->filter()->unique();
+        $items       = $existingIds->isNotEmpty()
+            ? Item::whereIn('id', $existingIds)->orderBy('name')->get(['id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp'])
+            : collect();
+
         return [
-            'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'items' => Item::where('status', true)->orderBy('name')->get(['id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp']),
+            'suppliers'      => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches'       => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items'          => $items,
             'purchaseOrders' => $purchaseOrders,
         ];
     }

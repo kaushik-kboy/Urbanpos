@@ -15,12 +15,12 @@ use App\Models\TenderType;
 use App\Models\User;
 use App\Services\Inventory\StockLedgerService;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SalesDeliveryNoteTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $manager;
     private User $cashier;

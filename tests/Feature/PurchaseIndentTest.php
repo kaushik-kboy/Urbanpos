@@ -12,12 +12,12 @@ use App\Models\StockLedger;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\JournalEntry;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PurchaseIndentTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

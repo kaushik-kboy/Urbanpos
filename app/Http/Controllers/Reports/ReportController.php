@@ -84,7 +84,13 @@ class ReportController extends Controller
         $bills = $query->orderBy('bill_date')->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
-        $customers = Customer::orderBy('name')->get();
+        $customerId = $request->input('customer_id');
+        $selectedCustForFilter = $customerId ? Customer::find($customerId) : null;
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+        if ($selectedCustForFilter && ! isset($customers[$customerId])) {
+            $customers->put($selectedCustForFilter->id, $selectedCustForFilter->mobile ? "{$selectedCustForFilter->name} ({$selectedCustForFilter->mobile})" : $selectedCustForFilter->name);
+        }
         $invoiceTypes = SalesBill::select('invoice_type')->distinct()->whereNotNull('invoice_type')->pluck('invoice_type');
 
         return view('reports.billwise-sales', compact('bills', 'from', 'to', 'branchId', 'branches', 'customers', 'invoiceTypes', 'search', 'customerId', 'invoiceType'));
@@ -218,7 +224,13 @@ class ReportController extends Controller
         $returns = $query->orderBy('return_date')->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
-        $customers = Customer::orderBy('name')->get();
+        $customerId = $request->input('customer_id');
+        $selectedCustForFilter = $customerId ? Customer::find($customerId) : null;
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+        if ($selectedCustForFilter && ! isset($customers[$customerId])) {
+            $customers->put($selectedCustForFilter->id, $selectedCustForFilter->mobile ? "{$selectedCustForFilter->name} ({$selectedCustForFilter->mobile})" : $selectedCustForFilter->name);
+        }
         $returnModes = SalesReturn::select('return_mode')->distinct()->whereNotNull('return_mode')->pluck('return_mode');
 
         return view('reports.sales-return-summary', compact('returns', 'from', 'to', 'branchId', 'branches', 'customers', 'returnModes', 'search', 'customerId', 'returnMode'));
@@ -803,7 +815,12 @@ class ReportController extends Controller
         $branches        = Branch::orderBy('name')->pluck('name', 'id');
         $brands          = Brand::orderBy('name')->pluck('name', 'id');
         $categories      = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
-        $customers       = Customer::orderBy('name')->pluck('name', 'id');
+        $customerId = $request->input('customer_id');
+        $selectedCustForFilter = $customerId ? Customer::find($customerId) : null;
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->pluck('name', 'id');
+        if ($selectedCustForFilter && ! isset($customers[$customerId])) {
+            $customers->put($selectedCustForFilter->id, $selectedCustForFilter->name);
+        }
 
         return view('reports.sales-margin-itemwise', compact(
             'lines', 'totals', 'from', 'to', 'branchId', 'brandId', 'categoryValueId',
@@ -936,7 +953,12 @@ class ReportController extends Controller
         ];
 
         $branches   = Branch::orderBy('name')->pluck('name', 'id');
-        $customers  = Customer::orderBy('name')->pluck('name', 'id');
+        $filterCustId = $request->input('customer_id');
+        $customers  = Customer::where('status', true)->orderBy('name')->limit(30)->pluck('name', 'id');
+        if ($filterCustId && ! isset($customers[$filterCustId])) {
+            $fc = Customer::find($filterCustId);
+            if ($fc) $customers->put($fc->id, $fc->name);
+        }
         $statuses   = ['Draft', 'Confirmed', 'Converted', 'Cancelled'];
 
         return view('reports.quotation-order-summary', compact(

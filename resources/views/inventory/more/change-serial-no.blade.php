@@ -36,11 +36,8 @@
                     <div class="col-md-5">
                         <div class="form-group">
                             <label>Item Name (Serialized Only)</label>
-                            <select name="item_id" class="form-control select2" required id="serial-item-select">
-                                <option value="">-- Choose Serialized Item --</option>
-                                @foreach ($items as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
+                            <select name="item_id" class="form-control select2" required id="serial-item-select" style="width: 100%;">
+                                <option value="">-- Type to search serialized item --</option>
                             </select>
                         </div>
                     </div>
@@ -109,6 +106,40 @@
 
 @section('js')
 <script>
+    const ITEM_SEARCH_URL = '{{ route("sales.sales-bills.item-list") }}';
+
+    $('#serial-item-select').select2({
+        theme: 'bootstrap4',
+        placeholder: '-- Type to search serialized item --',
+        minimumInputLength: 1,
+        ajax: {
+            url: ITEM_SEARCH_URL,
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ search: params.term, show_all: 1 }),
+            processResults: data => ({
+                results: (data.items || []).map(i => ({ 
+                    id: i.id, 
+                    text: i.name + (i.item_code ? ' [' + i.item_code + ']' : ''),
+                    item_code: i.item_code
+                }))
+            }),
+            cache: true,
+        },
+        allowClear: true,
+    }).on('select2:select', function(e) {
+        let data = e.params.data;
+        if (data && data.item_code) {
+            $('#part-no-input').val(data.item_code);
+        } else if (data && data.id) {
+            $('#part-no-input').val('SKU-PART-' + data.id);
+        } else {
+            $('#part-no-input').val('');
+        }
+    }).on('select2:clear', function() {
+        $('#part-no-input').val('');
+    });
+
     let sIndex = 1;
     $('#btn-add-serial').on('click', function() {
         let row = `
@@ -138,15 +169,6 @@
     $(document).on('click', '.btn-remove-serial', function() {
         if ($('#serial-body tr').length > 1) {
             $(this).closest('tr').remove();
-        }
-    });
-
-    $('#serial-item-select').on('change', function() {
-        let itemId = $(this).val();
-        if (itemId) {
-            $('#part-no-input').val('SKU-PART-' + itemId);
-        } else {
-            $('#part-no-input').val('');
         }
     });
 </script>

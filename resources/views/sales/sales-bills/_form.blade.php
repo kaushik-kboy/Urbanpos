@@ -1213,6 +1213,9 @@
             } else {
                 if ($cust.length && $cust.data('select2')) {
                     $cust.data('select2').$container.find('.select2-selection').focus();
+                    if ($cust.data('select2').isOpen()) {
+                        $cust.select2('close');
+                    }
                 } else if ($cust.length) {
                     $cust.focus();
                 }

@@ -11,12 +11,12 @@ use App\Models\User;
 use App\Services\Tax\TaxEngine;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\TenderTypeSeeder;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SalesBillTaxInclusivePosTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $cashier;
     private Branch $branch;

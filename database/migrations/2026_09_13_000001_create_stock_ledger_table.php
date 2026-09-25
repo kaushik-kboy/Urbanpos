@@ -16,7 +16,8 @@ return new class extends Migration
             $table->enum('movement_type', [
                 'OPENING', 'PURCHASE_RECEIPT', 'PURCHASE_RETURN', 'SALE', 'SALE_RETURN',
                 'TRANSFER_OUT', 'TRANSFER_TRANSIT', 'TRANSFER_IN', 'DAMAGE', 'EXPIRY',
-                'SHORTAGE', 'EXCESS', 'CORRECTION',
+                'SHORTAGE', 'EXCESS', 'CORRECTION', 'REPACK', 'KIT_ASSEMBLY', 'KIT_DISASSEMBLY',
+                'SALES_DELIVERY',
             ]);
             $table->string('reference_type')->nullable();
             $table->unsignedBigInteger('reference_id')->nullable();

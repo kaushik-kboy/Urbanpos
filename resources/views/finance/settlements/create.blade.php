@@ -222,6 +222,26 @@
 $(function() {
     $('.select2').select2({ theme: 'bootstrap4', width: '100%' });
 
+    @if($settlementType === 'Customer')
+    $('#party-select').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        placeholder: 'Search customer by name, mobile or code...',
+        minimumInputLength: 1,
+        ajax: {
+            url: '{{ route("sales.sales-bills.customer-search") }}',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ q: params.term }),
+            processResults: data => ({
+                results: (data || []).map(c => ({ id: c.id, text: c.text || c.name }))
+            }),
+            cache: true,
+        },
+        allowClear: true,
+    });
+    @endif
+
     let pendingBills = [];
 
     $('#party-select, #branch-select').on('change', function() {

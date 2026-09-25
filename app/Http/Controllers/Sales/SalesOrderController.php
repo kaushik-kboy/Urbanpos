@@ -63,7 +63,8 @@ class SalesOrderController extends Controller
 
         $orders = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
-        $customers = Customer::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $statuses = ['Open', 'Partially Fulfilled', 'Converted', 'Cancelled'];
 
         return view('sales.sales-orders.index', compact('orders', 'branches', 'customers', 'statuses'));
@@ -78,6 +79,13 @@ class SalesOrderController extends Controller
                 ->findOrFail($request->input('from_quotation'));
             $options['sourceQuotation'] = $quotation;
             $options['convertedItems'] = $quotation->items;
+            // merge in converted item ids so the _item-row can resolve names
+            $convertedItemIds = $quotation->items->pluck('item_id')->filter()->unique();
+            if ($convertedItemIds->isNotEmpty()) {
+                $options['items'] = Item::whereIn('id', $convertedItemIds)->with('gstTax:id,percentage')->get([
+                    'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
+                ]);
+            }
         }
 
         return view('sales.sales-orders.create', $options);
@@ -126,7 +134,7 @@ class SalesOrderController extends Controller
 
         $salesOrder->load('items');
 
-        return view('sales.sales-orders.edit', array_merge(['salesOrder' => $salesOrder], $this->formOptions()));
+        return view('sales.sales-orders.edit', array_merge(['salesOrder' => $salesOrder], $this->formOptions($salesOrder)));
     }
 
     public function update(Request $request, SalesOrder $salesOrder)
@@ -179,16 +187,31 @@ class SalesOrderController extends Controller
         );
     }
 
-    private function formOptions(): array
+    private function formOptions(?SalesOrder $salesOrder = null, $convertedItems = null): array
     {
-        $items = Item::where('status', true)->with('gstTax:id,percentage')->orderBy('name')->get([
-            'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id'
-        ]);
+        // Only load items already in this order (for edit/reload) — never load the full catalogue.
+        $oldItems    = old('items');
+        $oldItemIds  = is_array($oldItems) ? collect($oldItems)->pluck('item_id')->filter() : collect();
+        $existingIds = collect($salesOrder?->items ?? ($convertedItems ?? []))->pluck('item_id')->merge($oldItemIds)->filter()->unique();
+        $items       = $existingIds->isNotEmpty()
+            ? Item::whereIn('id', $existingIds)->with('gstTax:id,percentage')->get([
+                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
+              ])
+            : collect();
+
+        $selectedCustId = old('customer_id', old('header.customer_id', $salesOrder?->customer_id));
+        $customers = Customer::where('status', true)->orderBy('name')->limit(20)
+            ->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+        if ($selectedCustId && ! isset($customers[$selectedCustId])) {
+            $sel = Customer::find($selectedCustId);
+            if ($sel) $customers->put($sel->id, $sel->mobile ? "{$sel->name} ({$sel->mobile})" : $sel->name);
+        }
 
         return [
-            'customers' => Customer::options(),
-            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'items' => $items,
+            'customers' => $customers,
+            'branches'  => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items'     => $items,
         ];
     }
 

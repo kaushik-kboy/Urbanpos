@@ -62,7 +62,8 @@ class SalesQuotationController extends Controller
 
         $quotations = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
-        $customers = Customer::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $statuses = ['Draft', 'Sent', 'Accepted', 'Converted', 'Cancelled'];
 
         return view('sales.sales-quotations.index', compact('quotations', 'branches', 'customers', 'statuses'));
@@ -111,7 +112,7 @@ class SalesQuotationController extends Controller
 
         $salesQuotation->load('items');
 
-        return view('sales.sales-quotations.edit', array_merge(['salesQuotation' => $salesQuotation], $this->formOptions()));
+        return view('sales.sales-quotations.edit', array_merge(['salesQuotation' => $salesQuotation], $this->formOptions($salesQuotation)));
     }
 
     public function update(Request $request, SalesQuotation $salesQuotation)
@@ -164,16 +165,32 @@ class SalesQuotationController extends Controller
         );
     }
 
-    private function formOptions(): array
+    private function formOptions(?SalesQuotation $salesQuotation = null): array
     {
-        $items = Item::where('status', true)->with('gstTax:id,percentage')->orderBy('name')->get([
-            'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id'
-        ]);
+        // Only load items already present in this quotation (for edit/reload),
+        // NOT the full catalogue — at 1-crore items scale, loading all would crash the page.
+        $oldItems     = old('items');
+        $oldItemIds   = is_array($oldItems) ? collect($oldItems)->pluck('item_id')->filter() : collect();
+        $existingIds  = collect($salesQuotation?->items ?? [])->pluck('item_id')->merge($oldItemIds)->filter()->unique();
+        $items        = $existingIds->isNotEmpty()
+            ? Item::whereIn('id', $existingIds)->with('gstTax:id,percentage')->get([
+                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
+              ])
+            : collect();
+
+        $selectedCustId = old('customer_id', old('header.customer_id', $salesQuotation?->customer_id));
+        $customers = Customer::where('status', true)->orderBy('name')->limit(20)
+            ->get(['id', 'name', 'mobile'])
+            ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
+        if ($selectedCustId && ! isset($customers[$selectedCustId])) {
+            $sel = Customer::find($selectedCustId);
+            if ($sel) $customers->put($sel->id, $sel->mobile ? "{$sel->name} ({$sel->mobile})" : $sel->name);
+        }
 
         return [
-            'customers' => Customer::options(),
-            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'items' => $items,
+            'customers' => $customers,
+            'branches'  => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items'     => $items,
         ];
     }
 

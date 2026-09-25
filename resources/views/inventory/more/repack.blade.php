@@ -36,11 +36,9 @@
                     <div class="col-md-5">
                         <div class="form-group">
                             <label>Bulk Source Item (e.g. 20KG Bag)</label>
-                            <select name="bulk_item_id" class="form-control select2" required>
-                                <option value="">-- Choose Bulk Product --</option>
-                                @foreach ($items as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
+                            {{-- Select2 AJAX: type to search, supports 1-crore items --}}
+                            <select name="bulk_item_id" class="form-control item-search-select2" required style="width:100%">
+                                <option value="">-- Type to search item --</option>
                             </select>
                         </div>
                     </div>
@@ -69,11 +67,8 @@
                         <tbody id="repack-body">
                             <tr>
                                 <td>
-                                    <select name="packs[0][item_id]" class="form-control form-control-sm" required>
-                                        <option value="">-- Select Repack Item --</option>
-                                        @foreach ($items as $id => $name)
-                                            <option value="{{ $id }}">{{ $name }}</option>
-                                        @endforeach
+                                    <select name="packs[0][item_id]" class="form-control form-control-sm item-search-select2" required style="width:100%">
+                                        <option value="">-- Type to search item --</option>
                                     </select>
                                 </td>
                                 <td>
@@ -103,14 +98,37 @@
 
 @section('js')
 <script>
+    const ITEM_SEARCH_URL = '{{ route("sales.sales-bills.item-list") }}';
+
+    function initItemSelect2(el) {
+        $(el).select2({
+            theme: 'bootstrap4',
+            placeholder: 'Type to search item…',
+            minimumInputLength: 1,
+            ajax: {
+                url: ITEM_SEARCH_URL,
+                dataType: 'json',
+                delay: 250,
+                data: params => ({ search: params.term, show_all: 1 }),
+                processResults: data => ({
+                    results: (data.items || []).map(i => ({ id: i.id, text: i.name + (i.item_code ? ' [' + i.item_code + ']' : '') }))
+                }),
+                cache: true,
+            },
+            allowClear: true,
+        });
+    }
+
+    // Init existing selects
+    $('.item-search-select2').each(function() { initItemSelect2(this); });
+
     let packIdx = 1;
     $('#btn-add-pack').on('click', function() {
-        let options = $('#repack-body tr:first select').html();
-        let row = `
+        const row = `
             <tr>
                 <td>
-                    <select name="packs[${packIdx}][item_id]" class="form-control form-control-sm" required>
-                        ${options}
+                    <select name="packs[${packIdx}][item_id]" class="form-control form-control-sm item-search-select2" required style="width:100%">
+                        <option value="">-- Type to search item --</option>
                     </select>
                 </td>
                 <td>
@@ -121,7 +139,9 @@
                 </td>
             </tr>
         `;
-        $('#repack-body').append(row);
+        const $row = $(row);
+        $('#repack-body').append($row);
+        initItemSelect2($row.find('.item-search-select2'));
         packIdx++;
     });
 

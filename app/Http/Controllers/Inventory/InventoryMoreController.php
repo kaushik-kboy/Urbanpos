@@ -20,9 +20,8 @@ class InventoryMoreController extends Controller
     {
         $branchId = $request->input('branch_id', session('active_branch_id') ?? Branch::where('name', '!=', 'GLOBAL')->first()->id ?? 2);
         $branches = Branch::where('status', true)->pluck('name', 'id');
-        $items = Item::where('status', true)->orderBy('name')->pluck('name', 'id');
-
-        return view('inventory.more.repack', compact('branches', 'branchId', 'items'));
+        // Items are searched via AJAX (item-list endpoint) — do NOT load all items here.
+        return view('inventory.more.repack', compact('branches', 'branchId'));
     }
 
     public function processRepack(Request $request)
@@ -84,9 +83,8 @@ class InventoryMoreController extends Controller
     {
         $branchId = $request->input('branch_id', session('active_branch_id') ?? Branch::where('name', '!=', 'GLOBAL')->first()->id ?? 2);
         $branches = Branch::where('status', true)->pluck('name', 'id');
-        $items = Item::where('status', true)->orderBy('name')->pluck('name', 'id');
-
-        return view('inventory.more.kit-preparation', compact('branches', 'branchId', 'items'));
+        // Items are searched via AJAX — do NOT load all items here.
+        return view('inventory.more.kit-preparation', compact('branches', 'branchId'));
     }
 
     public function processKitPreparation(Request $request)
@@ -146,9 +144,8 @@ class InventoryMoreController extends Controller
     {
         $branchId = $request->input('branch_id', session('active_branch_id') ?? Branch::where('name', '!=', 'GLOBAL')->first()->id ?? 2);
         $branches = Branch::where('status', true)->pluck('name', 'id');
-        $items = Item::where('status', true)->orderBy('name')->pluck('name', 'id');
-
-        return view('inventory.more.kit-unpack', compact('branches', 'branchId', 'items'));
+        // Items are searched via AJAX — do NOT load all items here.
+        return view('inventory.more.kit-unpack', compact('branches', 'branchId'));
     }
 
     public function processKitUnpack(Request $request)
@@ -226,10 +223,8 @@ class InventoryMoreController extends Controller
     {
         $branchId = $request->input('branch_id', session('active_branch_id') ?? Branch::where('name', '!=', 'GLOBAL')->first()->id ?? 2);
         $branches = Branch::where('status', true)->pluck('name', 'id');
-        // Serialized items
-        $items = Item::where('product_type', 'Serialized')->orWhere('status', true)->orderBy('name')->pluck('name', 'id');
-
-        return view('inventory.more.change-serial-no', compact('branches', 'branchId', 'items'));
+        // Items searched via AJAX; serialized filter applied server-side in item-search endpoint.
+        return view('inventory.more.change-serial-no', compact('branches', 'branchId'));
     }
 
     public function processChangeSerialNo(Request $request)

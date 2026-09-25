@@ -119,26 +119,19 @@ $(document).ready(function () {
         }
     });
 
-    // 2. Tab key navigation: Opens automatically as soon as focus lands on Select2 (single or multi)
-    $(document).on('focus', '.select2-selection, .select2-container .select2-search__field', function (e) {
-        if (isSelect2Closing) return;
-        var $container = $(this).closest('.select2-container');
-        var $select = $container.prev('select.select2');
-        if ($select.length && $select.data('select2') && !$select.data('select2').isOpen()) {
-            $select.select2('open');
-        }
-    });
-
-    // 3. Direct typing & Enter key on Select2:
-    // - If closed and user presses Enter -> opens dropdown immediately.
-    // - If closed and user types any letter/number -> opens dropdown and inputs that letter into the search field!
+    // 2. Tab key navigation: Focuses the Select2 container cleanly with outline.
+    // Dropdown remains closed on focus (so page loads and tabbing don't pop open uninvited).
+    // Opens smoothly when user:
+    //   - Types any letter/digit (auto-inputs into search)
+    //   - Presses Enter, Space, or ArrowDown
+    //   - Clicks with mouse
     $(document).on('keydown', '.select2-selection', function (e) {
         var $container = $(this).closest('.select2-container');
         var $select = $container.prev('select.select2');
         if (!$select.length || !$select.data('select2')) return;
 
         if (!$select.data('select2').isOpen()) {
-            if (e.key === 'Enter' || e.keyCode === 13) {
+            if (e.key === 'Enter' || e.keyCode === 13 || e.key === ' ' || e.key === 'Spacebar' || e.key === 'ArrowDown') {
                 e.preventDefault();
                 e.stopPropagation();
                 $select.select2('open');

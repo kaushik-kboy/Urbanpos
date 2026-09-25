@@ -121,7 +121,7 @@ class PurchaseReturnController extends Controller
         $purchaseReturn->assertEditable();
         $purchaseReturn->load('items.item');
 
-        return view('purchase.purchase-returns.edit', array_merge(['purchaseReturn' => $purchaseReturn], $this->formOptions()));
+        return view('purchase.purchase-returns.edit', array_merge(['purchaseReturn' => $purchaseReturn], $this->formOptions($purchaseReturn)));
     }
 
     public function update(Request $request, PurchaseReturn $purchaseReturn)
@@ -458,12 +458,20 @@ class PurchaseReturnController extends Controller
         return $prn;
     }
 
-    private function formOptions(): array
+    private function formOptions(?PurchaseReturn $purchaseReturn = null): array
     {
+        // Only load items already in this return (edit/reload) — never the full item catalogue.
+        $oldItems    = old('items');
+        $oldItemIds  = is_array($oldItems) ? collect($oldItems)->pluck('item_id')->filter() : collect();
+        $existingIds = collect($purchaseReturn?->items ?? [])->pluck('item_id')->merge($oldItemIds)->filter()->unique();
+        $items       = $existingIds->isNotEmpty()
+            ? Item::whereIn('id', $existingIds)->orderBy('name')->pluck('name', 'id')
+            : collect();
+
         return [
-            'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'items' => Item::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'suppliers'        => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches'         => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items'            => $items,
             'purchaseInvoices' => PurchaseInvoice::latest('invoice_date')->take(100)->pluck('invoice_number', 'id'),
         ];
     }

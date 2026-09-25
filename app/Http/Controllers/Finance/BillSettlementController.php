@@ -75,7 +75,14 @@ class BillSettlementController extends Controller
         $settlementType = $request->input('type', 'Customer') === 'Supplier' ? 'Supplier' : 'Customer';
 
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
-        $customers = Customer::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $oldCustId = old('customer_id', $request->input('customer_id'));
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->pluck('name', 'id');
+        if ($oldCustId && !$customers->has($oldCustId)) {
+            $selC = Customer::find($oldCustId);
+            if ($selC) {
+                $customers->put($selC->id, $selC->name);
+            }
+        }
         $suppliers = Supplier::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         $bankLedgers = Ledger::whereIn('ledger_group', ['Cash in Hand', 'Bank Account'])
