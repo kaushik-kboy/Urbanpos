@@ -35,7 +35,19 @@
                 <x-field name="customer_code" label="Customer Id" :value="$c->customer_code ?? ''" />
             </div>
             <div class="field-wrapper col-md-6" data-field="sales_type" data-label="Sales Type" data-default-order="6">
-                <x-select name="sales_type" label="Sales Type" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$c->sales_type ?? 'Local'" />
+                @if(!empty($c?->id))
+                    <div class="form-group">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="font-weight-bold mb-0">Sales Type</label>
+                            <span class="badge badge-secondary small"><i class="fas fa-lock mr-1"></i> Locked</span>
+                        </div>
+                        <input type="text" class="form-control bg-light font-weight-bold" value="{{ $c->sales_type ?? 'Local' }}" readonly disabled>
+                        <input type="hidden" name="sales_type" value="{{ $c->sales_type ?? 'Local' }}">
+                        <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Sales Type cannot be changed after customer is created.</small>
+                    </div>
+                @else
+                    <x-select name="sales_type" label="Sales Type" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$c->sales_type ?? 'Local'" />
+                @endif
             </div>
             <div class="field-wrapper col-md-6" data-field="payment_mode" data-label="Payment Mode" data-default-order="7">
                 <x-select name="payment_mode" label="Payment Mode" :options="['Cash Only' => 'Cash Only', 'No Credit' => 'No Credit', 'Credit Only' => 'Credit Only', 'Both Cash and Credit' => 'Both Cash and Credit', 'Cash on Delivery' => 'Cash on Delivery']" :selected="$c->payment_mode ?? 'Cash Only'" />
@@ -130,7 +142,21 @@
     <div class="tab-pane" id="tab-others">
         <x-select name="gender" label="Gender" :options="['Male' => 'Male', 'Female' => 'Female']" :selected="$c->gender ?? ''" placeholder="Select" />
         <x-select name="exempted_reason" label="Exempted Reason" :options="['Other exemption' => 'Other exemption', 'SEZ-Exempt' => 'SEZ-Exempt', 'SEZ-LUT' => 'SEZ-LUT', 'BOND' => 'BOND', 'SEZ-Taxable' => 'SEZ-Taxable']" :selected="$c->exempted_reason ?? ''" placeholder="Select" />
-        <x-select name="customer_type" label="Customer Type" :options="$customerTypes ?? ['RETAIL INVOICE' => 'RETAIL INVOICE', 'TAX INVOICE' => 'TAX INVOICE', 'EXEMPTED' => 'EXEMPTED', 'E-COMMERCE' => 'E-COMMERCE']" :selected="$c->customer_type ?? 'RETAIL INVOICE'" />
+        @if(!empty($c?->id))
+            <div class="form-group row">
+                <label class="col-sm-3 col-form-label font-weight-bold">
+                    Customer Type
+                    <span class="badge badge-secondary small ml-1"><i class="fas fa-lock mr-1"></i> Locked</span>
+                </label>
+                <div class="col-sm-6">
+                    <input type="text" class="form-control bg-light font-weight-bold" value="{{ $c->customer_type ?? 'RETAIL INVOICE' }}" readonly disabled>
+                    <input type="hidden" name="customer_type" value="{{ $c->customer_type ?? 'RETAIL INVOICE' }}">
+                    <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Customer Type cannot be changed after customer is created.</small>
+                </div>
+            </div>
+        @else
+            <x-select name="customer_type" label="Customer Type" :options="$customerTypes ?? ['RETAIL INVOICE' => 'RETAIL INVOICE', 'TAX INVOICE' => 'TAX INVOICE', 'EXEMPTED' => 'EXEMPTED', 'E-COMMERCE' => 'E-COMMERCE']" :selected="$c->customer_type ?? 'RETAIL INVOICE'" />
+        @endif
     </div>
 
     <div class="tab-pane" id="tab-pets">

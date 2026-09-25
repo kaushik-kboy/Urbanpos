@@ -571,6 +571,8 @@ class SalesBillController extends Controller
             'customer_id' => $customer->id,
             'customer_name' => $customer->name,
             'customer_mobile' => $customer->mobile ?? '',
+            'customer_type' => $customer->customer_type ?? 'RETAIL INVOICE',
+            'sales_type' => $customer->sales_type ?? 'Local',
             'customer_edit_url' => url("master/customers/{$customer->id}/edit"),
             'pets' => $pets,
             'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
@@ -1289,6 +1291,8 @@ class SalesBillController extends Controller
                     'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
                     'name' => $c->name,
                     'mobile' => $c->mobile ?? '',
+                    'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
+                    'sales_type' => $c->sales_type ?? 'Local',
                     'edit_url' => url("master/customers/{$c->id}/edit"),
                     'pets' => $pets,
                     'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
@@ -1305,13 +1309,14 @@ class SalesBillController extends Controller
         $customers = Customer::where('status', true)
             ->orderBy('name')
             ->limit(20)
-            ->get(['id', 'name', 'mobile'])
+            ->get(['id', 'name', 'mobile', 'customer_type', 'sales_type'])
             ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
 
-        if ($selectedCustId && ! isset($customers[$selectedCustId])) {
-            $selCust = Customer::find($selectedCustId);
-            if ($selCust) {
-                $customers->put($selCust->id, $selCust->mobile ? "{$selCust->name} ({$selCust->mobile})" : $selCust->name);
+        $selectedCustomer = null;
+        if ($selectedCustId) {
+            $selectedCustomer = Customer::find($selectedCustId);
+            if ($selectedCustomer && ! isset($customers[$selectedCustId])) {
+                $customers->put($selectedCustomer->id, $selectedCustomer->mobile ? "{$selectedCustomer->name} ({$selectedCustomer->mobile})" : $selectedCustomer->name);
             }
         }
 
@@ -1331,11 +1336,40 @@ class SalesBillController extends Controller
             $tenderTypes = TenderType::with(['values' => fn ($q) => $q->where('status', true)])->where('status', true)->orderBy('id')->get();
         }
 
+        $customerTypes = \App\Models\CustomerType::where('status', true)->orderBy('name')->pluck('name', 'name');
+        if ($customerTypes->isEmpty()) {
+            $customerTypes = collect([
+                'Retail Invoice' => 'Retail Invoice',
+                'Tax Invoice' => 'Tax Invoice',
+                'Exempted' => 'Exempted',
+            ]);
+        } else {
+            $customerTypes = $customerTypes->mapWithKeys(function ($name) {
+                $mapped = match (strtoupper($name)) {
+                    'TAX INVOICE' => 'Tax Invoice',
+                    'EXEMPTED' => 'Exempted',
+                    default => 'Retail Invoice',
+                };
+                return [$mapped => $mapped];
+            })->unique();
+        }
+
+        $salesTypes = \App\Models\SalesType::where('status', true)->orderBy('name')->pluck('name', 'name');
+        if ($salesTypes->isEmpty()) {
+            $salesTypes = collect([
+                'Local' => 'Local',
+                'Interstate' => 'Interstate',
+            ]);
+        }
+
         return [
-            'customers'   => $customers,
-            'branches'    => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'items'       => $items,
-            'tenderTypes' => $tenderTypes,
+            'customers'        => $customers,
+            'selectedCustomer' => $selectedCustomer,
+            'branches'         => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items'            => $items,
+            'tenderTypes'      => $tenderTypes,
+            'customerTypes'    => $customerTypes,
+            'salesTypes'       => $salesTypes,
         ];
     }
 

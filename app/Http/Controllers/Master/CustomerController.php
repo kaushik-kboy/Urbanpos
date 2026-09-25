@@ -72,6 +72,8 @@ class CustomerController extends Controller
                     'id' => $customer->id,
                     'name' => $customer->name,
                     'mobile' => $customer->mobile,
+                    'customer_type' => $customer->customer_type,
+                    'sales_type' => $customer->sales_type,
                     'text' => $customer->displayName,
                 ],
                 'message' => 'Customer created successfully.',
@@ -114,6 +116,9 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $data = $this->validateData($request, $customer);
+        // Sales Type and Customer Type cannot be changed once customer is created
+        $data['customer_type'] = $customer->customer_type;
+        $data['sales_type'] = $customer->sales_type;
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);

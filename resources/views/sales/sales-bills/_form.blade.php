@@ -8,6 +8,22 @@
     $billNumberVal = old('bill_number', $bill->bill_number ?? ($nextBillNumber ?? ''));
 @endphp
 
+@push('css')
+<style>
+.batch-row-selected {
+    background-color: #d1ecf1 !important;
+    outline: 2px solid #17a2b8 !important;
+    box-shadow: inset 0 0 0 2px #17a2b8;
+}
+.batch-row-selected td {
+    font-weight: 700 !important;
+}
+.batch-nav-row {
+    cursor: pointer;
+}
+</style>
+@endpush
+
 @if(isset($sourceQuotation))
     <div class="alert alert-info py-2 mb-3 shadow-sm border-0">
         <i class="fas fa-info-circle mr-1"></i> Converting from <strong>Sales Quotation #{{ $sourceQuotation->quotation_number }}</strong> (Customer: {{ $sourceQuotation->customer?->name }}).
@@ -111,7 +127,11 @@
 
     {{-- Invoice Type --}}
     <div class="field-wrapper col-md-4" data-field="invoice_type" data-default-order="5">
-        <x-select name="invoice_type" label="Invoice Type" :options="['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="font-weight-bold mb-0">Invoice Type</label>
+            <span class="badge badge-warning small d-none" id="invoice-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock mr-1"></i> Customer Locked</span>
+        </div>
+        <x-select name="invoice_type" label="" :options="$customerTypes ?? ['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
     </div>
 
     {{-- Delivery Type --}}
@@ -126,7 +146,11 @@
 
     {{-- Sales Type --}}
     <div class="field-wrapper col-md-4" data-field="sales_type" data-default-order="8">
-        <x-select name="sales_type" label="Sales Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$selectedSalesType" required />
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="font-weight-bold mb-0">Sales Type</label>
+            <span class="badge badge-warning small d-none" id="sales-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock mr-1"></i> Customer Locked</span>
+        </div>
+        <x-select name="sales_type" label="" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$selectedSalesType" required />
     </div>
 
     {{-- Payment Type --}}
@@ -445,17 +469,23 @@
                     <div class="col-6 mb-2">
                         <label class="small font-weight-bold mb-1">Customer Type</label>
                         <select id="qc-customer-type" class="form-control form-control-sm">
-                            <option value="RETAIL INVOICE" selected>Retail Invoice</option>
-                            <option value="TAX INVOICE">Tax Invoice</option>
-                            <option value="EXEMPTED">Exempted</option>
-                            <option value="E-COMMERCE">E-Commerce</option>
+                            @php
+                                $qcCustTypes = \App\Models\CustomerType::where('status', true)->orderBy('name')->pluck('name', 'name');
+                                if ($qcCustTypes->isEmpty()) {
+                                    $qcCustTypes = collect(['RETAIL INVOICE' => 'Retail Invoice', 'TAX INVOICE' => 'Tax Invoice', 'EXEMPTED' => 'Exempted', 'E-COMMERCE' => 'E-Commerce']);
+                                }
+                            @endphp
+                            @foreach($qcCustTypes as $qcCtVal => $qcCtLabel)
+                                <option value="{{ $qcCtVal }}" @selected(strtoupper($qcCtVal) === 'RETAIL INVOICE')>{{ $qcCtLabel }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="col-6 mb-2">
                         <label class="small font-weight-bold mb-1">Sales Type</label>
                         <select id="qc-sales-type" class="form-control form-control-sm">
-                            <option value="Local" selected>Local (CGST + SGST)</option>
-                            <option value="Interstate">Interstate (IGST)</option>
+                            @foreach($salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate'] as $qcStVal)
+                                <option value="{{ $qcStVal }}" @selected($qcStVal === 'Local')>{{ $qcStVal }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -852,8 +882,12 @@
         });
 
         // Customer selected -> fetch loyalty points and customer invoice history
-        $custSelect.on('change select2:select', function () {
+        $custSelect.on('change select2:select', function (e) {
             let custId = $(this).val();
+            let selectData = (e && e.params) ? e.params.data : null;
+            if (selectData && (selectData.customer_type || selectData.sales_type)) {
+                syncAndLockCustomerTypes(selectData.customer_type, selectData.sales_type);
+            }
             if (custId) {
                 fetchCustomerLoyalty(custId);
                 fetchCustomerInvoices(custId);
@@ -861,11 +895,13 @@
                     $('#sb-items-body tr:first .sb-item-code').focus();
                 }, 150);
             } else {
+                unlockCustomerTypes();
                 fetchCustomerLoyalty(null);
                 resetCustomerInvoices();
             }
         });
         $custSelect.on('select2:clear', function () {
+            unlockCustomerTypes();
             fetchCustomerLoyalty(null);
             resetCustomerInvoices();
         });
@@ -941,7 +977,10 @@
                     if (res && res.customer) {
                         let c = res.customer;
                         let opt = new Option(c.text || `${c.name} (${c.mobile})`, c.id, true, true);
+                        $(opt).data('customer-type', c.customer_type || '');
+                        $(opt).data('sales-type', c.sales_type || '');
                         $custSelect.append(opt).trigger('change');
+                        syncAndLockCustomerTypes(c.customer_type, c.sales_type);
                         $('#sb-quick-customer-modal').modal('hide');
                         fetchCustomerLoyalty(c.id);
                         fetchCustomerInvoices(c.id);
@@ -973,12 +1012,66 @@
         });
 
         /* ================================================================
-           CUSTOMER INVOICES HISTORY (Task 4)
+           CUSTOMER INVOICES HISTORY & TYPE LOCKING
            ================================================================ */
         let customerInvoicesData = [];
         let filteredInvoices = [];
         let cimCurrentPage = 1;
         const CIM_PAGE_SIZE = 10;
+
+        function syncAndLockCustomerTypes(cType, sType) {
+            // 1. Sales Type
+            if (sType) {
+                let $st = $('select[name="sales_type"]');
+                if ($st.length) {
+                    $st.val(sType).trigger('change');
+                    $st.prop('disabled', true);
+                    if (!$('#hidden-sales-type').length) {
+                        $st.after('<input type="hidden" name="sales_type" id="hidden-sales-type" value="' + sType + '">');
+                    } else {
+                        $('#hidden-sales-type').val(sType);
+                    }
+                    $('#sales-type-lock-indicator').removeClass('d-none');
+                }
+            }
+
+            // 2. Invoice / Customer Type
+            if (cType) {
+                let invType = 'Retail Invoice';
+                let cUpper = String(cType).toUpperCase();
+                if (cUpper.includes('TAX')) {
+                    invType = 'Tax Invoice';
+                } else if (cUpper.includes('EXEMPT')) {
+                    invType = 'Exempted';
+                } else {
+                    invType = 'Retail Invoice';
+                }
+
+                let $it = $('select[name="invoice_type"]');
+                if ($it.length) {
+                    $it.val(invType).trigger('change');
+                    $it.prop('disabled', true);
+                    if (!$('#hidden-invoice-type').length) {
+                        $it.after('<input type="hidden" name="invoice_type" id="hidden-invoice-type" value="' + invType + '">');
+                    } else {
+                        $('#hidden-invoice-type').val(invType);
+                    }
+                    $('#invoice-type-lock-indicator').removeClass('d-none');
+                }
+            }
+        }
+
+        function unlockCustomerTypes() {
+            let $st = $('select[name="sales_type"]');
+            $st.prop('disabled', false);
+            $('#hidden-sales-type').remove();
+            $('#sales-type-lock-indicator').addClass('d-none');
+
+            let $it = $('select[name="invoice_type"]');
+            $it.prop('disabled', false);
+            $('#hidden-invoice-type').remove();
+            $('#invoice-type-lock-indicator').addClass('d-none');
+        }
 
         function resetCustomerInvoices() {
             customerInvoicesData = [];
@@ -993,18 +1086,30 @@
                 return;
             }
             $.getJSON(`/sales/sales-bills/customer-invoices/${customerId}`, function (res) {
-                if (res && res.invoices) {
-                    customerInvoicesData = res.invoices;
-                    filteredInvoices = [...customerInvoicesData];
-                    let count = customerInvoicesData.length;
-                    $('#badge-cust-invoices-count').removeClass('d-none').text(count);
-                    $('#btn-customer-invoices').prop('disabled', false).attr('title', `Click to view ${count} past invoice(s) for ${res.customer_name}`);
-                    $('#cim-cust-title').text(`Invoices: ${res.customer_name} ${res.customer_mobile ? '(' + res.customer_mobile + ')' : ''}`);
+                if (res) {
+                    if (res.customer_type || res.sales_type) {
+                        syncAndLockCustomerTypes(res.customer_type, res.sales_type);
+                    }
+                    if (res.invoices) {
+                        customerInvoicesData = res.invoices;
+                        filteredInvoices = [...customerInvoicesData];
+                        let count = customerInvoicesData.length;
+                        $('#badge-cust-invoices-count').removeClass('d-none').text(count);
+                        $('#btn-customer-invoices').prop('disabled', false).attr('title', `Click to view ${count} past invoice(s) for ${res.customer_name}`);
+                        $('#cim-cust-title').text(`Invoices: ${res.customer_name} ${res.customer_mobile ? '(' + res.customer_mobile + ')' : ''}`);
+                    }
                 }
             }).fail(function () {
                 resetCustomerInvoices();
             });
         }
+
+        // Check on initial page load if customer is preselected
+        @if(!empty($selectedCustomer))
+            syncAndLockCustomerTypes('{{ $selectedCustomer->customer_type }}', '{{ $selectedCustomer->sales_type }}');
+        @elseif(!empty($bill?->customer_id))
+            fetchCustomerInvoices('{{ $bill->customer_id }}');
+        @endif
 
         $('#btn-customer-invoices').on('click', function () {
             let custId = $custSelect.val();
@@ -1895,7 +2000,7 @@
                 let qtyDisplay = qtyNum.toFixed(3);
                 let sellDisplay = b.sell_price ? '₹' + parseFloat(b.sell_price).toFixed(2) : '—';
                 let mrpDisplay = b.mrp ? '₹' + parseFloat(b.mrp).toFixed(2) : '—';
-                let bRowClass = isBlocked ? 'batch-select-row batch-disabled text-muted bg-light' : 'batch-select-row';
+                let bRowClass = isBlocked ? 'batch-select-row batch-disabled text-muted bg-light' : 'batch-select-row batch-nav-row';
                 let bRowStyle = isBlocked ? 'cursor: not-allowed; opacity: 0.65;' : 'cursor: pointer;';
                 let bActionBtn = isBatchExpired
                     ? `<button type="button" class="btn btn-danger btn-xs px-2" disabled title="Batch Expired">
@@ -1918,7 +2023,7 @@
                         data-sell="${b.sell_price || ''}" 
                         data-mrp="${b.mrp || ''}"
                         data-qty="${qtyNum}"
-                        title="${isBatchExpired ? 'Batch expired - cannot select' : (isBatchOOS ? 'Batch out of stock' : 'Click to select this batch')}">
+                        title="${isBatchExpired ? 'Batch expired - cannot select' : (isBatchOOS ? 'Batch out of stock' : 'Click or press Enter to select this batch')}">
                         <td class="align-middle text-center font-weight-bold">${idx + 1}</td>
                         <td class="align-middle font-weight-bold text-dark">${pName} ${isBatchExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isBatchOOS ? '<span class="badge badge-secondary ml-1 small">No Stock</span>' : '')}</td>
                         <td class="align-middle text-center"><span class="badge badge-secondary px-2 py-1">${pCode}</span></td>
@@ -1936,9 +2041,75 @@
 
             $('#sb-batch-modal').modal('show');
             setTimeout(function() {
-                $('#modal-batches-body tr:not(.batch-disabled):first .btn-apply-batch').focus();
-            }, 350);
+                let $firstNav = $('#modal-batches-body tr.batch-nav-row:first');
+                if ($firstNav.length) {
+                    highlightBatchNavRow($firstNav);
+                } else {
+                    $('#modal-batches-body tr:not(.batch-disabled):first .btn-apply-batch').focus();
+                }
+            }, 300);
         }
+
+        function highlightBatchNavRow($row) {
+            if (!$row || !$row.length) return;
+            $('#modal-batches-body tr.batch-nav-row').removeClass('batch-row-selected');
+            $row.addClass('batch-row-selected');
+            $row[0].scrollIntoView({ block: 'nearest' });
+            $row.find('.btn-apply-batch').focus();
+        }
+
+        // Keyboard navigation for Batch Selection Modal (ArrowUp, ArrowDown, Enter, Esc, 1-9)
+        $(document).on('keydown', function (e) {
+            let $modal = $('#sb-batch-modal');
+            if (!$modal.is(':visible') && !$modal.hasClass('show')) return;
+
+            let $selectableRows = $('#modal-batches-body tr.batch-nav-row');
+            if (!$selectableRows.length) return;
+
+            let $current = $('#modal-batches-body tr.batch-row-selected');
+            let idx = $selectableRows.index($current);
+            if (idx === -1) idx = 0;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                let nextIdx = (idx + 1) % $selectableRows.length;
+                highlightBatchNavRow($selectableRows.eq(nextIdx));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                let prevIdx = (idx - 1 + $selectableRows.length) % $selectableRows.length;
+                highlightBatchNavRow($selectableRows.eq(prevIdx));
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                let $target = $current.length ? $current : $selectableRows.first();
+                if ($target.length && !$target.hasClass('batch-disabled')) {
+                    let exp = $target.data('exp') || '';
+                    let sell = $target.data('sell') || '';
+                    let mrp = $target.data('mrp') || '';
+                    applyBatchToRow(exp, sell, mrp);
+                }
+            } else if (e.key >= '1' && e.key <= '9') {
+                let numIdx = parseInt(e.key, 10) - 1;
+                if (numIdx < $selectableRows.length) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    let $target = $selectableRows.eq(numIdx);
+                    if (!$target.hasClass('batch-disabled')) {
+                        let exp = $target.data('exp') || '';
+                        let sell = $target.data('sell') || '';
+                        let mrp = $target.data('mrp') || '';
+                        applyBatchToRow(exp, sell, mrp);
+                    }
+                }
+            }
+        });
+
+        $(document).on('mouseenter', '#modal-batches-body tr.batch-nav-row', function () {
+            $('#modal-batches-body tr.batch-nav-row').removeClass('batch-row-selected');
+            $(this).addClass('batch-row-selected');
+        });
 
         function applyBatchToRow(exp, sell, mrp) {
             if (!activeModalRow) return;
