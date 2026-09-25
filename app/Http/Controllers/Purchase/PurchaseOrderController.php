@@ -217,6 +217,30 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase.purchase-orders.index')->with('status', "Purchase Order {$purchaseOrder->po_number} cancelled.");
     }
 
+    public function openBySupplier(Request $request)
+    {
+        $supplierId = $request->input('supplier_id');
+        if (! $supplierId) {
+            return response()->json(['purchase_orders' => []]);
+        }
+
+        $orders = PurchaseOrder::where('supplier_id', $supplierId)
+            ->where('status', 'Open')
+            ->orderByDesc('po_date')
+            ->get(['id', 'po_number', 'po_date', 'total'])
+            ->map(function ($po) {
+                return [
+                    'id' => $po->id,
+                    'po_number' => $po->po_number,
+                    'po_date' => $po->po_date ? $po->po_date->format('d-m-Y') : '',
+                    'total' => (float) $po->total,
+                    'label' => $po->po_number . ($po->po_date ? ' (' . $po->po_date->format('d-m-Y') . ')' : ''),
+                ];
+            });
+
+        return response()->json(['purchase_orders' => $orders]);
+    }
+
     private function nextNumber(): string
     {
         $branchId = session('active_branch_id', auth()->user()?->branch_id);

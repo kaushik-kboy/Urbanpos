@@ -121,7 +121,11 @@ class PurchaseInvoiceController extends Controller
             })->filter(fn ($line) => $line['qty'] > 0)->values();
         }
 
-        $options = $this->formOptions(null, $convertedItems);
+        $selectedSupplierId = $request->input('supplier_id')
+            ?? ($sourceReceiptNote?->supplier_id
+            ?? ($sourceOrder?->supplier_id ?? null));
+
+        $options = $this->formOptions(null, $convertedItems, $selectedSupplierId);
         if ($sourceReceiptNote) {
             $options['sourceReceiptNote'] = $sourceReceiptNote;
             $options['convertedItems'] = $convertedItems;
@@ -651,7 +655,7 @@ class PurchaseInvoiceController extends Controller
         ]);
     }
 
-    private function formOptions(?PurchaseInvoice $purchaseInvoice = null, $convertedItems = null): array
+    private function formOptions(?PurchaseInvoice $purchaseInvoice = null, $convertedItems = null, $supplierId = null): array
     {
         $existingItemIds = collect($purchaseInvoice?->items ?? ($convertedItems ?? []))->pluck('item_id')->filter()->unique();
         $items = $existingItemIds->isNotEmpty()
@@ -661,11 +665,26 @@ class PurchaseInvoiceController extends Controller
             ])
             : collect();
 
+        $activeSupplierId = $supplierId ?? $purchaseInvoice?->supplier_id;
+
+        $purchaseOrders = collect();
+        if ($activeSupplierId) {
+            $purchaseOrders = PurchaseOrder::where('supplier_id', $activeSupplierId)
+                ->where(function ($q) use ($purchaseInvoice) {
+                    $q->where('status', 'Open');
+                    if ($purchaseInvoice?->purchase_order_id) {
+                        $q->orWhere('id', $purchaseInvoice->purchase_order_id);
+                    }
+                })
+                ->orderBy('po_number')
+                ->pluck('po_number', 'id');
+        }
+
         return [
             'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items' => $items,
-            'purchaseOrders' => PurchaseOrder::orderBy('po_number')->pluck('po_number', 'id'),
+            'purchaseOrders' => $purchaseOrders,
         ];
     }
 

@@ -7,6 +7,8 @@ use App\Http\Controllers\Master\BreedController;
 use App\Http\Controllers\Master\ColorController;
 use App\Http\Controllers\Master\CustomerCategoryController;
 use App\Http\Controllers\Master\CustomerController;
+use App\Http\Controllers\Master\CustomerTypeController;
+use App\Http\Controllers\Master\SalesTypeController;
 use App\Http\Controllers\Master\FinancialYearController;
 use App\Http\Controllers\Master\GstTaxController;
 use App\Http\Controllers\Master\GstTypeController;
@@ -95,6 +97,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         'uoms' => UomController::class,
         'items' => ItemController::class,
         'customer-categories' => CustomerCategoryController::class,
+        'customer-types' => CustomerTypeController::class,
+        'sales-types' => SalesTypeController::class,
         'customers' => CustomerController::class,
         'areas' => AreaController::class,
         'pet-types' => PetTypeController::class,
@@ -167,6 +171,7 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
     Route::middleware(['permission:purchase-indents.reject', 'branch.access'])
         ->post('purchase-indents/{purchase_indent}/reject', [PurchaseIndentController::class, 'reject'])->name('purchase-indents.reject');
     $gatedResource('purchase-indents', PurchaseIndentController::class, 'purchase-indents');
+    Route::get('purchase-orders/open-by-supplier', [PurchaseOrderController::class, 'openBySupplier'])->name('purchase-orders.open-by-supplier');
     Route::get('purchase-orders/{purchase_order}/print', [PurchaseOrderController::class, 'print'])->name('purchase-orders.print');
     $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
     Route::get('purchase-receipt-notes/{purchaseReceiptNote}/print', [PurchaseReceiptNoteController::class, 'print'])->name('purchase-receipt-notes.print');

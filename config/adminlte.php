@@ -350,6 +350,8 @@ return [
                     'icon' => 'fas fa-fw fa-users',
                     'submenu' => [
                         ['text' => 'Customer Category', 'url' => 'master/customer-categories', 'icon' => 'fas fa-fw fa-user-tag'],
+                        ['text' => 'Customer Types', 'url' => 'master/customer-types', 'icon' => 'fas fa-fw fa-id-card'],
+                        ['text' => 'Sales Types', 'url' => 'master/sales-types', 'icon' => 'fas fa-fw fa-file-contract'],
                         ['text' => 'Customer', 'url' => 'master/customers', 'icon' => 'fas fa-fw fa-user'],
                         ['text' => 'Area', 'url' => 'master/areas', 'icon' => 'fas fa-fw fa-map-marker-alt'],
                         ['text' => 'Loyalty Program Info', 'url' => 'master/loyalty-programs', 'icon' => 'fas fa-fw fa-award'],

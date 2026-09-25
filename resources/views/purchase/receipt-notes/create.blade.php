@@ -795,6 +795,44 @@
             }
         });
 
+        $('select[name="supplier_id"]').on('change', function () {
+            let suppId = $(this).val();
+            updateGrnOpenPOs(suppId);
+        });
+
+        function updateGrnOpenPOs(suppId, selectedPoId = null) {
+            let $poSelect = $('#grn-po-select');
+            if (!$poSelect.length) return;
+
+            if (!suppId) {
+                $poSelect.html('<option value="">-- None (Direct GRN) --</option>').val('').trigger('change.select2');
+                return;
+            }
+
+            $.getJSON("{{ route('purchase.purchase-orders.open-by-supplier') }}", { supplier_id: suppId }, function (res) {
+                let optionsHtml = '<option value="">-- None (Direct GRN) --</option>';
+                let poList = (res && res.purchase_orders) ? res.purchase_orders : [];
+                let currentVal = (selectedPoId !== null && selectedPoId !== undefined && selectedPoId !== '') ? String(selectedPoId) : String($poSelect.val() || '');
+                let foundMatch = false;
+
+                poList.forEach(function (po) {
+                    let isSel = (String(po.id) === currentVal);
+                    if (isSel) foundMatch = true;
+                    optionsHtml += `<option value="${po.id}" ${isSel ? 'selected' : ''}>${po.po_number}</option>`;
+                });
+
+                $poSelect.html(optionsHtml);
+                if (foundMatch && currentVal) {
+                    $poSelect.val(currentVal);
+                } else {
+                    $poSelect.val('');
+                }
+                $poSelect.trigger('change.select2');
+            }).fail(function () {
+                $poSelect.html('<option value="">-- None (Direct GRN) --</option>').val('').trigger('change.select2');
+            });
+        }
+
         // If PO changed dynamically in dropdown, reload with from_po
         $('#grn-po-select').on('change', function () {
             let poId = $(this).val();

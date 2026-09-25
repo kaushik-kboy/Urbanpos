@@ -139,7 +139,8 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Items</h5>
     <div>
-        <button type="button" class="btn btn-outline-warning btn-sm mr-2 btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset Form</button>
+        <button type="button" class="btn btn-outline-warning btn-sm mr-2 btn-reset-form" title="Reset header form inputs (preserves table items)"><i class="fas fa-undo mr-1"></i> Reset Form</button>
+        <button type="button" class="btn btn-outline-danger btn-sm mr-2 btn-reset-table" id="sb-btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
         <span class="badge badge-info px-3 py-2" id="sb-branch-badge"><i class="fas fa-store mr-1"></i> Active Branch: Loading…</span>
     </div>
 </div>
@@ -2645,13 +2646,60 @@
             setTimeout(doSubmit, 350);
         });
 
-        // Form Reset Button Handler
+        // Ensure exactly ONE empty row for new item entry (Task 4)
+        function ensureSingleEmptySbRow() {
+            let $tbody = $('#sb-items-body');
+            let $emptyRows = $tbody.find('tr').filter(function () {
+                let id = $(this).find('.sb-item-select').val();
+                let code = $(this).find('.sb-item-code').val();
+                return (!id || id === '') && (!code || $.trim(code) === '');
+            });
+
+            if ($emptyRows.length > 1) {
+                // Keep only the last empty row, remove duplicate empty rows
+                $emptyRows.slice(0, $emptyRows.length - 1).remove();
+            } else if ($emptyRows.length === 0) {
+                let html = $('#sb-row-template').html().replaceAll('__INDEX__', rowIndex);
+                let $newRow = $(html);
+                $tbody.append($newRow);
+                $newRow.find('input').attr('autocomplete', 'off');
+                rowIndex++;
+            }
+            updateRowNumbers();
+            calculateTotals();
+        }
+
+        // Form Reset Button Handler: resets header form fields without deleting table items (Task 4)
         $(document).on('click', '.btn-reset-form', function (e) {
             e.preventDefault();
-            if (confirm('Are you sure you want to reset this form? All unsaved inputs will be lost.')) {
-                window.location.reload();
+            if (confirm('Reset header form inputs? (Existing table items will be preserved)')) {
+                $('#remarks').val('');
+                $('#customer_id').val('').trigger('change.select2');
+                $('input[name="round_off"]').val('0.00');
+                $('input[name="total_extra_cess"]').val('0.00');
+                $('input[name="gst_calamity_cess"]').val('0.00');
+                calculateTotals();
+                if (window.toastr) {
+                    toastr.info('Header form inputs have been reset. Existing table items are preserved.', 'Form Reset');
+                }
             }
         });
+
+        // Table Reset Button Handler: clears table and keeps exactly 1 empty row (Task 4)
+        $(document).on('click', '.btn-reset-table', function (e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to clear all items in the table?')) {
+                $('#sb-items-body').empty();
+                ensureSingleEmptySbRow();
+                calculateTotals();
+                if (window.toastr) {
+                    toastr.info('Table items cleared. Exactly 1 empty row ready for new entry.', 'Table Reset');
+                }
+            }
+        });
+
+        // Ensure 1 empty row on initialization if table is empty
+        ensureSingleEmptySbRow();
 
         // Prevent future dates on bill_date
         $('#bill_date').on('change', function () {

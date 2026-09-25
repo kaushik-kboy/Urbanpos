@@ -140,11 +140,15 @@
 @endphp
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0">Items</h5>
-    <x-table-column-customizer
-        table-key="purchase.purchase-invoices.items"
-        table-id="pinv-items-table"
-        :columns="$pinvItemColumns"
-    />
+    <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-outline-warning btn-sm mr-2 btn-reset-form" title="Reset header form inputs (table items preserved)"><i class="fas fa-undo mr-1"></i> Reset Form</button>
+        <button type="button" class="btn btn-outline-danger btn-sm mr-2 btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
+        <x-table-column-customizer
+            table-key="purchase.purchase-invoices.items"
+            table-id="pinv-items-table"
+            :columns="$pinvItemColumns"
+        />
+    </div>
 </div>
 
 <div class="table-responsive">
@@ -442,7 +446,42 @@
             applySupplierPurchaseType(val);
             validateSupplierInvNo();
             updateSupplierPrevInvoicesLink(val);
+            updateSupplierOpenPOs(val);
         });
+
+        // Dynamic Open PO by Supplier
+        function updateSupplierOpenPOs(suppId, selectedPoId = null) {
+            let $poSelect = $('#purchase_order_id');
+            if (!$poSelect.length) return;
+
+            if (!suppId) {
+                $poSelect.html('<option value="">Select PO</option>').val('').trigger('change.select2');
+                return;
+            }
+
+            $.getJSON("{{ route('purchase.purchase-orders.open-by-supplier') }}", { supplier_id: suppId }, function (res) {
+                let optionsHtml = '<option value="">Select PO</option>';
+                let poList = (res && res.purchase_orders) ? res.purchase_orders : [];
+                let currentVal = (selectedPoId !== null && selectedPoId !== undefined && selectedPoId !== '') ? String(selectedPoId) : String($poSelect.val() || '');
+                let foundMatch = false;
+
+                poList.forEach(function (po) {
+                    let isSel = (String(po.id) === currentVal);
+                    if (isSel) foundMatch = true;
+                    optionsHtml += `<option value="${po.id}" ${isSel ? 'selected' : ''}>${po.po_number}</option>`;
+                });
+
+                $poSelect.html(optionsHtml);
+                if (foundMatch && currentVal) {
+                    $poSelect.val(currentVal);
+                } else {
+                    $poSelect.val('');
+                }
+                $poSelect.trigger('change.select2');
+            }).fail(function () {
+                $poSelect.html('<option value="">Select PO</option>').val('').trigger('change.select2');
+            });
+        }
 
         // Supplier Previous Invoices link & modal logic
         const supplierInvoicesRouteTemplate = "{{ route('purchase.purchase-invoices.supplier-invoices', ':id') }}";
@@ -478,9 +517,11 @@
         // On page load: if supplier already selected (edit mode), lock purchase_type & enable previous invoices link
         (function () {
             let initialSuppId = $('#supplier_id').val();
+            let initialPoId = '{{ $selectedPo ?? "" }}';
             if (initialSuppId) {
                 applySupplierPurchaseType(initialSuppId);
                 updateSupplierPrevInvoicesLink(initialSuppId);
+                updateSupplierOpenPOs(initialSuppId, initialPoId);
             }
         })();
 
@@ -2118,13 +2159,66 @@
             });
         });
 
-        // Form Reset Button Handler
+        // Ensure exactly ONE empty row for new item entry (Task 4)
+        function ensureSingleEmptyPinvRow() {
+            let $tbody = $('#pinv-items-body');
+            let $emptyRows = $tbody.find('tr').filter(function () {
+                let id = $(this).find('.pinv-item-select').val();
+                let code = $(this).find('.pinv-item-code').val();
+                return (!id || id === '') && (!code || $.trim(code) === '');
+            });
+
+            if ($emptyRows.length > 1) {
+                // Keep only the last empty row, remove duplicate empty rows
+                $emptyRows.slice(0, $emptyRows.length - 1).remove();
+            } else if ($emptyRows.length === 0) {
+                let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
+                let $newRow = $(html);
+                $tbody.append($newRow);
+                initPinvItemSelect2($newRow.find('.pinv-item-select'));
+                $newRow.find('input').attr('autocomplete', 'off');
+                updateExpiryRequirement($newRow, 'Not Required', 0);
+                rowIndex++;
+            }
+            updateRowNumbers();
+            calculateTotals();
+        }
+
+        // Form Reset Button Handler: resets header form fields without deleting table items (Task 4)
         $(document).on('click', '.btn-reset-form', function (e) {
             e.preventDefault();
-            if (confirm('Are you sure you want to reset this form? All unsaved inputs will be lost.')) {
-                window.location.reload();
+            if (confirm('Reset header form inputs? (Existing table items will be preserved)')) {
+                $('#remarks').val('');
+                $('#supplier_inv_no').val('');
+                $('#freight').val('0.00');
+                $('#round_off').val('0.00');
+                $('#scheme_item_disc_amt').val('0.00');
+                $('#scheme_item_disc_percent').val('');
+                $('#other_disc_amt').val('0.00');
+                $('#total_extra_cess').val('0.00');
+                $('#tcs_amount').val('0.00');
+                calculateTotals();
+                if (window.toastr) {
+                    toastr.info('Header form inputs have been reset. Existing table items are preserved.', 'Form Reset');
+                }
             }
         });
+
+        // Table Reset Button Handler: clears table and keeps exactly 1 empty row (Task 4)
+        $(document).on('click', '.btn-reset-table', function (e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to clear all items in the table?')) {
+                $('#pinv-items-body').empty();
+                ensureSingleEmptyPinvRow();
+                calculateTotals();
+                if (window.toastr) {
+                    toastr.info('Table items cleared. Exactly 1 empty row ready for new entry.', 'Table Reset');
+                }
+            }
+        });
+
+        // Run on initial load to ensure exactly 1 empty row if no items
+        ensureSingleEmptyPinvRow();
     });
 </script>
 @endpush

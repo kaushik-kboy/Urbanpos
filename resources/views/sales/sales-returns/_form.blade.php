@@ -995,7 +995,14 @@
                 });
                 $pickerSelect.html(optHtml);
 
-                if (preserveExisting) {
+                let hasActualItems = false;
+                $('#sr-items-body .sr-item-row').each(function () {
+                    if ($(this).find('.sr-item-select').val()) {
+                        hasActualItems = true;
+                    }
+                });
+
+                if (preserveExisting && hasActualItems) {
                     // Update max on existing rows
                     $('#sr-items-body .sr-item-row').each(function () {
                         let itemId = $(this).find('.sr-item-select').val();
@@ -1018,7 +1025,7 @@
                     });
                     recalculateAll();
                 } else {
-                    // Auto-add returnable items to the return table (coming from Sales Bill show page)
+                    // Auto-add eligible returnable items to the return table
                     tbody.innerHTML = '';
                     let addedCount = 0;
                     cachedBillItems.forEach(item => {
@@ -1051,9 +1058,10 @@
         function appendBillItemRow(item, initialQty) {
             const template = document.getElementById('sr-row-template').innerHTML;
             const html = template.replaceAll('__INDEX__', rowIndex);
-            const tempWrapper = document.createElement('tbody');
-            tempWrapper.innerHTML = html;
-            const row = tempWrapper.firstElementChild;
+            const tempTable = document.createElement('table');
+            tempTable.innerHTML = '<tbody>' + html + '</tbody>';
+            const row = tempTable.querySelector('tr');
+            if (!row) return;
 
             // Fill item fields
             const hiddenId = row.querySelector('.sr-item-select');
@@ -1061,9 +1069,9 @@
 
             const codeInput = row.querySelector('.sr-item-code');
             if (codeInput) {
-                codeInput.value = item.item_id;
+                codeInput.value = item.item_code || ('#' + item.item_id);
                 codeInput.readOnly = true;
-                codeInput.title = 'Item ID from Sales Bill (cannot be changed)';
+                codeInput.title = 'Item from Sales Bill (cannot be changed)';
             }
 
             const descInput = row.querySelector('.sr-item-desc');
@@ -1247,7 +1255,11 @@
                 }
                 customerBillsLoading = false;
                 updateBillModeUI();
-                if (onDone) onDone($billSelect.val());
+                let activeBill = $billSelect.val();
+                if (activeBill) {
+                    loadBillItems(activeBill, false);
+                }
+                if (onDone) onDone(activeBill);
             });
         }
 
@@ -1315,7 +1327,7 @@
             });
         } else if (initialBillId) {
             updateBillModeUI();
-            loadBillItems(initialBillId, true);
+            loadBillItems(initialBillId, false);
         }
 
         // Form Submit Handler: validate header, check items and quantities properly

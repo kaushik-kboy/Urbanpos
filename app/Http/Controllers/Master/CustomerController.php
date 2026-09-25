@@ -11,8 +11,11 @@ use App\Models\Breed;
 use App\Models\Color;
 use App\Models\Customer;
 use App\Models\CustomerCategory;
+use App\Models\CustomerType;
+use App\Models\SalesType;
 use App\Models\PetType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
@@ -105,7 +108,7 @@ class CustomerController extends Controller
             ]);
         }
 
-        return view('master.customers.edit', array_merge(['customer' => $customer], $this->formOptions()));
+        return view('master.customers.edit', array_merge(['customer' => $customer], $this->formOptions($customer)));
     }
 
     public function update(Request $request, Customer $customer)
@@ -203,10 +206,38 @@ class CustomerController extends Controller
         }
     }
 
-    private function formOptions(): array
+    private function formOptions(?Customer $customer = null): array
     {
+        $customerTypesQuery = CustomerType::where('status', true);
+        if ($customer?->customer_type) {
+            $customerTypesQuery->orWhere('name', $customer->customer_type);
+        }
+        $customerTypes = $customerTypesQuery->orderBy('name')->pluck('name', 'name');
+        if ($customerTypes->isEmpty()) {
+            $customerTypes = collect([
+                'RETAIL INVOICE' => 'RETAIL INVOICE',
+                'TAX INVOICE' => 'TAX INVOICE',
+                'EXEMPTED' => 'EXEMPTED',
+                'E-COMMERCE' => 'E-COMMERCE',
+            ]);
+        }
+
+        $salesTypesQuery = SalesType::where('status', true);
+        if ($customer?->sales_type) {
+            $salesTypesQuery->orWhere('name', $customer->sales_type);
+        }
+        $salesTypes = $salesTypesQuery->orderBy('name')->pluck('name', 'name');
+        if ($salesTypes->isEmpty()) {
+            $salesTypes = collect([
+                'Local' => 'Local',
+                'Interstate' => 'Interstate',
+            ]);
+        }
+
         return [
             'customerCategories' => CustomerCategory::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'customerTypes' => $customerTypes,
+            'salesTypes' => $salesTypes,
             'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'areas' => Area::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'petTypes' => PetType::where('status', true)->orderBy('name')->pluck('name', 'id'),
@@ -217,13 +248,29 @@ class CustomerController extends Controller
 
     private function validateData(Request $request, ?Customer $customer = null): array
     {
+        $activeCustomerTypes = CustomerType::where('status', true)->pluck('name')->toArray();
+        if ($customer?->customer_type) {
+            $activeCustomerTypes[] = $customer->customer_type;
+        }
+        if (empty($activeCustomerTypes)) {
+            $activeCustomerTypes = ['RETAIL INVOICE', 'TAX INVOICE', 'EXEMPTED', 'E-COMMERCE'];
+        }
+
+        $activeSalesTypes = SalesType::where('status', true)->pluck('name')->toArray();
+        if ($customer?->sales_type) {
+            $activeSalesTypes[] = $customer->sales_type;
+        }
+        if (empty($activeSalesTypes)) {
+            $activeSalesTypes = ['Local', 'Interstate'];
+        }
+
         return $request->validate([
             // General
             'title' => ['nullable', 'in:Mr,Ms,Mrs,M/s,Dr'],
             'name' => ['required', 'string', 'max:255'],
             'customer_category_id' => ['nullable', 'exists:customer_categories,id'],
             'customer_code' => ['nullable', 'string', 'max:100'],
-            'sales_type' => ['required', 'in:Local,Interstate'],
+            'sales_type' => ['required', Rule::in($activeSalesTypes)],
             'payment_mode' => ['required', 'in:Cash Only,No Credit,Credit Only,Both Cash and Credit,Cash on Delivery'],
             'credit_limit' => ['required', 'numeric', 'min:0'],
             'credit_balance' => ['required', 'numeric', 'min:0'],
@@ -249,16 +296,18 @@ class CustomerController extends Controller
             'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],
             'pan_no' => ['nullable', 'string', 'max:20'],
-            'mobile' => ['required', 'string', 'digits:10', \Illuminate\Validation\Rule::unique('customers', 'mobile')->ignore($customer?->id)],
+            'mobile' => ['required', 'string', 'digits:10', Rule::unique('customers', 'mobile')->ignore($customer?->id)],
 
             // Others
             'gender' => ['nullable', 'in:Male,Female'],
             'exempted_reason' => ['nullable', 'string', 'max:255'],
-            'customer_type' => ['required', 'in:RETAIL INVOICE,TAX INVOICE,EXEMPTED,E-COMMERCE'],
+            'customer_type' => ['required', Rule::in($activeCustomerTypes)],
         ], [
             'mobile.required' => 'Customer mobile number is required.',
             'mobile.digits' => 'Customer mobile number must be exactly 10 digits.',
             'mobile.unique' => 'A customer with this mobile number already exists.',
+            'customer_type.in' => 'Selected Customer Type is invalid or inactive.',
+            'sales_type.in' => 'Selected Sales Type is invalid or inactive.',
         ]);
     }
 

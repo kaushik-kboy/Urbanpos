@@ -74,12 +74,14 @@ class PurchaseReceiptNoteController extends Controller
 
     public function create(Request $request)
     {
-        $options = $this->formOptions();
         $sourceOrder = null;
         $convertedItems = collect();
+        $selectedPoId = $request->input('from_po');
+        $supplierId = $request->input('supplier_id');
 
         if ($request->filled('from_po')) {
             $sourceOrder = PurchaseOrder::with(['items.item', 'supplier', 'branch'])->findOrFail($request->from_po);
+            $supplierId = $sourceOrder->supplier_id;
             if ($sourceOrder->status === 'Cancelled') {
                 return redirect()->route('purchase.purchase-orders.index')
                     ->withErrors(['purchase_order' => "Cannot create receipt note from cancelled PO {$sourceOrder->po_number}."]);
@@ -104,6 +106,8 @@ class PurchaseReceiptNoteController extends Controller
                 ];
             })->filter(fn ($line) => $line['pending_qty'] > 0)->values();
         }
+
+        $options = $this->formOptions($supplierId, $selectedPoId ? (int) $selectedPoId : null);
 
         return view('purchase.receipt-notes.create', array_merge($options, [
             'sourceOrder' => $sourceOrder,
@@ -303,13 +307,26 @@ class PurchaseReceiptNoteController extends Controller
         return $num;
     }
 
-    private function formOptions(): array
+    private function formOptions(?int $supplierId = null, ?int $selectedPoId = null): array
     {
+        $purchaseOrders = collect();
+        if ($supplierId) {
+            $purchaseOrders = PurchaseOrder::where('supplier_id', $supplierId)
+                ->where(function ($q) use ($selectedPoId) {
+                    $q->where('status', 'Open');
+                    if ($selectedPoId) {
+                        $q->orWhere('id', $selectedPoId);
+                    }
+                })
+                ->latest('po_date')
+                ->pluck('po_number', 'id');
+        }
+
         return [
             'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items' => Item::where('status', true)->orderBy('name')->get(['id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp']),
-            'purchaseOrders' => PurchaseOrder::whereNotIn('status', ['Cancelled', 'Closed'])->latest('po_date')->pluck('po_number', 'id'),
+            'purchaseOrders' => $purchaseOrders,
         ];
     }
 

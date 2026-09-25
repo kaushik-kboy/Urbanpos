@@ -334,11 +334,17 @@
             } else {
                 $(this).val(picker.startDate.format(outFmt)).trigger('change');
             }
+            clearDateError($(this));
         });
 
         // Clear selection
         $input.on('cancel.daterangepicker', function () {
             $(this).val('').trigger('change');
+            if ($(this).prop('required')) {
+                showDateError($(this), 'Please enter a valid date.');
+            } else {
+                clearDateError($(this));
+            }
         });
 
         applyModeBehavior($input);
@@ -392,68 +398,144 @@
     }
 
     /* ==========================================================================
-       4. Real-time Numeric Fast Typing (e.g. 10042026 -> 10-04-2026)
+       4. Real-time Numeric Fast Typing & Date Validation Engine (Task 5)
        ========================================================================== */
-    function applyFastDateFormatting($input) {
-        if ($input.hasClass('daterange') || $input.data('mode') === 'range') return;
-        var inputType = (($input[0] && $input[0].type) || $input.prop('type') || $input.attr('type') || '').toLowerCase();
-        if (inputType === 'datetime-local' || inputType === 'time') return;
+    function showDateError($input, msg) {
+        $input.addClass('is-invalid border-danger');
+        var $group = $input.closest('.urbanpos-date-group, .input-group');
+        var $targetContainer = $group.length ? $group : $input.parent();
 
-        var val = ($input.val() || '').trim();
-        if (!val) {
-            if ($input.prop('required')) {
-                $input.addClass('is-invalid');
-            }
-            return;
+        var $feedback = $targetContainer.siblings('.date-feedback-error');
+        if (!$feedback.length) {
+            $feedback = $targetContainer.find('.date-feedback-error');
         }
+        if (!$feedback.length) {
+            $feedback = $('<div class="invalid-feedback date-feedback-error d-block text-danger font-weight-bold mt-1"></div>');
+            if ($group.length) {
+                $group.after($feedback);
+            } else {
+                $input.after($feedback);
+            }
+        }
+        $feedback.text(msg).show();
 
-        var parts = parseDateParts(val);
-        if (parts) {
-            var formatted = formatParts(parts, DateConfig.getFormat());
-            if ($input.val() !== formatted) {
-                $input.val(formatted);
-            }
-            var dp = $input.data('daterangepicker');
-            if (dp && typeof moment !== 'undefined') {
-                var m = moment([parts.year, parts.month - 1, parts.day]);
-                dp.setStartDate(m);
-                dp.setEndDate(m);
-            }
-            $input.removeClass('is-invalid');
-            $input.trigger('change');
+        if (window.toastr && typeof window.toastr.error === 'function') {
+            toastr.clear();
+            toastr.error(msg, 'Invalid Date');
         }
     }
 
-    // Auto-format on typing exact 8 raw digits (e.g. 10042026)
+    function clearDateError($input) {
+        $input.removeClass('is-invalid border-danger');
+        var $group = $input.closest('.urbanpos-date-group, .input-group');
+        var $targetContainer = $group.length ? $group : $input.parent();
+        $targetContainer.siblings('.date-feedback-error').remove();
+        $targetContainer.find('.date-feedback-error').remove();
+        $input.siblings('.date-feedback-error').remove();
+    }
+
+    function validateDateField($input, e) {
+        if ($input.hasClass('daterange') || $input.data('mode') === 'range') return true;
+        var inputType = (($input[0] && $input[0].type) || $input.prop('type') || $input.attr('type') || '').toLowerCase();
+        if (inputType === 'datetime-local' || inputType === 'time') return true;
+
+        var val = ($input.val() || '').trim();
+        var isRequired = $input.prop('required') || $input.attr('required') !== undefined;
+
+        // Case 1: Empty date
+        if (!val) {
+            if (isRequired) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                }
+                showDateError($input, 'Please enter a valid date.');
+                setTimeout(function () {
+                    $input.focus();
+                }, 10);
+                return false;
+            } else {
+                clearDateError($input);
+                return true;
+            }
+        }
+
+        // Case 2: Validate date parts
+        var parts = parseDateParts(val);
+        if (!parts) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+            showDateError($input, 'Please enter a valid date.');
+            setTimeout(function () {
+                $input.focus();
+                $input.select();
+            }, 10);
+            return false;
+        }
+
+        // Case 3: Valid date -> format properly, sync picker, remove error
+        clearDateError($input);
+        var formatted = formatParts(parts, DateConfig.getFormat());
+        if ($input.val() !== formatted) {
+            $input.val(formatted);
+        }
+        var dp = $input.data('daterangepicker');
+        if (dp && typeof moment !== 'undefined') {
+            var m = moment([parts.year, parts.month - 1, parts.day]);
+            dp.setStartDate(m);
+            dp.setEndDate(m);
+        }
+        $input.trigger('change');
+        return true;
+    }
+
+    function applyFastDateFormatting($input) {
+        return validateDateField($input, null);
+    }
+
+    // Auto-format on typing exact 8 raw digits (e.g. 10042026) and clear error when typing valid input
     $(document).on('input', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function () {
         var $this = $(this);
         var inputType = (this.type || $this.prop('type') || $this.attr('type') || '').toLowerCase();
         if (inputType === 'datetime-local' || inputType === 'time' || $this.hasClass('daterange') || $this.data('mode') === 'range') return;
 
         var raw = ($this.val() || '').trim();
-        // If user typed 8 digits without separators
-        if (/^\d{8}$/.test(raw)) {
+        if (raw) {
             var parts = parseDateParts(raw);
             if (parts) {
-                var formatted = formatParts(parts, DateConfig.getFormat());
-                $this.val(formatted).trigger('change');
+                clearDateError($this);
+                // If user typed 8 digits without separators
+                if (/^\d{8}$/.test(raw)) {
+                    var formatted = formatParts(parts, DateConfig.getFormat());
+                    $this.val(formatted).trigger('change');
+                }
             }
         }
     });
 
-    // Format on Enter, Tab, or Blur without clearing existing valid date
+    // Format and Validate on Enter, Tab, or Blur. Block Tab if invalid date (Task 5)
     $(document).on('keydown', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function (e) {
         var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
         if (inputType === 'datetime-local' || inputType === 'time') return;
         if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
-            applyFastDateFormatting($(this));
+            var isValid = validateDateField($(this), e);
+            if (!isValid && (e.key === 'Tab' || e.key === 'Enter')) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
         }
     });
 
     $(document).on('blur', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function () {
         var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
         if (inputType === 'datetime-local' || inputType === 'time') return;
-        applyFastDateFormatting($(this));
+        validateDateField($(this), null);
     });
 
     /* ==========================================================================
