@@ -1203,16 +1203,26 @@
             $row.find('.pinv-margin').val(marginPct !== null ? marginPct.toFixed(2) + '%' : '');
             $row.find('.pinv-profit').val(profitPct !== null ? profitPct.toFixed(2) + '%' : '');
 
-            // Validation 1: Sell Price must be strictly greater than Cost Price
+            // Price validations (Visual only - does not block keyboard/tab navigation)
             let $sellInput = $row.find('.pinv-sell');
-            $sellInput.removeClass('border-danger text-danger border-warning text-warning').attr('title', '');
+            let $mrpInput = $row.find('.pinv-mrp');
+            $sellInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
+            $mrpInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
+
             if (cost > 0 && sell > 0 && sell <= cost) {
                 $sellInput.addClass('border-danger text-danger')
                           .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must be greater than Cost Price (₹' + cost.toFixed(2) + ')!');
             } else if (mrp > 0 && sell > 0 && sell > mrp) {
-                // Validation 2: Sell Price must be <= MRP
                 $sellInput.addClass('border-warning text-warning')
                           .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must not exceed MRP (₹' + mrp.toFixed(2) + ')!');
+            }
+
+            if (cost > 0 && mrp > 0 && mrp <= cost) {
+                $mrpInput.addClass('border-danger text-danger')
+                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') must be greater than Cost Price (₹' + cost.toFixed(2) + ')!');
+            } else if (sell > 0 && mrp > 0 && mrp < sell) {
+                $mrpInput.addClass('border-warning text-warning')
+                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') cannot be less than Sell Price (₹' + sell.toFixed(2) + ')!');
             }
 
             // Real-time inline field validation (Task 11)
@@ -1689,62 +1699,7 @@
             calculateRow($(this).closest('tr'), 'other');
         });
 
-        // Strict Immediate Price Validation: Block Tab / moving forward if Sell <= Cost or MRP < Sell
-        function validatePinvRowPrices($input) {
-            let $row = $input.closest('tr');
-            let cost = parseFloat($row.find('.pinv-cost').val()) || 0;
-            let sell = parseFloat($row.find('.pinv-sell').val()) || 0;
-            let mrp = parseFloat($row.find('.pinv-mrp').val()) || 0;
-            let itemName = $row.find('.pinv-item-desc').val() || 'Selected Item';
 
-            if ($input.hasClass('pinv-sell')) {
-                if (cost > 0 && sell > 0 && sell <= cost) {
-                    $input.addClass('border-danger text-danger is-invalid');
-                    alert('Price Validation Error:\n\n' + itemName + ':\nSell Price (₹' + sell.toFixed(2) + ') must be greater than Cost Price (₹' + cost.toFixed(2) + ')!\nPlease increase Sell Price before moving forward.');
-                    setTimeout(function () { $input.focus().select(); }, 10);
-                    return false;
-                }
-                if (mrp > 0 && sell > 0 && sell > mrp) {
-                    $input.addClass('border-warning text-warning is-invalid');
-                    alert('Price Validation Error:\n\n' + itemName + ':\nSell Price (₹' + sell.toFixed(2) + ') must not exceed MRP (₹' + mrp.toFixed(2) + ')!\nPlease adjust Sell Price or MRP before moving forward.');
-                    setTimeout(function () { $input.focus().select(); }, 10);
-                    return false;
-                }
-                $input.removeClass('border-danger text-danger border-warning text-warning is-invalid');
-            }
-
-            if ($input.hasClass('pinv-mrp')) {
-                if (cost > 0 && mrp > 0 && mrp <= cost) {
-                    $input.addClass('border-danger text-danger is-invalid');
-                    alert('Price Validation Error:\n\n' + itemName + ':\nMRP (₹' + mrp.toFixed(2) + ') must be greater than Cost Price (₹' + cost.toFixed(2) + ')!\nPlease increase MRP before moving forward.');
-                    setTimeout(function () { $input.focus().select(); }, 10);
-                    return false;
-                }
-                if (sell > 0 && mrp > 0 && mrp < sell) {
-                    $input.addClass('border-warning text-warning is-invalid');
-                    alert('Price Validation Error:\n\n' + itemName + ':\nMRP (₹' + mrp.toFixed(2) + ') cannot be less than Sell Price (₹' + sell.toFixed(2) + ')!\nPlease adjust MRP before moving forward.');
-                    setTimeout(function () { $input.focus().select(); }, 10);
-                    return false;
-                }
-                $input.removeClass('border-danger text-danger border-warning text-warning is-invalid');
-            }
-            return true;
-        }
-
-        // Prevent Tab or Enter from advancing if Sell Price <= Cost Price or MRP < Sell Price
-        $(document).on('keydown', '.pinv-sell, .pinv-mrp', function (e) {
-            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
-                if (!validatePinvRowPrices($(this))) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    return false;
-                }
-            }
-        });
-
-        $(document).on('change', '.pinv-sell, .pinv-mrp', function () {
-            validatePinvRowPrices($(this));
-        });
 
         function getPinvTotalBaseCost() {
             let total = 0;
@@ -1830,7 +1785,12 @@
 
             if (priceError) {
                 e.preventDefault();
-                alert("Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (₹" + priceError.sell.toFixed(2) + ") must be greater than Cost Price (₹" + priceError.cost.toFixed(2) + ")!");
+                let errMsg = "Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (₹" + priceError.sell.toFixed(2) + ") must be greater than Cost Price (₹" + priceError.cost.toFixed(2) + ")!";
+                if (window.toastr) {
+                    toastr.error(errMsg.replace(/\n/g, ' '), 'Price Validation Error');
+                } else {
+                    alert(errMsg);
+                }
                 priceError.$input.focus().addClass('border-danger text-danger');
                 return false;
             }
@@ -1856,8 +1816,44 @@
 
             if (mrpError) {
                 e.preventDefault();
-                alert("Row #" + mrpError.row + " (" + mrpError.item + "):\nSell Price (₹" + mrpError.sell.toFixed(2) + ") must not exceed MRP (₹" + mrpError.mrp.toFixed(2) + ")!");
+                let errMsg = "Row #" + mrpError.row + " (" + mrpError.item + "):\nSell Price (₹" + mrpError.sell.toFixed(2) + ") must not exceed MRP (₹" + mrpError.mrp.toFixed(2) + ")!";
+                if (window.toastr) {
+                    toastr.error(errMsg.replace(/\n/g, ' '), 'Price Validation Error');
+                } else {
+                    alert(errMsg);
+                }
                 mrpError.$input.focus().addClass('border-warning text-warning');
+                return false;
+            }
+
+            // Rule: MRP must be greater than Cost Price
+            let mrpCostError = null;
+            $('#pinv-items-body tr').each(function (idx) {
+                let $r = $(this);
+                let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
+                let mrp = parseFloat($r.find('.pinv-mrp').val()) || 0;
+                let itemName = $r.find('.pinv-item-desc').val() || ('Row #' + (idx + 1));
+                if (cost > 0 && mrp > 0 && mrp <= cost) {
+                    mrpCostError = {
+                        row: idx + 1,
+                        item: itemName,
+                        cost: cost,
+                        mrp: mrp,
+                        $input: $r.find('.pinv-mrp')
+                    };
+                    return false; // break loop
+                }
+            });
+
+            if (mrpCostError) {
+                e.preventDefault();
+                let errMsg = "Row #" + mrpCostError.row + " (" + mrpCostError.item + "):\nMRP (₹" + mrpCostError.mrp.toFixed(2) + ") must be greater than Cost Price (₹" + mrpCostError.cost.toFixed(2) + ")!";
+                if (window.toastr) {
+                    toastr.error(errMsg.replace(/\n/g, ' '), 'Price Validation Error');
+                } else {
+                    alert(errMsg);
+                }
+                mrpCostError.$input.focus().addClass('border-danger text-danger');
                 return false;
             }
 
