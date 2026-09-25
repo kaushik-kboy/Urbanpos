@@ -682,10 +682,24 @@
 
             const submitBtn = document.querySelector('button[type="submit"]');
             if (submitBtn) {
+                const hasValidCust = !!$('#customer_id').val();
                 const hasValidItems = totalQty > 0 && document.querySelectorAll('#sr-items-body .sr-item-row').length > 0;
-                submitBtn.disabled = !hasValidItems;
+                let isValid = hasValidCust && hasValidItems;
+                submitBtn.disabled = !isValid;
+                submitBtn.classList.toggle('disabled', !isValid);
+                if (!hasValidCust) {
+                    submitBtn.title = 'Please select a Customer.';
+                } else if (!hasValidItems) {
+                    submitBtn.title = 'Please add at least one item with valid quantity.';
+                } else {
+                    submitBtn.title = '';
+                }
             }
         }
+
+        $(document).on('change', '#customer_id', function () {
+            recalculateAll();
+        });
 
         document.getElementById('sr-add-row')?.addEventListener('click', function () {
             const template = document.getElementById('sr-row-template').innerHTML;

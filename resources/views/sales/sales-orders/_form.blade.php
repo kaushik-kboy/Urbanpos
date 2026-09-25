@@ -676,16 +676,72 @@ $(function() {
         $('#so-summary-disc').text('-₹' + totDisc.toFixed(2));
         $('#so-summary-gst').text('₹' + totGst.toFixed(2));
         $('#so-summary-total').text('₹' + grandTotal.toFixed(2));
+
+        updateSoSaveButtonState();
     }
+
+    function updateSoSaveButtonState() {
+        let cust = $('select[name="customer_id"]').val();
+        let hasError = false;
+        let validRows = 0;
+        let reason = '';
+
+        if (!cust) {
+            hasError = true;
+            reason = 'Please select a Customer for this sales order.';
+        }
+
+        $('#so-items-body tr').each(function (idx) {
+            let id = $(this).find('.so-item-select').val();
+            let $q = $(this).find('.so-qty');
+            let q = parseFloat($q.val()) || 0;
+            let p = parseFloat($(this).find('.so-sell-price').val()) || 0;
+            let m = parseFloat($(this).find('.so-mrp').val()) || 0;
+
+            if (id) {
+                if (q <= 0) {
+                    hasError = true;
+                    if (!reason) reason = `Row #${idx + 1}: Quantity must be greater than 0.`;
+                }
+                if (m > 0 && p > m) {
+                    hasError = true;
+                    if (!reason) reason = `Row #${idx + 1}: Selling price cannot exceed MRP.`;
+                }
+                validRows++;
+            }
+        });
+
+        if (validRows === 0 && !hasError) {
+            hasError = true;
+            reason = 'Pehle item add karein. Please add at least one item before saving.';
+        }
+
+        let $btn = $('button[type="submit"]');
+        if (hasError) {
+            $btn.prop('disabled', true).addClass('disabled').attr('title', reason);
+        } else {
+            $btn.prop('disabled', false).removeClass('disabled').attr('title', '');
+        }
+    }
+
+    $(document).on('change', 'select[name="customer_id"]', function () {
+        updateSoSaveButtonState();
+    });
 
     function recalcAll() {
         $('#so-items-body tr').each(function() {
             recalcRow($(this));
         });
+        updateSoSaveButtonState();
     }
 
     // Form Submit Guard (Task 11)
     $('form').on('submit', function (e) {
+        let $btn = $(this).find('button[type="submit"]');
+        if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
+            e.preventDefault();
+            return false;
+        }
         let cust = $('select[name="customer_id"]').val();
         let $custContainer = $('select[name="customer_id"]').next('.select2-container').find('.select2-selection');
         if (!cust) {

@@ -429,7 +429,65 @@ $(function () {
         $('#summary-ordered').text(totOrdered.toFixed(2));
         $('#summary-dispatched').text(totDispatched.toFixed(2));
         $('#summary-amount').text('₹' + totAmount.toFixed(2));
+
+        updateSdnSaveButtonState();
     }
+
+    function updateSdnSaveButtonState() {
+        let customerId = $('select[name="customer_id"]').val();
+        let hasError = false;
+        let validRows = 0;
+        let reason = '';
+
+        if (!customerId) {
+            hasError = true;
+            reason = 'Please select a customer first.';
+        }
+
+        $('#sdn-items-body tr.sdn-item-row').each(function () {
+            let $row = $(this);
+            let itemId = $row.find('.sdn-item-id').val();
+            let itemCode = ($row.find('.sdn-item-code').val() || '').trim();
+            let qty = parseFloat($row.find('.row-dispatched').val()) || 0;
+
+            if (!itemId && !itemCode) {
+                return;
+            }
+
+            if (!itemId && itemCode) {
+                hasError = true;
+                if (!reason) reason = 'Please select a valid item for code: ' + itemCode;
+                return;
+            }
+
+            if (qty <= 0) {
+                hasError = true;
+                if (!reason) {
+                    let desc = $row.find('.sdn-item-desc').val() || 'selected item';
+                    reason = 'Dispatched quantity must be greater than 0 for: ' + desc;
+                }
+                return;
+            }
+
+            validRows++;
+        });
+
+        if (validRows === 0 && !hasError) {
+            hasError = true;
+            reason = 'Pehle item add karein. Please add at least one item before saving.';
+        }
+
+        let $btn = $('#submit-btn, button[type="submit"]');
+        if (hasError) {
+            $btn.prop('disabled', true).addClass('disabled').attr('title', reason);
+        } else {
+            $btn.prop('disabled', false).removeClass('disabled').attr('title', '');
+        }
+    }
+
+    $(document).on('change', 'select[name="customer_id"]', function () {
+        updateSdnSaveButtonState();
+    });
 
     // Recalculate on input
     $(document).on('input change', '.row-dispatched, .row-price', function () {
@@ -778,11 +836,16 @@ $(function () {
 
     // Form submit validation and empty row pruning
     $('#sdn-form').on('submit', function (e) {
-        let customerId = $('#sdn-customer-select').val();
+        let $btn = $('#submit-btn, button[type="submit"]');
+        if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
+            e.preventDefault();
+            return false;
+        }
+        let customerId = $('select[name="customer_id"]').val() || $('#sdn-customer-select').val();
         if (!customerId) {
             e.preventDefault();
             alert('Please select a customer first.');
-            $('#sdn-customer-select').focus();
+            $('#sdn-customer-select, select[name="customer_id"]').focus();
             return false;
         }
 
