@@ -1682,29 +1682,15 @@
                         let $q = $(this).find('.sb-qty');
                         let $r = $(this);
                         if (totalForItem > stock) {
-                            let errMsg = 'Total qty (' + formatDigits(totalForItem) + ') exceeds available stock (' + formatDigits(stock) + ')!';
+                            let errMsg = 'Maximum available quantity is ' + formatDigits(stock) + '.';
                             $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
-                            $r.find('.sb-qty-error-msg').text('Max: ' + formatDigits(stock)).show();
+                            $r.find('.sb-qty-error-msg').text(errMsg).show();
                         } else {
                             $q.removeClass('border-danger text-danger is-invalid').attr('title', '');
                             $r.find('.sb-qty-error-msg').text('').hide();
                         }
                     }
                 });
-                if (source !== 'initial' && totalForItem > stock) {
-                    let now = Date.now();
-                    let lastToast = $qtyInput.data('last-stock-toast') || 0;
-                    if (now - lastToast > 2500) {
-                        $qtyInput.data('last-stock-toast', now);
-                        let itemName = $row.find('.sb-item-desc').val() || 'Item';
-                        let warnMsg = `Item "${itemName}": Stock is only ${formatDigits(stock)}. Quantity (${formatDigits(totalForItem)}) cannot exceed available stock!`;
-                        if (window.toastr) {
-                            toastr.error(warnMsg, 'Stock Limit Exceeded');
-                        } else {
-                            alert(warnMsg);
-                        }
-                    }
-                }
             } else if (itemId && qty > 0) {
                 $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                 $row.find('.sb-qty-error-msg').text('').hide();
@@ -2382,7 +2368,7 @@
         });
 
         // Strict stock validation for sales bill quantity
-        function validateSbQty($qtyInput, showAlert = true) {
+        function validateSbQty($qtyInput) {
             let $row = $qtyInput.closest('tr');
             let itemId = $row.find('.sb-item-select').val();
             if (!itemId) return true;
@@ -2404,23 +2390,23 @@
                 });
 
                 if (totalForItem > stock) {
-                    $qtyInput.addClass('border-danger text-danger is-invalid');
-                    $row.find('.sb-qty-error-msg').text('Max: ' + formatDigits(stock)).show();
-                    if (showAlert) {
-                        let itemName = $row.find('.sb-item-desc').val() || 'Item';
-                        let warnMsg = `Item "${itemName}": Stock is only ${formatDigits(stock)}. Quantity (${formatDigits(totalForItem)}) cannot exceed available stock!`;
-                        if (window.toastr) {
-                            toastr.error(warnMsg, 'Stock Limit Exceeded');
-                        } else {
-                            alert(warnMsg);
-                        }
-                        setTimeout(function () { $qtyInput.focus().select(); }, 10);
-                    }
+                    let errMsg = 'Maximum available quantity is ' + formatDigits(stock) + '.';
+                    $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
+                    $row.find('.sb-qty-error-msg').text(errMsg).show();
                     updateSaveButtonState();
                     return false;
                 }
             }
-            $qtyInput.removeClass('border-danger text-danger is-invalid');
+
+            if (qty <= 0) {
+                let errMsg = 'Quantity must be greater than 0.';
+                $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
+                $row.find('.sb-qty-error-msg').text(errMsg).show();
+                updateSaveButtonState();
+                return false;
+            }
+
+            $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
             $row.find('.sb-qty-error-msg').text('').hide();
             updateSaveButtonState();
             return true;
@@ -2429,9 +2415,11 @@
         // Fast POS keyboard flow: Qty -> Disc % -> Disc Amt -> next row (if exists)
         $(document).on('keydown', '.sb-qty', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
-                if (!validateSbQty($(this), true)) {
+                if (!validateSbQty($(this))) {
                     e.preventDefault();
+                    e.stopPropagation();
                     e.stopImmediatePropagation();
+                    $(this).focus();
                     return false;
                 }
                 if (e.key === 'Enter') {
@@ -2441,8 +2429,8 @@
             }
         });
 
-        $(document).on('change', '.sb-qty', function () {
-            validateSbQty($(this), true);
+        $(document).on('input keyup change', '.sb-qty', function () {
+            validateSbQty($(this));
         });
 
         $(document).on('keydown', '.sb-disc-percent', function (e) {
@@ -2876,12 +2864,20 @@
         ensureSingleEmptySbRow();
 
         // Prevent future dates on bill_date
-        $('#bill_date').on('change', function () {
+        $('#bill_date').on('change blur input', function () {
             const now = new Date();
             const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            let $dateFeedback = $('#bill_date_future_error');
+            if (!$dateFeedback.length) {
+                $dateFeedback = $('<div id="bill_date_future_error" class="invalid-feedback text-danger font-weight-bold d-block mt-1"></div>');
+                $('#bill_date').parent().append($dateFeedback);
+            }
             if (this.value && this.value > localIso) {
-                alert('Future date & time is not allowed for Bill Date!');
                 this.value = localIso;
+                $dateFeedback.text('Future date & time is not allowed. Reset to current time.').show();
+                setTimeout(() => $dateFeedback.fadeOut(), 3000);
+            } else {
+                $dateFeedback.hide().text('');
             }
         });
 

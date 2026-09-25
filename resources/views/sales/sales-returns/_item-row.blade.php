@@ -59,6 +59,7 @@
                class="form-control form-control-sm text-right sr-qty font-weight-bold"
                placeholder="Qty" autocomplete="off">
         <small class="text-muted d-block text-right sr-max-qty-label" style="font-size: 10px;"></small>
+        <div class="sr-qty-error-msg text-danger font-weight-bold mt-1 text-right" style="font-size: 10px; line-height: 1.1; display: none;"></div>
     </td>
     {{-- Sell Price --}}
     <td style="width: 110px;" data-col-key="sell_price">

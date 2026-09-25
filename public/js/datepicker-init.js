@@ -418,11 +418,6 @@
             }
         }
         $feedback.text(msg).show();
-
-        if (window.toastr && typeof window.toastr.error === 'function') {
-            toastr.clear();
-            toastr.error(msg, 'Invalid Date');
-        }
     }
 
     function clearDateError($input) {
@@ -498,7 +493,7 @@
     }
 
     // Auto-format on typing exact 8 raw digits (e.g. 10042026) and clear error when typing valid input
-    $(document).on('input', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function () {
+    $(document).on('input keyup', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"]), input[data-date-field="true"]', function () {
         var $this = $(this);
         var inputType = (this.type || $this.prop('type') || $this.attr('type') || '').toLowerCase();
         if (inputType === 'datetime-local' || inputType === 'time' || $this.hasClass('daterange') || $this.data('mode') === 'range') return;
@@ -514,25 +509,28 @@
                     $this.val(formatted).trigger('change');
                 }
             }
+        } else if (!$this.prop('required') && $this.attr('required') === undefined) {
+            clearDateError($this);
         }
     });
 
     // Format and Validate on Enter, Tab, or Blur. Block Tab if invalid date (Task 5)
-    $(document).on('keydown', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function (e) {
+    $(document).on('keydown', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"]), input[data-date-field="true"]', function (e) {
         var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
         if (inputType === 'datetime-local' || inputType === 'time') return;
         if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
             var isValid = validateDateField($(this), e);
-            if (!isValid && (e.key === 'Tab' || e.key === 'Enter')) {
+            if (!isValid) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
+                $(this).focus();
                 return false;
             }
         }
     });
 
-    $(document).on('blur', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function () {
+    $(document).on('blur', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"]), input[data-date-field="true"]', function () {
         var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
         if (inputType === 'datetime-local' || inputType === 'time') return;
         validateDateField($(this), null);

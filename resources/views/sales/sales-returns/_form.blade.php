@@ -92,24 +92,22 @@
             </div>
         </div>
         <div class="row align-items-center">
-            <div class="col-md-7 mb-2 mb-md-0">
-                <label class="small font-weight-bold text-primary mb-1">
+            <div class="col-md-9 mb-2 mb-md-0">
+                <label class="small font-weight-bold text-primary mb-1" for="sr-bill-item-select">
                     <i class="fas fa-receipt mr-1"></i> Select Item from Sales Bill to Return:
                 </label>
                 <div class="input-group input-group-sm">
-                    <select id="sr-bill-item-select" class="form-control form-control-sm">
+                    <select id="sr-bill-item-select" class="form-control form-control-sm font-weight-bold">
                         <option value="">-- Choose an item from this bill --</option>
                     </select>
+                    <div class="input-group-append">
+                        <button type="button" id="btn-add-bill-item" class="btn btn-primary btn-sm font-weight-bold px-3">
+                            <i class="fas fa-plus mr-1"></i> Add to Return
+                        </button>
+                    </div>
                 </div>
-                <small class="text-muted">Return quantity cannot exceed original bill quantity. Select 1 item or click "Add All Items".</small>
-            </div>
-            <div class="col-md-5 text-md-right pt-2 pt-md-0">
-                <button type="button" id="btn-add-bill-item" class="btn btn-primary btn-sm font-weight-bold mr-1">
-                    <i class="fas fa-plus mr-1"></i> Add to Return
-                </button>
-                <button type="button" id="btn-add-all-bill-items" class="btn btn-outline-secondary btn-sm font-weight-bold">
-                    <i class="fas fa-layer-group mr-1"></i> Add All Bill Items
-                </button>
+                <div id="sr-bill-item-error" class="text-danger font-weight-bold small mt-1" style="display: none;"></div>
+                <small class="text-muted">Choose an item from the list above to add it to Return Items below. Only selected items will be returned.</small>
             </div>
         </div>
     </div>
@@ -326,20 +324,12 @@
         function checkCustomerAndOpenSrModal($input) {
             let custId = $('#customer_id').val();
             if (!custId) {
-                if (typeof toastr !== 'undefined') {
-                    toastr.warning('Please select a Customer first. Items are restricted to products purchased by that customer.');
-                } else {
-                    alert('Please select a Customer first. Items are restricted to products purchased by that customer.');
-                }
-                $('#customer_id').select2('open');
+                validateSrHeader(true);
                 return false;
             }
             if ($('#sales_bill_id').val()) {
-                if (typeof toastr !== 'undefined') {
-                    toastr.info('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
-                } else {
-                    alert('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
-                }
+                $('#sr-bill-item-error').text('Items are restricted to the selected Sales Bill. Please select items from the dropdown above.').show();
+                $('#sr-bill-item-select').focus();
                 return false;
             }
             let $row = $input.closest('tr');
@@ -679,15 +669,16 @@
             return { qty, price, discAmount, taxable, gstAmount, net };
         }
 
-        function validateSrQuantity($input, showAlert = true) {
+        function validateSrQuantity($input) {
             let $row = $input.closest('tr');
             let itemId = $row.find('.sr-item-select').val();
-            let itemName = $row.find('.sr-item-desc').val() || 'Product';
             let enteredQty = parseFloat($input.val()) || 0;
+            let $errBox = $row.find('.sr-qty-error-msg');
 
             let origQtyStr = $input.attr('data-original-qty');
             if (origQtyStr === undefined || origQtyStr === '' || origQtyStr === null) {
                 $input.removeClass('is-invalid border-danger');
+                $errBox.text('').hide();
                 return true;
             }
 
@@ -710,47 +701,33 @@
             let remDisplay = (remainingQty === parseInt(remainingQty, 10)) ? parseInt(remainingQty, 10) : remainingQty;
 
             if (remainingQty <= 0 && origQty > 0) {
-                $input.addClass('is-invalid border-danger');
                 let errMsg = "No returnable quantity available for this item.";
-                $input.attr('title', errMsg);
-                if (showAlert) {
-                    if (window.toastr) {
-                        toastr.clear();
-                        toastr.error(errMsg, 'Quantity Validation Error');
-                    } else {
-                        alert(errMsg);
-                    }
-                }
+                $input.addClass('is-invalid border-danger').attr('title', errMsg);
+                $errBox.text(errMsg).show();
                 const submitBtn = document.querySelector('button[type="submit"]');
-                if (submitBtn) submitBtn.disabled = true;
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.title = errMsg; }
                 return false;
             }
 
-            let isOverLimit = (totalRequestedForThisItem > remainingQty + 0.0001) || (enteredQty > remainingQty + 0.0001);
+            let isOverLimit = (origQty > 0) && ((totalRequestedForThisItem > remainingQty + 0.0001) || (enteredQty > remainingQty + 0.0001));
 
             if (origQty > 0 && isOverLimit) {
-                $input.addClass('is-invalid border-danger');
-                let errMsg = `Return quantity cannot exceed the remaining returnable quantity of ${remDisplay}.`;
-                $input.attr('title', errMsg);
-                if (showAlert) {
-                    if (window.toastr) {
-                        toastr.clear();
-                        toastr.error(errMsg, 'Quantity Validation Error');
-                    } else {
-                        alert(errMsg);
-                    }
-                }
+                let errMsg = "Maximum available quantity is " + remDisplay + ".";
+                $input.addClass('is-invalid border-danger').attr('title', errMsg);
+                $errBox.text(errMsg).show();
                 const submitBtn = document.querySelector('button[type="submit"]');
-                if (submitBtn) submitBtn.disabled = true;
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.title = errMsg; }
                 return false;
             } else if (enteredQty <= 0) {
-                $input.addClass('is-invalid border-danger');
-                $input.attr('title', 'Quantity must be greater than 0');
+                let errMsg = "Quantity must be greater than 0.";
+                $input.addClass('is-invalid border-danger').attr('title', errMsg);
+                $errBox.text(errMsg).show();
                 const submitBtn = document.querySelector('button[type="submit"]');
-                if (submitBtn) submitBtn.disabled = true;
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.title = errMsg; }
                 return false;
             } else {
                 $input.removeClass('is-invalid border-danger').removeAttr('title');
+                $errBox.text('').hide();
                 return true;
             }
         }
@@ -847,6 +824,22 @@
             }
         });
 
+        $(document).on('keydown', '.sr-qty', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                if (!validateSrQuantity($(this))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $(this).focus();
+                    return false;
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $(this).closest('tr').find('.sr-disc-percent').focus().select();
+                }
+            }
+        });
+
         $(document).off('keydown', '.sr-disc-amount, .sr-gst-percent').on('keydown', '.sr-disc-amount, .sr-gst-percent', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
@@ -854,7 +847,7 @@
                 if ($nextRow.length) {
                     e.preventDefault();
                     $nextRow.find('.sr-item-code').focus();
-                } else {
+                } else if (!$('#sales_bill_id').val()) {
                     e.preventDefault();
                     $('#sr-add-row').trigger('click');
                 }
@@ -871,7 +864,8 @@
 
             // Case 1: bill is selected
             if ($('#sales_bill_id').val()) {
-                validateSrQuantity($input, true);
+                validateSrQuantity($input);
+                recalculateRow($row, 'qty');
                 recalculateAll();
                 return;
             }
@@ -1025,20 +1019,13 @@
                     });
                     recalculateAll();
                 } else {
-                    // Auto-add eligible returnable items to the return table
-                    tbody.innerHTML = '';
-                    let addedCount = 0;
-                    cachedBillItems.forEach(item => {
-                        let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
-                        if (remQty > 0) {
-                            appendBillItemRow(item, remQty);
-                            addedCount++;
-                        }
-                    });
-                    if (addedCount === 0 && cachedBillItems.length > 0) {
-                        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-warning mr-1"></i> All items in this sales bill have already been fully returned. No returnable quantity available.</td></tr>`;
-                    } else if (cachedBillItems.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-primary mr-1"></i> Original Sales Bill loaded (0 items).</td></tr>`;
+                    // Critical Requirement (Task 2):
+                    // Do NOT auto-populate items from Sales Bill into Return Items table!
+                    // Return Items remains empty until the user explicitly selects an item from "Select Item from Sales Bill to Return".
+                    if (cachedBillItems.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-info mr-1"></i> Original Sales Bill loaded (0 items).</td></tr>';
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-hand-pointer text-primary mr-1"></i> Select an item from "Select Item from Sales Bill to Return" above to add to Return Items.</td></tr>';
                     }
                     recalculateAll();
                 }
@@ -1048,7 +1035,7 @@
                 if (!preserveExisting) {
                     tbody.innerHTML = originalRows;
                 }
-                alert('Failed to load items from sales bill.');
+                $('#sr-bill-item-error').text('Failed to load items from sales bill.').show();
             })
             .finally(() => {
                 isAutoLoadingBill = false;
@@ -1128,23 +1115,21 @@
             }, 50);
         }
 
-        // Add 1 selected item from bill to return table
-        $('#btn-add-bill-item').on('click', function () {
+        // Add selected item from bill to return table (Inline validation, no alerts)
+        function addSelectedItemToReturn() {
             let idx = $('#sr-bill-item-select').val();
+            let $errBox = $('#sr-bill-item-error');
+            $errBox.hide().text('');
+
             if (idx === '' || idx === null || typeof cachedBillItems[idx] === 'undefined') {
-                alert('Please select an item from the bill dropdown first.');
+                $errBox.text('Please select an item from the bill dropdown above first.').show();
                 return;
             }
 
             let item = cachedBillItems[idx];
             let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
             if (remQty <= 0) {
-                let msg = 'No returnable quantity available for this item.';
-                if (window.toastr) {
-                    toastr.error(msg, 'Return Not Allowed');
-                } else {
-                    alert(msg);
-                }
+                $errBox.text('No returnable quantity available for this item.').show();
                 return;
             }
 
@@ -1153,8 +1138,8 @@
             // If already in table, focus its qty input
             let existingRow = $(tbody).find(`.sr-item-row .sr-item-select[value="${item.item_id}"]`).closest('tr');
             if (existingRow.length > 0) {
-                alert(`"${item.item_name}" is already in the return list. You can edit its return quantity below.`);
-                existingRow.find('.sr-qty').focus();
+                $errBox.text(`"${item.item_name}" is already in the Return Items list below.`).show();
+                existingRow.find('.sr-qty').focus().select();
                 return;
             }
 
@@ -1163,35 +1148,21 @@
                 tbody.innerHTML = '';
             }
 
-            let initQty = (remQty >= 1) ? 1 : remQty;
+            let initQty = remQty;
             appendBillItemRow(item, initQty);
+
+            // Reset dropdown to default so user can select another item easily
+            $('#sr-bill-item-select').val('');
+        }
+
+        $('#btn-add-bill-item').on('click', function () {
+            addSelectedItemToReturn();
         });
 
-        // Add all returnable items from bill to return table
-        $('#btn-add-all-bill-items').on('click', function () {
-            if (!cachedBillItems || cachedBillItems.length === 0) {
-                alert('No items found in selected bill.');
-                return;
+        $('#sr-bill-item-select').on('change', function () {
+            if ($(this).val() !== '') {
+                addSelectedItemToReturn();
             }
-            let eligibleItems = cachedBillItems.filter(item => {
-                let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
-                return remQty > 0;
-            });
-            if (eligibleItems.length === 0) {
-                let msg = 'No returnable quantity available for any item in this bill.';
-                if (window.toastr) {
-                    toastr.warning(msg, 'Already Returned');
-                } else {
-                    alert(msg);
-                }
-                return;
-            }
-            let tbody = document.getElementById('sr-items-body');
-            tbody.innerHTML = '';
-            eligibleItems.forEach(item => {
-                let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
-                appendBillItemRow(item, remQty);
-            });
         });
 
         function updateBillModeUI() {
@@ -1215,8 +1186,21 @@
         $('#sales_bill_id').on('change', function () {
             let billId = $(this).val();
             updateBillModeUI();
+            $('#sr-bill-item-error').hide().text('');
+            $('#sr-bill-item-select').empty().append('<option value="">-- Choose an item from this bill --</option>');
+            cachedBillItems = [];
+
+            const tbody = document.getElementById('sr-items-body');
             if (billId) {
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-1 text-primary"></i> Loading items from sales bill...</td></tr>';
+                }
                 loadBillItems(billId, false);
+            } else {
+                if (tbody) {
+                    tbody.innerHTML = '';
+                }
+                recalculateAll();
             }
         });
 
@@ -1225,7 +1209,14 @@
         function loadCustomerBills(customerId, selectedBillId = null, onDone = null) {
             let $billSelect = $('#sales_bill_id');
             if (!customerId) {
-                $billSelect.html('<option value="">-- No Original Bill / Direct Return --</option>').trigger('change');
+                $billSelect.html('<option value="">-- No Original Bill / Direct Return --</option>').val('').trigger('change.select2');
+                $('#sr-bill-picker-wrap').slideUp(200);
+                $('#sr-bill-summary').addClass('d-none');
+                $('#sr-bill-item-error').hide().text('');
+                const tbody = document.getElementById('sr-items-body');
+                if (tbody) tbody.innerHTML = '';
+                cachedBillItems = [];
+                recalculateAll();
                 if (onDone) onDone(null);
                 return;
             }
@@ -1234,17 +1225,18 @@
             $billSelect.prop('disabled', true);
 
             $.getJSON('/sales/sales-returns/customer-bills/' + customerId, function (bills) {
-                let currentVal = selectedBillId || $billSelect.val();
                 let html = '<option value="">-- No Original Bill / Direct Return --</option>';
                 if (bills && bills.length > 0) {
                     bills.forEach(function (b) {
-                        let sel = (String(b.id) === String(currentVal)) ? 'selected' : '';
+                        let sel = (selectedBillId && String(b.id) === String(selectedBillId)) ? 'selected' : '';
                         html += `<option value="${b.id}" ${sel}>${b.label || b.bill_number}</option>`;
                     });
                 }
                 $billSelect.html(html);
-                if (currentVal) {
-                    $billSelect.val(currentVal);
+                if (selectedBillId) {
+                    $billSelect.val(selectedBillId);
+                } else {
+                    $billSelect.val('');
                 }
             }).fail(function () {
                 console.error('Failed to load customer bills');
@@ -1256,43 +1248,56 @@
                 customerBillsLoading = false;
                 updateBillModeUI();
                 let activeBill = $billSelect.val();
-                if (activeBill) {
+                if (activeBill && selectedBillId) {
                     loadBillItems(activeBill, false);
                 }
                 if (onDone) onDone(activeBill);
             });
         }
 
-        // Header Validation (Task 11)
+        // Header Validation (Inline feedback, no popups)
         function validateSrHeader(showAlert = false) {
             let isValid = true;
             let $cust = $('#customer_id');
             let custVal = $cust.val();
             let $custContainer = $cust.next('.select2-container').find('.select2-selection');
+            let $custFeedback = $('#customer_id_error_msg');
+            if (!$custFeedback.length) {
+                $custFeedback = $('<div id="customer_id_error_msg" class="invalid-feedback text-danger font-weight-bold d-block mt-1">Please select a Customer first.</div>');
+                $cust.closest('.field-wrapper').append($custFeedback);
+            }
 
             if (!custVal) {
                 $cust.addClass('is-invalid');
                 $custContainer.addClass('border-danger');
+                $custFeedback.show();
                 if (showAlert) {
-                    alert('Please select a Customer first before entering return items.');
                     $cust.select2('open');
                 }
                 isValid = false;
             } else {
                 $cust.removeClass('is-invalid');
                 $custContainer.removeClass('border-danger');
+                $custFeedback.hide();
             }
 
             let $date = $('#return_date');
+            let $dateFeedback = $('#return_date_error_msg');
+            if (!$dateFeedback.length) {
+                $dateFeedback = $('<div id="return_date_error_msg" class="invalid-feedback text-danger font-weight-bold d-block mt-1">Please enter a valid date.</div>');
+                $date.closest('.field-wrapper').append($dateFeedback);
+            }
+
             if (!$date.val()) {
                 $date.addClass('is-invalid border-danger');
+                $dateFeedback.show();
                 if (showAlert && isValid) {
-                    alert('Please select a Return Date.');
                     $date.focus();
                 }
                 isValid = false;
             } else {
                 $date.removeClass('is-invalid border-danger');
+                $dateFeedback.hide();
             }
 
             return isValid;
@@ -1309,6 +1314,23 @@
         $('#customer_id').on('change', function () {
             validateSrHeader(false);
             let custId = $(this).val();
+
+            // Clear previous customer's sales bill selection and items
+            let $billSelect = $('#sales_bill_id');
+            $billSelect.val('').trigger('change.select2');
+            $('#sr-bill-item-select').empty().append('<option value="">-- Choose an item from this bill --</option>');
+            $('#sr-bill-picker-wrap').slideUp(200);
+            $('#sr-bill-summary').addClass('d-none');
+            $('#sr-bill-item-error').hide().text('');
+            cachedBillItems = [];
+
+            // Clear Return Items table
+            const tbody = document.getElementById('sr-items-body');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle mr-1 text-info"></i> Please select a Sales Bill above.</td></tr>';
+            }
+            recalculateAll();
+
             loadCustomerBills(custId);
         });
 
@@ -1376,12 +1398,7 @@
                 // Item code entered but not selected from search list
                 if (!itemId && itemCode) {
                     e.preventDefault();
-                    if (window.toastr) {
-                        toastr.warning(`Please select a valid item for: "${itemCode}"`, 'Item Required');
-                    } else {
-                        alert(`Please select a valid item for: "${itemCode}"`);
-                    }
-                    $row.find('.sr-item-code').focus();
+                    $row.find('.sr-item-code').addClass('is-invalid border-danger').focus();
                     hasError = true;
                     return false;
                 }
@@ -1392,11 +1409,9 @@
                 // Check 1: Qty missing or <= 0
                 if (!qtyVal || qty <= 0) {
                     e.preventDefault();
-                    if (window.toastr) {
-                        toastr.warning(`Please enter a valid quantity for item: "${itemName}"`, 'Quantity Required');
-                    } else {
-                        alert(`Please enter a valid quantity for item: "${itemName}"`);
-                    }
+                    let errMsg = 'Quantity must be greater than 0.';
+                    $qtyInput.addClass('is-invalid border-danger').attr('title', errMsg);
+                    $row.find('.sr-qty-error-msg').text(errMsg).show();
                     $qtyInput.focus().select();
                     hasError = true;
                     return false;
@@ -1406,12 +1421,9 @@
                 if (hasBill) {
                     if (remQty <= 0) {
                         e.preventDefault();
-                        let msg = "No returnable quantity available for this item.";
-                        if (window.toastr) {
-                            toastr.error(msg, 'Return Not Allowed');
-                        } else {
-                            alert(msg);
-                        }
+                        let errMsg = "No returnable quantity available for this item.";
+                        $qtyInput.addClass('is-invalid border-danger').attr('title', errMsg);
+                        $row.find('.sr-qty-error-msg').text(errMsg).show();
                         $qtyInput.focus().select();
                         hasError = true;
                         return false;
@@ -1419,14 +1431,10 @@
                     let totalRequested = itemTotals[itemId] || qty;
                     if (totalRequested > remQty + 0.0001) {
                         e.preventDefault();
-                        let msg = (retQty > 0)
-                            ? `Return quantity cannot exceed the remaining returnable quantity of ${remQty}.`
-                            : `Return quantity cannot exceed original bill quantity (${origQty}) for: "${itemName}"`;
-                        if (window.toastr) {
-                            toastr.error(msg, 'Quantity Exceeded');
-                        } else {
-                            alert(msg);
-                        }
+                        let remDisplay = (remQty === parseInt(remQty, 10)) ? parseInt(remQty, 10) : remQty;
+                        let errMsg = "Maximum available quantity is " + remDisplay + ".";
+                        $qtyInput.addClass('is-invalid border-danger').attr('title', errMsg);
+                        $row.find('.sr-qty-error-msg').text(errMsg).show();
                         $qtyInput.focus().select();
                         hasError = true;
                         return false;
@@ -1441,12 +1449,12 @@
             // If no items have been selected at all
             if (totalSelectedItems === 0) {
                 e.preventDefault();
-                if (window.toastr) {
-                    toastr.warning('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
+                $('#sr-bill-item-error').text('Please add at least one item before saving.').show();
+                if ($('#sales_bill_id').val()) {
+                    $('#sr-bill-item-select').focus();
                 } else {
-                    alert('Pehle item add karein. Please add at least one item before saving.');
+                    $('#sr-items-body .sr-item-row:first .sr-item-code').focus();
                 }
-                $('#sr-items-body .sr-item-row:first .sr-item-code').focus();
                 return false;
             }
 

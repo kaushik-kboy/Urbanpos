@@ -144,9 +144,11 @@ function checkBladeFiles() {
                 const errMsg = err.stderr ? err.stderr.toString().trim() : err.message;
                 console.error(`   Details:\n${errMsg}\n`);
             } finally {
-                if (fs.existsSync(tempFile)) {
-                    fs.unlinkSync(tempFile);
-                }
+                try {
+                    if (fs.existsSync(tempFile)) {
+                        fs.unlinkSync(tempFile);
+                    }
+                } catch (_) {}
             }
         }
     }
