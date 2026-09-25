@@ -628,11 +628,12 @@
             reindexRows();
         });
 
-        // Open modal on item code click or focus
-        $('#items-body').off('click focus', '.item-code-input').on('click focus', '.item-code-input', function (e) {
+        // Open modal on item code: Enter or F2 ONLY — Click & Focus disabled
+        $('#items-body').off('click focus keydown', '.item-code-input').on('keydown', '.item-code-input', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
             if (damageModalOpen || damageModalClosing) return;
             const $row = $(this).closest('tr');
-            if (e.type === 'focus' && $row.find('.item-id-hidden').val()) return;
             openItemModal($row, $(this).val());
         });
 
@@ -725,6 +726,79 @@
         $('#items-body tr.item-row').each(function () {
             initRowSelect2($(this));
             recalcRow($(this));
+        });
+
+        // Form submit validation and empty row pruning
+        $('#damage-stock-form').on('submit', function (e) {
+            let branchId = $('#branch_id').val();
+            if (!branchId) {
+                e.preventDefault();
+                alert('Please select a branch.');
+                $('#branch_id').focus();
+                return false;
+            }
+
+            let validRows = 0;
+            let hasError = false;
+
+            $('#items-body tr.item-row').each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.item-id-hidden').val();
+                let itemCode = ($row.find('.item-code-input').val() || '').trim();
+                let qty = parseFloat($row.find('.item-qty').val()) || 0;
+
+                if (!itemId && !itemCode) {
+                    return; // skip blank row
+                }
+
+                if (!itemId && itemCode) {
+                    e.preventDefault();
+                    hasError = true;
+                    alert('Please select a valid item for code: ' + itemCode);
+                    $row.find('.item-code-input').focus();
+                    return false;
+                }
+
+                if (qty <= 0) {
+                    e.preventDefault();
+                    hasError = true;
+                    let desc = $row.find('.item-desc').val() || 'selected item';
+                    alert('Please enter a valid quantity greater than 0 for: ' + desc);
+                    $row.find('.item-qty').focus();
+                    return false;
+                }
+
+                validRows++;
+            });
+
+            if (hasError) return false;
+
+            if (validRows === 0) {
+                e.preventDefault();
+                alert('Pehle item add karein. Please add at least one item before saving.');
+                $('#items-body tr.item-row:first .item-code-input').focus();
+                return false;
+            }
+
+            // Prune empty rows before submit
+            $('#items-body tr.item-row').each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.item-id-hidden').val();
+                if (!itemId) {
+                    $row.remove();
+                }
+            });
+
+            // Re-index remaining rows contiguously
+            $('#items-body tr.item-row').each(function (idx) {
+                let $row = $(this);
+                $row.find('input, select').each(function () {
+                    let name = $(this).attr('name');
+                    if (name && name.startsWith('items[')) {
+                        $(this).attr('name', name.replace(/items\[\d+\]/, 'items[' + idx + ']'));
+                    }
+                });
+            });
         });
 
         recalcTotals();

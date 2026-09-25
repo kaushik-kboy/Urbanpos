@@ -41,7 +41,7 @@
                value="{{ $displayText }}" 
                placeholder="Product Description (auto-filled)"
                title="Product description (auto-filled on code entry)">
-        <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-id-hidden" value="{{ $itemId }}" required>
+        <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-id-hidden" value="{{ $itemId }}">
     </td>
 
     {{-- Exp Date --}}
@@ -53,10 +53,10 @@
 
     {{-- Qty --}}
     <td style="width: 95px;">
-        <input type="number" step="0.001" min="0.001" name="items[{{ $idx }}][qty]" 
+        <input type="number" step="0.001" min="0" name="items[{{ $idx }}][qty]" 
                value="{{ $qty }}" 
                placeholder="0.000" 
-               class="form-control form-control-sm item-qty text-right font-weight-bold" required>
+               class="form-control form-control-sm item-qty text-right font-weight-bold">
     </td>
 
     {{-- Cost Price --}}
@@ -64,7 +64,7 @@
         <input type="number" step="0.01" min="0" name="items[{{ $idx }}][cost_price]" 
                value="{{ is_numeric($costPrice) ? number_format((float)$costPrice, 2, '.', '') : '' }}" 
                placeholder="0.00" 
-               class="form-control form-control-sm item-cost text-right" required>
+               class="form-control form-control-sm item-cost text-right">
     </td>
 
     {{-- Sell Price --}}

@@ -295,13 +295,11 @@ $(function() {
        ---------------------------------------------------------------- */
     let sqCancellingRow = null;
 
-    $(document).off('click focus keydown', '.sq-item-code').on('click focus keydown', '.sq-item-code', function (e) {
-        if (e.type === 'click') return; // Do not open on mouse click!
-        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
-        if (e.type === 'keydown') e.preventDefault();
+    $(document).off('click focus keydown', '.sq-item-code').on('keydown', '.sq-item-code', function (e) {
+        if (e.key !== 'Enter' && e.key !== 'F2') return;
+        e.preventDefault();
         if (sqModalOpen || sqModalClosing) return;
         let $row = $(this).closest('tr');
-        if (e.type === 'focus' && $row.find('.sq-item-select').val()) return;
         sqActiveSearchRow = $row;
         let prefill = $.trim($(this).val());
         $('#sq-isl-filter-name').val(prefill);
@@ -628,9 +626,22 @@ $(function() {
 
         if (validRows === 0) {
             e.preventDefault();
-            alert('Please add at least one valid item with quantity > 0.');
+            if (window.toastr) {
+                toastr.warning('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
+            } else {
+                alert('Pehle item add karein. Please add at least one item before saving.');
+            }
+            $('#sq-items-body tr:first .sq-item-code').focus();
             return false;
         }
+
+        // Remove purely empty rows before submitting
+        $('#sq-items-body tr').each(function () {
+            let id = $(this).find('.sq-item-select').val();
+            if (!id) {
+                $(this).remove();
+            }
+        });
     });
 
     recalcAll();

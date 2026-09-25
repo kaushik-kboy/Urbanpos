@@ -1148,14 +1148,11 @@
             });
         }
 
-        // Open modal on keydown (Enter / F2) or focus when blank (Disabled on mouse click)
-        $(document).off('click focus keydown', '.sb-item-code').on('click focus keydown', '.sb-item-code', function (e) {
-            if (e.type === 'click') return; // Do not open on mouse click!
-            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
-            if (e.type === 'keydown') e.preventDefault();
+        // Open modal on keydown (Enter / F2 ONLY) — Mouse click & Focus disabled
+        $(document).off('click focus keydown', '.sb-item-code').on('keydown', '.sb-item-code', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
             if (islModalOpen || islModalClosing || isSyncing) return;
-            let $row = $(this).closest('tr');
-            if (e.type === 'focus' && $row.find('.sb-item-select').val()) return;
             openItemSearchModal($(this));
         });
 

@@ -16,7 +16,7 @@
 
 @section('content')
     <div class="card card-primary card-outline shadow-sm">
-        <form action="{{ route('purchase.purchase-indents.store') }}" method="POST" id="indent-form">
+        <form action="{{ route('purchase.purchase-indents.store') }}" method="POST" id="indent-form" novalidate>
             @csrf
             <div class="card-body">
                 <x-error-summary />
@@ -153,13 +153,13 @@
             </td>
             <td style="min-width: 220px;">
                 <input type="text" class="form-control form-control-sm indent-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" placeholder="Product Description (auto-filled)">
-                <input type="hidden" name="items[__INDEX__][item_id]" class="indent-item-select" required>
+                <input type="hidden" name="items[__INDEX__][item_id]" class="indent-item-select">
             </td>
             <td class="text-center align-middle">
                 <span class="badge badge-light border stock-badge font-weight-normal px-2 py-1">0.00</span>
             </td>
             <td>
-                <input type="number" step="0.001" min="0.001" name="items[__INDEX__][requested_qty]" class="form-control form-control-sm text-right qty-input" placeholder="0.00" required>
+                <input type="number" step="0.001" min="0" name="items[__INDEX__][requested_qty]" class="form-control form-control-sm text-right qty-input" placeholder="0.00">
             </td>
             <td>
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][estimated_cost]" class="form-control form-control-sm text-right cost-input" placeholder="0.00">
@@ -626,6 +626,71 @@
                         fetchLiveStock(itemId, branchId, $r.find('.stock-badge'));
                     }
                 });
+            });
+
+            // Form submit validation and empty row pruning
+            $('#indent-form').on('submit', function (e) {
+                let branchId = $('#branch_id').val();
+                if (!branchId) {
+                    e.preventDefault();
+                    alert('Please select a target branch.');
+                    $('#branch_id').focus();
+                    return false;
+                }
+
+                let validRows = 0;
+                let hasError = false;
+
+                $('#indent-items-body tr.indent-row').each(function () {
+                    let $row = $(this);
+                    let itemId = $row.find('.indent-item-select').val();
+                    let itemCode = ($row.find('.indent-item-code').val() || '').trim();
+                    let qty = parseFloat($row.find('.qty-input').val()) || 0;
+
+                    if (!itemId && !itemCode) {
+                        return; // skip blank row
+                    }
+
+                    if (!itemId && itemCode) {
+                        e.preventDefault();
+                        hasError = true;
+                        alert('Please select a valid item for code: ' + itemCode);
+                        $row.find('.indent-item-code').focus();
+                        return false;
+                    }
+
+                    if (qty <= 0) {
+                        e.preventDefault();
+                        hasError = true;
+                        let desc = $row.find('.indent-item-desc').val() || 'selected item';
+                        alert('Please enter a valid requested quantity greater than 0 for: ' + desc);
+                        $row.find('.qty-input').focus();
+                        return false;
+                    }
+
+                    validRows++;
+                });
+
+                if (hasError) return false;
+
+                if (validRows === 0) {
+                    e.preventDefault();
+                    alert('Pehle item add karein. Please add at least one item before saving.');
+                    $('#indent-items-body tr.indent-row:first .indent-item-code').focus();
+                    return false;
+                }
+
+                // Prune empty rows before submit
+                $('#indent-items-body tr.indent-row').each(function () {
+                    let $row = $(this);
+                    let itemId = $row.find('.indent-item-select').val();
+                    if (!itemId) {
+                        $row.remove();
+                    }
+                });
+
+                // Re-index remaining rows contiguously
+                reindexRows();
             });
 
             // Initialize default row and focus code

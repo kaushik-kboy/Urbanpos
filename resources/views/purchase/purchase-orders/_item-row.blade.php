@@ -47,8 +47,7 @@
         <input type="hidden"
                name="items[{{ $rowId }}][item_id]"
                class="po-item-select"
-               value="{{ $itemId }}"
-               required>
+               value="{{ $itemId }}">
     </td>
     <td style="width: 85px;" data-col-key="stock">
         @php
@@ -74,9 +73,9 @@
                placeholder="0"
                title="Current stock in this branch">
     </td>
-    <td data-col-key="qty"><input type="number" step="0.001" min="0.001" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm po-qty text-right font-weight-bold" placeholder="Qty" required autocomplete="off"></td>
+    <td data-col-key="qty"><input type="number" step="0.001" min="0" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm po-qty text-right font-weight-bold" placeholder="Qty" autocomplete="off"></td>
     <td data-col-key="free"><input type="number" step="0.001" min="0" name="items[{{ $rowId }}][free_qty]" value="{{ $freeQty }}" class="form-control form-control-sm po-free-qty text-right" placeholder="0" autocomplete="off"></td>
-    <td data-col-key="cost"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm po-cost text-right font-weight-bold" placeholder="0.00" required autocomplete="off"></td>
+    <td data-col-key="cost"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm po-cost text-right font-weight-bold" placeholder="0.00" autocomplete="off"></td>
     <td data-col-key="sell"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][sell_price]" value="{{ $sellPrice }}" class="form-control form-control-sm po-sell text-right" placeholder="0.00" autocomplete="off"></td>
     <td data-col-key="mrp"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][mrp]" value="{{ $mrp }}" class="form-control form-control-sm po-mrp text-right" placeholder="0.00" autocomplete="off"></td>
     <td data-col-key="disc_pct"><input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][disc_percent]" value="{{ $discPercent }}" class="form-control form-control-sm po-disc-percent text-right" placeholder="0" autocomplete="off"></td>

@@ -10,7 +10,7 @@
 
 @section('content')
     <div class="card card-primary card-outline">
-        <form action="{{ route('inventory.stock-transfers.store') }}" method="POST" id="transfer-form">
+        <form action="{{ route('inventory.stock-transfers.store') }}" method="POST" id="transfer-form" novalidate>
             @csrf
             <input type="hidden" name="posting_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
             <div class="card-body">

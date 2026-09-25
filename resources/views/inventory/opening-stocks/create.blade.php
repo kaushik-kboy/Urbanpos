@@ -10,7 +10,7 @@
 
 @section('content')
     <div class="card card-primary card-outline">
-        <form action="{{ route('inventory.opening-stocks.store') }}" method="POST">
+        <form action="{{ route('inventory.opening-stocks.store') }}" method="POST" id="opening-stock-form" novalidate>
             @csrf
             <div class="card-body">
                 <x-error-summary />

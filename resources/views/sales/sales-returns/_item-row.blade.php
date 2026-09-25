@@ -39,8 +39,7 @@
         <input type="hidden"
                name="items[{{ $rowId }}][item_id]"
                class="sr-item-select"
-               value="{{ $rowId === '__INDEX__' ? '' : $itemId }}"
-               required>
+               value="{{ $rowId === '__INDEX__' ? '' : $itemId }}">
     </td>
     {{-- Exp Date --}}
     <td style="width: 135px;" data-col-key="expiry">
@@ -51,12 +50,12 @@
     </td>
     {{-- Qty --}}
     <td style="width: 100px;" data-col-key="qty">
-        <input type="number" step="0.001" min="0.001"
+        <input type="number" step="0.001" min="0"
                name="items[{{ $rowId }}][qty]"
                value="{{ $rowId === '__INDEX__' ? '' : $qty }}"
                data-original-qty="{{ data_get($line, 'original_qty', '') }}"
                class="form-control form-control-sm text-right sr-qty font-weight-bold"
-               placeholder="Qty" required autocomplete="off">
+               placeholder="Qty" autocomplete="off">
         <small class="text-muted d-block text-right sr-max-qty-label" style="font-size: 10px;"></small>
     </td>
     {{-- Sell Price --}}
@@ -65,7 +64,7 @@
                name="items[{{ $rowId }}][sell_price]"
                value="{{ $rowId === '__INDEX__' ? '' : $sellPrice }}"
                class="form-control form-control-sm text-right sr-price bg-light"
-               placeholder="0.00" required autocomplete="off"
+               placeholder="0.00" autocomplete="off"
                readonly tabindex="-1">
     </td>
     {{-- MRP --}}

@@ -12,7 +12,7 @@
 @stop
 
 @section('content')
-    <form action="{{ route('purchase.purchase-receipt-notes.store') }}" method="POST" id="grn-form">
+    <form action="{{ route('purchase.purchase-receipt-notes.store') }}" method="POST" id="grn-form" novalidate>
         @csrf
 
         @if ($errors->any())
@@ -176,7 +176,7 @@
                                 <td class="text-center align-middle row-number" data-col-key="seq">{{ $idx + 1 }}</td>
                                 <td data-col-key="item">
                                     <input type="hidden" name="items[{{ $idx }}][purchase_order_item_id]" value="{{ $poItemId }}">
-                                    <select name="items[{{ $idx }}][item_id]" class="form-control form-control-sm select2 item-select" required>
+                                    <select name="items[{{ $idx }}][item_id]" class="form-control form-control-sm select2 item-select">
                                         <option value="">-- Select Item --</option>
                                         @foreach ($items as $itm)
                                             <option value="{{ $itm->id }}" data-cost="{{ $itm->cost_price }}" data-mrp="{{ $itm->mrp }}" {{ $itemId == $itm->id ? 'selected' : '' }}>
@@ -189,16 +189,16 @@
                                     <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
                                 </td>
                                 <td data-col-key="received">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" value="{{ $received }}" placeholder="0.00" required>
+                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" value="{{ $received }}" placeholder="0.00">
                                 </td>
                                 <td data-col-key="accepted">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" value="{{ $accepted }}" placeholder="0.00" required>
+                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" value="{{ $accepted }}" placeholder="0.00">
                                 </td>
                                 <td data-col-key="rejected">
                                     <input type="number" step="0.001" min="0" name="items[{{ $idx }}][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected" value="{{ $rejected }}" readonly tabindex="-1">
                                 </td>
                                 <td data-col-key="cost">
-                                    <input type="number" step="0.0001" min="0" name="items[{{ $idx }}][unit_cost]" class="form-control form-control-sm text-right row-cost" value="{{ $cost }}" placeholder="0.00" required>
+                                    <input type="number" step="0.0001" min="0" name="items[{{ $idx }}][unit_cost]" class="form-control form-control-sm text-right row-cost" value="{{ $cost }}" placeholder="0.00">
                                 </td>
                                 <td data-col-key="mrp">
                                     <input type="number" step="0.01" min="0" name="items[{{ $idx }}][mrp]" class="form-control form-control-sm text-right row-mrp" value="{{ $mrp }}" placeholder="0.00">
@@ -259,7 +259,7 @@
             <td class="text-center align-middle row-number" data-col-key="seq">__NUMBER__</td>
             <td data-col-key="item">
                 <input type="hidden" name="items[__INDEX__][purchase_order_item_id]" value="">
-                <select name="items[__INDEX__][item_id]" class="form-control form-control-sm item-select" required>
+                <select name="items[__INDEX__][item_id]" class="form-control form-control-sm item-select">
                     <option value="">-- Select Item --</option>
                     @foreach ($items as $itm)
                         <option value="{{ $itm->id }}" data-cost="{{ $itm->cost_price }}" data-mrp="{{ $itm->mrp }}">
@@ -272,16 +272,16 @@
                 <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
             </td>
             <td data-col-key="received">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" placeholder="0.00" required>
+                <input type="number" step="0.001" min="0" name="items[__INDEX__][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" placeholder="0.00">
             </td>
             <td data-col-key="accepted">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" placeholder="0.00" required>
+                <input type="number" step="0.001" min="0" name="items[__INDEX__][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" placeholder="0.00">
             </td>
             <td data-col-key="rejected">
                 <input type="number" step="0.001" min="0" name="items[__INDEX__][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected" value="0" readonly tabindex="-1">
             </td>
             <td data-col-key="cost">
-                <input type="number" step="0.0001" min="0" name="items[__INDEX__][unit_cost]" class="form-control form-control-sm text-right row-cost" placeholder="0.00" required>
+                <input type="number" step="0.0001" min="0" name="items[__INDEX__][unit_cost]" class="form-control form-control-sm text-right row-cost" placeholder="0.00">
             </td>
             <td data-col-key="mrp">
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][mrp]" class="form-control form-control-sm text-right row-mrp" placeholder="0.00">
@@ -417,6 +417,80 @@
             if (poId && confirm('Load items and details from this Purchase Order? Any unsaved changes will be replaced.')) {
                 window.location.href = "{{ route('purchase.purchase-receipt-notes.create') }}?from_po=" + poId;
             }
+        });
+
+        // Form Submit Validation
+        $('#grn-form').on('submit', function (e) {
+            let supplierId = $('select[name="supplier_id"]').val();
+            if (!supplierId) {
+                e.preventDefault();
+                if (window.toastr) {
+                    toastr.warning('Please select a Supplier first.', 'Supplier Required');
+                } else {
+                    alert('Please select a Supplier first.');
+                }
+                $('select[name="supplier_id"]').select2('open');
+                return false;
+            }
+
+            let validCount = 0;
+            let hasError = false;
+
+            $('#grn-items-body .grn-item-row').each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.item-select').val();
+                let itemName = $row.find('.item-select option:selected').text().trim() || 'Selected Item';
+                let $recvInput = $row.find('.row-received');
+                let recvQty = parseFloat($recvInput.val()) || 0;
+
+                if (!itemId) {
+                    return; // blank row
+                }
+
+                validCount++;
+                if (recvQty <= 0) {
+                    e.preventDefault();
+                    if (window.toastr) {
+                        toastr.warning(`Please enter received quantity for: "${itemName}"`, 'Quantity Required');
+                    } else {
+                        alert(`Please enter received quantity for: "${itemName}"`);
+                    }
+                    $recvInput.focus().select();
+                    hasError = true;
+                    return false;
+                }
+            });
+
+            if (hasError) return false;
+
+            if (validCount === 0) {
+                e.preventDefault();
+                if (window.toastr) {
+                    toastr.warning('Pehle item add karein. Please add at least one item.', 'No Items Added');
+                } else {
+                    alert('Pehle item add karein. Please add at least one item.');
+                }
+                $('#grn-items-body .grn-item-row:first .item-select').select2('open');
+                return false;
+            }
+
+            // Remove blank rows before submitting
+            $('#grn-items-body .grn-item-row').each(function () {
+                let itemId = $(this).find('.item-select').val();
+                if (!itemId) {
+                    $(this).remove();
+                }
+            });
+
+            // Re-index remaining rows so items[0], items[1] are contiguous
+            $('#grn-items-body .grn-item-row').each(function (idx) {
+                $(this).find('input, select').each(function () {
+                    let name = $(this).attr('name');
+                    if (name && name.indexOf('items[') !== -1) {
+                        $(this).attr('name', name.replace(/items\[\w+\]/, 'items[' + idx + ']'));
+                    }
+                });
+            });
         });
 
         recalculate();

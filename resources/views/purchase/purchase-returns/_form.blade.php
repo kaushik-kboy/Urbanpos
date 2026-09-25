@@ -885,6 +885,97 @@
             });
         });
 
+        // Form Submit Handler
+        $('form').on('submit', function (e) {
+            let supplierId = $('#supplier_id').val();
+            if (!supplierId) {
+                e.preventDefault();
+                if (window.toastr) {
+                    toastr.warning('Please select a Supplier first.', 'Supplier Required');
+                } else {
+                    alert('Please select a Supplier first.');
+                }
+                $('#supplier_id').select2('open');
+                return false;
+            }
+
+            let validCount = 0;
+            let hasError = false;
+
+            $('#pr-items-body .pr-item-row').each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.pr-item-id').val();
+                let itemCode = $.trim($row.find('.pr-item-code').val());
+                let itemName = $.trim($row.find('.pr-item-desc').val()) || itemCode || 'Selected Item';
+                let $qtyInput = $row.find('.pr-qty');
+                let qtyVal = $qtyInput.val();
+                let qty = parseFloat(qtyVal) || 0;
+
+                // Completely blank row
+                if (!itemId && !itemCode) {
+                    return;
+                }
+
+                // Item code entered but not selected
+                if (!itemId && itemCode) {
+                    e.preventDefault();
+                    if (window.toastr) {
+                        toastr.warning(`Please select a valid item for: "${itemCode}"`, 'Item Required');
+                    } else {
+                        alert(`Please select a valid item for: "${itemCode}"`);
+                    }
+                    $row.find('.pr-item-code').focus();
+                    hasError = true;
+                    return false;
+                }
+
+                // Item selected
+                validCount++;
+                if (!qtyVal || qty <= 0) {
+                    e.preventDefault();
+                    if (window.toastr) {
+                        toastr.warning(`Please enter quantity for item: "${itemName}"`, 'Quantity Required');
+                    } else {
+                        alert(`Please enter quantity for item: "${itemName}"`);
+                    }
+                    $qtyInput.focus().select();
+                    hasError = true;
+                    return false;
+                }
+            });
+
+            if (hasError) return false;
+
+            if (validCount === 0) {
+                e.preventDefault();
+                if (window.toastr) {
+                    toastr.warning('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
+                } else {
+                    alert('Pehle item add karein. Please add at least one item before saving.');
+                }
+                $('#pr-items-body .pr-item-row:first .pr-item-code').focus();
+                return false;
+            }
+
+            // Remove purely empty rows before submitting
+            $('#pr-items-body .pr-item-row').each(function () {
+                let itemId = $(this).find('.pr-item-id').val();
+                if (!itemId) {
+                    $(this).remove();
+                }
+            });
+
+            // Re-index remaining rows so items[0], items[1] are contiguous
+            $('#pr-items-body .pr-item-row').each(function (idx) {
+                $(this).find('input, select').each(function () {
+                    let name = $(this).attr('name');
+                    if (name && name.indexOf('items[') !== -1) {
+                        $(this).attr('name', name.replace(/items\[\w+\]/, 'items[' + idx + ']'));
+                    }
+                });
+            });
+        });
+
         // Initialize calculations
         recalculateAll();
     })();

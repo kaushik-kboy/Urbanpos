@@ -18,7 +18,7 @@
 
 @section('content')
     <div class="card card-primary card-outline">
-        <form action="{{ route('purchase.purchase-invoices.update', $purchaseInvoice) }}" method="POST">
+        <form action="{{ route('purchase.purchase-invoices.update', $purchaseInvoice) }}" method="POST" id="pinv-form" novalidate>
             @csrf
             @method('PUT')
             <div class="card-body">

@@ -14,7 +14,7 @@
 @stop
 
 @section('content')
-    <form action="{{ route('sales.sales-quotations.update', $salesQuotation) }}" method="POST">
+    <form action="{{ route('sales.sales-quotations.update', $salesQuotation) }}" method="POST" id="sq-form" novalidate>
         @csrf
         @method('PUT')
         <div class="card card-primary card-outline">

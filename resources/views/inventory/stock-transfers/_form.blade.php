@@ -635,14 +635,12 @@
             activeTargetRow = null;
         });
 
-        // Trigger item search modal on keydown (Enter / F2) or focus when blank; disabled on mouse click
-        $(document).off('click focus keydown', '.item-code-input').on('click focus keydown', '.item-code-input', function (e) {
-            if (e.type === 'click') return; // Do not open on mouse click!
-            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
-            if (e.type === 'keydown') e.preventDefault();
+        // Trigger item search modal on keydown (Enter / F2 ONLY) — Mouse click & Focus disabled
+        $(document).off('click focus keydown', '.item-code-input').on('keydown', '.item-code-input', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
             if (stModalOpen || stModalClosing) return;
             let $row = $(this).closest('tr');
-            if (e.type === 'focus' && $row.find('.item-id-input').val()) return;
             openItemModal($row, $(this).val());
         });
 
@@ -982,9 +980,30 @@
 
             if (validCount === 0) {
                 e.preventDefault();
-                alert('Please add at least one valid item with quantity > 0.');
+                alert('Pehle item add karein. Please add at least one item before saving.');
+                $('#items-body tr.item-row:first .item-code-input').focus();
                 return false;
             }
+
+            // Prune any empty rows before submission
+            $('#items-body tr.item-row').each(function () {
+                let id = $(this).find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                if (!id) {
+                    $(this).remove();
+                }
+            });
+
+            // Re-index remaining rows contiguously
+            $('#items-body tr.item-row').each(function (idx) {
+                let $row = $(this);
+                $row.find('input, select').each(function () {
+                    let name = $(this).attr('name');
+                    if (name && name.startsWith('items[')) {
+                        $(this).attr('name', name.replace(/items\[\w+\]/, 'items[' + idx + ']'));
+                    }
+                });
+            });
+            reindexSno();
         });
 
         document.addEventListener('keydown', function (e) {

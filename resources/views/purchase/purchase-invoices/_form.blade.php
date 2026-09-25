@@ -1033,13 +1033,11 @@
             }
         });
 
-        // Open modal on Code/Barcode field: blocked if Supplier or Inv No invalid; disabled on mouse click (Enter / F2 / focus when empty)
-        $(document).off('click focus keydown', '.pinv-item-code').on('click focus keydown', '.pinv-item-code', function (e) {
-            if (e.type === 'click') return; // Do not open on mouse click!
-            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
-            if (e.type === 'keydown') e.preventDefault();
+        // Open modal on Code/Barcode field: Enter or F2 ONLY — Mouse Click & Focus disabled
+        $(document).off('click focus keydown', '.pinv-item-code').on('keydown', '.pinv-item-code', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
             if (!canProceedToItems()) {
-                e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
                 $(this).blur();
@@ -1047,7 +1045,6 @@
             }
             if (islModalOpen || islModalClosing) return;
             let $row = $(this).closest('tr');
-            if (e.type === 'focus' && $row.find('.pinv-item-select').val()) return;
 
             activeSearchRow = $row;
             let prefill = $.trim($(this).val());
@@ -2013,9 +2010,18 @@
 
             if (validRows === 0) {
                 e.preventDefault();
-                alert('Please add at least one valid item with quantity > 0.');
+                alert('Pehle item add karein. Please add at least one valid item before saving.');
+                $('#pinv-items-body tr:first .pinv-item-code').focus();
                 return false;
             }
+
+            // Remove blank rows before submitting
+            $('#pinv-items-body tr').each(function () {
+                let id = $(this).find('.pinv-item-select').val();
+                if (!id) {
+                    $(this).remove();
+                }
+            });
         });
 
         // Form Reset Button Handler

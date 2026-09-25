@@ -15,7 +15,7 @@
 @stop
 
 @section('content')
-    <form action="{{ route('sales.delivery-notes.store') }}" method="POST" id="sdn-form">
+    <form action="{{ route('sales.delivery-notes.store') }}" method="POST" id="sdn-form" novalidate>
         @csrf
 
         @if ($errors->any())
@@ -194,7 +194,7 @@
                                 </td>
                                 <td data-col-key="item">
                                     <input type="hidden" name="items[{{ $idx }}][sales_order_item_id]" value="{{ $soItemId }}">
-                                    <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-select sdn-item-id" value="{{ $itemId }}" required>
+                                    <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-select sdn-item-id" value="{{ $itemId }}">
                                     <input type="text" 
                                            class="form-control form-control-sm sdn-item-desc bg-light font-weight-bold text-truncate" 
                                            readonly 
@@ -207,10 +207,10 @@
                                     <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
                                 </td>
                                 <td data-col-key="dispatched">
-                                    <input type="number" step="0.001" min="0.001" name="items[{{ $idx }}][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="{{ $dispatched }}" placeholder="0.00" required>
+                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="{{ $dispatched }}" placeholder="0.00">
                                 </td>
                                 <td data-col-key="price">
-                                    <input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm text-right row-price" value="{{ $price }}" placeholder="0.00" required>
+                                    <input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm text-right row-price" value="{{ $price }}" placeholder="0.00">
                                 </td>
                                 <td data-col-key="mrp">
                                     <input type="number" step="0.01" min="0" name="items[{{ $idx }}][mrp]" class="form-control form-control-sm text-right row-mrp" value="{{ $mrp }}" placeholder="0.00">
@@ -276,7 +276,7 @@
             </td>
             <td data-col-key="item">
                 <input type="hidden" name="items[__INDEX__][sales_order_item_id]" value="">
-                <input type="hidden" name="items[__INDEX__][item_id]" class="item-select sdn-item-id" value="" required>
+                <input type="hidden" name="items[__INDEX__][item_id]" class="item-select sdn-item-id" value="">
                 <input type="text" 
                        class="form-control form-control-sm sdn-item-desc bg-light font-weight-bold text-truncate" 
                        readonly 
@@ -289,10 +289,10 @@
                 <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
             </td>
             <td data-col-key="dispatched">
-                <input type="number" step="0.001" min="0.001" name="items[__INDEX__][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="" placeholder="0.00" required>
+                <input type="number" step="0.001" min="0" name="items[__INDEX__][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="" placeholder="0.00">
             </td>
             <td data-col-key="price">
-                <input type="number" step="0.01" min="0" name="items[__INDEX__][unit_price]" class="form-control form-control-sm text-right row-price" value="0.00" placeholder="0.00" required>
+                <input type="number" step="0.01" min="0" name="items[__INDEX__][unit_price]" class="form-control form-control-sm text-right row-price" value="0.00" placeholder="0.00">
             </td>
             <td data-col-key="mrp">
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][mrp]" class="form-control form-control-sm text-right row-mrp" value="" placeholder="0.00">
@@ -455,14 +455,12 @@ $(function () {
         });
     }
 
-    // Trigger modal on keydown (Enter / F2) or focus when blank (Disabled on mouse click)
-    $(document).off('click focus keydown', '.sdn-item-code').on('click focus keydown', '.sdn-item-code', function (e) {
-        if (e.type === 'click') return; // Do not open on mouse click!
-        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
-        if (e.type === 'keydown') e.preventDefault();
+    // Trigger modal on keydown (Enter / F2 ONLY) — Mouse click & Focus disabled
+    $(document).off('click focus keydown', '.sdn-item-code').on('keydown', '.sdn-item-code', function (e) {
+        if (e.key !== 'Enter' && e.key !== 'F2') return;
+        e.preventDefault();
         if (sdnModalOpen || sdnModalClosing) return;
         let $row = $(this).closest('tr');
-        if (e.type === 'focus' && $row.find('.sdn-item-id').val()) return;
         openSdnItemModal($row, $(this).val());
     });
 
@@ -740,6 +738,79 @@ $(function () {
         if (soId) {
             window.location.href = "{{ route('sales.delivery-notes.create') }}?from_order=" + soId;
         }
+    });
+
+    // Form submit validation and empty row pruning
+    $('#sdn-form').on('submit', function (e) {
+        let customerId = $('#sdn-customer-select').val();
+        if (!customerId) {
+            e.preventDefault();
+            alert('Please select a customer first.');
+            $('#sdn-customer-select').focus();
+            return false;
+        }
+
+        let validRows = 0;
+        let hasError = false;
+
+        $('#sdn-items-body tr.sdn-item-row').each(function () {
+            let $row = $(this);
+            let itemId = $row.find('.sdn-item-id').val();
+            let itemCode = ($row.find('.sdn-item-code').val() || '').trim();
+            let qty = parseFloat($row.find('.row-dispatched').val()) || 0;
+
+            if (!itemId && !itemCode) {
+                return; // skip completely blank row
+            }
+
+            if (!itemId && itemCode) {
+                e.preventDefault();
+                hasError = true;
+                alert('Please select a valid item for code: ' + itemCode);
+                $row.find('.sdn-item-code').focus();
+                return false;
+            }
+
+            if (qty <= 0) {
+                e.preventDefault();
+                hasError = true;
+                let desc = $row.find('.sdn-item-desc').val() || 'selected item';
+                alert('Dispatched quantity must be greater than 0 for: ' + desc);
+                $row.find('.row-dispatched').focus();
+                return false;
+            }
+
+            validRows++;
+        });
+
+        if (hasError) return false;
+
+        if (validRows === 0) {
+            e.preventDefault();
+            alert('Pehle item add karein. Please add at least one item before saving.');
+            $('#sdn-items-body tr.sdn-item-row:first .sdn-item-code').focus();
+            return false;
+        }
+
+        // Prune empty rows before submit
+        $('#sdn-items-body tr.sdn-item-row').each(function () {
+            let $row = $(this);
+            let itemId = $row.find('.sdn-item-id').val();
+            if (!itemId) {
+                $row.remove();
+            }
+        });
+
+        // Re-index remaining rows contiguously
+        $('#sdn-items-body tr.sdn-item-row').each(function (idx) {
+            let $row = $(this);
+            $row.find('input, select').each(function () {
+                let name = $(this).attr('name');
+                if (name && name.startsWith('items[')) {
+                    $(this).attr('name', name.replace(/items\[\d+\]/, 'items[' + idx + ']'));
+                }
+            });
+        });
     });
 
     // Initial calculation

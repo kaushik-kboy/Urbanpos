@@ -42,7 +42,7 @@
                value="{{ $item ? ($item->name . ($item->ean_upc_code ? ' [Code: ' . $item->ean_upc_code . ']' : '')) : '' }}" 
                placeholder="Product Description (auto-filled)"
                title="Product description (auto-filled on code entry)">
-        <input type="hidden" name="items[{{ $rowId }}][item_id]" class="item-select item-id-hidden" value="{{ $itemId }}" required>
+        <input type="hidden" name="items[{{ $rowId }}][item_id]" class="item-select item-id-hidden" value="{{ $itemId }}">
     </td>
     <td style="min-width: 130px;">
         <input type="date" 
@@ -53,12 +53,11 @@
     <td style="min-width: 85px;">
         <input type="number" 
                step="0.001" 
-               min="0.001" 
+               min="0" 
                name="items[{{ $rowId }}][qty]" 
                value="{{ $qty }}" 
                class="form-control form-control-sm item-qty text-right font-weight-bold" 
-               placeholder="0" 
-               required>
+               placeholder="0">
     </td>
     <td style="min-width: 95px;">
         <input type="number" 
@@ -67,8 +66,7 @@
                name="items[{{ $rowId }}][cost_price]" 
                value="{{ $costPrice }}" 
                class="form-control form-control-sm item-cost text-right" 
-               placeholder="0.00" 
-               required>
+               placeholder="0.00">
     </td>
     <td style="min-width: 95px;">
         <input type="number" 

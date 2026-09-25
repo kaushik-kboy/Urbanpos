@@ -12,7 +12,7 @@
 @stop
 
 @section('content')
-    <form action="{{ route('sales.sales-quotations.store') }}" method="POST">
+    <form action="{{ route('sales.sales-quotations.store') }}" method="POST" id="sq-form" novalidate>
         @csrf
         <div class="card card-primary card-outline">
             <div class="card-body">

@@ -22,7 +22,7 @@
 @endphp
 <tr class="su-item-row" data-row-index="{{ $idx }}">
     <td style="min-width: 140px;" data-col-key="code">
-        <input type="hidden" name="items[{{ $idx }}][item_id]" class="su-item-id" value="{{ $itemId }}" required>
+        <input type="hidden" name="items[{{ $idx }}][item_id]" class="su-item-id" value="{{ $itemId }}">
         <input type="text" class="form-control form-control-sm su-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Enter or F2 to search">
     </td>
     <td style="min-width: 220px;" data-col-key="item">
@@ -32,7 +32,7 @@
         <input type="date" name="items[{{ $idx }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm su-exp-date">
     </td>
     <td style="width: 110px;" data-col-key="qty">
-        <input type="number" step="0.001" name="items[{{ $idx }}][physical_qty]" value="{{ $physicalQty }}" class="form-control form-control-sm text-right su-physical-qty font-weight-bold" placeholder="0.000" required>
+        <input type="number" step="0.001" min="0" name="items[{{ $idx }}][physical_qty]" value="{{ $physicalQty }}" class="form-control form-control-sm text-right su-physical-qty font-weight-bold" placeholder="0.000">
     </td>
     <td class="align-middle text-muted small text-right su-current-stock" style="width: 100px;" data-col-key="current_stock">
         {{ is_numeric($systemQty) ? number_format((float)$systemQty, 3) : 'saved on submit' }}

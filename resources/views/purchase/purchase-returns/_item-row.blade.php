@@ -23,7 +23,7 @@
 @endphp
 <tr class="pr-item-row" data-row-index="{{ $rowId }}">
     <td style="min-width: 140px;" data-col-key="code">
-        <input type="hidden" name="items[{{ $rowId }}][item_id]" class="pr-item-id" value="{{ $itemId }}" required>
+        <input type="hidden" name="items[{{ $rowId }}][item_id]" class="pr-item-id" value="{{ $itemId }}">
         <div class="input-group input-group-sm">
             <input type="text" class="form-control form-control-sm pr-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Enter code or click/tab to search">
             <div class="input-group-append">
@@ -40,10 +40,10 @@
         <input type="date" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm pr-exp-date">
     </td>
     <td style="width: 95px;" data-col-key="qty">
-        <input type="number" step="0.001" min="0.001" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm text-right pr-qty font-weight-bold" placeholder="0.000" required>
+        <input type="number" step="0.001" min="0" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm text-right pr-qty font-weight-bold" placeholder="0.000">
     </td>
     <td style="width: 110px;" data-col-key="cost_price">
-        <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm text-right pr-cost font-weight-bold" placeholder="0.00" required>
+        <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm text-right pr-cost font-weight-bold" placeholder="0.00">
     </td>
     <td style="width: 85px;" data-col-key="disc_percent">
         <input type="number" step="0.01" min="0" max="100" name="items[{{ $rowId }}][disc_percent]" value="{{ $discPercent }}" class="form-control form-control-sm text-right pr-disc-percent" placeholder="0">

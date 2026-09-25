@@ -39,8 +39,7 @@
     <td style="min-width: 260px;" data-col-key="item">
         <select name="items[{{ $index }}][item_id]"
                 class="form-control form-control-sm item-select item-id-input"
-                style="width: 100%;"
-                required>
+                style="width: 100%;">
             <option value="">Search item name / code...</option>
             @if($selectedItem)
                 @php
@@ -66,12 +65,11 @@
     <td style="min-width: 90px;" data-col-key="qty">
         <input type="number"
                step="0.001"
-               min="0.001"
+               min="0"
                name="items[{{ $index }}][qty]"
                value="{{ $qtyVal }}"
                class="form-control form-control-sm item-qty text-right font-weight-bold"
-               placeholder="0"
-               required>
+               placeholder="0">
     </td>
     <td class="text-center align-middle" style="width: 45px;" data-col-key="actions">
         <button type="button" class="btn btn-xs btn-outline-danger row-remove" title="Delete row">

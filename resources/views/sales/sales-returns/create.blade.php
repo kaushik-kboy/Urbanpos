@@ -8,7 +8,7 @@
 
 @section('content')
     <div class="card card-primary card-outline">
-        <form action="{{ route('sales.sales-returns.store') }}" method="POST">
+        <form action="{{ route('sales.sales-returns.store') }}" method="POST" id="sr-form" novalidate>
             @csrf
             <div class="card-body">
                 <x-error-summary />

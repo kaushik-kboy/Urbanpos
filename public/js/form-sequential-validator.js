@@ -242,7 +242,7 @@
                     return { valid: false, message: 'Please make a selection.' };
                 }
             } else {
-                if ($field.hasClass('datepicker') || $field.is('[type="date"]') || ($field.attr('name') && $field.attr('name').includes('date'))) {
+                if (!$field.is('[type="datetime-local"], [type="time"]') && ($field.hasClass('datepicker') || $field.is('[type="date"]') || ($field.attr('name') && $field.attr('name').includes('date')))) {
                     if (typeof window.parseFastDate === 'function' && val) {
                         var fastFormatted = window.parseFastDate(val);
                         if (fastFormatted) {
@@ -264,18 +264,24 @@
         var maxAttr = $field.attr('max');
         var blockFuture = $field.data('block-future-date') || Boolean(maxAttr);
         if (blockFuture && val && String(val).trim() !== '') {
-            var rawStr = String(val).trim();
-            // Validate only if complete date parseable (avoids premature errors during numeric typing)
-            var dateParts = typeof window.parseDateParts === 'function' ? window.parseDateParts(rawStr) : null;
-            if (dateParts) {
-                var pad = function (n) { return n < 10 ? '0' + n : String(n); };
-                var inputIso = dateParts.year + '-' + pad(dateParts.month) + '-' + pad(dateParts.day);
-                var now = new Date();
-                var todayIso = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-                var maxIso = (maxAttr && /^\d{4}-\d{2}-\d{2}$/.test(maxAttr)) ? maxAttr : todayIso;
+            if ($field.is('[type="datetime-local"]')) {
+                if (maxAttr && val > maxAttr) {
+                    return { valid: false, message: 'Future date & time is not allowed for this field.' };
+                }
+            } else if (!$field.is('[type="time"]')) {
+                var rawStr = String(val).trim();
+                // Validate only if complete date parseable (avoids premature errors during numeric typing)
+                var dateParts = typeof window.parseDateParts === 'function' ? window.parseDateParts(rawStr) : null;
+                if (dateParts) {
+                    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+                    var inputIso = dateParts.year + '-' + pad(dateParts.month) + '-' + pad(dateParts.day);
+                    var now = new Date();
+                    var todayIso = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+                    var maxIso = (maxAttr && /^\d{4}-\d{2}-\d{2}$/.test(maxAttr)) ? maxAttr : todayIso;
 
-                if (inputIso > maxIso) {
-                    return { valid: false, message: 'Future date is not allowed for this field.' };
+                    if (inputIso > maxIso) {
+                        return { valid: false, message: 'Future date is not allowed for this field.' };
+                    }
                 }
             }
         }

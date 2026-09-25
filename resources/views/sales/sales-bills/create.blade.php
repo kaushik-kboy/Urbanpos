@@ -13,7 +13,7 @@
 
 @section('content')
     <div class="card card-primary card-outline">
-        <form action="{{ route('sales.sales-bills.store') }}" method="POST" id="sales-bill-form">
+        <form action="{{ route('sales.sales-bills.store') }}" method="POST" id="sales-bill-form" novalidate>
             @csrf
             <div class="card-body">
                 <x-error-summary />

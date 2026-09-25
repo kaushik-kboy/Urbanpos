@@ -48,8 +48,7 @@
         <input type="hidden"
                name="items[{{ $index }}][item_id]"
                class="sb-item-select"
-               value="{{ $selectedItemId }}"
-               required>
+               value="{{ $selectedItemId }}">
         <input type="hidden" name="items[{{ $index }}][stock]" class="sb-item-stock-val" value="{{ $lineStock }}">
     </td>
     <td style="width: 135px;" data-col-key="expiry">
@@ -70,10 +69,10 @@
         </div>
     </td>
     <td style="width: 85px;" data-col-key="qty">
-        <input type="number" step="any" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sb-qty font-weight-bold text-right" required autocomplete="off" placeholder="Qty">
+        <input type="number" step="any" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sb-qty font-weight-bold text-right" autocomplete="off" placeholder="Qty">
     </td>
     <td style="width: 100px;" data-col-key="sell_price">
-        <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" readonly tabindex="-1" class="form-control form-control-sm sb-sell-price text-right bg-light" required autocomplete="off" placeholder="0.00" title="Sell Price (Read-only)">
+        <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" readonly tabindex="-1" class="form-control form-control-sm sb-sell-price text-right bg-light" autocomplete="off" placeholder="0.00" title="Sell Price (Read-only)">
     </td>
     <td style="width: 100px;" data-col-key="mrp">
         <input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" readonly tabindex="-1" class="form-control form-control-sm sb-mrp text-right bg-light" autocomplete="off" placeholder="0.00" title="MRP (Read-only)">

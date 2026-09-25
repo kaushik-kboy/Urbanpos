@@ -396,8 +396,8 @@
        ========================================================================== */
     function applyFastDateFormatting($input) {
         if ($input.hasClass('daterange') || $input.data('mode') === 'range') return;
-        var inputType = ($input.attr('type') || '').toLowerCase();
-        if (inputType === 'datetime-local') return;
+        var inputType = (($input[0] && $input[0].type) || $input.prop('type') || $input.attr('type') || '').toLowerCase();
+        if (inputType === 'datetime-local' || inputType === 'time') return;
 
         var val = ($input.val() || '').trim();
         if (!val) {
@@ -425,9 +425,10 @@
     }
 
     // Auto-format on typing exact 8 raw digits (e.g. 10042026)
-    $(document).on('input', '.datepicker, input[type="date"], input[name*="date"], input[id*="date"]', function () {
+    $(document).on('input', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function () {
         var $this = $(this);
-        if ($this.attr('type') === 'datetime-local' || $this.hasClass('daterange') || $this.data('mode') === 'range') return;
+        var inputType = (this.type || $this.prop('type') || $this.attr('type') || '').toLowerCase();
+        if (inputType === 'datetime-local' || inputType === 'time' || $this.hasClass('daterange') || $this.data('mode') === 'range') return;
 
         var raw = ($this.val() || '').trim();
         // If user typed 8 digits without separators
@@ -441,15 +442,17 @@
     });
 
     // Format on Enter, Tab, or Blur without clearing existing valid date
-    $(document).on('keydown', '.datepicker, input[type="date"], input[name*="date"], input[id*="date"]', function (e) {
-        if ($(this).attr('type') === 'datetime-local') return;
+    $(document).on('keydown', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function (e) {
+        var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
+        if (inputType === 'datetime-local' || inputType === 'time') return;
         if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
             applyFastDateFormatting($(this));
         }
     });
 
-    $(document).on('blur', '.datepicker, input[type="date"], input[name*="date"], input[id*="date"]', function () {
-        if ($(this).attr('type') === 'datetime-local') return;
+    $(document).on('blur', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"])', function () {
+        var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
+        if (inputType === 'datetime-local' || inputType === 'time') return;
         applyFastDateFormatting($(this));
     });
 

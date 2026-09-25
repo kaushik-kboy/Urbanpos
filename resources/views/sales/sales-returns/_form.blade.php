@@ -318,10 +318,9 @@
            ---------------------------------------------------------------- */
         let srCancellingRow = null;
 
-        $(document).off('click focus keydown', '.sr-item-code').on('click focus keydown', '.sr-item-code', function (e) {
-            if (e.type === 'click') return; // Do not open on mouse click!
-            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
-            if (e.type === 'keydown') e.preventDefault();
+        $(document).off('click focus keydown', '.sr-item-code').on('keydown', '.sr-item-code', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
             let custId = $('#customer_id').val();
             if (!custId) {
                 if (typeof toastr !== 'undefined') {
@@ -1072,7 +1071,7 @@
             loadBillItems(initialBillId, true);
         }
 
-        // Form Submit Handler: validate header, prune invalid rows and re-index contiguous names
+        // Form Submit Handler: validate header, check items and quantities properly
         $('form').on('submit', function (e) {
             if (!validateSrHeader(true)) {
                 e.preventDefault();
@@ -1080,38 +1079,93 @@
             }
 
             let hasBill = !!$('#sales_bill_id').val();
-            let validRows = 0;
+            let totalSelectedItems = 0;
             let hasError = false;
 
-            $('#sr-items-body .sr-item-row').each(function () {
-                let itemId = $(this).find('.sr-item-select').val();
-                let qty = parseFloat($(this).find('.sr-qty').val()) || 0;
-                let origQty = parseFloat($(this).find('.sr-qty').attr('data-original-qty') || $(this).find('.sr-qty').attr('max')) || 0;
+            // Validate all rows that have items or entered input
+            let $rows = $('#sr-items-body .sr-item-row');
 
-                if (!itemId || qty <= 0) {
-                    $(this).remove();
+            $rows.each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.sr-item-select').val();
+                let itemCode = $.trim($row.find('.sr-item-code').val());
+                let itemName = $.trim($row.find('.sr-item-desc').val()) || itemCode || 'Selected Item';
+                let $qtyInput = $row.find('.sr-qty');
+                let qtyVal = $qtyInput.val();
+                let qty = parseFloat(qtyVal) || 0;
+                let origQty = parseFloat($qtyInput.attr('data-original-qty') || $qtyInput.attr('max')) || 0;
+
+                // Completely blank row (no item, no code) -> skip
+                if (!itemId && !itemCode) {
                     return;
                 }
 
-                if (hasBill && origQty > 0 && qty > origQty + 0.0001) {
-                    alert(`Return quantity (${qty}) cannot exceed original bill quantity (${origQty}).`);
-                    $(this).find('.sr-qty').focus();
+                // Item code entered but not selected from search list
+                if (!itemId && itemCode) {
+                    e.preventDefault();
+                    if (window.toastr) {
+                        toastr.warning(`Please select a valid item for: "${itemCode}"`, 'Item Required');
+                    } else {
+                        alert(`Please select a valid item for: "${itemCode}"`);
+                    }
+                    $row.find('.sr-item-code').focus();
                     hasError = true;
                     return false;
                 }
-                validRows++;
+
+                // Item IS selected:
+                totalSelectedItems++;
+
+                // Check 1: Qty missing or <= 0
+                if (!qtyVal || qty <= 0) {
+                    e.preventDefault();
+                    if (window.toastr) {
+                        toastr.warning(`Please enter a valid quantity for item: "${itemName}"`, 'Quantity Required');
+                    } else {
+                        alert(`Please enter a valid quantity for item: "${itemName}"`);
+                    }
+                    $qtyInput.focus().select();
+                    hasError = true;
+                    return false;
+                }
+
+                // Check 2: Qty exceeds original sold qty (agar jayda aha jaye)
+                if (hasBill && origQty > 0 && qty > origQty + 0.0001) {
+                    e.preventDefault();
+                    if (window.toastr) {
+                        toastr.error(`Return quantity (${qty}) cannot exceed original bill quantity (${origQty}) for: "${itemName}"`, 'Quantity Exceeded');
+                    } else {
+                        alert(`Return quantity (${qty}) cannot exceed original bill quantity (${origQty}) for: "${itemName}"`);
+                    }
+                    $qtyInput.focus().select();
+                    hasError = true;
+                    return false;
+                }
             });
 
             if (hasError) {
-                e.preventDefault();
                 return false;
             }
 
-            if (validRows === 0) {
-                alert('Please add at least one valid item to return.');
+            // If no items have been selected at all
+            if (totalSelectedItems === 0) {
                 e.preventDefault();
+                if (window.toastr) {
+                    toastr.warning('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
+                } else {
+                    alert('Pehle item add karein. Please add at least one item before saving.');
+                }
+                $('#sr-items-body .sr-item-row:first .sr-item-code').focus();
                 return false;
             }
+
+            // Remove purely empty rows before submitting
+            $('#sr-items-body .sr-item-row').each(function () {
+                let itemId = $(this).find('.sr-item-select').val();
+                if (!itemId) {
+                    $(this).remove();
+                }
+            });
 
             // Re-index remaining rows so items[0], items[1] are contiguous
             $('#sr-items-body .sr-item-row').each(function (idx) {

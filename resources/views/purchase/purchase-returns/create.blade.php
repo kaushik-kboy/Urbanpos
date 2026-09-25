@@ -25,7 +25,7 @@
     @endif
 
     <div class="card card-outline card-primary shadow-sm">
-        <form action="{{ route('purchase.purchase-returns.store') }}" method="POST">
+        <form action="{{ route('purchase.purchase-returns.store') }}" method="POST" id="pr-form" novalidate>
             @csrf
             <div class="card-body">
                 @include('purchase.purchase-returns._form')

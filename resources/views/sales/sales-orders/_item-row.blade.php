@@ -40,14 +40,13 @@
         <input type="hidden"
                name="items[{{ $index }}][item_id]"
                class="so-item-select"
-               value="{{ $selectedItemId }}"
-               required>
+               value="{{ $selectedItemId }}">
     </td>
     <td style="width: 100px;" data-col-key="qty">
-        <input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm so-qty font-weight-bold text-right" required autocomplete="off" placeholder="Qty">
+        <input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm so-qty font-weight-bold text-right" autocomplete="off" placeholder="Qty">
     </td>
     <td style="width: 120px;" data-col-key="sell_price">
-        <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm so-sell-price text-right" required autocomplete="off" placeholder="0.00">
+        <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm so-sell-price text-right" autocomplete="off" placeholder="0.00">
     </td>
     <td style="width: 110px;" data-col-key="mrp">
         <input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm so-mrp text-right" autocomplete="off" placeholder="0.00">

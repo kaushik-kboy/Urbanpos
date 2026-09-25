@@ -8,7 +8,7 @@
 
 @section('content')
     <div class="card card-primary card-outline">
-        <form action="{{ route('inventory.stock-updates.update', $stockUpdate) }}" method="POST">
+        <form action="{{ route('inventory.stock-updates.update', $stockUpdate) }}" method="POST" id="stock-update-form" novalidate>
             @csrf
             @method('PUT')
             <div class="card-body">

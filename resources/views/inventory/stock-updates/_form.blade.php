@@ -213,15 +213,13 @@
         });
 
         /* ----------------------------------------------------------------
-           ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
+           ITEM SEARCH MODAL (Triggered on Enter or F2 ONLY — Click & Focus disabled)
            ---------------------------------------------------------------- */
-        $(document).off('click focus keydown', '.su-item-code').on('click focus keydown', '.su-item-code', function (e) {
-            if (e.type === 'click') return; // Do not open on mouse click!
-            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== 'F2') return;
-            if (e.type === 'keydown') e.preventDefault();
+        $(document).off('click focus keydown', '.su-item-code').on('keydown', '.su-item-code', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
             if (suModalOpen || suModalClosing) return;
             let $row = $(this).closest('tr');
-            if (e.type === 'focus' && $row.find('.su-item-id').val()) return;
             suActiveSearchRow = $row;
             let prefill = $.trim($(this).val());
             $('#su-isl-filter-name').val(prefill);
@@ -438,6 +436,79 @@
             });
         });
 
+        // Form submit validation and empty row pruning
+        $('#stock-update-form').on('submit', function (e) {
+            let branchId = $('select[name="branch_id"]').val();
+            if (!branchId) {
+                e.preventDefault();
+                alert('Please select a branch.');
+                $('select[name="branch_id"]').focus();
+                return false;
+            }
+
+            let validRows = 0;
+            let hasError = false;
+
+            $('#items-body tr.su-item-row').each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.su-item-id').val();
+                let itemCode = ($row.find('.su-item-code').val() || '').trim();
+                let qtyVal = $row.find('.su-physical-qty').val();
+
+                if (!itemId && !itemCode) {
+                    return; // skip completely blank row
+                }
+
+                if (!itemId && itemCode) {
+                    e.preventDefault();
+                    hasError = true;
+                    alert('Please select a valid item for code: ' + itemCode);
+                    $row.find('.su-item-code').focus();
+                    return false;
+                }
+
+                if (qtyVal === '' || isNaN(parseFloat(qtyVal)) || parseFloat(qtyVal) < 0) {
+                    e.preventDefault();
+                    hasError = true;
+                    let desc = $row.find('.su-item-desc').val() || 'selected item';
+                    alert('Please enter a valid physical quantity for: ' + desc);
+                    $row.find('.su-physical-qty').focus();
+                    return false;
+                }
+
+                validRows++;
+            });
+
+            if (hasError) return false;
+
+            if (validRows === 0) {
+                e.preventDefault();
+                alert('Pehle item add karein. Please add at least one item before saving.');
+                $('#items-body tr.su-item-row:first .su-item-code').focus();
+                return false;
+            }
+
+            // Prune empty rows before submit
+            $('#items-body tr.su-item-row').each(function () {
+                let $row = $(this);
+                let itemId = $row.find('.su-item-id').val();
+                if (!itemId) {
+                    $row.remove();
+                }
+            });
+
+            // Re-index remaining rows contiguously
+            $('#items-body tr.su-item-row').each(function (idx) {
+                let $row = $(this);
+                $row.find('input, select').each(function () {
+                    let name = $(this).attr('name');
+                    if (name && name.startsWith('items[')) {
+                        $(this).attr('name', name.replace(/items\[\d+\]/, 'items[' + idx + ']'));
+                    }
+                });
+            });
+        });
+
         // Keyboard shortcuts: F4 Edit, F6 Save, F7 View, F8 Print, F9 Clear, F10 Close
         document.addEventListener('keydown', function(e) {
             if (e.key === 'F4') {
@@ -446,8 +517,7 @@
                 if (firstInput) firstInput.focus();
             } else if (e.key === 'F6') {
                 e.preventDefault();
-                const form = document.querySelector('form');
-                if (form) form.submit();
+                $('#stock-update-form').trigger('submit');
             } else if (e.key === 'F7') {
                 e.preventDefault();
                 window.location.href = "{{ route('inventory.stock-updates.index') }}";
