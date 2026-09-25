@@ -50,6 +50,64 @@
                         <input type="date" name="receipt_date" class="form-control" value="{{ old('receipt_date', date('Y-m-d')) }}" required>
                     </div>
                     @php
+                        $selectedBranch = old('branch_id', $sourceOrder->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+                    @endphp
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
+                        <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
+                            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+                            <div class="input-group-append">
+                                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_id" data-label="Supplier" data-default-order="3" data-core="1">
+                        <label class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
+                        <select name="supplier_id" class="form-control select2" required>
+                            <option value="">-- Select Supplier --</option>
+                            @foreach ($suppliers as $id => $name)
+                                <option value="{{ $id }}" {{ old('supplier_id', $sourceOrder->supplier_id ?? '') == $id ? 'selected' : '' }}>
+                                    {{ $name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="purchase_order_id" data-label="Purchase Order (Ref)" data-default-order="4">
+                        <label class="font-weight-bold">Purchase Order (Ref)</label>
+                        <select name="purchase_order_id" class="form-control select2" id="grn-po-select">
+                            <option value="">-- Direct Receipt (No PO) --</option>
+                            @foreach ($purchaseOrders as $id => $poNumber)
+                                <option value="{{ $id }}" {{ old('purchase_order_id', $sourceOrder->id ?? '') == $id ? 'selected' : '' }}>
+                                    {{ $poNumber }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_challan_no" data-label="Supplier Challan / DC No" data-default-order="5">
+                        <label class="font-weight-bold">Supplier Challan / DC No</label>
+                        <input type="text" name="supplier_challan_no" class="form-control" placeholder="e.g. DC-9842" value="{{ old('supplier_challan_no') }}">
+                    </div>
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_challan_date" data-label="Challan Date" data-default-order="6">
+                        <label class="font-weight-bold">Challan Date</label>
+                        <input type="date" name="supplier_challan_date" class="form-control" value="{{ old('supplier_challan_date', date('Y-m-d')) }}">
+                    </div>
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="vehicle_no" data-label="Vehicle No" data-default-order="7">
+                        <label class="font-weight-bold">Vehicle No</label>
+                        <input type="text" name="vehicle_no" class="form-control" placeholder="e.g. GJ-01-AB-1234" value="{{ old('vehicle_no') }}">
+                    </div>
+                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="transporter_name" data-label="Transporter Name" data-default-order="8">
+                        <label class="font-weight-bold">Transporter Name</label>
+                        <input type="text" name="transporter_name" class="form-control" placeholder="e.g. SafeXpress" value="{{ old('transporter_name') }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-default shadow-sm mb-3">
+            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                <h3 class="card-title font-weight-bold"><i class="fas fa-boxes mr-1"></i> Inward Goods & Inspection Grid</h3>
+                    @php
                     $grnItemColumns = [
                         'seq'        => ['label' => '#', 'default' => true],
                         'code'       => ['label' => 'Code / Barcode', 'default' => true],
