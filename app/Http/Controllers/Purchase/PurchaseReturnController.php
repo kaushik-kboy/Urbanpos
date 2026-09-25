@@ -405,9 +405,17 @@ class PurchaseReturnController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (PurchaseReturn::max('id') ?? 0) + 1;
+        $next = (int) (PurchaseReturn::max('id') ?? 0);
+        $lastRet = PurchaseReturn::where('return_number', 'like', 'PRN%')->orderByDesc('id')->value('return_number');
+        if ($lastRet && preg_match('/^PRN(\d+)$/', $lastRet, $matches)) {
+            $next = max($next, (int) $matches[1]);
+        }
+        do {
+            $next++;
+            $prn = 'PRN'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        } while (PurchaseReturn::where('return_number', $prn)->exists());
 
-        return 'PRN'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        return $prn;
     }
 
     private function formOptions(): array

@@ -578,9 +578,17 @@ class StockTransferController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (StockTransfer::max('id') ?? 0) + 1;
+        $next = (int) (StockTransfer::max('id') ?? 0);
+        $lastStf = StockTransfer::where('transfer_number', 'like', 'STF%')->orderByDesc('id')->value('transfer_number');
+        if ($lastStf && preg_match('/^STF(\d+)$/', $lastStf, $matches)) {
+            $next = max($next, (int) $matches[1]);
+        }
+        do {
+            $next++;
+            $stf = 'STF'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        } while (StockTransfer::where('transfer_number', $stf)->exists());
 
-        return 'STF'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        return $stf;
     }
 
     private function formOptions(): array

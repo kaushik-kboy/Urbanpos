@@ -267,9 +267,17 @@ class OpeningStockController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (OpeningStock::max('id') ?? 0) + 1;
+        $next = (int) (OpeningStock::max('id') ?? 0);
+        $lastOps = OpeningStock::where('entry_number', 'like', 'OPS%')->orderByDesc('id')->value('entry_number');
+        if ($lastOps && preg_match('/^OPS(\d+)$/', $lastOps, $matches)) {
+            $next = max($next, (int) $matches[1]);
+        }
+        do {
+            $next++;
+            $ops = 'OPS'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        } while (OpeningStock::where('entry_number', $ops)->exists());
 
-        return 'OPS'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        return $ops;
     }
 
     private function formOptions(): array

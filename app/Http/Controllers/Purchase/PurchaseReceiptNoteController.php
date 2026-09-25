@@ -291,6 +291,10 @@ class PurchaseReceiptNoteController extends Controller
     private function nextNumber(): string
     {
         $maxId = (int) (PurchaseReceiptNote::max('id') ?? 0);
+        $lastRec = PurchaseReceiptNote::where('receipt_number', 'like', 'GRN%')->orderByDesc('id')->value('receipt_number');
+        if ($lastRec && preg_match('/^GRN(\d+)$/', $lastRec, $matches)) {
+            $maxId = max($maxId, (int) $matches[1]);
+        }
         do {
             $maxId++;
             $num = 'GRN'.str_pad((string) $maxId, 5, '0', STR_PAD_LEFT);

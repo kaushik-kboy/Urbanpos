@@ -285,9 +285,17 @@ class StockUpdateController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (StockUpdate::max('id') ?? 0) + 1;
+        $next = (int) (StockUpdate::max('id') ?? 0);
+        $lastUpd = StockUpdate::where('update_number', 'like', 'STKU%')->orderByDesc('id')->value('update_number');
+        if ($lastUpd && preg_match('/^STKU(\d+)$/', $lastUpd, $matches)) {
+            $next = max($next, (int) $matches[1]);
+        }
+        do {
+            $next++;
+            $stku = 'STKU'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        } while (StockUpdate::where('update_number', $stku)->exists());
 
-        return 'STKU'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        return $stku;
     }
 
     private function formOptions(): array

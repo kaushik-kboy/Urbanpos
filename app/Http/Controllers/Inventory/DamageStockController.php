@@ -323,9 +323,17 @@ class DamageStockController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (DamageStock::max('id') ?? 0) + 1;
+        $next = (int) (DamageStock::max('id') ?? 0);
+        $lastDmg = DamageStock::where('damage_number', 'like', 'DMG%')->orderByDesc('id')->value('damage_number');
+        if ($lastDmg && preg_match('/^DMG(\d+)$/', $lastDmg, $matches)) {
+            $next = max($next, (int) $matches[1]);
+        }
+        do {
+            $next++;
+            $dmg = 'DMG'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        } while (DamageStock::where('damage_number', $dmg)->exists());
 
-        return 'DMG'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        return $dmg;
     }
 
     private function formOptions(): array
