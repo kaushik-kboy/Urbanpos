@@ -17,7 +17,7 @@
         ? (float)$line->stock
         : ($selectedItemId ? (float)(\App\Models\ItemStock::where('item_id', $selectedItemId)->where('branch_id', $activeBranchId)->value('quantity') ?? 0) : 0);
 
-    $itemCodeVal = $selectedItemId ?: ($selectedItem ? $selectedItem->id : ($line->code ?? ''));
+    $itemCodeVal = $selectedItem ? ($selectedItem->item_code ?: ($selectedItem->ean_upc_code ?: $selectedItem->id)) : ($line->code ?? ($selectedItemId ?: ''));
     $qtyVal = isset($line->qty) && $line->qty != 0 ? ((float)$line->qty == (int)$line->qty ? (int)$line->qty : $line->qty) : '';
     $sellPriceVal = isset($line->sell_price) && $line->sell_price != 0 ? $line->sell_price : ($selectedItem?->sell_price > 0 ? $selectedItem->sell_price : '');
     $mrpPriceVal = isset($line->mrp) && $line->mrp != 0 ? $line->mrp : ($selectedItem?->mrp > 0 ? $selectedItem->mrp : '');

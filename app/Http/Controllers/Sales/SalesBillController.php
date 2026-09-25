@@ -1016,6 +1016,8 @@ class SalesBillController extends Controller
         $query = trim((string) ($request->input('query') ?: $request->input('q', '')));
         $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
 
+        $exactMatchOnly = $request->boolean('exact_match_only');
+
         $item = null;
         if (! empty($itemId)) {
             $item = Item::where('status', true)->with('gstTax:id,percentage')->find($itemId);
@@ -1036,8 +1038,8 @@ class SalesBillController extends Controller
                 $item = Item::where('status', true)->with('gstTax:id,percentage')->find($query);
             }
 
-            // Check item name
-            if (! $item) {
+            // Check item name only if NOT exact_match_only
+            if (! $item && ! $exactMatchOnly) {
                 $item = Item::where('status', true)
                     ->with('gstTax:id,percentage')
                     ->where('name', 'like', "%{$query}%")

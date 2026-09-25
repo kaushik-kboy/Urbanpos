@@ -1161,31 +1161,47 @@
             return true;
         }
 
-        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+        // Tab or Enter/F2 on empty field opens modal.
+        // If valid Item Code / Barcode entered -> Direct product lookup (NO popup, Focus Qty).
         $(document).off('click focus keydown', '.sb-item-code')
-            .on('focus', '.sb-item-code', function () {
-                if (sbMouseDown) {
-                    sbMouseDown = false;
-                    return; // Focused by mouse click - do not open modal!
-                }
-                // Focused by Tab / Keyboard navigation!
-                checkAndOpenSbModal($(this));
-            })
             .on('keydown', '.sb-item-code', function (e) {
-                if (e.key === 'Enter' || e.key === 'F2') {
+                if (isSyncing) return;
+
+                if (e.key === 'Enter') {
                     e.preventDefault();
                     let val = $.trim($(this).val());
-                    if (val && e.key === 'Enter') {
-                        let $row = $(this).closest('tr');
-                        processItemLookup(val, $row, null);
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        // Case 2: User entered Item Code / Barcode (or scanner sent Code + Enter)
+                        // Do NOT open Item Popup! Direct exact lookup -> Qty focus
+                        processItemLookup(val, $row, null, false, true);
                     } else {
-                        checkAndOpenSbModal($(this));
+                        // Case 1: Empty field -> Open Item Popup
+                        openItemSearchModal($(this));
                     }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        // Case 2: User entered Item Code / Barcode and pressed Tab
+                        e.preventDefault();
+                        processItemLookup(val, $row, null, false, true);
+                    } else {
+                        // Case 1: Empty field -> Open Item Popup
+                        e.preventDefault();
+                        openItemSearchModal($(this));
+                    }
+                } else if (e.key === 'F2') {
+                    e.preventDefault();
+                    openItemSearchModal($(this));
                 }
-            })
-            .on('click', '.sb-item-code', function () {
-                sbMouseDown = false;
             });
+
+        // Clicking on description also opens item search modal
+        $(document).on('click', '.sb-item-desc', function () {
+            let $code = $(this).closest('tr').find('.sb-item-code');
+            openItemSearchModal($code);
+        });
 
         // Tab starts from first field (customer_id on create, first item on edit)
         setTimeout(function () {
@@ -1445,21 +1461,12 @@
             }, 350);
 
             if (!sbItemSelectedInModal && sbCancellingRow && sbCancellingRow.length) {
-                let totalRows = $('#sb-items-body tr').length;
-                if (totalRows > 1) {
-                    sbCancellingRow.remove();
-                    updateRowNumbers();
-                    calculateTotals();
-                } else {
-                    sbCancellingRow.find('.sb-item-code').val('');
-                    sbCancellingRow.find('.sb-item-desc').val('');
-                }
+                let $targetInput = sbCancellingRow.find('.sb-item-code');
                 sbCancellingRow = null;
                 activeSearchRow = null;
                 setTimeout(function () {
-                    let $tender = $('#tender-cash-amount, #btn-tender-save, #sb-add-row');
-                    if ($tender.length) {
-                        $tender.first().focus();
+                    if ($targetInput.length) {
+                        $targetInput.focus().select();
                     }
                 }, 60);
                 return;
@@ -1980,7 +1987,7 @@
         let isSyncing = false;
 
         // Main Item Lookup Function
-        function processItemLookup(query, $row, itemId, isInitial = false) {
+        function processItemLookup(query, $row, itemId, isInitial = false, isDirectLookup = false) {
             let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let $select = $row.find('.sb-item-select');
             let $desc = $row.find('.sb-item-desc');
@@ -2000,6 +2007,9 @@
                 params.item_id = itemId;
             } else if (query) {
                 params.query = query;
+                if (isDirectLookup) {
+                    params.exact_match_only = 1;
+                }
             } else {
                 return;
             }
@@ -2011,10 +2021,12 @@
 
                     $row.data('item-data', item);
                     $row.data('batches', batches);
+                    $row.data('last-processed-code', query || item.item_code || item.id);
 
                     isSyncing = true;
-                    // Sync Code: Task 4 requirement - display Item ID in code field even if scanned by EAN
-                    $code.val(item.id);
+                    // Sync Code: display item_code if available, otherwise ean or id
+                    $code.val(item.item_code || item.ean_upc_code || item.id);
+                    $code.removeClass('is-invalid border-danger');
 
                     // Sync description display & hidden item id
                     $desc.val(item.name + (item.item_code ? ' [' + item.item_code + ']' : ''));
@@ -2078,9 +2090,15 @@
                     } else if (batches.length > 1) {
                         // Multiple batches exist: show button so user can change if needed
                         $batchWrap.removeClass('d-none');
-                        // NEVER auto-open batch modal on initial page load of existing bills!
+                        calculateRow($row, 'base');
                         if (!isInitial) {
-                            showBatchModal($row, item, batches);
+                            saveBillDraft();
+                            // If direct code lookup, do NOT open popup! Focus Qty field directly.
+                            if (!isDirectLookup) {
+                                showBatchModal($row, item, batches);
+                            } else {
+                                setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
+                            }
                         }
                     } else {
                         $batchWrap.addClass('d-none');
@@ -2093,22 +2111,36 @@
 
                     calculateRow($row, 'base');
                 } else {
-                    $code.addClass('is-invalid');
-                    setTimeout(() => $code.removeClass('is-invalid'), 2000);
+                    $row.data('last-processed-code', null);
+                    $code.addClass('is-invalid border-danger');
+                    $select.val('');
+                    $desc.val('');
+                    $row.find('.sb-item-stock-val').val(0);
+                    $row.attr('data-stock', 0);
+
+                    const errMsg = "Product not found for this Item Code/Barcode.";
+                    if (window.toastr && typeof window.toastr.warning === 'function') {
+                        toastr.clear();
+                        toastr.warning(errMsg, 'Item Not Found');
+                    } else {
+                        alert(errMsg);
+                    }
+                    setTimeout(() => {
+                        $code.focus().select();
+                    }, 50);
                 }
             });
         }
 
-        // 1. Enter Code / Barcode in row
-        $(document).on('change blur keydown', '.sb-item-code', function (e) {
+        // 1. Enter Code / Barcode in row on change
+        $(document).on('change', '.sb-item-code', function (e) {
             if (isSyncing) return;
-            if (e.type === 'keydown' && e.key !== 'Enter') return;
-            if (e.type === 'keydown' && e.key === 'Enter') {
-                e.preventDefault();
-            }
             let $input = $(this);
             let query = $.trim($input.val());
             if (!query) return;
+
+            let $row = $input.closest('tr');
+            if ($row.data('last-processed-code') === query) return;
 
             // Barcode Gun Rapid Double-Scan Filter (< 400ms hardware bounce guard)
             if (window.PosScanGuard) {
@@ -2118,8 +2150,7 @@
                 }
             }
 
-            let $row = $input.closest('tr');
-            processItemLookup(query, $row, null);
+            processItemLookup(query, $row, null, false, true);
         });
 
         // 2. Select Item from Description Select2

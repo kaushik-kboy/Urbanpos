@@ -162,8 +162,12 @@
             } else if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();
                 const code = scanInput.value.trim();
-                if (typeof window.openPosItemSearchModal === 'function') {
-                    window.openPosItemSearchModal(code);
+                if (code) {
+                    processBarcodeScan(code);
+                } else {
+                    if (typeof window.openPosItemSearchModal === 'function') {
+                        window.openPosItemSearchModal();
+                    }
                 }
             } else if (e.key === 'ArrowDown') {
                 // Navigate search dropdown if visible
@@ -586,7 +590,7 @@
         state.last_scan_code = code;
 
         try {
-            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?q=${encodeURIComponent(code)}&query=${encodeURIComponent(code)}&branch_id=${state.branch_id || ''}&limit=1`;
+            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?q=${encodeURIComponent(code)}&query=${encodeURIComponent(code)}&exact_match_only=1&branch_id=${state.branch_id || ''}&limit=1`;
             const resp = await fetch(url);
             const data = await resp.json();
 
@@ -613,10 +617,7 @@
                 hideSearchResults();
             } else {
                 sound.error();
-                showNotification('Item not found for barcode / code: ' + code, 'warning');
-                if (typeof window.openPosItemSearchModal === 'function') {
-                    window.openPosItemSearchModal(code);
-                }
+                showNotification('Product not found for this Item Code/Barcode.', 'warning');
             }
         } catch (e) {
             sound.error();
