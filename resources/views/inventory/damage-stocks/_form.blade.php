@@ -591,8 +591,12 @@
             recalcTotals();
         }
 
-        // Add Row
+        // Add Row — block if first row has no item yet
         $('#add-row').on('click', function () {
+            if (!$('#items-body tr.item-row:first .item-id-hidden').val()) {
+                $('#items-body tr.item-row:first .item-code-input').focus();
+                return;
+            }
             const template = document.getElementById('row-template').innerHTML;
             const html = template.replace(/__INDEX__/g, rowIndex);
             const $newRow = $(html);
@@ -628,19 +632,60 @@
             reindexRows();
         });
 
-        // Open modal on item code: Enter or F2 ONLY — Click & Focus disabled
-        $('#items-body').off('click focus keydown', '.item-code-input').on('keydown', '.item-code-input', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
-            if (damageModalOpen || damageModalClosing) return;
-            const $row = $(this).closest('tr');
-            openItemModal($row, $(this).val());
+        // Open modal on item code: Tab/Enter/F2 ONLY — mouse click does NOT open modal
+        let damMouseDown = false;
+        $(document).on('mousedown', '.item-code-input', function () {
+            damMouseDown = true;
         });
+
+        function checkAndOpenDamageModal($input) {
+            if (damageModalOpen || damageModalClosing) return;
+            const $row = $input.closest('tr.item-row');
+            if ($row.find('.item-id-hidden').val()) return;
+            // Block if any PREVIOUS row has no item yet
+            let $prevEmpty = null;
+            $('#items-body tr.item-row').each(function () {
+                if ($(this).is($row)) return false;
+                if (!$(this).find('.item-id-hidden').val()) {
+                    $prevEmpty = $(this);
+                    return false;
+                }
+            });
+            if ($prevEmpty) {
+                $prevEmpty.find('.item-code-input').focus();
+                return;
+            }
+            openItemModal($row, $input.val());
+        }
+
+        $('#items-body').off('click focus keydown', '.item-code-input')
+            .on('focus', '.item-code-input', function () {
+                if (damMouseDown) {
+                    damMouseDown = false;
+                    return; // mouse click — do not open modal
+                }
+                checkAndOpenDamageModal($(this));
+            })
+            .on('keydown', '.item-code-input', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkAndOpenDamageModal($(this));
+                }
+            })
+            .on('click', '.item-code-input', function () {
+                damMouseDown = false;
+            });
 
         $(document).off('keydown', '.item-gst-percent').on('keydown', '.item-gst-percent', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr.item-row');
                 let $nextRow = $currentRow.next('tr.item-row');
+                // Only allow moving to next row if current row has item
+                if (!$currentRow.find('.item-id-hidden').val()) {
+                    e.preventDefault();
+                    $currentRow.find('.item-code-input').focus();
+                    return;
+                }
                 if ($nextRow.length) {
                     e.preventDefault();
                     $nextRow.find('.item-code-input').focus();
@@ -727,6 +772,12 @@
             initRowSelect2($(this));
             recalcRow($(this));
         });
+
+        // Autofocus first editable header field (entry_date) on page load
+        setTimeout(function () {
+            let $first = $('#entry_date');
+            if ($first.length) $first.focus();
+        }, 150);
 
         // Form submit validation and empty row pruning
         $('#damage-stock-form').on('submit', function (e) {

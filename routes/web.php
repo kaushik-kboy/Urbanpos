@@ -205,6 +205,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::post('barcode-printing/print', [BarcodePrintingController::class, 'print'])->name('barcode-printing.print');
     // Barcode Printing (Phase 5 — item search + label queue)
     Route::get('barcode', [BarcodeController::class, 'index'])->name('barcode.index');
+    Route::get('barcode/search', [BarcodeController::class, 'search'])->name('barcode.search');
     Route::get('barcode/print', [BarcodeController::class, 'print'])->name('barcode.print');
 
     // Price Fixing

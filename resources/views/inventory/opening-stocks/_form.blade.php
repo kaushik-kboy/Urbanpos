@@ -641,19 +641,60 @@
             });
         }
 
-        // Trigger item search modal on keydown (Enter / F2 ONLY) — Click & Focus disabled
-        $('#items-body').off('click focus keydown', '.item-code-input').on('keydown', '.item-code-input', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
-            if (osModalOpen || osModalClosing) return;
-            const $row = $(this).closest('tr');
-            openItemModal($row, $(this).val());
+        // Trigger item search modal on Tab/Enter/F2 ONLY — Click & Focus (mouse) disabled
+        let osMouseDown = false;
+        $(document).on('mousedown', '.item-code-input', function () {
+            osMouseDown = true;
         });
+
+        function checkAndOpenOsModal($input) {
+            if (osModalOpen || osModalClosing) return;
+            const $row = $input.closest('tr.item-row');
+            if ($row.find('.item-select').val()) return;
+            // Block if any PREVIOUS row has no item yet
+            let $prevEmpty = null;
+            $('#items-body tr.item-row').each(function () {
+                if ($(this).is($row)) return false; // reached current row
+                if (!$(this).find('.item-select').val()) {
+                    $prevEmpty = $(this);
+                    return false;
+                }
+            });
+            if ($prevEmpty) {
+                $prevEmpty.find('.item-code-input').focus();
+                return;
+            }
+            openItemModal($row, $input.val());
+        }
+
+        $('#items-body').off('click focus keydown', '.item-code-input')
+            .on('focus', '.item-code-input', function () {
+                if (osMouseDown) {
+                    osMouseDown = false;
+                    return; // mouse click — do not open modal
+                }
+                checkAndOpenOsModal($(this));
+            })
+            .on('keydown', '.item-code-input', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkAndOpenOsModal($(this));
+                }
+            })
+            .on('click', '.item-code-input', function () {
+                osMouseDown = false;
+            });
 
         $(document).off('keydown', '.item-gst-percent, .item-scheme-others, .item-scheme-amount').on('keydown', '.item-gst-percent, .item-scheme-others, .item-scheme-amount', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr.item-row');
                 let $nextRow = $currentRow.next('tr.item-row');
+                // Only allow moving to next row's item-code if current row has an item
+                if (!$currentRow.find('.item-select').val()) {
+                    e.preventDefault();
+                    $currentRow.find('.item-code-input').focus();
+                    return;
+                }
                 if ($nextRow.length) {
                     e.preventDefault();
                     $nextRow.find('.item-code-input').focus();
@@ -760,8 +801,13 @@
             recalcRow($row);
         });
 
-        // Add Row
+        // Add Row — focus item-code (Tab will open modal)
         $('#add-row').on('click', function () {
+            // Block add-row if first row has no item yet
+            if (!$('#items-body tr.item-row:first .item-select').val()) {
+                $('#items-body tr.item-row:first .item-code-input').focus();
+                return;
+            }
             let html = document.getElementById('row-template').innerHTML;
             html = html.replaceAll('__INDEX__', rowIndex);
             html = html.replaceAll('__SNO__', $('#items-body tr.item-row').length + 1);
@@ -793,6 +839,16 @@
         });
 
         recalcTotals();
+
+        // Autofocus first header field (branch_id) on page load
+        setTimeout(function () {
+            let $branch = $('#branch_id');
+            if ($branch.data && $branch.data('select2')) {
+                $branch.data('select2').$container.find('.select2-selection').focus();
+            } else if ($branch.length) {
+                $branch.focus();
+            }
+        }, 150);
 
         // Form submit validation and empty row pruning
         $('#opening-stock-form').on('submit', function (e) {

@@ -69,6 +69,45 @@ class BarcodeController extends Controller
     }
 
     /**
+     * AJAX search — returns JSON array for live search & barcode scanner.
+     */
+    public function search(Request $request)
+    {
+        $q      = $request->input('q', '');
+        $brandId         = $request->input('brand_id');
+        $categoryValueId = $request->input('category_value_id');
+
+        if (!$q && !$brandId && !$categoryValueId) {
+            return response()->json([]);
+        }
+
+        $items = Item::with(['brand'])
+            ->where('status', true)
+            ->when($q, fn ($query) => $query->where(function ($sq) use ($q) {
+                $sq->where('name', 'like', "%{$q}%")
+                   ->orWhere('item_code', 'like', "%{$q}%")
+                   ->orWhere('ean_upc_code', 'like', "%{$q}%")
+                   ->orWhere('alias', 'like', "%{$q}%");
+            }))
+            ->when($brandId, fn ($query) => $query->where('brand_id', $brandId))
+            ->when($categoryValueId, fn ($query) => $query->where('category_value_id', $categoryValueId))
+            ->orderBy('name')
+            ->limit(80)
+            ->get()
+            ->map(fn ($item) => [
+                'id'        => $item->id,
+                'item_code' => $item->item_code,
+                'barcode'   => $item->ean_upc_code ?: $item->item_code,
+                'name'      => $item->name,
+                'brand'     => $item->brand?->name,
+                'sell_price'=> $item->sell_price,
+                'mrp'       => $item->mrp,
+            ]);
+
+        return response()->json($items);
+    }
+
+    /**
      * Render a print-ready barcode label sheet.
      * Accepts: items[] = [ { id, qty } ]
      */

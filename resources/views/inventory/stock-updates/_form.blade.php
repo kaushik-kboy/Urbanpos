@@ -172,6 +172,11 @@
         let suIslDebounce = null;
 
         document.getElementById('add-row')?.addEventListener('click', function () {
+            // Block add-row if first row has no item yet
+            if (!document.querySelector('#items-body tr .su-item-id')?.value) {
+                document.querySelector('#items-body tr .su-item-code')?.focus();
+                return;
+            }
             const html = document.getElementById('row-template').innerHTML.replaceAll('__INDEX__', rowIndex);
             const tbody = document.getElementById('items-body');
             const wrapper = document.createElement('tbody');
@@ -198,6 +203,12 @@
         $(document).off('keydown', '.su-physical-qty').on('keydown', '.su-physical-qty', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
+                // Block advancing if current row has no item yet
+                if (!$currentRow.find('.su-item-id').val()) {
+                    e.preventDefault();
+                    $currentRow.find('.su-item-code').focus();
+                    return;
+                }
                 let $nextRow = $currentRow.next('tr');
                 if ($nextRow.length) {
                     if (e.key === 'Enter') {
@@ -210,7 +221,6 @@
                     let $newRow = $('#items-body tr').last();
                     setTimeout(function () {
                         $newRow.find('.su-item-code').focus();
-                        $newRow.find('.su-item-code').trigger($.Event('keydown', { key: 'Enter' }));
                     }, 60);
                 }
             }
@@ -227,7 +237,20 @@
         function checkAndOpenSuModal($input) {
             if (suModalOpen || suModalClosing) return false;
             let $row = $input.closest('tr');
-            if ($row.find('.su-item-select').val()) return false;
+            if ($row.find('.su-item-id').val()) return false;
+            // Block if any PREVIOUS row has no item yet
+            let $prevEmpty = null;
+            $('#items-body tr.su-item-row').each(function () {
+                if ($(this).is($row)) return false;
+                if (!$(this).find('.su-item-id').val()) {
+                    $prevEmpty = $(this);
+                    return false;
+                }
+            });
+            if ($prevEmpty) {
+                $prevEmpty.find('.su-item-code').focus();
+                return false;
+            }
             suActiveSearchRow = $row;
             let prefill = $.trim($input.val());
             $('#su-isl-filter-name').val(prefill);

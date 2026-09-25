@@ -500,13 +500,31 @@
                 }
             });
 
-            // Open modal on Code/Barcode field click or focus
-            $(document).off('click focus', '.indent-item-code').on('click focus', '.indent-item-code', function (e) {
+            // Open modal on Code/Barcode field: Tab/Enter/F2 ONLY — mouse click does NOT open modal
+            let indentMouseDown = false;
+            $(document).on('mousedown', '.indent-item-code', function () {
+                indentMouseDown = true;
+            });
+
+            function checkAndOpenIndentModal($input) {
                 if (islModalOpen || islModalClosing) return;
-                let $row = $(this).closest('tr');
-                if (e.type === 'focus' && $row.find('.indent-item-select').val()) return;
+                let $row = $input.closest('tr');
+                if ($row.find('.indent-item-select').val()) return;
+                // Block if a previous row has no item yet
+                let $prevEmpty = null;
+                $('#indent-items-body tr.indent-row').each(function () {
+                    if ($(this).is($row)) return false; // reached current row
+                    if (!$(this).find('.indent-item-select').val()) {
+                        $prevEmpty = $(this);
+                        return false;
+                    }
+                });
+                if ($prevEmpty) {
+                    $prevEmpty.find('.indent-item-code').focus();
+                    return;
+                }
                 activeSearchRow = $row;
-                let prefill = $.trim($(this).val());
+                let prefill = $.trim($input.val());
                 $('#indent-isl-filter-name').val(prefill);
                 $('#indent-isl-filter-code').val('');
                 fetchItemList();
@@ -516,7 +534,26 @@
                     $('#indent-isl-filter-name').focus().select();
                     if (prefill) fetchItemList();
                 });
-            });
+            }
+
+            $(document).off('click focus keydown', '.indent-item-code')
+                .on('focus', '.indent-item-code', function () {
+                    if (indentMouseDown) {
+                        indentMouseDown = false;
+                        return; // mouse click - do not open modal
+                    }
+                    // Focused by Tab / keyboard navigation
+                    checkAndOpenIndentModal($(this));
+                })
+                .on('keydown', '.indent-item-code', function (e) {
+                    if (e.key === 'Enter' || e.key === 'F2') {
+                        e.preventDefault();
+                        checkAndOpenIndentModal($(this));
+                    }
+                })
+                .on('click', '.indent-item-code', function () {
+                    indentMouseDown = false;
+                });
 
             $('#indent-item-search-modal').on('show.bs.modal', function () {
                 islModalOpen = true;
@@ -610,7 +647,7 @@
             $('#btn-add-row').on('click', function () {
                 let $newRow = addRow();
                 setTimeout(function () {
-                    $newRow.find('.indent-item-code').focus().trigger('click');
+                    $newRow.find('.indent-item-code').focus();
                 }, 80);
             });
 
@@ -693,11 +730,12 @@
                 reindexRows();
             });
 
-            // Initialize default row and focus code
-            let $firstRow = addRow();
+            // Initialize default row and autofocus first header field (branch_id)
+            addRow();
             setTimeout(function () {
-                $firstRow.find('.indent-item-code').focus();
-            }, 100);
+                let $branch = $('#branch_id');
+                if ($branch.length) $branch.focus();
+            }, 150);
         });
     </script>
     @endpush
