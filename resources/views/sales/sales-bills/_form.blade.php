@@ -1854,6 +1854,7 @@
                 $saveBtns.prop('disabled', true).addClass('disabled').attr('title', reason);
             } else {
                 $saveBtns.prop('disabled', false).removeClass('disabled').attr('title', '');
+            }
         }
 
         // Open Batch Selection Modal

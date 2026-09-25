@@ -203,6 +203,37 @@
             });
         }
 
+        // Autofocus first actionable field in the header container
+        function autofocusFirstHeaderField() {
+            if (document.activeElement && document.activeElement !== document.body && document.activeElement !== document.documentElement && !$(document.activeElement).is('button, a')) {
+                return;
+            }
+
+            $container.find('.field-wrapper:not(.form-field-hidden)').each(function() {
+                let $w = $(this);
+                let $actionable = $w.find('input:not([type="hidden"]):not([readonly]):not([tabindex="-1"]):not(:disabled), select:not([readonly]):not([tabindex="-1"]):not(:disabled), textarea:not([readonly]):not([tabindex="-1"]):not(:disabled)');
+                if ($actionable.length) {
+                    let $target = $actionable.first();
+                    if ($target.is('select')) {
+                        let $s2 = $target.next('.select2-container').find('.select2-selection');
+                        if ($s2.length) {
+                            $s2.focus();
+                        } else if ($target.data('select2') && $target.data('select2').$container) {
+                            $target.data('select2').$container.find('.select2-selection').focus();
+                        } else {
+                            $target.focus();
+                        }
+                    } else {
+                        $target.focus();
+                    }
+                    return false;
+                }
+            });
+        }
+
+        setTimeout(autofocusFirstHeaderField, 120);
+        setTimeout(autofocusFirstHeaderField, 350);
+
         // 3. Render Modal List
         function renderModalList() {
             $list.empty();
