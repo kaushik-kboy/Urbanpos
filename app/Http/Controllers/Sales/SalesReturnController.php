@@ -182,22 +182,50 @@ class SalesReturnController extends Controller
     /**
      * AJAX endpoint: return items from a sales bill for quick population.
      */
-    public function billItems(SalesBill $salesBill)
+    public function billItems(SalesBill $salesBill, Request $request)
     {
-        $items = $salesBill->items()->with('item')->get()->map(function ($line) {
+        $ignoreReturnId = $request->integer('ignore_return_id');
+
+        // Calculate already returned quantities for each item in this sales bill
+        $alreadyReturnedByItem = DB::table('sales_return_items as sri')
+            ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
+            ->where('sr.sales_bill_id', $salesBill->id)
+            ->when($ignoreReturnId, fn ($q) => $q->where('sr.id', '!=', $ignoreReturnId))
+            ->groupBy('sri.item_id')
+            ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
+            ->pluck('returned_qty', 'item_id')
+            ->all();
+
+        $items = $salesBill->items()->with('item')->get()->map(function ($line) use ($alreadyReturnedByItem) {
+            $originalQty = (float) $line->qty;
+            $alreadyReturned = (float) ($alreadyReturnedByItem[$line->item_id] ?? 0);
+            $remainingQty = max(0, round($originalQty - $alreadyReturned, 4));
+
+            $discPercent = (float) ($line->disc_percent ?? 0);
+            $discAmount = 0.0;
+            if ($remainingQty > 0) {
+                if ($discPercent > 0) {
+                    $discAmount = round((($remainingQty * (float)$line->sell_price) * $discPercent / 100), 2);
+                } else if ($originalQty > 0) {
+                    $discAmount = round(((float)($line->disc_amount ?? 0) / $originalQty) * $remainingQty, 2);
+                }
+            }
+
             return [
-                'item_id'      => $line->item_id,
-                'item_name'    => $line->item?->name ?? 'Unknown',
-                'item_code'    => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
-                'exp_date'     => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
-                'original_qty' => (float) $line->qty,
-                'qty'          => (float) $line->qty,
-                'sell_price'   => (float) $line->sell_price,
-                'mrp'          => (float) ($line->mrp ?? 0),
-                'disc_percent' => (float) ($line->disc_percent ?? 0),
-                'disc_amount'  => (float) ($line->disc_amount ?? 0),
-                'gst_percent'  => (float) ($line->gst_percent ?? 0),
-                'net_amount'   => (float) ($line->net_amount ?? 0),
+                'item_id'              => $line->item_id,
+                'item_name'            => $line->item?->name ?? 'Unknown',
+                'item_code'            => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
+                'exp_date'             => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
+                'original_qty'         => $originalQty,
+                'already_returned_qty' => $alreadyReturned,
+                'remaining_qty'        => $remainingQty,
+                'qty'                  => $remainingQty,
+                'sell_price'           => (float) $line->sell_price,
+                'mrp'                  => (float) ($line->mrp ?? 0),
+                'disc_percent'         => $discPercent,
+                'disc_amount'          => $discAmount,
+                'gst_percent'          => (float) ($line->gst_percent ?? 0),
+                'net_amount'           => (float) ($line->net_amount ?? 0),
             ];
         });
 
@@ -476,17 +504,51 @@ class SalesReturnController extends Controller
             $bill = SalesBill::with('items.item')->find($header['sales_bill_id']);
             if ($bill) {
                 $billItemQtys = $bill->items->groupBy('item_id')->map->sum('qty');
+
+                // Group requested quantities across submitted rows by item_id
+                $totalQtyByItem = [];
                 foreach ($validated['items'] as $itemLine) {
                     $itemId = (int) $itemLine['item_id'];
+                    $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $itemLine['qty'];
+                }
+
+                $currentReturnId = $request->route('sales_return') 
+                    ? (is_object($request->route('sales_return')) ? $request->route('sales_return')->id : (int)$request->route('sales_return')) 
+                    : null;
+
+                $alreadyReturnedQtys = DB::table('sales_return_items as sri')
+                    ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
+                    ->where('sr.sales_bill_id', $bill->id)
+                    ->when($currentReturnId, fn($q) => $q->where('sr.id', '!=', $currentReturnId))
+                    ->whereIn('sri.item_id', array_keys($totalQtyByItem))
+                    ->groupBy('sri.item_id')
+                    ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
+                    ->pluck('returned_qty', 'item_id')
+                    ->all();
+
+                foreach ($totalQtyByItem as $itemId => $requestedQty) {
                     if (!isset($billItemQtys[$itemId])) {
+                        $itemModel = Item::find($itemId);
+                        $name = $itemModel?->name ?? "Item #{$itemId}";
                         throw \Illuminate\Validation\ValidationException::withMessages([
-                            'items' => ["Item #{$itemId} does not belong to Sales Bill #{$bill->bill_number}."]
+                            'items' => ["The item '{$name}' does not belong to Sales Bill #{$bill->bill_number}."]
                         ]);
                     }
-                    $maxQty = (float) $billItemQtys[$itemId];
-                    if ((float) $itemLine['qty'] > $maxQty + 0.0001) {
+
+                    $origQty = (float) $billItemQtys[$itemId];
+                    $alreadyReturned = (float) ($alreadyReturnedQtys[$itemId] ?? 0);
+                    $remaining = max(0, round($origQty - $alreadyReturned, 4));
+
+                    if ($remaining <= 0) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
-                            'items' => ["Return quantity ({$itemLine['qty']}) cannot exceed original bill quantity ({$maxQty})."]
+                            'items' => ["No returnable quantity available for this item."]
+                        ]);
+                    }
+
+                    if (round($requestedQty, 4) > round($remaining, 4)) {
+                        $remDisplay = ($remaining == (int)$remaining) ? (int)$remaining : $remaining;
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'items' => ["Return quantity cannot exceed the remaining returnable quantity of {$remDisplay}."]
                         ]);
                     }
                 }

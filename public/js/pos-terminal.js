@@ -318,30 +318,65 @@
         });
 
         // Delegated Cart Row Inputs (Real-time calculation without DOM re-render)
-        $(document).on('input change', '.pos-qty-input', function () {
+        $(document).on('input change keyup paste', '.pos-qty-input', function () {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
             const val = parseFloat($(this).val());
             const payBtns = $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp');
+            const cartItem = state.cart[idx];
 
             if (isNaN(val) || val <= 0) {
                 $(this).addClass('is-invalid border-danger text-danger').attr('title', 'Quantity must be greater than 0');
                 payBtns.prop('disabled', true);
                 return;
-            } else {
-                $(this).removeClass('is-invalid border-danger text-danger').attr('title', '');
-                let allValid = true;
-                $('.pos-qty-input').each(function () {
-                    let q = parseFloat($(this).val());
-                    if (isNaN(q) || q <= 0) allValid = false;
-                });
-                if (allValid && state.cart.length > 0) {
-                    payBtns.prop('disabled', false);
-                }
             }
 
+            // Real-time stock validation (across all rows for this item)
+            const otherRowsQty = getTotalCartQtyForItem(cartItem.id, idx);
+            const totalRequested = otherRowsQty + val;
+            const allowNeg = !!cartItem.allow_negative_stock;
+            const stock = cartItem.stock;
+
+            if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
+                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
+                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                $(this).addClass('is-invalid border-danger text-danger').attr('title', errMsg);
+                payBtns.prop('disabled', true);
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                showNotification(errMsg, 'danger');
+                return;
+            }
+
+            $(this).removeClass('is-invalid border-danger text-danger').attr('title', '');
             state.cart[idx].qty = val;
             recalculateRow(idx, 'qty');
+
+            let allValid = true;
+            $('.pos-qty-input').each(function () {
+                let q = parseFloat($(this).val());
+                if (isNaN(q) || q <= 0 || $(this).hasClass('is-invalid')) allValid = false;
+            });
+            if (allValid && state.cart.length > 0) {
+                payBtns.prop('disabled', false);
+            }
+        });
+
+        $(document).on('blur', '.pos-qty-input', function () {
+            const idx = parseInt($(this).data('idx'));
+            if (isNaN(idx) || !state.cart[idx]) return;
+            const val = parseFloat($(this).val());
+            const cartItem = state.cart[idx];
+            const otherRowsQty = getTotalCartQtyForItem(cartItem.id, idx);
+            const totalRequested = otherRowsQty + (isNaN(val) ? 0 : val);
+            const allowNeg = !!cartItem.allow_negative_stock;
+            const stock = cartItem.stock;
+
+            if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
+                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
+                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                alert(errMsg);
+                $(this).focus().select();
+            }
         });
 
         $(document).on('input change', '.pos-disc-percent', function () {
@@ -646,6 +681,16 @@
     }
 
     // Cart Management
+    function getTotalCartQtyForItem(itemId, excludeIdx = -1) {
+        let total = 0;
+        state.cart.forEach((c, idx) => {
+            if (idx !== excludeIdx && c.id === itemId) {
+                total += parseFloat(c.qty) || 0;
+            }
+        });
+        return total;
+    }
+
     function addItemToCart(item) {
         const itemId = parseInt(item.id || item.item_id);
         const expDate = item.exp_date ? (typeof item.exp_date === 'string' ? item.exp_date.substring(0, 10) : '') : '';
@@ -660,14 +705,53 @@
             }
         }
 
+        const allowNeg = !!item.allow_negative_stock;
+        let availableStock = null;
+        if (item.stock !== undefined && item.stock !== null) {
+            availableStock = parseFloat(item.stock);
+        } else if (item.qty !== undefined && item.qty !== null && !state.cart.some(c => c.id === itemId)) {
+            availableStock = parseFloat(item.qty);
+        } else {
+            const inCart = state.cart.find(c => c.id === itemId && c.stock !== undefined && c.stock !== null);
+            if (inCart) {
+                availableStock = parseFloat(inCart.stock);
+            }
+        }
+
         const existingIdx = state.cart.findIndex(c => c.id === itemId && (c.exp_date || '') === expDate);
         let targetIdx = -1;
 
         if (existingIdx !== -1) {
+            if (availableStock === null && state.cart[existingIdx].stock !== undefined) {
+                availableStock = state.cart[existingIdx].stock;
+            }
+            const currentItemTotal = getTotalCartQtyForItem(itemId);
+            const proposedTotal = currentItemTotal + 1;
+            if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
+                const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
+                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                showNotification(errMsg, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                alert(errMsg);
+                return;
+            }
+
             state.cart[existingIdx].qty += 1;
+            if (availableStock !== null) state.cart[existingIdx].stock = availableStock;
             recalculateRow(existingIdx, 'qty');
             targetIdx = existingIdx;
         } else {
+            const currentItemTotal = getTotalCartQtyForItem(itemId);
+            const proposedTotal = currentItemTotal + 1;
+            if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
+                const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
+                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                showNotification(errMsg, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                alert(errMsg);
+                return;
+            }
+
             const newItem = {
                 id: itemId,
                 name: item.name || item.productname || 'Unknown Item',
@@ -676,6 +760,8 @@
                 sell_price: parseFloat(item.sell_price || item.mrp || 0),
                 mrp: parseFloat(item.mrp || item.sell_price || 0),
                 qty: 1,
+                stock: availableStock,
+                allow_negative_stock: allowNeg,
                 gst_percent: parseFloat(item.gst_percent || 0),
                 disc_percent: parseFloat(item.disc_percent || 0),
                 disc_amount: parseFloat(item.disc_amount || 0)
@@ -740,13 +826,31 @@
 
     function updateItemQty(index, delta) {
         if (!state.cart[index]) return;
-        state.cart[index].qty += delta;
-        if (state.cart[index].qty <= 0) {
+        const cartItem = state.cart[index];
+        const newQty = cartItem.qty + delta;
+        if (newQty <= 0) {
             state.cart.splice(index, 1);
             renderCart();
-        } else {
-            recalculateRow(index, 'qty');
+            return;
         }
+        if (delta > 0) {
+            const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index);
+            const totalRequested = otherRowsQty + newQty;
+            const allowNeg = !!cartItem.allow_negative_stock;
+            const stock = cartItem.stock;
+            if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
+                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
+                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                showNotification(errMsg, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                alert(errMsg);
+                return;
+            }
+        }
+        cartItem.qty = newQty;
+        recalculateRow(index, 'qty');
+        const qtyInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${index}"]`) : null;
+        if (qtyInput) qtyInput.value = newQty;
     }
 
     function setItemQty(index, val) {
@@ -755,10 +859,25 @@
         if (isNaN(q) || q <= 0) {
             state.cart.splice(index, 1);
             renderCart();
-        } else {
-            state.cart[index].qty = q;
-            recalculateRow(index, 'qty');
+            return;
         }
+        const cartItem = state.cart[index];
+        const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index);
+        const totalRequested = otherRowsQty + q;
+        const allowNeg = !!cartItem.allow_negative_stock;
+        const stock = cartItem.stock;
+        if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
+            const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
+            const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+            showNotification(errMsg, 'danger');
+            if (typeof sound !== 'undefined' && sound.error) sound.error();
+            alert(errMsg);
+            return;
+        }
+        cartItem.qty = q;
+        recalculateRow(index, 'qty');
+        const qtyInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${index}"]`) : null;
+        if (qtyInput) qtyInput.value = q;
     }
 
     function removeItem(index) {
@@ -1794,6 +1913,27 @@
             return;
         }
 
+        // Validate stock locally before checkout
+        for (let i = 0; i < state.cart.length; i++) {
+            const cItem = state.cart[i];
+            const otherQty = getTotalCartQtyForItem(cItem.id, i);
+            const totalReq = otherQty + (parseFloat(cItem.qty) || 0);
+            if (!cItem.allow_negative_stock && cItem.stock !== undefined && cItem.stock !== null && totalReq > cItem.stock + 0.0001) {
+                const availDisp = (cItem.stock === parseInt(cItem.stock, 10)) ? parseInt(cItem.stock, 10) : cItem.stock;
+                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                showNotification(errMsg, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                alert(errMsg);
+                const badInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${i}"]`) : null;
+                if (badInput) {
+                    badInput.classList.add('is-invalid', 'border-danger');
+                    badInput.focus();
+                    badInput.select();
+                }
+                return;
+            }
+        }
+
         const btnSaveOnly = document.getElementById('posBtnSaveOnly');
         const btnSaveWhatsApp = document.getElementById('posBtnSaveWhatsApp');
 
@@ -1803,6 +1943,55 @@
         }
         if (btnSaveOnly) btnSaveOnly.disabled = true;
         if (btnSaveWhatsApp) btnSaveWhatsApp.disabled = true;
+
+        // Re-check latest stock from backend/database right before checkout/payment
+        try {
+            const stockCheckResp = await fetch(`${window.APP_URL || ''}/sales/sales-bills/verify-stock`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || window.CSRF_TOKEN
+                },
+                body: JSON.stringify({
+                    branch_id: state.branch_id,
+                    items: state.cart.map(c => ({ item_id: c.id, qty: c.qty }))
+                })
+            });
+
+            if (!stockCheckResp.ok) {
+                const stockErr = await stockCheckResp.json();
+                const availDisp = stockErr.available !== undefined ? ((stockErr.available === parseInt(stockErr.available, 10)) ? parseInt(stockErr.available, 10) : stockErr.available) : 0;
+                const errMsg = stockErr.message || `Stock changed. Only ${availDisp} units are currently available.`;
+                showNotification(errMsg, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                alert(errMsg);
+
+                if (stockErr.item_id) {
+                    state.cart.forEach((c, idx) => {
+                        if (c.id === stockErr.item_id) {
+                            c.stock = stockErr.available;
+                            const input = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${idx}"]`) : null;
+                            if (input) {
+                                input.classList.add('is-invalid', 'border-danger');
+                                input.focus();
+                                input.select();
+                            }
+                        }
+                    });
+                }
+
+                if (payBtn) {
+                    payBtn.disabled = false;
+                    payBtn.innerHTML = '<i class="fas fa-print mr-2"></i> Save & Print (F6)';
+                }
+                if (btnSaveOnly) btnSaveOnly.disabled = false;
+                if (btnSaveWhatsApp) btnSaveWhatsApp.disabled = false;
+                return;
+            }
+        } catch (stockCheckEx) {
+            console.warn('Stock verification check skipped or failed:', stockCheckEx);
+        }
 
         const totals = computeTotals();
 

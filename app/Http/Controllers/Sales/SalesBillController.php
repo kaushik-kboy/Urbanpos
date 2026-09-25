@@ -759,11 +759,54 @@ class SalesBillController extends Controller
                 ->value('quantity') ?? 0);
 
             if (round($totalRequested, 4) > round($available, 4)) {
+                $availDisp = ($available == (int) $available) ? (int) $available : $available;
                 throw ValidationException::withMessages([
-                    'items' => "Insufficient stock for \"{$item->name}\": available {$available}, requested {$totalRequested} (across all rows).",
+                    'items' => "Insufficient stock. Only {$availDisp} units are available.",
                 ]);
             }
         }
+    }
+
+    /**
+     * Re-check latest stock from backend/database right before checkout/payment in POS terminal.
+     */
+    public function verifyStock(Request $request)
+    {
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+        $items = $request->input('items', []);
+
+        $totalQtyByItem = [];
+        foreach ($items as $line) {
+            $itemId = (int) ($line['item_id'] ?? $line['id'] ?? 0);
+            $qty = (float) ($line['qty'] ?? 0);
+            if ($itemId > 0 && $qty > 0) {
+                $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0) + $qty;
+            }
+        }
+
+        foreach ($totalQtyByItem as $itemId => $totalRequested) {
+            $item = Item::find($itemId);
+            if (! $item || $item->allow_negative_stock) {
+                continue;
+            }
+
+            $available = (float) (ItemStock::where('item_id', $itemId)
+                ->where('branch_id', $branchId)
+                ->value('quantity') ?? 0);
+
+            if (round($totalRequested, 4) > round($available, 4)) {
+                $availDisp = ($available == (int) $available) ? (int) $available : $available;
+                return response()->json([
+                    'success' => false,
+                    'item_id' => $itemId,
+                    'item_name' => $item->name,
+                    'available' => $available,
+                    'message' => "Stock changed. Only {$availDisp} units are currently available.",
+                ], 422);
+            }
+        }
+
+        return response()->json(['success' => true]);
     }
 
     private function nextNumber(): string
@@ -956,6 +999,7 @@ class SalesBillController extends Controller
                 'code'                 => $row->item_code ?: ($row->ean_upc_code ?: ''),
                 'exp_date'             => $exp,
                 'qty'                  => (float) $row->qty,
+                'stock'                => (float) $row->qty,
                 'sell_price'           => (float) $row->sell_price,
                 'mrp'                  => (float) $row->mrp,
                 'gst_percent'          => (float) $row->gst_percent,

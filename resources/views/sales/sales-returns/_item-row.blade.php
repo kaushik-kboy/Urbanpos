@@ -54,6 +54,8 @@
                name="items[{{ $rowId }}][qty]"
                value="{{ $rowId === '__INDEX__' ? '' : $qty }}"
                data-original-qty="{{ data_get($line, 'original_qty', '') }}"
+               data-returned-qty="{{ data_get($line, 'already_returned_qty', data_get($line, 'already_returned', 0)) }}"
+               data-remaining-qty="{{ data_get($line, 'remaining_qty', '') }}"
                class="form-control form-control-sm text-right sr-qty font-weight-bold"
                placeholder="Qty" autocomplete="off">
         <small class="text-muted d-block text-right sr-max-qty-label" style="font-size: 10px;"></small>

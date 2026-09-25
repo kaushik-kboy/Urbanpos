@@ -20,6 +20,9 @@
     $discAmount = data_get($line, 'disc_amount', 0);
     $gstPercent = data_get($line, 'gst_percent', 0);
     $netAmount = data_get($line, 'net_amount', 0);
+    $originalQty = data_get($line, 'original_qty', data_get($line, 'invoiced_qty', ''));
+    $alreadyReturned = data_get($line, 'already_returned', 0);
+    $remainingQty = data_get($line, 'remaining_qty', '');
 @endphp
 <tr class="pr-item-row" data-row-index="{{ $rowId }}">
     <td style="min-width: 140px;" data-col-key="code">
@@ -32,8 +35,13 @@
     <td style="width: 130px;" data-col-key="expiry">
         <input type="date" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm pr-exp-date">
     </td>
-    <td style="width: 95px;" data-col-key="qty">
-        <input type="number" step="0.001" min="0" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm text-right pr-qty font-weight-bold" placeholder="0.000">
+    <td style="width: 100px;" data-col-key="qty">
+        <input type="number" step="0.001" min="0" name="items[{{ $rowId }}][qty]" value="{{ $qty }}"
+               data-original-qty="{{ $originalQty }}"
+               data-returned-qty="{{ $alreadyReturned }}"
+               data-remaining-qty="{{ $remainingQty }}"
+               class="form-control form-control-sm text-right pr-qty font-weight-bold" placeholder="0.000">
+        <small class="text-muted d-block text-right pr-remaining-qty-label" style="font-size: 10px;"></small>
     </td>
     <td style="width: 110px;" data-col-key="cost_price">
         <input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm text-right pr-cost font-weight-bold" placeholder="0.00">

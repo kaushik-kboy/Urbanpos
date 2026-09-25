@@ -620,8 +620,11 @@
                     let costDisplay = it.cost_price > 0 ? '₹' + parseFloat(it.cost_price).toFixed(2) : '—';
                     let sellDisplay = it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—';
                     let stockClass = it.qty <= 0 ? 'text-danger' : 'text-primary font-weight-bold';
+                    let remainingDisplay = (it.remaining_qty !== null && it.remaining_qty !== undefined)
+                        ? (parseFloat(it.remaining_qty) <= 0 ? '<span class="badge badge-danger">Fully Returned (0)</span>' : `<span class="badge badge-success">Eligible: ${parseFloat(it.remaining_qty).toFixed(2)}</span>`)
+                        : '';
                     let qtyCol = it.invoiced_qty !== null
-                        ? `<span class="text-success font-weight-bold" title="Invoiced Quantity">${parseFloat(it.invoiced_qty).toFixed(2)}</span> <small class="text-muted d-block">(Stock: ${parseFloat(it.qty || 0).toFixed(2)})</small>`
+                        ? `<span class="text-dark font-weight-bold" title="Invoiced Quantity">Inv: ${parseFloat(it.invoiced_qty).toFixed(2)}</span> ${remainingDisplay} <small class="text-muted d-block">(Stock: ${parseFloat(it.qty || 0).toFixed(2)})</small>`
                         : `<span class="${stockClass}">${parseFloat(it.qty || 0).toFixed(2)}</span>`;
 
                     html += `
@@ -633,7 +636,10 @@
                             data-gst="${it.gst_percent || 0}"
                             data-disc-percent="${it.disc_percent || 0}"
                             data-disc-amount="${it.disc_amount || 0}"
-                            data-exp-date="${it.exp_date || ''}">
+                            data-exp-date="${it.exp_date || ''}"
+                            data-original-qty="${it.original_qty !== null && it.original_qty !== undefined ? it.original_qty : (it.invoiced_qty || '')}"
+                            data-returned-qty="${it.already_returned || 0}"
+                            data-remaining-qty="${it.remaining_qty !== null && it.remaining_qty !== undefined ? it.remaining_qty : ''}">
                             <td class="align-middle text-center text-muted">${idx + 1}</td>
                             <td class="align-middle font-weight-bold text-dark">${it.name}</td>
                             <td class="align-middle text-center">${codeBadge}</td>
@@ -672,10 +678,23 @@
                 gst_percent: $tr.data('gst'),
                 disc_percent: $tr.data('disc-percent'),
                 disc_amount: $tr.data('disc-amount'),
-                exp_date: $tr.data('exp-date')
+                exp_date: $tr.data('exp-date'),
+                original_qty: $tr.data('original-qty'),
+                already_returned: $tr.data('returned-qty'),
+                remaining_qty: $tr.data('remaining-qty')
             };
 
             if (!prActiveSearchRow || !itemData.id) return;
+
+            if ($('#purchase_invoice_id').val() && itemData.remaining_qty !== '' && itemData.remaining_qty !== undefined && parseFloat(itemData.remaining_qty) <= 0) {
+                if (window.toastr) {
+                    toastr.error('No returnable quantity available for this item.', 'Return Not Allowed');
+                } else {
+                    alert('No returnable quantity available for this item.');
+                }
+                return;
+            }
+
             prItemSelectedInModal = true;
             prCancellingRow = null;
             prLastSelectedRow = prActiveSearchRow;
@@ -684,6 +703,17 @@
             $row.find('.pr-item-code').val(itemData.code);
             $row.find('.pr-item-desc').val(itemData.name);
             $row.find('.pr-item-id').val(itemData.id);
+
+            let $qtyInput = $row.find('.pr-qty');
+            if (itemData.original_qty !== '' && itemData.original_qty !== undefined) {
+                $qtyInput.attr('data-original-qty', itemData.original_qty);
+                $qtyInput.attr('data-returned-qty', itemData.already_returned || 0);
+                $qtyInput.attr('data-remaining-qty', itemData.remaining_qty);
+                let defaultQty = (itemData.remaining_qty !== '' && parseFloat(itemData.remaining_qty) > 0) ? parseFloat(itemData.remaining_qty) : 1;
+                $qtyInput.val(defaultQty);
+                let remDisp = itemData.remaining_qty !== '' ? (parseFloat(itemData.remaining_qty) == parseInt(itemData.remaining_qty, 10) ? parseInt(itemData.remaining_qty, 10) : parseFloat(itemData.remaining_qty)) : '';
+                $row.find('.pr-remaining-qty-label').text(remDisp !== '' ? 'Remaining: ' + remDisp : '').show();
+            }
 
             if (parseFloat(itemData.cost_price) > 0) {
                 $row.find('.pr-cost').val(parseFloat(itemData.cost_price).toFixed(2));
@@ -701,6 +731,7 @@
                 $row.find('.pr-exp-date').val(itemData.exp_date);
             }
 
+            validatePrQuantity($qtyInput, false);
             recalculateAll();
 
             $('#pr-item-search-modal').modal('hide');
@@ -868,7 +899,20 @@
                         if (descInput) descInput.value = item.item_name || '';
 
                         const qtyInput = row.querySelector('.pr-qty');
-                        if (qtyInput) qtyInput.value = item.qty;
+                        if (qtyInput) {
+                            qtyInput.value = item.qty;
+                            if (item.original_qty !== undefined && item.original_qty !== null) {
+                                qtyInput.setAttribute('data-original-qty', item.original_qty);
+                                qtyInput.setAttribute('data-returned-qty', item.already_returned || 0);
+                                qtyInput.setAttribute('data-remaining-qty', item.remaining_qty !== undefined ? item.remaining_qty : '');
+                                let remDisp = item.remaining_qty !== undefined ? (parseFloat(item.remaining_qty) == parseInt(item.remaining_qty, 10) ? parseInt(item.remaining_qty, 10) : parseFloat(item.remaining_qty)) : '';
+                                const remLabel = row.querySelector('.pr-remaining-qty-label');
+                                if (remLabel && remDisp !== '') {
+                                    remLabel.innerText = 'Remaining: ' + remDisp;
+                                    remLabel.style.display = 'block';
+                                }
+                            }
+                        }
                         const costInput = row.querySelector('.pr-cost');
                         if (costInput) costInput.value = item.cost_price;
                         const discPctInput = row.querySelector('.pr-disc-percent');
@@ -898,6 +942,68 @@
             .finally(() => {
                 isAutoLoadingInvoice = false;
             });
+        });
+
+        // Real-time instant Purchase Return quantity validation
+        function validatePrQuantity($input, showAlert = true) {
+            let $row = $input.closest('tr');
+            let itemId = $row.find('.pr-item-id').val();
+            let enteredVal = parseFloat($input.val()) || 0;
+
+            let origQtyStr = $input.attr('data-original-qty');
+            if (origQtyStr === undefined || origQtyStr === '' || origQtyStr === null) {
+                $input.removeClass('is-invalid border-danger');
+                return true;
+            }
+
+            let origQty = parseFloat(origQtyStr) || 0;
+            let returnedQty = parseFloat($input.attr('data-returned-qty')) || 0;
+            let remainingQty = parseFloat($input.attr('data-remaining-qty'));
+            if (isNaN(remainingQty)) {
+                remainingQty = Math.max(0, origQty - returnedQty);
+            }
+
+            // Sum quantities across all rows for this same item_id
+            let totalRequestedForThisItem = 0;
+            $('#pr-items-body tr.pr-item-row').each(function () {
+                let thisItemId = $(this).find('.pr-item-id').val();
+                if (thisItemId && String(thisItemId) === String(itemId)) {
+                    totalRequestedForThisItem += (parseFloat($(this).find('.pr-qty').val()) || 0);
+                }
+            });
+
+            let isOverLimit = (totalRequestedForThisItem > remainingQty + 0.0001) || (enteredVal > remainingQty + 0.0001);
+
+            if (origQty > 0 && isOverLimit) {
+                $input.addClass('is-invalid border-danger');
+                let remDisp = (remainingQty === parseInt(remainingQty, 10)) ? parseInt(remainingQty, 10) : remainingQty;
+                let errMsg = returnedQty > 0
+                    ? `Return quantity cannot exceed the remaining returnable quantity of ${remDisp}.`
+                    : `Return quantity cannot be greater than the available purchase quantity.`;
+
+                $input.attr('title', errMsg);
+                if (showAlert) {
+                    if (window.toastr && typeof window.toastr.error === 'function') {
+                        toastr.clear();
+                        toastr.error(errMsg, 'Quantity Validation Error');
+                    } else {
+                        alert(errMsg);
+                    }
+                }
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                }
+                return false;
+            } else {
+                $input.removeClass('is-invalid border-danger').removeAttr('title');
+                return true;
+            }
+        }
+
+        $(document).on('input change keyup', '.pr-qty', function () {
+            validatePrQuantity($(this), true);
+            recalculateAll();
         });
 
         function notifyWarn(msg, title) {
@@ -949,6 +1055,13 @@
                 if (!qtyVal || qty <= 0) {
                     e.preventDefault();
                     notifyWarn(`Please enter quantity for item: "${itemName}"`, 'Quantity Required');
+                    $qtyInput.focus().select();
+                    hasError = true;
+                    return false;
+                }
+
+                if (!validatePrQuantity($qtyInput, true)) {
+                    e.preventDefault();
                     $qtyInput.focus().select();
                     hasError = true;
                     return false;

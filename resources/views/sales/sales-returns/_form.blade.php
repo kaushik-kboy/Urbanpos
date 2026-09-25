@@ -607,7 +607,7 @@
             srActiveSearchRow = null;
         });
 
-        function recalculateRow(row) {
+        function recalculateRow(row, triggerSource = null) {
             const qty = parseFloat(row.querySelector('.sr-qty')?.value) || 0;
             const price = parseFloat(row.querySelector('.sr-price')?.value) || 0;
             let discPercent = parseFloat(row.querySelector('.sr-disc-percent')?.value) || 0;
@@ -615,15 +615,53 @@
             const gstPercent = parseFloat(row.querySelector('.sr-gst-percent')?.value) || 0;
 
             const base = qty * price;
-            if (discAmount <= 0 && discPercent > 0) {
-                discAmount = Math.round((base * discPercent / 100) * 100) / 100;
-                const discAmtInput = row.querySelector('.sr-disc-amount');
-                if (discAmtInput && document.activeElement !== discAmtInput) {
-                    discAmtInput.value = discAmount ? discAmount.toFixed(2) : '';
+            const discPctInput = row.querySelector('.sr-disc-percent');
+            const discAmtInput = row.querySelector('.sr-disc-amount');
+
+            // Requirement 2, 3, 4: Bidirectional discount sync
+            if (triggerSource === 'percent') {
+                if (base > 0 && discPercent > 0) {
+                    discAmount = Math.round((base * discPercent / 100) * 100) / 100;
+                } else {
+                    discAmount = 0;
+                }
+                if (discAmtInput) {
+                    discAmtInput.value = discAmount > 0 ? discAmount.toFixed(2) : '';
+                }
+            } else if (triggerSource === 'amount') {
+                if (base > 0 && discAmount > 0) {
+                    discPercent = Math.round(((discAmount / base) * 100) * 100) / 100;
+                } else {
+                    discPercent = 0;
+                }
+                if (discPctInput) {
+                    discPctInput.value = discPercent > 0 ? discPercent : '';
+                }
+            } else if (triggerSource === 'qty') {
+                if (base > 0 && discPercent > 0) {
+                    discAmount = Math.round((base * discPercent / 100) * 100) / 100;
+                    if (discAmtInput) {
+                        discAmtInput.value = discAmount > 0 ? discAmount.toFixed(2) : '';
+                    }
+                } else if (base <= 0) {
+                    discAmount = 0;
+                    if (discAmtInput) discAmtInput.value = '';
+                }
+            } else {
+                if (discPercent > 0 && base > 0 && (discAmount <= 0 || !discAmtInput || !discAmtInput.value)) {
+                    discAmount = Math.round((base * discPercent / 100) * 100) / 100;
+                    if (discAmtInput) {
+                        discAmtInput.value = discAmount > 0 ? discAmount.toFixed(2) : '';
+                    }
+                } else if (discAmount > 0 && base > 0 && discPercent <= 0) {
+                    discPercent = Math.round(((discAmount / base) * 100) * 100) / 100;
+                    if (discPctInput) {
+                        discPctInput.value = discPercent > 0 ? discPercent : '';
+                    }
                 }
             }
 
-            // GST included in price (Tax-Inclusive matching Sales Bill - Task 7)
+            // GST included in price (Tax-Inclusive matching Sales Bill)
             const net = Math.max(0, base - discAmount);
             const taxable = gstPercent > 0 ? (net / (1 + (gstPercent / 100))) : net;
             const gstAmount = Math.round((net - taxable) * 100) / 100;
@@ -633,23 +671,88 @@
                 netSpan.innerText = net.toFixed(2);
             }
 
-            // Real-time inline field validation (Task 11)
             const qtyInput = row.querySelector('.sr-qty');
             if (qtyInput) {
-                const maxQty = parseFloat(qtyInput.getAttribute('data-original-qty') || qtyInput.getAttribute('max')) || 0;
-                if (qty <= 0) {
-                    qtyInput.classList.add('is-invalid', 'border-danger');
-                    qtyInput.title = 'Quantity must be greater than 0';
-                } else if (maxQty > 0 && qty > maxQty) {
-                    qtyInput.classList.add('is-invalid', 'border-danger');
-                    qtyInput.title = `Return quantity cannot exceed original bill quantity (${maxQty})`;
-                } else {
-                    qtyInput.classList.remove('is-invalid', 'border-danger');
-                    qtyInput.title = '';
-                }
+                validateSrQuantity($(qtyInput), false);
             }
 
             return { qty, price, discAmount, taxable, gstAmount, net };
+        }
+
+        function validateSrQuantity($input, showAlert = true) {
+            let $row = $input.closest('tr');
+            let itemId = $row.find('.sr-item-select').val();
+            let itemName = $row.find('.sr-item-desc').val() || 'Product';
+            let enteredQty = parseFloat($input.val()) || 0;
+
+            let origQtyStr = $input.attr('data-original-qty');
+            if (origQtyStr === undefined || origQtyStr === '' || origQtyStr === null) {
+                $input.removeClass('is-invalid border-danger');
+                return true;
+            }
+
+            let origQty = parseFloat(origQtyStr) || 0;
+            let returnedQty = parseFloat($input.attr('data-returned-qty')) || 0;
+            let remainingQty = parseFloat($input.attr('data-remaining-qty'));
+            if (isNaN(remainingQty)) {
+                remainingQty = Math.max(0, origQty - returnedQty);
+            }
+
+            // Sum quantities across all rows for this same item_id
+            let totalRequestedForThisItem = 0;
+            $('#sr-items-body tr.sr-item-row').each(function () {
+                let thisItemId = $(this).find('.sr-item-select').val();
+                if (thisItemId && String(thisItemId) === String(itemId)) {
+                    totalRequestedForThisItem += (parseFloat($(this).find('.sr-qty').val()) || 0);
+                }
+            });
+
+            let remDisplay = (remainingQty === parseInt(remainingQty, 10)) ? parseInt(remainingQty, 10) : remainingQty;
+
+            if (remainingQty <= 0 && origQty > 0) {
+                $input.addClass('is-invalid border-danger');
+                let errMsg = "No returnable quantity available for this item.";
+                $input.attr('title', errMsg);
+                if (showAlert) {
+                    if (window.toastr) {
+                        toastr.clear();
+                        toastr.error(errMsg, 'Quantity Validation Error');
+                    } else {
+                        alert(errMsg);
+                    }
+                }
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.disabled = true;
+                return false;
+            }
+
+            let isOverLimit = (totalRequestedForThisItem > remainingQty + 0.0001) || (enteredQty > remainingQty + 0.0001);
+
+            if (origQty > 0 && isOverLimit) {
+                $input.addClass('is-invalid border-danger');
+                let errMsg = `Return quantity cannot exceed the remaining returnable quantity of ${remDisplay}.`;
+                $input.attr('title', errMsg);
+                if (showAlert) {
+                    if (window.toastr) {
+                        toastr.clear();
+                        toastr.error(errMsg, 'Quantity Validation Error');
+                    } else {
+                        alert(errMsg);
+                    }
+                }
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.disabled = true;
+                return false;
+            } else if (enteredQty <= 0) {
+                $input.addClass('is-invalid border-danger');
+                $input.attr('title', 'Quantity must be greater than 0');
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.disabled = true;
+                return false;
+            } else {
+                $input.removeClass('is-invalid border-danger').removeAttr('title');
+                return true;
+            }
         }
 
         function recalculateAll() {
@@ -683,12 +786,18 @@
             const submitBtn = document.querySelector('button[type="submit"]');
             if (submitBtn) {
                 const hasValidCust = !!$('#customer_id').val();
-                const hasValidItems = totalQty > 0 && document.querySelectorAll('#sr-items-body .sr-item-row').length > 0;
+                let hasInvalidQty = false;
+                $('#sr-items-body .sr-qty').each(function () {
+                    if ($(this).hasClass('is-invalid')) hasInvalidQty = true;
+                });
+                const hasValidItems = totalQty > 0 && !hasInvalidQty && document.querySelectorAll('#sr-items-body .sr-item-row').length > 0;
                 let isValid = hasValidCust && hasValidItems;
                 submitBtn.disabled = !isValid;
                 submitBtn.classList.toggle('disabled', !isValid);
                 if (!hasValidCust) {
                     submitBtn.title = 'Please select a Customer.';
+                } else if (hasInvalidQty) {
+                    submitBtn.title = 'Please resolve quantity errors before submitting.';
                 } else if (!hasValidItems) {
                     submitBtn.title = 'Please add at least one item with valid quantity.';
                 } else {
@@ -709,7 +818,6 @@
             tempWrapper.innerHTML = html;
             const newRow = tempWrapper.firstElementChild;
             tbody.appendChild(newRow);
-            // Focus the code field on new row
             setTimeout(function () {
                 newRow.querySelector('.sr-item-code')?.focus();
             }, 50);
@@ -725,7 +833,16 @@
         });
 
         document.getElementById('sr-items-body')?.addEventListener('input', function (e) {
-            if (e.target.matches('.sr-qty, .sr-price, .sr-mrp, .sr-disc-percent, .sr-disc-amount, .sr-gst-percent')) {
+            if (e.target.matches('.sr-disc-percent')) {
+                recalculateRow(e.target.closest('tr'), 'percent');
+                recalculateAll();
+            } else if (e.target.matches('.sr-disc-amount')) {
+                recalculateRow(e.target.closest('tr'), 'amount');
+                recalculateAll();
+            } else if (e.target.matches('.sr-qty')) {
+                recalculateRow(e.target.closest('tr'), 'qty');
+                recalculateAll();
+            } else if (e.target.matches('.sr-price, .sr-mrp, .sr-gst-percent')) {
                 recalculateAll();
             }
         });
@@ -744,27 +861,17 @@
             }
         });
 
-        // Cap return quantity:
-
-        // 1) If bill selected: cap by original_qty on that row (already set via data-original-qty)
-        // 2) If NO bill selected: AJAX validate against total sold qty for item+customer
+        // Real-time listener for sr-qty typing, +, -, paste
         const SR_SOLD_QTY_URL = '{{ route("sales.sales-returns.item-sold-qty") }}';
         let srQtyDebounce = {};
 
-        $(document).on('input change', '.sr-qty', function () {
+        $(document).on('input change keyup', '.sr-qty', function () {
             let $input = $(this);
             let $row = $input.closest('tr');
-            let maxQty = parseFloat($input.attr('data-original-qty') || $input.attr('max'));
-            let currentVal = parseFloat($input.val()) || 0;
 
-            // Case 1: bill is selected — use data-original-qty cap (existing logic)
+            // Case 1: bill is selected
             if ($('#sales_bill_id').val()) {
-                if (maxQty > 0 && currentVal > maxQty) {
-                    if (window.toastr) {
-                        window.toastr.warning(`Return qty cannot exceed bill qty (${maxQty}). Adjusted.`, 'Qty Limit');
-                    }
-                    $input.val(maxQty);
-                }
+                validateSrQuantity($input, true);
                 recalculateAll();
                 return;
             }
@@ -782,12 +889,12 @@
                 $.getJSON(SR_SOLD_QTY_URL, { item_id: itemId, customer_id: customerId }, function (res) {
                     if (res && res.available !== null) {
                         let avail = parseFloat(res.available);
-                        // Update max on the input
                         $input.attr('data-max-no-bill', avail);
                         let $maxLabel = $row.find('.sr-max-qty-label');
                         if ($maxLabel.length) {
                             $maxLabel.text('Max: ' + avail.toFixed(3)).show();
                         }
+                        let currentVal = parseFloat($input.val()) || 0;
                         if (currentVal > avail) {
                             if (window.toastr) {
                                 window.toastr.warning(
@@ -878,7 +985,13 @@
                 cachedBillItems.forEach((item, idx) => {
                     let codeStr = item.item_code ? ' [' + item.item_code + ']' : '';
                     let expStr = item.exp_date ? ' (Exp: ' + item.exp_date + ')' : '';
-                    optHtml += `<option value="${idx}">${item.item_name}${codeStr} - Sold: ${item.original_qty} @ ₹${parseFloat(item.sell_price).toFixed(2)}${expStr}</option>`;
+                    let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+                    let origQty = parseFloat(item.original_qty) || 0;
+                    let retQty = parseFloat(item.already_returned_qty) || 0;
+                    let isExhausted = remQty <= 0;
+                    let remStr = isExhausted ? ' [No returnable qty available]' : ` [Remaining: ${remQty}/${origQty}]`;
+                    let disabledAttr = isExhausted ? ' disabled style="color: #999;"' : '';
+                    optHtml += `<option value="${idx}"${disabledAttr}>${item.item_name}${codeStr} - Sold: ${origQty} (Ret: ${retQty}) @ ₹${parseFloat(item.sell_price).toFixed(2)}${expStr}${remStr}</option>`;
                 });
                 $pickerSelect.html(optHtml);
 
@@ -888,20 +1001,37 @@
                         let itemId = $(this).find('.sr-item-select').val();
                         let found = cachedBillItems.find(b => String(b.item_id) === String(itemId));
                         if (found) {
-                            $(this).find('.sr-qty').attr('max', found.original_qty).attr('data-original-qty', found.original_qty);
-                            $(this).find('.sr-max-qty-label').text('Max: ' + found.original_qty).show();
+                            let remQty = typeof found.remaining_qty !== 'undefined' ? parseFloat(found.remaining_qty) : parseFloat(found.original_qty);
+                            let origQty = parseFloat(found.original_qty) || 0;
+                            let retQty = parseFloat(found.already_returned_qty) || 0;
+                            $(this).find('.sr-qty')
+                                .attr('max', remQty)
+                                .attr('data-original-qty', origQty)
+                                .attr('data-returned-qty', retQty)
+                                .attr('data-remaining-qty', remQty);
+                            let maxLabelText = (retQty > 0)
+                                ? `Remaining: ${remQty} (Orig: ${origQty}, Ret: ${retQty})`
+                                : `Max: ${origQty}`;
+                            $(this).find('.sr-max-qty-label').text(maxLabelText).show();
                             $(this).find('.sr-item-code').prop('readonly', true);
                         }
                     });
                     recalculateAll();
                 } else {
-                    // Auto-add all items to the return table (coming from Sales Bill show page)
+                    // Auto-add returnable items to the return table (coming from Sales Bill show page)
                     tbody.innerHTML = '';
+                    let addedCount = 0;
                     cachedBillItems.forEach(item => {
-                        appendBillItemRow(item, item.original_qty);
+                        let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+                        if (remQty > 0) {
+                            appendBillItemRow(item, remQty);
+                            addedCount++;
+                        }
                     });
-                    if (cachedBillItems.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-primary mr-1"></i> Original Sales Bill loaded (${cachedBillItems.length} items). Select the item being returned from the dropdown above, or click <strong>Add All Bill Items</strong>.</td></tr>`;
+                    if (addedCount === 0 && cachedBillItems.length > 0) {
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-warning mr-1"></i> All items in this sales bill have already been fully returned. No returnable quantity available.</td></tr>`;
+                    } else if (cachedBillItems.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-primary mr-1"></i> Original Sales Bill loaded (0 items).</td></tr>`;
                     }
                     recalculateAll();
                 }
@@ -939,16 +1069,25 @@
             const descInput = row.querySelector('.sr-item-desc');
             if (descInput) descInput.value = item.item_name + (item.item_code ? ' [' + item.item_code + ']' : '');
 
+            const remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+            const origQty = typeof item.original_qty !== 'undefined' ? parseFloat(item.original_qty) : remQty;
+            const retQty = typeof item.already_returned_qty !== 'undefined' ? parseFloat(item.already_returned_qty) : 0;
+
             const qtyInput = row.querySelector('.sr-qty');
             if (qtyInput) {
                 qtyInput.value = initialQty;
-                qtyInput.max = item.original_qty;
-                qtyInput.setAttribute('data-original-qty', item.original_qty);
+                qtyInput.max = remQty;
+                qtyInput.setAttribute('data-original-qty', origQty);
+                qtyInput.setAttribute('data-returned-qty', retQty);
+                qtyInput.setAttribute('data-remaining-qty', remQty);
             }
 
             const maxLabel = row.querySelector('.sr-max-qty-label');
             if (maxLabel) {
-                maxLabel.innerText = 'Max: ' + item.original_qty;
+                let maxLabelText = (retQty > 0)
+                    ? `Remaining: ${remQty} (Orig: ${origQty}, Ret: ${retQty})`
+                    : `Max: ${origQty}`;
+                maxLabel.innerText = maxLabelText;
                 maxLabel.style.display = 'block';
             }
 
@@ -990,6 +1129,17 @@
             }
 
             let item = cachedBillItems[idx];
+            let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+            if (remQty <= 0) {
+                let msg = 'No returnable quantity available for this item.';
+                if (window.toastr) {
+                    toastr.error(msg, 'Return Not Allowed');
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
+
             let tbody = document.getElementById('sr-items-body');
 
             // If already in table, focus its qty input
@@ -1005,19 +1155,34 @@
                 tbody.innerHTML = '';
             }
 
-            appendBillItemRow(item, 1 <= item.original_qty ? 1 : item.original_qty);
+            let initQty = (remQty >= 1) ? 1 : remQty;
+            appendBillItemRow(item, initQty);
         });
 
-        // Add all items from bill to return table
+        // Add all returnable items from bill to return table
         $('#btn-add-all-bill-items').on('click', function () {
             if (!cachedBillItems || cachedBillItems.length === 0) {
                 alert('No items found in selected bill.');
                 return;
             }
+            let eligibleItems = cachedBillItems.filter(item => {
+                let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+                return remQty > 0;
+            });
+            if (eligibleItems.length === 0) {
+                let msg = 'No returnable quantity available for any item in this bill.';
+                if (window.toastr) {
+                    toastr.warning(msg, 'Already Returned');
+                } else {
+                    alert(msg);
+                }
+                return;
+            }
             let tbody = document.getElementById('sr-items-body');
             tbody.innerHTML = '';
-            cachedBillItems.forEach(item => {
-                appendBillItemRow(item, item.original_qty);
+            eligibleItems.forEach(item => {
+                let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+                appendBillItemRow(item, remQty);
             });
         });
 
@@ -1032,7 +1197,7 @@
                 $('#sr-bill-summary').addClass('d-none');
                 cachedBillItems = [];
                 $('#sr-items-body .sr-item-row').each(function () {
-                    $(this).find('.sr-qty').removeAttr('max').removeAttr('data-original-qty');
+                    $(this).find('.sr-qty').removeAttr('max').removeAttr('data-original-qty').removeAttr('data-returned-qty').removeAttr('data-remaining-qty');
                     $(this).find('.sr-max-qty-label').hide();
                     $(this).find('.sr-item-code').prop('readonly', false);
                 });
@@ -1167,6 +1332,17 @@
             // Validate all rows that have items or entered input
             let $rows = $('#sr-items-body .sr-item-row');
 
+            // Aggregate item quantities across rows
+            let itemTotals = {};
+            $rows.each(function () {
+                let itemId = $(this).find('.sr-item-select').val();
+                let $qtyInput = $(this).find('.sr-qty');
+                let qty = parseFloat($qtyInput.val()) || 0;
+                if (itemId && qty > 0) {
+                    itemTotals[itemId] = (itemTotals[itemId] || 0) + qty;
+                }
+            });
+
             $rows.each(function () {
                 let $row = $(this);
                 let itemId = $row.find('.sr-item-select').val();
@@ -1176,6 +1352,9 @@
                 let qtyVal = $qtyInput.val();
                 let qty = parseFloat(qtyVal) || 0;
                 let origQty = parseFloat($qtyInput.attr('data-original-qty') || $qtyInput.attr('max')) || 0;
+                let retQty = parseFloat($qtyInput.attr('data-returned-qty')) || 0;
+                let remQtyAttr = $qtyInput.attr('data-remaining-qty');
+                let remQty = (remQtyAttr !== undefined && remQtyAttr !== '') ? parseFloat(remQtyAttr) : (origQty - retQty);
 
                 // Completely blank row (no item, no code) -> skip
                 if (!itemId && !itemCode) {
@@ -1211,17 +1390,35 @@
                     return false;
                 }
 
-                // Check 2: Qty exceeds original sold qty (agar jayda aha jaye)
-                if (hasBill && origQty > 0 && qty > origQty + 0.0001) {
-                    e.preventDefault();
-                    if (window.toastr) {
-                        toastr.error(`Return quantity (${qty}) cannot exceed original bill quantity (${origQty}) for: "${itemName}"`, 'Quantity Exceeded');
-                    } else {
-                        alert(`Return quantity (${qty}) cannot exceed original bill quantity (${origQty}) for: "${itemName}"`);
+                // Check 2: Qty exceeds remaining returnable quantity
+                if (hasBill) {
+                    if (remQty <= 0) {
+                        e.preventDefault();
+                        let msg = "No returnable quantity available for this item.";
+                        if (window.toastr) {
+                            toastr.error(msg, 'Return Not Allowed');
+                        } else {
+                            alert(msg);
+                        }
+                        $qtyInput.focus().select();
+                        hasError = true;
+                        return false;
                     }
-                    $qtyInput.focus().select();
-                    hasError = true;
-                    return false;
+                    let totalRequested = itemTotals[itemId] || qty;
+                    if (totalRequested > remQty + 0.0001) {
+                        e.preventDefault();
+                        let msg = (retQty > 0)
+                            ? `Return quantity cannot exceed the remaining returnable quantity of ${remQty}.`
+                            : `Return quantity cannot exceed original bill quantity (${origQty}) for: "${itemName}"`;
+                        if (window.toastr) {
+                            toastr.error(msg, 'Quantity Exceeded');
+                        } else {
+                            alert(msg);
+                        }
+                        $qtyInput.focus().select();
+                        hasError = true;
+                        return false;
+                    }
                 }
             });
 

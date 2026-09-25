@@ -167,15 +167,34 @@ class PurchaseReturnController extends Controller
     /**
      * AJAX endpoint: return items from a purchase invoice for quick population.
      */
-    public function invoiceItems(PurchaseInvoice $purchaseInvoice)
+    public function invoiceItems(PurchaseInvoice $purchaseInvoice, Request $request)
     {
-        $items = $purchaseInvoice->items()->with('item')->get()->map(function ($line) {
+        $ignoreReturnId = $request->integer('ignore_return_id');
+
+        // Sum prior returns for this purchase invoice per item
+        $alreadyReturnedByItem = DB::table('purchase_return_items as pri')
+            ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
+            ->where('pr.purchase_invoice_id', $purchaseInvoice->id)
+            ->when($ignoreReturnId, fn ($q) => $q->where('pr.id', '!=', $ignoreReturnId))
+            ->groupBy('pri.item_id')
+            ->select('pri.item_id', DB::raw('SUM(pri.qty) as returned_qty'))
+            ->pluck('returned_qty', 'item_id')
+            ->all();
+
+        $items = $purchaseInvoice->items()->with('item')->get()->map(function ($line) use ($alreadyReturnedByItem) {
+            $originalQty = (float) $line->qty;
+            $alreadyReturned = (float) ($alreadyReturnedByItem[$line->item_id] ?? 0);
+            $remainingQty = max(0, round($originalQty - $alreadyReturned, 4));
+
             return [
                 'item_id' => $line->item_id,
                 'item_name' => $line->item?->name ?? 'Unknown',
                 'item_code' => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
                 'exp_date' => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
-                'qty' => (float) $line->qty,
+                'original_qty' => $originalQty,
+                'already_returned' => $alreadyReturned,
+                'remaining_qty' => $remainingQty,
+                'qty' => $remainingQty,
                 'cost_price' => (float) $line->cost_price,
                 'disc_percent' => (float) $line->disc_percent,
                 'disc_amount' => (float) $line->disc_amount,
@@ -290,6 +309,20 @@ class PurchaseReturnController extends Controller
             });
         }
 
+        $ignoreReturnId = $request->integer('ignore_return_id');
+
+        $alreadyReturnedByItem = [];
+        if (! empty($invoiceId)) {
+            $alreadyReturnedByItem = DB::table('purchase_return_items as pri')
+                ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
+                ->where('pr.purchase_invoice_id', $invoiceId)
+                ->when($ignoreReturnId, fn ($q) => $q->where('pr.id', '!=', $ignoreReturnId))
+                ->groupBy('pri.item_id')
+                ->select('pri.item_id', DB::raw('SUM(pri.qty) as returned_qty'))
+                ->pluck('returned_qty', 'item_id')
+                ->all();
+        }
+
         $rows = $query->limit(100)->get();
 
         $itemIds = $rows->pluck('id')->all();
@@ -301,19 +334,26 @@ class PurchaseReturnController extends Controller
         $result = [];
         foreach ($rows as $row) {
             $stock = (float) ($stocks[$row->id] ?? 0);
+            $invoicedQty = $row->invoiced_qty !== null ? (float) $row->invoiced_qty : null;
+            $alreadyReturned = !empty($invoiceId) ? (float) ($alreadyReturnedByItem[$row->id] ?? 0) : 0;
+            $remainingQty = $invoicedQty !== null ? max(0, round($invoicedQty - $alreadyReturned, 4)) : null;
+
             $result[] = [
-                'id'           => (int) $row->id,
-                'name'         => $row->name,
-                'code'         => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
-                'qty'          => $stock,
-                'invoiced_qty' => $row->invoiced_qty !== null ? (float) $row->invoiced_qty : null,
-                'cost_price'   => (float) $row->cost_price,
-                'sell_price'   => (float) $row->sell_price,
-                'mrp'          => (float) $row->mrp,
-                'disc_percent' => (float) $row->disc_percent,
-                'disc_amount'  => (float) $row->disc_amount,
-                'gst_percent'  => (float) $row->gst_percent,
-                'exp_date'     => $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null,
+                'id'               => (int) $row->id,
+                'name'             => $row->name,
+                'code'             => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
+                'qty'              => $stock,
+                'invoiced_qty'     => $invoicedQty,
+                'original_qty'     => $invoicedQty,
+                'already_returned' => $alreadyReturned,
+                'remaining_qty'    => $remainingQty,
+                'cost_price'       => (float) $row->cost_price,
+                'sell_price'       => (float) $row->sell_price,
+                'mrp'              => (float) $row->mrp,
+                'disc_percent'     => (float) $row->disc_percent,
+                'disc_amount'      => (float) $row->disc_amount,
+                'gst_percent'      => (float) $row->gst_percent,
+                'exp_date'         => $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null,
             ];
         }
 
@@ -518,18 +558,61 @@ class PurchaseReturnController extends Controller
 
         // Server-side strict boundary checks
         if (!empty($header['purchase_invoice_id'])) {
-            $validItemIds = DB::table('purchase_invoice_items')
-                ->where('purchase_invoice_id', $header['purchase_invoice_id'])
-                ->pluck('item_id')
-                ->toArray();
+            $invoiceId = (int) $header['purchase_invoice_id'];
+            $invoiceItems = DB::table('purchase_invoice_items')
+                ->where('purchase_invoice_id', $invoiceId)
+                ->groupBy('item_id')
+                ->select('item_id', DB::raw('SUM(qty) as original_qty'))
+                ->pluck('original_qty', 'item_id')
+                ->all();
 
+            $validItemIds = array_keys($invoiceItems);
+
+            // Group requested return quantities by item_id
+            $totalQtyByItem = [];
             foreach ($validated['items'] as $line) {
-                if (!in_array($line['item_id'], $validItemIds)) {
-                    $itemModel = Item::find($line['item_id']);
-                    $name = $itemModel?->name ?? "Item #{$line['item_id']}";
+                $itemId = (int) $line['item_id'];
+                if (!in_array($itemId, $validItemIds)) {
+                    $itemModel = Item::find($itemId);
+                    $name = $itemModel?->name ?? "Item #{$itemId}";
                     throw ValidationException::withMessages([
                         'items' => "The item '{$name}' does not belong to the selected Purchase Invoice.",
                     ]);
+                }
+                $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
+            }
+
+            // Calculate already returned quantities (excluding current return if editing)
+            $currentReturnId = $request->route('purchase_return') 
+                ? (is_object($request->route('purchase_return')) ? $request->route('purchase_return')->id : (int)$request->route('purchase_return')) 
+                : null;
+
+            $alreadyReturnedByItem = DB::table('purchase_return_items as pri')
+                ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
+                ->where('pr.purchase_invoice_id', $invoiceId)
+                ->when($currentReturnId, fn ($q) => $q->where('pr.id', '!=', $currentReturnId))
+                ->whereIn('pri.item_id', array_keys($totalQtyByItem))
+                ->groupBy('pri.item_id')
+                ->select('pri.item_id', DB::raw('SUM(pri.qty) as returned_qty'))
+                ->pluck('returned_qty', 'item_id')
+                ->all();
+
+            foreach ($totalQtyByItem as $itemId => $requestedQty) {
+                $originalQty = (float) ($invoiceItems[$itemId] ?? 0);
+                $alreadyReturned = (float) ($alreadyReturnedByItem[$itemId] ?? 0);
+                $remaining = max(0, round($originalQty - $alreadyReturned, 4));
+
+                if (round($requestedQty, 4) > round($remaining, 4)) {
+                    $remainingDisplay = ($remaining == (int)$remaining) ? (int)$remaining : $remaining;
+                    if ($alreadyReturned > 0) {
+                        throw ValidationException::withMessages([
+                            'items' => "Return quantity cannot exceed the remaining returnable quantity of {$remainingDisplay}.",
+                        ]);
+                    } else {
+                        throw ValidationException::withMessages([
+                            'items' => "Return quantity cannot be greater than the available purchase quantity.",
+                        ]);
+                    }
                 }
             }
         } elseif (!empty($header['supplier_id'])) {
