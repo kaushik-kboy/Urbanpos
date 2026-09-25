@@ -4,7 +4,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:frontend": "vitest run --pool=forks"
+        "test:frontend": "vitest run --pool=forks",
+        "test:blade-js": "node scripts/check-blade-js-syntax.cjs"
     },
     "devDependencies": {
         "@popperjs/core": "^2.11.6",

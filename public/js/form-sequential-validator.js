@@ -643,6 +643,52 @@
                 return false;
             }
         });
+
+        // 7. UNIVERSAL FIRST-FIELD AUTOFOCUS & TAB NAVIGATION ENTRY GUARD
+        function autofocusFirstField() {
+            const active = document.activeElement;
+            if (active && active !== document.body && active !== document.documentElement && !$(active).is('button, a, body')) {
+                return; // Already focused on an actionable input
+            }
+            const $form = $('form#sales-bill-form, form#sr-form, form#pinv-form, form#indent-form, form#sdn-form, .card-body form, .content-wrapper form, form')
+                .filter(function () { return isManagedForm($(this)); })
+                .first();
+
+            if ($form.length) {
+                const $first = getFormFields($form).first();
+                if ($first.length) {
+                    focusField($first);
+                }
+            }
+        }
+
+        // Run multi-phase autofocus on page initialization
+        setTimeout(autofocusFirstField, 80);
+        setTimeout(autofocusFirstField, 250);
+        setTimeout(autofocusFirstField, 500);
+        $(window).on('load', function () {
+            setTimeout(autofocusFirstField, 50);
+        });
+
+        // Intercept Tab key when focus is outside the form or on page body
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Tab' && !e.shiftKey) {
+                const active = document.activeElement;
+                if (!active || active === document.body || active === document.documentElement || $(active).closest('.main-header, .main-sidebar, .card-header').length) {
+                    const $form = $('form#sales-bill-form, form#sr-form, form#pinv-form, form#indent-form, form#sdn-form, .card-body form, .content-wrapper form, form')
+                        .filter(function () { return isManagedForm($(this)); })
+                        .first();
+
+                    if ($form.length) {
+                        const $first = getFormFields($form).first();
+                        if ($first.length) {
+                            e.preventDefault();
+                            focusField($first);
+                        }
+                    }
+                }
+            }
+        });
     });
 
 })(jQuery);

@@ -458,6 +458,8 @@ $(document).ready(function () {
                 btn.prop('disabled', false).html('<i class="fas fa-trash-alt"></i>');
             }
         });
+    });
+
     // 4. One-Click Clear laravel.log (Truncate to 0 MB safely)
     $(document).on('click', '#btn-clear-laravel-log, .btn-trigger-clear-log', function () {
         if (!confirm('Clear laravel.log file?\n\nThis will truncate the log to 0.00 MB instantly without opening SSH. File permissions and ownership will remain 100% intact.')) {

@@ -60,6 +60,21 @@ if [ -f "./node_modules/.bin/vitest" ] || [ -d "./node_modules/vitest" ]; then
     fi
 fi
 
+# 4. Check Inline Blade JavaScript Syntax (Zero-Tolerance Guard)
+echo ">> Checking inline Blade JavaScript syntax..."
+node scripts/check-blade-js-syntax.cjs
+BLADE_JS_EXIT_CODE=$?
+if [ $BLADE_JS_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "=========================================================="
+    echo "❌ PUSH BLOCKED: Inline JavaScript Syntax Error in Blade Template!"
+    echo "Run 'node scripts/check-blade-js-syntax.cjs' to see the exact error."
+    echo "=========================================================="
+    echo ""
+    exit 1
+fi
+echo "   ✓ Inline Blade JavaScript syntax verified successfully."
+
 echo ""
 echo "=========================================================="
 echo " ✅ All Pre-Push Checks Passed (100% Green). Proceeding with push."
