@@ -1063,8 +1063,7 @@ class SalesBillController extends Controller
             $stock += $alreadyInBill;
         }
 
-        // Fetch purchase batches directly from PurchaseInvoiceItem (purchase se)
-        // Check for selected branch first
+        // 1. Fetch batch records from Purchase Invoices in this branch (and Opening Stock)
         $piItems = \App\Models\PurchaseInvoiceItem::with('purchaseInvoice')
             ->where('item_id', $item->id)
             ->whereNotNull('exp_date')
@@ -1074,7 +1073,7 @@ class SalesBillController extends Controller
             ->orderBy('exp_date', 'asc')
             ->get();
 
-        // If no purchase records for this specific branch, check across all branches
+        // If no purchase records for this specific branch, check across all branches as metadata fallback
         if ($piItems->isEmpty()) {
             $piItems = \App\Models\PurchaseInvoiceItem::with('purchaseInvoice')
                 ->where('item_id', $item->id)
@@ -1085,9 +1084,17 @@ class SalesBillController extends Controller
                 ->get();
         }
 
-        // Also check OpeningStockItem if still empty
-        if ($piItems->isEmpty()) {
-            $piItems = \App\Models\OpeningStockItem::with('openingStock')
+        $osItems = \App\Models\OpeningStockItem::with('openingStock')
+            ->where('item_id', $item->id)
+            ->whereNotNull('exp_date')
+            ->where('exp_date', '!=', '')
+            ->where('exp_date', '!=', '0000-00-00')
+            ->whereHas('openingStock', fn ($q) => $q->where('branch_id', $branchId))
+            ->orderBy('exp_date', 'asc')
+            ->get();
+
+        if ($osItems->isEmpty()) {
+            $osItems = \App\Models\OpeningStockItem::with('openingStock')
                 ->where('item_id', $item->id)
                 ->whereNotNull('exp_date')
                 ->where('exp_date', '!=', '')
@@ -1096,18 +1103,22 @@ class SalesBillController extends Controller
                 ->get();
         }
 
-        // Also check StockLedger if still empty
-        if ($piItems->isEmpty()) {
-            $piItems = \App\Models\StockLedger::where('item_id', $item->id)
-                ->whereNotNull('exp_date')
-                ->where('exp_date', '!=', '')
-                ->where('exp_date', '!=', '0000-00-00')
-                ->orderBy('exp_date', 'asc')
-                ->get();
-        }
+        // 2. Query tracked batch stock from StockLedger for this branch & item
+        $ledgerBatchMap = \App\Models\StockLedger::where('item_id', $item->id)
+            ->where('branch_id', $branchId)
+            ->whereNotNull('exp_date')
+            ->where('exp_date', '!=', '')
+            ->where('exp_date', '!=', '0000-00-00')
+            ->selectRaw('DATE(exp_date) as exp_date, SUM(qty_in) - SUM(qty_out) as batch_qty')
+            ->groupBy(\Illuminate\Support\Facades\DB::raw('DATE(exp_date)'))
+            ->pluck('batch_qty', 'exp_date')
+            ->all();
 
+        $hasTrackedLedgerBatches = !empty($ledgerBatchMap);
+
+        // 3. Aggregate batches with pricing & purchase quantities
         $grouped = [];
-        foreach ($piItems as $row) {
+        foreach ($piItems->concat($osItems) as $row) {
             $exp = null;
             try {
                 $exp = $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null;
@@ -1118,25 +1129,85 @@ class SalesBillController extends Controller
 
             $sell = (float) (($row->sell_price ?? 0) > 0 ? $row->sell_price : ($item->sell_price ?? 0));
             $mrp = (float) (($row->mrp ?? 0) > 0 ? $row->mrp : ($item->mrp ?? 0));
-            $qty = (float) ($row->qty ?? $row->qty_in ?? 0);
+            $inQty = (float) ($row->qty ?? $row->qty_in ?? 0);
 
             if (! isset($grouped[$exp])) {
                 $grouped[$exp] = [
                     'productname' => $item->name,
                     'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
                     'exp_date' => $exp,
-                    'qty' => $qty,
+                    'in_qty' => $inQty,
+                    'qty' => 0.0,
                     'sell_price' => $sell,
                     'mrp' => $mrp,
                     'source' => 'purchase',
                 ];
             } else {
-                $grouped[$exp]['qty'] += $qty;
+                $grouped[$exp]['in_qty'] += $inQty;
                 if ($sell > 0) $grouped[$exp]['sell_price'] = $sell;
                 if ($mrp > 0) $grouped[$exp]['mrp'] = $mrp;
             }
         }
 
+        // Also add any batches present in StockLedger not in PI/OS
+        foreach ($ledgerBatchMap as $lExp => $lQty) {
+            $expStr = is_string($lExp) ? substr($lExp, 0, 10) : (string) $lExp;
+            if (! isset($grouped[$expStr])) {
+                $grouped[$expStr] = [
+                    'productname' => $item->name,
+                    'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'exp_date' => $expStr,
+                    'in_qty' => max(0.0, (float) $lQty),
+                    'qty' => max(0.0, (float) $lQty),
+                    'sell_price' => (float) ($item->sell_price ?? 0),
+                    'mrp' => (float) ($item->mrp ?? 0),
+                    'source' => 'ledger',
+                ];
+            }
+        }
+
+        // 4. Calculate actual remaining available quantity for each batch in this branch
+        if ($hasTrackedLedgerBatches) {
+            foreach ($grouped as $expKey => &$bData) {
+                if (isset($ledgerBatchMap[$expKey])) {
+                    $bData['qty'] = max(0.0, round((float) $ledgerBatchMap[$expKey], 3));
+                } else {
+                    $bData['qty'] = 0.0;
+                }
+            }
+            unset($bData);
+        } else {
+            // FIFO allocation of available physical branch stock ($stock) across batches by expiry date
+            ksort($grouped); // chronological order by exp_date
+            $totalIn = array_sum(array_column($grouped, 'in_qty'));
+            $effectiveStock = max(0.0, (float) $stock);
+            $consumedQty = max(0.0, $totalIn - $effectiveStock);
+
+            $toDeduct = $consumedQty;
+            foreach ($grouped as $expKey => &$bData) {
+                $batchOrig = (float) $bData['in_qty'];
+                if ($toDeduct >= $batchOrig) {
+                    $bData['qty'] = 0.0;
+                    $toDeduct -= $batchOrig;
+                } else {
+                    $bData['qty'] = max(0.0, round($batchOrig - $toDeduct, 3));
+                    $toDeduct = 0.0;
+                }
+            }
+            unset($bData);
+        }
+
+        // Ensure batches never report stock if total branch stock is 0 (and negative stock not allowed)
+        $allowNeg = (bool) ($item->allow_negative_stock ?? false);
+        if (! $allowNeg && $stock <= 0) {
+            foreach ($grouped as &$bData) {
+                $bData['qty'] = 0.0;
+            }
+            unset($bData);
+        }
+
+        // Sort: available batches first (FIFO), then out-of-stock batches
+        uksort($grouped, 'strcmp');
         $batches = array_values($grouped);
 
         $defaultExp = null;
