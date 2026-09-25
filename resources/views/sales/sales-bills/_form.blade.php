@@ -2829,14 +2829,39 @@
             saveBillDraft();
         });
 
-        // Clear draft upon successful submit or manual reset
-        $(document).on('submit', '#sales-bill-form, form[action*="sales-bills"]', function () {
+        // Clear draft upon successful submit or manual reset, and prevent direct empty submits
+        $(document).on('submit', '#sales-bill-form, form[action*="sales-bills"]', function (e) {
+            let $btn = $('button[type="submit"]');
+            if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
+            }
+            if (!validateSbHeader(true, true)) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                updateSaveButtonState();
+                return false;
+            }
+            let valResult = validateStockErrors();
+            if (valResult.hasError || valResult.validItemCount === 0) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                let msg = valResult.validItemCount === 0 
+                    ? 'Please add at least one item before saving.' 
+                    : valResult.errorMsg;
+                if (window.toastr) toastr.warning(msg, 'Cannot Save');
+                else alert(msg);
+                updateSaveButtonState();
+                return false;
+            }
             localStorage.removeItem(DRAFT_KEY);
         });
         $(document).on('click', '.btn-reset-form', function () {
             localStorage.removeItem(DRAFT_KEY);
         });
         // Initial check for save button status
+        updateSaveButtonState();
         setTimeout(function () {
             updateSaveButtonState();
         }, 300);

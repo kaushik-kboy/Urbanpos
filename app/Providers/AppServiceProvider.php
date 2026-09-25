@@ -27,9 +27,16 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFour();
 
-        // Super-admin full access: Owner role or admin@urbanpos.com bypasses all permission and gate checks
+        // Super-admin full access: Owner/Admin role, User ID 1, or any admin/owner email/name bypasses all permission and gate checks
         Gate::before(function ($user, string $ability) {
-            return ($user->hasRole('Owner') || $user->email === 'admin@urbanpos.com') ? true : null;
+            if ($user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])
+                || (int)$user->id === 1
+                || str_contains(strtolower($user->email ?? ''), 'admin')
+                || str_contains(strtolower($user->name ?? ''), 'admin')
+                || str_contains(strtolower($user->email ?? ''), 'owner')) {
+                return true;
+            }
+            return null;
         });
 
         // Ensure URLs, assets and routes use HTTPS when served over HTTPS or behind an SSL reverse proxy
