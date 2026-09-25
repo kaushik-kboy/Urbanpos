@@ -639,14 +639,48 @@
             activeTargetRow = null;
         });
 
-        // Trigger item search modal on keydown (Enter / F2 ONLY) — Mouse click & Focus disabled
-        $(document).off('click focus keydown', '.item-code-input').on('keydown', '.item-code-input', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
-            if (stModalOpen || stModalClosing) return;
-            let $row = $(this).closest('tr');
-            openItemModal($row, $(this).val());
+        let stMouseDown = false;
+        $(document).on('mousedown', '.item-code-input', function () {
+            stMouseDown = true;
         });
+
+        function checkAndOpenStModal($input) {
+            if (stModalOpen || stModalClosing) return false;
+            let $row = $input.closest('tr');
+            if ($row.find('.item-select').val()) return false;
+            openItemModal($row, $input.val());
+            return true;
+        }
+
+        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+        $(document).off('click focus keydown', '.item-code-input')
+            .on('focus', '.item-code-input', function () {
+                if (stMouseDown) {
+                    stMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / Keyboard navigation!
+                checkAndOpenStModal($(this));
+            })
+            .on('keydown', '.item-code-input', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkAndOpenStModal($(this));
+                }
+            })
+            .on('click', '.item-code-input', function () {
+                stMouseDown = false;
+            });
+
+        // Tab starts from first field (to_branch_id) on page load
+        setTimeout(function () {
+            let $first = $('#to_branch_id');
+            if ($first.length && $first.data('select2')) {
+                $first.data('select2').$container.find('.select2-selection').focus();
+            } else if ($first.length) {
+                $first.focus();
+            }
+        }, 150);
 
         function initRowSelect2($row) {
             const $select = $row.find('.item-select');

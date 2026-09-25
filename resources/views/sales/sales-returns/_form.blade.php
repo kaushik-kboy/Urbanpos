@@ -318,9 +318,12 @@
            ---------------------------------------------------------------- */
         let srCancellingRow = null;
 
-        $(document).off('click focus keydown', '.sr-item-code').on('keydown', '.sr-item-code', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
+        let srMouseDown = false;
+        $(document).on('mousedown', '.sr-item-code', function () {
+            srMouseDown = true;
+        });
+
+        function checkCustomerAndOpenSrModal($input) {
             let custId = $('#customer_id').val();
             if (!custId) {
                 if (typeof toastr !== 'undefined') {
@@ -329,7 +332,7 @@
                     alert('Please select a Customer first. Items are restricted to products purchased by that customer.');
                 }
                 $('#customer_id').select2('open');
-                return;
+                return false;
             }
             if ($('#sales_bill_id').val()) {
                 if (typeof toastr !== 'undefined') {
@@ -337,12 +340,12 @@
                 } else {
                     alert('Items are restricted to the selected Sales Bill. Please select items from the "Select Item from Sales Bill" dropdown above.');
                 }
-                return;
+                return false;
             }
-            let $row = $(this).closest('tr');
-            if (e.type === 'focus' && $row.find('.sr-item-select').val()) return;
+            let $row = $input.closest('tr');
+            if ($row.find('.sr-item-select').val()) return false;
             srActiveSearchRow = $row;
-            let prefill = $.trim($(this).val());
+            let prefill = $.trim($input.val());
             $('#sr-isl-filter-name').val(prefill);
             $('#sr-isl-filter-code').val('');
             srFetchItemList();
@@ -350,7 +353,38 @@
             $('#sr-item-search-modal').one('shown.bs.modal', function () {
                 $('#sr-isl-filter-name').focus().select();
             });
-        });
+            return true;
+        }
+
+        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+        $(document).off('click focus keydown', '.sr-item-code')
+            .on('focus', '.sr-item-code', function () {
+                if (srMouseDown) {
+                    srMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / Keyboard navigation!
+                checkCustomerAndOpenSrModal($(this));
+            })
+            .on('keydown', '.sr-item-code', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkCustomerAndOpenSrModal($(this));
+                }
+            })
+            .on('click', '.sr-item-code', function () {
+                srMouseDown = false;
+            });
+
+        // Tab starts from first field (customer_id) on page load
+        setTimeout(function () {
+            let $cust = $('#customer_id');
+            if ($cust.length && $cust.data('select2')) {
+                $cust.data('select2').$container.find('.select2-selection').focus();
+            } else if ($cust.length) {
+                $cust.focus();
+            }
+        }, 150);
 
         // Filter inputs — debounced
         $('#sr-isl-filter-name, #sr-isl-filter-code').on('input', function () {

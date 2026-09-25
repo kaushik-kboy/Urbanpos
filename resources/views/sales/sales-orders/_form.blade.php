@@ -313,14 +313,28 @@ $(function() {
        ITEM SEARCH MODAL — open on click of Code/Barcode or F2
        ---------------------------------------------------------------- */
     let soCancellingRow = null;
+    let soMouseDown = false;
+    $(document).on('mousedown', '.so-item-code', function () {
+        soMouseDown = true;
+    });
 
-    $(document).off('click focus keydown', '.so-item-code').on('keydown', '.so-item-code', function (e) {
-        if (e.key !== 'Enter' && e.key !== 'F2') return;
-        e.preventDefault();
-        if (soModalOpen || soModalClosing) return;
-        let $row = $(this).closest('tr');
+    function checkCustomerAndOpenSoModal($input) {
+        let custId = $('#customer_id').val() || $('select[name="customer_id"]').val();
+        if (!custId) {
+            if (typeof toastr !== 'undefined') {
+                toastr.warning('Please select a Customer first.');
+            } else {
+                alert('Please select a Customer first.');
+            }
+            let $c = $('#customer_id, select[name="customer_id"]');
+            if ($c.data('select2')) $c.select2('open'); else $c.focus();
+            return false;
+        }
+        if (soModalOpen || soModalClosing) return false;
+        let $row = $input.closest('tr');
+        if ($row.find('.so-item-select').val()) return false;
         soActiveSearchRow = $row;
-        let prefill = $.trim($(this).val());
+        let prefill = $.trim($input.val());
         $('#so-isl-filter-name').val(prefill);
         $('#so-isl-filter-code').val('');
         fetchSoItemList();
@@ -329,7 +343,38 @@ $(function() {
         $('#so-item-search-modal').one('shown.bs.modal', function () {
             $('#so-isl-filter-name').focus().select();
         });
-    });
+        return true;
+    }
+
+    // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+    $(document).off('click focus keydown', '.so-item-code')
+        .on('focus', '.so-item-code', function () {
+            if (soMouseDown) {
+                soMouseDown = false;
+                return; // Focused by mouse click - do not open modal!
+            }
+            // Focused by Tab / Keyboard navigation!
+            checkCustomerAndOpenSoModal($(this));
+        })
+        .on('keydown', '.so-item-code', function (e) {
+            if (e.key === 'Enter' || e.key === 'F2') {
+                e.preventDefault();
+                checkCustomerAndOpenSoModal($(this));
+            }
+        })
+        .on('click', '.so-item-code', function () {
+            soMouseDown = false;
+        });
+
+    // Tab starts from first field (customer_id) on page load
+    setTimeout(function () {
+        let $cust = $('#customer_id, select[name="customer_id"]');
+        if ($cust.length && $cust.data('select2')) {
+            $cust.data('select2').$container.find('.select2-selection').focus();
+        } else if ($cust.length) {
+            $cust.focus();
+        }
+    }, 150);
 
     let soItemSelectedInModal = false;
 

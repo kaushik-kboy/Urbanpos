@@ -536,14 +536,27 @@
             $('#po-item-search-modal').modal('hide');
         });
 
-        // Open modal on Code/Barcode field: Keydown Enter/F2 ONLY — Mouse Click & Focus disabled
-        $(document).off('click focus keydown', '.po-item-code').on('keydown', '.po-item-code', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
-            if (islModalOpen || islModalClosing) return;
-            let $row = $(this).closest('tr');
+        let poMouseDown = false;
+        $(document).on('mousedown', '.po-item-code', function () {
+            poMouseDown = true;
+        });
+
+        function checkSupplierAndOpenPoModal($input) {
+            let supplierId = $('#supplier_id').val();
+            if (!supplierId) {
+                if (window.toastr) {
+                    toastr.warning('Please select a Supplier first.', 'Supplier Required');
+                } else {
+                    alert('Please select a Supplier first.');
+                }
+                $('#supplier_id').select2('open');
+                return false;
+            }
+            if (islModalOpen || islModalClosing) return false;
+            let $row = $input.closest('tr');
+            if ($row.find('.po-item-select').val()) return false;
             activeSearchRow = $row;
-            let prefill = $.trim($(this).val());
+            let prefill = $.trim($input.val());
             $('#po-isl-filter-name').val(prefill);
             $('#po-isl-filter-code').val('');
             $('#po-isl-filter-expiry').val('');
@@ -554,7 +567,38 @@
                 $('#po-isl-filter-name').focus().select();
                 if (prefill) fetchItemList();
             });
-        });
+            return true;
+        }
+
+        // Open modal on Code/Barcode field: Tab or Enter/F2 — Mouse Click disabled
+        $(document).off('click focus keydown', '.po-item-code')
+            .on('focus', '.po-item-code', function () {
+                if (poMouseDown) {
+                    poMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / keyboard navigation!
+                checkSupplierAndOpenPoModal($(this));
+            })
+            .on('keydown', '.po-item-code', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkSupplierAndOpenPoModal($(this));
+                }
+            })
+            .on('click', '.po-item-code', function () {
+                poMouseDown = false;
+            });
+
+        // Tab starts from supplier on page load
+        setTimeout(function () {
+            let $supplier = $('#supplier_id');
+            if ($supplier.length && $supplier.data('select2')) {
+                $supplier.data('select2').$container.find('.select2-selection').focus();
+            } else if ($supplier.length) {
+                $supplier.focus();
+            }
+        }, 150);
 
         $('#po-item-search-modal').on('show.bs.modal', function () {
             islModalOpen = true;

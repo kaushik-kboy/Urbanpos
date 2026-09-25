@@ -24,14 +24,7 @@
 <tr class="pr-item-row" data-row-index="{{ $rowId }}">
     <td style="min-width: 140px;" data-col-key="code">
         <input type="hidden" name="items[{{ $rowId }}][item_id]" class="pr-item-id" value="{{ $itemId }}">
-        <div class="input-group input-group-sm">
-            <input type="text" class="form-control form-control-sm pr-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Enter code or click/tab to search">
-            <div class="input-group-append">
-                <button type="button" class="btn btn-outline-secondary pr-search-btn" title="Search Item (Popup)" tabindex="-1">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
-        </div>
+        <input type="text" class="form-control form-control-sm pr-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Press Tab or Enter to search item">
     </td>
     <td style="min-width: 220px;" data-col-key="item">
         <input type="text" class="form-control form-control-sm pr-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">

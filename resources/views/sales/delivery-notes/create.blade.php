@@ -455,28 +455,73 @@ $(function () {
         });
     }
 
-    // Trigger modal on keydown (Enter / F2 ONLY) — Mouse click & Focus disabled
-    $(document).off('click focus keydown', '.sdn-item-code').on('keydown', '.sdn-item-code', function (e) {
-        if (e.key !== 'Enter' && e.key !== 'F2') return;
-        e.preventDefault();
-        if (sdnModalOpen || sdnModalClosing) return;
-        let query = $.trim($(this).val());
-        let $row = $(this).closest('tr');
-        if (e.key === 'F2' || !query) {
-            openSdnItemModal($row, query);
-            return;
-        }
-        let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-        $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
-            if (item && item.id) {
-                applyItemToSdnRow($row, item);
-            } else {
-                openSdnItemModal($row, query);
-            }
-        }).fail(function () {
-            openSdnItemModal($row, query);
-        });
+    let sdnMouseDown = false;
+    $(document).on('mousedown', '.sdn-item-code', function () {
+        sdnMouseDown = true;
     });
+
+    function checkCustomerAndOpenSdnModal($input) {
+        let custId = $('select[name="customer_id"]').val();
+        if (!custId) {
+            if (typeof toastr !== 'undefined') {
+                toastr.warning('Please select a Customer first.');
+            } else {
+                alert('Please select a Customer first.');
+            }
+            $('select[name="customer_id"]').select2('open');
+            return false;
+        }
+        if (sdnModalOpen || sdnModalClosing) return false;
+        let $row = $input.closest('tr');
+        if ($row.find('.sdn-item-id').val()) return false;
+        openSdnItemModal($row, $input.val());
+        return true;
+    }
+
+    // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+    $(document).off('click focus keydown', '.sdn-item-code')
+        .on('focus', '.sdn-item-code', function () {
+            if (sdnMouseDown) {
+                sdnMouseDown = false;
+                return; // Focused by mouse click - do not open modal!
+            }
+            // Focused by Tab / Keyboard navigation!
+            checkCustomerAndOpenSdnModal($(this));
+        })
+        .on('keydown', '.sdn-item-code', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
+            if (sdnModalOpen || sdnModalClosing) return;
+            let query = $.trim($(this).val());
+            let $row = $(this).closest('tr');
+            if (e.key === 'F2' || !query) {
+                checkCustomerAndOpenSdnModal($(this));
+                return;
+            }
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
+                if (item && item.id) {
+                    applyItemToSdnRow($row, item);
+                } else {
+                    openSdnItemModal($row, query);
+                }
+            }).fail(function () {
+                openSdnItemModal($row, query);
+            });
+        })
+        .on('click', '.sdn-item-code', function () {
+            sdnMouseDown = false;
+        });
+
+    // Tab starts from first field (customer_id) on page load
+    setTimeout(function () {
+        let $cust = $('select[name="customer_id"]');
+        if ($cust.length && $cust.data('select2')) {
+            $cust.data('select2').$container.find('.select2-selection').focus();
+        } else if ($cust.length) {
+            $cust.focus();
+        }
+    }, 150);
 
     // Handle modal hide / cancel empty rows gracefully
     $('#sdn-item-search-modal').on('hide.bs.modal', function () {

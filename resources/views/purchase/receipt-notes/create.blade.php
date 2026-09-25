@@ -186,14 +186,7 @@
                             <tr class="grn-item-row" data-index="{{ $idx }}">
                                 <td class="text-center align-middle row-number" data-col-key="seq">{{ $idx + 1 }}</td>
                                 <td data-col-key="code" style="min-width: 130px;">
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" value="{{ $codeVal }}" placeholder="Scan/Code" autocomplete="off" title="Enter or F2 to search item">
-                                        <div class="input-group-append">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm prn-btn-search" title="Search Items Popup (F2)" tabindex="-1">
-                                                <i class="fas fa-search"></i>
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" value="{{ $codeVal }}" placeholder="Code / Barcode" autocomplete="off" title="Press Tab or Enter to search item">
                                 </td>
                                 <td data-col-key="item">
                                     <input type="hidden" name="items[{{ $idx }}][purchase_order_item_id]" value="{{ $poItemId }}">
@@ -273,14 +266,7 @@
         <tr class="grn-item-row" data-index="__INDEX__">
             <td class="text-center align-middle row-number" data-col-key="seq">__NUMBER__</td>
             <td data-col-key="code" style="min-width: 130px;">
-                <div class="input-group input-group-sm">
-                    <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" placeholder="Scan/Code" autocomplete="off" title="Enter or F2 to search item">
-                    <div class="input-group-append">
-                        <button type="button" class="btn btn-outline-secondary btn-sm prn-btn-search" title="Search Items Popup (F2)" tabindex="-1">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                </div>
+                <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" placeholder="Code / Barcode" autocomplete="off" title="Press Tab or Enter to search item">
             </td>
             <td data-col-key="item">
                 <input type="hidden" name="items[__INDEX__][purchase_order_item_id]" value="">
@@ -492,19 +478,56 @@
             });
         }
 
-        // Open modal on Code/Barcode field: Keydown Enter/F2 ONLY — Mouse Click & Focus disabled
-        $(document).off('click focus keydown', '.prn-item-code').on('keydown', '.prn-item-code', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
-            if (prnModalOpen || prnModalClosing) return;
-            openPrnModal($(this).closest('tr'), $(this).val());
+        let prnMouseDown = false;
+        $(document).on('mousedown', '.prn-item-code', function () {
+            prnMouseDown = true;
         });
 
-        $(document).on('click', '.prn-btn-search', function (e) {
-            e.preventDefault();
-            if (prnModalOpen || prnModalClosing) return;
-            openPrnModal($(this).closest('tr'), $(this).closest('tr').find('.prn-item-code').val());
-        });
+        function checkSupplierAndOpenPrnModal($input) {
+            let supplierId = $('select[name="supplier_id"]').val();
+            if (!supplierId) {
+                if (window.toastr) {
+                    toastr.warning('Please select a Supplier first.', 'Supplier Required');
+                } else {
+                    alert('Please select a Supplier first.');
+                }
+                $('select[name="supplier_id"]').select2('open');
+                return false;
+            }
+            if (prnModalOpen || prnModalClosing) return false;
+            let $row = $input.closest('tr');
+            if ($row.find('.prn-item-id').val()) return false;
+            openPrnModal($row, $input.val());
+            return true;
+        }
+
+        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+        $(document).off('click focus keydown', '.prn-item-code')
+            .on('focus', '.prn-item-code', function () {
+                if (prnMouseDown) {
+                    prnMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / Keyboard navigation!
+                checkSupplierAndOpenPrnModal($(this));
+            })
+            .on('keydown', '.prn-item-code', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkSupplierAndOpenPrnModal($(this));
+                }
+            })
+            .on('click', '.prn-item-code', function (e) {
+                prnMouseDown = false;
+            });
+
+        // Tab starts from supplier on page load
+        setTimeout(function () {
+            let $supplier = $('select[name="supplier_id"]');
+            if ($supplier.length && $supplier.data('select2')) {
+                $supplier.data('select2').$container.find('.select2-selection').focus();
+            }
+        }, 150);
 
         $('#prn-item-search-modal').on('show.bs.modal', function () {
             prnModalOpen = true;

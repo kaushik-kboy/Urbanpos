@@ -219,13 +219,17 @@
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL (Triggered on Enter or F2 ONLY — Click & Focus disabled)
            ---------------------------------------------------------------- */
-        $(document).off('click focus keydown', '.su-item-code').on('keydown', '.su-item-code', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
-            if (suModalOpen || suModalClosing) return;
-            let $row = $(this).closest('tr');
+        let suMouseDown = false;
+        $(document).on('mousedown', '.su-item-code', function () {
+            suMouseDown = true;
+        });
+
+        function checkAndOpenSuModal($input) {
+            if (suModalOpen || suModalClosing) return false;
+            let $row = $input.closest('tr');
+            if ($row.find('.su-item-select').val()) return false;
             suActiveSearchRow = $row;
-            let prefill = $.trim($(this).val());
+            let prefill = $.trim($input.val());
             $('#su-isl-filter-name').val(prefill);
             $('#su-isl-filter-code').val('');
             fetchSuItemList();
@@ -234,7 +238,38 @@
             $('#su-item-search-modal').one('shown.bs.modal', function () {
                 $('#su-isl-filter-name').focus().select();
             });
-        });
+            return true;
+        }
+
+        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+        $(document).off('click focus keydown', '.su-item-code')
+            .on('focus', '.su-item-code', function () {
+                if (suMouseDown) {
+                    suMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / Keyboard navigation!
+                checkAndOpenSuModal($(this));
+            })
+            .on('keydown', '.su-item-code', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkAndOpenSuModal($(this));
+                }
+            })
+            .on('click', '.su-item-code', function () {
+                suMouseDown = false;
+            });
+
+        // Tab starts from first field (branch_id) on page load
+        setTimeout(function () {
+            let $first = $('select[name="branch_id"]');
+            if ($first.length && $first.data('select2')) {
+                $first.data('select2').$container.find('.select2-selection').focus();
+            } else if ($first.length) {
+                $first.focus();
+            }
+        }, 150);
 
         $(document).on('click', '.su-search-btn', function (e) {
             e.preventDefault();

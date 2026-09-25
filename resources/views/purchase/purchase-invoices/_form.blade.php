@@ -1054,21 +1054,21 @@
             }
         });
 
-        // Open modal on Code/Barcode field: Enter or F2 ONLY — Mouse Click & Focus disabled
-        $(document).off('click focus keydown', '.pinv-item-code').on('keydown', '.pinv-item-code', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
+        let pinvMouseDown = false;
+        $(document).on('mousedown', '.pinv-item-code', function () {
+            pinvMouseDown = true;
+        });
+
+        function checkSupplierAndOpenPinvModal($input) {
             if (!canProceedToItems()) {
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                $(this).blur();
+                $input.blur();
                 return false;
             }
-            if (islModalOpen || islModalClosing) return;
-            let $row = $(this).closest('tr');
-
+            if (islModalOpen || islModalClosing) return false;
+            let $row = $input.closest('tr');
+            if ($row.find('.pinv-item-select').val()) return false;
             activeSearchRow = $row;
-            let prefill = $.trim($(this).val());
+            let prefill = $.trim($input.val());
             $('#pinv-isl-filter-name').val(prefill);
             $('#pinv-isl-filter-code').val('');
             $('#pinv-isl-filter-expiry').val('');
@@ -1079,7 +1079,38 @@
                 $('#pinv-isl-filter-name').focus().select();
                 if (prefill) fetchItemList();
             });
-        });
+            return true;
+        }
+
+        // Open modal on Code/Barcode field: Tab or Enter/F2 — Mouse Click disabled
+        $(document).off('click focus keydown', '.pinv-item-code')
+            .on('focus', '.pinv-item-code', function () {
+                if (pinvMouseDown) {
+                    pinvMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / keyboard navigation!
+                checkSupplierAndOpenPinvModal($(this));
+            })
+            .on('keydown', '.pinv-item-code', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkSupplierAndOpenPinvModal($(this));
+                }
+            })
+            .on('click', '.pinv-item-code', function () {
+                pinvMouseDown = false;
+            });
+
+        // Tab starts from supplier on page load
+        setTimeout(function () {
+            let $supplier = $('#supplier_id');
+            if ($supplier.length && $supplier.data('select2')) {
+                $supplier.data('select2').$container.find('.select2-selection').focus();
+            } else if ($supplier.length) {
+                $supplier.focus();
+            }
+        }, 150);
 
         // -----------------------------------------------------------------------
         // CAPTURE-PHASE gate: native addEventListener with capture=true

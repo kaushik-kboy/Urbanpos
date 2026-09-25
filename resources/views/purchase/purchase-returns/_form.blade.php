@@ -407,33 +407,19 @@
             }
         }
 
-        $(document).off('click focus keydown', '.pr-item-code').on('keydown', '.pr-item-code', function (e) {
-            if (e.key === 'Enter' || e.key === 'F2') {
-                e.preventDefault();
-                if (prModalOpen || prModalClosing) return;
-                let $row = $(this).closest('tr');
-                if (!assertSupplierSelected()) return;
-
-                prActiveSearchRow = $row;
-                let prefill = $.trim($(this).val());
-                $('#pr-isl-filter-name').val(prefill);
-                $('#pr-isl-filter-code').val('');
-                updateModalHeaderBadge();
-                fetchPrItemList();
-                prModalOpen = true;
-                $('#pr-item-search-modal').modal('show');
-                $('#pr-item-search-modal').one('shown.bs.modal', function () {
-                    $('#pr-isl-filter-name').focus().select();
-                });
-            }
+        let prMouseDown = false;
+        $(document).on('mousedown', '.pr-item-code', function () {
+            prMouseDown = true;
         });
 
-        $(document).on('click', '.pr-search-btn', function (e) {
-            e.preventDefault();
-            if (!assertSupplierSelected()) return;
+        function checkSupplierAndOpenPrModal($input) {
+            if (prModalOpen || prModalClosing) return false;
+            let $row = $input.closest('tr');
+            if ($row.find('.pr-item-id').val()) return false;
+            if (!assertSupplierSelected()) return false;
 
-            prActiveSearchRow = $(this).closest('tr');
-            let prefill = $.trim(prActiveSearchRow.find('.pr-item-code').val());
+            prActiveSearchRow = $row;
+            let prefill = $.trim($input.val());
             $('#pr-isl-filter-name').val(prefill);
             $('#pr-isl-filter-code').val('');
             updateModalHeaderBadge();
@@ -443,7 +429,37 @@
             $('#pr-item-search-modal').one('shown.bs.modal', function () {
                 $('#pr-isl-filter-name').focus().select();
             });
-        });
+            return true;
+        }
+
+        $(document).off('click focus keydown', '.pr-item-code')
+            .on('focus', '.pr-item-code', function () {
+                if (prMouseDown) {
+                    prMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / keyboard navigation!
+                checkSupplierAndOpenPrModal($(this));
+            })
+            .on('keydown', '.pr-item-code', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    checkSupplierAndOpenPrModal($(this));
+                }
+            })
+            .on('click', '.pr-item-code', function () {
+                prMouseDown = false;
+            });
+
+        // Tab starts from supplier on page load
+        setTimeout(function () {
+            let $supplier = $('#supplier_id');
+            if ($supplier.length && $supplier.data('select2')) {
+                $supplier.data('select2').$container.find('.select2-selection').focus();
+            } else if ($supplier.length) {
+                $supplier.focus();
+            }
+        }, 150);
 
         $('#pr-item-search-modal').on('show.bs.modal', function () {
             prModalOpen = true;

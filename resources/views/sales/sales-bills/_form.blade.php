@@ -1148,13 +1148,54 @@
             });
         }
 
-        // Open modal on keydown (Enter / F2 ONLY) — Mouse click & Focus disabled
-        $(document).off('click focus keydown', '.sb-item-code').on('keydown', '.sb-item-code', function (e) {
-            if (e.key !== 'Enter' && e.key !== 'F2') return;
-            e.preventDefault();
-            if (islModalOpen || islModalClosing || isSyncing) return;
-            openItemSearchModal($(this));
+        let sbMouseDown = false;
+        $(document).on('mousedown', '.sb-item-code', function () {
+            sbMouseDown = true;
         });
+
+        function checkAndOpenSbModal($input) {
+            if (islModalOpen || islModalClosing || isSyncing) return false;
+            let $row = $input.closest('tr');
+            if ($row.find('.sb-item-select').val()) return false;
+            openItemSearchModal($input);
+            return true;
+        }
+
+        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
+        $(document).off('click focus keydown', '.sb-item-code')
+            .on('focus', '.sb-item-code', function () {
+                if (sbMouseDown) {
+                    sbMouseDown = false;
+                    return; // Focused by mouse click - do not open modal!
+                }
+                // Focused by Tab / Keyboard navigation!
+                checkAndOpenSbModal($(this));
+            })
+            .on('keydown', '.sb-item-code', function (e) {
+                if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    let val = $.trim($(this).val());
+                    if (val && e.key === 'Enter') {
+                        let $row = $(this).closest('tr');
+                        processItemLookup(val, $row, null);
+                    } else {
+                        checkAndOpenSbModal($(this));
+                    }
+                }
+            })
+            .on('click', '.sb-item-code', function () {
+                sbMouseDown = false;
+            });
+
+        // Tab starts from first field (customer_id) on page load
+        setTimeout(function () {
+            let $cust = $('#customer_id');
+            if ($cust.length && $cust.data('select2')) {
+                $cust.data('select2').$container.find('.select2-selection').focus();
+            } else if ($cust.length) {
+                $cust.focus();
+            }
+        }, 150);
 
         // Keyboard navigation in Item Search Modal (ArrowUp, ArrowDown, Enter)
         $('#sb-item-search-modal').on('keydown', function (e) {
