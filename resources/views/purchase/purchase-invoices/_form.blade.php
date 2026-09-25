@@ -691,59 +691,10 @@
                 return false;
             }
 
-            // 4. If current supplier:invNo pair has not been verified yet, verify synchronously
+            // 4. If current supplier:invNo pair has not been verified yet, trigger async verification
             let currentCheckKey = suppId + ':' + invNo;
             if ($suppInv.data('verified-key') !== currentCheckKey) {
-                let isDup = false;
-                let dupMsg = '';
-                let editUrl = '';
-                let existingInv = '';
-                let ignoreId = $suppInv.data('invoice-id') || '';
-                let checkUrl = $suppInv.data('check-url');
-
-                $.ajax({
-                    url: checkUrl,
-                    method: 'GET',
-                    async: false,
-                    data: { supplier_id: suppId, supplier_inv_no: invNo, ignore_id: ignoreId },
-                    dataType: 'json',
-                    success: function (res) {
-                        if (res && res.is_duplicate) {
-                            isDup = true;
-                            dupMsg = res.message || `Supplier Invoice Number '${invNo}' is already recorded for this supplier.`;
-                            editUrl = res.edit_url;
-                            existingInv = res.existing_invoice_number;
-                        }
-                    }
-                });
-
-                if (isDup) {
-                    $suppInv.addClass('is-invalid border-danger').removeClass('is-valid');
-                    $suppInv.data('is-duplicate', true);
-                    $suppInv.data('has-duplicate-error', true);
-                    $suppInv.data('verified-key', currentCheckKey);
-                    if (editUrl) {
-                        $feedback.html(`${dupMsg} <a href="${editUrl}" target="_blank" class="ml-1 text-primary font-weight-bold" style="text-decoration: underline;"><i class="fas fa-external-link-alt"></i> View ${existingInv || 'Invoice'}</a>`).show();
-                    } else {
-                        $feedback.text(dupMsg).show();
-                    }
-                    $feedbackContainer.show();
-                    triggerFieldShake($suppInv);
-                    if (!silent) {
-                        if (window.toastr) {
-                            window.toastr.error(dupMsg, 'Duplicate Invoice Number');
-                        }
-                        $suppInv.focus();
-                    }
-                    return false;
-                } else {
-                    $suppInv.removeClass('is-invalid border-danger').addClass('is-valid');
-                    $suppInv.data('is-duplicate', false);
-                    $suppInv.data('has-duplicate-error', false);
-                    $suppInv.data('verified-key', currentCheckKey);
-                    $feedback.text('').hide();
-                    $feedbackContainer.hide();
-                }
+                validateSupplierInvNo();
             }
 
             // 5. Inv Amount (Supplier) must be filled and > 0
@@ -1764,6 +1715,18 @@
         $('form').on('submit', function (e) {
             // Always re-enable purchase_type so its value gets submitted even if disabled
             $('#purchase_type').prop('disabled', false);
+
+            if ($('#supplier_inv_no').data('is-duplicate') === true) {
+                e.preventDefault();
+                let dupMsg = $('#supplier-inv-feedback').text() || 'Supplier Invoice Number is already recorded for this supplier.';
+                if (window.toastr) {
+                    toastr.error(dupMsg, 'Duplicate Invoice Number');
+                } else {
+                    alert(dupMsg);
+                }
+                $('#supplier_inv_no').focus();
+                return false;
+            }
 
             let priceError = null;
             $('#pinv-items-body tr').each(function (idx) {

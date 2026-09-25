@@ -868,7 +868,7 @@
             validateBranchSelection();
         });
 
-        function validateStQty($input, showAlert = true) {
+        function validateStQty($input, showAlert = false) {
             let $row = $input.closest('tr');
             let itemId = $row.find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
             if (!itemId) return true;
@@ -889,15 +889,20 @@
             if (avail >= 0 && totalForItem > avail) {
                 $input.addClass('is-invalid border-danger text-danger');
                 if (showAlert) {
-                    alert('Stock is only ' + avail.toFixed(3) + ' for ' + itemName.trim() + '.\nTransfer quantity (' + totalForItem.toFixed(3) + ') cannot exceed available stock!');
-                    setTimeout(function () { $input.focus().select(); }, 10);
+                    let msg = 'Stock is only ' + avail.toFixed(3) + ' for ' + itemName.trim() + '. Transfer quantity (' + totalForItem.toFixed(3) + ') cannot exceed available stock!';
+                    if (window.toastr) {
+                        toastr.error(msg, 'Stock Limit Exceeded');
+                    } else {
+                        alert(msg);
+                    }
                 }
                 return false;
             } else if (q <= 0) {
                 $input.addClass('is-invalid border-danger text-danger');
                 if (showAlert) {
-                    alert('Quantity must be greater than 0.');
-                    setTimeout(function () { $input.focus().select(); }, 10);
+                    if (window.toastr) {
+                        toastr.warning('Quantity must be greater than 0.', 'Quantity Required');
+                    }
                 }
                 return false;
             } else {
@@ -923,28 +928,21 @@
             recalcTotals();
         });
 
-        // Block Tab or Enter if quantity exceeds available stock
+        // Fast keyboard navigation on quantity: Enter advances to next row
         $(document).on('keydown', '.item-qty', function (e) {
-            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
-                if (!validateStQty($(this), true)) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    return false;
-                }
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    let $nextRow = $(this).closest('tr.item-row').next('tr.item-row');
-                    if ($nextRow.length) {
-                        $nextRow.find('.item-code-input').focus();
-                    } else {
-                        $('#add-row').trigger('click');
-                    }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                let $nextRow = $(this).closest('tr.item-row').next('tr.item-row');
+                if ($nextRow.length) {
+                    $nextRow.find('.item-code-input').focus();
+                } else {
+                    $('#add-row').trigger('click');
                 }
             }
         });
 
         $(document).on('change', '.item-qty', function () {
-            validateStQty($(this), true);
+            validateStQty($(this), false);
         });
 
         // Form Submit Handler
@@ -984,14 +982,16 @@
                 if (id) {
                     if (q <= 0) {
                         $q.addClass('is-invalid border-danger text-danger');
-                        alert(`Row #${idx + 1}: Quantity must be greater than 0.`);
+                        let msg = `Row #${idx + 1}: Quantity must be greater than 0.`;
+                        if (window.toastr) { toastr.error(msg, 'Validation Error'); } else { alert(msg); }
                         $q.focus();
                         hasError = true;
                         return false;
                     }
                     if (avail >= 0 && q > avail) {
                         $q.addClass('is-invalid border-danger text-danger');
-                        alert(`Row #${idx + 1}: Transfer quantity (${q}) exceeds available stock (${avail}).`);
+                        let msg = `Row #${idx + 1}: Transfer quantity (${q}) exceeds available stock (${avail}).`;
+                        if (window.toastr) { toastr.error(msg, 'Validation Error'); } else { alert(msg); }
                         $q.focus();
                         hasError = true;
                         return false;
@@ -1001,7 +1001,8 @@
                     let exp = $row.find('.item-exp-date').val();
                     if (exp && isExpiredDate(exp)) {
                         $row.find('.item-exp-date').addClass('is-invalid border-danger');
-                        alert(`Row #${idx + 1}: Cannot transfer expired item (Expiry: ${exp})!`);
+                        let msg = `Row #${idx + 1}: Cannot transfer expired item (Expiry: ${exp})!`;
+                        if (window.toastr) { toastr.error(msg, 'Validation Error'); } else { alert(msg); }
                         $row.find('.item-exp-date').focus();
                         hasError = true;
                         return false;
