@@ -144,9 +144,6 @@ class PurchaseInvoiceController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
-        if (empty($data['header']['grn_number'])) {
-            $data['header']['grn_number'] = $this->nextGrnNumber();
-        }
         $this->financialYearGuard->assertOpenForPosting($data['header']['invoice_date']);
 
         if ($data['header']['posting_key'] ?? null) {
@@ -162,6 +159,14 @@ class PurchaseInvoiceController extends Controller
 
             $this->assertSupplierInvAmountMatchesTotal($data['header'], $totals);
             $this->assertCreditLimit((int) $data['header']['supplier_id'], $totals['total']);
+
+            // Auto-allocate fresh unique GRN inside transaction if not from Receipt Note
+            // or if the prefilled GRN number was taken by another system that saved concurrently
+            if (empty($data['header']['purchase_receipt_note_id'])) {
+                if (empty($data['header']['grn_number']) || PurchaseInvoice::where('grn_number', $data['header']['grn_number'])->exists()) {
+                    $data['header']['grn_number'] = $this->nextGrnNumber();
+                }
+            }
 
             $purchaseInvoice = PurchaseInvoice::create(array_merge($data['header'], $totals, [
                 'invoice_number' => $this->nextNumber(),
@@ -340,14 +345,26 @@ class PurchaseInvoiceController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (PurchaseInvoice::max('id') ?? 0) + 1;
+        $next = (int) (PurchaseInvoice::max('id') ?? 0);
+        $lastInv = PurchaseInvoice::where('invoice_number', 'like', 'PINV%')->orderByDesc('id')->value('invoice_number');
+        if ($lastInv && preg_match('/^PINV(\d+)$/', $lastInv, $matches)) {
+            $next = max($next, (int) $matches[1]);
+        }
+        do {
+            $next++;
+            $invNum = 'PINV'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        } while (PurchaseInvoice::where('invoice_number', $invNum)->exists());
 
-        return 'PINV'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+        return $invNum;
     }
 
     private function nextGrnNumber(): string
     {
         $maxId = (int) (PurchaseInvoice::max('id') ?? 0);
+        $lastGrn = PurchaseInvoice::where('grn_number', 'like', 'GRN%')->orderByDesc('id')->value('grn_number');
+        if ($lastGrn && preg_match('/^GRN(\d+)$/', $lastGrn, $matches)) {
+            $maxId = max($maxId, (int) $matches[1]);
+        }
         do {
             $maxId++;
             $grn = 'GRN'.str_pad((string) $maxId, 6, '0', STR_PAD_LEFT);
@@ -932,6 +949,18 @@ class PurchaseInvoiceController extends Controller
         $dynamicService = app(\App\Services\DynamicValidationService::class);
         $dynamicService->applyTo('purchase_invoices', $headerRules, $headerMessages);
 
+        if (empty($id)) {
+            // On create, grn_number is an auto-generated system sequence and readonly in UI.
+            // If multiple systems open the create form at the same time, all receive the same preview GRN.
+            // When one system saves first, the other system must NOT fail with "The grn number has already been taken".
+            // Instead, store() automatically assigns the next fresh unique GRN inside the database transaction.
+            if (isset($headerRules['grn_number'])) {
+                $headerRules['grn_number'] = array_values(array_filter($headerRules['grn_number'], function ($r) {
+                    return !($r instanceof \Illuminate\Validation\Rules\Unique) && !str_starts_with((string) $r, 'unique');
+                }));
+            }
+        }
+
         $header = $request->validate($headerRules, $headerMessages);
 
         if (!empty($header['supplier_inv_no'])) {
@@ -958,9 +987,9 @@ class PurchaseInvoiceController extends Controller
             }
         }
 
-        if (!empty($header['grn_number']) && ($configs['grn_number']->is_unique ?? true)) {
+        if (!empty($id) && !empty($header['grn_number']) && ($configs['grn_number']->is_unique ?? true)) {
             $duplicateGrn = PurchaseInvoice::where('grn_number', $header['grn_number'])
-                ->when($id, fn ($q) => $q->where('id', '!=', $id))
+                ->where('id', '!=', $id)
                 ->exists();
             if ($duplicateGrn) {
                 $msg = !empty($configs['grn_number']->custom_error_message)
