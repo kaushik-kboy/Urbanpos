@@ -460,8 +460,22 @@ $(function () {
         if (e.key !== 'Enter' && e.key !== 'F2') return;
         e.preventDefault();
         if (sdnModalOpen || sdnModalClosing) return;
+        let query = $.trim($(this).val());
         let $row = $(this).closest('tr');
-        openSdnItemModal($row, $(this).val());
+        if (e.key === 'F2' || !query) {
+            openSdnItemModal($row, query);
+            return;
+        }
+        let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+        $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
+            if (item && item.id) {
+                applyItemToSdnRow($row, item);
+            } else {
+                openSdnItemModal($row, query);
+            }
+        }).fail(function () {
+            openSdnItemModal($row, query);
+        });
     });
 
     // Handle modal hide / cancel empty rows gracefully
@@ -668,29 +682,6 @@ $(function () {
             if ($target.length) {
                 $target.trigger('click');
             }
-        }
-    });
-
-    // Barcode scanner or Enter in .sdn-item-code
-    $(document).on('keydown', '.sdn-item-code', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            let query = $.trim($(this).val());
-            let $row = $(this).closest('tr');
-            if (!query) {
-                openSdnItemModal($row, '');
-                return;
-            }
-            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
-                if (item && item.id) {
-                    applyItemToSdnRow($row, item);
-                } else {
-                    openSdnItemModal($row, query);
-                }
-            }).fail(function () {
-                openSdnItemModal($row, query);
-            });
         }
     });
 

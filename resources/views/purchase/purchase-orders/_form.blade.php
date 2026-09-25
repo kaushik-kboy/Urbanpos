@@ -791,13 +791,15 @@
         function applySupplierPurchaseType() {
             let sId = $('#supplier_id').val();
             if (sId && supplierPurchaseTypes[sId]) {
-                let pType = supplierPurchaseTypes[sId];
-                $('#purchase_type').val(pType).trigger('change');
+                let pType = String(supplierPurchaseTypes[sId]).trim();
+                let normalized = pType.charAt(0).toUpperCase() + pType.slice(1).toLowerCase();
+                let finalVal = (normalized === 'Local' || normalized === 'Interstate') ? normalized : pType;
+                $('#purchase_type').val(finalVal).trigger('change');
                 $('#purchase_type').prop('disabled', true).addClass('bg-light');
                 if (!$('#hidden-purchase-type').length) {
                     $('<input type="hidden" name="purchase_type" id="hidden-purchase-type">').appendTo('#po-header-fields-grid');
                 }
-                $('#hidden-purchase-type').val(pType);
+                $('#hidden-purchase-type').val(finalVal);
             } else {
                 $('#purchase_type').prop('disabled', false).removeClass('bg-light');
                 $('#hidden-purchase-type').remove();

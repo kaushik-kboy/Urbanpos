@@ -198,27 +198,47 @@
 <button type="button" id="pinv-add-row" class="btn btn-link btn-sm"><i class="fas fa-plus-circle"></i> Add Row</button>
 
 <hr>
-<h5 class="mb-3">Totals</h5>
-<div class="alert alert-light border py-2 d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <span class="text-muted mr-2 font-weight-bold">Calculated Final Amount:</span>
-        <strong class="text-primary h5 mb-0">₹<span id="display-final-total">0.00</span></strong>
-    </div>
-    <div id="final-amount-match-badge"></div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Charges</h5>
+    <x-form-layout-customizer
+        form-key="purchase_invoices.totals"
+        container-id="pinv-totals-fields-grid"
+        title="Customize Purchase Invoice Totals Layout"
+    />
 </div>
 
-<x-form-layout-customizer form-key="purchase_invoices.totals">
-    <x-field name="freight" label="Freight" type="number" step="0.01" :value="isset($inv->freight) && $inv->freight != 0 ? $inv->freight : ''" />
-    <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="isset($inv->scheme_item_disc_amt) && $inv->scheme_item_disc_amt != 0 ? $inv->scheme_item_disc_amt : ''" />
-    <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="isset($inv->scheme_item_disc_percent) && $inv->scheme_item_disc_percent != 0 ? $inv->scheme_item_disc_percent : ''" />
-    <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
-    <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="isset($inv->other_disc_amt) && $inv->other_disc_amt != 0 ? $inv->other_disc_amt : ''" />
-    <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="isset($inv->total_extra_cess) && $inv->total_extra_cess != 0 ? $inv->total_extra_cess : ''" />
-    <x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
-    <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="isset($inv->total_weight) && $inv->total_weight != 0 ? $inv->total_weight : ''" />
-    <x-textarea name="remarks" label="Remarks" :value="$inv->remarks ?? ''" />
-    <x-textarea name="message" label="Message" :value="$inv->message ?? ''" />
-</x-form-layout-customizer>
+<div class="row g-2 form-fields-grid" id="pinv-totals-fields-grid">
+    <div class="field-wrapper col-md-6" data-field="freight" data-label="Freight" data-default-order="1">
+        <x-field name="freight" label="Freight" type="number" step="0.01" :value="isset($inv->freight) && $inv->freight != 0 ? $inv->freight : ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="round_off" data-label="Round off Amount" data-default-order="2">
+        <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="isset($inv->round_off) && $inv->round_off != 0 ? $inv->round_off : ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="scheme_item_disc_amt" data-label="Scheme ItemDiscAmt" data-default-order="3">
+        <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="isset($inv->scheme_item_disc_amt) && $inv->scheme_item_disc_amt != 0 ? $inv->scheme_item_disc_amt : ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="other_disc_amt" data-label="OtherDiscAmt" data-default-order="4">
+        <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="isset($inv->other_disc_amt) && $inv->other_disc_amt != 0 ? $inv->other_disc_amt : ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="5">
+        <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="isset($inv->total_extra_cess) && $inv->total_extra_cess != 0 ? $inv->total_extra_cess : ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="6">
+        <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="isset($inv->total_weight) && $inv->total_weight != 0 ? $inv->total_weight : ''" />
+    </div>
+    <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
+        <x-textarea name="remarks" label="Remarks" :value="$inv->remarks ?? ''" />
+    </div>
+    <div class="field-wrapper col-md-12" data-field="message" data-label="Message" data-default-order="8">
+        <x-textarea name="message" label="Message" :value="$inv->message ?? ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="tcs_amount" data-label="TCS Amt" data-default-order="9">
+        <x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="scheme_item_disc_percent" data-label="Scheme ItemDisc%" data-default-order="10">
+        <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="isset($inv->scheme_item_disc_percent) && $inv->scheme_item_disc_percent != 0 ? $inv->scheme_item_disc_percent : ''" />
+    </div>
+</div>
 
 <x-custom-fields-renderer :module="'PurchaseInvoice'" :model="$inv ?? null" :cardStyle="true" />
 
@@ -402,9 +422,10 @@
         // Auto-set purchase_type based on supplier's purchase_type (supplier master drives this)
         function applySupplierPurchaseType(sId) {
             if (sId && supplierPurchaseTypes[sId]) {
-                let pType = supplierPurchaseTypes[sId];
-                if (pType === 'Local' || pType === 'Interstate') {
-                    $('#purchase_type').val(pType).trigger('change');
+                let pType = String(supplierPurchaseTypes[sId]).trim();
+                let normalized = pType.charAt(0).toUpperCase() + pType.slice(1).toLowerCase();
+                if (normalized === 'Local' || normalized === 'Interstate') {
+                    $('#purchase_type').val(normalized).trigger('change');
                     $('#purchase_type').prop('disabled', true).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'none','background':'#e9ecef','opacity':'0.85'});
                     if (!$('#purchase_type_locked_note').length) {
                         $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted"><i class="fas fa-lock mr-1"></i>Auto-set from Supplier Master</small>');

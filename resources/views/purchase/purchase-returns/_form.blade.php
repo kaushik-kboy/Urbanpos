@@ -363,17 +363,18 @@
                     $nextRow.find('.pr-item-code').focus();
                 } else {
                     e.preventDefault();
+                    if (!assertSupplierSelected()) return;
                     $('#pr-add-row').trigger('click');
                     let $newRow = $('#pr-items-body tr.pr-item-row').last();
                     setTimeout(function () {
-                        $newRow.find('.pr-item-code').focus();
+                        $newRow.find('.pr-search-btn').trigger('click');
                     }, 60);
                 }
             }
         });
 
         /* ----------------------------------------------------------------
-           ITEM SEARCH MODAL (Triggered on Click or Focus/Tab of Code field)
+           ITEM SEARCH MODAL (Triggered on Enter/F2 or Search Button, NOT on Click/Focus)
            ---------------------------------------------------------------- */
         function assertSupplierSelected() {
             let supplierId = $('#supplier_id').val();
@@ -406,27 +407,25 @@
             }
         }
 
-        /* ----------------------------------------------------------------
-           ITEM SEARCH MODAL (Triggered on Focus/Tab or Enter, NOT on Mouse Click)
-           ---------------------------------------------------------------- */
-        $(document).off('click focus', '.pr-item-code').on('click focus', '.pr-item-code', function (e) {
-            if (e.type === 'click') return; // Do not open popup on mouse click
-            if (prModalOpen || prModalClosing) return;
-            let $row = $(this).closest('tr');
-            if (e.type === 'focus' && $row.find('.pr-item-id').val()) return;
-            if (!assertSupplierSelected()) return;
+        $(document).off('click focus keydown', '.pr-item-code').on('keydown', '.pr-item-code', function (e) {
+            if (e.key === 'Enter' || e.key === 'F2') {
+                e.preventDefault();
+                if (prModalOpen || prModalClosing) return;
+                let $row = $(this).closest('tr');
+                if (!assertSupplierSelected()) return;
 
-            prActiveSearchRow = $row;
-            let prefill = $.trim($(this).val());
-            $('#pr-isl-filter-name').val(prefill);
-            $('#pr-isl-filter-code').val('');
-            updateModalHeaderBadge();
-            fetchPrItemList();
-            prModalOpen = true;
-            $('#pr-item-search-modal').modal('show');
-            $('#pr-item-search-modal').one('shown.bs.modal', function () {
-                $('#pr-isl-filter-name').focus().select();
-            });
+                prActiveSearchRow = $row;
+                let prefill = $.trim($(this).val());
+                $('#pr-isl-filter-name').val(prefill);
+                $('#pr-isl-filter-code').val('');
+                updateModalHeaderBadge();
+                fetchPrItemList();
+                prModalOpen = true;
+                $('#pr-item-search-modal').modal('show');
+                $('#pr-item-search-modal').one('shown.bs.modal', function () {
+                    $('#pr-isl-filter-name').focus().select();
+                });
+            }
         });
 
         $(document).on('click', '.pr-search-btn', function (e) {
@@ -885,16 +884,20 @@
             });
         });
 
+        function notifyWarn(msg, title) {
+            if (window.toastr && typeof window.toastr.warning === 'function') {
+                toastr.warning(msg, title || 'Warning');
+            } else {
+                console.warn((title ? title + ': ' : '') + msg);
+            }
+        }
+
         // Form Submit Handler
         $('form').on('submit', function (e) {
             let supplierId = $('#supplier_id').val();
             if (!supplierId) {
                 e.preventDefault();
-                if (window.toastr) {
-                    toastr.warning('Please select a Supplier first.', 'Supplier Required');
-                } else {
-                    alert('Please select a Supplier first.');
-                }
+                notifyWarn('Please select a Supplier first.', 'Supplier Required');
                 $('#supplier_id').select2('open');
                 return false;
             }
@@ -919,11 +922,7 @@
                 // Item code entered but not selected
                 if (!itemId && itemCode) {
                     e.preventDefault();
-                    if (window.toastr) {
-                        toastr.warning(`Please select a valid item for: "${itemCode}"`, 'Item Required');
-                    } else {
-                        alert(`Please select a valid item for: "${itemCode}"`);
-                    }
+                    notifyWarn(`Please select a valid item for: "${itemCode}"`, 'Item Required');
                     $row.find('.pr-item-code').focus();
                     hasError = true;
                     return false;
@@ -933,11 +932,7 @@
                 validCount++;
                 if (!qtyVal || qty <= 0) {
                     e.preventDefault();
-                    if (window.toastr) {
-                        toastr.warning(`Please enter quantity for item: "${itemName}"`, 'Quantity Required');
-                    } else {
-                        alert(`Please enter quantity for item: "${itemName}"`);
-                    }
+                    notifyWarn(`Please enter quantity for item: "${itemName}"`, 'Quantity Required');
                     $qtyInput.focus().select();
                     hasError = true;
                     return false;
@@ -948,11 +943,7 @@
 
             if (validCount === 0) {
                 e.preventDefault();
-                if (window.toastr) {
-                    toastr.warning('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
-                } else {
-                    alert('Pehle item add karein. Please add at least one item before saving.');
-                }
+                notifyWarn('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
                 $('#pr-items-body .pr-item-row:first .pr-item-code').focus();
                 return false;
             }

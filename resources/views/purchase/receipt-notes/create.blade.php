@@ -50,66 +50,9 @@
                         <input type="date" name="receipt_date" class="form-control" value="{{ old('receipt_date', date('Y-m-d')) }}" required>
                     </div>
                     @php
-                        $selectedBranch = old('branch_id', $sourceOrder->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
-                    @endphp
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-                        <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-                        <div class="input-group">
-                            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-                            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
-                            <div class="input-group-append">
-                                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_id" data-label="Supplier" data-default-order="3" data-core="1">
-                        <label class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
-                        <select name="supplier_id" class="form-control select2" required>
-                            <option value="">-- Select Supplier --</option>
-                            @foreach ($suppliers as $id => $name)
-                                <option value="{{ $id }}" {{ old('supplier_id', $sourceOrder->supplier_id ?? '') == $id ? 'selected' : '' }}>
-                                    {{ $name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="purchase_order_id" data-label="Purchase Order (Ref)" data-default-order="4">
-                        <label class="font-weight-bold">Purchase Order (Ref)</label>
-                        <select name="purchase_order_id" class="form-control select2" id="grn-po-select">
-                            <option value="">-- Direct Receipt (No PO) --</option>
-                            @foreach ($purchaseOrders as $id => $poNumber)
-                                <option value="{{ $id }}" {{ old('purchase_order_id', $sourceOrder->id ?? '') == $id ? 'selected' : '' }}>
-                                    {{ $poNumber }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_challan_no" data-label="Supplier Challan / DC No" data-default-order="5">
-                        <label class="font-weight-bold">Supplier Challan / DC No</label>
-                        <input type="text" name="supplier_challan_no" class="form-control" placeholder="e.g. DC-9842" value="{{ old('supplier_challan_no') }}">
-                    </div>
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_challan_date" data-label="Challan Date" data-default-order="6">
-                        <label class="font-weight-bold">Challan Date</label>
-                        <input type="date" name="supplier_challan_date" class="form-control" value="{{ old('supplier_challan_date', date('Y-m-d')) }}">
-                    </div>
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="vehicle_no" data-label="Vehicle No" data-default-order="7">
-                        <label class="font-weight-bold">Vehicle No</label>
-                        <input type="text" name="vehicle_no" class="form-control" placeholder="e.g. GJ-01-AB-1234" value="{{ old('vehicle_no') }}">
-                    </div>
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="transporter_name" data-label="Transporter Name" data-default-order="8">
-                        <label class="font-weight-bold">Transporter Name</label>
-                        <input type="text" name="transporter_name" class="form-control" placeholder="e.g. SafeXpress" value="{{ old('transporter_name') }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card card-default shadow-sm mb-3">
-            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-                <h3 class="card-title font-weight-bold"><i class="fas fa-boxes mr-1"></i> Inward Goods & Inspection Grid</h3>
-                @php
                     $grnItemColumns = [
                         'seq'        => ['label' => '#', 'default' => true],
+                        'code'       => ['label' => 'Code / Barcode', 'default' => true],
                         'item'       => ['label' => 'Item Description', 'default' => true],
                         'ordered'    => ['label' => 'Ordered', 'default' => true],
                         'received'   => ['label' => 'Received', 'default' => true],
@@ -139,7 +82,8 @@
                     <thead class="thead-light">
                         <tr class="text-center">
                             <th style="width: 40px;" data-col-key="seq">#</th>
-                            <th style="min-width: 250px;" data-col-key="item">Item Description</th>
+                            <th style="width: 140px;" data-col-key="code">Code / Barcode</th>
+                            <th style="min-width: 230px;" data-col-key="item">Item Description</th>
                             <th style="width: 100px;" data-col-key="ordered">Ordered</th>
                             <th style="width: 110px;" data-col-key="received">Received <span class="text-danger">*</span></th>
                             <th style="width: 110px;" data-col-key="accepted">Accepted <span class="text-danger">*</span></th>
@@ -171,19 +115,32 @@
                                 $mrp = $r->mrp ?? 0;
                                 $batch = $r->batch_no ?? '';
                                 $exp = $r->exp_date ?? '';
+
+                                $matchedItem = null;
+                                if ($itemId && isset($items)) {
+                                    $matchedItem = $items->firstWhere('id', $itemId);
+                                } elseif (!empty($r->item)) {
+                                    $matchedItem = $r->item;
+                                }
+                                $codeVal = $matchedItem ? ($matchedItem->item_code ?: ($matchedItem->ean_upc_code ?: '')) : '';
+                                $nameVal = $matchedItem ? ($matchedItem->name . ($codeVal ? ' ['.$codeVal.']' : '')) : '';
                             @endphp
                             <tr class="grn-item-row" data-index="{{ $idx }}">
                                 <td class="text-center align-middle row-number" data-col-key="seq">{{ $idx + 1 }}</td>
+                                <td data-col-key="code" style="min-width: 130px;">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" value="{{ $codeVal }}" placeholder="Scan/Code" autocomplete="off" title="Enter or F2 to search item">
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm prn-btn-search" title="Search Items Popup (F2)" tabindex="-1">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td data-col-key="item">
                                     <input type="hidden" name="items[{{ $idx }}][purchase_order_item_id]" value="{{ $poItemId }}">
-                                    <select name="items[{{ $idx }}][item_id]" class="form-control form-control-sm select2 item-select">
-                                        <option value="">-- Select Item --</option>
-                                        @foreach ($items as $itm)
-                                            <option value="{{ $itm->id }}" data-cost="{{ $itm->cost_price }}" data-mrp="{{ $itm->mrp }}" {{ $itemId == $itm->id ? 'selected' : '' }}>
-                                                {{ $itm->item_code ? '['.$itm->item_code.'] ' : '' }}{{ $itm->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <input type="hidden" name="items[{{ $idx }}][item_id]" class="prn-item-id item-select" value="{{ $itemId }}">
+                                    <input type="text" class="form-control form-control-sm prn-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" value="{{ $nameVal }}" placeholder="Product Description (auto-filled)">
                                 </td>
                                 <td data-col-key="ordered">
                                     <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
@@ -218,7 +175,7 @@
                     </tbody>
                     <tfoot class="bg-light font-weight-bold">
                         <tr>
-                            <th colspan="2" class="text-right align-middle">Totals:</th>
+                            <th colspan="3" class="text-right align-middle">Totals:</th>
                             <th class="text-right align-middle" id="summary-ordered">0.00</th>
                             <th class="text-right align-middle" id="summary-received">0.00</th>
                             <th class="text-right align-middle text-success" id="summary-accepted">0.00</th>
@@ -257,16 +214,20 @@
     <template id="row-template">
         <tr class="grn-item-row" data-index="__INDEX__">
             <td class="text-center align-middle row-number" data-col-key="seq">__NUMBER__</td>
+            <td data-col-key="code" style="min-width: 130px;">
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" placeholder="Scan/Code" autocomplete="off" title="Enter or F2 to search item">
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-secondary btn-sm prn-btn-search" title="Search Items Popup (F2)" tabindex="-1">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </td>
             <td data-col-key="item">
                 <input type="hidden" name="items[__INDEX__][purchase_order_item_id]" value="">
-                <select name="items[__INDEX__][item_id]" class="form-control form-control-sm item-select">
-                    <option value="">-- Select Item --</option>
-                    @foreach ($items as $itm)
-                        <option value="{{ $itm->id }}" data-cost="{{ $itm->cost_price }}" data-mrp="{{ $itm->mrp }}">
-                            {{ $itm->item_code ? '['.$itm->item_code.'] ' : '' }}{{ $itm->name }}
-                        </option>
-                    @endforeach
-                </select>
+                <input type="hidden" name="items[__INDEX__][item_id]" class="prn-item-id item-select" value="">
+                <input type="text" class="form-control form-control-sm prn-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" placeholder="Product Description (auto-filled)">
             </td>
             <td data-col-key="ordered">
                 <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
@@ -298,6 +259,94 @@
             </td>
         </tr>
     </template>
+
+    <!-- ============================================================
+         ITEM SEARCH MODAL — opens on Code/Barcode field Enter / F2
+         ============================================================ -->
+    <div class="modal fade" id="prn-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="prnItemSearchLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h5 class="modal-title" id="prnItemSearchLabel">
+                        <i class="fas fa-search mr-2"></i>Select Item
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3">
+                    <!-- Filters -->
+                    <div class="row mb-3">
+                        <div class="col-md-5">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                </div>
+                                <input type="text" id="prn-isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                                </div>
+                                <input type="text" id="prn-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                </div>
+                                <input type="text" id="prn-isl-filter-expiry" class="form-control" placeholder="Filter expiry…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-right">
+                            <button type="button" id="prn-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-times mr-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading / No-results / Hint states -->
+                    <div id="prn-isl-loading" class="text-center py-4 d-none">
+                        <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                        <p class="mt-2 text-muted">Loading items…</p>
+                    </div>
+                    <div id="prn-isl-no-results" class="text-center py-4 d-none">
+                        <i class="fas fa-inbox fa-2x text-muted"></i>
+                        <p class="mt-2 text-muted">No items found.</p>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="table-responsive" id="prn-isl-table-wrap">
+                        <table class="table table-sm table-bordered table-hover mb-0" id="prn-isl-items-table">
+                            <thead class="bg-dark text-white">
+                                <tr>
+                                    <th class="text-center" style="width: 40px;">#</th>
+                                    <th>Product Name</th>
+                                    <th class="text-center" style="width: 120px;">Code</th>
+                                    <th class="text-right" style="width: 95px;">Cost Price</th>
+                                    <th class="text-right" style="width: 95px;">Sell Price</th>
+                                    <th class="text-right" style="width: 90px;">MRP</th>
+                                    <th class="text-right" style="width: 85px;">Stock</th>
+                                    <th class="text-center" style="width: 120px;">Expiry / Batch</th>
+                                    <th class="text-center" style="width: 80px;">Select</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prn-isl-items-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted mt-2 d-block" id="prn-isl-count-label"></small>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @push('js')
@@ -306,6 +355,15 @@
         $('.select2').select2({ width: '100%' });
 
         let rowIndex = {{ max(count($rowsToRender), 1) }};
+        const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
+        let islDebounce = null;
+        let islCache = {};
+        let prnModalOpen = false;
+        let prnModalClosing = false;
+        let prnActiveSearchRow = null;
+        let prnCancellingRow = null;
+        let prnItemSelectedInModal = false;
+        let islSelectedIdx = -1;
 
         function recalculate() {
             let totOrdered = 0;
@@ -358,32 +416,273 @@
             recalculate();
         });
 
-        // Item selection auto-fills cost & mrp
-        $('#grn-items-body').on('change', '.item-select', function () {
-            let $row = $(this).closest('tr');
-            let $selected = $(this).find('option:selected');
-            let cost = $selected.data('cost') || 0;
-            let mrp = $selected.data('mrp') || 0;
+        /* ================================================================
+           ITEM SEARCH MODAL LOGIC (Arrow Up/Down, Enter selection, Tab on MRP)
+           ================================================================ */
+        function openPrnModal($row, initialQuery) {
+            prnActiveSearchRow = $row;
+            let prefill = $.trim(initialQuery || '');
+            $('#prn-isl-filter-name').val(prefill);
+            $('#prn-isl-filter-code').val('');
+            $('#prn-isl-filter-expiry').val('');
+            fetchPrnItemList();
+            prnModalOpen = true;
+            $('#prn-item-search-modal').modal('show');
+            $('#prn-item-search-modal').one('shown.bs.modal', function () {
+                $('#prn-isl-filter-name').focus().select();
+                if (prefill) fetchPrnItemList();
+            });
+        }
 
-            if (!$row.find('.row-cost').val()) {
-                $row.find('.row-cost').val(cost);
-            }
-            if (!$row.find('.row-mrp').val()) {
-                $row.find('.row-mrp').val(mrp);
-            }
-            recalculate();
+        // Open modal on Code/Barcode field: Keydown Enter/F2 ONLY — Mouse Click & Focus disabled
+        $(document).off('click focus keydown', '.prn-item-code').on('keydown', '.prn-item-code', function (e) {
+            if (e.key !== 'Enter' && e.key !== 'F2') return;
+            e.preventDefault();
+            if (prnModalOpen || prnModalClosing) return;
+            openPrnModal($(this).closest('tr'), $(this).val());
         });
 
-        // Tab on MRP on last row adds a new row automatically
-        $('#grn-items-body').on('keydown', '.row-mrp', function (e) {
-            if (e.key === 'Tab' && !e.shiftKey) {
+        $(document).on('click', '.prn-btn-search', function (e) {
+            e.preventDefault();
+            if (prnModalOpen || prnModalClosing) return;
+            openPrnModal($(this).closest('tr'), $(this).closest('tr').find('.prn-item-code').val());
+        });
+
+        $('#prn-item-search-modal').on('show.bs.modal', function () {
+            prnModalOpen = true;
+            prnModalClosing = false;
+            prnItemSelectedInModal = false;
+            prnCancellingRow = null;
+        });
+
+        $('#prn-item-search-modal').on('hide.bs.modal', function () {
+            prnModalOpen = false;
+            prnModalClosing = true;
+            if (!prnItemSelectedInModal && prnActiveSearchRow && prnActiveSearchRow.length) {
+                let selectedId = prnActiveSearchRow.find('.prn-item-id').val();
+                if (!selectedId) {
+                    prnCancellingRow = prnActiveSearchRow;
+                }
+            }
+        });
+
+        $('#prn-item-search-modal').on('hidden.bs.modal', function () {
+            prnModalOpen = false;
+            prnModalClosing = true;
+            setTimeout(function () { prnModalClosing = false; }, 350);
+
+            if (!prnItemSelectedInModal && prnCancellingRow && prnCancellingRow.length) {
+                let totalRows = $('#grn-items-body tr.grn-item-row').length;
+                if (totalRows > 1) {
+                    prnCancellingRow.remove();
+                    recalculate();
+                } else {
+                    prnCancellingRow.find('.prn-item-code').val('');
+                    prnCancellingRow.find('.prn-item-desc').val('');
+                }
+                prnCancellingRow = null;
+                prnActiveSearchRow = null;
+                return;
+            }
+            prnActiveSearchRow = null;
+        });
+
+        $('#prn-isl-filter-name, #prn-isl-filter-code, #prn-isl-filter-expiry').on('input', function () {
+            clearTimeout(islDebounce);
+            islDebounce = setTimeout(fetchPrnItemList, 350);
+        });
+
+        $('#prn-isl-btn-clear').on('click', function () {
+            $('#prn-isl-filter-name, #prn-isl-filter-code, #prn-isl-filter-expiry').val('');
+            fetchPrnItemList();
+        });
+
+        function fetchPrnItemList() {
+            let branchId = $('[name="branch_id"]').val() || '';
+            let srch = $.trim($('#prn-isl-filter-name').val());
+            let code = $.trim($('#prn-isl-filter-code').val());
+            let expiry = $.trim($('#prn-isl-filter-expiry').val());
+
+            if (!srch && !code && !expiry) {
+                $('#prn-isl-loading').addClass('d-none');
+                $('#prn-isl-table-wrap').addClass('d-none');
+                $('#prn-isl-items-body').empty();
+                $('#prn-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-search fa-2x text-muted"></i><p class="mt-2 text-muted">Type product name, code or barcode to search…</p>'
+                );
+                $('#prn-isl-count-label').text('');
+                islSelectedIdx = -1;
+                return;
+            }
+
+            let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
+            if (islCache[cacheKey]) {
+                renderPrnItems(islCache[cacheKey]);
+                return;
+            }
+
+            $('#prn-isl-loading').removeClass('d-none');
+            $('#prn-isl-no-results').addClass('d-none');
+            $('#prn-isl-table-wrap').addClass('d-none');
+
+            $.getJSON(ISL_URL, { branch_id: branchId, search: srch, code: code, expiry: expiry }, function (res) {
+                $('#prn-isl-loading').addClass('d-none');
+                let items = res.items || [];
+                islCache[cacheKey] = items;
+                renderPrnItems(items);
+            }).fail(function () {
+                $('#prn-isl-loading').addClass('d-none');
+                $('#prn-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-exclamation-triangle fa-2x text-danger"></i><p class="mt-2 text-danger">Error loading items.</p>'
+                );
+            });
+        }
+
+        function renderPrnItems(items) {
+            let $tbody = $('#prn-isl-items-body').empty();
+
+            if (items.length === 0) {
+                $('#prn-isl-no-results').removeClass('d-none').html(
+                    '<i class="fas fa-inbox fa-2x text-muted"></i><p class="mt-2 text-muted">No items found.</p>'
+                );
+                $('#prn-isl-count-label').text('');
+                islSelectedIdx = -1;
+                return;
+            }
+
+            let html = '';
+            items.forEach(function (it, idx) {
+                let codeBadge = it.code ? `<span class="badge badge-secondary px-2 py-1">${it.code}</span>` : '—';
+                let costDisplay = it.cost_price > 0 ? '₹' + parseFloat(it.cost_price).toFixed(2) : '—';
+                let sellDisplay = it.sell_price > 0 ? '₹' + parseFloat(it.sell_price).toFixed(2) : '—';
+                let mrpDisplay = it.mrp > 0 ? '₹' + parseFloat(it.mrp).toFixed(2) : '—';
+                let qtyClass = it.qty <= 0 ? 'text-danger' : 'text-primary font-weight-bold';
+
+                html += `
+                    <tr class="prn-isl-item-row" style="cursor:pointer;"
+                        data-id="${it.id}"
+                        data-code="${it.code || ''}"
+                        data-name="${it.name}"
+                        data-cost="${it.cost_price || 0}"
+                        data-sell="${it.sell_price || 0}"
+                        data-mrp="${it.mrp || 0}"
+                        data-stock="${it.qty || 0}">
+                        <td class="align-middle text-center text-muted">${idx + 1}</td>
+                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td class="align-middle text-center">${codeBadge}</td>
+                        <td class="align-middle text-right">${costDisplay}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
+                        <td class="align-middle text-right ${qtyClass}">${parseFloat(it.qty || 0).toFixed(2)}</td>
+                        <td class="align-middle text-center text-muted">—</td>
+                        <td class="align-middle text-center">
+                            <button type="button" class="btn btn-success btn-xs px-2 prn-isl-btn-select">
+                                <i class="fas fa-check mr-1"></i>Select
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+
+            $tbody.html(html);
+            $('#prn-isl-table-wrap').removeClass('d-none');
+            $('#prn-isl-count-label').text(items.length + ' item(s) found');
+            islSelectedIdx = items.length > 0 ? 0 : -1;
+            updatePrnModalHighlight();
+        }
+
+        function updatePrnModalHighlight() {
+            let $rows = $('#prn-isl-items-body tr.prn-isl-item-row');
+            $rows.removeClass('table-primary');
+            if (islSelectedIdx >= 0 && islSelectedIdx < $rows.length) {
+                let $target = $rows.eq(islSelectedIdx);
+                $target.addClass('table-primary');
+                let container = $('#prn-isl-table-wrap')[0];
+                let rowEl = $target[0];
+                if (container && rowEl) {
+                    let cTop = container.scrollTop;
+                    let cBottom = cTop + container.clientHeight;
+                    let rTop = rowEl.offsetTop;
+                    let rBottom = rTop + rowEl.clientHeight;
+                    if (rTop < cTop) container.scrollTop = rTop;
+                    else if (rBottom > cBottom) container.scrollTop = rBottom - container.clientHeight;
+                }
+            }
+        }
+
+        $('#prn-isl-filter-name, #prn-isl-filter-code, #prn-isl-filter-expiry').on('keydown', function (e) {
+            let $rows = $('#prn-isl-items-body tr.prn-isl-item-row');
+            if ($rows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                islSelectedIdx = Math.min(islSelectedIdx + 1, $rows.length - 1);
+                updatePrnModalHighlight();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                islSelectedIdx = Math.max(islSelectedIdx - 1, 0);
+                updatePrnModalHighlight();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (islSelectedIdx >= 0 && islSelectedIdx < $rows.length) {
+                    $rows.eq(islSelectedIdx).trigger('click');
+                } else if ($rows.length === 1) {
+                    $rows.eq(0).trigger('click');
+                }
+            }
+        });
+
+        // Selecting an item from modal
+        $(document).on('click', '.prn-isl-item-row, .prn-isl-btn-select', function (e) {
+            e.stopPropagation();
+            let $tr = $(this).hasClass('prn-isl-item-row') ? $(this) : $(this).closest('tr');
+            let itemData = {
+                id: $tr.data('id'),
+                name: $tr.data('name'),
+                code: $tr.data('code'),
+                cost: $tr.data('cost'),
+                sell: $tr.data('sell'),
+                mrp: $tr.data('mrp')
+            };
+
+            if (!prnActiveSearchRow || !itemData.id) return;
+            prnItemSelectedInModal = true;
+            prnCancellingRow = null;
+
+            let $row = prnActiveSearchRow;
+            $row.find('.prn-item-code').val(itemData.code || '');
+            $row.find('.prn-item-desc').val(itemData.name + (itemData.code ? ' [' + itemData.code + ']' : ''));
+            $row.find('.prn-item-id').val(itemData.id);
+
+            if (parseFloat(itemData.cost) > 0) {
+                $row.find('.row-cost').val(parseFloat(itemData.cost).toFixed(2));
+            }
+            if (parseFloat(itemData.mrp) > 0) {
+                $row.find('.row-mrp').val(parseFloat(itemData.mrp).toFixed(2));
+            }
+
+            $('#prn-item-search-modal').modal('hide');
+            recalculate();
+            setTimeout(function () {
+                $row.find('.row-received').focus().select();
+            }, 60);
+        });
+
+        // Tab on MRP on last row adds a new row automatically and opens the search modal
+        $(document).on('keydown', '.row-mrp', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
-                let $nextRow = $currentRow.next('tr');
+                let $nextRow = $currentRow.next('tr.grn-item-row');
                 if (!$nextRow.length) {
                     e.preventDefault();
                     $('#add-row-btn').trigger('click');
                     let $newRow = $('#grn-items-body tr.grn-item-row:last');
-                    $newRow.find('.item-select').select2('open');
+                    setTimeout(function () {
+                        $newRow.find('.prn-item-code').focus();
+                        openPrnModal($newRow, '');
+                    }, 60);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $nextRow.find('.prn-item-code').focus();
                 }
             }
         });
@@ -396,7 +695,6 @@
 
             let $newRow = $(template);
             $('#grn-items-body').append($newRow);
-            $newRow.find('.item-select').select2({ width: '100%' });
             rowIndex++;
             recalculate();
         });
@@ -407,7 +705,12 @@
                 $(this).closest('tr').remove();
                 recalculate();
             } else {
-                alert('At least one item row is required.');
+                let $row = $(this).closest('tr');
+                $row.find('.prn-item-code').val('');
+                $row.find('.prn-item-desc').val('');
+                $row.find('.prn-item-id').val('');
+                $row.find('.row-received, .row-accepted, .row-rejected, .row-cost, .row-mrp').val('');
+                recalculate();
             }
         });
 
@@ -438,8 +741,8 @@
 
             $('#grn-items-body .grn-item-row').each(function () {
                 let $row = $(this);
-                let itemId = $row.find('.item-select').val();
-                let itemName = $row.find('.item-select option:selected').text().trim() || 'Selected Item';
+                let itemId = $row.find('.prn-item-id').val();
+                let itemName = $row.find('.prn-item-desc').val() || 'Selected Item';
                 let $recvInput = $row.find('.row-received');
                 let recvQty = parseFloat($recvInput.val()) || 0;
 
@@ -470,13 +773,13 @@
                 } else {
                     alert('Pehle item add karein. Please add at least one item.');
                 }
-                $('#grn-items-body .grn-item-row:first .item-select').select2('open');
+                $('#grn-items-body .grn-item-row:first .prn-item-code').focus();
                 return false;
             }
 
             // Remove blank rows before submitting
             $('#grn-items-body .grn-item-row').each(function () {
-                let itemId = $(this).find('.item-select').val();
+                let itemId = $(this).find('.prn-item-id').val();
                 if (!itemId) {
                     $(this).remove();
                 }

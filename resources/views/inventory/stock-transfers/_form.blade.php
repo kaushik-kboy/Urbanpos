@@ -505,8 +505,12 @@
                     $('#add-row').trigger('click');
                     let $newRow = $('#items-table tbody tr.item-row').last();
                     setTimeout(function () {
-                        $newRow.find('.item-code-input').focus().trigger('click');
+                        $newRow.find('.item-code-input').focus();
+                        openItemModal($newRow, '');
                     }, 60);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $nextRow.find('.item-code-input').focus();
                 }
             }
         });

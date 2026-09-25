@@ -268,6 +268,7 @@ $(function() {
     let soIslDebounce = null;
     let soModalOpen = false;
     let soModalClosing = false;
+    let soIslSelectedIdx = -1;
     const SO_ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
 
     $('#so-add-row-btn').on('click', function() {
@@ -278,16 +279,23 @@ $(function() {
         $newRow.find('.so-item-code').focus();
     });
 
-    $(document).off('keydown', '.so-disc-amount, .so-gst-percent').on('keydown', '.so-disc-amount, .so-gst-percent', function (e) {
+    $(document).off('keydown', '.so-disc-amount, .so-gst-percent, .so-mrp').on('keydown', '.so-disc-amount, .so-gst-percent, .so-mrp', function (e) {
         if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
             let $currentRow = $(this).closest('tr');
             let $nextRow = $currentRow.next('tr');
             if ($nextRow.length) {
-                e.preventDefault();
-                $nextRow.find('.so-item-code').focus();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $nextRow.find('.so-item-code').focus();
+                }
             } else {
                 e.preventDefault();
                 $('#so-add-row-btn').trigger('click');
+                let $newRow = $('#so-items-body tr:last');
+                setTimeout(function () {
+                    $newRow.find('.so-item-code').focus();
+                    $newRow.find('.so-item-code').trigger($.Event('keydown', { key: 'Enter' }));
+                }, 60);
             }
         }
     });
@@ -446,10 +454,53 @@ $(function() {
             $tbody.html(html);
             $('#so-isl-table-wrap').removeClass('d-none');
             $('#so-isl-count-label').text(items.length + ' item(s) found');
+            soIslSelectedIdx = items.length > 0 ? 0 : -1;
+            updateSoModalHighlight();
         }).fail(function () {
             $('#so-isl-loading').addClass('d-none');
         });
     }
+
+    function updateSoModalHighlight() {
+        let $rows = $('#so-isl-items-body tr.so-isl-item-row');
+        $rows.removeClass('table-primary');
+        if (soIslSelectedIdx >= 0 && soIslSelectedIdx < $rows.length) {
+            let $target = $rows.eq(soIslSelectedIdx);
+            $target.addClass('table-primary');
+            let container = $('#so-isl-table-wrap')[0];
+            let rowEl = $target[0];
+            if (container && rowEl) {
+                let cTop = container.scrollTop;
+                let cBottom = cTop + container.clientHeight;
+                let rTop = rowEl.offsetTop;
+                let rBottom = rTop + rowEl.clientHeight;
+                if (rTop < cTop) container.scrollTop = rTop;
+                else if (rBottom > cBottom) container.scrollTop = rBottom - container.clientHeight;
+            }
+        }
+    }
+
+    $('#so-isl-filter-name, #so-isl-filter-code').on('keydown', function (e) {
+        let $rows = $('#so-isl-items-body tr.so-isl-item-row');
+        if ($rows.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            soIslSelectedIdx = Math.min(soIslSelectedIdx + 1, $rows.length - 1);
+            updateSoModalHighlight();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            soIslSelectedIdx = Math.max(soIslSelectedIdx - 1, 0);
+            updateSoModalHighlight();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (soIslSelectedIdx >= 0 && soIslSelectedIdx < $rows.length) {
+                $rows.eq(soIslSelectedIdx).trigger('click');
+            } else if ($rows.length === 1) {
+                $rows.eq(0).trigger('click');
+            }
+        }
+    });
 
     $(document).on('click', '.so-isl-item-row, .so-isl-btn-select', function (e) {
         e.stopPropagation();
