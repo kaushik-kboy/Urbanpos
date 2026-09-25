@@ -1559,22 +1559,34 @@
                 $('#sb-items-body tr').each(function () {
                     if ($(this).find('.sb-item-select').val() === itemId) {
                         let $q = $(this).find('.sb-qty');
+                        let $r = $(this);
                         if (totalForItem > stock) {
-                            $q.addClass('border-danger text-danger is-invalid')
-                              .attr('title', 'Total qty (' + formatDigits(totalForItem) + ') exceeds available stock (' + formatDigits(stock) + ')!');
+                            let errMsg = 'Total qty (' + formatDigits(totalForItem) + ') exceeds available stock (' + formatDigits(stock) + ')!';
+                            $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
+                            $r.find('.sb-qty-error-msg').text('Max: ' + formatDigits(stock)).show();
                         } else {
                             $q.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                            $r.find('.sb-qty-error-msg').text('').hide();
                         }
                     }
                 });
-                if (source !== 'initial' && totalForItem > stock && !$qtyInput.data('stock-alerted')) {
-                    $qtyInput.data('stock-alerted', true);
-                    alert('Stock is only ' + formatDigits(stock) + '. Quantity (' + formatDigits(totalForItem) + ') cannot exceed available stock!');
-                } else if (totalForItem <= stock) {
-                    $qtyInput.data('stock-alerted', false);
+                if (source !== 'initial' && totalForItem > stock) {
+                    let now = Date.now();
+                    let lastToast = $qtyInput.data('last-stock-toast') || 0;
+                    if (now - lastToast > 2500) {
+                        $qtyInput.data('last-stock-toast', now);
+                        let itemName = $row.find('.sb-item-desc').val() || 'Item';
+                        let warnMsg = `Item "${itemName}": Stock is only ${formatDigits(stock)}. Quantity (${formatDigits(totalForItem)}) cannot exceed available stock!`;
+                        if (window.toastr) {
+                            toastr.error(warnMsg, 'Stock Limit Exceeded');
+                        } else {
+                            alert(warnMsg);
+                        }
+                    }
                 }
-            } else {
+            } else if (itemId && qty > 0) {
                 $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                $row.find('.sb-qty-error-msg').text('').hide();
             }
 
             // Real-time inline field validation (Task 11)
@@ -1582,11 +1594,12 @@
                 if (qty <= 0) {
                     $qtyInput.addClass('border-danger text-danger is-invalid')
                              .attr('title', 'Quantity must be greater than 0');
-                } else if (!isAllowNegative && stock >= 0 && qty > stock) {
-                    $qtyInput.addClass('border-danger text-danger is-invalid')
-                             .attr('title', 'Quantity exceeds available stock (' + formatDigits(stock) + ')');
+                    $row.find('.sb-qty-error-msg').text('Qty > 0').show();
+                } else if (!isAllowNegative && stock >= 0) {
+                    // Handled above in strict totalForItem check
                 } else {
                     $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                    $row.find('.sb-qty-error-msg').text('').hide();
                 }
 
                 let $sell = $row.find('.sb-sell-price');
@@ -1620,17 +1633,21 @@
         }
 
         // Header Validation (Task 11)
-        function validateSbHeader(showAlert = false) {
+        function validateSbHeader(showAlert = false, markFields = true) {
             let isValid = true;
             let $cust = $('#customer_id');
             let custVal = $cust.val();
             let $custSelect2 = $cust.next('.select2-container').find('.select2-selection');
 
             if (!custVal) {
-                $cust.addClass('is-invalid');
-                $custSelect2.addClass('border-danger');
+                if (markFields) {
+                    $cust.addClass('is-invalid');
+                    $custSelect2.addClass('border-danger');
+                }
                 if (showAlert) {
-                    alert('Please select a Customer first before entering items.');
+                    let msg = 'Please select a Customer first before entering items.';
+                    if (window.toastr) toastr.warning(msg, 'Customer Required');
+                    else alert(msg);
                     $cust.select2('open');
                 }
                 isValid = false;
@@ -1641,15 +1658,21 @@
 
             let $branch = $('[name="branch_id"]');
             if (!$branch.val()) {
-                if (showAlert && isValid) alert('Please select an active Branch.');
+                if (showAlert && isValid) {
+                    let msg = 'Please select an active Branch.';
+                    if (window.toastr) toastr.warning(msg, 'Branch Required');
+                    else alert(msg);
+                }
                 isValid = false;
             }
 
             let $date = $('input[name="bill_date"]');
             if (!$date.val()) {
-                $date.addClass('is-invalid border-danger');
+                if (markFields) $date.addClass('is-invalid border-danger');
                 if (showAlert && isValid) {
-                    alert('Please select a Bill Date.');
+                    let msg = 'Please select a Bill Date.';
+                    if (window.toastr) toastr.warning(msg, 'Date Required');
+                    else alert(msg);
                     $date.focus();
                 }
                 isValid = false;
@@ -1712,13 +1735,16 @@
                     } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
+                        $row.find('.sb-qty-error-msg').text('Max: ' + formatDigits(stock)).show();
                         hasError = true;
                         if (!firstErrorMsg) {
-                            firstErrorMsg = `Row #${idx + 1}: Quantity exceeds available stock (${formatDigits(stock)}).`;
+                            let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
+                            firstErrorMsg = `${itemName}: Quantity (${formatDigits(totalQty)}) exceeds available stock (${formatDigits(stock)}).`;
                             firstErrorEl = $qtyInput;
                         }
                     } else {
                         $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                        $row.find('.sb-qty-error-msg').text('').hide();
                         validItemCount++;
                     }
 
@@ -1741,6 +1767,7 @@
                     }
                 } else {
                     $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                    $row.find('.sb-qty-error-msg').text('').hide();
                 }
             });
 
@@ -1812,17 +1839,21 @@
             updateSaveButtonState();
         }
 
-        // Update Save button status title based on stock and items validity
+        // Update Save button status title and disabled state based on stock and items validity
         function updateSaveButtonState() {
             let res = validateStockErrors();
-            let $saveBtn = $('button[type="submit"]');
+            let $saveBtns = $('button[type="submit"]');
+            let isHeaderValid = validateSbHeader(false, false);
 
-            if (res.hasStockError || res.validItemCount === 0) {
-                let reason = res.validItemCount === 0 ? 'Please add at least 1 item with valid quantity.' : 'Some item quantities exceed available stock or are invalid.';
-                $saveBtn.attr('title', reason);
+            if (res.hasStockError || res.validItemCount === 0 || !isHeaderValid) {
+                let reason = !isHeaderValid
+                    ? 'Please select required header fields (Customer, Branch, Bill Date).'
+                    : (res.validItemCount === 0 
+                        ? 'Please add at least 1 item with valid quantity.' 
+                        : (res.errorMsg || 'Some item quantities exceed available stock or are invalid.'));
+                $saveBtns.prop('disabled', true).addClass('disabled').attr('title', reason);
             } else {
-                $saveBtn.attr('title', '');
-            }
+                $saveBtns.prop('disabled', false).removeClass('disabled').attr('title', '');
         }
 
         // Open Batch Selection Modal
@@ -2152,14 +2183,24 @@
 
                 if (totalForItem > stock) {
                     $qtyInput.addClass('border-danger text-danger is-invalid');
+                    $row.find('.sb-qty-error-msg').text('Max: ' + formatDigits(stock)).show();
                     if (showAlert) {
-                        alert('Stock is only ' + formatDigits(stock) + '. Quantity (' + formatDigits(totalForItem) + ') cannot exceed available stock!');
+                        let itemName = $row.find('.sb-item-desc').val() || 'Item';
+                        let warnMsg = `Item "${itemName}": Stock is only ${formatDigits(stock)}. Quantity (${formatDigits(totalForItem)}) cannot exceed available stock!`;
+                        if (window.toastr) {
+                            toastr.error(warnMsg, 'Stock Limit Exceeded');
+                        } else {
+                            alert(warnMsg);
+                        }
                         setTimeout(function () { $qtyInput.focus().select(); }, 10);
                     }
+                    updateSaveButtonState();
                     return false;
                 }
             }
             $qtyInput.removeClass('border-danger text-danger is-invalid');
+            $row.find('.sb-qty-error-msg').text('').hide();
+            updateSaveButtonState();
             return true;
         }
 
@@ -2270,23 +2311,30 @@
         // (No blocking gate here — customer is validated at submit time only)
 
 
-        $(document).on('change', '#customer_id', function () {
-            validateSbHeader(false);
+        $(document).on('change', '#customer_id, [name="branch_id"]', function () {
+            validateSbHeader(false, false);
+            updateSaveButtonState();
         });
 
         $(document).on('change blur', 'input[name="bill_date"]', function () {
-            validateSbHeader(false);
+            validateSbHeader(false, false);
+            updateSaveButtonState();
         });
 
         // Open tender modal when Save button clicked
         $(document).on('click', 'button[type="submit"]', function (e) {
             let $btn = $(this);
+            if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
+                e.preventDefault();
+                return false;
+            }
             let $form = $btn.closest('form');
             if (!$form.length) return;
 
             // 1. Validate Header First (Task 11)
-            if (!validateSbHeader(true)) {
+            if (!validateSbHeader(true, true)) {
                 e.preventDefault();
+                updateSaveButtonState();
                 return false;
             }
 
@@ -2305,17 +2353,23 @@
             let valResult = validateStockErrors();
             if (valResult.validItemCount === 0) {
                 e.preventDefault();
-                alert('Please select at least one item and enter a valid quantity.');
+                let msg = 'Please select at least one item and enter a valid quantity.';
+                if (window.toastr) toastr.warning(msg, 'No Items Added');
+                else alert(msg);
+                updateSaveButtonState();
                 return false;
             }
 
             if (valResult.hasError) {
                 e.preventDefault();
-                alert('Cannot proceed: ' + valResult.errorMsg);
+                let msg = 'Cannot proceed: ' + valResult.errorMsg;
+                if (window.toastr) toastr.error(msg, 'Stock / Validation Error');
+                else alert(msg);
                 if (valResult.errorEl && valResult.errorEl.length) {
                     valResult.errorEl.focus();
                     if (valResult.errorEl[0].select) valResult.errorEl[0].select();
                 }
+                updateSaveButtonState();
                 return false;
             }
 
@@ -2782,6 +2836,10 @@
         $(document).on('click', '.btn-reset-form', function () {
             localStorage.removeItem(DRAFT_KEY);
         });
+        // Initial check for save button status
+        setTimeout(function () {
+            updateSaveButtonState();
+        }, 300);
 
     });
 </script>

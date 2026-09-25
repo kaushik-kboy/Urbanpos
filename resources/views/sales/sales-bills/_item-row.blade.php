@@ -70,6 +70,7 @@
     </td>
     <td style="width: 85px;" data-col-key="qty">
         <input type="number" step="any" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sb-qty font-weight-bold text-right" autocomplete="off" placeholder="Qty">
+        <div class="sb-qty-error-msg text-danger font-weight-bold mt-1 text-center" style="font-size: 10px; line-height: 1.1; display: none;"></div>
     </td>
     <td style="width: 100px;" data-col-key="sell_price">
         <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" readonly tabindex="-1" class="form-control form-control-sm sb-sell-price text-right bg-light" autocomplete="off" placeholder="0.00" title="Sell Price (Read-only)">
