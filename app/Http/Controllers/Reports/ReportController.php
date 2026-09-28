@@ -132,9 +132,9 @@ class ReportController extends Controller
             ->where('sb.bill_date', '<=', $to.' 23:59:59')
             ->where(fn ($q) => $q->whereNull('sb.status')->orWhere('sb.status', '!=', 'Cancelled'))
             ->when($branchId, fn ($q) => $q->where('sb.branch_id', $branchId))
-            ->groupByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), sbi.gst_percent")
-            ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), sbi.gst_percent")
-            ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, sbi.gst_percent, SUM(sbi.net_amount - sbi.gst_tax_amount) as taxable_amount, SUM(sbi.gst_tax_amount) as gst_amount")
+            ->groupByRaw("COALESCE(NULLIF(ANY_VALUE(it.hsn_code), ''), 'N/A'), sbi.gst_percent")
+            ->orderByRaw("COALESCE(NULLIF(ANY_VALUE(it.hsn_code), ''), 'N/A'), sbi.gst_percent")
+            ->selectRaw("COALESCE(NULLIF(ANY_VALUE(it.hsn_code), ''), 'N/A') as hsn_code, sbi.gst_percent, SUM(sbi.net_amount - sbi.gst_tax_amount) as taxable_amount, SUM(sbi.gst_tax_amount) as gst_amount")
             ->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
@@ -564,9 +564,9 @@ class ReportController extends Controller
             ->where('pi.invoice_date', '<=', $to)
             ->where(fn ($q) => $q->whereNull('pi.status')->orWhere('pi.status', '!=', 'Cancelled'))
             ->when($branchId, fn ($q) => $q->where('pi.branch_id', $branchId))
-            ->groupByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
-            ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
-            ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, COALESCE(pii.gst_percent, 0) as gst_percent, SUM(pii.net_amount - pii.gst_tax_amount) as taxable_amount, SUM(COALESCE(pii.cgst_amount,0)) as cgst_amount, SUM(COALESCE(pii.sgst_amount,0)) as sgst_amount, SUM(COALESCE(pii.igst_amount,0)) as igst_amount, SUM(COALESCE(pii.gst_tax_amount,0)) as gst_amount")
+            ->groupByRaw("COALESCE(NULLIF(ANY_VALUE(it.hsn_code), ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
+            ->orderByRaw("COALESCE(NULLIF(ANY_VALUE(it.hsn_code), ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
+            ->selectRaw("COALESCE(NULLIF(ANY_VALUE(it.hsn_code), ''), 'N/A') as hsn_code, COALESCE(pii.gst_percent, 0) as gst_percent, SUM(pii.net_amount - pii.gst_tax_amount) as taxable_amount, SUM(COALESCE(pii.cgst_amount,0)) as cgst_amount, SUM(COALESCE(pii.sgst_amount,0)) as sgst_amount, SUM(COALESCE(pii.igst_amount,0)) as igst_amount, SUM(COALESCE(pii.gst_tax_amount,0)) as gst_amount")
             ->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
