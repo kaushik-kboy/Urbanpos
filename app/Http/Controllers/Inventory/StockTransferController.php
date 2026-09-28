@@ -105,6 +105,7 @@ class StockTransferController extends Controller
             foreach ($data['items'] as $line) {
                 $qty = (float) $line['qty'];
                 $item = $itemsById[$line['item_id']];
+                $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
 
                 $ledgerRow = $this->stockLedger->post(
                     itemId: $item->id,
@@ -116,6 +117,7 @@ class StockTransferController extends Controller
                     referenceId: $stockTransfer->id,
                     documentDate: $data['header']['transfer_date'],
                     expDate: $line['exp_date'] ?? null,
+                    batchNo: $batchNo,
                 );
 
                 $unitCost = (float) $ledgerRow->unit_cost;
@@ -127,6 +129,7 @@ class StockTransferController extends Controller
 
                 $stockTransfer->items()->create([
                     'item_id' => $item->id,
+                    'batch_no' => $batchNo,
                     'exp_date' => $line['exp_date'] ?? null,
                     'qty' => $qty,
                     'unit_cost' => $unitCost,
@@ -241,6 +244,7 @@ class StockTransferController extends Controller
                         referenceId: $stockTransfer->id,
                         documentDate: now()->toDateString(),
                         expDate: $line->exp_date?->toDateString(),
+                        batchNo: $line->batch_no ?? null,
                     );
                 }
 
@@ -283,9 +287,22 @@ class StockTransferController extends Controller
     private function assertStockAvailable(array $items, int $fromBranchId): void
     {
         $totalQtyByItem = [];
+        $totalQtyByBatch = [];
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
+
         foreach ($items as $line) {
             $itemId = (int) $line['item_id'];
             $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
+
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
+            if ($batchNo) {
+                $bKey = "{$itemId}_{$batchNo}";
+                $totalQtyByBatch[$bKey] = [
+                    'item_id' => $itemId,
+                    'batch_no' => $batchNo,
+                    'qty' => ($totalQtyByBatch[$bKey]['qty'] ?? 0.0) + (float) $line['qty'],
+                ];
+            }
         }
 
         foreach ($totalQtyByItem as $itemId => $totalRequested) {
@@ -301,6 +318,18 @@ class StockTransferController extends Controller
             if (round($totalRequested, 4) > round($available, 4)) {
                 throw ValidationException::withMessages([
                     'items' => "Insufficient stock for \"{$item->name}\" at source branch: available {$available}, requested {$totalRequested}.",
+                ]);
+            }
+        }
+
+        foreach ($totalQtyByBatch as $bReq) {
+            $bStock = $batchService->getBatchStock($bReq['item_id'], $fromBranchId, $bReq['batch_no']);
+            $bAvail = (float) ($bStock['remaining_qty'] ?? 0);
+            if (round($bReq['qty'], 4) > round($bAvail, 4)) {
+                $item = Item::find($bReq['item_id']);
+                $itemName = $item ? $item->name : "Item #{$bReq['item_id']}";
+                throw ValidationException::withMessages([
+                    'items' => "Insufficient batch stock for \"{$itemName}\" (Batch: {$bReq['batch_no']}). Available: {$bAvail}, requested: {$bReq['qty']}.",
                 ]);
             }
         }
@@ -528,7 +557,30 @@ class StockTransferController extends Controller
             ]);
         }
 
-        $expDate = $this->resolveItemExpiry($item, $stock);
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
+        $resolvedBatches = $batchService->getItemBatches($item->id, $branchId);
+
+        $batches = [];
+        foreach ($resolvedBatches as $b) {
+            if ($b['remaining_qty'] > 0) {
+                $batches[] = [
+                    'productname' => $item->name,
+                    'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'batch_no' => $b['batch_no'] ?: '',
+                    'exp_date' => $b['exp_date'],
+                    'qty' => $b['remaining_qty'],
+                    'cost_price' => $b['cost_price'],
+                    'sell_price' => $b['sell_price'],
+                    'mrp' => $b['mrp'],
+                ];
+            }
+        }
+
+        $defaultBatch = !empty($batches) ? $batches[0] : null;
+        $batchNo = $defaultBatch ? $defaultBatch['batch_no'] : null;
+        $expDate = $defaultBatch ? $defaultBatch['exp_date'] : $this->resolveItemExpiry($item, $stock);
+        $availQty = $defaultBatch ? (float) $defaultBatch['qty'] : $avail;
+
         if ($expDate && $expDate < now()->toDateString()) {
             return response()->json([
                 'found' => false,
@@ -546,8 +598,10 @@ class StockTransferController extends Controller
                 'name' => $item->name,
                 'text' => "{$item->name}{$codeStr}",
                 'code' => $item->ean_upc_code ?: ($item->item_code ?: ''),
-                'available_qty' => $avail,
+                'batch_no' => $batchNo,
+                'available_qty' => $availQty,
                 'exp_date' => $expDate,
+                'batches' => $batches,
             ],
         ]);
     }
@@ -633,6 +687,7 @@ class StockTransferController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
         ]);

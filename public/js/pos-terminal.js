@@ -1954,6 +1954,7 @@
                 },
                 body: JSON.stringify({
                     branch_id: state.branch_id,
+                    edit_id: state.edit_id,
                     items: state.cart.map(c => ({ item_id: c.id, qty: c.qty }))
                 })
             });

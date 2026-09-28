@@ -42,6 +42,10 @@
                placeholder="Product Description (auto-filled)"
                title="Product description (auto-filled on code entry)">
         <input type="hidden" name="items[{{ $idx }}][item_id]" class="item-id-hidden" value="{{ $itemId }}">
+        <input type="hidden" name="items[{{ $idx }}][batch_no]" class="item-batch-no" value="{{ data_get($line, 'batch_no', '') }}">
+        <div class="item-batch-display mt-1 {{ empty(data_get($line, 'batch_no')) ? 'd-none' : '' }}">
+            <span class="badge badge-info px-2 py-1"><i class="fas fa-layer-group mr-1"></i>Batch: <span class="item-batch-text">{{ data_get($line, 'batch_no', '') }}</span></span>
+        </div>
     </td>
 
     {{-- Exp Date --}}

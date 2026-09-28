@@ -307,7 +307,14 @@
 
             $row.find('.item-code-input').val(item.id || displayCode);
             const avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
-            $row.find('.item-available').val(avail.toFixed(3));
+            if (item.batch_no) {
+                $row.find('.item-batch-no').val(item.batch_no);
+                $row.find('.item-batch-text').text(item.batch_no);
+                $row.find('.item-batch-display').removeClass('d-none');
+            } else {
+                $row.find('.item-batch-no').val('');
+                $row.find('.item-batch-display').addClass('d-none');
+            }
 
             if (item.exp_date) {
                 let formattedExp = formatToDisplayDate(item.exp_date);

@@ -11,7 +11,7 @@ class DamageStockItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'damage_stock_id', 'item_id', 'exp_date', 'qty', 'cost_price', 'sell_price', 'mrp',
+        'damage_stock_id', 'item_id', 'batch_no', 'exp_date', 'qty', 'cost_price', 'sell_price', 'mrp',
         'gst_percent', 'gst_tax_amount', 'net_amount',
     ];
 

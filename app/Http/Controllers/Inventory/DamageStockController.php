@@ -276,9 +276,32 @@ class DamageStockController extends Controller
         }
 
         $stock = $item->stocks->first();
-        $costPrice = ($stock && $stock->cost_price > 0) ? (float) $stock->cost_price : (float) ($item->cost_price ?? 0);
-        $sellPrice = ($stock && $stock->sell_price > 0) ? (float) $stock->sell_price : (float) ($item->sell_price ?? 0);
-        $mrp = ($stock && $stock->mrp > 0) ? (float) $stock->mrp : (float) ($item->mrp ?? 0);
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
+        $resolvedBatches = $batchService->getItemBatches($item->id, $branchId);
+
+        $batches = [];
+        foreach ($resolvedBatches as $b) {
+            if ($b['remaining_qty'] > 0) {
+                $batches[] = [
+                    'productname' => $item->name,
+                    'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'batch_no' => $b['batch_no'] ?: '',
+                    'exp_date' => $b['exp_date'],
+                    'qty' => $b['remaining_qty'],
+                    'cost_price' => $b['cost_price'],
+                    'sell_price' => $b['sell_price'],
+                    'mrp' => $b['mrp'],
+                ];
+            }
+        }
+
+        $defaultBatch = !empty($batches) ? $batches[0] : null;
+        $batchNo = $defaultBatch ? $defaultBatch['batch_no'] : null;
+        $expDate = $defaultBatch ? $defaultBatch['exp_date'] : null;
+        $costPrice = ($defaultBatch && $defaultBatch['cost_price'] > 0) ? (float) $defaultBatch['cost_price'] : (($stock && $stock->cost_price > 0) ? (float) $stock->cost_price : (float) ($item->cost_price ?? 0));
+        $sellPrice = ($defaultBatch && $defaultBatch['sell_price'] > 0) ? (float) $defaultBatch['sell_price'] : (($stock && $stock->sell_price > 0) ? (float) $stock->sell_price : (float) ($item->sell_price ?? 0));
+        $mrp = ($defaultBatch && $defaultBatch['mrp'] > 0) ? (float) $defaultBatch['mrp'] : (($stock && $stock->mrp > 0) ? (float) $stock->mrp : (float) ($item->mrp ?? 0));
+        $availQty = $defaultBatch ? (float) $defaultBatch['qty'] : (float) ($stock?->quantity ?? 0);
 
         $displayCode = $item->ean_upc_code ?: ($item->item_code ? "Item: {$item->item_code}" : "");
         $codeStr = $displayCode ? " [{$displayCode}]" : "";
@@ -290,18 +313,20 @@ class DamageStockController extends Controller
                 'name' => $item->name,
                 'text' => "{$item->name}{$codeStr}",
                 'code' => $item->ean_upc_code ?: ($item->item_code ?: ''),
+                'batch_no' => $batchNo,
+                'exp_date' => $expDate,
+                'available_qty' => $availQty,
                 'cost_price' => $costPrice,
                 'sell_price' => $sellPrice,
                 'mrp' => $mrp,
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
+                'batches' => $batches,
             ],
         ]);
     }
 
     /**
-     * Releases stock at the item's current moving-average cost (via unitCost: null),
-     * never the form's manually-entered cost_price — inventory loss must reflect what the
-     * stock actually cost the business, not a display value.
+     * Releases stock preserving original batch identity.
      */
     private function postStock($createdItems, DamageStock $damageStock): void
     {
@@ -317,6 +342,7 @@ class DamageStockController extends Controller
                 documentDate: $damageStock->entry_date->toDateString(),
                 reasonCode: $damageStock->wastage_type,
                 expDate: $itemLine->exp_date?->toDateString(),
+                batchNo: $itemLine->batch_no ?? null,
             );
         }
     }
@@ -348,6 +374,7 @@ class DamageStockController extends Controller
 
             return [
                 'item_id' => $line['item_id'],
+                'batch_no' => !empty($line['batch_no']) ? trim($line['batch_no']) : null,
                 'exp_date' => !empty($line['exp_date']) ? $this->normalizeDate($line['exp_date']) : null,
                 'qty' => $qty,
                 'cost_price' => $costPrice,
@@ -380,6 +407,7 @@ class DamageStockController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.cost_price' => ['required', 'numeric', 'min:0'],
@@ -394,9 +422,22 @@ class DamageStockController extends Controller
     private function assertStockAvailable(array $items, int $branchId): void
     {
         $totalQtyByItem = [];
+        $totalQtyByBatch = [];
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
+
         foreach ($items as $line) {
             $itemId = (int) $line['item_id'];
             $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
+
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
+            if ($batchNo) {
+                $bKey = "{$itemId}_{$batchNo}";
+                $totalQtyByBatch[$bKey] = [
+                    'item_id' => $itemId,
+                    'batch_no' => $batchNo,
+                    'qty' => ($totalQtyByBatch[$bKey]['qty'] ?? 0.0) + (float) $line['qty'],
+                ];
+            }
         }
 
         foreach ($totalQtyByItem as $itemId => $totalRequested) {
@@ -409,6 +450,18 @@ class DamageStockController extends Controller
             if (round($totalRequested, 4) > round($available, 4)) {
                 throw ValidationException::withMessages([
                     'items' => "Insufficient stock for \"{$item->name}\" at branch: available {$available}, requested {$totalRequested}.",
+                ]);
+            }
+        }
+
+        foreach ($totalQtyByBatch as $bReq) {
+            $bStock = $batchService->getBatchStock($bReq['item_id'], $branchId, $bReq['batch_no']);
+            $bAvail = (float) ($bStock['remaining_qty'] ?? 0);
+            if (round($bReq['qty'], 4) > round($bAvail, 4)) {
+                $item = Item::find($bReq['item_id']);
+                $itemName = $item ? $item->name : "Item #{$bReq['item_id']}";
+                throw ValidationException::withMessages([
+                    'items' => "Insufficient batch stock for \"{$itemName}\" (Batch: {$bReq['batch_no']}). Available: {$bAvail}, requested: {$bReq['qty']}.",
                 ]);
             }
         }

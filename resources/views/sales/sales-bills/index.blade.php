@@ -44,8 +44,17 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Payment Mode</label>
+                        <select name="payment_mode" class="form-control form-control-sm" onchange="this.form.submit()">
+                            <option value="">All Payment Modes</option>
+                            @foreach ($paymentModes ?? ['Cash', 'Card', 'UPI', 'Credit', 'Split'] as $mode)
+                                <option value="{{ $mode }}" @selected(request('payment_mode') == $mode)>{{ $mode }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 @else
-                    <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="col-md-2 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Search</label>
                         <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile..." value="{{ request('search') }}">
                     </div>
@@ -91,6 +100,15 @@
                             <option value="">All Types</option>
                             @foreach ($invoiceTypes as $type)
                                 <option value="{{ $type }}" @selected(request('invoice_type') == $type)>{{ $type }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-1 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Payment</label>
+                        <select name="payment_mode" class="form-control form-control-sm">
+                            <option value="">All</option>
+                            @foreach ($paymentModes ?? ['Cash', 'Card', 'UPI', 'Credit', 'Split'] as $mode)
+                                <option value="{{ $mode }}" @selected(request('payment_mode') == $mode)>{{ $mode }}</option>
                             @endforeach
                         </select>
                     </div>

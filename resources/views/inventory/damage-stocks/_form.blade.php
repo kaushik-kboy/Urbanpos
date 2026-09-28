@@ -242,9 +242,21 @@
             $row.find('.item-mrp').val(parseFloat(item.mrp || 0).toFixed(2));
             $row.find('.item-gst-percent').val(parseFloat(item.gst_percent || 0).toFixed(2));
 
+            if (item.batch_no) {
+                $row.find('.item-batch-no').val(item.batch_no);
+                $row.find('.item-batch-text').text(item.batch_no);
+                $row.find('.item-batch-display').removeClass('d-none');
+            } else {
+                $row.find('.item-batch-no').val('');
+                $row.find('.item-batch-display').addClass('d-none');
+            }
+
+            if (item.exp_date) {
+                $row.find('.item-exp-date').val(item.exp_date.substring(0, 10));
+            }
+
             const $qty = $row.find('.item-qty');
             // Do not default qty to 1; keep blank as requested
-
 
             recalcRow($row);
             $qty.focus().select();

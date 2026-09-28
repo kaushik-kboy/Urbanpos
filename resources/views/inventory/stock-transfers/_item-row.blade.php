@@ -42,6 +42,10 @@
                 <option value="{{ $selectedItem->id }}" selected>{{ $selectedItem->name }}{{ $codeStr }}</option>
             @endif
         </select>
+        <input type="hidden" name="items[{{ $index }}][batch_no]" class="item-batch-no" value="{{ $line->batch_no ?? '' }}">
+        <div class="item-batch-display mt-1 {{ empty($line->batch_no ?? '') ? 'd-none' : '' }}">
+            <span class="badge badge-info px-2 py-1"><i class="fas fa-layer-group mr-1"></i>Batch: <span class="item-batch-text">{{ $line->batch_no ?? '' }}</span></span>
+        </div>
     </td>
     <td style="min-width: 130px;" data-col-key="expiry">
         <input type="text"

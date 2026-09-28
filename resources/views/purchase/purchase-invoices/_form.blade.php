@@ -1628,23 +1628,6 @@
                     $expBadge.addClass('d-none');
                 }
                 $expInput.attr('title', 'Expiry date is mandatory for this item (' + batchExpiry + ')');
-
-                // Auto-fill expiry date from shelf life if date is empty
-                if ((batchExpiry === 'Days' || batchExpiry === 'Month') && shelfLife > 0 && !$expInput.val()) {
-                    let invDateVal = $('input[name="invoice_date"]').val();
-                    let base = invDateVal ? new Date(invDateVal) : new Date();
-                    if (!isNaN(base.getTime())) {
-                        if (batchExpiry === 'Days') {
-                            base.setDate(base.getDate() + shelfLife);
-                        } else if (batchExpiry === 'Month') {
-                            base.setMonth(base.getMonth() + shelfLife);
-                        }
-                        let yyyy = base.getFullYear();
-                        let mm = String(base.getMonth() + 1).padStart(2, '0');
-                        let dd = String(base.getDate()).padStart(2, '0');
-                        $expInput.val(`${yyyy}-${mm}-${dd}`);
-                    }
-                }
             } else {
                 // Not Required or Optional: no validation needed!
                 $expInput.prop('required', false).removeClass('border-danger');
@@ -1821,22 +1804,31 @@
             return true;
         }
 
-        // Validate immediately when expiry date is changed/input
-        $(document).on('change input blur', '.pinv-exp-date', function (e) {
-            let showToast = (e.type === 'change' || e.type === 'blur');
-            validatePinvExpDate($(this), showToast);
+        // Validate immediately when expiry date is changed/input/blur
+        $(document).on('change input', '.pinv-exp-date', function (e) {
+            validatePinvExpDate($(this), false);
+        });
+
+        $(document).on('blur', '.pinv-exp-date', function (e) {
+            let $input = $(this);
+            let isValid = validatePinvExpDate($input, true);
+            if (!isValid && $input.val()) {
+                setTimeout(function () {
+                    $input.focus();
+                }, 10);
+            }
         });
 
         // Tab & Enter navigation on Exp Date:
-        // If date is in the past, block navigation ("tab aage hi nahi jayga")!
+        // If date is invalid or in the past, block navigation ("tab aage hi nahi jayga")!
         $(document).on('keydown', '.pinv-exp-date', function (e) {
             let isTab = (e.key === 'Tab' && !e.shiftKey);
             let isEnter = (e.key === 'Enter' || e.keyCode === 13);
 
             if (isTab || isEnter) {
                 let isValid = validatePinvExpDate($(this), true);
-                if (!isValid && $(this).val()) {
-                    // Past date entered: block Tab/Enter navigation completely
+                if (!isValid && ($(this).val() || $(this).prop('required'))) {
+                    // Invalid/past date: block Tab/Enter navigation completely
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();

@@ -104,6 +104,25 @@ class SalesBillController extends Controller
             $query->where('invoice_type', $request->input('invoice_type'));
         }
 
+        if ($request->filled('payment_mode')) {
+            $pm = trim($request->input('payment_mode'));
+            if ($pm !== '' && strtolower($pm) !== 'all') {
+                if (strtolower($pm) === 'cash') {
+                    $query->where(function ($q) {
+                        $q->where('payment_type', 'Cash')
+                          ->orWhereNull('payment_type')
+                          ->orWhere('payment_type', '')
+                          ->orWhereHas('payments.tenderType', fn ($tq) => $tq->where('name', 'Cash')->orWhere('type', 'Cash'));
+                    });
+                } else {
+                    $query->where(function ($q) use ($pm) {
+                        $q->where('payment_type', $pm)
+                          ->orWhereHas('payments.tenderType', fn ($tq) => $tq->where('name', $pm)->orWhere('type', $pm));
+                    });
+                }
+            }
+        }
+
         $salesBills = $this->paginateDeep($query, 20);
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $filteredCustId = $request->input('customer_id');
@@ -121,8 +140,10 @@ class SalesBillController extends Controller
         }
 
         $invoiceTypes = ['Retail Invoice', 'Tax Invoice', 'Exempted'];
+        $dbTenders = TenderType::where('status', true)->pluck('name')->all();
+        $paymentModes = array_values(array_unique(array_merge(['Cash', 'Card', 'UPI', 'Credit', 'Split'], $dbTenders)));
 
-        return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes'));
+        return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes', 'paymentModes'));
     }
 
     public function posTerminal(Request $request)
@@ -501,6 +522,17 @@ class SalesBillController extends Controller
             $this->ledgerPosting->postSalesBill($salesBill);
         });
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'id' => $salesBill->id,
+                'bill_number' => $salesBill->bill_number,
+                'total' => $salesBill->total,
+                'customer' => $salesBill->customer,
+                'message' => "Sales Bill {$salesBill->bill_number} updated successfully.",
+            ]);
+        }
+
         return redirect()->route('sales.sales-bills.index')->with('status', "Sales Bill {$salesBill->bill_number} updated successfully.");
     }
 
@@ -800,6 +832,16 @@ class SalesBillController extends Controller
     {
         $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
         $items = $request->input('items', []);
+        $editId = (int) ($request->input('edit_id') ?: $request->input('sales_bill_id') ?: 0);
+        $existingQuantities = [];
+        if ($editId > 0) {
+            $editingBill = SalesBill::with('items')->find($editId);
+            if ($editingBill && (int) $editingBill->branch_id === $branchId) {
+                foreach ($editingBill->items as $ebItem) {
+                    $existingQuantities[$ebItem->item_id] = ($existingQuantities[$ebItem->item_id] ?? 0.0) + (float) $ebItem->qty;
+                }
+            }
+        }
 
         $totalQtyByItem = [];
         foreach ($items as $line) {
@@ -819,6 +861,10 @@ class SalesBillController extends Controller
             $available = (float) (ItemStock::where('item_id', $itemId)
                 ->where('branch_id', $branchId)
                 ->value('quantity') ?? 0);
+
+            if (isset($existingQuantities[$itemId])) {
+                $available += $existingQuantities[$itemId];
+            }
 
             if (round($totalRequested, 4) > round($available, 4)) {
                 $availDisp = ($available == (int) $available) ? (int) $available : $available;
