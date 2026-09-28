@@ -19,8 +19,8 @@
         $selectedItem = \App\Models\Item::with('gstTax:id,percentage')->find($selectedItemId);
     }
     $isExpRequired = $selectedItem && in_array($selectedItem->batch_expiry_details ?? '', ['Mandatory', 'Days', 'Month']);
-    // Show item_code (internal), NOT barcode/EAN
-    $itemCodeVal = $line->code ?? ($selectedItem->item_code ?? '');
+    // Show item ID as requested
+    $itemCodeVal = $selectedItemId ?: ($selectedItem ? $selectedItem->id : ($line->code ?? ''));
 
     $costVal = isset($line->cost_price) && $line->cost_price != 0 ? (float)$line->cost_price : (float)($selectedItem->cost_price ?? 0);
     $sellVal = isset($line->sell_price) && $line->sell_price != 0 ? (float)$line->sell_price : (float)($selectedItem->sell_price ?? 0);

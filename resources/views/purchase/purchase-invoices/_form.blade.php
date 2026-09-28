@@ -531,7 +531,7 @@
                     $row.find('input').attr('autocomplete', 'off');
 
                     $row.find('.pinv-item-select').val(it.item_id);
-                    $row.find('.pinv-item-code').val(it.code || ('#' + it.item_id));
+                    $row.find('.pinv-item-code').val(it.item_id);
                     $row.find('.pinv-item-desc').val(it.name);
                     $row.find('.pinv-qty').val(it.qty > 0 ? it.qty : '');
                     $row.find('.pinv-free-qty').val(it.free_qty > 0 ? it.free_qty : '');
@@ -586,14 +586,8 @@
             $.getJSON("{{ route('purchase.purchase-orders.open-by-supplier') }}", { supplier_id: suppId }, function (res) {
                 let optionsHtml = '<option value="">Select PO</option>';
                 let poList = (res && res.purchase_orders) ? res.purchase_orders : [];
-                let currentVal = (selectedPoId !== null && selectedPoId !== undefined && selectedPoId !== '') ? String(selectedPoId) : String($poSelect.val() || '');
+                let currentVal = (selectedPoId !== null && selectedPoId !== undefined && selectedPoId !== '') ? String(selectedPoId) : '';
                 let foundMatch = false;
-
-                // If user hasn't selected a PO yet, auto-select the first open PO
-                if (poList.length > 0 && (!currentVal || currentVal === '')) {
-                    currentVal = String(poList[0].id);
-                    foundMatch = true;
-                }
 
                 poList.forEach(function (po) {
                     let isSel = (String(po.id) === currentVal);
@@ -1103,9 +1097,7 @@
             pendingFocusExpRow = $targetRow;
 
             $targetRow.find('.pinv-item-select').val(itemId);
-            if (itemCode) {
-                $targetRow.find('.pinv-item-code').val(itemCode);
-            }
+            $targetRow.find('.pinv-item-code').val(itemId);
 
             processPurchaseItemLookup($targetRow, itemId);
             $('#pinv-item-search-modal').modal('hide');
@@ -1677,8 +1669,8 @@
 
             $.getJSON('{{ route("purchase.purchase-invoices.lookup-item") }}', params, function (data) {
                 if (data && data.id) {
-                    // Show item_code (internal code); never show barcode/EAN in Code column
-                    let codeVal = data.item_code || ('#' + data.id);
+                    // Always show item ID without '#' prefix as requested
+                    let codeVal = data.id;
                     $code.val(codeVal);
 
                     $select.val(data.id);
@@ -1703,10 +1695,8 @@
                     // Update expiry rules
                     updateExpiryRequirement($row, data.batch_expiry_details, data.shelf_life_days);
 
-                    // If expiry is already known (or computed), populate it
-                    if (data.exp_date && !$row.find('.pinv-exp-date').val()) {
-                        $row.find('.pinv-exp-date').val(data.exp_date);
-                    }
+                    // Do not auto-populate default expiry date on item select as requested
+                    $row.find('.pinv-exp-date').val('');
 
                     calculateRow($row, 'base');
 

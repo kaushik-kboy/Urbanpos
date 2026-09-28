@@ -113,13 +113,13 @@
                 <th style="min-width:210px" data-col-key="desc" data-can-hide="false">Item Description</th>
                 <th style="width:75px" class="text-right" data-col-key="stock">Stock</th>
                 <th style="width:75px" class="text-right" data-col-key="qty" data-can-hide="false">Qty</th>
-                <th style="width:55px" class="text-right" data-col-key="free">Free</th>
+                <th style="width:45px" class="text-right" data-col-key="free">Free</th>
                 <th style="width:95px" class="text-right" data-col-key="cost">Cost Price</th>
                 <th style="width:95px" class="text-right" data-col-key="sell">Sell Price</th>
                 <th style="width:90px" class="text-right" data-col-key="mrp">MRP</th>
-                <th style="width:55px" class="text-right" data-col-key="disc_pct">Disc %</th>
+                <th style="width:48px" class="text-right" data-col-key="disc_pct">Disc %</th>
                 <th style="width:85px" class="text-right" data-col-key="disc_amt">Disc Amt</th>
-                <th style="width:55px" class="text-right" data-col-key="gst">GST%</th>
+                <th style="width:45px" class="text-right" data-col-key="gst">GST%</th>
                 <th style="width:105px" class="text-right font-weight-bold text-success" data-col-key="net" data-can-hide="false">Net Amount</th>
                 <th style="width:35px" data-col-key="action" data-can-hide="false"></th>
             </tr>

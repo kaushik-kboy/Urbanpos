@@ -7,7 +7,7 @@
     } elseif ($itemId) {
         $itemObj = \App\Models\Item::find($itemId);
     }
-    $itemCode = $itemObj ? ($itemObj->item_code ?: $itemObj->ean_upc_code) : data_get($line, 'item_code', '');
+    $itemCode = $itemId ?: ($itemObj ? $itemObj->id : data_get($line, 'item_code', ''));
     $itemName = $itemObj ? $itemObj->name : data_get($line, 'item_name', '');
 
     $expDate = data_get($line, 'exp_date');

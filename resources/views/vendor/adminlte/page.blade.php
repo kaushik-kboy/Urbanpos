@@ -8,6 +8,61 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}?v=20260921_2">
+    <style>
+        /* Global Compact Styles for all Item Tables across POS */
+        .table-items-dense th {
+            vertical-align: middle;
+            padding: 4px 2px !important;
+            font-size: 0.77rem;
+            white-space: nowrap;
+        }
+        .table-items-dense td {
+            vertical-align: middle;
+            padding: 1px 1px !important;
+        }
+        .table-items-dense input.form-control-sm,
+        .table-items-dense select.form-control-sm {
+            font-size: 0.81rem;
+            padding: 1px 3px !important;
+            height: 27px !important;
+            border-radius: 2px;
+        }
+        .table-items-dense .btn-xs {
+            padding: 1px 4px !important;
+            font-size: 0.75rem;
+            line-height: 1.2;
+        }
+        /* Specific column sizes requested globally */
+        .table-items-dense th[data-col-key="free"],
+        .table-items-dense td[data-col-key="free"] {
+            width: 45px !important;
+            min-width: 45px !important;
+        }
+        .table-items-dense th[data-col-key="disc_pct"],
+        .table-items-dense td[data-col-key="disc_pct"],
+        .table-items-dense th[data-col-key="disc_percent"],
+        .table-items-dense td[data-col-key="disc_percent"] {
+            width: 48px !important;
+            min-width: 48px !important;
+        }
+        .table-items-dense th[data-col-key="margin"],
+        .table-items-dense td[data-col-key="margin"] {
+            width: 50px !important;
+            min-width: 50px !important;
+        }
+        .table-items-dense th[data-col-key="profit"],
+        .table-items-dense td[data-col-key="profit"] {
+            width: 50px !important;
+            min-width: 50px !important;
+        }
+        .table-items-dense th[data-col-key="gst"],
+        .table-items-dense td[data-col-key="gst"],
+        .table-items-dense th[data-col-key="gst_percent"],
+        .table-items-dense td[data-col-key="gst_percent"] {
+            width: 45px !important;
+            min-width: 45px !important;
+        }
+    </style>
     @stack('css')
     @yield('css')
     @if(request()->query('is_iframe') == '1')

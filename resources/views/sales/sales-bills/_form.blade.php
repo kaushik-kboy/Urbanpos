@@ -224,12 +224,12 @@
                 <th style="width: 85px;" class="text-right" data-col-key="qty">Qty</th>
                 <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
                 <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
-                <th style="width: 80px;" class="text-right" data-col-key="disc_percent">Disc %</th>
-                <th style="width: 95px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
-                <th style="width: 75px;" class="text-right" data-col-key="gst_percent">GST %</th>
-                <th style="width: 85px;" class="text-right" title="Included GST Amount" data-col-key="gst_amt">GST Amt</th>
-                <th style="width: 105px;" class="text-right" data-col-key="net_amt">Net Amount</th>
-                <th style="width: 35px;" class="text-center" data-col-key="actions"></th>
+                <th style="width: 48px;" class="text-right" data-col-key="disc_percent">Disc %</th>
+                <th style="width: 80px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width: 45px;" class="text-right" data-col-key="gst_percent">GST %</th>
+                <th style="width: 80px;" class="text-right" title="Included GST Amount" data-col-key="gst_amt">GST Amt</th>
+                <th style="width: 95px;" class="text-right" data-col-key="net_amt">Net Amount</th>
+                <th style="width: 32px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="sb-items-body">
@@ -2193,6 +2193,7 @@
                     // Sync description display & hidden item id
                     $desc.val(item.name + (item.item_code ? ' [' + item.item_code + ']' : ''));
                     $select.val(item.id);
+                    $code.val(item.id);
                     isSyncing = false;
 
                     // Store Product Stock for validation

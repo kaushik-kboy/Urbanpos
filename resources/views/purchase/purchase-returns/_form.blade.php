@@ -106,9 +106,9 @@
                 <th style="width: 130px;" data-col-key="expiry">Exp Date</th>
                 <th style="width: 95px;" class="text-right" data-col-key="qty">Qty <span class="text-danger">*</span></th>
                 <th style="width: 110px;" class="text-right" data-col-key="cost_price">Cost Price <span class="text-danger">*</span></th>
-                <th style="width: 85px;" class="text-right" data-col-key="disc_percent">Disc %</th>
+                <th style="width: 48px;" class="text-right" data-col-key="disc_percent">Disc %</th>
                 <th style="width: 95px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
-                <th style="width: 85px;" class="text-right" data-col-key="gst_percent">GST %</th>
+                <th style="width: 45px;" class="text-right" data-col-key="gst_percent">GST %</th>
                 <th style="width: 110px;" class="text-right" data-col-key="net_amt">Net Amount</th>
                 <th style="width: 40px;" class="text-center" data-col-key="actions"></th>
             </tr>
@@ -700,7 +700,7 @@
             prLastSelectedRow = prActiveSearchRow;
 
             let $row = prActiveSearchRow;
-            $row.find('.pr-item-code').val(itemData.code);
+            $row.find('.pr-item-code').val(itemData.id);
             $row.find('.pr-item-desc').val(itemData.name);
             $row.find('.pr-item-id').val(itemData.id);
 
@@ -776,7 +776,7 @@
                 purchase_invoice_id: invoiceId
             }, function (res) {
                 if (res && res.id) {
-                    $row.find('.pr-item-code').val(res.code || query);
+                    $row.find('.pr-item-code').val(res.id || res.item_id || query);
                     $row.find('.pr-item-desc').val(res.name);
                     $row.find('.pr-item-id').val(res.id);
 

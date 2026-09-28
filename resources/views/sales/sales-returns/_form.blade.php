@@ -147,9 +147,9 @@
                 <th style="width: 90px;" class="text-right" data-col-key="qty">Qty <span class="text-danger">*</span></th>
                 <th style="width: 110px;" class="text-right" data-col-key="sell_price">Sell Price <span class="text-danger">*</span></th>
                 <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
-                <th style="width: 85px;" class="text-right" data-col-key="disc_percent">Disc %</th>
+                <th style="width: 48px;" class="text-right" data-col-key="disc_percent">Disc %</th>
                 <th style="width: 100px;" class="text-right" data-col-key="disc_amt">Disc Amt</th>
-                <th style="width: 75px;" class="text-right" data-col-key="gst_percent">GST %</th>
+                <th style="width: 45px;" class="text-right" data-col-key="gst_percent">GST %</th>
                 <th style="width: 115px;" class="text-right" data-col-key="net_amt">Net Amount</th>
                 <th style="width: 40px;" class="text-center" data-col-key="actions"></th>
             </tr>
@@ -534,8 +534,8 @@
             srItemSelectedInModal = true;
             srCancellingRow = null;
 
-            // Show internal item_code in Code column, not the numeric ID or barcode
-            srActiveSearchRow.find('.sr-item-code').val(itemCode || ('#' + itemId));
+            // Show item_id in Code column as requested
+            srActiveSearchRow.find('.sr-item-code').val(itemId);
             srActiveSearchRow.find('.sr-item-desc').val(itemName + (itemCode ? ' [' + itemCode + ']' : ''));
             srActiveSearchRow.find('.sr-item-select').val(itemId);
             srActiveSearchRow.find('.sr-exp-date').val(exp || '');
@@ -1047,7 +1047,7 @@
 
             const codeInput = row.querySelector('.sr-item-code');
             if (codeInput) {
-                codeInput.value = item.item_code || ('#' + item.item_id);
+                codeInput.value = item.item_id;
                 codeInput.readOnly = true;
                 codeInput.title = 'Item from Sales Bill (cannot be changed)';
             }
