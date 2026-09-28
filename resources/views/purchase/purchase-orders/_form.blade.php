@@ -481,9 +481,9 @@
         function populatePoRow($row, data) {
             if (!data || !data.id) return;
 
-            let codeVal = data.item_code || data.code || data.ean_upc_code || '';
+            let codeVal = data.id || data.item_code || data.code || '';
             $row.find('.po-item-code').val(codeVal);
-            $row.find('.po-item-desc').val(data.name + (codeVal ? ' [' + codeVal + ']' : ''));
+            $row.find('.po-item-desc').val(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''));
             $row.find('.po-item-select').val(data.id);
 
             let stockVal = data.stock !== undefined ? data.stock : (data.qty !== undefined ? data.qty : 0);
@@ -519,7 +519,7 @@
             let itemData = {
                 id: $tr.data('id'),
                 name: $tr.data('name'),
-                code: $tr.data('code'),
+                code: $tr.data('id'),
                 cost_price: $tr.data('cost'),
                 sell_price: $tr.data('sell'),
                 mrp: $tr.data('mrp'),
@@ -791,20 +791,34 @@
             rowIndex++;
             updateRowNumbers();
             setTimeout(function () {
-                $newRow.find('.po-item-code').focus();
-                $newRow.find('.po-item-code').trigger($.Event('keydown', { key: 'Enter' }));
+                let $code = $newRow.find('.po-item-code');
+                $code.focus();
+                checkSupplierAndOpenPoModal($code);
             }, 60);
         }
 
-        // Last columns: pressing Tab or Enter on po-mrp, po-disc-amount, or po-gst advances to next row or adds a new row and opens search modal
-        $(document).on('keydown', '.po-gst, .po-disc-amount, .po-mrp', function (e) {
+        // Enter key inside row moves sequentially to the next editable field
+        $(document).on('keydown', '.po-qty, .po-free-qty, .po-cost, .po-sell, .po-mrp, .po-disc-percent', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                let $currentRow = $(this).closest('tr');
+                let $inputs = $currentRow.find('input:visible:not([readonly]):not([tabindex="-1"])');
+                let idx = $inputs.index(this);
+                if (idx > -1 && idx + 1 < $inputs.length) {
+                    $inputs.eq(idx + 1).focus().select();
+                }
+            }
+        });
+
+        // Disc Amount & GST (last editable fields): Tab or Enter adds new row & opens item popup, or moves to next row
+        $(document).on('keydown', '.po-disc-amount, .po-gst', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
                 let $nextRow = $currentRow.next('tr');
                 if (!$nextRow.length) {
                     e.preventDefault();
                     addPoRowAndOpenSearchModal();
-                } else if (e.key === 'Enter') {
+                } else {
                     e.preventDefault();
                     $nextRow.find('.po-item-code').focus();
                 }

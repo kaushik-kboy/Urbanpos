@@ -586,16 +586,18 @@ class PurchaseInvoiceController extends Controller
         }
 
         if (! $item && $query !== '') {
-            $item = Item::where('status', true)->with('gstTax:id,percentage')
-                ->where(function ($q) use ($query) {
-                    $q->where('item_code', $query)
-                        ->orWhere('ean_upc_code', $query)
-                        ->orWhere('name', 'like', "%{$query}%");
-                })
-                ->first();
+            if (is_numeric($query)) {
+                $item = Item::where('status', true)->with('gstTax:id,percentage')->find((int) $query);
+            }
 
-            if (! $item && is_numeric($query)) {
-                $item = Item::where('status', true)->with('gstTax:id,percentage')->find($query);
+            if (! $item) {
+                $item = Item::where('status', true)->with('gstTax:id,percentage')
+                    ->where(function ($q) use ($query) {
+                        $q->where('item_code', $query)
+                            ->orWhere('ean_upc_code', $query)
+                            ->orWhere('name', 'like', "%{$query}%");
+                    })
+                    ->first();
             }
         }
 

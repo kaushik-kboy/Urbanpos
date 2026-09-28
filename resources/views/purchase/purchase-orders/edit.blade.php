@@ -2,11 +2,16 @@
 
 @section('title', 'Edit Purchase Order')
 
+@section('classes_body', 'sidebar-mini sidebar-collapse')
+
 @section('content_header')
     <h1>Edit Purchase Order "{{ $purchaseOrder->po_number }}"</h1>
 @stop
 
 @section('content')
+    <script>
+        document.body.classList.add('sidebar-collapse');
+    </script>
     <div class="card card-primary card-outline">
         <form action="{{ route('purchase.purchase-orders.update', $purchaseOrder) }}" method="POST" id="po-form" novalidate>
             @csrf

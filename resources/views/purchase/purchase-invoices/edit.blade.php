@@ -2,6 +2,8 @@
 
 @section('title', 'Edit Purchase Invoice')
 
+@section('classes_body', 'sidebar-mini sidebar-collapse')
+
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center flex-wrap">
         <h1 class="m-0">Edit Purchase Invoice "{{ $purchaseInvoice->invoice_number }}"</h1>
@@ -17,6 +19,9 @@
 @stop
 
 @section('content')
+    <script>
+        document.body.classList.add('sidebar-collapse');
+    </script>
     <div class="card card-primary card-outline">
         <form action="{{ route('purchase.purchase-invoices.update', $purchaseInvoice) }}" method="POST" id="pinv-form" novalidate>
             @csrf

@@ -19,7 +19,7 @@
     if ($itemId && ! $selectedItem) {
         $selectedItem = \App\Models\Item::with('gstTax:id,percentage')->find($itemId);
     }
-    $itemCodeVal = data_get($line, 'code') ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
+    $itemCodeVal = data_get($line, 'item_id') ?: ($selectedItem ? $selectedItem->id : (data_get($line, 'code') ?: ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''))));
     $selectedItemName = $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '';
 
     $qty = data_get($line, 'qty', '');
