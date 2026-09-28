@@ -594,25 +594,25 @@
                         <table class="tender-table">
                             <tbody>
                                 <tr>
-                                    <td class="tender-label">A). Cash</td>
+                                    <td class="tender-label">Cash (Alt+C)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-cash" class="form-control text-left font-weight-bold" placeholder="0.00" autocomplete="off">
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="tender-label">B). Credit</td>
+                                    <td class="tender-label">Credit (Alt+E)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-credit" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="tender-label">C). Card</td>
+                                    <td class="tender-label">Card (Alt+D)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-card" class="form-control text-left font-weight-bold" placeholder="0.00" autocomplete="off">
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="tender-label">W). Wallet</td>
+                                    <td class="tender-label">UPI / Wallet (Alt+U)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-wallet" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
                                     </td>
@@ -727,8 +727,8 @@
                 </div>
 
                 <!-- Bottom Hotkey Bar -->
-                <div class="tender-hotkey-bar">
-                    Press (A) - Cash; (B) - Credit; (C) - Card; (W) - Wallet; (N) - RRN
+                <div class="tender-hotkey-bar font-weight-bold text-center">
+                    Cash (Alt+C) &nbsp;|&nbsp; UPI (Alt+U) &nbsp;|&nbsp; Card (Alt+D) &nbsp;|&nbsp; Credit (Alt+E)
                 </div>
             </div>
         </div>
@@ -1997,6 +1997,7 @@
                             <i class="fas fa-ban mr-1"></i>Out of Stock
                            </button>`
                         : `<button type="button" class="btn btn-success btn-xs px-2 btn-apply-batch" 
+                            data-batch="${b.batch_no || ''}"
                             data-exp="${b.exp_date || ''}" 
                             data-sell="${b.sell_price || ''}" 
                             data-mrp="${b.mrp || ''}">
@@ -2005,6 +2006,7 @@
 
                 let tr = `
                     <tr class="${bRowClass}" style="${bRowStyle}" 
+                        data-batch="${b.batch_no || ''}"
                         data-exp="${b.exp_date || ''}" 
                         data-sell="${b.sell_price || ''}" 
                         data-mrp="${b.mrp || ''}"
@@ -2097,8 +2099,11 @@
             $(this).addClass('batch-row-selected');
         });
 
-        function applyBatchToRow(exp, sell, mrp) {
+        function applyBatchToRow(exp, sell, mrp, batch) {
             if (!activeModalRow) return;
+            if (batch !== undefined) {
+                activeModalRow.find('.sb-item-batch-no').val(batch || '');
+            }
             if (exp) {
                 let cleanExp = exp.toString().substring(0, 10);
                 let todayStr = new Date().toISOString().substring(0, 10);
@@ -2124,7 +2129,8 @@
             let exp = $(this).data('exp') || '';
             let sell = $(this).data('sell') || '';
             let mrp = $(this).data('mrp') || '';
-            applyBatchToRow(exp, sell, mrp);
+            let batch = $(this).data('batch') || '';
+            applyBatchToRow(exp, sell, mrp, batch);
         });
 
         $(document).on('click', '.batch-select-row', function () {
@@ -2132,7 +2138,8 @@
             let exp = $(this).data('exp') || '';
             let sell = $(this).data('sell') || '';
             let mrp = $(this).data('mrp') || '';
-            applyBatchToRow(exp, sell, mrp);
+            let batch = $(this).data('batch') || '';
+            applyBatchToRow(exp, sell, mrp, batch);
         });
 
         // Click on batch button in row to re-open modal
@@ -2232,6 +2239,13 @@
                         }
                         if (bestExp) {
                             $exp.val(bestExp);
+                        }
+                    }
+
+                    if (batches.length >= 1) {
+                        let singleBatch = batches[0];
+                        if (singleBatch && singleBatch.batch_no) {
+                            $row.find('.sb-item-batch-no').val(singleBatch.batch_no);
                         }
                     }
 
@@ -2665,20 +2679,39 @@
             }, 200);
         });
 
-        // Tender Modal Hotkeys: (A) Cash, (B) Credit, (C) Card, (W) Wallet, (N) RRN, Enter = Ok, Esc = Cancel
+        // Tender Modal Hotkeys: Cash (Alt+C), UPI (Alt+U), Card (Alt+D), Credit (Alt+E)
         $(document).on('keydown', function (e) {
             if (!$('#sb-tender-modal').is(':visible')) return;
 
-            let key = e.key.toUpperCase();
-            let target = e.target;
-            let isInput = $(target).is('input, select, textarea');
+            let key = (e.key || '').toUpperCase();
+            let code = (e.code || '').toUpperCase();
 
-            if (e.altKey || !isInput || target.id === 'tender-ok-btn') {
-                if (key === 'A') { e.preventDefault(); $('#tender-cash').focus().select(); }
-                else if (key === 'B') { e.preventDefault(); $('#tender-credit').focus().select(); }
-                else if (key === 'C') { e.preventDefault(); $('#tender-card').focus().select(); }
-                else if (key === 'W') { e.preventDefault(); $('#tender-wallet').focus().select(); }
-                else if (key === 'N') { e.preventDefault(); $('#tender-rrn').focus().select(); }
+            if (e.altKey) {
+                if (key === 'C' || code === 'KEYC') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $('#tender-cash').focus().select();
+                    return false;
+                } else if (key === 'U' || code === 'KEYU') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $('#tender-wallet').focus().select();
+                    return false;
+                } else if (key === 'D' || code === 'KEYD') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $('#tender-card').focus().select();
+                    return false;
+                } else if (key === 'E' || code === 'KEYE') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $('#tender-credit').focus().select();
+                    return false;
+                }
             }
 
             if (e.key === 'Enter') {

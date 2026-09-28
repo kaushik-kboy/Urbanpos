@@ -726,9 +726,8 @@ $(function () {
         }
 
         let $disp = $row.find('.row-dispatched');
-        if (!$disp.val() || parseFloat($disp.val()) <= 0) {
-            $disp.val(1);
-        }
+        // Do not default qty to 1; keep blank as requested
+
 
         recalculate();
         $('#sdn-item-search-modal').modal('hide');

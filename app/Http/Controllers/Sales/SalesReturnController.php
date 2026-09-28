@@ -373,9 +373,12 @@ class SalesReturnController extends Controller
         foreach ($createdItems as $itemLine) {
             $originalCost = null;
             if ($salesReturn->sales_bill_id) {
-                $originalCost = SalesBillItem::where('sales_bill_id', $salesReturn->sales_bill_id)
-                    ->where('item_id', $itemLine->item_id)
-                    ->value('cost_at_sale');
+                $q = SalesBillItem::where('sales_bill_id', $salesReturn->sales_bill_id)
+                    ->where('item_id', $itemLine->item_id);
+                if (!empty($itemLine->batch_no)) {
+                    $q->where('batch_no', $itemLine->batch_no);
+                }
+                $originalCost = $q->value('cost_at_sale');
             }
 
             $ledgerRow = $this->stockLedger->post(
@@ -388,6 +391,7 @@ class SalesReturnController extends Controller
                 referenceId: $salesReturn->id,
                 documentDate: $salesReturn->return_date->toDateString(),
                 expDate: $itemLine->exp_date?->toDateString(),
+                batchNo: $itemLine->batch_no ?? null,
             );
 
             $itemLine->update(['cost_at_sale' => $ledgerRow->unit_cost]);
@@ -468,8 +472,16 @@ class SalesReturnController extends Controller
                 isTaxInclusive: true
             );
 
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
+            if (!$batchNo && !empty($header['sales_bill_id'])) {
+                $batchNo = SalesBillItem::where('sales_bill_id', $header['sales_bill_id'])
+                    ->where('item_id', $line['item_id'])
+                    ->value('batch_no');
+            }
+
             return [
                 'item_id' => $line['item_id'],
+                'batch_no' => $batchNo,
                 'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
                 'qty' => $qty,
                 'sell_price' => $sellPrice,
@@ -680,6 +692,7 @@ class SalesReturnController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.sell_price' => ['required', 'numeric', 'min:0'],

@@ -454,9 +454,12 @@ class PurchaseReturnController extends Controller
         foreach ($createdItems as $itemLine) {
             $originalCost = null;
             if ($purchaseReturn->purchase_invoice_id) {
-                $originalCost = PurchaseInvoiceItem::where('purchase_invoice_id', $purchaseReturn->purchase_invoice_id)
-                    ->where('item_id', $itemLine->item_id)
-                    ->value('cost_price');
+                $q = PurchaseInvoiceItem::where('purchase_invoice_id', $purchaseReturn->purchase_invoice_id)
+                    ->where('item_id', $itemLine->item_id);
+                if (!empty($itemLine->batch_no)) {
+                    $q->where('batch_no', $itemLine->batch_no);
+                }
+                $originalCost = $q->value('cost_price');
             }
 
             // Negative delta for stock out
@@ -470,6 +473,7 @@ class PurchaseReturnController extends Controller
                 referenceId: $purchaseReturn->id,
                 documentDate: $purchaseReturn->return_date->toDateString(),
                 expDate: $itemLine->exp_date?->toDateString(),
+                batchNo: $itemLine->batch_no ?? null,
             );
 
             $itemLine->update(['cost_at_return' => $ledgerRow->unit_cost]);
@@ -525,8 +529,16 @@ class PurchaseReturnController extends Controller
                 isTaxInclusive: false
             );
 
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
+            if (!$batchNo && !empty($header['purchase_invoice_id'])) {
+                $batchNo = PurchaseInvoiceItem::where('purchase_invoice_id', $header['purchase_invoice_id'])
+                    ->where('item_id', $line['item_id'])
+                    ->value('batch_no');
+            }
+
             return [
                 'item_id' => $line['item_id'],
+                'batch_no' => $batchNo,
                 'exp_date' => !empty($line['exp_date']) ? $line['exp_date'] : null,
                 'qty' => $qty,
                 'cost_price' => $costPrice,
@@ -664,6 +676,7 @@ class PurchaseReturnController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.cost_price' => ['required', 'numeric', 'min:0'],

@@ -43,6 +43,7 @@ class StockLedgerService
         ?string $reasonCode = null,
         ?int $reversalOf = null,
         ?string $expDate = null,
+        ?string $batchNo = null,
     ): StockLedger {
         if ($qtyDelta === 0.0) {
             throw new \InvalidArgumentException('StockLedgerService::post() called with a zero quantity delta.');
@@ -50,7 +51,7 @@ class StockLedgerService
 
         return DB::transaction(function () use (
             $itemId, $branchId, $movementType, $qtyDelta, $unitCost,
-            $referenceType, $referenceId, $documentDate, $userId, $reasonCode, $reversalOf, $expDate,
+            $referenceType, $referenceId, $documentDate, $userId, $reasonCode, $reversalOf, $expDate, $batchNo,
         ) {
             $stock = ItemStock::firstOrCreate(
                 ['item_id' => $itemId, 'branch_id' => $branchId],
@@ -103,6 +104,7 @@ class StockLedgerService
             return StockLedger::create([
                 'item_id' => $itemId,
                 'branch_id' => $branchId,
+                'batch_no' => $batchNo,
                 'exp_date' => $expDate,
                 'movement_type' => $movementType,
                 'reference_type' => $referenceType,

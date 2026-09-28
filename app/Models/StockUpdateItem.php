@@ -11,8 +11,8 @@ class StockUpdateItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'stock_update_id', 'item_id', 'exp_date', 'physical_qty', 'system_qty_at_entry',
-        'delta_qty', 'sell_price', 'mrp',
+        'stock_update_id', 'item_id', 'batch_no', 'exp_date', 'physical_qty', 'system_qty_at_entry',
+        'delta_qty', 'cost_price', 'sell_price', 'mrp',
     ];
 
     protected $casts = [

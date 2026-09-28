@@ -11,7 +11,7 @@ class OpeningStockItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'opening_stock_id', 'item_id', 'supplier_id', 'exp_date', 'qty', 'cost_price',
+        'opening_stock_id', 'item_id', 'batch_no', 'supplier_id', 'exp_date', 'qty', 'cost_price',
         'sell_price', 'mrp', 'disc_percent', 'disc_amount',
         'scheme_disc_percent', 'scheme_amount', 'scheme_others',
         'gst_percent', 'gst_tax_amount', 'net_amount',

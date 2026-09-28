@@ -319,6 +319,7 @@ class PurchaseInvoiceController extends Controller
                     referenceId: $purchaseInvoice->id,
                     documentDate: $purchaseInvoice->invoice_date->toDateString(),
                     expDate: $line['exp_date'],
+                    batchNo: $line['batch_no'] ?? null,
                 );
             }
 
@@ -782,6 +783,7 @@ class PurchaseInvoiceController extends Controller
 
             return [
                 'item_id' => $line['item_id'],
+                'batch_no' => !empty($line['batch_no']) ? trim($line['batch_no']) : null,
                 'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
                 'qty' => $qty,
                 'free_qty' => (float) ($line['free_qty'] ?? 0),
@@ -1046,6 +1048,7 @@ class PurchaseInvoiceController extends Controller
         $validator = Validator::make($request->all(), [
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.free_qty' => ['nullable', 'numeric', 'min:0'],

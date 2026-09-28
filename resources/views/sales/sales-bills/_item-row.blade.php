@@ -50,6 +50,7 @@
                class="sb-item-select"
                value="{{ $selectedItemId }}">
         <input type="hidden" name="items[{{ $index }}][stock]" class="sb-item-stock-val" value="{{ $lineStock }}">
+        <input type="hidden" name="items[{{ $index }}][batch_no]" class="sb-item-batch-no" value="{{ $line->batch_no ?? '' }}">
     </td>
     <td style="width: 135px;" data-col-key="expiry">
         <div class="input-group input-group-sm">

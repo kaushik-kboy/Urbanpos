@@ -27,7 +27,9 @@
     $suItemColumns = [
         'code'          => ['label' => 'Code / Barcode', 'default' => true],
         'item'          => ['label' => 'Item Description', 'default' => true],
+        'batch_no'      => ['label' => 'Batch No', 'default' => true],
         'expiry'        => ['label' => 'Exp Dt', 'default' => true],
+        'cost_price'    => ['label' => 'Cost Price', 'default' => true],
         'qty'           => ['label' => 'Qty (physical)', 'default' => true],
         'current_stock' => ['label' => 'Current Stock', 'default' => true],
         'sell_price'    => ['label' => 'Sell Price', 'default' => true],
@@ -56,13 +58,15 @@
     <table class="table table-sm table-bordered table-hover table-items-dense" id="items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width: 170px;" data-col-key="code">Code / Barcode <span class="text-danger">*</span></th>
-                <th style="min-width: 220px;" data-col-key="item">Item Description</th>
-                <th style="width: 130px;" data-col-key="expiry">Exp Dt</th>
-                <th style="width: 110px;" class="text-right" data-col-key="qty">Qty (physical) <span class="text-danger">*</span></th>
-                <th style="width: 100px;" class="text-right" data-col-key="current_stock">Current Stock</th>
-                <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
-                <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width: 140px;" data-col-key="code">Code / Barcode <span class="text-danger">*</span></th>
+                <th style="min-width: 180px;" data-col-key="item">Item Description</th>
+                <th style="width: 110px;" data-col-key="batch_no">Batch No</th>
+                <th style="width: 120px;" data-col-key="expiry">Exp Dt</th>
+                <th style="width: 95px;" class="text-right" data-col-key="cost_price">Cost Price</th>
+                <th style="width: 105px;" class="text-right" data-col-key="qty">Qty (physical) <span class="text-danger">*</span></th>
+                <th style="width: 95px;" class="text-right" data-col-key="current_stock">Current Stock</th>
+                <th style="width: 95px;" class="text-right" data-col-key="sell_price">Sell Price</th>
+                <th style="width: 95px;" class="text-right" data-col-key="mrp">MRP</th>
                 <th style="width: 40px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
@@ -476,40 +480,81 @@
             }
         });
 
-        $(document).on('click', '.su-isl-item-row, .su-isl-btn-select', function (e) {
-            e.stopPropagation();
-            let $tr = $(this).hasClass('su-isl-item-row') ? $(this) : $(this).closest('tr');
-            let itemData = {
-                id: $tr.data('id'),
-                name: $tr.data('name'),
-                code: $tr.data('code'),
-                qty: $tr.data('qty'),
-                sell_price: $tr.data('sell'),
-                mrp: $tr.data('mrp')
-            };
+        function applyItemToSuRow($row, item, batches) {
+            let itemCode = item.item_code || item.code || item.ean_upc_code || '';
+            let itemName = item.name || '';
+            let itemId = item.id;
 
-            if (!suActiveSearchRow || !itemData.id) return;
-            suItemSelectedInModal = true;
-            suCancellingRow = null;
+            if (batches && batches.length > 0) {
+                // Populate first batch on $row
+                let b0 = batches[0];
+                $row.find('.su-item-code').val(itemCode);
+                $row.find('.su-item-desc').val(itemName);
+                $row.find('.su-item-id').val(itemId);
+                $row.find('.su-batch-no').val(b0.batch_no || '');
+                $row.find('.su-exp-date').val(b0.exp_date ? b0.exp_date.toString().substring(0, 10) : '');
+                $row.find('.su-cost-price').val(b0.cost_price ? parseFloat(b0.cost_price).toFixed(2) : '');
+                $row.find('.su-sell-price').val(b0.sell_price ? parseFloat(b0.sell_price).toFixed(2) : '');
+                $row.find('.su-mrp').val(b0.mrp ? parseFloat(b0.mrp).toFixed(2) : '');
+                $row.find('.su-current-stock').text(parseFloat(b0.qty || 0).toFixed(3));
 
-            let $row = suActiveSearchRow;
-            $row.find('.su-item-code').val(itemData.code);
-            $row.find('.su-item-desc').val(itemData.name);
-            $row.find('.su-item-id').val(itemData.id);
-            $row.find('.su-current-stock').text(parseFloat(itemData.qty || 0).toFixed(3));
+                // If multiple batches exist, create rows for subsequent batches
+                for (let i = 1; i < batches.length; i++) {
+                    let bi = batches[i];
+                    const html = document.getElementById('row-template').innerHTML.replaceAll('__INDEX__', rowIndex);
+                    const tbody = document.getElementById('items-body');
+                    const wrapper = document.createElement('tbody');
+                    wrapper.innerHTML = html;
+                    let newTr = wrapper.firstElementChild;
+                    tbody.appendChild(newTr);
+                    let $newRow = $(newTr);
+                    rowIndex++;
 
-            if (parseFloat(itemData.sell_price) > 0) {
-                $row.find('.su-sell-price').val(parseFloat(itemData.sell_price).toFixed(2));
+                    $newRow.find('.su-item-code').val(itemCode);
+                    $newRow.find('.su-item-desc').val(itemName);
+                    $newRow.find('.su-item-id').val(itemId);
+                    $newRow.find('.su-batch-no').val(bi.batch_no || '');
+                    $newRow.find('.su-exp-date').val(bi.exp_date ? bi.exp_date.toString().substring(0, 10) : '');
+                    $newRow.find('.su-cost-price').val(bi.cost_price ? parseFloat(bi.cost_price).toFixed(2) : '');
+                    $newRow.find('.su-sell-price').val(bi.sell_price ? parseFloat(bi.sell_price).toFixed(2) : '');
+                    $newRow.find('.su-mrp').val(bi.mrp ? parseFloat(bi.mrp).toFixed(2) : '');
+                    $newRow.find('.su-current-stock').text(parseFloat(bi.qty || 0).toFixed(3));
+                }
+            } else {
+                $row.find('.su-item-code').val(itemCode);
+                $row.find('.su-item-desc').val(itemName);
+                $row.find('.su-item-id').val(itemId);
+                $row.find('.su-batch-no').val(item.batch_no || '');
+                $row.find('.su-exp-date').val(item.exp_date ? item.exp_date.toString().substring(0, 10) : '');
+                $row.find('.su-cost-price').val(item.cost_price ? parseFloat(item.cost_price).toFixed(2) : '');
+                $row.find('.su-sell-price').val(item.sell_price ? parseFloat(item.sell_price).toFixed(2) : '');
+                $row.find('.su-mrp').val(item.mrp ? parseFloat(item.mrp).toFixed(2) : '');
+                $row.find('.su-current-stock').text(parseFloat(item.stock || item.qty || 0).toFixed(3));
             }
-            if (parseFloat(itemData.mrp) > 0) {
-                $row.find('.su-mrp').val(parseFloat(itemData.mrp).toFixed(2));
-            }
-
-            $('#su-item-search-modal').modal('hide');
 
             setTimeout(function () {
                 $row.find('.su-physical-qty').focus().select();
             }, 100);
+        }
+
+        $(document).on('click', '.su-isl-item-row, .su-isl-btn-select', function (e) {
+            e.stopPropagation();
+            let $tr = $(this).hasClass('su-isl-item-row') ? $(this) : $(this).closest('tr');
+            let itemId = $tr.data('id');
+
+            if (!suActiveSearchRow || !itemId) return;
+            suItemSelectedInModal = true;
+            suCancellingRow = null;
+
+            let $row = suActiveSearchRow;
+            $('#su-item-search-modal').modal('hide');
+
+            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            $.getJSON(SU_LOOKUP_URL, { item_id: itemId, branch_id: branchId }, function (res) {
+                if (res && res.found && res.item) {
+                    applyItemToSuRow($row, res.item, res.batches || []);
+                }
+            });
         });
 
         // Direct Code typing and Enter/Blur lookup
@@ -523,20 +568,9 @@
             if (!query) return;
 
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            $.getJSON(SU_LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
-                if (item && item.id) {
-                    $row.find('.su-item-code').val(item.code || query);
-                    $row.find('.su-item-desc').val(item.name);
-                    $row.find('.su-item-id').val(item.id);
-                    $row.find('.su-current-stock').text(parseFloat(item.qty || 0).toFixed(3));
-
-                    if (parseFloat(item.sell_price) > 0) {
-                        $row.find('.su-sell-price').val(parseFloat(item.sell_price).toFixed(2));
-                    }
-                    if (parseFloat(item.mrp) > 0) {
-                        $row.find('.su-mrp').val(parseFloat(item.mrp).toFixed(2));
-                    }
-                    $row.find('.su-physical-qty').focus().select();
+            $.getJSON(SU_LOOKUP_URL, { query: query, branch_id: branchId }, function (res) {
+                if (res && res.found && res.item) {
+                    applyItemToSuRow($row, res.item, res.batches || []);
                 }
             });
         });

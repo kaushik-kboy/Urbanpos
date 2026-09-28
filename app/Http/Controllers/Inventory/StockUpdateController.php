@@ -237,20 +237,44 @@ class StockUpdateController extends Controller
      */
     private function buildLines(array $items, int $branchId): array
     {
-        return collect($items)->map(function ($line) use ($branchId) {
-            $itemId = $line['item_id'];
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
+
+        return collect($items)->map(function ($line) use ($branchId, $batchService) {
+            $itemId = (int) $line['item_id'];
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
             $physicalQty = (float) $line['physical_qty'];
-            $systemQty = (float) (ItemStock::where('item_id', $itemId)->where('branch_id', $branchId)->value('quantity') ?? 0);
+
+            $batchInfo = null;
+            if ($batchNo) {
+                $batchInfo = $batchService->getBatchStock($itemId, $branchId, $batchNo);
+            }
+
+            if ($batchInfo) {
+                $systemQty = (float) $batchInfo['remaining_qty'];
+                $costPrice = (float) $batchInfo['cost_price'];
+                $sellPrice = (float) ($line['sell_price'] ?? $batchInfo['sell_price']);
+                $mrp = (float) ($line['mrp'] ?? $batchInfo['mrp']);
+                $expDate = !empty($line['exp_date']) ? $this->normalizeDate($line['exp_date']) : $batchInfo['exp_date'];
+            } else {
+                $systemQty = (float) (ItemStock::where('item_id', $itemId)->where('branch_id', $branchId)->value('quantity') ?? 0);
+                $costPrice = (float) ($line['cost_price'] ?? Item::where('id', $itemId)->value('cost_price') ?? 0);
+                $sellPrice = (float) ($line['sell_price'] ?? 0);
+                $mrp = (float) ($line['mrp'] ?? 0);
+                $expDate = $this->normalizeDate($line['exp_date'] ?? null);
+            }
+
             $delta = round($physicalQty - $systemQty, 3);
 
             return [
                 'item_id' => $itemId,
-                'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
+                'batch_no' => $batchNo,
+                'exp_date' => $expDate,
                 'physical_qty' => $physicalQty,
                 'system_qty_at_entry' => $systemQty,
                 'delta_qty' => $delta,
-                'sell_price' => (float) ($line['sell_price'] ?? 0),
-                'mrp' => (float) ($line['mrp'] ?? 0),
+                'cost_price' => $costPrice,
+                'sell_price' => $sellPrice,
+                'mrp' => $mrp,
             ];
         })->all();
     }
@@ -273,12 +297,13 @@ class StockUpdateController extends Controller
                 branchId: $stockUpdate->branch_id,
                 movementType: $delta > 0 ? 'EXCESS' : 'SHORTAGE',
                 qtyDelta: $delta,
-                unitCost: null,
+                unitCost: !empty($line['cost_price']) ? (float)$line['cost_price'] : null,
                 referenceType: StockUpdate::class,
                 referenceId: $stockUpdate->id,
                 documentDate: $stockUpdate->entry_date->toDateString(),
                 reasonCode: 'PHYSICAL_COUNT',
                 expDate: $line['exp_date'] ?? null,
+                batchNo: $line['batch_no'] ?? null,
             );
         }
     }
@@ -315,8 +340,10 @@ class StockUpdateController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.physical_qty' => ['required', 'numeric', 'min:0'],
+            'items.*.cost_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.sell_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
         ]);

@@ -305,7 +305,7 @@
             const option = new Option(optionText, item.id, true, true);
             $select.empty().append(option).trigger('change');
 
-            $row.find('.item-code-input').val(displayCode);
+            $row.find('.item-code-input').val(item.id || displayCode);
             const avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
             $row.find('.item-available').val(avail.toFixed(3));
 
@@ -317,9 +317,7 @@
             }
 
             const $qty = $row.find('.item-qty');
-            if (!$qty.val() || parseFloat($qty.val()) <= 0) {
-                $qty.val(1);
-            }
+            // Do not default qty to 1; keep blank as requested
 
             recalcTotals();
             setTimeout(function() {
@@ -495,25 +493,6 @@
             }
         });
 
-        // Last column (.item-qty): pressing Tab or Enter advances to next row or adds a new row and opens search modal
-        $(document).on('keydown', '.item-qty', function (e) {
-            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
-                let $currentRow = $(this).closest('tr');
-                let $nextRow = $currentRow.next('tr.item-row');
-                if (!$nextRow.length) {
-                    e.preventDefault();
-                    $('#add-row').trigger('click');
-                    let $newRow = $('#items-table tbody tr.item-row').last();
-                    setTimeout(function () {
-                        $newRow.find('.item-code-input').focus();
-                        openItemModal($newRow, '');
-                    }, 60);
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    $nextRow.find('.item-code-input').focus();
-                }
-            }
-        });
 
         function openItemModal($row, initialQuery) {
             if (!currentFromBranch()) {
@@ -912,15 +891,18 @@
         }
 
         $('#items-body').on('input', '.item-qty', function () {
-            let q = parseFloat($(this).val()) || 0;
+            let val = $(this).val();
+            let q = parseFloat(val);
             let avail = parseFloat($(this).closest('tr').find('.item-available').val()) || 0;
             let itemId = $(this).closest('tr').find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
 
-            if (itemId) {
+            if (itemId && !isNaN(q)) {
+                if (avail >= 0 && q > avail) {
+                    $(this).val(avail);
+                    q = avail;
+                }
                 if (q <= 0) {
                     $(this).addClass('is-invalid border-danger text-danger').attr('title', 'Quantity must be greater than 0');
-                } else if (avail >= 0 && q > avail) {
-                    $(this).addClass('is-invalid border-danger text-danger').attr('title', `Quantity (${q}) exceeds available stock (${avail})`);
                 } else {
                     $(this).removeClass('is-invalid border-danger text-danger').attr('title', '');
                 }
@@ -928,15 +910,44 @@
             recalcTotals();
         });
 
-        // Fast keyboard navigation on quantity: Enter advances to next row
-        $(document).on('keydown', '.item-qty', function (e) {
-            if (e.key === 'Enter') {
+        // Strict quantity validation and keyboard navigation: Tab or Enter advances ONLY if valid and <= available stock
+        $(document).off('keydown', '.item-qty').on('keydown', '.item-qty', function (e) {
+            if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                let $currentRow = $(this).closest('tr');
+                let itemId = $currentRow.find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                let q = parseFloat($(this).val()) || 0;
+                let avail = parseFloat($currentRow.find('.item-available').val()) || 0;
+
+                if (itemId) {
+                    if (q <= 0) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        $(this).addClass('is-invalid border-danger text-danger').focus();
+                        alert('Quantity must be greater than 0.');
+                        return false;
+                    }
+                    if (avail >= 0 && q > avail) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        $(this).val(avail);
+                        $(this).addClass('is-invalid border-danger text-danger').focus();
+                        alert(`Quantity cannot exceed available stock (${avail})!`);
+                        return false;
+                    }
+                }
+
+                // If valid, advance to next row or add row and open search modal
                 e.preventDefault();
-                let $nextRow = $(this).closest('tr.item-row').next('tr.item-row');
-                if ($nextRow.length) {
-                    $nextRow.find('.item-code-input').focus();
-                } else {
+                let $nextRow = $currentRow.next('tr.item-row');
+                if (!$nextRow.length) {
                     $('#add-row').trigger('click');
+                    let $newRow = $('#items-table tbody tr.item-row').last();
+                    setTimeout(function () {
+                        $newRow.find('.item-code-input').focus();
+                        openItemModal($newRow, '');
+                    }, 60);
+                } else {
+                    $nextRow.find('.item-code-input').focus();
                 }
             }
         });

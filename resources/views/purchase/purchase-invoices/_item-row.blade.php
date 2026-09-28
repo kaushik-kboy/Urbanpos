@@ -67,6 +67,16 @@
                class="pinv-item-select"
                value="{{ $selectedItemId }}">
     </td>
+    {{-- Batch No --}}
+    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="batch">
+        <input type="text"
+               name="items[{{ $index }}][batch_no]"
+               value="{{ $line->batch_no ?? '' }}"
+               class="form-control form-control-sm pinv-batch-no px-1 text-uppercase font-weight-bold"
+               autocomplete="off"
+               placeholder="Batch"
+               title="Batch Number">
+    </td>
     {{-- Exp Date --}}
     <td class="px-1" style="width:115px; min-width:115px;" data-col-key="exp">
         <input type="date"

@@ -714,22 +714,44 @@
         /* ================================================================
            CALCULATIONS & ROW EVENTS
            ================================================================ */
-        function calculatePoRow($row) {
+        function calculatePoRow($row, source = null) {
             let qty      = parseFloat($row.find('.po-qty').val()) || 0;
             let cost     = parseFloat($row.find('.po-cost').val()) || 0;
-            let discPct  = parseFloat($row.find('.po-disc-percent').val()) || 0;
-            let discAmt  = parseFloat($row.find('.po-disc-amount').val()) || 0;
+            let $discPct = $row.find('.po-disc-percent');
+            let $discAmt = $row.find('.po-disc-amount');
+            let discPctVal = ($discPct.val() || '').toString().trim();
+            let discAmtVal = ($discAmt.val() || '').toString().trim();
+            let discPct  = parseFloat(discPctVal) || 0;
+            let discAmt  = parseFloat(discAmtVal) || 0;
             let gstPct   = parseFloat($row.find('.po-gst').val()) || 0;
 
             let base = qty * cost;
 
-            // Sync disc percent <-> disc amount
-            if (discPct > 0 && base > 0) {
-                discAmt = Math.round((base * discPct / 100) * 100) / 100;
-                $row.find('.po-disc-amount').val(discAmt > 0 ? discAmt.toFixed(2) : '');
-            } else if (discAmt > 0 && base > 0 && discPct <= 0) {
-                discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
-                $row.find('.po-disc-percent').val(discPct > 0 ? discPct.toFixed(2) : '');
+            // Sync disc percent <-> disc amount with source awareness
+            if (source === 'percent') {
+                if (discPctVal === '' || discPct <= 0) {
+                    $discAmt.val('');
+                    discAmt = 0;
+                } else if (base > 0) {
+                    discAmt = Math.round((base * discPct / 100) * 100) / 100;
+                    $discAmt.val(discAmt > 0 ? discAmt.toFixed(2) : '');
+                }
+            } else if (source === 'amount') {
+                if (discAmtVal === '' || discAmt <= 0) {
+                    $discPct.val('');
+                    discPct = 0;
+                } else if (base > 0) {
+                    discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
+                    $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
+                }
+            } else {
+                if (discPctVal !== '' && discPct > 0 && base > 0) {
+                    discAmt = Math.round((base * discPct / 100) * 100) / 100;
+                    $discAmt.val(discAmt > 0 ? discAmt.toFixed(2) : '');
+                } else if (discAmtVal !== '' && discAmt > 0 && base > 0) {
+                    discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
+                    $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
+                }
             }
 
             // Net = (qty × cost) - disc + GST
@@ -788,8 +810,14 @@
             $('#po-summary-grand').text('₹' + grandTotal.toFixed(2));
         }
 
-        $(document).on('input', '.po-qty, .po-free-qty, .po-cost, .po-disc-percent, .po-disc-amount, .po-gst', function () {
+        $(document).on('input', '.po-qty, .po-free-qty, .po-cost, .po-gst', function () {
             calculatePoRow($(this).closest('tr'));
+        });
+        $(document).on('input', '.po-disc-percent', function () {
+            calculatePoRow($(this).closest('tr'), 'percent');
+        });
+        $(document).on('input', '.po-disc-amount', function () {
+            calculatePoRow($(this).closest('tr'), 'amount');
         });
 
         // Recalculate grand total when freight/cess/roundoff changes

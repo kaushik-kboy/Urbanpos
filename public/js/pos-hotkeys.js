@@ -408,6 +408,12 @@
             }
         }
 
+        // Guard: If any modal is currently open (e.g. Tender modal), do NOT execute global page navigation shortcuts
+        let $ = window.jQuery;
+        if ($ && ($('.modal.show, #sb-tender-modal:visible, #posSplitModal:visible').length > 0)) {
+            return;
+        }
+
         // 4. Global Navigation Shortcuts (Alt + Key, Ctrl + Shift + Key)
         if (target && target.target_url) {
             e.preventDefault();

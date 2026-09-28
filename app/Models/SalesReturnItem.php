@@ -11,7 +11,7 @@ class SalesReturnItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'sales_return_id', 'item_id', 'exp_date', 'qty', 'sell_price', 'cost_at_sale', 'mrp',
+        'sales_return_id', 'item_id', 'batch_no', 'exp_date', 'qty', 'sell_price', 'cost_at_sale', 'mrp',
         'disc_percent', 'disc_amount', 'gst_percent', 'gst_tax_amount',
         'cgst_amount', 'sgst_amount', 'igst_amount', 'net_amount',
     ];

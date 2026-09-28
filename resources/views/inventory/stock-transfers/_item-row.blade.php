@@ -5,7 +5,7 @@
     if ($selectedItemId) {
         $selectedItem = \App\Models\Item::find($selectedItemId);
     }
-    $itemCodeVal = $line->code ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? ''));
+    $itemCodeVal = $selectedItemId ?: ($line->code ?? ($selectedItem->item_code ?? ($selectedItem->ean_upc_code ?? '')));
     $expDateVal = '';
     if (!empty($line->exp_date)) {
         try {
@@ -21,20 +21,13 @@
     <td class="text-center align-middle bg-light" data-col-key="seq">
         <span class="row-sno font-weight-bold">{{ is_numeric($index) ? $index + 1 : '__SNO__' }}</span>
     </td>
-    <td style="min-width: 145px;" data-col-key="code">
-        <div class="input-group input-group-sm">
-            <input type="text"
-                   class="form-control form-control-sm item-code-input"
-                   placeholder="Scan/Code"
-                   value="{{ $itemCodeVal }}"
-                   autocomplete="off"
-                   title="Enter or F2 to search item">
-            <div class="input-group-append">
-                <button type="button" class="btn btn-outline-secondary btn-sm open-item-modal" title="Search Items Popup (F2)" tabindex="-1">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
-        </div>
+    <td style="min-width: 130px;" data-col-key="code">
+        <input type="text"
+               class="form-control form-control-sm item-code-input"
+               placeholder="Scan/Code"
+               value="{{ $itemCodeVal }}"
+               autocomplete="off"
+               title="Tab, Enter or Scan Barcode to search">
     </td>
     <td style="min-width: 260px;" data-col-key="item">
         <select name="items[{{ $index }}][item_id]"

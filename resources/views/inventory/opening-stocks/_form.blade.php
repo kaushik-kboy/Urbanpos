@@ -251,9 +251,8 @@
             }
 
             const $qty = $row.find('.item-qty');
-            if (!$qty.val() || parseFloat($qty.val()) <= 0) {
-                $qty.val(1);
-            }
+            // Do not default qty to 1; keep blank as requested
+
 
             recalcRow($row);
             $qty.focus().select();

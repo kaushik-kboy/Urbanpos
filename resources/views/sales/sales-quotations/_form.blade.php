@@ -558,9 +558,8 @@ $(function() {
         $row.find('.sq-item-desc').val(itemData.name + (itemData.code ? ' [' + itemData.code + ']' : ''));
         $row.find('.sq-item-select').val(itemData.id);
 
-        if (!$row.find('.sq-qty').val()) {
-            $row.find('.sq-qty').val(1);
-        }
+        // Do not default qty to 1; keep blank as requested
+
         $row.find('.sq-sell-price').val(parseFloat(itemData.sell_price || 0).toFixed(2));
         $row.find('.sq-mrp').val(parseFloat(itemData.mrp || 0).toFixed(2));
         $row.find('.sq-gst-percent').val(parseFloat(itemData.gst_percent || 0).toFixed(2));

@@ -212,6 +212,7 @@
                 <th style="width:28px; min-width:28px;" class="text-center px-0" data-col-key="seq">#</th>
                 <th style="width:85px; min-width:85px;" class="px-1" data-col-key="code">Code</th>
                 <th style="min-width:180px; width:195px;" class="px-1" data-col-key="item">Description</th>
+                <th style="width:80px; min-width:80px;" class="px-1" data-col-key="batch">Batch</th>
                 <th style="width:115px; min-width:115px;" class="px-1" data-col-key="expiry">Exp Date</th>
                 <th style="width:65px; min-width:65px;" class="px-1" data-col-key="qty">Qty</th>
                 <th style="width:45px; min-width:45px;" class="px-0" data-col-key="free">Free</th>
@@ -238,7 +239,7 @@
         </tbody>
         <tfoot class="bg-light font-weight-bold">
             <tr>
-                <td colspan="4" class="text-right align-middle">Totals:</td>
+                <td colspan="5" class="text-right align-middle">Totals:</td>
                 <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty"></td>
                 <td class="align-middle"></td>
                 <td class="text-right align-middle font-weight-bold" id="footer-total-cost"></td>
