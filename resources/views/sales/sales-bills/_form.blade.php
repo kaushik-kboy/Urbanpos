@@ -891,9 +891,6 @@
             if (custId) {
                 fetchCustomerLoyalty(custId);
                 fetchCustomerInvoices(custId);
-                setTimeout(function () {
-                    $('#sb-items-body tr:first .sb-item-code').focus();
-                }, 150);
             } else {
                 unlockCustomerTypes();
                 fetchCustomerLoyalty(null);
@@ -984,9 +981,6 @@
                         $('#sb-quick-customer-modal').modal('hide');
                         fetchCustomerLoyalty(c.id);
                         fetchCustomerInvoices(c.id);
-                        setTimeout(function () {
-                            $('#sb-items-body tr:first .sb-item-code').focus();
-                        }, 200);
                     }
                 },
                 error: function (xhr) {
@@ -1699,9 +1693,15 @@
             // Real-time inline field validation (Task 11)
             if (itemId) {
                 if (qty <= 0) {
-                    $qtyInput.addClass('border-danger text-danger is-invalid')
-                             .attr('title', 'Quantity must be greater than 0');
-                    $row.find('.sb-qty-error-msg').text('Qty > 0').show();
+                    // Only show inline warning if input is not currently focused and empty
+                    if ($qtyInput.val() !== '' || document.activeElement !== $qtyInput[0]) {
+                        $qtyInput.addClass('border-danger text-danger is-invalid')
+                                 .attr('title', 'Quantity must be greater than 0');
+                        $row.find('.sb-qty-error-msg').text('Qty > 0').show();
+                    } else {
+                        $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                        $row.find('.sb-qty-error-msg').text('').hide();
+                    }
                 } else if (!isAllowNegative && stock >= 0) {
                     // Handled above in strict totalForItem check
                 } else {
@@ -2216,8 +2216,9 @@
                     if (item.gst_percent !== undefined && item.gst_percent !== null) {
                         $gst.val(formatDigits(item.gst_percent));
                     }
-                    if (!$row.find('.sb-qty').val() || parseFloat($row.find('.sb-qty').val()) === 0) {
-                        $row.find('.sb-qty').val('1');
+                    // Do not auto-set default qty to 1; keep blank as requested so user enters exact quantity
+                    if (!$row.find('.sb-qty').val()) {
+                        $row.find('.sb-qty').val('');
                     }
 
                     // Auto-fill expiry date only for newly scanned/chosen items (not during initial edit load)

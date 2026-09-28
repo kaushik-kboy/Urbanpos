@@ -250,6 +250,47 @@ class PurchaseOrderController extends Controller
         return response()->json(['purchase_orders' => $orders]);
     }
 
+    public function items(PurchaseOrder $purchaseOrder)
+    {
+        $purchaseOrder->load(['items.item.gstTax']);
+
+        $items = $purchaseOrder->items->map(function ($poItem) {
+            $item = $poItem->item;
+            $code = $item?->item_code ?: ($item?->ean_upc_code ?: ($item?->id ?: ''));
+            $desc = $item ? ($item->name . ($item->item_code ? ' [' . $item->item_code . ']' : '')) : '';
+
+            return [
+                'id' => $poItem->id,
+                'item_id' => $poItem->item_id,
+                'code' => $code,
+                'name' => $desc,
+                'qty' => (float) $poItem->qty,
+                'free_qty' => (float) $poItem->free_qty,
+                'cost_price' => (float) $poItem->cost_price,
+                'sell_price' => (float) $poItem->sell_price,
+                'mrp' => (float) $poItem->mrp,
+                'disc_percent' => (float) $poItem->disc_percent,
+                'disc_amount' => (float) $poItem->disc_amount,
+                'gst_percent' => (float) ($poItem->gst_percent ?: ($item?->gstTax?->percentage ?: 0)),
+                'batch_expiry_details' => $item?->batch_expiry_details ?? 'Not Required',
+                'shelf_life_days' => $item?->shelf_life_days ? (int) $item->shelf_life_days : null,
+                'minimum_shelf_life_days' => $item?->minimum_shelf_life_days ? (int) $item->minimum_shelf_life_days : null,
+            ];
+        });
+
+        return response()->json([
+            'purchase_order' => [
+                'id' => $purchaseOrder->id,
+                'po_number' => $purchaseOrder->po_number,
+                'supplier_id' => $purchaseOrder->supplier_id,
+                'branch_id' => $purchaseOrder->branch_id,
+                'freight' => (float) $purchaseOrder->freight,
+                'round_off' => (float) $purchaseOrder->round_off,
+            ],
+            'items' => $items,
+        ]);
+    }
+
     private function nextNumber(): string
     {
         $branchId = session('active_branch_id', auth()->user()?->branch_id);

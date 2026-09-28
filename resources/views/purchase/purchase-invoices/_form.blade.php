@@ -497,7 +497,77 @@
             updateSupplierOpenPOs(val);
         });
 
-        // Dynamic Open PO by Supplier
+        // Dynamic Open PO by Supplier & Auto-select + Auto-populate items
+        let _loadingPoId = null;
+        function loadPoItemsIntoPinv(poId) {
+            if (!poId || _loadingPoId === poId) return;
+            _loadingPoId = poId;
+
+            let url = "{{ url('purchase/purchase-orders') }}/" + poId + "/items";
+            $.getJSON(url, function (res) {
+                _loadingPoId = null;
+                if (!res || !res.items || !res.items.length) {
+                    return;
+                }
+
+                let items = res.items;
+                let $tbody = $('#pinv-items-body');
+
+                // Clear existing table items to populate from selected PO
+                $tbody.empty();
+                rowIndex = 0;
+
+                items.forEach(function (it) {
+                    let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
+                    let $row = $(html);
+                    $tbody.append($row);
+                    initPinvItemSelect2($row.find('.pinv-item-select'));
+                    $row.find('input').attr('autocomplete', 'off');
+
+                    $row.find('.pinv-item-select').val(it.item_id);
+                    $row.find('.pinv-item-code').val(it.code || ('#' + it.item_id));
+                    $row.find('.pinv-item-desc').val(it.name);
+                    $row.find('.pinv-qty').val(it.qty > 0 ? it.qty : '');
+                    $row.find('.pinv-free-qty').val(it.free_qty > 0 ? it.free_qty : '');
+                    $row.find('.pinv-cost').val(it.cost_price > 0 ? it.cost_price.toFixed(2) : '');
+                    $row.find('.pinv-sell').val(it.sell_price > 0 ? it.sell_price.toFixed(2) : '');
+                    $row.find('.pinv-mrp').val(it.mrp > 0 ? it.mrp.toFixed(2) : '');
+                    $row.find('.pinv-disc-percent').val(it.disc_percent > 0 ? it.disc_percent.toFixed(2) : '');
+                    $row.find('.pinv-disc-amount').val(it.disc_amount > 0 ? it.disc_amount.toFixed(2) : '');
+                    $row.find('.pinv-gst').val(it.gst_percent >= 0 ? it.gst_percent.toFixed(2) : '');
+
+                    updateExpiryRequirement($row, it.batch_expiry_details, it.shelf_life_days);
+                    calculateRow($row, 'percent');
+                    rowIndex++;
+                });
+
+                if (res.purchase_order) {
+                    if (parseFloat(res.purchase_order.freight) > 0) {
+                        $('#freight').val(parseFloat(res.purchase_order.freight).toFixed(2));
+                    }
+                    if (parseFloat(res.purchase_order.round_off) !== 0) {
+                        $('#round_off').val(parseFloat(res.purchase_order.round_off).toFixed(2));
+                    }
+                }
+
+                updateRowNumbers();
+                calculateTotals();
+
+                if (window.toastr) {
+                    toastr.success('Loaded ' + items.length + ' item(s) from Purchase Order #' + res.purchase_order.po_number, 'PO Loaded');
+                }
+            }).fail(function () {
+                _loadingPoId = null;
+            });
+        }
+
+        $('#purchase_order_id').on('change', function () {
+            let poId = $(this).val();
+            if (poId) {
+                loadPoItemsIntoPinv(poId);
+            }
+        });
+
         function updateSupplierOpenPOs(suppId, selectedPoId = null) {
             let $poSelect = $('#purchase_order_id');
             if (!$poSelect.length) return;
@@ -513,6 +583,12 @@
                 let currentVal = (selectedPoId !== null && selectedPoId !== undefined && selectedPoId !== '') ? String(selectedPoId) : String($poSelect.val() || '');
                 let foundMatch = false;
 
+                // If user hasn't selected a PO yet, auto-select the first open PO
+                if (poList.length > 0 && (!currentVal || currentVal === '')) {
+                    currentVal = String(poList[0].id);
+                    foundMatch = true;
+                }
+
                 poList.forEach(function (po) {
                     let isSel = (String(po.id) === currentVal);
                     if (isSel) foundMatch = true;
@@ -521,11 +597,11 @@
 
                 $poSelect.html(optionsHtml);
                 if (foundMatch && currentVal) {
-                    $poSelect.val(currentVal);
+                    $poSelect.val(currentVal).trigger('change.select2');
+                    loadPoItemsIntoPinv(currentVal);
                 } else {
-                    $poSelect.val('');
+                    $poSelect.val('').trigger('change.select2');
                 }
-                $poSelect.trigger('change.select2');
             }).fail(function () {
                 $poSelect.html('<option value="">Select PO</option>').val('').trigger('change.select2');
             });

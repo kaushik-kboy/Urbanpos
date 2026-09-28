@@ -174,6 +174,7 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
         ->post('purchase-indents/{purchase_indent}/reject', [PurchaseIndentController::class, 'reject'])->name('purchase-indents.reject');
     $gatedResource('purchase-indents', PurchaseIndentController::class, 'purchase-indents');
     Route::get('purchase-orders/open-by-supplier', [PurchaseOrderController::class, 'openBySupplier'])->name('purchase-orders.open-by-supplier');
+    Route::get('purchase-orders/{purchase_order}/items', [PurchaseOrderController::class, 'items'])->name('purchase-orders.items');
     Route::get('purchase-orders/{purchase_order}/print', [PurchaseOrderController::class, 'print'])->name('purchase-orders.print');
     $gatedResource('purchase-orders', PurchaseOrderController::class, 'purchase-orders');
     Route::get('purchase-receipt-notes/{purchaseReceiptNote}/print', [PurchaseReceiptNoteController::class, 'print'])->name('purchase-receipt-notes.print');
