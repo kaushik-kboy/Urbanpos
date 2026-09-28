@@ -12,13 +12,13 @@ use App\Models\TenderType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\TenderTypeSeeder;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class SalesBillIdempotencyTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $cashier;
     private Branch $branch;
@@ -133,7 +133,8 @@ class SalesBillIdempotencyTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Create Sales Bill');
-        $response->assertSee('<button type="submit" class="btn btn-primary">Save</button>', false);
+        // Save starts disabled until a customer and at least one item are chosen (empty-bill guard).
+        $response->assertSee('id="sb-main-save-btn"', false);
         $response->assertSee('btn-reset-form');
         $response->assertSee('Cancel');
     }

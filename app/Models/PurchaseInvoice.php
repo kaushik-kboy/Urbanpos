@@ -13,7 +13,7 @@ class PurchaseInvoice extends Model
     use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
 
     protected $fillable = [
-        'invoice_number', 'invoice_date', 'supplier_id', 'branch_id', 'purchase_order_id',
+        'invoice_number', 'invoice_date', 'supplier_id', 'supplier_gstin', 'branch_id', 'purchase_order_id',
         'purchase_receipt_note_id', 'grn_number', 'grn_date', 'supplier_inv_no', 'supplier_inv_date', 'supplier_inv_amount',
         'purchase_type', 'c_form', 'item_disc_amount', 'disc_percent', 'disc_amount', 'freight',
         'round_off', 'scheme_item_disc_amt', 'scheme_item_disc_percent', 'other_disc_amt', 'total_gst', 'total_cgst',

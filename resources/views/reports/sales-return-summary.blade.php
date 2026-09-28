@@ -35,8 +35,8 @@
                     <label class="small font-weight-bold mb-1">Customer</label>
                     <select name="customer_id" class="form-control form-control-sm">
                         <option value="">All Customers</option>
-                        @foreach ($customers as $cust)
-                            <option value="{{ $cust->id }}" {{ request('customer_id') == $cust->id ? 'selected' : '' }}>{{ $cust->name }}</option>
+                        @foreach ($customers as $custId => $custLabel)
+                            <option value="{{ $custId }}" {{ request('customer_id') == $custId ? 'selected' : '' }}>{{ $custLabel }}</option>
                         @endforeach
                     </select>
                 </div>

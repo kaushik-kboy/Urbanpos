@@ -614,6 +614,24 @@ class AnalyticsBuilderController extends Controller
             $totalBills += $bills;
         }
 
+        // Item / category / brand rows each count a bill once per group, so a bill holding several groups
+        // would be counted repeatedly in the footer. Use the distinct number of bills for the overall figures.
+        if (!in_array($groupBy, ['supplier', 'customer', 'cashier', 'payment_mode', 'date'], true)) {
+            $distinct = DB::table('sales_bill_items')
+                ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                ->where('sales_bills.status', '!=', 'Cancelled');
+            if ($from && $to) {
+                $distinct->whereBetween('sales_bills.bill_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $distinct->where('sales_bills.branch_id', $branchId);
+            }
+            if ($itemId && !in_array($groupBy, ['category', 'brand'], true)) {
+                $distinct->where('sales_bill_items.item_id', $itemId);
+            }
+            $totalBills = (int) $distinct->distinct()->count('sales_bills.id');
+        }
+
         $overallAov = $totalBills > 0 ? $totalSales / $totalBills : 0;
         $overallMarginPct = $totalSales > 0 ? ($totalProfit / $totalSales) * 100 : 0;
 

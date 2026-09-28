@@ -105,8 +105,20 @@ class BranchController extends Controller
             'status' => ['required', 'boolean'],
         ];
 
+        // Columns that are NOT NULL in the schema must stay required even if an admin-configured
+        // dynamic rule marks them optional (otherwise a blank value hits a 1048 SQL error / HTTP 500).
+        $mandatory = array_keys(array_filter($rules, fn ($r) => in_array('required', $r, true)));
+
         $messages = [];
         app(\App\Services\DynamicValidationService::class)->applyTo('branches', $rules, $messages, $branch?->id);
+
+        foreach ($mandatory as $field) {
+            $ruleList = array_values(array_filter((array) $rules[$field], fn ($r) => $r !== 'nullable'));
+            if (! in_array('required', $ruleList, true)) {
+                array_unshift($ruleList, 'required');
+            }
+            $rules[$field] = $ruleList;
+        }
 
         return $request->validate($rules, $messages);
     }

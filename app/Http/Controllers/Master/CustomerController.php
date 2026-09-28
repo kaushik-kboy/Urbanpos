@@ -38,7 +38,7 @@ class CustomerController extends Controller
         }
 
         if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
+            $query->where('customer_category_id', $request->category_id);
         }
 
         if ($request->filled('status')) {
@@ -95,7 +95,8 @@ class CustomerController extends Controller
             ]);
         }
 
-        return view('master.customers.show', compact('customer'));
+        // No dedicated HTML show view exists; the edit form is the customer detail page.
+        return redirect()->route('master.customers.edit', $customer);
     }
 
     public function edit(Request $request, Customer $customer)

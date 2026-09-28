@@ -11,7 +11,7 @@ use App\Models\SalesBill;
 use App\Models\StockLedger;
 use App\Models\Supplier;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -22,7 +22,7 @@ use Tests\TestCase;
  */
 class SmokeControllerFlowTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_purchase_then_sale_through_controllers_produces_correct_cost_and_lifecycle_guard(): void
     {

@@ -310,7 +310,7 @@ class DemoDataSeeder extends Seeder
 
     private function seedOperations(): void
     {
-        $branch = Branch::first() ?? Branch::create(['name' => 'Motera Branch', 'code' => 'MOTERA', 'state' => 'Gujarat']);
+        $branch = Branch::first() ?? Branch::create(['name' => 'Motera Branch', 'erp_code' => 'MOTERA', 'state' => 'Gujarat']);
         $user = User::first();
         $adminId = $user ? $user->id : 1;
 

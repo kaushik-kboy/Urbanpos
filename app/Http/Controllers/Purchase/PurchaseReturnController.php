@@ -77,33 +77,61 @@ class PurchaseReturnController extends Controller
 
     public function store(Request $request)
     {
-        $data = $this->validateData($request);
-        $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
-
-        if ($data['header']['posting_key'] ?? null) {
-            $existing = PurchaseReturn::where('posting_key', $data['header']['posting_key'])->first();
-            if ($existing) {
-                return redirect()->route('purchase.purchase-returns.index')
-                    ->with('status', "Purchase Return {$existing->return_number} created successfully.");
+        // Idempotency FIRST: a retry / double-click / refresh of a submit that already committed must
+        // get that document back, not a quantity-validation error caused by its own first submit.
+        if ($postingKey = $request->input('posting_key')) {
+            if ($existing = PurchaseReturn::where('posting_key', $postingKey)->first()) {
+                return redirect()->route('purchase.purchase-returns.index')->with('status', "Purchase Return {$existing->return_number} created successfully.");
             }
         }
 
+        $data = $this->validateData($request);
+        $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
+
+
         $this->assertStockAvailable($data['items'], (int) $data['header']['branch_id']);
 
-        $purchaseReturn = DB::transaction(function () use ($data) {
-            $lines = $this->computeLines($data['items'], $data['header']);
-            $totals = $this->computeTotals($lines, $data);
+        try {
+            $purchaseReturn = DB::transaction(function () use ($data) {
+                // Per-invoice mutex. MUST be the first statement of the transaction so the consistent
+                // reads below see every return committed by whoever held the lock before us.
+                if (! empty($data['header']['purchase_invoice_id'])) {
+                    \App\Models\PurchaseInvoice::whereKey($data['header']['purchase_invoice_id'])->lockForUpdate()->first();
 
-            $purchaseReturn = PurchaseReturn::create(array_merge($data['header'], $totals, [
-                'return_number' => $this->nextNumber(),
-            ]));
+                    // Double-click / retry with the same posting_key queued behind the first submit:
+                    // return the document that submit created instead of failing.
+                    if (! empty($data['header']['posting_key'])
+                        && ($duplicate = PurchaseReturn::where('posting_key', $data['header']['posting_key'])->first())) {
+                        return $duplicate;
+                    }
 
-            $createdItems = $purchaseReturn->items()->createMany($lines);
-            $this->postStock($createdItems, $purchaseReturn);
-            $this->ledgerPosting->postPurchaseReturn($purchaseReturn);
+                    $this->assertReturnableAgainstInvoice($data['header'], $data['items'], null);
+                }
 
-            return $purchaseReturn;
-        });
+                $lines = $this->computeLines($data['items'], $data['header']);
+                $totals = $this->computeTotals($lines, $data);
+
+                $purchaseReturn = PurchaseReturn::create(array_merge($data['header'], $totals, [
+                    'return_number' => $this->nextNumber(),
+                ]));
+
+                $createdItems = $purchaseReturn->items()->createMany($lines);
+                $this->postStock($createdItems, $purchaseReturn);
+                $this->ledgerPosting->postPurchaseReturn($purchaseReturn);
+
+                return $purchaseReturn;
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Same posting_key raced past the pre-check (no invoice to lock on): the unique index
+            // guarantees only one committed - return that one rather than a 500.
+            $existing = ! empty($data['header']['posting_key'])
+                ? PurchaseReturn::where('posting_key', $data['header']['posting_key'])->first()
+                : null;
+            if (! $existing) {
+                throw $e;
+            }
+            $purchaseReturn = $existing;
+        }
 
         return redirect()->route('purchase.purchase-returns.index')
             ->with('status', "Purchase Return {$purchaseReturn->return_number} created successfully.");
@@ -132,6 +160,11 @@ class PurchaseReturnController extends Controller
         $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
 
         DB::transaction(function () use ($data, $purchaseReturn) {
+            if (! empty($data['header']['purchase_invoice_id'])) {
+                \App\Models\PurchaseInvoice::whereKey($data['header']['purchase_invoice_id'])->lockForUpdate()->first();
+                $this->assertReturnableAgainstInvoice($data['header'], $data['items'], $purchaseReturn->id);
+            }
+
             $this->stockLedger->reverseByReference(PurchaseReturn::class, $purchaseReturn->id);
 
             $lines = $this->computeLines($data['items'], $data['header']);
@@ -445,17 +478,9 @@ class PurchaseReturnController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (int) (PurchaseReturn::max('id') ?? 0);
-        $lastRet = PurchaseReturn::where('return_number', 'like', 'PRN%')->orderByDesc('id')->value('return_number');
-        if ($lastRet && preg_match('/^PRN(\d+)$/', $lastRet, $matches)) {
-            $next = max($next, (int) $matches[1]);
-        }
-        do {
-            $next++;
-            $prn = 'PRN'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
-        } while (PurchaseReturn::where('return_number', $prn)->exists());
-
-        return $prn;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('PRN', \App\Models\PurchaseReturn::class, 'return_number', 6);
     }
 
     private function formOptions(?PurchaseReturn $purchaseReturn = null): array
@@ -534,6 +559,89 @@ class PurchaseReturnController extends Controller
         ];
     }
 
+    /**
+     * Server-side returnable-quantity rules against the ORIGINAL purchase invoice:
+     *   - the invoice must belong to the selected supplier and must not be cancelled
+     *   - only items that are on that invoice can be returned
+     *   - requested qty (summed per item) <= purchased qty - qty already returned on other returns
+     *
+     * Called twice on purpose: before the transaction (fast form feedback) and inside it after
+     * PurchaseInvoice is row-locked, so two terminals returning the same invoice at once cannot
+     * both pass.
+     */
+    private function assertReturnableAgainstInvoice(array $header, array $items, ?int $currentReturnId): void
+    {
+        $invoiceId = (int) ($header['purchase_invoice_id'] ?? 0);
+        if ($invoiceId <= 0) {
+            return;
+        }
+
+        $invoice = \App\Models\PurchaseInvoice::find($invoiceId);
+        if ($invoice) {
+            if ((int) $invoice->supplier_id !== (int) ($header['supplier_id'] ?? 0)) {
+                throw ValidationException::withMessages([
+                    'purchase_invoice_id' => "Purchase Invoice #{$invoice->invoice_number} does not belong to the selected supplier.",
+                ]);
+            }
+            if ($invoice->status === 'Cancelled') {
+                throw ValidationException::withMessages([
+                    'purchase_invoice_id' => "Purchase Invoice #{$invoice->invoice_number} is cancelled and cannot be returned against.",
+                ]);
+            }
+        }
+
+        $invoiceItems = DB::table('purchase_invoice_items')
+            ->where('purchase_invoice_id', $invoiceId)
+            ->groupBy('item_id')
+            ->select('item_id', DB::raw('SUM(qty) as original_qty'))
+            ->pluck('original_qty', 'item_id')
+            ->all();
+
+        $validItemIds = array_keys($invoiceItems);
+
+        // Group requested return quantities by item_id
+        $totalQtyByItem = [];
+        foreach ($items as $line) {
+            $itemId = (int) $line['item_id'];
+            if (! in_array($itemId, $validItemIds)) {
+                $itemModel = Item::find($itemId);
+                $name = $itemModel?->name ?? "Item #{$itemId}";
+                throw ValidationException::withMessages([
+                    'items' => "The item '{$name}' does not belong to the selected Purchase Invoice.",
+                ]);
+            }
+            $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
+        }
+
+        $alreadyReturnedByItem = DB::table('purchase_return_items as pri')
+            ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
+            ->where('pr.purchase_invoice_id', $invoiceId)
+            ->when($currentReturnId, fn ($q) => $q->where('pr.id', '!=', $currentReturnId))
+            ->whereIn('pri.item_id', array_keys($totalQtyByItem))
+            ->groupBy('pri.item_id')
+            ->select('pri.item_id', DB::raw('SUM(pri.qty) as returned_qty'))
+            ->pluck('returned_qty', 'item_id')
+            ->all();
+
+        foreach ($totalQtyByItem as $itemId => $requestedQty) {
+            $originalQty = (float) ($invoiceItems[$itemId] ?? 0);
+            $alreadyReturned = (float) ($alreadyReturnedByItem[$itemId] ?? 0);
+            $remaining = max(0, round($originalQty - $alreadyReturned, 4));
+
+            if (round($requestedQty, 4) > round($remaining, 4)) {
+                $remainingDisplay = ($remaining == (int) $remaining) ? (int) $remaining : $remaining;
+                if ($alreadyReturned > 0) {
+                    throw ValidationException::withMessages([
+                        'items' => "Return quantity cannot exceed the remaining returnable quantity of {$remainingDisplay}.",
+                    ]);
+                }
+                throw ValidationException::withMessages([
+                    'items' => 'Return quantity cannot be greater than the available purchase quantity.',
+                ]);
+            }
+        }
+    }
+
     private function validateData(Request $request): array
     {
         $headerRules = [
@@ -566,63 +674,13 @@ class PurchaseReturnController extends Controller
 
         // Server-side strict boundary checks
         if (!empty($header['purchase_invoice_id'])) {
-            $invoiceId = (int) $header['purchase_invoice_id'];
-            $invoiceItems = DB::table('purchase_invoice_items')
-                ->where('purchase_invoice_id', $invoiceId)
-                ->groupBy('item_id')
-                ->select('item_id', DB::raw('SUM(qty) as original_qty'))
-                ->pluck('original_qty', 'item_id')
-                ->all();
-
-            $validItemIds = array_keys($invoiceItems);
-
-            // Group requested return quantities by item_id
-            $totalQtyByItem = [];
-            foreach ($validated['items'] as $line) {
-                $itemId = (int) $line['item_id'];
-                if (!in_array($itemId, $validItemIds)) {
-                    $itemModel = Item::find($itemId);
-                    $name = $itemModel?->name ?? "Item #{$itemId}";
-                    throw ValidationException::withMessages([
-                        'items' => "The item '{$name}' does not belong to the selected Purchase Invoice.",
-                    ]);
-                }
-                $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
-            }
-
-            // Calculate already returned quantities (excluding current return if editing)
-            $currentReturnId = $request->route('purchase_return') 
-                ? (is_object($request->route('purchase_return')) ? $request->route('purchase_return')->id : (int)$request->route('purchase_return')) 
+            $currentReturnId = $request->route('purchase_return')
+                ? (is_object($request->route('purchase_return')) ? $request->route('purchase_return')->id : (int) $request->route('purchase_return'))
                 : null;
 
-            $alreadyReturnedByItem = DB::table('purchase_return_items as pri')
-                ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
-                ->where('pr.purchase_invoice_id', $invoiceId)
-                ->when($currentReturnId, fn ($q) => $q->where('pr.id', '!=', $currentReturnId))
-                ->whereIn('pri.item_id', array_keys($totalQtyByItem))
-                ->groupBy('pri.item_id')
-                ->select('pri.item_id', DB::raw('SUM(pri.qty) as returned_qty'))
-                ->pluck('returned_qty', 'item_id')
-                ->all();
-
-            foreach ($totalQtyByItem as $itemId => $requestedQty) {
-                $originalQty = (float) ($invoiceItems[$itemId] ?? 0);
-                $alreadyReturned = (float) ($alreadyReturnedByItem[$itemId] ?? 0);
-                $remaining = max(0, round($originalQty - $alreadyReturned, 4));
-
-                if (round($requestedQty, 4) > round($remaining, 4)) {
-                    $remainingDisplay = ($remaining == (int)$remaining) ? (int)$remaining : $remaining;
-                    if ($alreadyReturned > 0) {
-                        throw ValidationException::withMessages([
-                            'items' => "Return quantity cannot exceed the remaining returnable quantity of {$remainingDisplay}.",
-                        ]);
-                    } else {
-                        throw ValidationException::withMessages([
-                            'items' => "Return quantity cannot be greater than the available purchase quantity.",
-                        ]);
-                    }
-                }
-            }
+            // Fast feedback for the form. The authoritative re-check runs again inside the store/update
+            // transaction under a lock on the original invoice (see assertReturnableAgainstInvoice()).
+            $this->assertReturnableAgainstInvoice($header, $validated['items'], $currentReturnId);
         } elseif (!empty($header['supplier_id'])) {
             $supplierId = $header['supplier_id'];
             foreach ($validated['items'] as $line) {

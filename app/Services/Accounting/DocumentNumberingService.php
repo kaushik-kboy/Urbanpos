@@ -26,7 +26,74 @@ class DocumentNumberingService
             $sequence->increment('last_number');
 
             return (int) $sequence->last_number;
-        });
+        }, 3); // retry attempts: a hot counter row occasionally deadlocks two concurrent lockForUpdate()s under InnoDB; Laravel retries the whole closure from a savepoint.
+    }
+
+    /**
+     * Atomic "PREFIX00001" numbering for the per-module legacy formats (PINV, PRN, GRN, STF ...).
+     *
+     * The old controllers derived the next number from max(id) and inserted later, so two
+     * terminals saving at the same moment got the same number and the loser hit a unique-key
+     * 500. This serialises creators on ONE pre-existing counter row: the row lock is held until
+     * the caller's surrounding transaction commits, so the insert that uses the number is
+     * covered. The row is created with INSERT IGNORE first because locking a row that does not
+     * exist yet takes gap locks, which deadlock under concurrency.
+     *
+     * With $consume = false it only previews the next number (no lock, nothing written).
+     *
+     * @param  class-string  $modelClass  Model whose $column holds the numbers (uniqueness guard + seeding).
+     */
+    public function nextPrefixed(string $prefix, string $modelClass, string $column, int $pad = 5, bool $consume = true): string
+    {
+        $series = 'legacy:'.$prefix.':'.$column;
+
+        // Highest number already present in the table for this prefix (also seeds a fresh counter).
+        $seed = function () use ($prefix, $modelClass, $column): int {
+            $next = (int) ($modelClass::max('id') ?? 0);
+            $last = $modelClass::where($column, 'like', $prefix.'%')->orderByDesc('id')->value($column);
+            if ($last && preg_match('/^'.preg_quote($prefix, '/').'(\d+)$/', (string) $last, $m)) {
+                $next = max($next, (int) $m[1]);
+            }
+
+            return $next;
+        };
+
+        $exists = fn (string $candidate): bool => $modelClass::where($column, $candidate)->exists();
+
+        if (! $consume) {
+            $counter = (int) DB::table('document_sequences')->where('series', $series)->value('last_number');
+            $n = max($counter, $seed());
+            do {
+                $n++;
+                $candidate = $prefix.str_pad((string) $n, $pad, '0', STR_PAD_LEFT);
+            } while ($exists($candidate));
+
+            return $candidate;
+        }
+
+        return DB::transaction(function () use ($series, $seed, $exists, $prefix, $pad) {
+            // Plain read first: INSERT IGNORE on an EXISTING key still takes a shared lock, and
+            // N terminals then upgrading to the FOR UPDATE below deadlock each other.
+            if (! DB::table('document_sequences')->where('series', $series)->exists()) {
+                DB::table('document_sequences')->insertOrIgnore([
+                    'series' => $series, 'last_number' => 0, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            $row = DB::table('document_sequences')->where('series', $series)->lockForUpdate()->first();
+
+            $n = (int) $row->last_number;
+            if ($n === 0) {
+                $n = $seed(); // first use: continue after whatever numbers already exist
+            }
+            do {
+                $n++;
+                $candidate = $prefix.str_pad((string) $n, $pad, '0', STR_PAD_LEFT);
+            } while ($exists($candidate));
+
+            DB::table('document_sequences')->where('series', $series)->update(['last_number' => $n, 'updated_at' => now()]);
+
+            return $candidate;
+        }, 3); // retry attempts: same hot-counter-row deadlock as next() above.
     }
 
     /**
@@ -40,7 +107,7 @@ class DocumentNumberingService
             $branch = $branchId ? Branch::find($branchId) : null;
 
             // 1. Locate branch-specific sequence, otherwise fallback to global sequence
-            $sequence = DocumentSequence::where('document_type', $documentType)
+            $findSequence = fn () => DocumentSequence::where('document_type', $documentType)
                 ->where('is_active', true)
                 ->where(function ($q) use ($branchId) {
                     if ($branchId) {
@@ -49,9 +116,35 @@ class DocumentNumberingService
                         $q->whereNull('branch_id');
                     }
                 })
-                ->orderByRaw('branch_id IS NULL ASC') // prefer branch-specific over global
-                ->lockForUpdate()
-                ->first();
+                ->orderByRaw('branch_id IS NULL ASC'); // prefer branch-specific over global
+
+            // Plain read first: a locking read on a row that does not exist yet takes gap locks,
+            // and two terminals creating the first sequence of a type at once then deadlock.
+            $sequence = $findSequence()->first();
+
+            // Uniqueness of the number is GLOBAL (unique index on the document column), but every branch owns its own
+            // counter row. Unless the prefix carries a {BRANCH} token, two branches would hand out the same number at the
+            // same time (each holding a different row lock) and one save would die on the unique key. So serialise all
+            // allocations of this document type on one gate row - taken FIRST, so lock order is always gate -> counter.
+            $gate = null;
+            $sharedLast = null;
+            $gatePeriod = null;
+            $probePrefix = $sequence?->prefix ?? (static::defaultDefinitions()[$documentType]['prefix'] ?? '');
+            if (! str_contains((string) $probePrefix, '{BRANCH}')) {
+                $gate = 'gate:'.$documentType;
+                if (! DB::table('document_sequences')->where('series', $gate)->exists()) {
+                    DB::table('document_sequences')->insertOrIgnore([
+                        'series' => $gate, 'document_type' => null, 'last_number' => 0, 'is_active' => false, 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                }
+                $gateRow = DB::table('document_sequences')->where('series', $gate)->lockForUpdate()->first();
+                $sharedLast = (int) $gateRow->last_number;
+                $gatePeriod = $gateRow->last_reset_period ?? null;
+                if ($sharedLast === 0) {
+                    // first use of the shared counter: continue after the highest per-branch counter (locking read = latest data)
+                    $sharedLast = (int) DB::table('document_sequences')->where('document_type', $documentType)->lockForUpdate()->max('last_number');
+                }
+            }
 
             // If not created in DB yet, initialize from defaults
             if (!$sequence) {
@@ -63,7 +156,8 @@ class DocumentNumberingService
                     'start'     => 1,
                 ];
 
-                $sequence = DocumentSequence::create([
+                // INSERT IGNORE: the unique `series` key makes a concurrent creator a harmless no-op.
+                DB::table('document_sequences')->insertOrIgnore([
                     'document_type'     => $documentType,
                     'document_title'    => $defaults['title'],
                     'prefix'            => $defaults['prefix'],
@@ -76,17 +170,24 @@ class DocumentNumberingService
                     'branch_id'         => $branchId,
                     'is_active'         => true,
                     'series'            => 'doc:' . $documentType . ($branchId ? ":{$branchId}" : ''),
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
                 ]);
-
-                // Re-lock
-                $sequence = DocumentSequence::whereKey($sequence->id)->lockForUpdate()->first();
             }
+
+            // Lock the (now guaranteed to exist) row for the rest of the caller's transaction.
+            $sequence = $findSequence()->lockForUpdate()->first();
 
             // 2. Evaluate Reset Counter Rule
             $currentPeriod = DocumentSequence::getCurrentPeriod($sequence->reset_frequency, $parsedDate);
             if ($sequence->reset_frequency !== 'never' && $sequence->last_reset_period && $sequence->last_reset_period !== $currentPeriod) {
                 $sequence->last_number = max(0, (int)$sequence->starting_number - 1);
                 $sequence->last_reset_period = $currentPeriod;
+                // The shared gate counter still holds the OLD period's high-water mark; unless another branch has already
+                // opened this period on the gate, carrying it over would silently defeat the reset.
+                if ($sharedLast !== null && $gatePeriod !== $currentPeriod) {
+                    $sharedLast = 0;
+                }
             }
 
             // 3. Resolve dynamic prefix & suffix tokens
@@ -112,6 +213,10 @@ class DocumentNumberingService
                 }
             }
 
+            if ($sharedLast !== null && $sharedLast > (int) $sequence->last_number) {
+                $sequence->last_number = $sharedLast;   // all branches draw from one number space
+            }
+
             do {
                 $sequence->last_number++;
                 $candidate = $prefix . str_pad((string)$sequence->last_number, $padding, '0', STR_PAD_LEFT) . $suffix;
@@ -123,9 +228,12 @@ class DocumentNumberingService
             } while ($exists);
 
             $sequence->save();
+            if ($gate !== null) {
+                DB::table('document_sequences')->where('series', $gate)->update(['last_number' => $sequence->last_number, 'last_reset_period' => $currentPeriod, 'updated_at' => now()]);
+            }
 
             return $candidate;
-        });
+        }, 3); // retry attempts: same hot-counter-row deadlock as next()/nextPrefixed() above.
     }
 
     /**

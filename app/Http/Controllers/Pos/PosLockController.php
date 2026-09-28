@@ -86,8 +86,10 @@ class PosLockController extends Controller
             'new_pin'     => ['required', 'string', 'digits:4'],
         ]);
 
-        if (! empty($user->pos_pin) && ! empty($request->input('current_pin'))) {
-            if (! Hash::check((string) $request->input('current_pin'), $user->pos_pin)) {
+        // An already-configured PIN can only be replaced by someone who knows it; omitting
+        // current_pin must not bypass the check.
+        if (! empty($user->pos_pin)) {
+            if (empty($request->input('current_pin')) || ! Hash::check((string) $request->input('current_pin'), $user->pos_pin)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Current PIN is incorrect.',

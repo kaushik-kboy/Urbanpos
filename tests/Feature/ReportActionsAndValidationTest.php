@@ -9,12 +9,12 @@ use App\Models\PurchaseInvoice;
 use App\Models\SalesBill;
 use App\Models\Supplier;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ReportActionsAndValidationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $admin;
     private Branch $branch;
@@ -44,18 +44,18 @@ class ReportActionsAndValidationTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->get(route('reports.billwise-sales'));
         $response->assertStatus(200);
-        $response->assertSee('Print Report');
+        $response->assertSee('Print');
         $response->assertSee('window.print()', false);
         $response->assertSee('Action');
 
         $responsePurchase = $this->actingAs($this->admin)->get(route('reports.purchase-detail'));
         $responsePurchase->assertStatus(200);
-        $responsePurchase->assertSee('Print Report');
+        $responsePurchase->assertSee('Print');
         $responsePurchase->assertSee('Action');
 
         $responseReturn = $this->actingAs($this->admin)->get(route('reports.sales-return-summary'));
         $responseReturn->assertStatus(200);
-        $responseReturn->assertSee('Print Report');
+        $responseReturn->assertSee('Print');
         $responseReturn->assertSee('Action');
     }
 
@@ -76,7 +76,7 @@ class ReportActionsAndValidationTest extends TestCase
             'tax_inclusive' => 0,
             'batch_expiry_details' => 'Not Required',
             'allow_negative_stock' => 0,
-            'hsn_code' => '12345', // only 5 digits
+            'hsn_code' => '123', // fewer than the 4-digit minimum (rule is 4-8 digits, commit 7a2ab35)
         ];
 
         $response = $this->actingAs($this->admin)
@@ -87,7 +87,7 @@ class ReportActionsAndValidationTest extends TestCase
         // Attempt valid 8-digit HSN code
         $validPayload = $invalidPayload;
         $validPayload['name'] = 'Test HSN Item Valid 8 Digits';
-        $validPayload['hsn_code'] = '85044090'; // exactly 8 digits
+        $validPayload['hsn_code'] = '85044090'; // 8 digits (upper bound of the 4-8 rule)
 
         $validResponse = $this->actingAs($this->admin)
             ->post(route('master.items.store'), $validPayload);

@@ -9,7 +9,7 @@ use App\Models\ItemStock;
 use App\Models\User;
 use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -19,7 +19,7 @@ use Tests\TestCase;
  */
 class Phase2FoundationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private StockLedgerService $stockLedger;
     private Branch $branch;

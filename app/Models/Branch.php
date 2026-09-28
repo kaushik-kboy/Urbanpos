@@ -23,4 +23,14 @@ class Branch extends Model
         'enable_thirdparty_loyalty' => 'boolean',
         'status' => 'boolean',
     ];
+
+    public function stocks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ItemStock::class);
+    }
+
+    public function salesBills(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SalesBill::class);
+    }
 }

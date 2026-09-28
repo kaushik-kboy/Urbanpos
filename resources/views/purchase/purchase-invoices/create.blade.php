@@ -9,6 +9,7 @@
 @section('content')
     <div class="card card-primary card-outline">
         <form action="{{ route('purchase.purchase-invoices.store') }}" method="POST" id="pinv-form" novalidate>
+            <input type="hidden" name="posting_key" value="{{ old('posting_key', (string) \Illuminate\Support\Str::uuid()) }}">
             @csrf
             <div class="card-body">
                 <x-error-summary />

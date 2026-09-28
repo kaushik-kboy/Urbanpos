@@ -157,6 +157,16 @@ class GstAndProductTypeMasterTest extends TestCase
             'search' => 'Sunflower',
         ]));
 
+        // Default POS list shows only in-stock items: a zero-stock item is hidden...
+        $response->assertOk();
+        $this->assertEmpty($response->json('items'));
+
+        // ...and appears when "show all" is ticked.
+        $response = $this->getJson(route('sales.sales-bills.item-list', [
+            'branch_id' => $this->branch->id,
+            'search' => 'Sunflower',
+            'show_all' => 1,
+        ]));
         $response->assertOk();
         $data = $response->json();
         $this->assertArrayHasKey('items', $data);

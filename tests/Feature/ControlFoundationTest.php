@@ -11,7 +11,7 @@ use App\Models\SalesBill;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Inventory\StockLedgerService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -23,7 +23,7 @@ use Tests\TestCase;
  */
 class ControlFoundationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

@@ -106,7 +106,7 @@ class PurchaseReturnItemFilterTest extends TestCase
             'supplier_id' => $this->supplierA->id,
             'branch_id' => $this->branch->id,
             'purchase_type' => 'Local',
-            'status' => 'Received',
+            'status' => 'Posted',
             'total' => 590,
             'total_gst' => 90,
             'total_qty' => 10,

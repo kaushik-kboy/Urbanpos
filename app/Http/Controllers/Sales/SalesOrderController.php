@@ -45,12 +45,17 @@ class SalesOrderController extends Controller
             $query->whereDate('order_date', '<=', $request->input('date_to'));
         }
 
-        $branchFilter = $request->has('branch_id')
-            ? $request->input('branch_id')
-            : session('active_branch_id', auth()->user()?->branch_id);
+        $user = $request->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $query->where('branch_id', $user->branch_id);
+        } else {
+            $branchFilter = $request->has('branch_id')
+                ? $request->input('branch_id')
+                : session('active_branch_id', $user?->branch_id);
 
-        if (!empty($branchFilter) && $branchFilter !== 'all') {
-            $query->where('branch_id', $branchFilter);
+            if (!empty($branchFilter) && $branchFilter !== 'all') {
+                $query->where('branch_id', $branchFilter);
+            }
         }
 
         if ($request->filled('customer_id')) {

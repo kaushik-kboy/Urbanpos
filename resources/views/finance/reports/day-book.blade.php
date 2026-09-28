@@ -13,7 +13,7 @@
                 <span class="info-box-icon bg-info"><i class="fas fa-receipt"></i></span>
                 <div class="info-box-content">
                     <span class="info-box-text text-muted">Total Vouchers</span>
-                    <span class="info-box-number font-weight-bold" style="font-size: 1.4rem;">{{ number_format($entries->count()) }}</span>
+                    <span class="info-box-number font-weight-bold" style="font-size: 1.4rem;">{{ number_format($entries->total()) }}</span>
                 </div>
             </div>
         </div>
@@ -118,6 +118,10 @@
             @empty
                 <p class="text-center text-muted py-5"><i class="fas fa-info-circle fa-2x mb-2 d-block"></i>No transactions found in this period.</p>
             @endforelse
+
+            @if ($entries->hasPages())
+                <div class="mt-2">{{ $entries->links() }}</div>
+            @endif
         </div>
     </div>
 @stop

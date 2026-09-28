@@ -312,16 +312,8 @@ class PurchaseIndentController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (int) (PurchaseIndent::max('id') ?? 0);
-        $lastIndent = PurchaseIndent::where('indent_number', 'like', 'IND%')->orderByDesc('id')->value('indent_number');
-        if ($lastIndent && preg_match('/^IND(\d+)$/', $lastIndent, $matches)) {
-            $next = max($next, (int) $matches[1]);
-        }
-        do {
-            $next++;
-            $indNum = 'IND'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-        } while (PurchaseIndent::where('indent_number', $indNum)->exists());
-
-        return $indNum;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('IND', \App\Models\PurchaseIndent::class, 'indent_number', 5);
     }
 }

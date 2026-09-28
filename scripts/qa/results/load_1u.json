@@ -1,0 +1,91 @@
+{
+  "users": 1,
+  "workers": 2,
+  "duration_s": 30.7,
+  "requests": 47,
+  "rps": 1.5,
+  "p50": 151.73920000000362,
+  "p95": 1801.9939999999988,
+  "p99": 2683.4477000000006,
+  "error_pct": 2.13,
+  "errors": {
+    "SALE: duplicate POST (retry) -> 422": 1
+  },
+  "error_samples": {
+    "SALE: duplicate POST (retry) -> 422": "{\"message\":\"A matching sales bill was just submitted moments ago. Duplicate submission prevented.\",\"errors\":{\"customer_id\":[\"A matching sales bill was just submitted moments ago. Duplicate submission prevented.\"]}}"
+  },
+  "deadlocks": 0,
+  "row_lock_waits": 1,
+  "row_lock_wait_ms": 27,
+  "peak_db_connections": 0,
+  "cpu_avg_pct": 0,
+  "cpu_max_pct": 0,
+  "mysqld_mb_max": 0,
+  "php_total_mb_max": 0,
+  "rows": [
+    {
+      "action": "barcode lookup",
+      "n": 20,
+      "p50": 96.89300000000003,
+      "p95": 186.92469999999958,
+      "p99": 197.728099999993,
+      "max": 197.728099999993
+    },
+    {
+      "action": "customer search",
+      "n": 10,
+      "p50": 103.92299999999523,
+      "p95": 2683.4477000000006,
+      "p99": 2683.4477000000006,
+      "max": 2683.4477000000006
+    },
+    {
+      "action": "item popup search",
+      "n": 3,
+      "p50": 199.4333000000006,
+      "p95": 267.45529999999417,
+      "p99": 267.45529999999417,
+      "max": 267.45529999999417
+    },
+    {
+      "action": "login: GET form",
+      "n": 1,
+      "p50": 116.97829999999885,
+      "p95": 116.97829999999885,
+      "p99": 116.97829999999885,
+      "max": 116.97829999999885
+    },
+    {
+      "action": "login: POST",
+      "n": 1,
+      "p50": 499.34590000000026,
+      "p95": 499.34590000000026,
+      "p99": 499.34590000000026,
+      "max": 499.34590000000026
+    },
+    {
+      "action": "page: POS billing screen",
+      "n": 1,
+      "p50": 478.9533999999985,
+      "p95": 478.9533999999985,
+      "p99": 478.9533999999985,
+      "max": 478.9533999999985
+    },
+    {
+      "action": "SALE: duplicate POST (retry)",
+      "n": 1,
+      "p50": 135.9992999999995,
+      "p95": 135.9992999999995,
+      "p99": 135.9992999999995,
+      "max": 135.9992999999995
+    },
+    {
+      "action": "SALE: POST bill",
+      "n": 10,
+      "p50": 316.9071999999942,
+      "p95": 505.40639999999985,
+      "p99": 505.40639999999985,
+      "max": 505.40639999999985
+    }
+  ]
+}

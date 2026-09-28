@@ -24,6 +24,12 @@
 @stop
 
 @section('content')
+@if($gstinIsSandbox ?? false)
+<div class="alert alert-warning border-warning shadow-sm mb-3 py-2 px-3">
+    <i class="fas fa-exclamation-triangle mr-1"></i>
+    <strong>Sandbox/demo GSTIN configuration</strong> — see GST Settings before treating this as filing-ready.
+</div>
+@endif
 <div class="card card-outline card-primary shadow-sm mb-4">
     {{-- 1. Card Header with Breadcrumbs & Sync Bar --}}
     <div class="card-header py-2 px-3 d-flex flex-wrap justify-content-between align-items-center bg-white border-bottom">
@@ -70,76 +76,222 @@
         </form>
     </div>
 
-    {{-- 2. Data Table with Yellow Header (Exact TruePOS Style from Screenshot 2) --}}
-    <div class="table-responsive p-0">
-        <table class="table table-hover table-bordered mb-0 align-middle" style="font-size: 11.5px; border-color: #dee2e6;">
-            <thead>
-                <tr style="background-color: #f5a623; color: #212529;">
-                    <th class="font-weight-bold" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">HSN or SAC code</th>
-                    <th class="font-weight-bold" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">Item name</th>
-                    <th class="font-weight-bold text-center" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">UOM</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">Total Quantity</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">Total Value</th>
-                    <th class="font-weight-bold text-center" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">Rate</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">Nil/Exempted Value</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">Taxable Value</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">IGST</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">CGST</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">SGST</th>
-                    <th class="font-weight-bold text-right" style="padding: 11px 12px; border-color: #e59a1f; white-space: nowrap;">CESS</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($rows as $row)
-                    <tr>
-                        <td class="font-weight-bold text-dark" style="padding: 9px 12px;">
-                            {{ $row['hsn'] }}
-                        </td>
-                        <td class="text-muted" style="padding: 9px 12px;">
-                            {{ $row['name'] ?: '-' }}
-                        </td>
-                        <td class="text-center font-weight-bold" style="color: #495057; padding: 9px 12px;">
-                            {{ $row['uom'] }}
-                        </td>
-                        <td class="text-right" style="padding: 9px 12px;">
-                            {{ number_format($row['qty'], 2) }}
-                        </td>
-                        <td class="text-right font-weight-bold" style="padding: 9px 12px;">
-                            {{ number_format($row['total'], 2) }}
-                        </td>
-                        <td class="text-center" style="padding: 9px 12px;">
-                            {{ number_format($row['rate'], 2) }}
-                        </td>
-                        <td class="text-right text-muted" style="padding: 9px 12px;">
-                            {{ number_format($row['nil'], 2) }}
-                        </td>
-                        <td class="text-right font-weight-bold text-dark" style="padding: 9px 12px;">
-                            {{ number_format($row['taxable'], 2) }}
-                        </td>
-                        <td class="text-right text-muted" style="padding: 9px 12px;">
-                            {{ number_format($row['igst'], 2) }}
-                        </td>
-                        <td class="text-right font-weight-bold" style="color: #333; padding: 9px 12px;">
-                            {{ number_format($row['cgst'], 2) }}
-                        </td>
-                        <td class="text-right font-weight-bold" style="color: #333; padding: 9px 12px;">
-                            {{ number_format($row['sgst'], 2) }}
-                        </td>
-                        <td class="text-right text-muted" style="padding: 9px 12px;">
-                            {{ number_format($row['cess'], 2) }}
-                        </td>
+    {{-- 2. Data table — shape depends on this section's own real data source ($layout), not a generic HSN table reused everywhere --}}
+    @if($layout === 'hsn')
+        @if(($meta['missing_hsn_qty'] ?? 0) > 0)
+        <div class="alert alert-secondary border mb-0 rounded-0 py-2 px-3 small">
+            <i class="fas fa-info-circle mr-1"></i>
+            {{ number_format($meta['missing_hsn_qty'], 2) }} unit(s) sold have no HSN code set on the item master —
+            grouped separately below, not assigned a fabricated code.
+        </div>
+        @endif
+        @if($meta['has_more_groups'] ?? false)
+        <div class="alert alert-warning border mb-0 rounded-0 py-2 px-3 small">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            Showing the top {{ number_format($meta['row_cap']) }} HSN/rate combinations for this period (there are
+            more), ranked by taxable value — use search above to narrow to a specific HSN or rate. The summary
+            totals above still reflect ALL of them, not just what's shown here.
+        </div>
+        @endif
+        <div class="table-responsive p-0">
+            <table class="table table-hover table-bordered mb-0 align-middle" style="font-size: 11.5px; border-color: #dee2e6;">
+                <thead>
+                    <tr style="background-color: #f5a623; color: #212529;">
+                        <th style="padding: 11px 12px;">HSN or SAC code</th>
+                        <th style="padding: 11px 12px;">Item name</th>
+                        <th class="text-center" style="padding: 11px 12px;">UOM</th>
+                        <th class="text-right" style="padding: 11px 12px;">Total Quantity</th>
+                        <th class="text-right" style="padding: 11px 12px;">Total Value</th>
+                        <th class="text-center" style="padding: 11px 12px;">Rate</th>
+                        <th class="text-right" style="padding: 11px 12px;">Nil/Exempted Value</th>
+                        <th class="text-right" style="padding: 11px 12px;">Taxable Value</th>
+                        <th class="text-right" style="padding: 11px 12px;">IGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">CGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">SGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">CESS</th>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="12" class="text-center py-5 text-muted">
-                            <i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>
-                            No records found for this section.
-                        </td>
+                </thead>
+                <tbody>
+                    @forelse ($rows as $row)
+                        <tr>
+                            <td class="font-weight-bold text-dark" style="padding: 9px 12px;">{{ $row['hsn'] ?? '(missing)' }}</td>
+                            <td class="text-muted" style="padding: 9px 12px;">{{ $row['name'] ?: '-' }}</td>
+                            <td class="text-center font-weight-bold" style="padding: 9px 12px;">{{ $row['uom'] }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['qty'], 2) }}</td>
+                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['total'], 2) }}</td>
+                            <td class="text-center" style="padding: 9px 12px;">{{ number_format($row['rate'], 2) }}</td>
+                            <td class="text-right text-muted" style="padding: 9px 12px;">{{ number_format($row['nil'], 2) }}</td>
+                            <td class="text-right font-weight-bold text-dark" style="padding: 9px 12px;">{{ number_format($row['taxable'], 2) }}</td>
+                            <td class="text-right text-muted" style="padding: 9px 12px;">{{ number_format($row['igst'], 2) }}</td>
+                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['cgst'], 2) }}</td>
+                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['sgst'], 2) }}</td>
+                            <td class="text-right text-muted" style="padding: 9px 12px;">{{ number_format($row['cess'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="12" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No records found for this period.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+    @elseif($layout === 'invoice' || $layout === 'invoice-b2cl')
+        @if($layout === 'invoice-b2cl')
+        <div class="alert alert-secondary border mb-0 rounded-0 py-2 px-3 small">
+            <i class="fas fa-info-circle mr-1"></i> B2CL threshold: invoice value &ge; &#8377;{{ number_format($meta['threshold'] ?? 250000, 0) }} AND inter-state.
+        </div>
+        @endif
+        <div class="table-responsive p-0">
+            <table class="table table-hover table-bordered mb-0 align-middle" style="font-size: 11.5px;">
+                <thead>
+                    <tr style="background-color: #f5a623; color: #212529;">
+                        <th style="padding: 11px 12px;">Invoice No</th>
+                        <th style="padding: 11px 12px;">Invoice Date</th>
+                        @if($layout === 'invoice')<th style="padding: 11px 12px;">Customer</th>
+                        <th style="padding: 11px 12px;">GSTIN</th>@endif
+                        <th style="padding: 11px 12px;">Place of Supply</th>
+                        <th class="text-right" style="padding: 11px 12px;">Taxable Value</th>
+                        <th class="text-right" style="padding: 11px 12px;">IGST</th>
+                        @if($layout === 'invoice')<th class="text-right" style="padding: 11px 12px;">CGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">SGST</th>@endif
+                        <th class="text-right" style="padding: 11px 12px;">Invoice Value</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @forelse ($rows as $row)
+                        <tr>
+                            <td class="font-weight-bold" style="padding: 9px 12px;">{{ $row['ref'] }}</td>
+                            <td style="padding: 9px 12px;">{{ $row['date'] }}</td>
+                            @if($layout === 'invoice')<td style="padding: 9px 12px;">{{ $row['customer'] }}</td>
+                            <td style="padding: 9px 12px;"><code>{{ $row['gstin'] }}</code></td>@endif
+                            <td style="padding: 9px 12px;">{{ $row['pos'] }}</td>
+                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['taxable'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['igst'], 2) }}</td>
+                            @if($layout === 'invoice')<td class="text-right" style="padding: 9px 12px;">{{ number_format($row['cgst'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['sgst'], 2) }}</td>@endif
+                            <td class="text-right font-weight-bold text-success" style="padding: 9px 12px;">{{ number_format($row['total'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No records found for this period.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+    @elseif($layout === 'aggregate')
+        <div class="table-responsive p-0">
+            <table class="table table-hover table-bordered mb-0 align-middle" style="font-size: 11.5px;">
+                <thead>
+                    <tr style="background-color: #f5a623; color: #212529;">
+                        <th style="padding: 11px 12px;">Place of Supply</th>
+                        <th class="text-center" style="padding: 11px 12px;">Rate</th>
+                        <th class="text-right" style="padding: 11px 12px;">Taxable Value</th>
+                        <th class="text-right" style="padding: 11px 12px;">IGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">CGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">SGST</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($rows as $row)
+                        <tr>
+                            <td style="padding: 9px 12px;">{{ $row['pos'] }}</td>
+                            <td class="text-center" style="padding: 9px 12px;">{{ number_format($row['rate'], 2) }}</td>
+                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['taxable'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['igst'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['cgst'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['sgst'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No records found for this period.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+    @elseif($layout === 'note')
+        <div class="px-3 pt-2 small text-muted"><i class="fas fa-info-circle mr-1"></i>{{ $meta['note'] }}</div>
+        <div class="table-responsive p-0">
+            <table class="table table-hover table-bordered mb-0 align-middle" style="font-size: 11.5px;">
+                <thead>
+                    <tr style="background-color: #f5a623; color: #212529;">
+                        <th style="padding: 11px 12px;">Note No</th>
+                        <th style="padding: 11px 12px;">Note Date</th>
+                        <th style="padding: 11px 12px;">Original Invoice</th>
+                        <th style="padding: 11px 12px;">Customer</th>
+                        <th style="padding: 11px 12px;">GSTIN</th>
+                        <th class="text-right" style="padding: 11px 12px;">Taxable Value</th>
+                        <th class="text-right" style="padding: 11px 12px;">IGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">CGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">SGST</th>
+                        <th class="text-right" style="padding: 11px 12px;">Note Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($rows as $row)
+                        <tr>
+                            <td class="font-weight-bold" style="padding: 9px 12px;">{{ $row['ref'] }}</td>
+                            <td style="padding: 9px 12px;">{{ $row['date'] }}</td>
+                            <td style="padding: 9px 12px;">{{ $row['original_invoice'] ?? '-' }}</td>
+                            <td style="padding: 9px 12px;">{{ $row['customer'] }}</td>
+                            <td style="padding: 9px 12px;"><code>{{ $row['gstin'] ?? '-' }}</code></td>
+                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['taxable'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['igst'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['cgst'], 2) }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['sgst'], 2) }}</td>
+                            <td class="text-right font-weight-bold text-success" style="padding: 9px 12px;">{{ number_format($row['total'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="10" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No records found for this period.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+    @elseif($layout === 'documents')
+        <div class="table-responsive p-0">
+            <table class="table table-hover table-bordered mb-0 align-middle" style="font-size: 11.5px;">
+                <thead>
+                    <tr style="background-color: #f5a623; color: #212529;">
+                        <th style="padding: 11px 12px;">Document Series</th>
+                        <th style="padding: 11px 12px;">First No</th>
+                        <th style="padding: 11px 12px;">Last No</th>
+                        <th class="text-right" style="padding: 11px 12px;">Total Issued</th>
+                        <th class="text-right" style="padding: 11px 12px;">Cancelled</th>
+                        <th class="text-right" style="padding: 11px 12px;">Net Issued</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($rows as $row)
+                        <tr>
+                            <td class="font-weight-bold" style="padding: 9px 12px;">{{ $row['label'] }}</td>
+                            <td style="padding: 9px 12px;">{{ $row['first'] }}</td>
+                            <td style="padding: 9px 12px;">{{ $row['last'] }}</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ $row['total'] }}</td>
+                            <td class="text-right text-danger" style="padding: 9px 12px;">{{ $row['cancelled'] }}</td>
+                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ $row['net_issued'] }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No documents issued for this period.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+    @elseif($layout === 'unsupported-summary')
+        <div class="p-4">
+            <div class="alert alert-secondary border mb-3">
+                <i class="fas fa-info-circle mr-1"></i> {{ $meta['limitation'] }}
+            </div>
+            <div class="h4 font-weight-bold text-dark">&#8377;{{ number_format($meta['amount'] ?? 0, 2) }}</div>
+            <div class="text-muted small">Combined Exempted-bucket amount for the period (not split by sub-category — see note above)</div>
+        </div>
+
+    @elseif($layout === 'unsupported')
+        <div class="p-4">
+            <div class="alert alert-secondary border mb-0">
+                <i class="fas fa-ban mr-1"></i> <strong>Not supported.</strong> {{ $meta['limitation'] }}
+            </div>
+        </div>
+    @endif
 
     {{-- 3. Floating Red Refresh Action Button (Bottom Right from Screenshot) --}}
     <button type="button" class="btn btn-danger shadow-lg d-flex align-items-center justify-content-center" 

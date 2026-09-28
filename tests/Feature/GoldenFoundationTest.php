@@ -10,7 +10,7 @@ use App\Models\StockLedger;
 use App\Services\Accounting\DocumentNumberingService;
 use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -28,7 +28,7 @@ use Tests\TestCase;
  */
 class GoldenFoundationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private StockLedgerService $stockLedger;
     private TaxEngine $taxEngine;

@@ -323,17 +323,9 @@ class DamageStockController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (int) (DamageStock::max('id') ?? 0);
-        $lastDmg = DamageStock::where('damage_number', 'like', 'DMG%')->orderByDesc('id')->value('damage_number');
-        if ($lastDmg && preg_match('/^DMG(\d+)$/', $lastDmg, $matches)) {
-            $next = max($next, (int) $matches[1]);
-        }
-        do {
-            $next++;
-            $dmg = 'DMG'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-        } while (DamageStock::where('damage_number', $dmg)->exists());
-
-        return $dmg;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('DMG', \App\Models\DamageStock::class, 'damage_number', 5);
     }
 
     private function formOptions(): array

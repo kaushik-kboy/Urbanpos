@@ -5,14 +5,14 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\User;
 use App\Services\Backup\DatabaseBackupService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class DatabaseBackupTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $user;
     private Branch $branch;

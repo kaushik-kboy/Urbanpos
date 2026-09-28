@@ -87,7 +87,7 @@ class SmartAnalyticsReportTest extends TestCase
             'bill_date' => now()->startOfMonth()->addDays(2),
             'customer_id' => $customer->id,
             'branch_id' => $this->branch->id,
-            'status' => 'Paid',
+            'status' => 'Posted',
             'total_qty' => 5,
             'total' => 50.00,
         ]);
@@ -107,7 +107,7 @@ class SmartAnalyticsReportTest extends TestCase
             'bill_date' => now()->startOfMonth()->addDays(5),
             'customer_id' => $customer->id,
             'branch_id' => $this->branch->id,
-            'status' => 'Paid',
+            'status' => 'Posted',
             'total_qty' => 5,
             'total' => 70.00,
         ]);
@@ -166,7 +166,7 @@ class SmartAnalyticsReportTest extends TestCase
             'bill_date' => now()->startOfMonth()->addDays(3),
             'customer_id' => $customer->id,
             'branch_id' => $this->branch->id,
-            'status' => 'Paid',
+            'status' => 'Posted',
             'total_qty' => 4,
             'total' => 200.00,
         ]);
@@ -196,7 +196,7 @@ class SmartAnalyticsReportTest extends TestCase
             'bill_date' => now(),
             'customer_id' => $customer->id,
             'branch_id' => $this->branch->id,
-            'status' => 'Paid',
+            'status' => 'Posted',
             'total' => 500.00,
         ]);
 
@@ -233,7 +233,7 @@ class SmartAnalyticsReportTest extends TestCase
             'bill_date' => now(),
             'customer_id' => $customer->id,
             'branch_id' => $this->branch->id,
-            'status' => 'Paid',
+            'status' => 'Posted',
             'total' => 100.00,
         ]);
 

@@ -167,7 +167,7 @@ class LedgerPostingService
             ];
 
             if ($discountAmount > 0) {
-                $discountLedger = Ledger::findOrCreateSystemLedger('Discount Allowed', 'Indirect Expenses');
+                $discountLedger = Ledger::findOrCreateSystemLedger('Discount Allowed', 'Indirect Expense');
                 $lines[] = ['ledger_id' => $discountLedger->id, 'debit' => $discountAmount, 'credit' => 0];
             }
 
@@ -190,7 +190,7 @@ class LedgerPostingService
             ];
 
             if ($discountAmount > 0) {
-                $discountLedger = Ledger::findOrCreateSystemLedger('Discount Received', 'Indirect Incomes');
+                $discountLedger = Ledger::findOrCreateSystemLedger('Discount Received', 'Indirect Income');
                 $lines[] = ['ledger_id' => $discountLedger->id, 'debit' => 0, 'credit' => $discountAmount];
             }
 

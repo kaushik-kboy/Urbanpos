@@ -43,8 +43,9 @@ class ReportController extends Controller
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
         $rows = SalesBill::with('branch')
-            ->whereDate('bill_date', '>=', $from)
-            ->whereDate('bill_date', '<=', $to)
+            ->where('status', '!=', 'Cancelled')
+            ->where('bill_date', '>=', $from.' 00:00:00')
+            ->where('bill_date', '<=', $to.' 23:59:59')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->selectRaw('DATE(bill_date) as bill_date, branch_id, COUNT(*) as bill_count, SUM(total) as total_amount, SUM(disc_amount) as total_disc, SUM(total_gst) as total_gst')
             ->groupBy(DB::raw('DATE(bill_date)'), 'branch_id')
@@ -64,8 +65,8 @@ class ReportController extends Controller
         $invoiceType = $request->input('invoice_type');
 
         $query = SalesBill::with(['customer', 'branch', 'items.item'])
-            ->whereDate('bill_date', '>=', $from)
-            ->whereDate('bill_date', '<=', $to)
+            ->where('bill_date', '>=', $from.' 00:00:00')
+            ->where('bill_date', '<=', $to.' 23:59:59')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($customerId, fn ($q) => $q->where('customer_id', $customerId))
             ->when($invoiceType, fn ($q) => $q->where('invoice_type', $invoiceType));
@@ -81,7 +82,28 @@ class ReportController extends Controller
             });
         }
 
-        $bills = $query->orderBy('bill_date')->get();
+        $query->orderBy('bill_date')->orderBy('id');
+
+        // Full-dataset export is server-side and streamed; the on-page table only holds one page of bills.
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv($query, [
+                'Bill Date' => '', 'Bill No' => '', 'Customer' => '', 'Item' => '', 'Qty' => '', 'MRP' => '', 'Net Amount' => '', 'Branch' => '',
+            ], 'billwise-sales-report.csv', function ($bill) {
+                return $bill->items->map(fn ($line) => [
+                    $bill->bill_date->format('d-m-Y'),
+                    $bill->bill_number,
+                    $bill->customer?->name,
+                    $line->item?->name,
+                    $line->qty,
+                    number_format((float) $line->mrp, 2, '.', ''),
+                    number_format((float) $line->net_amount, 2, '.', ''),
+                    $bill->branch?->name,
+                ])->all();
+            });
+        }
+
+        // Paginated: bills + their lines are hydrated per page, never for the whole date range.
+        $bills = $query->paginate(100)->withQueryString();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $customerId = $request->input('customer_id');
@@ -91,6 +113,7 @@ class ReportController extends Controller
         if ($selectedCustForFilter && ! isset($customers[$customerId])) {
             $customers->put($selectedCustForFilter->id, $selectedCustForFilter->mobile ? "{$selectedCustForFilter->name} ({$selectedCustForFilter->mobile})" : $selectedCustForFilter->name);
         }
+        // Uses idx_sb_invoice_type (loose index scan) instead of scanning every bill.
         $invoiceTypes = SalesBill::select('invoice_type')->distinct()->whereNotNull('invoice_type')->pluck('invoice_type');
 
         return view('reports.billwise-sales', compact('bills', 'from', 'to', 'branchId', 'branches', 'customers', 'invoiceTypes', 'search', 'customerId', 'invoiceType'));
@@ -100,29 +123,19 @@ class ReportController extends Controller
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
-        $rows = SalesBill::with('items.item')
-            ->whereDate('bill_date', '>=', $from)
-            ->whereDate('bill_date', '<=', $to)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->get()
-            ->flatMap(fn ($bill) => $bill->items->map(fn ($line) => (object) [
-                'hsn_code' => $line->item?->hsn_code,
-                'gst_percent' => $line->gst_percent,
-                'taxable_amount' => $line->net_amount - $line->gst_tax_amount,
-                'gst_amount' => $line->gst_tax_amount,
-            ]))
-            ->groupBy(fn ($row) => ($row->hsn_code ?: 'N/A').'|'.$row->gst_percent)
-            ->map(function ($group) {
-                $first = $group->first();
-
-                return (object) [
-                    'hsn_code' => $first->hsn_code ?: 'N/A',
-                    'gst_percent' => $first->gst_percent,
-                    'taxable_amount' => $group->sum('taxable_amount'),
-                    'gst_amount' => $group->sum('gst_amount'),
-                ];
-            })
-            ->values();
+        // Aggregated in SQL (was: every bill + line hydrated into PHP models: 10 s / 190 MB per year of data).
+        // Cancelled bills are excluded - they must not appear in a GST return.
+        $rows = \Illuminate\Support\Facades\DB::table('sales_bill_items as sbi')
+            ->join('sales_bills as sb', 'sb.id', '=', 'sbi.sales_bill_id')
+            ->leftJoin('items as it', 'it.id', '=', 'sbi.item_id')
+            ->where('sb.bill_date', '>=', $from.' 00:00:00')
+            ->where('sb.bill_date', '<=', $to.' 23:59:59')
+            ->where(fn ($q) => $q->whereNull('sb.status')->orWhere('sb.status', '!=', 'Cancelled'))
+            ->when($branchId, fn ($q) => $q->where('sb.branch_id', $branchId))
+            ->groupByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), sbi.gst_percent")
+            ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), sbi.gst_percent")
+            ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, sbi.gst_percent, SUM(sbi.net_amount - sbi.gst_tax_amount) as taxable_amount, SUM(sbi.gst_tax_amount) as gst_amount")
+            ->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
@@ -136,9 +149,10 @@ class ReportController extends Controller
         $supplierId = $request->input('supplier_id');
         $purchaseType = $request->input('purchase_type');
 
+        // Sargable range (same rows as whereDate(): DATE(x) >= from AND DATE(x) <= to) so idx (branch_id, invoice_date) is usable.
         $query = PurchaseInvoice::with(['supplier', 'branch', 'items.item'])
-            ->whereDate('invoice_date', '>=', $from)
-            ->whereDate('invoice_date', '<=', $to)
+            ->where('invoice_date', '>=', $from.' 00:00:00')
+            ->where('invoice_date', '<=', $to.' 23:59:59')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($supplierId, fn ($q) => $q->where('supplier_id', $supplierId))
             ->when($purchaseType, fn ($q) => $q->where('purchase_type', $purchaseType));
@@ -151,7 +165,30 @@ class ReportController extends Controller
             });
         }
 
-        $invoices = $query->orderBy('invoice_date')->get();
+        $query->orderBy('invoice_date')->orderBy('id');
+
+        // Full-dataset export is server-side and streamed; the on-page table only holds one page of invoices.
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv($query, [
+                'Invoice Date' => '', 'Invoice No' => '', 'Supplier' => '', 'Item' => '', 'Qty' => '', 'Cost' => '', 'MRP' => '', 'GST %' => '', 'Net Amount' => '', 'Branch' => '',
+            ], 'purchase-detail-report.csv', function ($invoice) {
+                return $invoice->items->map(fn ($line) => [
+                    $invoice->invoice_date->format('d-m-Y'),
+                    $invoice->invoice_number,
+                    $invoice->supplier?->name,
+                    $line->item?->name,
+                    $line->qty,
+                    number_format((float) $line->cost_price, 2, '.', ''),
+                    number_format((float) $line->mrp, 2, '.', ''),
+                    $line->gst_percent,
+                    number_format((float) $line->net_amount, 2, '.', ''),
+                    $invoice->branch?->name,
+                ])->all();
+            });
+        }
+
+        // Paginated: invoices + their lines are hydrated per page, never for the whole date range.
+        $invoices = $query->paginate(100)->withQueryString();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $suppliers = Supplier::orderBy('name')->get();
@@ -190,13 +227,16 @@ class ReportController extends Controller
             $query->whereHas('item', fn ($q) => $q->where('category_value_id', $categoryValueId));
         }
 
-        $rows = $query->orderBy('branch_id')->get();
+        // Totals for the whole filtered set come from SQL; only one page of rows is loaded/rendered.
+        $totals = (clone $query)->join('items as ti', 'ti.id', '=', 'item_stocks.item_id')
+            ->selectRaw('COALESCE(SUM(item_stocks.quantity * COALESCE(ti.cost_price,0)),0) as cost_value, COALESCE(SUM(item_stocks.quantity * COALESCE(ti.sell_price,0)),0) as sell_value, COALESCE(SUM(item_stocks.quantity),0) as qty')->first();
+        $rows = $query->orderBy('branch_id')->orderBy('item_stocks.id')->paginate(100)->withQueryString();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $brands = Brand::orderBy('name')->pluck('name', 'id');
         $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
 
-        return view('reports.current-stock', compact('rows', 'branchId', 'branches', 'brands', 'categories', 'brandId', 'categoryValueId', 'search'));
+        return view('reports.current-stock', compact('rows', 'totals', 'branchId', 'branches', 'brands', 'categories', 'brandId', 'categoryValueId', 'search'));
     }
 
     public function salesReturnSummary(Request $request)
@@ -250,7 +290,7 @@ class ReportController extends Controller
         }
 
         if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
+            $query->where('customer_category_id', $request->category_id);
         }
 
         $branchId = $this->resolveBranchId($request);
@@ -367,13 +407,15 @@ class ReportController extends Controller
         $tillSessionId = $request->input('till_session_id');
 
         $bills = SalesBill::with('payments.tenderType')
-            ->whereDate('bill_date', '>=', $from)
-            ->whereDate('bill_date', '<=', $to)
+            ->where('status', '!=', 'Cancelled')
+            ->where('bill_date', '>=', $from.' 00:00:00')
+            ->where('bill_date', '<=', $to.' 23:59:59')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($tillSessionId, fn ($q) => $q->where('till_session_id', $tillSessionId))
             ->get();
 
-        $returns = SalesReturn::whereDate('return_date', '>=', $from)
+        $returns = SalesReturn::where('status', '!=', 'Cancelled')
+            ->whereDate('return_date', '>=', $from)
             ->whereDate('return_date', '<=', $to)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->get();
@@ -514,34 +556,18 @@ class ReportController extends Controller
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
-        $rows = PurchaseInvoice::with('items.item')
-            ->whereDate('invoice_date', '>=', $from)
-            ->whereDate('invoice_date', '<=', $to)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->get()
-            ->flatMap(fn ($inv) => $inv->items->map(fn ($line) => (object) [
-                'hsn_code' => $line->item?->hsn_code ?: 'N/A',
-                'gst_percent' => (float) ($line->gst_percent ?? 0),
-                'taxable_amount' => (float) ($line->net_amount - $line->gst_tax_amount),
-                'cgst_amount' => (float) ($line->cgst_amount ?? 0),
-                'sgst_amount' => (float) ($line->sgst_amount ?? 0),
-                'igst_amount' => (float) ($line->igst_amount ?? 0),
-                'gst_amount' => (float) ($line->gst_tax_amount ?? 0),
-            ]))
-            ->groupBy(fn ($row) => $row->hsn_code.'|'.$row->gst_percent)
-            ->map(function ($group) {
-                $first = $group->first();
-                return (object) [
-                    'hsn_code' => $first->hsn_code,
-                    'gst_percent' => $first->gst_percent,
-                    'taxable_amount' => $group->sum('taxable_amount'),
-                    'cgst_amount' => $group->sum('cgst_amount'),
-                    'sgst_amount' => $group->sum('sgst_amount'),
-                    'igst_amount' => $group->sum('igst_amount'),
-                    'gst_amount' => $group->sum('gst_amount'),
-                ];
-            })
-            ->values();
+        // Aggregated in SQL (was: every invoice + line hydrated into PHP). Cancelled invoices are excluded.
+        $rows = \Illuminate\Support\Facades\DB::table('purchase_invoice_items as pii')
+            ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
+            ->leftJoin('items as it', 'it.id', '=', 'pii.item_id')
+            ->where('pi.invoice_date', '>=', $from)
+            ->where('pi.invoice_date', '<=', $to)
+            ->where(fn ($q) => $q->whereNull('pi.status')->orWhere('pi.status', '!=', 'Cancelled'))
+            ->when($branchId, fn ($q) => $q->where('pi.branch_id', $branchId))
+            ->groupByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
+            ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
+            ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, COALESCE(pii.gst_percent, 0) as gst_percent, SUM(pii.net_amount - pii.gst_tax_amount) as taxable_amount, SUM(COALESCE(pii.cgst_amount,0)) as cgst_amount, SUM(COALESCE(pii.sgst_amount,0)) as sgst_amount, SUM(COALESCE(pii.igst_amount,0)) as igst_amount, SUM(COALESCE(pii.gst_tax_amount,0)) as gst_amount")
+            ->get();
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
@@ -681,8 +707,9 @@ class ReportController extends Controller
 
         $query = SalesBillPayment::with(['tenderType', 'tenderTypeValue', 'salesBill.branch'])
             ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
-                $q->whereDate('bill_date', '>=', $from)
-                  ->whereDate('bill_date', '<=', $to)
+                $q->where('status', '!=', 'Cancelled')
+                  ->where('bill_date', '>=', $from.' 00:00:00')
+                  ->where('bill_date', '<=', $to.' 23:59:59')
                   ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
             })
             ->when($tenderTypeId, fn ($q) => $q->where('tender_type_id', $tenderTypeId));
@@ -771,8 +798,9 @@ class ReportController extends Controller
 
         $query = SalesBillItem::with(['item.brand', 'item.categoryValue', 'salesBill.customer', 'salesBill.branch'])
             ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
-                $q->whereDate('bill_date', '>=', $from)
-                  ->whereDate('bill_date', '<=', $to)
+                $q->where('status', '!=', 'Cancelled')
+                  ->where('bill_date', '>=', $from.' 00:00:00')
+                  ->where('bill_date', '<=', $to.' 23:59:59')
                   ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
             })
             ->when($brandId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('brand_id', $brandId)))
@@ -780,7 +808,23 @@ class ReportController extends Controller
             ->when($customerId, fn ($q) => $q->whereHas('salesBill', fn ($bq) => $bq->where('customer_id', $customerId)))
             ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")));
 
-        $lines = $query->orderBy('id', 'desc')->get()->map(function ($line) {
+        // Period totals come from one SQL aggregate over the whole filtered set (was: every line hydrated
+        // into PHP with 4 eager-load levels, then summed); only one page of lines is rendered.
+        $agg = (clone $query)->toBase()->selectRaw(
+            'COALESCE(SUM(COALESCE(sales_bill_items.net_amount, 0)), 0) as sell_total, '
+            .'COALESCE(SUM(COALESCE(sales_bill_items.cost_at_sale, 0) * sales_bill_items.qty), 0) as cog_total'
+        )->first();
+        $totals = [
+            'sell_total'   => (float) $agg->sell_total,
+            'cog_total'    => (float) $agg->cog_total,
+        ];
+        $totals['gross_margin'] = $totals['sell_total'] - $totals['cog_total'];
+        $totals['margin_pct'] = $totals['sell_total'] > 0
+            ? ($totals['gross_margin'] / $totals['sell_total']) * 100 : 0;
+
+        $query->orderBy('sales_bill_items.id', 'desc');
+
+        $mapLine = function ($line) {
             $sellTotal  = (float) $line->net_amount;
             $cogTotal   = (float) ($line->cost_at_sale * $line->qty);
             $margin     = $sellTotal - $cogTotal;
@@ -802,15 +846,31 @@ class ReportController extends Controller
                 'gross_margin'  => $margin,
                 'margin_pct'    => $marginPct,
             ];
-        });
+        };
 
-        $totals = [
-            'sell_total'   => $lines->sum('sell_total'),
-            'cog_total'    => $lines->sum('cog_total'),
-            'gross_margin' => $lines->sum('gross_margin'),
-        ];
-        $totals['margin_pct'] = $totals['sell_total'] > 0
-            ? ($totals['gross_margin'] / $totals['sell_total']) * 100 : 0;
+        // Full-dataset export is server-side and streamed; the on-page table only holds one page.
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv($query, [
+                'Date' => '', 'Bill No' => '', 'Customer' => '', 'Branch' => '', 'Item Code' => '', 'Item' => '', 'Brand' => '', 'Category' => '',
+                'Qty' => '', 'Sell/unit' => '', 'Cost/unit' => '', 'Sell Total' => '', 'COGS' => '', 'Gross Profit' => '', 'Margin %' => '',
+            ], 'sales-margin-itemwise-report.csv', function ($line) use ($mapLine) {
+                $l = $mapLine($line);
+
+                return [
+                    $l->bill_date ? \Carbon\Carbon::parse($l->bill_date)->format('d-m-Y') : '',
+                    $l->bill_number, $l->customer_name, $l->branch_name, $l->item_code, $l->item_name, $l->brand_name, $l->category_name,
+                    $l->qty,
+                    number_format((float) $l->sell_price, 2, '.', ''),
+                    number_format((float) $l->cost_at_sale, 2, '.', ''),
+                    number_format($l->sell_total, 2, '.', ''),
+                    number_format($l->cog_total, 2, '.', ''),
+                    number_format($l->gross_margin, 2, '.', ''),
+                    number_format($l->margin_pct, 1, '.', ''),
+                ];
+            });
+        }
+
+        $lines = $query->paginate(100)->withQueryString()->through($mapLine);
 
         $branches        = Branch::orderBy('name')->pluck('name', 'id');
         $brands          = Brand::orderBy('name')->pluck('name', 'id');
@@ -835,29 +895,35 @@ class ReportController extends Controller
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
-        $lines = SalesBillItem::with(['item.categoryValue'])
-            ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
-                $q->whereDate('bill_date', '>=', $from)
-                  ->whereDate('bill_date', '<=', $to)
-                  ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
-            })
-            ->get();
+        // Aggregated in SQL by category name (was: every line hydrated with item + category, grouped in PHP:
+        // 2.9 s / 98 MB for a year of sales). Same rules: cancelled bills excluded, no category => 'Uncategorised'.
+        $grouped = \Illuminate\Support\Facades\DB::table('sales_bill_items as sbi')
+            ->join('sales_bills as sb', 'sb.id', '=', 'sbi.sales_bill_id')
+            ->leftJoin('items as it', 'it.id', '=', 'sbi.item_id')
+            ->leftJoin('item_category_values as icv', 'icv.id', '=', 'it.category_value_id')
+            ->where('sb.status', '!=', 'Cancelled')
+            ->where('sb.bill_date', '>=', $from.' 00:00:00')
+            ->where('sb.bill_date', '<=', $to.' 23:59:59')
+            ->when($branchId, fn ($q) => $q->where('sb.branch_id', $branchId))
+            ->groupByRaw("COALESCE(icv.name, 'Uncategorised')")
+            ->selectRaw("COALESCE(icv.name, 'Uncategorised') as category_name, SUM(sbi.qty) as qty, "
+                .'SUM(COALESCE(sbi.net_amount, 0)) as sell_total, SUM(COALESCE(sbi.cost_at_sale, 0) * sbi.qty) as cog_total')
+            ->get()
+            ->map(function ($row) {
+                $sellTotal = (float) $row->sell_total;
+                $cogTotal = (float) $row->cog_total;
+                $margin = $sellTotal - $cogTotal;
 
-        $grouped = $lines->groupBy(fn ($line) => $line->item?->categoryValue?->name ?? 'Uncategorised')
-            ->map(function ($group, $categoryName) {
-                $sellTotal = $group->sum(fn ($l) => (float) $l->net_amount);
-                $cogTotal  = $group->sum(fn ($l) => (float) ($l->cost_at_sale * $l->qty));
-                $margin    = $sellTotal - $cogTotal;
                 return (object) [
-                    'category_name' => $categoryName,
-                    'qty'           => $group->sum('qty'),
+                    'category_name' => $row->category_name,
+                    'qty'           => $row->qty + 0,
                     'sell_total'    => $sellTotal,
                     'cog_total'     => $cogTotal,
                     'gross_margin'  => $margin,
                     'margin_pct'    => $sellTotal > 0 ? ($margin / $sellTotal) * 100 : 0,
                 ];
             })
-            ->sortByDesc('gross_margin')
+            ->sortBy([['gross_margin', 'desc'], ['category_name', 'asc']])
             ->values();
 
         $totals = [
@@ -942,12 +1008,13 @@ class ReportController extends Controller
                 ]);
         }
 
-        $rows = $quotations->merge($orders)->sortByDesc('date')->values();
+        // toBase(): an empty Eloquent collection would otherwise try to merge plain objects by model key and crash.
+        $rows = $quotations->toBase()->merge($orders->toBase())->sortByDesc('date')->values();
 
         $summary = [
             'total_quotations' => $quotations->count(),
             'total_orders'     => $orders->count(),
-            'open'             => $rows->whereIn('status', ['Draft', 'Confirmed'])->count(),
+            'open'             => $rows->whereIn('status', ['Draft', 'Sent', 'Accepted', 'Open', 'Partially Fulfilled', 'Confirmed'])->count(),
             'converted'        => $rows->where('status', 'Converted')->count(),
             'cancelled'        => $rows->where('status', 'Cancelled')->count(),
         ];
@@ -959,7 +1026,7 @@ class ReportController extends Controller
             $fc = Customer::find($filterCustId);
             if ($fc) $customers->put($fc->id, $fc->name);
         }
-        $statuses   = ['Draft', 'Confirmed', 'Converted', 'Cancelled'];
+        $statuses   = ['Draft', 'Sent', 'Accepted', 'Open', 'Partially Fulfilled', 'Converted', 'Cancelled'];
 
         return view('reports.quotation-order-summary', compact(
             'rows', 'summary', 'from', 'to', 'branchId', 'type', 'status',
@@ -991,7 +1058,35 @@ class ReportController extends Controller
                 $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")
             ));
 
-        $rows = $query->orderBy('quantity')->get()->map(function ($stock) use ($threshold) {
+        // KPIs for the whole filtered set come from one SQL aggregate; only a page of rows is ever loaded.
+        $kpiRow = (clone $query)->toBase()->selectRaw(
+            'COALESCE(SUM(item_stocks.quantity <= 0), 0) as out_of_stock, COALESCE(SUM(item_stocks.quantity > 0), 0) as low_stock, COUNT(*) as total_skus'
+        )->first();
+        $kpi = [
+            'out_of_stock' => (int) $kpiRow->out_of_stock,
+            'low_stock'    => (int) $kpiRow->low_stock,
+            'total_skus'   => (int) $kpiRow->total_skus,
+        ];
+
+        $query->orderBy('item_stocks.quantity')->orderBy('item_stocks.id');
+
+        // Full-dataset export is server-side (the on-page table only holds one page).
+        if ($request->query('export') === 'csv') {
+            return $this->exportQueryToCsv($query, [
+                'Item Code'   => fn ($s) => $s->item?->item_code,
+                'Item Name'   => fn ($s) => $s->item?->name,
+                'Brand'       => fn ($s) => $s->item?->brand?->name,
+                'Category'    => fn ($s) => $s->item?->categoryValue?->name,
+                'Branch'      => fn ($s) => $s->branch?->name,
+                'Current Qty' => fn ($s) => $s->quantity,
+                'Sell Price'  => fn ($s) => number_format((float) $s->sell_price, 2, '.', ''),
+                'MRP'         => fn ($s) => number_format((float) $s->mrp, 2, '.', ''),
+                'Supplier'    => fn ($s) => $s->item?->supplier?->name,
+                'Status'      => fn ($s) => $s->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
+            ], 'reorder-stock-report.csv');
+        }
+
+        $rows = $query->paginate(100)->withQueryString()->through(function ($stock) {
             return (object) [
                 'item_code'     => $stock->item?->item_code,
                 'item_name'     => $stock->item?->name,
@@ -1007,12 +1102,6 @@ class ReportController extends Controller
                 'status'        => $stock->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
             ];
         });
-
-        $kpi = [
-            'out_of_stock' => $rows->where('quantity', '<=', 0)->count(),
-            'low_stock'    => $rows->where('quantity', '>', 0)->count(),
-            'total_skus'   => $rows->count(),
-        ];
 
         $branches   = Branch::orderBy('name')->pluck('name', 'id');
         $brands     = Brand::orderBy('name')->pluck('name', 'id');
@@ -1040,6 +1129,45 @@ class ReportController extends Controller
             'branchId' => $branchId,
             'search' => $search,
         ]));
+    }
+
+    /**
+     * GST Sales Taxwise — real .xlsx export, one POSTED sales bill per row,
+     * 0%/5%/18% taxable + IGST/CGST/SGST breakup as columns. See
+     * docs/GST-SALES-TAXWISE-EXPORT.md for the full spec/decisions.
+     * Respects the same from/to/branch_id/search filters as the on-screen
+     * report (built via the shared dateAndBranchFilter()/resolveBranchId()).
+     */
+    public function exportGstSalesTaxwise(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $search = $request->input('search');
+
+        $filename = 'gst-sales-taxwise_' . $from . '_to_' . $to . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\GstSalesTaxwiseExport($from, $to, $branchId, $search ?: null),
+            $filename
+        );
+    }
+
+    /**
+     * GST Purchase Summary — invoice-wise real .xlsx export, one POSTED
+     * purchase invoice per row. Separate from gstPurchaseSummary() above,
+     * which remains the existing HSN-wise summary view. See
+     * docs/GST-PURCHASE-SUMMARY-EXPORT.md for the full spec/decisions.
+     * Respects the same from/to/branch_id filters as the on-screen report.
+     */
+    public function exportGstPurchaseSummary(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+
+        $filename = 'gst-purchase-summary_' . $from . '_to_' . $to . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\GstPurchaseSummaryInvoiceWiseExport($from, $to, $branchId),
+            $filename
+        );
     }
 
     private function resolveBranchId(Request $request): ?int

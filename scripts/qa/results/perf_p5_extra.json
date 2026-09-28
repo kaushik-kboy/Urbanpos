@@ -1,0 +1,73 @@
+{
+    "label": "p5_extra",
+    "total_rows": 2095000,
+    "counts": {
+        "items": 34375,
+        "customers": 91667,
+        "bills": 275000,
+        "purchases": 27500,
+        "returned_bills": 13333
+    },
+    "rows": [
+        {
+            "endpoint": "Finance: day book (30d)",
+            "p50": 1373.8,
+            "p95": 1463.5,
+            "p99": 1463.5,
+            "sqls": 8,
+            "db_ms": 52.1,
+            "mb": 52,
+            "status": {
+                "200": 5
+            }
+        },
+        {
+            "endpoint": "Finance: trial balance",
+            "p50": 513.5,
+            "p95": 531.4,
+            "p99": 531.4,
+            "sqls": 11,
+            "db_ms": 115.7,
+            "mb": 52,
+            "status": {
+                "200": 5
+            }
+        },
+        {
+            "endpoint": "Finance: profit & loss (1y)",
+            "p50": 704.6,
+            "p95": 748.6,
+            "p99": 748.6,
+            "sqls": 8,
+            "db_ms": 337.8,
+            "mb": 52,
+            "status": {
+                "200": 5
+            }
+        },
+        {
+            "endpoint": "Finance: cash\/bank book (30d)",
+            "p50": 834.9,
+            "p95": 861.3,
+            "p99": 861.3,
+            "sqls": 12,
+            "db_ms": 53.9,
+            "mb": 52,
+            "status": {
+                "200": 5
+            }
+        },
+        {
+            "endpoint": "Finance: outstanding aging (customers)",
+            "p50": 30869,
+            "p95": 32174.3,
+            "p99": 32174.3,
+            "sqls": 9,
+            "db_ms": 3086.4,
+            "mb": 482,
+            "status": {
+                "200": 5
+            }
+        }
+    ]
+}

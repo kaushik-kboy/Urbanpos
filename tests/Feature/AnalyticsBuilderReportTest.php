@@ -176,7 +176,7 @@ class AnalyticsBuilderReportTest extends TestCase
             'total_qty' => 3,
             'total' => 3600.00,
             'disc_amount' => 100.00,
-            'status' => 'Completed',
+            'status' => 'Posted',
         ]);
 
         SalesBillItem::create([
@@ -279,7 +279,7 @@ class AnalyticsBuilderReportTest extends TestCase
             'branch_id' => $this->branch->id,
             'total_qty' => 5,
             'total' => 250.00,
-            'status' => 'Completed',
+            'status' => 'Posted',
         ]);
 
         SalesBillItem::create([
@@ -414,7 +414,7 @@ class AnalyticsBuilderReportTest extends TestCase
             'branch_id' => $this->branch->id,
             'total_qty' => 2,
             'total' => 1000,
-            'status' => 'Paid',
+            'status' => 'Posted',
         ]);
 
         SalesBillItem::create([

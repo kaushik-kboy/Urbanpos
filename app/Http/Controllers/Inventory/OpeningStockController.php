@@ -267,17 +267,9 @@ class OpeningStockController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (int) (OpeningStock::max('id') ?? 0);
-        $lastOps = OpeningStock::where('entry_number', 'like', 'OPS%')->orderByDesc('id')->value('entry_number');
-        if ($lastOps && preg_match('/^OPS(\d+)$/', $lastOps, $matches)) {
-            $next = max($next, (int) $matches[1]);
-        }
-        do {
-            $next++;
-            $ops = 'OPS'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-        } while (OpeningStock::where('entry_number', $ops)->exists());
-
-        return $ops;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('OPS', \App\Models\OpeningStock::class, 'entry_number', 5);
     }
 
     private function formOptions(): array

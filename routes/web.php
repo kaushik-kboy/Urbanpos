@@ -65,17 +65,19 @@ use Illuminate\Support\Facades\Route;
  * on every test's fresh application boot, and a `function` declaration here would fatal
  * with "Cannot redeclare" on the second test.
  */
-$gatedResource = function (string $uri, string $controller, string $module) {
-    Route::resource($uri, $controller)->only(['index', 'create', 'edit', 'show']);
+$gatedResource = function (string $uri, string $controller, string $module, array $skip = []) {
+    $only = fn (array $actions) => array_values(array_diff($actions, $skip));
+
+    Route::resource($uri, $controller)->only($only(['index', 'create', 'edit', 'show']));
 
     Route::middleware(['permission:'.$module.'.create', 'branch.access'])
-        ->group(fn () => Route::resource($uri, $controller)->only(['store']));
+        ->group(fn () => Route::resource($uri, $controller)->only($only(['store'])));
 
     Route::middleware(['permission:'.$module.'.edit', 'branch.access'])
-        ->group(fn () => Route::resource($uri, $controller)->only(['update']));
+        ->group(fn () => Route::resource($uri, $controller)->only($only(['update'])));
 
     Route::middleware(['permission:'.$module.'.cancel', 'branch.access'])
-        ->group(fn () => Route::resource($uri, $controller)->only(['destroy']));
+        ->group(fn () => Route::resource($uri, $controller)->only($only(['destroy'])));
 };
 
 Route::get('/', function () {
@@ -274,7 +276,8 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');
     $gatedResource('sales-orders', SalesOrderController::class, 'sales-orders');
     Route::get('delivery-notes/{deliveryNote}/print', [SalesDeliveryNoteController::class, 'print'])->name('delivery-notes.print');
-    $gatedResource('delivery-notes', SalesDeliveryNoteController::class, 'sales-delivery-notes');
+    // Delivery notes are immutable once dispatched (cancel + re-create): the controller has no edit/update actions.
+    $gatedResource('delivery-notes', SalesDeliveryNoteController::class, 'sales-delivery-notes', ['edit', 'update']);
     $gatedResource('sales-bills', SalesBillController::class, 'sales-bills');
     Route::get('sales-returns/customer-bills/{customer}', [SalesReturnController::class, 'customerBills'])->name('sales-returns.customer-bills');
     Route::get('sales-returns/bill-items/{salesBill}', [SalesReturnController::class, 'billItems'])->name('sales-returns.bill-items');
@@ -393,6 +396,7 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('item-master', [ReportController::class, 'itemMaster'])->name('item-master');
     Route::get('supplier-master', [ReportController::class, 'supplierMaster'])->name('supplier-master');
     Route::get('gst-purchase-summary', [ReportController::class, 'gstPurchaseSummary'])->name('gst-purchase-summary');
+    Route::get('gst-purchase-summary/export', [ReportController::class, 'exportGstPurchaseSummary'])->name('gst-purchase-summary.export');
     Route::get('purchase-order-summary', [ReportController::class, 'purchaseOrderSummary'])->name('purchase-order-summary');
     Route::get('stock-transfer-summary', [ReportController::class, 'stockTransferSummary'])->name('stock-transfer-summary');
     Route::get('damage-stock-summary', [ReportController::class, 'damageStockSummary'])->name('damage-stock-summary');
@@ -405,6 +409,7 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('quotation-order-summary', [ReportController::class, 'quotationOrderSummary'])->name('quotation-order-summary');
     Route::get('reorder-report', [ReportController::class, 'reorderReport'])->name('reorder-report');
     Route::get('view/{module}', [ReportController::class, 'renderGenericReport'])->name('view');
+    Route::get('gst-sales-taxwise/export', [ReportController::class, 'exportGstSalesTaxwise'])->name('gst-sales-taxwise.export');
 
     // Smart Item & Customer 360° Analytics & Reporting Engine
     Route::get('smart-analytics', [\App\Http\Controllers\Reports\SmartAnalyticsController::class, 'index'])->name('smart-analytics');

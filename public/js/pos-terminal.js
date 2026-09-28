@@ -376,9 +376,12 @@
             const stock = cartItem.stock;
 
             if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
-                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
-                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
-                alert(errMsg);
+                // The 'input'/'change' handler just above already shows this
+                // inline (is-invalid class + showNotification) and disables the
+                // pay buttons — no need for a second, blocking native alert()
+                // here too (this was found to make repeated qty corrections
+                // feel like the page had "broken"/frozen, since each blur
+                // re-triggered another modal dialog to dismiss).
                 $(this).focus().select();
             }
         });
@@ -700,7 +703,7 @@
         if (expDate) {
             const todayStr = new Date().toISOString().substring(0, 10);
             if (expDate < todayStr) {
-                alert(`Cannot add expired item: "${item.name || item.productname || 'Item'}" (Expired on ${expDate}). Selling expired products is strictly prohibited.`);
+                showNotification(`Cannot add expired item: "${item.name || item.productname || 'Item'}" (Expired on ${expDate}). Selling expired products is strictly prohibited.`, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
                 return;
             }
@@ -733,7 +736,6 @@
                 const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
-                alert(errMsg);
                 return;
             }
 
@@ -749,7 +751,6 @@
                 const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
-                alert(errMsg);
                 return;
             }
 
@@ -844,7 +845,6 @@
                 const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
-                alert(errMsg);
                 return;
             }
         }
@@ -872,7 +872,6 @@
             const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
             showNotification(errMsg, 'danger');
             if (typeof sound !== 'undefined' && sound.error) sound.error();
-            alert(errMsg);
             return;
         }
         cartItem.qty = q;
@@ -1527,7 +1526,7 @@
                 $('#posAddCustomerModal').modal('show');
             },
             error: function (err) {
-                alert('Could not load customer details. Please try again.');
+                showNotification('Could not load customer details. Please try again.', 'danger');
             }
         });
     }
@@ -1694,7 +1693,7 @@
     function openCustomerFavoritesModal() {
         const custId = $('#posCustomerSelect').val() || $('#posCustId').val();
         if (!custId) {
-            alert('Please select a customer first.');
+            showNotification('Please select a customer first.', 'warning');
             return;
         }
 
@@ -1924,7 +1923,6 @@
                 const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
-                alert(errMsg);
                 const badInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${i}"]`) : null;
                 if (badInput) {
                     badInput.classList.add('is-invalid', 'border-danger');
@@ -1966,7 +1964,6 @@
                 const errMsg = stockErr.message || `Stock changed. Only ${availDisp} units are currently available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
-                alert(errMsg);
 
                 if (stockErr.item_id) {
                     state.cart.forEach((c, idx) => {

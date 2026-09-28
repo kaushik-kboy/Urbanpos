@@ -10,6 +10,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\SalesBill;
 use App\Services\GST\EInvoiceService;
 use App\Services\GST\EWayBillService;
+use App\Services\GST\Gstr1ReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -39,7 +40,8 @@ class EInvoiceDashboardController extends Controller
         // -------------------------------------------------------------
         // Sales / Outward (GSTR-1)
         $salesQuery = SalesBill::whereDate('bill_date', '>=', $fromDate)
-            ->whereDate('bill_date', '<=', $toDate);
+            ->whereDate('bill_date', '<=', $toDate)
+            ->where('status', '!=', 'Cancelled');
 
         $gstr1Count = (clone $salesQuery)->count();
         $gstr1Total = (float) (clone $salesQuery)->sum('total');
@@ -50,6 +52,7 @@ class EInvoiceDashboardController extends Controller
                 ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
                 ->whereDate('sales_bills.bill_date', '>=', $fromDate)
                 ->whereDate('sales_bills.bill_date', '<=', $toDate)
+                ->where('sales_bills.status', '!=', 'Cancelled')
                 ->sum('sales_bill_items.gst_tax_amount');
             $gstr1TaxCollected = (float) $itemGst > 0 ? (float) $itemGst : round($gstr1Total * 18 / 118, 2);
         }
@@ -57,7 +60,8 @@ class EInvoiceDashboardController extends Controller
 
         // Purchases / Inward (GSTR-2)
         $purQuery = PurchaseInvoice::whereDate('invoice_date', '>=', $fromDate)
-            ->whereDate('invoice_date', '<=', $toDate);
+            ->whereDate('invoice_date', '<=', $toDate)
+            ->where('status', '!=', 'Cancelled');
 
         $gstr2Count = (clone $purQuery)->count();
         $gstr2Total = (float) (clone $purQuery)->sum('total');
@@ -75,7 +79,9 @@ class EInvoiceDashboardController extends Controller
         // -------------------------------------------------------------
         // 2. E-INVOICE HUB METRICS & DATA
         // -------------------------------------------------------------
+        // Cancelled invoices must never be offered for IRN generation.
         $baseQuery = SalesBill::with(['customer', 'branch', 'items.item'])
+            ->where('status', '!=', 'Cancelled')
             ->where(function ($q) use ($settings) {
                 $threshold = (float) ($settings->auto_upload_threshold ?: 50000.00);
                 $q->where('total', '>=', $threshold)
@@ -167,145 +173,88 @@ class EInvoiceDashboardController extends Controller
     /**
      * Dedicated GSTR-1 View (reproducing exact 12-card dashboard from urbanpets.true-pos.com).
      */
-    public function gstr1View(Request $request)
+    /** Default GSTR-1 reporting period used when the request doesn't specify one. */
+    private function defaultGstr1Period(Request $request): array
     {
-        $settings = GstSetting::current();
-        $selectedPeriod = $request->input('period', 'Aug 2026 - 2027');
-        
         $fromDate = $request->input('from_date');
         $toDate = $request->input('to_date');
-
         if (empty($fromDate) || empty($toDate)) {
-            // Default to August/September 2026
-            $fromDate = '2026-08-01';
-            $toDate = '2026-08-31';
+            $fromDate = now()->startOfMonth()->format('Y-m-d');
+            $toDate = now()->format('Y-m-d');
         }
-
-        $branch = Branch::first();
-        $companyName = $branch?->name ?? 'URBANPETS SERVICES PRIVATE LIMITED';
-        $gstin = $settings->gstin ?: '24AAECU3183G1ZN';
-
-        // 1. Sales Bills in Period
-        $bills = SalesBill::with(['customer', 'items.item'])
-            ->whereDate('bill_date', '>=', $fromDate)
-            ->whereDate('bill_date', '<=', $toDate)
-            ->get();
-
-        // 2. Sales Returns in Period
-        $returns = \App\Models\SalesReturn::with('customer')
-            ->whereDate('return_date', '>=', $fromDate)
-            ->whereDate('return_date', '<=', $toDate)
-            ->get();
-
-        // B2B Bills (Customer has GSTIN)
-        $b2bBills = $bills->filter(fn ($b) => !empty($b->customer?->gst_no));
-        $b2bCount = $b2bBills->count();
-        $b2bTotal = (float) $b2bBills->sum('total');
-        $b2bTax = (float) $b2bBills->sum('total_gst');
-        if ($b2bTax == 0 && $b2bTotal > 0) {
-            $b2bTax = round($b2bTotal * 18 / 118, 2);
-        }
-        $b2bTaxable = max(0, round($b2bTotal - $b2bTax, 2));
-
-        // B2C Bills (Customer has NO GSTIN)
-        $b2cBills = $bills->filter(fn ($b) => empty($b->customer?->gst_no));
-        
-        // B2CL (Interstate >= 2.5L)
-        $b2clBills = $b2cBills->filter(fn ($b) => (float) $b->total >= 250000 && ($b->sales_type === 'Interstate' || (float) $b->total_igst > 0));
-        $b2clCount = $b2clBills->count();
-        $b2clTaxable = $b2clBills->sum(fn ($b) => (float) $b->total - (float) $b->total_gst);
-        $b2clTax = (float) $b2clBills->sum('total_gst');
-
-        // Export Supplies
-        $exportCount = 0;
-        $exportTaxable = 0;
-        $exportTax = 0;
-
-        // B2CS (All other B2C)
-        $b2csBills = $b2cBills->filter(fn ($b) => !((float) $b->total >= 250000 && ($b->sales_type === 'Interstate' || (float) $b->total_igst > 0)));
-        $b2csTotal = (float) $b2csBills->sum('total');
-        $b2csTax = (float) $b2csBills->sum('total_gst');
-        if ($b2csTax == 0 && $b2csTotal > 0) {
-            $b2csTax = round($b2csTotal * 18 / 118, 2);
-        }
-        $b2csTaxable = max(0, round($b2csTotal - $b2csTax, 2));
-
-        // HSN B2B Summary
-        $hsnB2bTaxable = $b2bTaxable > 0 ? $b2bTaxable : 609340.18;
-        $hsnB2bTax = $b2bTax > 0 ? $b2bTax : 93056.06;
-
-        // HSN B2C Summary
-        $hsnB2cTaxable = $b2csTaxable + $b2clTaxable;
-        if ($hsnB2cTaxable == 0) $hsnB2cTaxable = 7414726.65;
-        $hsnB2cTax = $b2csTax + $b2clTax;
-        if ($hsnB2cTax == 0) $hsnB2cTax = 1211809.47;
-
-        if ($b2bCount == 0 && $bills->count() > 0) {
-            // Populate realistic demonstration numbers from true-pos screenshot if period has standard retail bills
-            $b2bCount = 64;
-            $b2bTaxable = 607861.26;
-            $b2bTax = 93420.62;
-        }
-
-        if ($b2csTaxable == 0 && $bills->count() > 0) {
-            $b2csTaxable = 7338700.00;
-            $b2csTax = 1210534.94;
-        }
-
-        // CDNR (Credit/Debit Notes Registered)
-        $cdnrNotes = $returns->filter(fn ($r) => !empty($r->customer?->gst_no));
-        $cdnrCount = $cdnrNotes->count();
-        $cdnrTotal = (float) $cdnrNotes->sum('total');
-        $cdnrTax = (float) $cdnrNotes->sum('total_gst');
-        if ($cdnrCount == 0 && $returns->count() > 0) {
-            $cdnrCount = 2;
-            $cdnrValue = 2829.76;
-            $cdnrTax = 364.50;
-        } else {
-            $cdnrValue = max(0, round($cdnrTotal - $cdnrTax, 2));
-        }
-
-        // CDNUR (Credit/Debit Notes Unregistered)
-        $cdnurNotes = $returns->filter(fn ($r) => empty($r->customer?->gst_no));
-        $cdnurCount = $cdnurNotes->count();
-        $cdnurTotal = (float) $cdnurNotes->sum('total');
-        $cdnurTax = (float) $cdnurNotes->sum('total_gst');
-        $cdnurValue = max(0, round($cdnurTotal - $cdnurTax, 2));
-
-        // Nil Rated / Exempted
-        $nilRatedAmount = round($bills->sum(fn ($b) => $b->invoice_type === 'Exempted' ? (float) $b->total : 0), 2);
-        if ($nilRatedAmount == 0) $nilRatedAmount = 73252.50;
-        $exemptedAmount = 0.00;
-
-        // Advances
-        $advanceReceivedTaxable = 0;
-        $advanceReceivedTax = 0;
-        $advanceAdjustedTaxable = 0;
-        $advanceAdjustedTax = 0;
-
-        // Document Issued
-        $docIssuedTotal = $bills->count() ?: 3513;
-        $cancelledCount = $bills->where('status', 'Cancelled')->count();
-
-        return view('gst.gstr-1', compact(
-            'companyName', 'gstin', 'selectedPeriod', 'fromDate', 'toDate',
-            'hsnB2bTaxable', 'hsnB2bTax',
-            'hsnB2cTaxable', 'hsnB2cTax',
-            'b2bCount', 'b2bTaxable', 'b2bTax', 'b2bBills',
-            'b2clCount', 'b2clTaxable', 'b2clTax',
-            'exportCount', 'exportTaxable', 'exportTax',
-            'b2csTaxable', 'b2csTax', 'b2csBills',
-            'cdnrCount', 'cdnrValue', 'cdnrTax', 'cdnrNotes',
-            'cdnurCount', 'cdnurValue', 'cdnurTax',
-            'nilRatedAmount', 'exemptedAmount',
-            'advanceReceivedTaxable', 'advanceReceivedTax',
-            'advanceAdjustedTaxable', 'advanceAdjustedTax',
-            'docIssuedTotal', 'cancelledCount'
-        ));
+        return [$fromDate, $toDate];
     }
 
     /**
-     * Section Detail View (e.g. dashboard > gstr-1 > b2b-hsn matching second screenshot).
+     * True when GstSetting::current() is still the sandbox/mock default
+     * ('24AAECU3183G1ZN' / gsp_provider=mock / is_sandbox=true) rather than a
+     * real configured business GSTIN — the GSTR-1 pages must show this
+     * plainly instead of silently presenting a demo number as authoritative.
+     */
+    private function gstinIsSandboxDefault(GstSetting $settings): bool
+    {
+        return $settings->is_sandbox
+            || $settings->gsp_provider === 'mock'
+            || $settings->gstin === '24AAECU3183G1ZN';
+    }
+
+    public function gstr1View(Request $request)
+    {
+        $settings = GstSetting::current();
+        $selectedPeriod = $request->input('period', now()->format('M Y') . ' - ' . now()->addYear()->format('Y'));
+
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+
+        $branch = Branch::first();
+        $companyName = $branch?->name ?? 'URBANPETS SERVICES PRIVATE LIMITED';
+        $gstin = $settings->gstin;
+        $gstinIsSandbox = $this->gstinIsSandboxDefault($settings);
+
+        $service = new Gstr1ReportService($fromDate, $toDate);
+        $summary = $service->summary();
+
+        return view('gst.gstr-1', [
+            'companyName' => $companyName,
+            'gstin' => $gstin,
+            'gstinIsSandbox' => $gstinIsSandbox,
+            'selectedPeriod' => $selectedPeriod,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'hsnB2bTaxable' => $summary['hsnB2b']['taxable'],
+            'hsnB2bTax' => $summary['hsnB2b']['tax'],
+            'hsnB2cTaxable' => $summary['hsnB2c']['taxable'],
+            'hsnB2cTax' => $summary['hsnB2c']['tax'],
+            'b2bCount' => $summary['b2b']['count'],
+            'b2bTaxable' => $summary['b2b']['taxable'],
+            'b2bTax' => $summary['b2b']['tax'],
+            'b2clCount' => $summary['b2cl']['count'],
+            'b2clTaxable' => $summary['b2cl']['taxable'],
+            'b2clTax' => $summary['b2cl']['tax'],
+            'exportCount' => 0,
+            'exportTaxable' => 0,
+            'exportTax' => 0,
+            'b2csTaxable' => $summary['b2cs']['taxable'],
+            'b2csTax' => $summary['b2cs']['tax'],
+            'cdnrCount' => $summary['cdnr']['count'],
+            'cdnrValue' => $summary['cdnr']['value'],
+            'cdnrTax' => $summary['cdnr']['tax'],
+            'cdnurCount' => $summary['cdnur']['count'],
+            'cdnurValue' => $summary['cdnur']['value'],
+            'cdnurTax' => $summary['cdnur']['tax'],
+            'nilRatedAmount' => $summary['nil']['combined_amount'],
+            'exemptedAmount' => 0.00, // see $summary['nil']['limitation'] — schema can't split this out
+            'advanceReceivedTaxable' => 0,
+            'advanceReceivedTax' => 0,
+            'advanceAdjustedTaxable' => 0,
+            'advanceAdjustedTax' => 0,
+            'docIssuedTotal' => $summary['docs']['total_issued'],
+            'cancelledCount' => $summary['docs']['total_cancelled'],
+        ]);
+    }
+
+    /**
+     * Section Detail View — each section now has its own real query via
+     * Gstr1ReportService; nothing here reuses another section's data.
      */
     public function gstr1SectionView(Request $request, string $section = 'b2b-hsn')
     {
@@ -313,116 +262,111 @@ class EInvoiceDashboardController extends Controller
         $section = strtolower(trim(str_replace('_', '-', $section)));
         $branch = Branch::first();
         $companyName = $branch?->name ?? 'URBANPETS SERVICES PRIVATE LIMITED';
-        $gstin = $settings->gstin ?: '24AAECU3183G1ZN';
+        $gstin = $settings->gstin;
+        $gstinIsSandbox = $this->gstinIsSandboxDefault($settings);
 
-        $fromDate = $request->input('from_date', '2026-08-01');
-        $toDate = $request->input('to_date', '2026-08-31');
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $service = new Gstr1ReportService($fromDate, $toDate);
 
-        $isB2b = ($section === 'b2b-hsn' || $section === 'b2b');
+        $layout = 'hsn';
+        $rows = [];
+        $meta = [];
 
-        // 1. Check if real sales_bill_items exist in database for this period
-        $dbItemsQuery = \App\Models\SalesBillItem::query()
-            ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
-            ->leftJoin('items', 'sales_bill_items.item_id', '=', 'items.id')
-            ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
-            ->whereDate('sales_bills.bill_date', '>=', $fromDate)
-            ->whereDate('sales_bills.bill_date', '<=', $toDate);
-
-        if ($isB2b) {
-            $dbItemsQuery->whereNotNull('customers.gst_no')->where('customers.gst_no', '!=', '');
-        } else {
-            $dbItemsQuery->where(function ($q) {
-                $q->whereNull('customers.gst_no')->orWhere('customers.gst_no', '=', '');
-            });
+        switch ($section) {
+            case 'b2b-hsn':
+                $layout = 'hsn';
+                $data = $service->hsnB2b();
+                $rows = $data['rows'];
+                $meta = ['missing_hsn_qty' => $data['missing_hsn_qty'], 'has_more_groups' => $data['has_more_groups'], 'row_cap' => $data['row_cap']];
+                break;
+            case 'b2c-hsn':
+                $layout = 'hsn';
+                $data = $service->hsnB2c();
+                $rows = $data['rows'];
+                $meta = ['missing_hsn_qty' => $data['missing_hsn_qty'], 'has_more_groups' => $data['has_more_groups'], 'row_cap' => $data['row_cap']];
+                break;
+            case 'b2b':
+                $layout = 'invoice';
+                $rows = $service->b2b()['rows'];
+                break;
+            case 'b2cl':
+                $layout = 'invoice-b2cl';
+                $rows = $service->b2cl()['rows'];
+                $meta = ['threshold' => Gstr1ReportService::B2CL_THRESHOLD];
+                break;
+            case 'b2cs':
+                $layout = 'aggregate';
+                $rows = $service->b2cs()['rows'];
+                break;
+            case 'cdnr':
+                $layout = 'note';
+                $data = $service->cdnr();
+                $rows = $data['rows'];
+                $meta = ['note' => $data['note']];
+                break;
+            case 'cdnur':
+                $layout = 'note';
+                $data = $service->cdnur();
+                $rows = $data['rows'];
+                $meta = ['note' => $data['note']];
+                break;
+            case 'nil':
+                $layout = 'unsupported-summary';
+                $data = $service->nilRated();
+                $rows = [];
+                $meta = ['amount' => $data['combined_amount'], 'limitation' => $data['limitation']];
+                break;
+            case 'exp':
+                $layout = 'unsupported';
+                $meta = ['limitation' => $service->exportSupplies()['limitation']];
+                break;
+            case 'adv-rec':
+                $layout = 'unsupported';
+                $meta = ['limitation' => $service->advanceReceived()['limitation']];
+                break;
+            case 'adv-adj':
+                $layout = 'unsupported';
+                $meta = ['limitation' => $service->advanceAdjusted()['limitation']];
+                break;
+            case 'doc-issued':
+                $layout = 'documents';
+                $rows = $service->documentsIssued()['rows'];
+                break;
+            default:
+                $layout = 'hsn';
+                $rows = [];
         }
 
-        $dbHsnList = $dbItemsQuery->selectRaw('
-            COALESCE(items.hsn_code, "999721") as hsn,
-            items.name as name,
-            "UNT-UNITS" as uom,
-            SUM(sales_bill_items.qty) as qty,
-            SUM(sales_bill_items.net_amount) as total,
-            sales_bill_items.gst_percent as rate,
-            0.00 as nil,
-            SUM(sales_bill_items.net_amount - sales_bill_items.gst_tax_amount) as taxable,
-            SUM(sales_bill_items.igst_amount) as igst,
-            SUM(sales_bill_items.cgst_amount) as cgst,
-            SUM(sales_bill_items.sgst_amount) as sgst,
-            0.00 as cess
-        ')
-        ->groupBy('hsn', 'rate', 'items.name')
-        ->get();
-
-        if ($dbHsnList->isNotEmpty()) {
-            $rows = $dbHsnList->map(fn($r) => [
-                'hsn' => (string) $r->hsn,
-                'name' => (string) $r->name,
-                'uom' => $r->uom,
-                'qty' => (float) $r->qty,
-                'total' => (float) $r->total,
-                'rate' => (float) $r->rate,
-                'nil' => (float) $r->nil,
-                'taxable' => (float) $r->taxable,
-                'igst' => (float) $r->igst,
-                'cgst' => (float) $r->cgst,
-                'sgst' => (float) $r->sgst,
-                'cess' => (float) $r->cess,
-            ])->toArray();
-        } else {
-            // Authentic HSN summary dataset matching TruePOS exact screenshot
-            $rows = [
-                ['hsn' => '23091000', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 2850.00, 'total' => 554872.57, 'rate' => 18.00, 'nil' => 0.00, 'taxable' => 470230.94, 'igst' => 0.00, 'cgst' => 42320.81, 'sgst' => 42320.81, 'cess' => 0.00],
-                ['hsn' => '23091000', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 2.00, 'total' => 663.00, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 631.42, 'igst' => 0.00, 'cgst' => 15.78, 'sgst' => 15.78, 'cess' => 0.00],
-                ['hsn' => '30049099', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 149.00, 'total' => 35492.18, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 32849.70, 'igst' => 0.00, 'cgst' => 1321.24, 'sgst' => 1321.24, 'cess' => 0.00],
-                ['hsn' => '999721', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 3.00, 'total' => 2100.00, 'rate' => 18.00, 'nil' => 0.00, 'taxable' => 1779.66, 'igst' => 0.00, 'cgst' => 160.17, 'sgst' => 160.17, 'cess' => 0.00],
-                ['hsn' => '23099090', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 3.00, 'total' => 1132.50, 'rate' => 0.00, 'nil' => 1132.50, 'taxable' => 1132.50, 'igst' => 0.00, 'cgst' => 0.00, 'sgst' => 0.00, 'cess' => 0.00],
-                ['hsn' => '23091000', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 9.00, 'total' => 3176.25, 'rate' => 0.00, 'nil' => 3176.25, 'taxable' => 3176.25, 'igst' => 0.00, 'cgst' => 0.00, 'sgst' => 0.00, 'cess' => 0.00],
-                ['hsn' => '30045020', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 7.00, 'total' => 10593.75, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 10089.29, 'igst' => 0.00, 'cgst' => 252.23, 'sgst' => 252.23, 'cess' => 0.00],
-                ['hsn' => '30049085', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 395.00, 'total' => 28640.45, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 27276.60, 'igst' => 0.00, 'cgst' => 681.89, 'sgst' => 681.89, 'cess' => 0.00],
-                ['hsn' => '21069099', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 8.00, 'total' => 1235.52, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 1176.69, 'igst' => 0.00, 'cgst' => 29.42, 'sgst' => 29.42, 'cess' => 0.00],
-                ['hsn' => '25081090', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 18.00, 'total' => 24542.50, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 23183.32, 'igst' => 0.00, 'cgst' => 579.57, 'sgst' => 579.57, 'cess' => 0.00],
-                ['hsn' => '23099090', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 3.00, 'total' => 1131.00, 'rate' => 18.00, 'nil' => 0.00, 'taxable' => 958.48, 'igst' => 0.00, 'cgst' => 86.26, 'sgst' => 86.26, 'cess' => 0.00],
-                ['hsn' => '30049087', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 10.00, 'total' => 288.60, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 274.86, 'igst' => 0.00, 'cgst' => 6.87, 'sgst' => 6.87, 'cess' => 0.00],
-                ['hsn' => '22051070', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 1.00, 'total' => 483.05, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 460.05, 'igst' => 0.00, 'cgst' => 11.52, 'sgst' => 11.52, 'cess' => 0.00],
-                ['hsn' => '30049099', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 20.00, 'total' => 6501.00, 'rate' => 18.00, 'nil' => 0.00, 'taxable' => 5509.30, 'igst' => 0.00, 'cgst' => 526.35, 'sgst' => 526.35, 'cess' => 0.00],
-                ['hsn' => '30049011', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 14.00, 'total' => 1524.60, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 1033.02, 'igst' => 0.00, 'cgst' => 45.82, 'sgst' => 45.82, 'cess' => 0.00],
-                ['hsn' => '33079090', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 6.00, 'total' => 4287.50, 'rate' => 18.00, 'nil' => 0.00, 'taxable' => 3633.47, 'igst' => 0.00, 'cgst' => 327.01, 'sgst' => 327.01, 'cess' => 0.00],
-                ['hsn' => '30049056', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 2.00, 'total' => 119.93, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 114.22, 'igst' => 0.00, 'cgst' => 2.86, 'sgst' => 2.86, 'cess' => 0.00],
-                ['hsn' => '30049039', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 1.00, 'total' => 145.86, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 138.91, 'igst' => 0.00, 'cgst' => 3.47, 'sgst' => 3.47, 'cess' => 0.00],
-                ['hsn' => '62179090', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 8.00, 'total' => 3500.25, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 3333.58, 'igst' => 0.00, 'cgst' => 83.34, 'sgst' => 83.34, 'cess' => 0.00],
-                ['hsn' => '33049990', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 1.00, 'total' => 780.00, 'rate' => 18.00, 'nil' => 0.00, 'taxable' => 661.02, 'igst' => 0.00, 'cgst' => 59.49, 'sgst' => 59.49, 'cess' => 0.00],
-                ['hsn' => '30031000', 'name' => '', 'uom' => 'UNT-UNITS', 'qty' => 2.00, 'total' => 585.00, 'rate' => 5.00, 'nil' => 0.00, 'taxable' => 537.14, 'igst' => 0.00, 'cgst' => 13.93, 'sgst' => 13.93, 'cess' => 0.00],
-            ];
-        }
-
-        // Search filter if provided
-        if ($request->filled('search')) {
+        // Search filter (HSN/invoice-shaped layouts only — kept from the original behaviour)
+        if ($request->filled('search') && in_array($layout, ['hsn', 'invoice', 'invoice-b2cl'], true)) {
             $q = trim($request->search);
-            $rows = array_filter($rows, function ($r) use ($q) {
-                return str_contains($r['hsn'], $q) || str_contains((string)$r['rate'], $q);
-            });
+            $rows = array_values(array_filter($rows, function ($r) use ($q) {
+                foreach (['hsn', 'ref', 'rate'] as $key) {
+                    if (isset($r[$key]) && str_contains((string) $r[$key], $q)) {
+                        return true;
+                    }
+                }
+                return false;
+            }));
         }
 
         $sectionTitles = [
-            'b2b-hsn' => 'b2b-hsn',
-            'b2c-hsn' => 'b2c-hsn',
-            'b2b' => 'b2b',
-            'b2cl' => 'b2cl',
-            'b2cs' => 'b2cs',
-            'cdnr' => 'cdnr',
-            'cdnur' => 'cdnur',
-            'nil' => 'nil-rated',
+            'b2b-hsn' => 'b2b-hsn', 'b2c-hsn' => 'b2c-hsn', 'b2b' => 'b2b', 'b2cl' => 'b2cl',
+            'b2cs' => 'b2cs', 'cdnr' => 'cdnr', 'cdnur' => 'cdnur', 'nil' => 'nil-rated',
+            'exp' => 'exported-supplies', 'adv-rec' => 'advance-received', 'adv-adj' => 'advance-adjusted',
             'doc-issued' => 'doc-issued',
         ];
-
         $sectionLabel = $sectionTitles[$section] ?? $section;
 
         return view('gst.gstr-1-section', [
             'section' => $section,
             'sectionLabel' => $sectionLabel,
+            'layout' => $layout,
             'rows' => $rows,
+            'meta' => $meta,
             'companyName' => $companyName,
             'gstin' => $gstin,
+            'gstinIsSandbox' => $gstinIsSandbox,
             'search' => $request->search ?? '',
         ]);
     }
@@ -435,37 +379,33 @@ class EInvoiceDashboardController extends Controller
         $fromDate = $request->input('from_date', now()->startOfMonth()->format('Y-m-d'));
         $toDate = $request->input('to_date', now()->format('Y-m-d'));
 
-        $bills = SalesBill::with(['customer', 'items.item'])
-            ->whereDate('bill_date', '>=', $fromDate)
-            ->whereDate('bill_date', '<=', $toDate)
-            ->get();
-
-        $b2bBills = $bills->filter(fn ($b) => !empty($b->customer?->gst_no));
-        $b2csBills = $bills->filter(fn ($b) => empty($b->customer?->gst_no) && (float) $b->total < 250000);
-        $b2clBills = $bills->filter(fn ($b) => empty($b->customer?->gst_no) && (float) $b->total >= 250000);
+        $service = new Gstr1ReportService($fromDate, $toDate);
+        $b2b = $service->b2b();
+        $b2cs = $service->b2cs();
+        $b2cl = $service->b2cl();
 
         return response()->json([
             'from_date' => $fromDate,
             'to_date' => $toDate,
-            'total_invoices' => $bills->count(),
-            'total_turnover' => (float) $bills->sum('total'),
+            'total_invoices' => $b2b['count'] + $b2cs['count'] + $b2cl['count'],
+            'total_turnover' => round($b2b['total'] + ($b2cs['taxable'] + $b2cs['tax']) + $b2cl['total'], 2),
             'b2b' => [
-                'count' => $b2bBills->count(),
-                'taxable' => round($b2bBills->sum('total') - $b2bBills->sum('total_gst'), 2),
-                'tax' => (float) $b2bBills->sum('total_gst'),
-                'total' => (float) $b2bBills->sum('total'),
+                'count' => $b2b['count'],
+                'taxable' => $b2b['taxable'],
+                'tax' => $b2b['tax'],
+                'total' => $b2b['total'],
             ],
             'b2cs' => [
-                'count' => $b2csBills->count(),
-                'taxable' => round($b2csBills->sum('total') - $b2csBills->sum('total_gst'), 2),
-                'tax' => (float) $b2csBills->sum('total_gst'),
-                'total' => (float) $b2csBills->sum('total'),
+                'count' => $b2cs['count'],
+                'taxable' => $b2cs['taxable'],
+                'tax' => $b2cs['tax'],
+                'total' => round($b2cs['taxable'] + $b2cs['tax'], 2),
             ],
             'b2cl' => [
-                'count' => $b2clBills->count(),
-                'taxable' => round($b2clBills->sum('total') - $b2clBills->sum('total_gst'), 2),
-                'tax' => (float) $b2clBills->sum('total_gst'),
-                'total' => (float) $b2clBills->sum('total'),
+                'count' => $b2cl['count'],
+                'taxable' => $b2cl['taxable'],
+                'tax' => $b2cl['tax'],
+                'total' => $b2cl['total'],
             ],
         ]);
     }
@@ -478,15 +418,20 @@ class EInvoiceDashboardController extends Controller
         $fromDate = $request->input('from_date', now()->startOfMonth()->format('Y-m-d'));
         $toDate = $request->input('to_date', now()->format('Y-m-d'));
 
-        $salesTotal = (float) SalesBill::whereDate('bill_date', '>=', $fromDate)->whereDate('bill_date', '<=', $toDate)->sum('total');
-        $salesGst = (float) SalesBill::whereDate('bill_date', '>=', $fromDate)->whereDate('bill_date', '<=', $toDate)->sum('total_gst');
+        $sales = fn () => SalesBill::whereDate('bill_date', '>=', $fromDate)->whereDate('bill_date', '<=', $toDate)->where('status', '!=', 'Cancelled');
+        $purchases = fn () => PurchaseInvoice::whereDate('invoice_date', '>=', $fromDate)->whereDate('invoice_date', '<=', $toDate)->where('status', '!=', 'Cancelled');
+
+        $salesTotal = (float) $sales()->sum('total');
+        $salesGst = (float) $sales()->sum('total_gst');
+        $salesSplit = ['cgst' => (float) $sales()->sum('total_cgst'), 'sgst' => (float) $sales()->sum('total_sgst'), 'igst' => (float) $sales()->sum('total_igst')];
         if ($salesGst == 0 && $salesTotal > 0) {
             $salesGst = round($salesTotal * 18 / 118, 2);
         }
         $salesTaxable = round(max(0, $salesTotal - $salesGst), 2);
 
-        $purTotal = (float) PurchaseInvoice::whereDate('invoice_date', '>=', $fromDate)->whereDate('invoice_date', '<=', $toDate)->sum('total');
-        $purGst = (float) PurchaseInvoice::whereDate('invoice_date', '>=', $fromDate)->whereDate('invoice_date', '<=', $toDate)->sum('total_gst');
+        $purTotal = (float) $purchases()->sum('total');
+        $purGst = (float) $purchases()->sum('total_gst');
+        $purSplit = ['cgst' => (float) $purchases()->sum('total_cgst'), 'sgst' => (float) $purchases()->sum('total_sgst'), 'igst' => (float) $purchases()->sum('total_igst')];
         if ($purGst == 0 && $purTotal > 0) {
             $purGst = round($purTotal * 18 / 118, 2);
         }
@@ -494,23 +439,33 @@ class EInvoiceDashboardController extends Controller
 
         $payable = round(max(0, $salesGst - $purGst), 2);
 
+        // Use the real CGST/SGST/IGST totals; only when none were recorded fall back to an estimated 10/45/45 split.
+        $splitTax = function (array $actual, float $gst): array {
+            if (array_sum($actual) > 0) {
+                return array_map(fn ($v) => round($v, 2), $actual);
+            }
+            return ['igst' => round($gst * 0.1, 2), 'cgst' => round($gst * 0.45, 2), 'sgst' => round($gst * 0.45, 2)];
+        };
+        $outSplit = $splitTax($salesSplit, $salesGst);
+        $inSplit = $splitTax($purSplit, $purGst);
+
         return response()->json([
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'table_3_1' => [
                 'description' => 'Outward taxable supplies (other than zero rated, nil rated and exempted)',
                 'taxable' => $salesTaxable,
-                'igst' => round($salesGst * 0.1, 2),
-                'cgst' => round($salesGst * 0.45, 2),
-                'sgst' => round($salesGst * 0.45, 2),
+                'igst' => $outSplit['igst'],
+                'cgst' => $outSplit['cgst'],
+                'sgst' => $outSplit['sgst'],
                 'total_tax' => $salesGst,
             ],
             'table_4' => [
                 'description' => 'Eligible ITC (Input Tax Credit) from Inward Supplies',
                 'taxable' => $purTaxable,
-                'igst' => round($purGst * 0.1, 2),
-                'cgst' => round($purGst * 0.45, 2),
-                'sgst' => round($purGst * 0.45, 2),
+                'igst' => $inSplit['igst'],
+                'cgst' => $inSplit['cgst'],
+                'sgst' => $inSplit['sgst'],
                 'total_itc' => $purGst,
             ],
             'table_6_1' => [
@@ -531,14 +486,14 @@ class EInvoiceDashboardController extends Controller
         $fyStart = "{$year}-04-01";
         $fyEnd = date('Y-m-d', strtotime("{$fyStart} +1 year -1 day"));
 
-        $annualSales = (float) SalesBill::whereBetween('bill_date', [$fyStart, $fyEnd])->sum('total');
-        $annualSalesGst = (float) SalesBill::whereBetween('bill_date', [$fyStart, $fyEnd])->sum('total_gst');
+        $annualSales = (float) SalesBill::whereDate('bill_date', '>=', $fyStart)->whereDate('bill_date', '<=', $fyEnd)->where('status', '!=', 'Cancelled')->sum('total');
+        $annualSalesGst = (float) SalesBill::whereDate('bill_date', '>=', $fyStart)->whereDate('bill_date', '<=', $fyEnd)->where('status', '!=', 'Cancelled')->sum('total_gst');
         if ($annualSalesGst == 0 && $annualSales > 0) {
             $annualSalesGst = round($annualSales * 18 / 118, 2);
         }
 
-        $annualPurchases = (float) PurchaseInvoice::whereBetween('invoice_date', [$fyStart, $fyEnd])->sum('total');
-        $annualPurGst = (float) PurchaseInvoice::whereBetween('invoice_date', [$fyStart, $fyEnd])->sum('total_gst');
+        $annualPurchases = (float) PurchaseInvoice::whereDate('invoice_date', '>=', $fyStart)->whereDate('invoice_date', '<=', $fyEnd)->where('status', '!=', 'Cancelled')->sum('total');
+        $annualPurGst = (float) PurchaseInvoice::whereDate('invoice_date', '>=', $fyStart)->whereDate('invoice_date', '<=', $fyEnd)->where('status', '!=', 'Cancelled')->sum('total_gst');
         if ($annualPurGst == 0 && $annualPurchases > 0) {
             $annualPurGst = round($annualPurchases * 18 / 118, 2);
         }

@@ -13,6 +13,15 @@
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
                 <button type="button" onclick="exportTableToCSV('gst-purchase-summary-table', 'gst-purchase-itc-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
+                {{-- Real server-side .xlsx export: one purchase invoice = one
+                     row, full GST rate breakup as columns, all matching
+                     invoices (not just this page) — see
+                     docs/GST-PURCHASE-SUMMARY-EXPORT.md. Separate from the
+                     HSN-wise table above, which is unchanged. --}}
+                <a href="{{ route('reports.gst-purchase-summary.export', ['from' => $from, 'to' => $to, 'branch_id' => $branchId]) }}"
+                   class="btn btn-sm btn-success mr-2 font-weight-bold">
+                    <i class="fas fa-file-excel mr-1"></i> Export Excel (Invoice-wise)
+                </a>
                 <x-table-column-customizer table-key="reports.gst-purchase-summary" table-id="gst-purchase-summary-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

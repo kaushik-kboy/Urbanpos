@@ -252,7 +252,7 @@ class PosEnhancementsTest extends TestCase
             'invoice_type' => 'Retail Invoice',
             'sales_type' => 'Local',
             'total' => 22.00,
-            'status' => 'Completed',
+            'status' => 'Posted',
         ]);
 
         $bill->items()->create([

@@ -62,7 +62,7 @@ class DatabaseBackupCommand extends Command
             if ($dumpBin && function_exists('exec')) {
                 $pwdFlag = ($password !== '' && ! is_null($password)) ? '--password=' . escapeshellarg($password) : '';
                 $cmd = sprintf(
-                    '%s --user=%s %s --host=%s --port=%s --skip-comments --quick %s > %s 2>&1',
+                    '%s --user=%s %s --host=%s --port=%s --skip-comments --quick --single-transaction --skip-lock-tables %s > %s 2>&1',
                     $dumpBin,
                     escapeshellarg($username),
                     $pwdFlag,

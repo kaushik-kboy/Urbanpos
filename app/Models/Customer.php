@@ -29,6 +29,34 @@ class Customer extends Model
         'sms_consent' => 'boolean',
     ];
 
+    /**
+     * Ids of active customers matching a picker search term, best-effort "first $limit by name".
+     *
+     * Every query here is index-only (covering) so no row is fetched until the final id list is known;
+     * the old single `select * ... (name LIKE OR mobile LIKE OR code LIKE OR id IN pets) ORDER BY name`
+     * did a primary-key lookup per scanned row (1.07 s at 92K customers for a rare fragment).
+     *  1. name: (status,name) covering index, name order, stops at $limit  -> common terms exit early.
+     *  2. only if name matches did not fill $limit: mobile / customer_code / pet name substring scans.
+     * status is deliberately NOT in the mobile/code probes (it would steer MySQL to the wide status index);
+     * it is applied by the caller's final fetch.
+     */
+    public static function pickerMatchIds(string $term, int $limit = 30, int $probeCap = 500): array
+    {
+        $like = "%{$term}%";
+
+        $ids = static::query()->where('status', true)->where('name', 'like', $like)
+            ->orderBy('name')->limit($limit)->pluck('id')->all();
+        if (count($ids) >= $limit) {
+            return $ids;
+        }
+
+        $more = static::query()->where('mobile', 'like', $like)->limit($probeCap)->pluck('id')
+            ->merge(static::query()->where('customer_code', 'like', $like)->limit($probeCap)->pluck('id'))
+            ->merge(\Illuminate\Support\Facades\DB::table('customer_pets')->where('name', 'like', $like)->limit($probeCap)->pluck('customer_id'));
+
+        return collect($ids)->merge($more)->unique()->values()->all();
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(CustomerCategory::class, 'customer_category_id');

@@ -92,22 +92,15 @@
             </div>
         </div>
         <div class="row align-items-center">
-            <div class="col-md-9 mb-2 mb-md-0">
-                <label class="small font-weight-bold text-primary mb-1" for="sr-bill-item-select">
-                    <i class="fas fa-receipt mr-1"></i> Select Item from Sales Bill to Return:
+            <div class="col-12">
+                <label class="small font-weight-bold text-primary mb-1">
+                    <i class="fas fa-receipt mr-1"></i> Select Item(s) from Sales Bill to Return:
                 </label>
-                <div class="input-group input-group-sm">
-                    <select id="sr-bill-item-select" class="form-control form-control-sm font-weight-bold">
-                        <option value="">-- Choose an item from this bill --</option>
-                    </select>
-                    <div class="input-group-append">
-                        <button type="button" id="btn-add-bill-item" class="btn btn-primary btn-sm font-weight-bold px-3">
-                            <i class="fas fa-plus mr-1"></i> Add to Return
-                        </button>
-                    </div>
+                <div id="sr-bill-item-checklist" class="border rounded bg-white p-2" style="max-height: 220px; overflow-y: auto;" tabindex="0">
+                    <div class="text-muted small p-2">-- Load a Sales Bill above to see its items --</div>
                 </div>
                 <div id="sr-bill-item-error" class="text-danger font-weight-bold small mt-1" style="display: none;"></div>
-                <small class="text-muted">Choose an item from the list above to add it to Return Items below. Only selected items will be returned.</small>
+                <small class="text-muted">Check the item(s) you want to return — checked items appear in Return Items below immediately; uncheck to remove them again.</small>
             </div>
         </div>
     </div>
@@ -328,8 +321,8 @@
                 return false;
             }
             if ($('#sales_bill_id').val()) {
-                $('#sr-bill-item-error').text('Items are restricted to the selected Sales Bill. Please select items from the dropdown above.').show();
-                $('#sr-bill-item-select').focus();
+                $('#sr-bill-item-error').text('Items are restricted to the selected Sales Bill. Please check items from the list above.').show();
+                $('#sr-bill-item-checklist').focus();
                 return false;
             }
             let $row = $input.closest('tr');
@@ -415,7 +408,8 @@
             $('#sr-isl-no-results').addClass('d-none');
             $('#sr-isl-table-wrap').addClass('d-none');
 
-            $.getJSON(SR_ISL_URL, { search: srch, code: code, customer_id: custId }, function (res) {
+            // show_all=1: a RETURN must be possible for an item that is currently out of stock (it is coming back INTO stock).
+            $.getJSON(SR_ISL_URL, { search: srch, code: code, customer_id: custId, show_all: 1 }, function (res) {
                 $('#sr-isl-loading').addClass('d-none');
                 srIslCache[cacheKey] = res.items || [];
                 setTimeout(function () { delete srIslCache[cacheKey]; }, 60000);
@@ -805,7 +799,14 @@
         document.getElementById('sr-items-body')?.addEventListener('click', function (e) {
             const btn = e.target.closest('.sr-row-remove');
             if (!btn) return;
-            btn.closest('tr').remove();
+            const row = btn.closest('tr');
+            const itemId = row.querySelector('.sr-item-select')?.value;
+            row.remove();
+            // Keep the bill-item checkbox list in sync: manually removing a row
+            // here should uncheck its checkbox above, not leave it stuck checked.
+            if (itemId) {
+                $(`.sr-bill-item-checkbox[data-item-id="${itemId}"]`).prop('checked', false);
+            }
             recalculateAll();
         });
 
@@ -889,15 +890,18 @@
                             $maxLabel.text('Max: ' + avail.toFixed(3)).show();
                         }
                         let currentVal = parseFloat($input.val()) || 0;
+                        // Inline error (no toast, no silent auto-adjust of a money quantity): the user corrects it.
                         if (currentVal > avail) {
-                            if (window.toastr) {
-                                window.toastr.warning(
-                                    `Return qty (${currentVal}) exceeds total available to return (${avail.toFixed(3)}) for this item. Adjusted.`,
-                                    'Qty Limit'
-                                );
+                            let msg = 'Maximum returnable quantity is ' + (avail % 1 === 0 ? avail.toFixed(0) : avail.toFixed(3)) + ' (no bill selected: what this customer bought minus what was already returned).';
+                            $input.addClass('is-invalid border-danger').attr('title', msg);
+                            if ($maxLabel.length) {
+                                $maxLabel.text(msg).addClass('text-danger font-weight-bold').show();
                             }
-                            $input.val(avail > 0 ? avail.toFixed(3) : 0).addClass('border-warning');
-                            setTimeout(() => $input.removeClass('border-warning'), 2000);
+                        } else {
+                            $input.removeClass('is-invalid border-danger').attr('title', '');
+                            if ($maxLabel.length) {
+                                $maxLabel.removeClass('text-danger font-weight-bold');
+                            }
                         }
                         recalculateAll();
                     }
@@ -972,22 +976,7 @@
                 }
 
                 cachedBillItems = data.items || [];
-
-                // Populate smart item picker dropdown
-                let $pickerSelect = $('#sr-bill-item-select');
-                let optHtml = '<option value="">-- Choose item from original bill (' + cachedBillItems.length + ' items) --</option>';
-                cachedBillItems.forEach((item, idx) => {
-                    let codeStr = item.item_code ? ' [' + item.item_code + ']' : '';
-                    let expStr = item.exp_date ? ' (Exp: ' + item.exp_date + ')' : '';
-                    let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
-                    let origQty = parseFloat(item.original_qty) || 0;
-                    let retQty = parseFloat(item.already_returned_qty) || 0;
-                    let isExhausted = remQty <= 0;
-                    let remStr = isExhausted ? ' [No returnable qty available]' : ` [Remaining: ${remQty}/${origQty}]`;
-                    let disabledAttr = isExhausted ? ' disabled style="color: #999;"' : '';
-                    optHtml += `<option value="${idx}"${disabledAttr}>${item.item_name}${codeStr} - Sold: ${origQty} (Ret: ${retQty}) @ ₹${parseFloat(item.sell_price).toFixed(2)}${expStr}${remStr}</option>`;
-                });
-                $pickerSelect.html(optHtml);
+                renderBillItemChecklist();
 
                 let hasActualItems = false;
                 $('#sr-items-body .sr-item-row').each(function () {
@@ -1017,15 +1006,17 @@
                             $(this).find('.sr-item-code').prop('readonly', true);
                         }
                     });
+                    renderBillItemChecklist();
                     recalculateAll();
                 } else {
                     // Critical Requirement (Task 2):
                     // Do NOT auto-populate items from Sales Bill into Return Items table!
-                    // Return Items remains empty until the user explicitly selects an item from "Select Item from Sales Bill to Return".
+                    // Return Items remains empty until the user explicitly checks an item in
+                    // "Select Item(s) from Sales Bill to Return".
                     if (cachedBillItems.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-info mr-1"></i> Original Sales Bill loaded (0 items).</td></tr>';
                     } else {
-                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-hand-pointer text-primary mr-1"></i> Select an item from "Select Item from Sales Bill to Return" above to add to Return Items.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-hand-pointer text-primary mr-1"></i> Check an item in "Select Item(s) from Sales Bill to Return" above to add it to Return Items.</td></tr>';
                     }
                     recalculateAll();
                 }
@@ -1115,30 +1106,62 @@
             }, 50);
         }
 
-        // Add selected item from bill to return table (Inline validation, no alerts)
-        function addSelectedItemToReturn() {
-            let idx = $('#sr-bill-item-select').val();
+        // Render the checkbox list of items from the loaded Sales Bill. Re-run
+        // whenever cachedBillItems changes AND whenever Return Items rows change
+        // out from under it (bill reload, row removed) so checked-state always
+        // reflects what's actually in Return Items below.
+        function renderBillItemChecklist() {
+            let $list = $('#sr-bill-item-checklist');
+            if (cachedBillItems.length === 0) {
+                $list.html('<div class="text-muted small p-2">Original bill has 0 items.</div>');
+                return;
+            }
+            let html = '';
+            cachedBillItems.forEach((item, idx) => {
+                let codeStr = item.item_code ? ' [' + item.item_code + ']' : '';
+                let expStr = item.exp_date ? ' (Exp: ' + item.exp_date + ')' : '';
+                let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+                let origQty = parseFloat(item.original_qty) || 0;
+                let retQty = parseFloat(item.already_returned_qty) || 0;
+                let isExhausted = remQty <= 0;
+                let remStr = isExhausted
+                    ? ' <span class="text-danger">[No returnable qty available]</span>'
+                    : ` <span class="text-success">[Remaining: ${remQty}/${origQty}]</span>`;
+                let isChecked = $(`#sr-items-body .sr-item-row .sr-item-select[value="${item.item_id}"]`).length > 0;
+                html += `
+                    <div class="custom-control custom-checkbox py-1 border-bottom">
+                        <input type="checkbox" class="custom-control-input sr-bill-item-checkbox" id="sr-bic-${idx}" data-idx="${idx}" data-item-id="${item.item_id}"${isExhausted ? ' disabled' : ''}${isChecked ? ' checked' : ''}>
+                        <label class="custom-control-label w-100${isExhausted ? ' text-muted' : ''}" for="sr-bic-${idx}" style="cursor:pointer;">
+                            <strong>${item.item_name}</strong>${codeStr} &mdash; Sold: ${origQty} (Ret: ${retQty}) @ &#8377;${parseFloat(item.sell_price).toFixed(2)}${expStr}${remStr}
+                        </label>
+                    </div>`;
+            });
+            $list.html(html);
+        }
+
+        // Add one bill item (by its index into cachedBillItems) to the Return
+        // Items table. Inline validation, no alerts — matches this form's
+        // convention elsewhere.
+        function addBillItemByIndex(idx) {
             let $errBox = $('#sr-bill-item-error');
             $errBox.hide().text('');
 
-            if (idx === '' || idx === null || typeof cachedBillItems[idx] === 'undefined') {
-                $errBox.text('Please select an item from the bill dropdown above first.').show();
-                return;
-            }
-
             let item = cachedBillItems[idx];
+            if (!item) return;
+
             let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
             if (remQty <= 0) {
                 $errBox.text('No returnable quantity available for this item.').show();
+                $(`.sr-bill-item-checkbox[data-idx="${idx}"]`).prop('checked', false);
                 return;
             }
 
             let tbody = document.getElementById('sr-items-body');
 
-            // If already in table, focus its qty input
+            // Already in the table (shouldn't normally happen since the checkbox
+            // reflects this, but guards a stale double-fire) — just focus it.
             let existingRow = $(tbody).find(`.sr-item-row .sr-item-select[value="${item.item_id}"]`).closest('tr');
             if (existingRow.length > 0) {
-                $errBox.text(`"${item.item_name}" is already in the Return Items list below.`).show();
                 existingRow.find('.sr-qty').focus().select();
                 return;
             }
@@ -1148,20 +1171,30 @@
                 tbody.innerHTML = '';
             }
 
-            let initQty = remQty;
-            appendBillItemRow(item, initQty);
-
-            // Reset dropdown to default so user can select another item easily
-            $('#sr-bill-item-select').val('');
+            appendBillItemRow(item, remQty);
         }
 
-        $('#btn-add-bill-item').on('click', function () {
-            addSelectedItemToReturn();
-        });
+        // Remove this item's row from Return Items (fired when its checkbox is
+        // unchecked).
+        function removeReturnRowForItem(itemId) {
+            $('#sr-items-body .sr-item-row').each(function () {
+                if (String($(this).find('.sr-item-select').val()) === String(itemId)) {
+                    $(this).remove();
+                }
+            });
+            if ($('#sr-items-body .sr-item-row').length === 0) {
+                document.getElementById('sr-items-body').innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-hand-pointer text-primary mr-1"></i> Check an item above to add it to Return Items.</td></tr>';
+            }
+            recalculateAll();
+        }
 
-        $('#sr-bill-item-select').on('change', function () {
-            if ($(this).val() !== '') {
-                addSelectedItemToReturn();
+        $(document).on('change', '.sr-bill-item-checkbox', function () {
+            let idx = $(this).data('idx');
+            if ($(this).is(':checked')) {
+                addBillItemByIndex(idx);
+            } else {
+                let item = cachedBillItems[idx];
+                if (item) removeReturnRowForItem(item.item_id);
             }
         });
 
@@ -1187,8 +1220,8 @@
             let billId = $(this).val();
             updateBillModeUI();
             $('#sr-bill-item-error').hide().text('');
-            $('#sr-bill-item-select').empty().append('<option value="">-- Choose an item from this bill --</option>');
             cachedBillItems = [];
+            $('#sr-bill-item-checklist').html('<div class="text-muted small p-2">-- Load a Sales Bill above to see its items --</div>');
 
             const tbody = document.getElementById('sr-items-body');
             if (billId) {
@@ -1303,7 +1336,7 @@
             return isValid;
         }
 
-        $(document).on('click', '#sr-add-row, #btn-add-bill-item, #btn-add-all-bill-items', function (e) {
+        $(document).on('click', '#sr-add-row', function (e) {
             if (!$('#customer_id').val()) {
                 e.preventDefault();
                 validateSrHeader(true);
@@ -1318,7 +1351,7 @@
             // Clear previous customer's sales bill selection and items
             let $billSelect = $('#sales_bill_id');
             $billSelect.val('').trigger('change.select2');
-            $('#sr-bill-item-select').empty().append('<option value="">-- Choose an item from this bill --</option>');
+            $('#sr-bill-item-checklist').html('<div class="text-muted small p-2">-- Load a Sales Bill above to see its items --</div>');
             $('#sr-bill-picker-wrap').slideUp(200);
             $('#sr-bill-summary').addClass('d-none');
             $('#sr-bill-item-error').hide().text('');
@@ -1451,7 +1484,7 @@
                 e.preventDefault();
                 $('#sr-bill-item-error').text('Please add at least one item before saving.').show();
                 if ($('#sales_bill_id').val()) {
-                    $('#sr-bill-item-select').focus();
+                    $('#sr-bill-item-checklist').focus();
                 } else {
                     $('#sr-items-body .sr-item-row:first .sr-item-code').focus();
                 }

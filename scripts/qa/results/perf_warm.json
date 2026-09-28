@@ -1,0 +1,85 @@
+{
+    "label": "warm",
+    "total_rows": 2081472,
+    "counts": {
+        "items": 34375,
+        "customers": 91666,
+        "bills": 275000,
+        "purchases": 27500,
+        "returned_bills": 13333
+    },
+    "rows": [
+        {
+            "endpoint": "POS barcode lookup (exact EAN)",
+            "p50": 31.3,
+            "p95": 43.4,
+            "p99": 43.4,
+            "sqls": 9,
+            "db_ms": 17,
+            "mb": 30,
+            "status": {
+                "200": 10
+            }
+        },
+        {
+            "endpoint": "POS item-code lookup (exact)",
+            "p50": 41.7,
+            "p95": 67.2,
+            "p99": 67.2,
+            "sqls": 9,
+            "db_ms": 21.9,
+            "mb": 30,
+            "status": {
+                "200": 10
+            }
+        },
+        {
+            "endpoint": "POS invalid barcode (miss)",
+            "p50": 6.8,
+            "p95": 8.6,
+            "p99": 8.6,
+            "sqls": 2,
+            "db_ms": 2.2,
+            "mb": 30,
+            "status": {
+                "200": 10
+            }
+        },
+        {
+            "endpoint": "POS item search popup (name)",
+            "p50": 67.9,
+            "p95": 171,
+            "p99": 171,
+            "sqls": 3,
+            "db_ms": 82.4,
+            "mb": 30,
+            "status": {
+                "200": 10
+            }
+        },
+        {
+            "endpoint": "POS item search popup (code prefix)",
+            "p50": 78.8,
+            "p95": 113.3,
+            "p99": 113.3,
+            "sqls": 2,
+            "db_ms": 73,
+            "mb": 30,
+            "status": {
+                "200": 10
+            }
+        },
+        {
+            "endpoint": "POS item popup, empty (open popup)",
+            "p50": 17.5,
+            "p95": 22.6,
+            "p99": 22.6,
+            "sqls": 3,
+            "db_ms": 12.8,
+            "mb": 30,
+            "status": {
+                "200": 10
+            }
+        }
+    ]
+}

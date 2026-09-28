@@ -1,0 +1,10 @@
+import { chromium } from 'playwright-core';
+const BASE = 'http://127.0.0.1:8299';
+const b = await chromium.launch({ channel: 'chrome', headless: true });
+const p = await b.newPage({ viewport: { width: 1600, height: 1000 } });
+await p.goto(BASE + '/login'); await p.fill('input[name=email]', 'qa-load-owner@example.com'); await p.fill('input[name=password]', 'secret123');
+await Promise.all([p.waitForNavigation(), p.click('button[type=submit]')]);
+await p.goto(BASE + '/tools/gst/gstr-1?from_date=2026-09-01&to_date=2026-09-30');
+const t = await p.evaluate(() => document.body.innerText);
+console.log(t.match(/B2B Outward Supplies[\s\S]{0,120}/)?.[0]);
+await b.close();

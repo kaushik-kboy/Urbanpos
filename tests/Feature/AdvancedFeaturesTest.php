@@ -27,7 +27,7 @@ class AdvancedFeaturesTest extends TestCase
         $this->branch = Branch::create([
             'name'                      => 'Main Branch',
             'code'                      => 'MB01',
-            'business_type'             => 'Retail',
+            'business_type'             => 'BRANCH',
             'webstore'                  => 0,
             'erp_code'                  => 'ERP01',
             'country_code'              => 'IN',
@@ -114,7 +114,7 @@ class AdvancedFeaturesTest extends TestCase
             'invoice_date'        => now()->toDateString(),
             'branch_id'           => $this->branch->id,
             'supplier_id'         => $supplier->id,
-            'status'              => 'Approved',
+            'status'              => 'Posted',
             'total'               => 500,
             'supplier_inv_amount' => 500,
         ]);
@@ -160,8 +160,8 @@ class AdvancedFeaturesTest extends TestCase
             'format'              => '102x64',
         ]));
         $responseTsc->assertOk();
-        $responseTsc->assertSee('format-102x64');
-        $responseTsc->assertSee('102x63.5 mm (TSC TE244)');
+        // The requested format is applied to the page body (the selector label text was reworded).
+        $responseTsc->assertSee('<body class="format-102x64">', false);
     }
 
     public function test_database_backup_console_management(): void

@@ -100,7 +100,7 @@ class SalesReturnFlowAndValidationTest extends TestCase
             'sales_type' => 'Local',
             'payment_mode' => 'Cash',
             'total' => 2300,
-            'status' => 'Completed',
+            'status' => 'Posted',
         ]);
 
         SalesBillItem::create([
@@ -136,7 +136,7 @@ class SalesReturnFlowAndValidationTest extends TestCase
             'sales_type' => 'Local',
             'payment_mode' => 'Cash',
             'total' => 500,
-            'status' => 'Completed',
+            'status' => 'Posted',
         ]);
 
         SalesBillItem::create([
@@ -292,9 +292,13 @@ class SalesReturnFlowAndValidationTest extends TestCase
             ->get(route('sales.sales-returns.create'));
 
         $response->assertOk();
-        $response->assertSee('sr-bill-item-select');
+        // The single-select "Select Item from Sales Bill to Return" dropdown
+        // was replaced with a multi-check checkbox list (checking several
+        // items adds them all to Return Items at once; unchecking removes
+        // just that one) — see resources/views/sales/sales-returns/_form.blade.php.
+        $response->assertSee('sr-bill-item-checklist');
         $response->assertSee('sr-bill-item-error');
         $response->assertSee('sr-items-table');
-        $response->assertSee('Select Item from Sales Bill to Return');
+        $response->assertSee('Select Item(s) from Sales Bill to Return');
     }
 }

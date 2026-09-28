@@ -37,7 +37,7 @@ class DatabaseBackup extends Command
         }
 
         $cmd = sprintf(
-            '%s --host=%s --port=%s --user=%s %s %s > %s',
+            '%s --single-transaction --skip-lock-tables --host=%s --port=%s --user=%s %s %s > %s',
             $mysqldumpPath,
             escapeshellarg($host),
             escapeshellarg($port),

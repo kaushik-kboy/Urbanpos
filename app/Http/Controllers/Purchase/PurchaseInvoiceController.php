@@ -104,6 +104,10 @@ class PurchaseInvoiceController extends Controller
         } elseif ($request->filled('from_order')) {
             $sourceOrder = \App\Models\PurchaseOrder::with(['items.item.gstTax', 'supplier', 'branch'])
                 ->findOrFail($request->from_order);
+            if ($sourceOrder->status === 'Cancelled') {
+                return redirect()->route('purchase.purchase-orders.show', $sourceOrder)
+                    ->with('error', "Cannot create an invoice from cancelled purchase order {$sourceOrder->po_number}.");
+            }
             $convertedItems = $sourceOrder->items->map(function ($poItem) {
                 return [
                     'item_id' => $poItem->item_id,
@@ -135,7 +139,7 @@ class PurchaseInvoiceController extends Controller
             $options['convertedItems'] = $convertedItems;
         }
 
-        $options['nextGrnNumber'] = $this->nextGrnNumber();
+        $options['nextGrnNumber'] = $this->nextGrnNumber(false); // preview only
 
         return view('purchase.purchase-invoices.create', array_merge($options, [
             'sourceReceiptNote' => $sourceReceiptNote,
@@ -157,7 +161,24 @@ class PurchaseInvoiceController extends Controller
             }
         }
 
-        $purchaseInvoice = DB::transaction(function () use ($data) {
+        $postingKey = $data['header']['posting_key'] ?? null;
+        $lock = $postingKey ? \Illuminate\Support\Facades\Cache::lock('pinv_lock_'.md5($postingKey), 10) : null;
+        try {
+            $lock?->block(5);
+            if ($postingKey && ($existing = PurchaseInvoice::where('posting_key', $postingKey)->first())) {
+                return redirect()->route('purchase.purchase-invoices.index')->with('status', "Purchase Invoice {$existing->invoice_number} created successfully.");
+            }
+            $purchaseInvoice = $this->storeInTransaction($data);
+        } finally {
+            $lock?->release();
+        }
+
+        return redirect()->route('purchase.purchase-invoices.index')->with('status', "Purchase Invoice {$purchaseInvoice->invoice_number} created successfully.");
+    }
+
+    private function storeInTransaction(array $data): PurchaseInvoice
+    {
+        return DB::transaction(function () use ($data) {
             $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
@@ -172,8 +193,11 @@ class PurchaseInvoiceController extends Controller
                 }
             }
 
+            $supplierGstin = \App\Models\Supplier::where('id', $data['header']['supplier_id'])->value('gst_no');
+
             $purchaseInvoice = PurchaseInvoice::create(array_merge($data['header'], $totals, [
                 'invoice_number' => $this->nextNumber(),
+                'supplier_gstin' => $supplierGstin ?: null,
             ]));
 
             $purchaseInvoice->items()->createMany($lines);
@@ -204,8 +228,6 @@ class PurchaseInvoiceController extends Controller
 
             return $purchaseInvoice;
         });
-
-        return redirect()->route('purchase.purchase-invoices.index')->with('status', "Purchase Invoice {$purchaseInvoice->invoice_number} created successfully.");
     }
 
     public function show(PurchaseInvoice $purchaseInvoice)
@@ -349,32 +371,15 @@ class PurchaseInvoiceController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (int) (PurchaseInvoice::max('id') ?? 0);
-        $lastInv = PurchaseInvoice::where('invoice_number', 'like', 'PINV%')->orderByDesc('id')->value('invoice_number');
-        if ($lastInv && preg_match('/^PINV(\d+)$/', $lastInv, $matches)) {
-            $next = max($next, (int) $matches[1]);
-        }
-        do {
-            $next++;
-            $invNum = 'PINV'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-        } while (PurchaseInvoice::where('invoice_number', $invNum)->exists());
-
-        return $invNum;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('PINV', \App\Models\PurchaseInvoice::class, 'invoice_number', 5);
     }
 
-    private function nextGrnNumber(): string
+    private function nextGrnNumber(bool $consume = true): string
     {
-        $maxId = (int) (PurchaseInvoice::max('id') ?? 0);
-        $lastGrn = PurchaseInvoice::where('grn_number', 'like', 'GRN%')->orderByDesc('id')->value('grn_number');
-        if ($lastGrn && preg_match('/^GRN(\d+)$/', $lastGrn, $matches)) {
-            $maxId = max($maxId, (int) $matches[1]);
-        }
-        do {
-            $maxId++;
-            $grn = 'GRN'.str_pad((string) $maxId, 6, '0', STR_PAD_LEFT);
-        } while (PurchaseInvoice::where('grn_number', $grn)->exists());
-
-        return $grn;
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('GRN', \App\Models\PurchaseInvoice::class, 'grn_number', 6, $consume);
     }
 
     public function itemList(Request $request)
@@ -1020,18 +1025,8 @@ class PurchaseInvoiceController extends Controller
             }
         }
 
-        if (empty($id) && !empty($header['supplier_inv_amount'])) {
-            $recentDuplicate = PurchaseInvoice::where('supplier_id', $header['supplier_id'])
-                ->when(!empty($header['supplier_inv_no']), fn ($q) => $q->where('supplier_inv_no', $header['supplier_inv_no']))
-                ->where('supplier_inv_amount', $header['supplier_inv_amount'])
-                ->where('created_at', '>=', now()->subSeconds(30))
-                ->exists();
-            if ($recentDuplicate) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'supplier_inv_amount' => 'A matching purchase invoice was just submitted moments ago. Duplicate submission prevented.',
-                ]);
-            }
-        }
+        // No time/content heuristic here: a supplier can legitimately send two same-amount invoices.
+        // Same supplier_inv_no is rejected above; double-submit is handled by posting_key in store().
 
         $header['invoice_date'] = $this->normalizeDate($header['invoice_date']);
         $header['grn_date'] = $this->normalizeDate($header['grn_date'] ?? null);

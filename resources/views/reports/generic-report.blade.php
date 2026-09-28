@@ -112,6 +112,15 @@
                 <button type="button" class="btn btn-sm btn-outline-success mr-2 shadow-sm" onclick="exportTableToCSV('reportDataTable', '{{ $module ?? 'report' }}')">
                     <i class="fas fa-file-csv mr-1"></i> Export CSV
                 </button>
+                @if(($module ?? null) === 'gst-sales-taxwise')
+                    {{-- Real server-side .xlsx export: one bill = one row, full
+                         GST rate breakup as columns, all matching bills (not just
+                         this page's 50) — see docs/GST-SALES-TAXWISE-EXPORT.md --}}
+                    <a href="{{ route('reports.gst-sales-taxwise.export', ['from' => $from ?? null, 'to' => $to ?? null, 'branch_id' => $branchId ?? null, 'search' => $search ?? null]) }}"
+                       class="btn btn-sm btn-success mr-2 shadow-sm font-weight-bold">
+                        <i class="fas fa-file-excel mr-1"></i> Export Excel (GST Taxwise)
+                    </a>
+                @endif
                 <x-table-column-customizer :table-key="'reports.generic.' . ($module ?? $slug ?? 'default')" table-id="reportDataTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

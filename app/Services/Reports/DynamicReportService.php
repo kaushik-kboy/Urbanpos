@@ -184,16 +184,16 @@ class DynamicReportService
 
             case 'tax-master':
                 $query = GstTax::query()
-                    ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('rate', 'like', "%{$search}%"))
-                    ->orderBy('rate');
+                    ->when($search, fn ($q) => $q->where('description', 'like', "%{$search}%")->orWhere('percentage', 'like', "%{$search}%"))
+                    ->orderBy('percentage');
                 $paginator = $query->paginate(50)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
-                        e($item->name),
-                        number_format($item->rate, 2) . '%',
-                        number_format($item->cgst_rate, 2) . '%',
-                        number_format($item->sgst_rate, 2) . '%',
-                        number_format($item->igst_rate, 2) . '%',
+                        e($item->description),
+                        number_format($item->percentage, 2) . '%',
+                        number_format($item->percentage / 2, 2) . '%',
+                        number_format($item->percentage / 2, 2) . '%',
+                        number_format($item->percentage, 2) . '%',
                         $item->status ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'
                     ]
                 ]);
@@ -212,7 +212,7 @@ class DynamicReportService
 
             case 'area':
                 $query = Area::with('branch')
-                    ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"))
+                    ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
                     ->orderBy('name');
                 $paginator = $query->paginate(50)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
@@ -244,10 +244,10 @@ class DynamicReportService
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->name) . '</strong>',
-                        e($item->code ?: '-'),
+                        e($item->erp_code ?: '-'),
                         e($item->phone ?: '-'),
-                        e($item->address ?: '-'),
-                        e($item->gst_number ?: '-'),
+                        e(trim(($item->address_line1 ?? '') . ' ' . ($item->city ?? '')) ?: '-'),
+                        e($item->gst_no ?: '-'),
                         number_format($item->sales_bills_count),
                         number_format($item->stocks_count),
                         $item->status ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'
@@ -341,7 +341,7 @@ class DynamicReportService
                         e($item->branch?->name ?: 'All Branches'),
                         '<span class="badge badge-info">' . e($item->roles->pluck('name')->join(', ') ?: 'Staff') . '</span>',
                         e($item->phone ?: '-'),
-                        $item->status ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>',
+                        ($item->status ?? true) ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>',
                         $item->created_at ? $item->created_at->format('d M Y') : '-'
                     ]
                 ]);
@@ -400,7 +400,7 @@ class DynamicReportService
                 $query = PurchaseInvoice::with(['supplier', 'branch'])
                     ->whereBetween('invoice_date', [$from, $to])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                    ->when($search, fn ($q) => $q->where('invoice_number', 'like', "%{$search}%")->orWhere('supplier_inv_no', 'like', "%{$search}%")->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%")))
+                    ->when($search, fn ($q) => $q->where(fn ($g) => $g->where('invoice_number', 'like', "%{$search}%")->orWhere('supplier_inv_no', 'like', "%{$search}%")->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))))
                     ->orderBy('invoice_date', 'desc');
                 $paginator = $query->paginate(50)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
@@ -514,7 +514,7 @@ class DynamicReportService
 
             case 'purchase-pending-cancelled':
                 $query = PurchaseOrder::with(['supplier', 'branch'])
-                    ->whereIn('status', ['Cancelled', 'Draft', 'Pending', 'submitted'])
+                    ->whereIn('status', ['Open', 'Cancelled', 'Draft', 'Pending', 'submitted'])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where('po_number', 'like', "%{$search}%")->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%")))
                     ->orderBy('po_date', 'desc');
@@ -594,7 +594,7 @@ class DynamicReportService
                         e($item->email),
                         '<span class="badge badge-info">' . e($item->roles->pluck('name')->join(', ') ?: 'Staff') . '</span>',
                         e($item->branch?->name ?: 'All Branches'),
-                        $item->status ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Disabled</span>',
+                        ($item->status ?? true) ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Disabled</span>',
                         e($item->updated_at ? $item->updated_at->diffForHumans() : 'Never')
                     ]
                 ]);
@@ -614,9 +614,9 @@ class DynamicReportService
             case 'gst-tax-change-audit':
                 $query = AuditLog::with('user')
                     ->where(function ($q) {
-                        $q->where('model', 'like', '%Tax%')
-                          ->orWhere('model', 'like', '%Item%')
-                          ->orWhere('description', 'like', '%tax%');
+                        $q->where('auditable_type', 'like', '%Tax%')
+                          ->orWhere('auditable_type', 'like', '%Item%')
+                          ->orWhere('reason', 'like', '%tax%');
                     })
                     ->latest();
                 $paginator = $query->paginate(50)->withQueryString();
@@ -624,9 +624,9 @@ class DynamicReportService
                     'cells' => [
                         $item->created_at ? $item->created_at->format('d M Y H:i:s') : '-',
                         e($item->user?->name ?: 'System'),
-                        '<span class="badge badge-warning">' . e($item->event ?: 'Updated') . '</span>',
-                        e($item->model ?: 'GstTax'),
-                        e($item->description ?: 'Tax configuration modified'),
+                        '<span class="badge badge-warning">' . e($item->action ?: 'Updated') . '</span>',
+                        e($item->auditable_type ? class_basename($item->auditable_type) : 'GstTax'),
+                        e($item->reason ?: 'Tax configuration modified'),
                         e($item->ip_address ?: '127.0.0.1')
                     ]
                 ]);
@@ -645,16 +645,16 @@ class DynamicReportService
 
             default:
                 $query = AuditLog::with('user')
-                    ->when($search, fn ($q) => $q->where('description', 'like', "%{$search}%")->orWhere('event', 'like', "%{$search}%")->orWhere('model', 'like', "%{$search}%"))
+                    ->when($search, fn ($q) => $q->where('reason', 'like', "%{$search}%")->orWhere('action', 'like', "%{$search}%")->orWhere('auditable_type', 'like', "%{$search}%"))
                     ->latest();
                 $paginator = $query->paginate(50)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         $item->created_at ? $item->created_at->format('d M Y H:i:s') : '-',
                         e($item->user?->name ?: 'System Admin'),
-                        '<span class="badge badge-secondary">' . e($item->event ?: 'Activity') . '</span>',
-                        e($item->model ?: 'General'),
-                        e($item->description ?: '-'),
+                        '<span class="badge badge-secondary">' . e($item->action ?: 'Activity') . '</span>',
+                        e($item->auditable_type ? class_basename($item->auditable_type) : 'General'),
+                        e($item->reason ?: '-'),
                         '<code>' . e($item->ip_address ?: '127.0.0.1') . '</code>'
                     ]
                 ]);
@@ -681,6 +681,7 @@ class DynamicReportService
         switch ($slug) {
             case 'monthly-sales-summary-storewise':
                 $query = SalesBill::join('branches', 'sales_bills.branch_id', '=', 'branches.id')
+                    ->whereNotIn('sales_bills.status', ['Cancelled', 'Draft'])
                     ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
                     ->groupBy(DB::raw("DATE_FORMAT(sales_bills.bill_date, '%Y-%m')"), 'branches.name')
                     ->selectRaw("DATE_FORMAT(sales_bills.bill_date, '%Y-%m') as sales_month, branches.name as branch_name, COUNT(sales_bills.id) as bill_count, SUM(sales_bills.total_qty) as total_qty, SUM(sales_bills.disc_amount) as total_disc, SUM(sales_bills.total_gst) as total_gst, SUM(sales_bills.total) as total_sales")
@@ -704,8 +705,8 @@ class DynamicReportService
                     'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right'],
                     'rows' => $rows,
                     'kpis' => [
-                        ['label' => 'Total Sales', 'value' => '₹ ' . number_format(SalesBill::sum('total'), 2), 'icon' => 'fas fa-rupee-sign', 'color' => 'success'],
-                        ['label' => 'Total Bills Processed', 'value' => SalesBill::count(), 'icon' => 'fas fa-receipt', 'color' => 'primary'],
+                        ['label' => 'Total Sales', 'value' => '₹ ' . number_format(SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total'), 2), 'icon' => 'fas fa-rupee-sign', 'color' => 'success'],
+                        ['label' => 'Total Bills Processed', 'value' => SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->count(), 'icon' => 'fas fa-receipt', 'color' => 'primary'],
                     ],
                     'hasDateFilter' => false,
                     'hasBranchFilter' => true,
@@ -717,7 +718,7 @@ class DynamicReportService
                 $query = SalesBill::with(['customer', 'branch'])
                     ->whereBetween('bill_date', [$from, $to])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                    ->when($search, fn ($q) => $q->where('bill_number', 'like', "%{$search}%")->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('mobile', 'like', "%{$search}%")))
+                    ->when($search, fn ($q) => $q->where(fn ($g) => $g->where('bill_number', 'like', "%{$search}%")->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('mobile', 'like', "%{$search}%"))))
                     ->orderBy('bill_date', 'desc');
                 $paginator = $query->paginate(50)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
@@ -738,7 +739,7 @@ class DynamicReportService
                         </div>'
                     ]
                 ]);
-                $totalSum = SalesBill::whereBetween('bill_date', [$from, $to])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total');
+                $totalSum = SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->whereBetween('bill_date', [$from, $to])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total');
                 return [
                     'title' => 'Daily Sales [Bill No Wise] Report',
                     'subtitle' => 'Detailed bill-level sales register including customer particulars, taxes, and amounts',
@@ -1311,7 +1312,7 @@ class DynamicReportService
         switch ($slug) {
             case 'monthly-transaction-summary':
                 // Monthly aggregate overview
-                $query = SalesBill::selectRaw("DATE_FORMAT(bill_date, '%Y-%m') as trans_month, COUNT(*) as sales_count, SUM(total) as sales_amount")
+                $query = SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->selectRaw("DATE_FORMAT(bill_date, '%Y-%m') as trans_month, COUNT(*) as sales_count, SUM(total) as sales_amount")
                     ->groupBy('trans_month')
                     ->orderBy('trans_month', 'desc');
                 $paginator = $query->paginate(50)->withQueryString();
@@ -1332,7 +1333,7 @@ class DynamicReportService
                     'column_alignments' => ['text-center', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
-                        ['label' => 'Total Sales Revenue', 'value' => '₹ ' . number_format(SalesBill::sum('total'), 2), 'icon' => 'fas fa-chart-line', 'color' => 'success'],
+                        ['label' => 'Total Sales Revenue', 'value' => '₹ ' . number_format(SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->sum('total'), 2), 'icon' => 'fas fa-chart-line', 'color' => 'success'],
                     ],
                     'hasDateFilter' => false,
                     'hasBranchFilter' => false,

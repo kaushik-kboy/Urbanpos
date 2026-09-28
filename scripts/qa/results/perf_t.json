@@ -1,0 +1,25 @@
+{
+    "label": "t",
+    "total_rows": 2077422,
+    "counts": {
+        "items": 34375,
+        "customers": 91666,
+        "bills": 275000,
+        "purchases": 27500,
+        "returned_bills": 13333
+    },
+    "rows": [
+        {
+            "endpoint": "Report: GST purchase summary (1y)",
+            "p50": 474.4,
+            "p95": 505.2,
+            "p99": 505.2,
+            "sqls": 5,
+            "db_ms": 189.9,
+            "mb": 40,
+            "status": {
+                "200": 3
+            }
+        }
+    ]
+}

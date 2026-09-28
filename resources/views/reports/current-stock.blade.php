@@ -88,12 +88,13 @@
                     <tfoot>
                         <tr class="font-weight-bold">
                             <td colspan="6">NetTotal</td>
-                            <td class="text-right">{{ number_format($rows->sum(fn ($r) => $r->quantity * ($r->item?->cost_price ?? 0)), 2) }}</td>
-                            <td class="text-right">{{ number_format($rows->sum(fn ($r) => $r->quantity * ($r->item?->sell_price ?? 0)), 2) }}</td>
+                            <td class="text-right">{{ number_format((float) $totals->cost_value, 2) }}</td>
+                            <td class="text-right">{{ number_format((float) $totals->sell_value, 2) }}</td>
                         </tr>
                     </tfoot>
                 @endif
             </table>
+            <div class="mt-2">{{ $rows->links() }}</div>
         </div>
     </div>
 @stop

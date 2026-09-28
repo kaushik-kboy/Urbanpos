@@ -13,12 +13,12 @@ use App\Models\SalesBillItem;
 use App\Models\SalesOrder;
 use App\Models\SalesQuotation;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class Phase5ReportsTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $owner;
 

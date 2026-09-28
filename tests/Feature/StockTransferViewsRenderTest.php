@@ -7,7 +7,7 @@ use App\Models\Item;
 use App\Models\StockTransfer;
 use App\Models\User;
 use App\Services\Inventory\StockLedgerService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -17,7 +17,7 @@ use Tests\TestCase;
  */
 class StockTransferViewsRenderTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

@@ -33,9 +33,15 @@ class ReceiptDesignerController extends Controller
             ? (int) $request->input('branch_id')
             : (session('active_branch_id', auth()->user()?->branch_id) ?: ($branches->first()?->id ?? null));
 
+        // A stale/placeholder branch id (e.g. EnsureActiveBranch's fallback when no branch exists yet)
+        // would violate the receipt_settings.branch_id FK on firstOrCreate - fall back to a real one.
+        if ($selectedBranchId && ! \App\Models\Branch::whereKey($selectedBranchId)->exists()) {
+            $selectedBranchId = $branches->first()?->id;
+        }
+
         $settings = ReceiptSetting::forDocument($docType, $selectedBranchId);
 
-        $sampleBill           = null;
+        $sampleBill          = null;
         $sampleTransfer       = null;
         $samplePurchase       = null;
         $sampleSalesReturn    = null;

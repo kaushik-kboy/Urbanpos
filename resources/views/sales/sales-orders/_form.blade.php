@@ -180,11 +180,9 @@
 </div>
 
 {{-- Row Template for JS --}}
-<table class="d-none">
-    <tbody id="so-row-template">
-        @include('sales.sales-orders._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
-    </tbody>
-</table>
+<template id="so-row-template">
+    @include('sales.sales-orders._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
+</template>
 
 {{-- ============================================================
      ITEM SEARCH MODAL for Sales Order
@@ -404,7 +402,7 @@ $(function() {
             if (totalRows > 1) {
                 soCancellingRow.remove();
                 updateSoRowNumbers();
-                calculateSoTotals();
+                recalcAll();
             } else {
                 soCancellingRow.find('.so-item-code').val('');
                 soCancellingRow.find('.so-item-desc').val('');
@@ -453,7 +451,7 @@ $(function() {
         $('#so-isl-no-results').addClass('d-none');
         $('#so-isl-table-wrap').addClass('d-none');
 
-        $.getJSON(SO_ISL_URL, { branch_id: branchId, search: srch, code: code }, function (res) {
+        $.getJSON(SO_ISL_URL, { branch_id: branchId, search: srch, code: code, show_all: 1 }, function (res) {
             $('#so-isl-loading').addClass('d-none');
             let items = res.items || [];
             let $tbody = $('#so-isl-items-body').empty();
@@ -558,7 +556,6 @@ $(function() {
             mrp: $tr.data('mrp'),
             gst_percent: $tr.data('gst')
         };
-
         if (!soActiveSearchRow || !itemData.id) return;
 
         soItemSelectedInModal = true;
@@ -577,7 +574,7 @@ $(function() {
         $row.find('.so-gst-percent').val(parseFloat(itemData.gst_percent || 0).toFixed(2));
 
         recalcRow($row);
-        calculateSoTotals();
+        recalcAll();
 
         $('#so-item-search-modal').modal('hide');
     });
@@ -716,7 +713,7 @@ $(function() {
             reason = 'Pehle item add karein. Please add at least one item before saving.';
         }
 
-        let $btn = $('button[type="submit"]');
+        let $btn = $('#so-form button[type="submit"], button[type="submit"]:not(.btn-navbar)');
         if (hasError) {
             $btn.prop('disabled', true).addClass('disabled').attr('title', reason);
         } else {
@@ -735,10 +732,10 @@ $(function() {
         updateSoSaveButtonState();
     }
 
-    // Form Submit Guard (Task 11)
+    let isSubmitting = false;
     $('form').on('submit', function (e) {
-        let $btn = $(this).find('button[type="submit"]');
-        if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
+        let $btn = $(this).find('button[type="submit"]:not(.btn-navbar)');
+        if (isSubmitting || $btn.prop('disabled') || $btn.hasClass('disabled')) {
             e.preventDefault();
             return false;
         }
@@ -805,6 +802,23 @@ $(function() {
                 $(this).remove();
             }
         });
+
+        // Re-index remaining rows so items[0], items[1] are contiguous
+        $('#so-items-body tr').each(function (idx) {
+            $(this).find('input, select').each(function () {
+                let name = $(this).attr('name');
+                if (name && name.indexOf('items[') !== -1) {
+                    $(this).attr('name', name.replace(/items\[\w+\]/, 'items[' + idx + ']'));
+                }
+            });
+        });
+
+        isSubmitting = true;
+        setTimeout(function() {
+            if ($btn.length) {
+                $btn.prop('disabled', true).addClass('disabled').html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+            }
+        }, 10);
     });
 
     recalcAll();

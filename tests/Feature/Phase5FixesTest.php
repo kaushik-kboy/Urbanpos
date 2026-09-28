@@ -9,7 +9,7 @@ use App\Models\Ledger;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Accounting\CreditLimitGuard;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -22,7 +22,7 @@ use Tests\TestCase;
  */
 class Phase5FixesTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

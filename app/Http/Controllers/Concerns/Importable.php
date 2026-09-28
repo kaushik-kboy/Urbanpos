@@ -38,8 +38,13 @@ trait Importable
             'file' => ['required', 'file', 'mimes:csv,txt,xls,xlsx'],
         ]);
 
-        $sheets = Excel::toCollection(null, $request->file('file'));
-        $rows = $sheets->first();
+        try {
+            $sheets = Excel::toCollection(null, $request->file('file'));
+            $rows = $sheets->first();
+        } catch (\PhpOffice\PhpSpreadsheet\Reader\Exception $e) {
+            // e.g. a zero-byte upload: treat as an empty sheet instead of a 500
+            $rows = null;
+        }
 
         if (! $rows || $rows->count() < 1) {
             return back()->with('import_result', [
@@ -101,7 +106,7 @@ trait Importable
         $dataRows = $rows->slice($headerRowIndex + 1);
 
         foreach ($dataRows as $rowNum => $row) {
-            $lineNumber = $headerRowIndex + $rowNum + 2;
+            $lineNumber = $rowNum + 1; // $rowNum keeps the original 0-based sheet index (slice preserves keys)
 
             if ($row->every(fn ($v) => trim((string) $v) === '')) {
                 continue;

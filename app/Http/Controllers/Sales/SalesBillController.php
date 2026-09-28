@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Http\Controllers\Concerns\PaginatesDeep;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -19,12 +20,15 @@ use App\Services\Inventory\StockLedgerService;
 use App\Services\Loyalty\LoyaltyService;
 use App\Services\Tax\TaxEngine;
 use App\Services\WhatsApp\ChatOnClickWhatsAppService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SalesBillController extends Controller
 {
+    use PaginatesDeep;
+
     public function __construct(
         private LedgerPostingService $ledgerPosting,
         private StockLedgerService $stockLedger,
@@ -45,6 +49,11 @@ class SalesBillController extends Controller
             $term = trim($request->input('search'));
             $column = $request->input('search_column', 'all');
 
+            // Full bill number typed/scanned: unique-index lookup instead of a substring scan of every bill.
+            $exactBill = in_array($column, ['bill_number', 'all'], true) && SalesBill::where('bill_number', $term)->exists();
+            if ($exactBill) {
+                $query->where('bill_number', $term);
+            } else
             $query->where(function ($q) use ($term, $column) {
                 if ($column === 'bill_number' || $column === 'all') {
                     $q->orWhere('bill_number', 'like', "%{$term}%");
@@ -53,26 +62,30 @@ class SalesBillController extends Controller
                     $q->orWhere('total', 'like', "%{$term}%");
                 }
                 if (in_array($column, ['customer_name', 'mobile', 'all'])) {
+                    // The OR-group MUST be nested: a bare leading orWhere inside whereHas detaches the
+                    // customer_id = customers.id correlation (matches every bill + cross-scans customers).
                     $q->orWhereHas('customer', function ($cq) use ($term, $column) {
-                        if ($column === 'customer_name' || $column === 'all') {
-                            $cq->orWhere('name', 'like', "%{$term}%")
-                               ->orWhere('customer_code', 'like', "%{$term}%");
-                        }
-                        if ($column === 'mobile' || $column === 'all') {
-                            $cq->orWhere('mobile', 'like', "%{$term}%")
-                               ->orWhere('phone', 'like', "%{$term}%");
-                        }
+                        $cq->where(function ($w) use ($term, $column) {
+                            if ($column === 'customer_name' || $column === 'all') {
+                                $w->orWhere('name', 'like', "%{$term}%")
+                                  ->orWhere('customer_code', 'like', "%{$term}%");
+                            }
+                            if ($column === 'mobile' || $column === 'all') {
+                                $w->orWhere('mobile', 'like', "%{$term}%")
+                                  ->orWhere('phone', 'like', "%{$term}%");
+                            }
+                        });
                     });
                 }
             });
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('bill_date', '>=', $request->input('date_from'));
+            $query->where('bill_date', '>=', $request->input('date_from').' 00:00:00');
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('bill_date', '<=', $request->input('date_to'));
+            $query->where('bill_date', '<=', $request->input('date_to').' 23:59:59');
         }
 
         $branchFilter = $request->has('branch_id')
@@ -91,7 +104,7 @@ class SalesBillController extends Controller
             $query->where('invoice_type', $request->input('invoice_type'));
         }
 
-        $salesBills = $query->paginate(20)->withQueryString();
+        $salesBills = $this->paginateDeep($query, 20);
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $filteredCustId = $request->input('customer_id');
         $customers = Customer::where('status', true)
@@ -170,6 +183,10 @@ class SalesBillController extends Controller
         } elseif ($request->filled('from_order')) {
             $order = SalesOrder::with(['items.item.gstTax', 'customer', 'branch'])
                 ->findOrFail($request->input('from_order'));
+            if ($order->status === 'Cancelled') {
+                return redirect()->route('sales.sales-orders.show', $order)
+                    ->with('error', "Cannot create a bill from cancelled sales order {$order->order_number}.");
+            }
             $options['sourceOrder'] = $order;
             $options['convertedItems'] = $order->items;
             $convertedItems = $order->items;
@@ -258,8 +275,14 @@ class SalesBillController extends Controller
 
             $this->assertCreditLimit((int) $data['header']['customer_id'], $totals['total']);
 
+            // GSTR-1 posting-time snapshot: classify B2B/B2C off what the
+            // customer's GSTIN actually was right now, not whatever it might
+            // be later if edited — see docs/GSTR1-AUDIT.md.
+            $customerGstin = \App\Models\Customer::where('id', $data['header']['customer_id'])->value('gst_no');
+
             $salesBill = SalesBill::create(array_merge($data['header'], $totals, [
                 'bill_number' => $this->nextNumber(),
+                'customer_gstin' => $customerGstin ?: null,
             ]));
 
             $createdItems = $salesBill->items()->createMany($lines);
@@ -832,7 +855,9 @@ class SalesBillController extends Controller
         // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
         $limit  = 100;
         $where  = ['i.status = 1'];
-        $params = [$branchId, $branchId];
+        $params = [$branchId];
+        $candJoins  = [];
+        $candParams = [];
 
         // By default show only products in stock (quantity > 0 or allow_negative_stock) unless show_all is checked
         if (! $showAll) {
@@ -856,8 +881,10 @@ class SalesBillController extends Controller
             // Barcode (ean_upc_code) only matches exact or prefix — never substring in middle of 13-digit barcode!
             // Item code matches exact or prefix
             // Item name matches substring
-            $where[] = '(i.name LIKE ? OR i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
-            $params  = array_merge($params, [$sWild, $sExact, $sPrefix, $sExact, $sPrefix]);
+            // Candidate ids come from separate index-friendly lookups joined in (an OR across four columns
+            // forced a per-row evaluation of the whole item x stock join: ~2x slower).
+            $candJoins[] = 'INNER JOIN (SELECT id FROM items WHERE name LIKE ? UNION SELECT id FROM items WHERE item_code = ? UNION SELECT id FROM items WHERE item_code LIKE ? UNION SELECT id FROM items WHERE ean_upc_code = ? UNION SELECT id FROM items WHERE ean_upc_code LIKE ?) cs ON cs.id = i.id';
+            $candParams  = array_merge($candParams, [$sWild, $sExact, $sPrefix, $sExact, $sPrefix]);
 
             // Rank exact code / barcode match first, then prefix, then name
             $orderSql = "
@@ -877,8 +904,8 @@ class SalesBillController extends Controller
         if ($code !== '') {
             $cExact  = $code;
             $cPrefix = "{$code}%";
-            $where[] = '(i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
-            $params  = array_merge($params, [$cExact, $cPrefix, $cExact, $cPrefix]);
+            $candJoins[] = 'INNER JOIN (SELECT id FROM items WHERE item_code = ? UNION SELECT id FROM items WHERE item_code LIKE ? UNION SELECT id FROM items WHERE ean_upc_code = ? UNION SELECT id FROM items WHERE ean_upc_code LIKE ?) cc ON cc.id = i.id';
+            $candParams  = array_merge($candParams, [$cExact, $cPrefix, $cExact, $cPrefix]);
 
             if ($search === '') {
                 $orderSql = "
@@ -896,6 +923,9 @@ class SalesBillController extends Controller
         }
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $candJoinSql = implode(' ', $candJoins);
+        // SQL text order is: stock join (branch), candidate joins, WHERE params
+        $params = array_merge([$branchId], $candParams, array_slice($params, 1));
 
         $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
         $sellPriceSub = $isSqlite
@@ -913,33 +943,14 @@ class SalesBillController extends Controller
                 COALESCE(i.item_code, '')  AS item_code,
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
                 COALESCE(st.quantity, 0)   AS qty,
-                COALESCE(
-                    NULLIF(ei.sell_price, 0),
-                    NULLIF(i.sell_price, 0),
-                    0
-                )                          AS sell_price,
-                COALESCE(
-                    NULLIF(ei.mrp, 0),
-                    NULLIF(i.mrp, 0),
-                    0
-                )                          AS mrp,
-                ei.exp_date,
+                COALESCE(NULLIF(i.sell_price, 0), 0) AS sell_price,
+                COALESCE(NULLIF(i.mrp, 0), 0)        AS mrp,
+                NULL                       AS exp_date,
                 COALESCE(gt.percentage, 0) AS gst_percent
             FROM items i
             LEFT JOIN item_stocks st
                    ON st.item_id = i.id AND st.branch_id = ?
-            LEFT JOIN (
-                SELECT pi2.item_id,
-                       MIN(pi2.exp_date) AS exp_date,
-                       {$sellPriceSub},
-                       {$mrpSub}
-                FROM purchase_invoice_items pi2
-                INNER JOIN purchase_invoices pih
-                        ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
-                WHERE pi2.exp_date IS NOT NULL
-                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
-                GROUP BY pi2.item_id
-            ) ei ON ei.item_id = i.id
+            {$candJoinSql}
             LEFT JOIN gst_taxes gt ON gt.id = i.gst_tax_id
             {$whereClause}
             ORDER BY {$orderSql}
@@ -948,6 +959,36 @@ class SalesBillController extends Controller
 
         $finalParams = array_merge($params, $orderParams);
         $rows = \Illuminate\Support\Facades\DB::select($sql, $finalParams);
+
+        // Branch-specific expiry/price, looked up ONLY for the (<=100) rows returned. It used to be a derived
+        // table aggregating every purchase_invoice_items row before the join (cost grew with purchase history).
+        if (! empty($rows)) {
+            $ids = array_map(fn ($r) => $r->id, $rows);
+            $ph0 = implode(',', array_fill(0, count($ids), '?'));
+            $eiSql = "
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date,
+                       {$sellPriceSub},
+                       {$mrpSub}
+                FROM purchase_invoice_items pi2
+                INNER JOIN purchase_invoices pih ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
+                WHERE pi2.item_id IN ({$ph0})
+                  AND pi2.exp_date IS NOT NULL
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                GROUP BY pi2.item_id
+            ";
+            $ei = [];
+            foreach (\Illuminate\Support\Facades\DB::select($eiSql, array_merge([$branchId], $ids)) as $e) {
+                $ei[$e->item_id] = $e;
+            }
+            foreach ($rows as $row) {
+                if (isset($ei[$row->id])) {
+                    $row->exp_date = $ei[$row->id]->exp_date;
+                    if ((float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
+                    if ((float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
+                }
+            }
+        }
 
         // Fallback: for rows without branch-specific expiry, try all branches
         $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
@@ -1255,17 +1296,16 @@ class SalesBillController extends Controller
     {
         $q = trim((string) $request->input('q', ''));
 
+        $exactHit = $q !== '' && Customer::where('status', true)->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q))->exists();
         $customers = Customer::where('status', true)
             ->with(['pets.petType', 'pets.breed'])
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($sub) use ($q) {
-                    $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('mobile', 'like', "%{$q}%")
-                        ->orWhere('customer_code', 'like', "%{$q}%")
-                        ->orWhereHas('pets', function ($pq) use ($q) {
-                            $pq->where('name', 'like', "%{$q}%");
-                        });
-                });
+            ->when($q !== '' && $exactHit, function ($query) use ($q) {
+                // Exact customer_code / mobile (typed in full or scanned): index lookup, no substring scan.
+                $query->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q));
+            })
+            ->when($q !== '' && ! $exactHit, function ($query) use ($q) {
+                // Resolve matching ids with index-only probes first (Customer::pickerMatchIds), then fetch <= 30 rows.
+                $query->whereIn('id', Customer::pickerMatchIds($q));
             })
             ->orderBy('name')
             ->limit(30)
@@ -1522,32 +1562,8 @@ class SalesBillController extends Controller
             // counters simultaneously, we do not reject the cashier's sale here.
         }
 
-        if ($request->isMethod('post') && !empty($header['customer_id'])) {
-            $cust = Customer::find($header['customer_id']);
-            $isWalkIn = $cust && (
-                stripos($cust->name, 'walk') !== false ||
-                stripos($cust->name, 'cash') !== false ||
-                stripos($cust->name, 'retail') !== false ||
-                empty($cust->mobile)
-            );
-
-            if (! $isWalkIn) {
-                $recentDuplicate = SalesBill::where('customer_id', $header['customer_id'])
-                    ->where('branch_id', $header['branch_id'])
-                    ->where('created_at', '>=', now()->subSeconds(10))
-                    ->whereHas('items', function ($iq) use ($filteredItems) {
-                        if (!empty($filteredItems[0]['item_id'])) {
-                            $iq->where('item_id', $filteredItems[0]['item_id']);
-                        }
-                    })
-                    ->exists();
-                if ($recentDuplicate) {
-                    throw ValidationException::withMessages([
-                        'customer_id' => 'A matching sales bill was just submitted moments ago. Duplicate submission prevented.',
-                    ]);
-                }
-            }
-        }
+        // Duplicate-submit protection is transactional idempotency (posting_key, see store()), NOT a
+        // content/time heuristic: a repeat customer legitimately buys the same item twice within seconds.
 
         $header['bill_date'] = \Illuminate\Support\Carbon::parse($header['bill_date'])->format('Y-m-d H:i:s');
         if (empty($header['payment_type']) || strtolower(trim($header['payment_type'])) === 'none') {

@@ -578,17 +578,9 @@ class StockTransferController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (int) (StockTransfer::max('id') ?? 0);
-        $lastStf = StockTransfer::where('transfer_number', 'like', 'STF%')->orderByDesc('id')->value('transfer_number');
-        if ($lastStf && preg_match('/^STF(\d+)$/', $lastStf, $matches)) {
-            $next = max($next, (int) $matches[1]);
-        }
-        do {
-            $next++;
-            $stf = 'STF'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-        } while (StockTransfer::where('transfer_number', $stf)->exists());
-
-        return $stf;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('STF', \App\Models\StockTransfer::class, 'transfer_number', 5);
     }
 
     private function formOptions(): array

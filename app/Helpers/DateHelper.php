@@ -105,7 +105,13 @@ class DateHelper
             }
         }
 
-        // Fallback with Carbon
+        // Fallback with Carbon, only for textual dates ("10 Apr 2026"). A purely numeric input that
+        // failed every strict branch above is an invalid date (31-04-2026, 1013): Carbon would
+        // silently roll it over (-> 2026-05-01) or return today, so reject it instead.
+        if (! preg_match('/[a-z]/i', $str)) {
+            return null;
+        }
+
         try {
             $parsed = Carbon::parse($str);
             return $parsed ? $parsed->format('Y-m-d') : null;

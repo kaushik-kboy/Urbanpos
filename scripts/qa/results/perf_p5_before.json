@@ -1,0 +1,362 @@
+{
+    "label": "p5_before",
+    "total_rows": 2095000,
+    "counts": {
+        "items": 34375,
+        "customers": 91667,
+        "bills": 275000,
+        "purchases": 27500,
+        "returned_bills": 13333
+    },
+    "rows": [
+        {
+            "endpoint": "POS barcode lookup (exact EAN)",
+            "p50": 13.1,
+            "p95": 16.8,
+            "p99": 16.8,
+            "sqls": 9,
+            "db_ms": 7.6,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "POS item-code lookup (exact)",
+            "p50": 11.1,
+            "p95": 15.5,
+            "p99": 15.5,
+            "sqls": 8,
+            "db_ms": 6.3,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "POS invalid barcode (miss)",
+            "p50": 3.5,
+            "p95": 19,
+            "p99": 19,
+            "sqls": 2,
+            "db_ms": 2.5,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "POS item search popup (name)",
+            "p50": 110.2,
+            "p95": 140.9,
+            "p99": 140.9,
+            "sqls": 3,
+            "db_ms": 91.5,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "POS item search popup (code prefix)",
+            "p50": 40.5,
+            "p95": 96.1,
+            "p99": 96.1,
+            "sqls": 1,
+            "db_ms": 44.4,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "POS item popup, empty (open popup)",
+            "p50": 16.4,
+            "p95": 26,
+            "p99": 26,
+            "sqls": 3,
+            "db_ms": 12.5,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Customer search (name substring)",
+            "p50": 18,
+            "p95": 22.1,
+            "p99": 22.1,
+            "sqls": 3,
+            "db_ms": 7,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Customer search (mobile fragment)",
+            "p50": 1065.9,
+            "p95": 1168,
+            "p99": 1168,
+            "sqls": 3,
+            "db_ms": 1008.6,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Customer search (exact code)",
+            "p50": 5.7,
+            "p95": 7.4,
+            "p99": 7.4,
+            "sqls": 3,
+            "db_ms": 2.5,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Sales return: customer bills",
+            "p50": 5.5,
+            "p95": 7.8,
+            "p99": 7.8,
+            "sqls": 2,
+            "db_ms": 2.1,
+            "mb": 30,
+            "status": {
+                "404": 2,
+                "200": 13
+            }
+        },
+        {
+            "endpoint": "Sales return: bill items (+remaining)",
+            "p50": 6.9,
+            "p95": 9.3,
+            "p99": 9.3,
+            "sqls": 4,
+            "db_ms": 2.9,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Purchase return: invoice items",
+            "p50": 5.8,
+            "p95": 7.2,
+            "p99": 7.2,
+            "sqls": 4,
+            "db_ms": 2.4,
+            "mb": 30,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Invoice list (page 1, no filter)",
+            "p50": 172.7,
+            "p95": 195.7,
+            "p99": 195.7,
+            "sqls": 11,
+            "db_ms": 23.3,
+            "mb": 34,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Invoice list (deep page 500)",
+            "p50": 477.3,
+            "p95": 489.7,
+            "p99": 489.7,
+            "sqls": 10,
+            "db_ms": 317.4,
+            "mb": 34,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Invoice search (bill number)",
+            "p50": 140.7,
+            "p95": 164.8,
+            "p99": 164.8,
+            "sqls": 8,
+            "db_ms": 4.6,
+            "mb": 34,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Invoice search (customer name)",
+            "p50": 395.4,
+            "p95": 416.5,
+            "p99": 416.5,
+            "sqls": 11,
+            "db_ms": 242.5,
+            "mb": 34,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Invoice list (30-day date filter)",
+            "p50": 156.1,
+            "p95": 178.1,
+            "p99": 178.1,
+            "sqls": 11,
+            "db_ms": 8.4,
+            "mb": 34,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Purchase history (page 1)",
+            "p50": 171.3,
+            "p95": 188.3,
+            "p99": 188.3,
+            "sqls": 9,
+            "db_ms": 12.2,
+            "mb": 36,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Master: items list (search)",
+            "p50": 175.1,
+            "p95": 191.4,
+            "p99": 191.4,
+            "sqls": 10,
+            "db_ms": 16.3,
+            "mb": 36,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Master: customers list (search)",
+            "p50": 296.1,
+            "p95": 314.7,
+            "p99": 314.7,
+            "sqls": 6,
+            "db_ms": 146.6,
+            "mb": 36,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: current stock",
+            "p50": 409.5,
+            "p95": 438.6,
+            "p99": 438.6,
+            "sqls": 11,
+            "db_ms": 233.8,
+            "mb": 36,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: GST sales summary (30d)",
+            "p50": 192.1,
+            "p95": 237.2,
+            "p99": 237.2,
+            "sqls": 5,
+            "db_ms": 50.2,
+            "mb": 38,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: GST sales summary (1y)",
+            "p50": 573.4,
+            "p95": 648,
+            "p99": 648,
+            "sqls": 5,
+            "db_ms": 396.2,
+            "mb": 50,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: GST purchase summary (1y)",
+            "p50": 351.5,
+            "p95": 370.6,
+            "p99": 370.6,
+            "sqls": 5,
+            "db_ms": 108.1,
+            "mb": 64,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: sales summary (30d)",
+            "p50": 155.7,
+            "p95": 172.7,
+            "p99": 172.7,
+            "sqls": 6,
+            "db_ms": 14.2,
+            "mb": 64,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: billwise sales (7d)",
+            "p50": 1043,
+            "p95": 1090.3,
+            "p99": 1090.3,
+            "sqls": 11,
+            "db_ms": 428.7,
+            "mb": 92,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: sales margin itemwise (30d)",
+            "p50": 1012.1,
+            "p95": 1044.5,
+            "p99": 1044.5,
+            "sqls": 12,
+            "db_ms": 178.1,
+            "mb": 112,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: sales return summary (1y)",
+            "p50": 152.5,
+            "p95": 163.5,
+            "p99": 163.5,
+            "sqls": 7,
+            "db_ms": 15.7,
+            "mb": 112,
+            "status": {
+                "200": 15
+            }
+        },
+        {
+            "endpoint": "Report: reorder",
+            "p50": 1828.6,
+            "p95": 2078,
+            "p99": 2078,
+            "sqls": 10,
+            "db_ms": 252.4,
+            "mb": 122,
+            "status": {
+                "200": 15
+            }
+        }
+    ]
+}

@@ -1842,7 +1842,7 @@
                     } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
-                        $row.find('.sb-qty-error-msg').text('Max: ' + formatDigits(stock)).show();
+                        $row.find('.sb-qty-error-msg').text('Maximum available quantity is ' + formatDigits(stock) + '.').show();
                         hasError = true;
                         if (!firstErrorMsg) {
                             let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
@@ -2188,6 +2188,7 @@
                     // Sync Code: display item_code if available, otherwise ean or id
                     $code.val(item.item_code || item.ean_upc_code || item.id);
                     $code.removeClass('is-invalid border-danger');
+                    sbClearCodeError($row);
 
                     // Sync description display & hidden item id
                     $desc.val(item.name + (item.item_code ? ' [' + item.item_code + ']' : ''));
@@ -2279,19 +2280,34 @@
                     $row.find('.sb-item-stock-val').val(0);
                     $row.attr('data-stock', 0);
 
-                    const errMsg = "Product not found for this Item Code/Barcode.";
-                    if (window.toastr && typeof window.toastr.warning === 'function') {
-                        toastr.clear();
-                        toastr.warning(errMsg, 'Item Not Found');
-                    } else {
-                        alert(errMsg);
-                    }
+                    // Inline error next to the field (no toast, no blocking alert()) - keyboard flow is never interrupted.
+                    sbShowCodeError($row, "Product not found for this Item Code/Barcode.");
                     setTimeout(() => {
                         $code.focus().select();
                     }, 50);
                 }
             });
         }
+
+        // Inline (next-to-field) error for the Code / Barcode input.
+        function sbShowCodeError($row, msg) {
+            let $code = $row.find('.sb-item-code');
+            $code.addClass('is-invalid border-danger').attr('aria-invalid', 'true');
+            let $err = $row.find('.sb-code-error-msg');
+            if (!$err.length) {
+                $err = $('<div class="sb-code-error-msg invalid-feedback d-block text-danger font-weight-bold" role="alert"></div>');
+                $code.after($err);
+            }
+            $err.text(msg).show();
+        }
+        function sbClearCodeError($row) {
+            $row.find('.sb-item-code').removeClass('is-invalid border-danger').removeAttr('aria-invalid');
+            $row.find('.sb-code-error-msg').remove();
+        }
+        // Editing the code clears the previous error straight away.
+        $(document).on('input', '.sb-item-code', function () {
+            sbClearCodeError($(this).closest('tr'));
+        });
 
         // 1. Enter Code / Barcode in row on change
         $(document).on('change', '.sb-item-code', function (e) {
@@ -2635,6 +2651,13 @@
             recalcTender();
 
             $('#sb-tender-modal').modal('show');
+            // Bootstrap's own 'shown.bs.modal' handling focuses the modal container itself
+            // shortly after it opens, which can steal focus back from a fixed setTimeout
+            // fired before that settles. Re-focus on 'shown.bs.modal' (.one, so it doesn't
+            // stack across repeated Save clicks) so #tender-cash reliably ends up focused.
+            $('#sb-tender-modal').one('shown.bs.modal', function () {
+                $('#tender-cash').focus().select();
+            });
             setTimeout(function () {
                 $('#tender-cash').focus().select();
             }, 200);

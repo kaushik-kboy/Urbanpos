@@ -1,0 +1,37 @@
+{
+    "label": "p5_tmp",
+    "total_rows": 2095000,
+    "counts": {
+        "items": 34375,
+        "customers": 91667,
+        "bills": 275000,
+        "purchases": 27500,
+        "returned_bills": 13333
+    },
+    "rows": [
+        {
+            "endpoint": "Finance: day book (30d)",
+            "p50": 222.6,
+            "p95": 242.9,
+            "p99": 242.9,
+            "sqls": 10,
+            "db_ms": 24.4,
+            "mb": 36,
+            "status": {
+                "200": 5
+            }
+        },
+        {
+            "endpoint": "Finance: day book (all 3y, all journals)",
+            "p50": 218.9,
+            "p95": 232.8,
+            "p99": 232.8,
+            "sqls": 10,
+            "db_ms": 23.1,
+            "mb": 36,
+            "status": {
+                "200": 5
+            }
+        }
+    ]
+}

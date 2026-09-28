@@ -92,30 +92,67 @@ class SalesReturnController extends Controller
 
     public function store(Request $request)
     {
-        $data = $this->validateData($request);
-        $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
-
-        if ($data['header']['posting_key'] ?? null) {
-            $existing = SalesReturn::where('posting_key', $data['header']['posting_key'])->first();
-            if ($existing) {
+        // Idempotency FIRST: a retry / double-click / refresh of a submit that already committed must
+        // get that document back, not a quantity-validation error caused by its own first submit.
+        if ($postingKey = $request->input('posting_key')) {
+            if ($existing = SalesReturn::where('posting_key', $postingKey)->first()) {
                 return redirect()->route('sales.sales-returns.index')->with('status', "Sales Return {$existing->return_number} created successfully.");
             }
         }
 
-        $salesReturn = DB::transaction(function () use ($data) {
-            $lines = $this->computeLines($data['items'], $data['header']);
-            $totals = $this->computeTotals($lines, $data);
+        $data = $this->validateData($request);
+        $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
 
-            $salesReturn = SalesReturn::create(array_merge($data['header'], $totals, [
-                'return_number' => $this->nextNumber(),
-            ]));
 
-            $createdItems = $salesReturn->items()->createMany($lines);
-            $this->postStock($createdItems, $salesReturn);
-            $this->ledgerPosting->postSalesReturn($salesReturn);
+        try {
+            $salesReturn = DB::transaction(function () use ($data) {
+                // Mutex: the customer row (every return - billed or not - draws on the same customer-wide pool)
+                // and then the original bill. MUST be the first statements of the transaction so the consistent
+                // reads below see every return committed by whoever held the lock before us.
+                Customer::whereKey($data['header']['customer_id'])->lockForUpdate()->first();
+                if (! empty($data['header']['sales_bill_id'])) {
+                    SalesBill::whereKey($data['header']['sales_bill_id'])->lockForUpdate()->first();
+                }
 
-            return $salesReturn;
-        });
+                // A double-click / retry with the same posting_key queued behind the first
+                // submit: hand back the document that submit created instead of failing.
+                if (! empty($data['header']['posting_key'])
+                    && ($duplicate = SalesReturn::where('posting_key', $data['header']['posting_key'])->first())) {
+                    return $duplicate;
+                }
+
+                $this->assertReturnableAgainstBill($data['header'], $data['items'], null);
+
+                $lines = $this->computeLines($data['items'], $data['header']);
+                $totals = $this->computeTotals($lines, $data);
+
+                // GSTR-1 posting-time snapshot — same reasoning as SalesBillController::store().
+                $customerGstin = !empty($data['header']['customer_id'])
+                    ? \App\Models\Customer::where('id', $data['header']['customer_id'])->value('gst_no')
+                    : null;
+
+                $salesReturn = SalesReturn::create(array_merge($data['header'], $totals, [
+                    'return_number' => $this->nextNumber(),
+                    'customer_gstin' => $customerGstin ?: null,
+                ]));
+
+                $createdItems = $salesReturn->items()->createMany($lines);
+                $this->postStock($createdItems, $salesReturn);
+                $this->ledgerPosting->postSalesReturn($salesReturn);
+
+                return $salesReturn;
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Same posting_key raced past the pre-check (no bill to lock on): the unique index
+            // guarantees only one committed - return that one rather than a 500.
+            $existing = ! empty($data['header']['posting_key'])
+                ? SalesReturn::where('posting_key', $data['header']['posting_key'])->first()
+                : null;
+            if (! $existing) {
+                throw $e;
+            }
+            $salesReturn = $existing;
+        }
 
         return redirect()->route('sales.sales-returns.index')->with('status', "Sales Return {$salesReturn->return_number} created successfully.");
     }
@@ -149,6 +186,12 @@ class SalesReturnController extends Controller
         $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
 
         DB::transaction(function () use ($data, $salesReturn) {
+            Customer::whereKey($data['header']['customer_id'])->lockForUpdate()->first();
+            if (! empty($data['header']['sales_bill_id'])) {
+                SalesBill::whereKey($data['header']['sales_bill_id'])->lockForUpdate()->first();
+            }
+            $this->assertReturnableAgainstBill($data['header'], $data['items'], $salesReturn->id);
+
             $this->stockLedger->reverseByReference(SalesReturn::class, $salesReturn->id);
 
             $lines = $this->computeLines($data['items'], $data['header']);
@@ -461,6 +504,151 @@ class SalesReturnController extends Controller
         ];
     }
 
+    /**
+     * Server-side returnable-quantity rules against the ORIGINAL sales bill:
+     *   - the bill must belong to the selected customer and must not be cancelled
+     *   - only items that are on that bill can be returned
+     *   - requested qty (summed per item) <= sold qty - qty already returned on other returns
+     *
+     * Called twice on purpose: once before the transaction (fast form feedback) and once inside
+     * it after SalesBill is row-locked, which is what makes two terminals returning the same bill
+     * at the same instant unable to both pass.
+     */
+    private function assertReturnableAgainstBill(array $header, array $items, ?int $currentReturnId): void
+    {
+        if (empty($header['sales_bill_id'])) {
+            // NO ORIGINAL BILL selected. Business rule: the return is allowed only against what THIS customer
+            // actually bought (non-cancelled bills, all branches) minus what they have already returned
+            // (billed or not). Never unlimited.
+            $this->assertWithinCustomerPool($header, $items, $currentReturnId, false);
+
+            return;
+        }
+
+        $bill = SalesBill::with('items.item')->find($header['sales_bill_id']);
+        if (! $bill) {
+            return;
+        }
+
+        if ((int) $bill->customer_id !== (int) ($header['customer_id'] ?? 0)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'sales_bill_id' => ["Sales Bill #{$bill->bill_number} does not belong to the selected customer."],
+            ]);
+        }
+
+        if ($bill->status === 'Cancelled') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'sales_bill_id' => ["Sales Bill #{$bill->bill_number} is cancelled and cannot be returned against."],
+            ]);
+        }
+
+        $billItemQtys = $bill->items->groupBy('item_id')->map->sum('qty');
+
+        // Group requested quantities across submitted rows by item_id
+        $totalQtyByItem = [];
+        foreach ($items as $itemLine) {
+            $itemId = (int) $itemLine['item_id'];
+            $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $itemLine['qty'];
+        }
+
+        $alreadyReturnedQtys = DB::table('sales_return_items as sri')
+            ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
+            ->where('sr.sales_bill_id', $bill->id)
+            ->when($currentReturnId, fn ($q) => $q->where('sr.id', '!=', $currentReturnId))
+            ->whereIn('sri.item_id', array_keys($totalQtyByItem))
+            ->groupBy('sri.item_id')
+            ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
+            ->pluck('returned_qty', 'item_id')
+            ->all();
+
+        foreach ($totalQtyByItem as $itemId => $requestedQty) {
+            if (! isset($billItemQtys[$itemId])) {
+                $itemModel = Item::find($itemId);
+                $name = $itemModel?->name ?? "Item #{$itemId}";
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'items' => ["The item '{$name}' does not belong to Sales Bill #{$bill->bill_number}."],
+                ]);
+            }
+
+            $origQty = (float) $billItemQtys[$itemId];
+            $alreadyReturned = (float) ($alreadyReturnedQtys[$itemId] ?? 0);
+            $remaining = max(0, round($origQty - $alreadyReturned, 4));
+
+            if ($remaining <= 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'items' => ['No returnable quantity available for this item.'],
+                ]);
+            }
+
+            if (round($requestedQty, 4) > round($remaining, 4)) {
+                $remDisplay = ($remaining == (int) $remaining) ? (int) $remaining : $remaining;
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'items' => ["Return quantity cannot exceed the remaining returnable quantity of {$remDisplay}."],
+                ]);
+            }
+        }
+
+        // A billed return also draws on the customer-wide pool, so it cannot be combined with
+        // no-bill returns to get back more than the customer ever bought.
+        $this->assertWithinCustomerPool($header, $items, $currentReturnId, true);
+    }
+
+    /**
+     * Customer-wide returnable pool per item:
+     *   remaining = SUM(qty sold to this customer on non-cancelled bills)
+     *             - SUM(qty already returned by this customer on any return, excluding the return being edited)
+     * A request is rejected when its qty (summed per item) exceeds that remainder.
+     */
+    private function assertWithinCustomerPool(array $header, array $items, ?int $currentReturnId, bool $hasBill): void
+    {
+        $customerId = (int) ($header['customer_id'] ?? 0);
+        if ($customerId <= 0) {
+            return;
+        }
+
+        $requested = [];
+        foreach ($items as $line) {
+            $itemId = (int) $line['item_id'];
+            $requested[$itemId] = ($requested[$itemId] ?? 0.0) + (float) $line['qty'];
+        }
+        if (! $requested) {
+            return;
+        }
+        $ids = array_keys($requested);
+
+        $sold = DB::table('sales_bill_items as sbi')
+            ->join('sales_bills as sb', 'sb.id', '=', 'sbi.sales_bill_id')
+            ->where('sb.customer_id', $customerId)
+            ->where(fn ($q) => $q->whereNull('sb.status')->orWhere('sb.status', '!=', 'Cancelled'))
+            ->whereIn('sbi.item_id', $ids)
+            ->groupBy('sbi.item_id')
+            ->selectRaw('sbi.item_id, SUM(sbi.qty) as q')
+            ->pluck('q', 'item_id')->all();
+
+        $returned = DB::table('sales_return_items as sri')
+            ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
+            ->where('sr.customer_id', $customerId)
+            ->when($currentReturnId, fn ($q) => $q->where('sr.id', '!=', $currentReturnId))
+            ->whereIn('sri.item_id', $ids)
+            ->groupBy('sri.item_id')
+            ->selectRaw('sri.item_id, SUM(sri.qty) as q')
+            ->pluck('q', 'item_id')->all();
+
+        foreach ($requested as $itemId => $qty) {
+            $remaining = max(0, round((float) ($sold[$itemId] ?? 0) - (float) ($returned[$itemId] ?? 0), 4));
+            if (round($qty, 4) > $remaining) {
+                $name = Item::find($itemId)?->name ?? "Item #{$itemId}";
+                $remDisplay = ($remaining == (int) $remaining) ? (int) $remaining : $remaining;
+                $why = $hasBill
+                    ? 'across all of this customer\'s bills and earlier returns'
+                    : 'No original bill selected: limited to what this customer bought minus what was already returned';
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'items' => ["Return quantity for '{$name}' cannot exceed the remaining returnable quantity of {$remDisplay} ({$why})."],
+                ]);
+            }
+        }
+    }
+
     private function validateData(Request $request): array
     {
         $rawItems = $request->input('items', []);
@@ -501,60 +689,13 @@ class SalesReturnController extends Controller
             'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        if (!empty($header['sales_bill_id'])) {
-            $bill = SalesBill::with('items.item')->find($header['sales_bill_id']);
-            if ($bill) {
-                $billItemQtys = $bill->items->groupBy('item_id')->map->sum('qty');
+        $currentReturnId = $request->route('sales_return')
+            ? (is_object($request->route('sales_return')) ? $request->route('sales_return')->id : (int) $request->route('sales_return'))
+            : null;
 
-                // Group requested quantities across submitted rows by item_id
-                $totalQtyByItem = [];
-                foreach ($validated['items'] as $itemLine) {
-                    $itemId = (int) $itemLine['item_id'];
-                    $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $itemLine['qty'];
-                }
-
-                $currentReturnId = $request->route('sales_return') 
-                    ? (is_object($request->route('sales_return')) ? $request->route('sales_return')->id : (int)$request->route('sales_return')) 
-                    : null;
-
-                $alreadyReturnedQtys = DB::table('sales_return_items as sri')
-                    ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
-                    ->where('sr.sales_bill_id', $bill->id)
-                    ->when($currentReturnId, fn($q) => $q->where('sr.id', '!=', $currentReturnId))
-                    ->whereIn('sri.item_id', array_keys($totalQtyByItem))
-                    ->groupBy('sri.item_id')
-                    ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
-                    ->pluck('returned_qty', 'item_id')
-                    ->all();
-
-                foreach ($totalQtyByItem as $itemId => $requestedQty) {
-                    if (!isset($billItemQtys[$itemId])) {
-                        $itemModel = Item::find($itemId);
-                        $name = $itemModel?->name ?? "Item #{$itemId}";
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'items' => ["The item '{$name}' does not belong to Sales Bill #{$bill->bill_number}."]
-                        ]);
-                    }
-
-                    $origQty = (float) $billItemQtys[$itemId];
-                    $alreadyReturned = (float) ($alreadyReturnedQtys[$itemId] ?? 0);
-                    $remaining = max(0, round($origQty - $alreadyReturned, 4));
-
-                    if ($remaining <= 0) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'items' => ["No returnable quantity available for this item."]
-                        ]);
-                    }
-
-                    if (round($requestedQty, 4) > round($remaining, 4)) {
-                        $remDisplay = ($remaining == (int)$remaining) ? (int)$remaining : $remaining;
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'items' => ["Return quantity cannot exceed the remaining returnable quantity of {$remDisplay}."]
-                        ]);
-                    }
-                }
-            }
-        }
+        // Fast feedback for the form. The authoritative re-check runs again inside the store/update
+        // transaction under a lock on the original bill (see assertReturnableAgainstBill()).
+        $this->assertReturnableAgainstBill($header, $validated['items'], $currentReturnId);
 
         // Enforce Task 6: Only items purchased by this customer can be returned
         $customerId = (int) ($header['customer_id'] ?? 0);

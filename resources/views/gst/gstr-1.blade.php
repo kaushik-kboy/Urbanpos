@@ -25,7 +25,18 @@
 
 @section('content')
 <div class="gstr1-native-wrapper pb-4">
-    
+
+    @if($gstinIsSandbox)
+    <div class="alert alert-warning border-warning shadow-sm mb-3 py-2 px-3">
+        <i class="fas fa-exclamation-triangle mr-1"></i>
+        <strong>Sandbox/demo GSTIN configuration.</strong>
+        GSTIN <code>{{ $gstin }}</code> is this application's default sandbox value (GST Settings has no real
+        business GSTIN configured, or is still marked as a sandbox provider). Figures below are computed from your
+        real posted transactions, but this report is not filing-ready until a real GSTIN is configured under
+        GST Settings.
+    </div>
+    @endif
+
     {{-- 1. UrbanPOS Native Filter Toolbar Card --}}
     <div class="card card-outline card-primary shadow-sm mb-3">
         <div class="card-body py-2 px-3">

@@ -80,7 +80,7 @@ class ReceiptDesignerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->user)->post(route('tools.receipt-designer.update'), $payload);
-        $response->assertRedirect(route('tools.receipt-designer.index'));
+        $response->assertRedirect(route('tools.receipt-designer.index', ['doc' => 'sales_bill']));
         $response->assertSessionHas('success');
 
         $settings = ReceiptSetting::current();
@@ -129,8 +129,8 @@ class ReceiptDesignerTest extends TestCase
 
     public function test_receipt_renders_dynamic_customizer_settings(): void
     {
-        // Configure custom settings
-        $settings = ReceiptSetting::current();
+        // Configure custom settings on the bill's branch row (receipts resolve settings per branch)
+        $settings = ReceiptSetting::current($this->branch->id);
         $settings->update([
             'store_name'             => 'CUSTOM PET HAVEN',
             'tagline'                => 'Best Pets Around',
@@ -173,7 +173,7 @@ class ReceiptDesignerTest extends TestCase
             'branch_id'      => $this->branch->id,
             'customer_id'    => $customer->id,
             'user_id'        => $this->user->id,
-            'sales_type'     => 'Retail Sales',
+            'sales_type'     => 'Local',
             'payment_type'   => 'Cash',
             'sub_total'      => 450.00,
             'total_gst'      => 81.00,
@@ -184,7 +184,7 @@ class ReceiptDesignerTest extends TestCase
             'total'          => 450.00,
             'paid_amount'    => 450.00,
             'due_amount'     => 0,
-            'status'         => 'Paid',
+            'status'         => 'Posted',
             'invoice_type'   => 'TAX INVOICE',
         ]);
 
@@ -230,7 +230,7 @@ class ReceiptDesignerTest extends TestCase
         ];
 
         $response = $this->actingAs($this->user)->post(route('tools.receipt-designer.update'), $payload);
-        $response->assertRedirect(route('tools.receipt-designer.index'));
+        $response->assertRedirect(route('tools.receipt-designer.index', ['doc' => 'sales_bill']));
         $response->assertSessionHas('success');
 
         $settings = ReceiptSetting::current();

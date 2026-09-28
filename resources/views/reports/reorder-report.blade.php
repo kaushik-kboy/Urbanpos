@@ -95,7 +95,7 @@
             <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-boxes mr-1"></i> Low Stock Items</h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
-                <button type="button" onclick="exportTableToCSV('reorderTable', 'reorder-stock-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV (all)</a>
                 <x-table-column-customizer table-key="reports.reorder-report" table-id="reorderTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
@@ -120,7 +120,7 @@
                 <tbody>
                     @forelse ($rows as $i => $row)
                         <tr class="{{ $row->quantity <= 0 ? 'table-danger' : 'table-warning' }}">
-                            <td>{{ $i + 1 }}</td>
+                            <td>{{ $rows->firstItem() + $i }}</td>
                             <td><small class="text-muted">{{ $row->item_code }}</small></td>
                             <td><strong>{{ $row->item_name }}</strong></td>
                             <td>{{ $row->brand_name }}</td>
@@ -154,6 +154,9 @@
                 </tbody>
             </table>
         </div>
+        @if ($rows->hasPages())
+            <div class="card-footer py-2">{{ $rows->links() }}</div>
+        @endif
     </div>
 @stop
 

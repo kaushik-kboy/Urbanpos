@@ -190,8 +190,31 @@ $(document).ready(function () {
     // =========================================================================
     // GLOBAL ENTER KEY PREVENTION: Prevent accidental form submission on Enter
     // =========================================================================
+    // ROOT CAUSE NOTE (found while debugging the Tender/Payment modal's Enter-to-
+    // confirm not firing): this handler is delegated on `document` with a
+    // selector, so it belongs to the SAME jQuery handler-queue "level" as any
+    // other selector-delegated handler matching the exact same target (e.g.
+    // `.sb-item-code`, `.pinv-item-code`) — those keep working fine because
+    // `return false` here only calls stopPropagation(), not
+    // stopImmediatePropagation(), and jQuery only stops handlers within the
+    // SAME level via the latter. But a plain `$(document).on('keydown', fn)`
+    // with NO selector (like the Tender modal's own Enter-confirm handler) is
+    // grouped into a LATER handler-queue level (the one associated with
+    // `document` itself, reached only once delegation walks past every
+    // selector-matching level) — and jQuery's dispatch loop checks
+    // `!event.isPropagationStopped()` BETWEEN levels, so stopPropagation() here
+    // silently stops that later, non-delegated handler from ever running, even
+    // though stopImmediatePropagation() was never called. Modals are always a
+    // deliberate, explicit-action surface with their own Enter-handling (Tender
+    // confirm, item-search-modal row select, etc.), so skip this generic guard
+    // entirely for any field inside one, rather than special-case every modal's
+    // own handler binding style.
     $(document).on('keydown', 'form input:not([type="submit"]):not([type="button"]):not([type="reset"]):not(.select2-search__field)', function (e) {
         if (e.key === 'Enter' || e.keyCode === 13) {
+            if ($(this).closest('.modal').length) {
+                return true;
+            }
+
             var $form = $(this).closest('form');
             var method = ($form.attr('method') || 'GET').toUpperCase();
 

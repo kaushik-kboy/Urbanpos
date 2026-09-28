@@ -17,17 +17,18 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('sales.sales-orders.index') }}" class="row align-items-end">
-                <div class="col-md-3 col-sm-6 mb-2">
+                <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Order No / Customer..." value="{{ request('search') }}">
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">From Date</label>
-                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
-                </div>
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">To Date</label>
-                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                    <label class="small font-weight-bold mb-1">Branch</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="all" @selected(request('branch_id') === 'all')>All Branches</option>
+                        @foreach ($branches as $id => $name)
+                            <option value="{{ $id }}" @selected(request('branch_id', session('active_branch_id', auth()->user()?->branch_id)) == $id)>{{ $name }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Customer</label>
@@ -47,9 +48,17 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2 col-sm-12 mb-2">
-                    <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply Filter</button>
-                    <a href="{{ route('sales.sales-orders.index') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">From Date</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">To Date</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+                </div>
+                <div class="col-md-1 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm btn-block" title="Apply Filter"><i class="fas fa-filter"></i></button>
+                    <a href="{{ route('sales.sales-orders.index') }}" class="btn btn-outline-secondary btn-sm btn-block mt-1" title="Reset"><i class="fas fa-undo"></i></a>
                 </div>
             </form>
         </div>

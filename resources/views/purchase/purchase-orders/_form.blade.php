@@ -853,7 +853,14 @@
         applySupplierPurchaseType();
 
         // Form Submit Handler
+        let poIsSubmitting = false;
         $('form').on('submit', function (e) {
+            let $btn = $(this).find('button[type="submit"]:not(.btn-navbar)');
+            if (poIsSubmitting || $btn.prop('disabled') || $btn.hasClass('disabled')) {
+                e.preventDefault();
+                return false;
+            }
+
             let supplierId = $('#supplier_id').val();
             if (!supplierId) {
                 e.preventDefault();
@@ -942,10 +949,12 @@
                 });
             });
 
-            let $btn = $(this).find('button[type="submit"]');
-            if ($btn.length) {
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
-            }
+            poIsSubmitting = true;
+            setTimeout(function () {
+                if ($btn.length) {
+                    $btn.prop('disabled', true).addClass('disabled').html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                }
+            }, 10);
         });
 
         // Initial setup

@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\JournalEntry;
 use App\Models\Ledger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FinanceReportController extends Controller
 {
@@ -54,9 +55,10 @@ class FinanceReportController extends Controller
         $voucherType = $request->input('voucher_type');
         $search = $request->input('search');
 
+        // Sargable range (same rows as whereDate()).
         $query = JournalEntry::with(['lines.ledger', 'branch'])
-            ->whereDate('voucher_date', '>=', $from)
-            ->whereDate('voucher_date', '<=', $to);
+            ->where('voucher_date', '>=', $from.' 00:00:00')
+            ->where('voucher_date', '<=', $to.' 23:59:59');
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
@@ -74,12 +76,17 @@ class FinanceReportController extends Controller
             });
         }
 
+        // Totals cover the whole filtered period via one SQL aggregate; the page below only holds 100 vouchers
+        // (was: every voucher + its lines + ledgers hydrated: ~0.7 ms and ~30 KB per voucher).
+        $sums = DB::table('journal_entry_lines')
+            ->whereIn('journal_entry_id', (clone $query)->reorder()->select('journal_entries.id')->toBase())
+            ->selectRaw('COALESCE(SUM(debit), 0) as d, COALESCE(SUM(credit), 0) as c')->first();
+        $totalDebit = (float) $sums->d;
+        $totalCredit = (float) $sums->c;
+
         $entries = $query->orderBy('voucher_date')
             ->orderBy('id')
-            ->get();
-
-        $totalDebit = $entries->sum(fn ($e) => $e->lines->sum('debit'));
-        $totalCredit = $entries->sum(fn ($e) => $e->lines->sum('credit'));
+            ->paginate(100)->withQueryString();
 
         $branches = \App\Models\Branch::orderBy('name')->pluck('name', 'id');
         $voucherTypes = JournalEntry::select('voucher_type')->distinct()->whereNotNull('voucher_type')->pluck('voucher_type');
@@ -112,9 +119,11 @@ class FinanceReportController extends Controller
         $branchId = $request->input('branch_id');
 
         // Sales & Returns
-        $salesQuery = \App\Models\SalesBill::whereDate('bill_date', '>=', $from)->whereDate('bill_date', '<=', $to);
+        $salesQuery = \App\Models\SalesBill::whereDate('bill_date', '>=', $from)->whereDate('bill_date', '<=', $to)
+            ->whereNotIn('status', ['Cancelled', 'Draft']);
         $returnsQuery = \App\Models\SalesReturn::whereDate('return_date', '>=', $from)->whereDate('return_date', '<=', $to);
-        $purchaseQuery = \App\Models\PurchaseInvoice::whereDate('invoice_date', '>=', $from)->whereDate('invoice_date', '<=', $to);
+        $purchaseQuery = \App\Models\PurchaseInvoice::whereDate('invoice_date', '>=', $from)->whereDate('invoice_date', '<=', $to)
+            ->where('status', '!=', 'Cancelled');
 
         if ($branchId) {
             $salesQuery->where('branch_id', $branchId);
@@ -129,7 +138,7 @@ class FinanceReportController extends Controller
         $grossPurchase = (float) $purchaseQuery->sum('total');
 
         // Other Ledgers for Indirect Incomes & Expenses
-        $expenseLedgers = Ledger::whereIn('ledger_group', ['Indirect Expenses', 'Direct Expenses', 'Administrative Expenses'])
+        $expenseLedgers = Ledger::whereIn('ledger_group', ['Indirect Expense', 'Indirect Expenses', 'Direct Expenses', 'Administrative Expenses'])
             ->with(['lines' => fn ($q) => $q->whereHas('journalEntry', fn ($j) => $j->whereDate('voucher_date', '>=', $from)->whereDate('voucher_date', '<=', $to))])
             ->get()
             ->map(function ($l) {
@@ -139,7 +148,7 @@ class FinanceReportController extends Controller
             ->filter(fn ($r) => $r->amount > 0)
             ->values();
 
-        $incomeLedgers = Ledger::whereIn('ledger_group', ['Indirect Incomes', 'Direct Incomes'])
+        $incomeLedgers = Ledger::whereIn('ledger_group', ['Indirect Income', 'Indirect Incomes', 'Direct Incomes'])
             ->with(['lines' => fn ($q) => $q->whereHas('journalEntry', fn ($j) => $j->whereDate('voucher_date', '>=', $from)->whereDate('voucher_date', '<=', $to))])
             ->get()
             ->map(function ($l) {
@@ -238,143 +247,14 @@ class FinanceReportController extends Controller
         $asOf = \Carbon\Carbon::parse($asOfDate);
 
         $branches = \App\Models\Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
-        $rows = [];
-
-        if ($partyType === 'Customer') {
-            $salesBills = \App\Models\SalesBill::with(['customer', 'payments.tenderType', 'settlementItems.settlement'])
-                ->whereDate('bill_date', '<=', $asOfDate);
-
-            if ($branchId) {
-                $salesBills->where('branch_id', $branchId);
-            }
-
-            $bills = $salesBills->get();
-
-            $partyGroups = $bills->groupBy('customer_id');
-
-            foreach ($partyGroups as $customerId => $partyBills) {
-                $customer = $partyBills->first()->customer;
-                if (!$customer) continue;
-
-                $partyTotalDue = 0.0;
-                $b0_30 = 0.0;
-                $b31_60 = 0.0;
-                $b61_90 = 0.0;
-                $b90_plus = 0.0;
-                $billCount = 0;
-
-                foreach ($partyBills as $sb) {
-                    $posImmediatePaid = 0.0;
-                    if ($sb->payments->isNotEmpty()) {
-                        $posImmediatePaid = (float) $sb->payments
-                            ->filter(fn ($p) => ($p->tenderType?->type ?? '') !== 'Credit')
-                            ->sum('amount');
-                    } elseif (!empty($sb->payment_type) && strtolower($sb->payment_type) !== 'credit' && strtolower($sb->payment_type) !== 'none') {
-                        $posImmediatePaid = (float) $sb->total;
-                    }
-
-                    $settledSum = (float) $sb->settlementItems
-                        ->filter(fn ($si) => ($si->settlement?->status ?? 'Active') === 'Active' && $si->settlement?->settlement_date?->lte($asOf))
-                        ->sum(fn ($si) => (float) $si->settled_amount + (float) $si->discount_amount);
-
-                    $balanceDue = round((float) $sb->total - $posImmediatePaid - $settledSum, 2);
-
-                    if ($balanceDue > 0.01) {
-                        $partyTotalDue += $balanceDue;
-                        $billCount++;
-                        $days = $sb->bill_date ? max(0, (int) $sb->bill_date->diffInDays($asOf, false)) : 0;
-
-                        if ($days <= 30) {
-                            $b0_30 += $balanceDue;
-                        } elseif ($days <= 60) {
-                            $b31_60 += $balanceDue;
-                        } elseif ($days <= 90) {
-                            $b61_90 += $balanceDue;
-                        } else {
-                            $b90_plus += $balanceDue;
-                        }
-                    }
-                }
-
-                if ($partyTotalDue > 0.01) {
-                    $rows[] = [
-                        'party_id' => $customer->id,
-                        'party_name' => $customer->name,
-                        'phone' => $customer->phone ?: '-',
-                        'bill_count' => $billCount,
-                        'total_due' => $partyTotalDue,
-                        'bucket_0_30' => $b0_30,
-                        'bucket_31_60' => $b31_60,
-                        'bucket_61_90' => $b61_90,
-                        'bucket_90_plus' => $b90_plus,
-                    ];
-                }
-            }
-        } else {
-            $purchaseInvoices = \App\Models\PurchaseInvoice::with(['supplier', 'settlementItems.settlement'])
-                ->where('status', '!=', 'Cancelled')
-                ->whereDate('invoice_date', '<=', $asOfDate);
-
-            if ($branchId) {
-                $purchaseInvoices->where('branch_id', $branchId);
-            }
-
-            $invoices = $purchaseInvoices->get();
-            $partyGroups = $invoices->groupBy('supplier_id');
-
-            foreach ($partyGroups as $supplierId => $partyInvoices) {
-                $supplier = $partyInvoices->first()->supplier;
-                if (!$supplier) continue;
-
-                $partyTotalDue = 0.0;
-                $b0_30 = 0.0;
-                $b31_60 = 0.0;
-                $b61_90 = 0.0;
-                $b90_plus = 0.0;
-                $billCount = 0;
-
-                foreach ($partyInvoices as $pi) {
-                    $settledSum = (float) $pi->settlementItems
-                        ->filter(fn ($si) => ($si->settlement?->status ?? 'Active') === 'Active' && $si->settlement?->settlement_date?->lte($asOf))
-                        ->sum(fn ($si) => (float) $si->settled_amount + (float) $si->discount_amount);
-
-                    $balanceDue = round((float) $pi->total - $settledSum, 2);
-
-                    if ($balanceDue > 0.01) {
-                        $partyTotalDue += $balanceDue;
-                        $billCount++;
-                        $days = $pi->invoice_date ? max(0, (int) $pi->invoice_date->diffInDays($asOf, false)) : 0;
-
-                        if ($days <= 30) {
-                            $b0_30 += $balanceDue;
-                        } elseif ($days <= 60) {
-                            $b31_60 += $balanceDue;
-                        } elseif ($days <= 90) {
-                            $b61_90 += $balanceDue;
-                        } else {
-                            $b90_plus += $balanceDue;
-                        }
-                    }
-                }
-
-                if ($partyTotalDue > 0.01) {
-                    $rows[] = [
-                        'party_id' => $supplier->id,
-                        'party_name' => $supplier->name,
-                        'phone' => $supplier->phone ?: '-',
-                        'bill_count' => $billCount,
-                        'total_due' => $partyTotalDue,
-                        'bucket_0_30' => $b0_30,
-                        'bucket_31_60' => $b31_60,
-                        'bucket_61_90' => $b61_90,
-                        'bucket_90_plus' => $b90_plus,
-                    ];
-                }
-            }
-        }
+        // Balance-due per document is computed in SQL and only documents that still owe money come back
+        // (was: every bill ever posted hydrated with 3 eager-load levels: 31 s / 482 MB at 2.75 lakh bills).
+        // The per-bill rules are unchanged; see agingBalances().
+        $rows = $this->agingRows($partyType, $branchId, $asOfDate, $asOf);
 
         // Sort by highest total due first
-        usort($rows, fn ($a, $b) => $b['total_due'] <=> $a['total_due']);
+        // Highest due first; equal totals fall back to name then id so the order never depends on DB row order.
+        usort($rows, fn ($a, $b) => ($b['total_due'] <=> $a['total_due']) ?: strcmp((string) $a['party_name'], (string) $b['party_name']) ?: ($a['party_id'] <=> $b['party_id']));
 
         $totals = [
             'total' => collect($rows)->sum('total_due'),
@@ -387,6 +267,124 @@ class FinanceReportController extends Controller
         return view('finance.reports.outstanding-aging', compact(
             'partyType', 'branchId', 'asOfDate', 'branches', 'rows', 'totals'
         ));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>> one row per customer/supplier that still owes money
+     */
+    private function agingRows(string $partyType, $branchId, string $asOfDate, \Carbon\Carbon $asOf): array
+    {
+        $isCustomer = $partyType === 'Customer';
+        $balances = $this->agingBalances($isCustomer, $branchId, $asOfDate);
+
+        $partyKey = $isCustomer ? 'customer_id' : 'supplier_id';
+        $parties = collect($balances->pluck($partyKey)->filter()->unique()->values()->all())
+            ->chunk(1000)
+            ->flatMap(fn ($ids) => ($isCustomer ? Customer::class : \App\Models\Supplier::class)::whereIn('id', $ids->all())->get(['id', 'name', 'phone']))
+            ->keyBy('id');
+
+        $asOfTs = $asOf->getTimestamp();
+        $rows = [];
+        foreach ($balances->groupBy($partyKey) as $partyId => $docs) {
+            $party = $parties->get($partyId);
+            if (! $party) {
+                continue;
+            }
+
+            // Money is summed in integer paise so the totals are exact and independent of row order
+            // (float addition is not associative: the same bills could total 2362802.52 or 2362802.5200000005).
+            $totalCents = $c0_30 = $c31_60 = $c61_90 = $c90_plus = 0;
+            $billCount = 0;
+
+            foreach ($docs as $doc) {
+                $cents = (int) round(((float) $doc->balance) * 100);
+                $totalCents += $cents;
+                $billCount++;
+                // whole elapsed days, floored at 0 (same result as Carbon diffInDays(), without parsing every row)
+                $days = $doc->doc_date ? max(0, (int) floor(($asOfTs - strtotime($doc->doc_date)) / 86400)) : 0;
+
+                if ($days <= 30) {
+                    $c0_30 += $cents;
+                } elseif ($days <= 60) {
+                    $c31_60 += $cents;
+                } elseif ($days <= 90) {
+                    $c61_90 += $cents;
+                } else {
+                    $c90_plus += $cents;
+                }
+            }
+
+            if ($totalCents / 100 > 0.01) {
+                $rows[] = [
+                    'party_id' => $party->id,
+                    'party_name' => $party->name,
+                    'phone' => $party->phone ?: '-',
+                    'bill_count' => $billCount,
+                    'total_due' => $totalCents / 100,
+                    'bucket_0_30' => $c0_30 / 100,
+                    'bucket_31_60' => $c31_60 / 100,
+                    'bucket_61_90' => $c61_90 / 100,
+                    'bucket_90_plus' => $c90_plus / 100,
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Documents (sales bills / purchase invoices) with a balance due > 0.01 as of $asOfDate, one light row each:
+     * (id, customer_id|supplier_id, doc_date, balance). Same rules as the original per-model PHP loop:
+     *  - sales: paid-at-POS = sum of non-"Credit" tender payments; with no payment rows, a non-empty
+     *    payment_type other than credit/none counts as fully paid; then minus active settlements (+discount)
+     *    dated on/before as-of (DATE(), matching the model's 'date' cast).
+     *  - purchases: only settlements reduce the balance.
+     *  - Cancelled (and Draft for sales) documents are excluded; balance is rounded to 2 dp.
+     */
+    private function agingBalances(bool $isCustomer, $branchId, string $asOfDate): \Illuminate\Support\Collection
+    {
+        $table = $isCustomer ? 'sales_bills' : 'purchase_invoices';
+        $dateCol = $isCustomer ? 'bill_date' : 'invoice_date';
+        $partyCol = $isCustomer ? 'customer_id' : 'supplier_id';
+        $morph = $isCustomer ? (new \App\Models\SalesBill)->getMorphClass() : (new \App\Models\PurchaseInvoice)->getMorphClass();
+        $nextDay = \Carbon\Carbon::parse($asOfDate)->addDay()->format('Y-m-d');
+
+        // Payments and settlements are aggregated ONCE per bill in derived tables and hash-joined, instead of
+        // running correlated subqueries for each of the (up to millions of) bills.
+        $settlements = DB::table('bill_settlement_items as si')
+            ->join('bill_settlements as st', 'st.id', '=', 'si.bill_settlement_id')
+            ->where('si.billable_type', $morph)
+            ->whereRaw("COALESCE(st.status, 'Active') = 'Active'")
+            ->whereRaw('DATE(st.settlement_date) <= ?', [$asOfDate])
+            ->selectRaw('si.billable_id, SUM(si.settled_amount + si.discount_amount) as settled')
+            ->groupBy('si.billable_id');
+
+        $query = DB::table("{$table} as d")
+            ->leftJoinSub($settlements, 'stl', 'stl.billable_id', '=', 'd.id')
+            ->where("d.{$dateCol}", '<', $nextDay)
+            ->when($branchId, fn ($q) => $q->where('d.branch_id', $branchId));
+
+        $paid = '0';
+        if ($isCustomer) {
+            $payments = DB::table('sales_bill_payments as p')
+                ->leftJoin('tender_types as tt', 'tt.id', '=', 'p.tender_type_id')
+                ->selectRaw("p.sales_bill_id, COUNT(*) as n, SUM(CASE WHEN COALESCE(tt.type, '') <> 'Credit' THEN p.amount ELSE 0 END) as paid")
+                ->groupBy('p.sales_bill_id');
+            $query->leftJoinSub($payments, 'pay', 'pay.sales_bill_id', '=', 'd.id');
+            $paid = "(CASE WHEN pay.n IS NOT NULL THEN pay.paid "
+                ."WHEN d.payment_type IS NOT NULL AND CHAR_LENGTH(d.payment_type) > 0 AND d.payment_type <> '0' "
+                ."AND LOWER(d.payment_type) COLLATE utf8mb4_bin NOT IN ('credit', 'none') THEN d.total ELSE 0 END)";
+        }
+
+        $query->selectRaw("d.id, d.{$partyCol}, d.{$dateCol} as doc_date, ROUND(d.total - {$paid} - COALESCE(stl.settled, 0), 2) as balance")
+            ->havingRaw('balance > 0.01')
+            ->orderBy('d.id');
+
+        $isCustomer
+            ? $query->whereNotIn('d.status', ['Cancelled', 'Draft'])
+            : $query->where('d.status', '!=', 'Cancelled');
+
+        return $query->get();
     }
 
     public function customerLoyalty(Request $request)

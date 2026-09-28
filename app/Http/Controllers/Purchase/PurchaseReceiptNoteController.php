@@ -294,17 +294,9 @@ class PurchaseReceiptNoteController extends Controller
 
     private function nextNumber(): string
     {
-        $maxId = (int) (PurchaseReceiptNote::max('id') ?? 0);
-        $lastRec = PurchaseReceiptNote::where('receipt_number', 'like', 'GRN%')->orderByDesc('id')->value('receipt_number');
-        if ($lastRec && preg_match('/^GRN(\d+)$/', $lastRec, $matches)) {
-            $maxId = max($maxId, (int) $matches[1]);
-        }
-        do {
-            $maxId++;
-            $num = 'GRN'.str_pad((string) $maxId, 5, '0', STR_PAD_LEFT);
-        } while (PurchaseReceiptNote::where('receipt_number', $num)->exists());
-
-        return $num;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('GRN', \App\Models\PurchaseReceiptNote::class, 'receipt_number', 5);
     }
 
     private function formOptions(?int $supplierId = null, ?int $selectedPoId = null, $existingNote = null): array

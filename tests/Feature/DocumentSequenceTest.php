@@ -123,7 +123,7 @@ class DocumentSequenceTest extends TestCase
             'branch_id'      => $this->branch->id,
             'customer_id'    => $customer->id,
             'user_id'        => $this->user->id,
-            'sales_type'     => 'Retail Sales',
+            'sales_type'     => 'Local',
             'payment_type'   => 'Cash',
             'sub_total'      => 100,
             'total_gst'      => 0,
@@ -134,7 +134,7 @@ class DocumentSequenceTest extends TestCase
             'total'          => 100,
             'paid_amount'    => 100,
             'due_amount'     => 0,
-            'status'         => 'Paid',
+            'status'         => 'Posted',
         ]);
 
         SalesBill::create([
@@ -143,7 +143,7 @@ class DocumentSequenceTest extends TestCase
             'branch_id'      => $this->branch->id,
             'customer_id'    => $customer->id,
             'user_id'        => $this->user->id,
-            'sales_type'     => 'Retail Sales',
+            'sales_type'     => 'Local',
             'payment_type'   => 'Cash',
             'sub_total'      => 100,
             'total_gst'      => 0,
@@ -154,7 +154,7 @@ class DocumentSequenceTest extends TestCase
             'total'          => 100,
             'paid_amount'    => 100,
             'due_amount'     => 0,
-            'status'         => 'Paid',
+            'status'         => 'Posted',
         ]);
 
         /** @var DocumentNumberingService $service */

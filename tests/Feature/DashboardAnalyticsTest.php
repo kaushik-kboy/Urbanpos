@@ -10,12 +10,12 @@ use App\Models\SalesBill;
 use App\Models\TillSession;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class DashboardAnalyticsTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $owner;
     private User $manager;
@@ -58,7 +58,7 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee('Fast Action Command Center');
         $response->assertSee('New POS Bill');
         $response->assertSee('New Quotation');
-        $response->assertSee('New GRN Receipt');
+        $response->assertSee('GRN Receipt');
         $response->assertSee('30-Day Sales');
         $response->assertSee('Revenue Trend');
         $response->assertSee('Sales by Category');

@@ -9,6 +9,8 @@ use Tests\TestCase;
 
 class AuxEanTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_item_ean_upc_entry_page_renders_with_items_and_stats()
     {
         $user = User::first() ?? User::factory()->create();
@@ -25,7 +27,7 @@ class AuxEanTest extends TestCase
     public function test_update_item_ean_upc_updates_barcode()
     {
         $user = User::first() ?? User::factory()->create();
-        $item = Item::first();
+        $item = Item::first() ?? Item::create(['name' => 'EAN Test Item', 'product_type' => 'Standard', 'cost_price' => 10, 'landing_cost' => 10, 'sell_price' => 15, 'mrp' => 20, 'status' => 1, 'batch_expiry_details' => 'Not Required']);
 
         $newBarcode = '8909999888877';
         $response = $this->actingAs($user)->postJson(route('master.aux.item-ean-upc.update'), [

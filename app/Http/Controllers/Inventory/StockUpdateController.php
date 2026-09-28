@@ -285,17 +285,9 @@ class StockUpdateController extends Controller
 
     private function nextNumber(): string
     {
-        $next = (int) (StockUpdate::max('id') ?? 0);
-        $lastUpd = StockUpdate::where('update_number', 'like', 'STKU%')->orderByDesc('id')->value('update_number');
-        if ($lastUpd && preg_match('/^STKU(\d+)$/', $lastUpd, $matches)) {
-            $next = max($next, (int) $matches[1]);
-        }
-        do {
-            $next++;
-            $stku = 'STKU'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-        } while (StockUpdate::where('update_number', $stku)->exists());
-
-        return $stku;
+        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
+        return app(\App\Services\Accounting\DocumentNumberingService::class)
+            ->nextPrefixed('STKU', \App\Models\StockUpdate::class, 'update_number', 5);
     }
 
     private function formOptions(): array

@@ -27,13 +27,12 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFour();
 
-        // Super-admin full access: Owner/Admin role, User ID 1, or any admin/owner email/name bypasses all permission and gate checks
+        // Super-admin bypass is limited to explicit super-user roles (and the seeded user id 1).
+        // Manager is deliberately NOT here: it must go through the seeded permission set so
+        // Owner-only actions (users, financial years, item price edits) stay blocked.
+        // Never match on name/email substrings - any user could otherwise self-elevate.
         Gate::before(function ($user, string $ability) {
-            if ($user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])
-                || (int)$user->id === 1
-                || str_contains(strtolower($user->email ?? ''), 'admin')
-                || str_contains(strtolower($user->name ?? ''), 'admin')
-                || str_contains(strtolower($user->email ?? ''), 'owner')) {
+            if ((int) $user->id === 1 || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator'])) {
                 return true;
             }
             return null;
