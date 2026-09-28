@@ -47,65 +47,63 @@
         $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
     }
 @endphp
-<tr style="line-height: 1.2;">
-    <td class="text-center align-middle font-weight-bold pinv-sr-no px-1" style="width:35px; min-width:35px;" data-col-key="sr">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
+<tr style="line-height: 1.15;">
+    <td class="text-center align-middle font-weight-bold pinv-sr-no px-0" style="width:28px; min-width:28px;" data-col-key="sr">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     {{-- Code: show item_code only (no barcode) --}}
-    <td class="px-1" style="width:95px; min-width:95px;" data-col-key="code">
-        <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold px-1" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code" title="Enter item code" style="font-size:0.83rem;">
+    <td class="px-1" style="width:85px; min-width:85px;" data-col-key="code">
+        <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold px-1" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code" title="Enter item code">
     </td>
     {{-- Description --}}
-    <td class="px-1" style="min-width:220px; width:240px;" data-col-key="desc">
+    <td class="px-1" style="min-width:180px; width:195px;" data-col-key="desc">
         <input type="text"
                class="form-control form-control-sm pinv-item-desc bg-light font-weight-bold text-truncate px-1"
                readonly
                tabindex="-1"
                value="{{ $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '' }}"
                placeholder="Description"
-               title="Product description"
-               style="font-size:0.83rem;">
+               title="Product description">
         <input type="hidden"
                name="items[{{ $index }}][item_id]"
                class="pinv-item-select"
                value="{{ $selectedItemId }}">
     </td>
     {{-- Exp Date --}}
-    <td class="px-1" style="width:135px; min-width:135px;" data-col-key="exp">
+    <td class="px-1" style="width:115px; min-width:115px;" data-col-key="exp">
         <input type="date"
                name="items[{{ $index }}][exp_date]"
                value="{{ $expDateVal }}"
                min="{{ date('Y-m-d') }}"
                class="form-control form-control-sm pinv-exp-date {{ ($isExpRequired && !$expDateVal) ? 'border-danger' : ($isExpRequired && $expDateVal ? 'border-success' : '') }}"
                autocomplete="off"
-               title="{{ $isExpRequired ? 'Expiry date is mandatory for this item' : 'Expiry date (optional)' }}"
-               style="font-size:0.83rem; padding: 2px 4px;">
-        <small class="pinv-exp-badge text-danger font-weight-bold {{ ($isExpRequired && !$expDateVal) ? '' : 'd-none' }}" style="font-size:0.7rem;"><i class="fas fa-exclamation-circle"></i> Required</small>
+               title="{{ $isExpRequired ? 'Expiry date is mandatory for this item' : 'Expiry date (optional)' }}">
+        <small class="pinv-exp-badge text-danger font-weight-bold {{ ($isExpRequired && !$expDateVal) ? '' : 'd-none' }}" style="font-size:0.68rem;"><i class="fas fa-exclamation-circle"></i> Required</small>
     </td>
     {{-- Qty --}}
-    <td class="px-1" style="width:85px; min-width:85px;" data-col-key="qty"><input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm pinv-qty text-right px-1" autocomplete="off" style="font-size:0.83rem;"></td>
+    <td class="px-1" style="width:65px; min-width:65px;" data-col-key="qty"><input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm pinv-qty text-right px-1" autocomplete="off"></td>
     {{-- Free --}}
-    <td class="px-1" style="width:75px; min-width:75px;" data-col-key="free"><input type="number" step="0.001" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" style="font-size:0.83rem;"></td>
+    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="free"><input type="number" step="0.001" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" placeholder="0"></td>
     {{-- Cost Price --}}
-    <td class="px-1" style="width:95px; min-width:95px;" data-col-key="cost"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost text-right px-1" autocomplete="off" style="font-size:0.83rem;"></td>
+    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="cost"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost text-right px-1" autocomplete="off"></td>
     {{-- Sell Price --}}
-    <td class="px-1" style="width:95px; min-width:95px;" data-col-key="sell"><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm pinv-sell text-right px-1" autocomplete="off" style="font-size:0.83rem;"></td>
+    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="sell"><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm pinv-sell text-right px-1" autocomplete="off"></td>
     {{-- MRP --}}
-    <td class="px-1" style="width:90px; min-width:90px;" data-col-key="mrp"><input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm pinv-mrp text-right px-1" autocomplete="off" style="font-size:0.83rem;"></td>
+    <td class="px-1" style="width:75px; min-width:75px;" data-col-key="mrp"><input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm pinv-mrp text-right px-1" autocomplete="off"></td>
     {{-- Margin % --}}
-    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="margin"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-margin bg-light text-right px-1 font-weight-bold" value="{{ $marginVal !== null && $marginVal != 0 ? number_format($marginVal, 1).'%' : '' }}" autocomplete="off" title="Margin %" style="font-size:0.83rem;"></td>
+    <td class="px-0" style="width:50px; min-width:50px;" data-col-key="margin"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-margin bg-light text-right px-1 font-weight-bold" value="{{ $marginVal !== null && $marginVal != 0 ? number_format($marginVal, 1).'%' : '' }}" autocomplete="off" title="Margin %"></td>
     {{-- Profit % --}}
-    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="profit"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-profit bg-light text-right px-1 font-weight-bold" value="{{ $profitVal !== null && $profitVal != 0 ? number_format($profitVal, 1).'%' : '' }}" autocomplete="off" title="Profit %" style="font-size:0.83rem;"></td>
+    <td class="px-0" style="width:50px; min-width:50px;" data-col-key="profit"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-profit bg-light text-right px-1 font-weight-bold" value="{{ $profitVal !== null && $profitVal != 0 ? number_format($profitVal, 1).'%' : '' }}" autocomplete="off" title="Profit %"></td>
     {{-- Disc % --}}
-    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="disc_pct"><input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent text-right px-1" autocomplete="off" style="font-size:0.83rem;"></td>
+    <td class="px-0" style="width:48px; min-width:48px;" data-col-key="disc_pct"><input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent text-right px-1" autocomplete="off" placeholder="0%"></td>
     {{-- Disc Amt --}}
-    <td class="px-1" style="width:90px; min-width:90px;" data-col-key="disc_amt"><input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm pinv-disc-amount text-right px-1" autocomplete="off" style="font-size:0.83rem;"></td>
+    <td class="px-1" style="width:70px; min-width:70px;" data-col-key="disc_amt"><input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm pinv-disc-amount text-right px-1" autocomplete="off"></td>
     {{-- GST % --}}
-    <td class="px-1" style="width:75px; min-width:75px;" data-col-key="gst"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm pinv-gst bg-light text-right px-1" autocomplete="off" placeholder="0%" title="GST % (Read-only)" style="font-size:0.83rem;"></td>
+    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="gst"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm pinv-gst bg-light text-right px-1" autocomplete="off" placeholder="0%" title="GST % (Read-only)"></td>
     {{-- GST Tax Amt --}}
-    <td class="px-1" style="width:90px; min-width:90px;" data-col-key="gst_amt"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_tax_amount]" value="{{ $gstTaxAmtVal }}" class="form-control form-control-sm pinv-gst-amt bg-light text-right px-1" autocomplete="off" title="GST Tax Amount (Read-only)" style="font-size:0.83rem;"></td>
+    <td class="px-1" style="width:75px; min-width:75px;" data-col-key="gst_amt"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_tax_amount]" value="{{ $gstTaxAmtVal }}" class="form-control form-control-sm pinv-gst-amt bg-light text-right px-1" autocomplete="off" title="GST Tax Amount (Read-only)"></td>
     {{-- Net Amount --}}
-    <td class="px-1 text-right align-middle font-weight-bold text-success pinv-row-net" style="width:100px; min-width:100px; font-size:0.85rem;" data-col-key="net">{{ $netAmtVal }}</td>
+    <td class="px-1 text-right align-middle font-weight-bold text-success pinv-row-net" style="width:85px; min-width:85px; font-size:0.84rem;" data-col-key="net">{{ $netAmtVal }}</td>
     {{-- Remove --}}
-    <td class="px-1 text-center align-middle" style="width:40px; min-width:40px;" data-col-key="action">
-        <button type="button" class="btn btn-xs btn-outline-danger pinv-remove-row" style="padding:2px 5px;"><i class="fas fa-times"></i></button>
+    <td class="px-0 text-center align-middle" style="width:32px; min-width:32px;" data-col-key="action">
+        <button type="button" class="btn btn-xs btn-outline-danger pinv-remove-row"><i class="fas fa-times"></i></button>
     </td>
 </tr>

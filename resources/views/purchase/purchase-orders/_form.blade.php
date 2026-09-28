@@ -85,24 +85,43 @@
     </div>
 </div>
 
+<style>
+    #po-items-table th {
+        vertical-align: middle;
+        padding: 4px 2px !important;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+    #po-items-table td {
+        vertical-align: middle;
+        padding: 1px 1px !important;
+    }
+    #po-items-table input.form-control-sm {
+        font-size: 0.82rem;
+        padding: 1px 3px !important;
+        height: 27px !important;
+        border-radius: 2px;
+    }
+</style>
+
 <div class="table-responsive">
     <table class="table table-sm table-bordered table-items-dense" id="po-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width:35px" class="text-center" data-col-key="sr" data-can-hide="false">#</th>
-                <th style="width:120px" data-col-key="code" data-can-hide="false">Code / Barcode</th>
-                <th style="min-width:220px" data-col-key="desc" data-can-hide="false">Item Description</th>
-                <th style="width:85px" class="text-right" data-col-key="stock">Stock</th>
-                <th style="width:90px" class="text-right" data-col-key="qty" data-can-hide="false">Qty</th>
-                <th style="width:90px" class="text-right" data-col-key="free">Free</th>
-                <th style="width:105px" class="text-right" data-col-key="cost">Cost Price</th>
-                <th style="width:105px" class="text-right" data-col-key="sell">Sell Price</th>
-                <th style="width:100px" class="text-right" data-col-key="mrp">MRP</th>
-                <th style="width:80px" class="text-right" data-col-key="disc_pct">Disc %</th>
-                <th style="width:100px" class="text-right" data-col-key="disc_amt">Disc Amt</th>
-                <th style="width:80px" class="text-right" data-col-key="gst">GST%</th>
-                <th style="width:115px" class="text-right font-weight-bold text-success" data-col-key="net" data-can-hide="false">Net Amount</th>
-                <th style="width:40px" data-col-key="action" data-can-hide="false"></th>
+                <th style="width:30px" class="text-center" data-col-key="sr" data-can-hide="false">#</th>
+                <th style="width:110px" data-col-key="code" data-can-hide="false">Code / Barcode</th>
+                <th style="min-width:210px" data-col-key="desc" data-can-hide="false">Item Description</th>
+                <th style="width:75px" class="text-right" data-col-key="stock">Stock</th>
+                <th style="width:75px" class="text-right" data-col-key="qty" data-can-hide="false">Qty</th>
+                <th style="width:55px" class="text-right" data-col-key="free">Free</th>
+                <th style="width:95px" class="text-right" data-col-key="cost">Cost Price</th>
+                <th style="width:95px" class="text-right" data-col-key="sell">Sell Price</th>
+                <th style="width:90px" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width:55px" class="text-right" data-col-key="disc_pct">Disc %</th>
+                <th style="width:85px" class="text-right" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width:55px" class="text-right" data-col-key="gst">GST%</th>
+                <th style="width:105px" class="text-right font-weight-bold text-success" data-col-key="net" data-can-hide="false">Net Amount</th>
+                <th style="width:35px" data-col-key="action" data-can-hide="false"></th>
             </tr>
         </thead>
         <tbody id="po-items-body">

@@ -161,7 +161,7 @@
         background-color: #fff;
     }
     #pinv-items-table {
-        min-width: 1540px;
+        min-width: 1140px;
         width: 100%;
         margin-bottom: 0;
     }
@@ -170,29 +170,35 @@
         text-align: center;
         background-color: #f4f6f9;
         font-weight: 600;
-        font-size: 0.8rem;
-        padding: 6px 4px;
+        font-size: 0.77rem;
+        padding: 4px 2px !important;
         white-space: nowrap;
     }
     #pinv-items-table td {
         vertical-align: middle;
-        padding: 4px 3px;
+        padding: 1px 1px !important;
     }
     #pinv-items-table input.form-control-sm {
-        font-size: 0.83rem;
-        padding: 3px 6px;
-        height: 31px;
+        font-size: 0.81rem;
+        padding: 1px 3px !important;
+        height: 27px !important;
+        border-radius: 2px;
+    }
+    #pinv-items-table .btn-xs {
+        padding: 1px 4px !important;
+        font-size: 0.75rem;
+        line-height: 1.2;
     }
     .pinv-table-wrapper::-webkit-scrollbar {
-        height: 10px;
+        height: 7px;
     }
     .pinv-table-wrapper::-webkit-scrollbar-track {
         background: #f1f1f1;
-        border-radius: 5px;
+        border-radius: 4px;
     }
     .pinv-table-wrapper::-webkit-scrollbar-thumb {
         background: #007bff;
-        border-radius: 5px;
+        border-radius: 4px;
     }
     .pinv-table-wrapper::-webkit-scrollbar-thumb:hover {
         background: #0056b3;
@@ -203,23 +209,23 @@
     <table class="table table-sm table-bordered table-items-dense" id="pinv-items-table">
         <thead>
             <tr>
-                <th style="width:35px; min-width:35px;" class="text-center px-1" data-col-key="seq">#</th>
-                <th style="width:95px; min-width:95px;" class="px-1" data-col-key="code">Code</th>
-                <th style="min-width:220px; width:240px;" class="px-1" data-col-key="item">Description</th>
-                <th style="width:135px; min-width:135px;" class="px-1" data-col-key="expiry">Exp Date</th>
-                <th style="width:85px; min-width:85px;" class="px-1" data-col-key="qty">Qty</th>
-                <th style="width:75px; min-width:75px;" class="px-1" data-col-key="free">Free</th>
-                <th style="width:95px; min-width:95px;" class="px-1" data-col-key="cost_price">Cost Price</th>
-                <th style="width:95px; min-width:95px;" class="px-1" data-col-key="sell_price">Sell Price</th>
-                <th style="width:90px; min-width:90px;" class="px-1" data-col-key="mrp">MRP</th>
-                <th style="width:80px; min-width:80px;" class="px-1" title="Margin %" data-col-key="margin">Margin %</th>
-                <th style="width:80px; min-width:80px;" class="px-1" title="Profit %" data-col-key="profit">Profit %</th>
-                <th style="width:80px; min-width:80px;" class="px-1" data-col-key="disc_percent">Disc %</th>
-                <th style="width:90px; min-width:90px;" class="px-1" data-col-key="disc_amt">Disc Amt</th>
-                <th style="width:75px; min-width:75px;" class="px-1" data-col-key="gst_percent">GST %</th>
-                <th style="width:90px; min-width:90px;" class="px-1" data-col-key="gst_amt">GST Amt</th>
-                <th style="width:100px; min-width:100px;" class="text-right px-1" data-col-key="net_amt">Net Amt</th>
-                <th style="width:40px; min-width:40px;" class="px-1" data-col-key="actions"></th>
+                <th style="width:28px; min-width:28px;" class="text-center px-0" data-col-key="seq">#</th>
+                <th style="width:85px; min-width:85px;" class="px-1" data-col-key="code">Code</th>
+                <th style="min-width:180px; width:195px;" class="px-1" data-col-key="item">Description</th>
+                <th style="width:115px; min-width:115px;" class="px-1" data-col-key="expiry">Exp Date</th>
+                <th style="width:65px; min-width:65px;" class="px-1" data-col-key="qty">Qty</th>
+                <th style="width:45px; min-width:45px;" class="px-0" data-col-key="free">Free</th>
+                <th style="width:80px; min-width:80px;" class="px-1" data-col-key="cost_price">Cost Price</th>
+                <th style="width:80px; min-width:80px;" class="px-1" data-col-key="sell_price">Sell Price</th>
+                <th style="width:75px; min-width:75px;" class="px-1" data-col-key="mrp">MRP</th>
+                <th style="width:50px; min-width:50px;" class="px-0" title="Margin %" data-col-key="margin">Margin %</th>
+                <th style="width:50px; min-width:50px;" class="px-0" title="Profit %" data-col-key="profit">Profit %</th>
+                <th style="width:48px; min-width:48px;" class="px-0" data-col-key="disc_percent">Disc %</th>
+                <th style="width:70px; min-width:70px;" class="px-1" data-col-key="disc_amt">Disc Amt</th>
+                <th style="width:45px; min-width:45px;" class="px-0" data-col-key="gst_percent">GST %</th>
+                <th style="width:75px; min-width:75px;" class="px-1" data-col-key="gst_amt">GST Amt</th>
+                <th style="width:85px; min-width:85px;" class="text-right px-1" data-col-key="net_amt">Net Amt</th>
+                <th style="width:32px; min-width:32px;" class="px-0" data-col-key="actions"></th>
             </tr>
         </thead>
 
