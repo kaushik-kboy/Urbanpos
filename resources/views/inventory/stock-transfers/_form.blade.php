@@ -72,6 +72,9 @@
                 table-id="items-table"
                 :columns="$stItemColumns"
             />
+            <button type="button" id="btn-reset-table" class="btn btn-outline-danger btn-xs px-2 mx-1 font-weight-bold" title="Reset table rows">
+                <i class="fas fa-undo mr-1"></i> Reset Table
+            </button>
             <button type="button" id="btn-quick-item-search" class="btn btn-outline-info btn-xs px-2 mx-1" title="Open Item Search Modal (F2)">
                 <i class="fas fa-search mr-1"></i> Search Item (F2)
             </button>
@@ -307,6 +310,7 @@
 
             $row.find('.item-code-input').val(item.id || displayCode);
             const avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
+            $row.find('.item-available').val(avail.toFixed(3));
             if (item.batch_no) {
                 $row.find('.item-batch-no').val(item.batch_no);
                 $row.find('.item-batch-text').text(item.batch_no);
@@ -731,6 +735,23 @@
             }
         });
 
+        // Reset Table Handler (Leaves exactly 1 empty default row)
+        $('#btn-reset-table').on('click', function (e) {
+            e.preventDefault();
+            let tpl = document.getElementById('row-template');
+            if (!tpl) return;
+            let html = tpl.innerHTML.replace(/__INDEX__/g, 0);
+            let $newRow = $(html);
+            $('#items-body').empty().append($newRow);
+            rowIndex = 1;
+            reindexSno();
+            initRowSelect2($newRow);
+            recalcTotals();
+            setTimeout(function () {
+                $newRow.find('.item-code-input').focus();
+            }, 50);
+        });
+
         // Row Remove Handler
         $('#items-body').on('click', '.row-remove', function (e) {
             e.preventDefault();
@@ -861,21 +882,24 @@
 
             let q = parseFloat($input.val()) || 0;
             let avail = parseFloat($row.find('.item-available').val()) || 0;
+            let batchNo = $row.find('.item-batch-no').val() || '';
             let itemName = $row.find('.item-desc-input, .item-select option:selected').text() || 'Selected Item';
 
-            // Check total across rows for same item
-            let totalForItem = 0;
+            // Check total across rows for same item AND same batch
+            let totalForBatch = 0;
             $('#items-body tr.item-row').each(function () {
                 let rId = $(this).find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
-                if (rId == itemId) {
-                    totalForItem += parseFloat($(this).find('.item-qty').val()) || 0;
+                let rBatch = $(this).find('.item-batch-no').val() || '';
+                if (rId == itemId && rBatch === batchNo) {
+                    totalForBatch += parseFloat($(this).find('.item-qty').val()) || 0;
                 }
             });
 
-            if (avail >= 0 && totalForItem > avail) {
+            if (avail > 0 && totalForBatch > avail + 0.0001) {
                 $input.addClass('is-invalid border-danger text-danger');
                 if (showAlert) {
-                    let msg = 'Stock is only ' + avail.toFixed(3) + ' for ' + itemName.trim() + '. Transfer quantity (' + totalForItem.toFixed(3) + ') cannot exceed available stock!';
+                    let batchLabel = batchNo ? ` (Batch: ${batchNo})` : '';
+                    let msg = `Stock is only ${avail.toFixed(3)} for ${itemName.trim()}${batchLabel}. Transfer quantity (${totalForBatch.toFixed(3)}) cannot exceed available stock!`;
                     if (window.toastr) {
                         toastr.error(msg, 'Stock Limit Exceeded');
                     } else {
@@ -904,7 +928,7 @@
             let itemId = $(this).closest('tr').find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
 
             if (itemId && !isNaN(q)) {
-                if (avail >= 0 && q > avail) {
+                if (avail > 0 && q > avail) {
                     $(this).val(avail);
                     q = avail;
                 }

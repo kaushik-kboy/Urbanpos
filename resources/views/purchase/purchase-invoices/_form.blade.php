@@ -142,7 +142,7 @@
     <h5 class="mb-0">Items</h5>
     <div class="d-flex align-items-center">
         <button type="button" class="btn btn-outline-warning btn-sm mr-2 btn-reset-form" title="Reset header form inputs (table items preserved)"><i class="fas fa-undo mr-1"></i> Reset Form</button>
-        <button type="button" class="btn btn-outline-danger btn-sm mr-2 btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
+        <button type="button" id="pinv-btn-reset-table" class="btn btn-outline-danger btn-sm mr-2 btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
         <x-table-column-customizer
             table-key="purchase.purchase-invoices.items"
             table-id="pinv-items-table"

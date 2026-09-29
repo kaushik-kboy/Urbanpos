@@ -134,6 +134,9 @@
                     ];
                 @endphp
                 <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-xs btn-outline-danger font-weight-bold mr-2 btn-reset-table" id="sdn-btn-reset-table" title="Clear all table items and reset to 1 empty row">
+                        <i class="fas fa-undo mr-1"></i> Reset Table
+                    </button>
                     <x-table-column-customizer
                         table-key="sales.delivery-notes.items"
                         table-id="sdn-items-table"
@@ -798,6 +801,19 @@ $(function () {
         rowIndex++;
         recalculate();
         $newRow.find('.sdn-item-code').focus();
+    });
+
+    // Reset Table (Leaves exactly 1 empty row)
+    $('#sdn-btn-reset-table').on('click', function () {
+        let tmpl = $('#row-template').html();
+        tmpl = tmpl.replace(/__INDEX__/g, 0);
+        tmpl = tmpl.replace(/__NUM__/g, 1);
+        $('#sdn-items-body').empty().append(tmpl);
+        rowIndex = 1;
+        recalculate();
+        setTimeout(function () {
+            $('#sdn-items-body tr:first .sdn-item-code').focus();
+        }, 50);
     });
 
     // Tab / Enter at end of row adds new row or focuses next code

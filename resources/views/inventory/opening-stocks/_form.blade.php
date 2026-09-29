@@ -41,6 +41,9 @@
             <i class="fas fa-boxes mr-1"></i> Opening Stock Items
         </h6>
         <div>
+            <button type="button" id="btn-reset-table" class="btn btn-outline-danger btn-xs px-2 mr-1 font-weight-bold" title="Reset table rows">
+                <i class="fas fa-undo mr-1"></i> Reset Table
+            </button>
             <button type="button" id="btn-quick-item-search" class="btn btn-outline-info btn-xs px-2 mr-1" title="Open Item Search Modal (F2)">
                 <i class="fas fa-search mr-1"></i> Search Item (F2)
             </button>
@@ -798,6 +801,22 @@
             }
 
             recalcRow($row);
+        });
+
+        // Reset Table (Leaves exactly 1 empty default row)
+        $('#btn-reset-table').on('click', function () {
+            let html = document.getElementById('row-template').innerHTML;
+            html = html.replaceAll('__INDEX__', 0);
+            html = html.replaceAll('__SNO__', 1);
+            const $newRow = $(html);
+            $('#items-body').empty().append($newRow);
+            initRowSelect2($newRow);
+            reindexSno();
+            rowIndex = 1;
+            recalcTotals();
+            setTimeout(function () {
+                $newRow.find('.item-code-input').focus();
+            }, 50);
         });
 
         // Add Row — focus item-code (Tab will open modal)

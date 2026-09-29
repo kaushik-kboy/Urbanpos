@@ -43,6 +43,9 @@
         <p class="text-muted small mb-0">Enter the physically counted Qty. Current Stock is read from the system at the moment you Save, and the difference is posted as a +/- adjustment.</p>
     </div>
     <div class="d-flex align-items-center">
+        <button type="button" id="su-btn-reset-table" class="btn btn-outline-danger btn-sm font-weight-bold mr-2">
+            <i class="fas fa-undo mr-1"></i> Reset Table
+        </button>
         <x-table-column-customizer
             table-key="inventory.stock-updates.items"
             table-id="items-table"
@@ -104,8 +107,8 @@
                 </button>
             </div>
             <div class="modal-body p-3">
-                <div class="row g-2 mb-2">
-                    <div class="col-md-6">
+                <div class="row g-2 mb-2 align-items-center">
+                    <div class="col-md-5">
                         <div class="input-group">
                             <div class="input-group-prepend">
                                 <span class="input-group-text bg-light"><i class="fas fa-font text-muted"></i></span>
@@ -113,7 +116,7 @@
                             <input type="text" id="su-isl-filter-name" class="form-control" placeholder="Search by item name..." autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="input-group">
                             <div class="input-group-prepend">
                                 <span class="input-group-text bg-light"><i class="fas fa-barcode text-muted"></i></span>
@@ -121,9 +124,17 @@
                             <input type="text" id="su-isl-filter-code" class="form-control font-weight-bold" placeholder="Filter by Code / Barcode..." autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-2">
-                        <button type="button" id="su-isl-btn-clear" class="btn btn-outline-secondary btn-block">
-                            <i class="fas fa-times mr-1"></i> Clear
+                    <div class="col-md-3">
+                        <div class="custom-control custom-checkbox pt-1">
+                            <input type="checkbox" class="custom-control-input" id="su-isl-show-zero">
+                            <label class="custom-control-label font-weight-bold text-dark" for="su-isl-show-zero">
+                                Show Zero/Negative Stock
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" id="su-isl-btn-clear" class="btn btn-outline-secondary btn-block" title="Clear filter">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
                 </div>
@@ -367,10 +378,30 @@
             fetchSuItemList();
         });
 
+        document.getElementById('su-btn-reset-table')?.addEventListener('click', function () {
+            const tbody = document.getElementById('items-body');
+            const template = document.getElementById('row-template').innerHTML;
+            const html = template.replaceAll('__INDEX__', 0);
+            const tempWrapper = document.createElement('tbody');
+            tempWrapper.innerHTML = html;
+            tbody.innerHTML = '';
+            tbody.appendChild(tempWrapper.firstElementChild);
+            rowIndex = 1;
+            setTimeout(function () {
+                const firstCode = tbody.querySelector('.su-item-code');
+                if (firstCode) firstCode.focus();
+            }, 60);
+        });
+
+        $('#su-isl-show-zero').on('change', function () {
+            fetchSuItemList();
+        });
+
         function fetchSuItemList() {
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let srch = $.trim($('#su-isl-filter-name').val());
             let code = $.trim($('#su-isl-filter-code').val());
+            let showZero = $('#su-isl-show-zero').is(':checked');
 
             if (!srch && !code) {
                 $('#su-isl-loading').addClass('d-none');
@@ -387,9 +418,14 @@
             $('#su-isl-no-results').addClass('d-none');
             $('#su-isl-table-wrap').addClass('d-none');
 
-            $.getJSON(SU_ISL_URL, { branch_id: branchId, search: srch, code: code }, function (res) {
+            $.getJSON(SU_ISL_URL, { branch_id: branchId, search: srch, code: code, show_all: showZero ? 1 : 0 }, function (res) {
                 $('#su-isl-loading').addClass('d-none');
                 let items = res.items || [];
+                if (!showZero) {
+                    items = items.filter(function (it) {
+                        return parseFloat(it.qty || 0) > 0;
+                    });
+                }
                 let $tbody = $('#su-isl-items-body').empty();
 
                 if (items.length === 0) {

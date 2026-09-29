@@ -30,7 +30,7 @@ class ItemCategoryValueController extends Controller
             $query->where('status', (int) $request->input('status'));
         }
 
-        $itemCategoryValues = $query->orderBy('name')->paginate($this->perPage());
+        $itemCategoryValues = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
         $itemCategories = ItemCategory::orderBy('name')->pluck('name', 'id');
 
         return view('master.item-category-values.index', compact('itemCategoryValues', 'itemCategories'));

@@ -86,6 +86,9 @@
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
     </h5>
     <div class="d-flex align-items-center">
+        <button type="button" id="pr-btn-reset-table" class="btn btn-outline-danger btn-sm font-weight-bold mr-2">
+            <i class="fas fa-undo mr-1"></i> Reset Table
+        </button>
         <x-table-column-customizer
             table-key="purchase.purchase-returns.items"
             table-id="pr-items-table"
@@ -269,12 +272,8 @@
             const gstPercent = parseFloat(row.querySelector('.pr-gst-percent')?.value) || 0;
 
             const base = qty * cost;
-            if (discAmount <= 0 && discPercent > 0) {
-                discAmount = Math.round((base * discPercent / 100) * 100) / 100;
-                const discAmtInput = row.querySelector('.pr-disc-amount');
-                if (discAmtInput && document.activeElement !== discAmtInput) {
-                    discAmtInput.value = discAmount ? discAmount.toFixed(2) : '';
-                }
+            if (discAmount > base && base > 0) {
+                discAmount = base;
             }
 
             const taxable = Math.max(0, base - discAmount);
@@ -322,6 +321,22 @@
             }
         }
 
+        document.getElementById('pr-btn-reset-table')?.addEventListener('click', function () {
+            const tbody = document.getElementById('pr-items-body');
+            const template = document.getElementById('pr-row-template').innerHTML;
+            const html = template.replaceAll('__INDEX__', 0);
+            const tempWrapper = document.createElement('tbody');
+            tempWrapper.innerHTML = html;
+            tbody.innerHTML = '';
+            tbody.appendChild(tempWrapper.firstElementChild);
+            rowIndex = 1;
+            recalculateAll();
+            setTimeout(function () {
+                const firstCode = tbody.querySelector('.pr-item-code');
+                if (firstCode) firstCode.focus();
+            }, 60);
+        });
+
         document.getElementById('pr-add-row')?.addEventListener('click', function () {
             const template = document.getElementById('pr-row-template').innerHTML;
             const html = template.replaceAll('__INDEX__', rowIndex);
@@ -347,7 +362,62 @@
         });
 
         document.getElementById('pr-items-body')?.addEventListener('input', function (e) {
-            if (e.target.matches('.pr-qty, .pr-cost, .pr-disc-percent, .pr-disc-amount, .pr-gst-percent')) {
+            const target = e.target;
+            const row = target.closest('.pr-item-row');
+            if (!row) return;
+
+            if (target.matches('.pr-disc-percent')) {
+                let valStr = target.value;
+                let val = parseFloat(valStr);
+                if (valStr.includes('-') || val < 0) {
+                    val = 0;
+                    target.value = 0;
+                } else if (val > 100) {
+                    val = 100;
+                    target.value = 100;
+                }
+                const qty = parseFloat(row.querySelector('.pr-qty')?.value) || 0;
+                const cost = parseFloat(row.querySelector('.pr-cost')?.value) || 0;
+                const base = qty * cost;
+                const discAmt = (!isNaN(val) && val > 0 && base > 0) ? Math.round((base * val / 100) * 100) / 100 : 0;
+                const discAmtInput = row.querySelector('.pr-disc-amount');
+                if (discAmtInput) {
+                    discAmtInput.value = discAmt > 0 ? discAmt.toFixed(2) : '';
+                }
+            } else if (target.matches('.pr-disc-amount')) {
+                let valStr = target.value;
+                let val = parseFloat(valStr);
+                if (valStr.includes('-') || val < 0) {
+                    val = 0;
+                    target.value = 0;
+                }
+                const qty = parseFloat(row.querySelector('.pr-qty')?.value) || 0;
+                const cost = parseFloat(row.querySelector('.pr-cost')?.value) || 0;
+                const base = qty * cost;
+                if (base > 0 && val > base) {
+                    val = base;
+                    target.value = base.toFixed(2);
+                }
+                const discPct = (!isNaN(val) && val > 0 && base > 0) ? Math.min(100, Math.round((val / base * 100) * 100) / 100) : 0;
+                const discPctInput = row.querySelector('.pr-disc-percent');
+                if (discPctInput) {
+                    discPctInput.value = discPct > 0 ? discPct.toFixed(2) : '';
+                }
+            } else if (target.matches('.pr-qty, .pr-cost')) {
+                const qty = parseFloat(row.querySelector('.pr-qty')?.value) || 0;
+                const cost = parseFloat(row.querySelector('.pr-cost')?.value) || 0;
+                const base = qty * cost;
+                const discPct = parseFloat(row.querySelector('.pr-disc-percent')?.value) || 0;
+                if (discPct > 0 && base > 0) {
+                    const discAmt = Math.round((base * discPct / 100) * 100) / 100;
+                    const discAmtInput = row.querySelector('.pr-disc-amount');
+                    if (discAmtInput) {
+                        discAmtInput.value = discAmt > 0 ? discAmt.toFixed(2) : '';
+                    }
+                }
+            }
+
+            if (target.matches('.pr-qty, .pr-cost, .pr-disc-percent, .pr-disc-amount, .pr-gst-percent')) {
                 recalculateAll();
             }
         });
@@ -631,6 +701,7 @@
                         <tr class="pr-isl-item-row" style="cursor:pointer;"
                             data-id="${it.id}"
                             data-code="${it.code || ''}"
+                            data-batch="${it.batch_no || ''}"
                             data-name="${it.name}"
                             data-cost="${it.cost_price || 0}"
                             data-gst="${it.gst_percent || 0}"
@@ -641,7 +712,10 @@
                             data-returned-qty="${it.already_returned || 0}"
                             data-remaining-qty="${it.remaining_qty !== null && it.remaining_qty !== undefined ? it.remaining_qty : ''}">
                             <td class="align-middle text-center text-muted">${idx + 1}</td>
-                            <td class="align-middle font-weight-bold text-dark">${it.name}</td>
+                            <td class="align-middle font-weight-bold text-dark">
+                                ${it.name}
+                                ${it.batch_no ? `<span class="badge badge-info ml-1">Batch: ${it.batch_no}</span>` : ''}
+                            </td>
                             <td class="align-middle text-center">${codeBadge}</td>
                             <td class="align-middle text-center">${qtyCol}</td>
                             <td class="align-middle text-right font-weight-bold text-dark">${costDisplay}</td>
@@ -674,6 +748,7 @@
                 id: $tr.data('id'),
                 name: $tr.data('name'),
                 code: $tr.data('code'),
+                batch_no: $tr.data('batch') || '',
                 cost_price: $tr.data('cost'),
                 gst_percent: $tr.data('gst'),
                 disc_percent: $tr.data('disc-percent'),
@@ -703,6 +778,7 @@
             $row.find('.pr-item-code').val(itemData.id);
             $row.find('.pr-item-desc').val(itemData.name);
             $row.find('.pr-item-id').val(itemData.id);
+            $row.find('.pr-batch-no').val(itemData.batch_no || '');
 
             let $qtyInput = $row.find('.pr-qty');
             if (itemData.original_qty !== '' && itemData.original_qty !== undefined) {
@@ -816,20 +892,15 @@
             const currentSelected = $invSelect.val();
             $invSelect.empty().append('<option value="">-- No Original Invoice / Direct Return --</option>');
 
-            let hasItems = false;
-            $('#pr-items-body tr.pr-item-row').each(function () {
-                if ($(this).find('.pr-item-id').val()) {
-                    hasItems = true;
-                }
-            });
-
-            if (hasItems) {
-                if (confirm('Changing the supplier will clear the existing return items. Do you want to proceed?')) {
-                    $('#pr-items-body').empty();
-                    $('#pr-add-row').trigger('click');
-                    recalculateAll();
-                }
-            }
+            // Reset item table on supplier change so cross-supplier items cannot remain
+            $('#pr-items-body').empty();
+            const template = document.getElementById('pr-row-template').innerHTML;
+            const html = template.replaceAll('__INDEX__', 0);
+            const tempWrapper = document.createElement('tbody');
+            tempWrapper.innerHTML = html;
+            document.getElementById('pr-items-body').appendChild(tempWrapper.firstElementChild);
+            rowIndex = 1;
+            recalculateAll();
 
             if (!supplierId) return;
 
@@ -963,11 +1034,13 @@
                 remainingQty = Math.max(0, origQty - returnedQty);
             }
 
-            // Sum quantities across all rows for this same item_id
+            // Sum quantities across all rows for this same item_id and batch_no
+            let currentBatch = $row.find('.pr-batch-no').val() || '';
             let totalRequestedForThisItem = 0;
             $('#pr-items-body tr.pr-item-row').each(function () {
                 let thisItemId = $(this).find('.pr-item-id').val();
-                if (thisItemId && String(thisItemId) === String(itemId)) {
+                let thisBatch = $(this).find('.pr-batch-no').val() || '';
+                if (thisItemId && String(thisItemId) === String(itemId) && thisBatch === currentBatch) {
                     totalRequestedForThisItem += (parseFloat($(this).find('.pr-qty').val()) || 0);
                 }
             });

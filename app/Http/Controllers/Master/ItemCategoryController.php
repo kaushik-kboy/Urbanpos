@@ -15,9 +15,24 @@ class ItemCategoryController extends Controller
     use HasPerPage, Importable;
 
 
-    public function index()
+    public function index(Request $request)
     {
-        $itemCategories = ItemCategory::orderBy('name')->paginate($this->perPage());
+        $query = ItemCategory::query();
+
+        if ($request->filled('search')) {
+            $search = trim($request->input('search'));
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool) $request->input('status'));
+        }
+
+        if ($request->filled('is_mandatory')) {
+            $query->where('is_mandatory', (bool) $request->input('is_mandatory'));
+        }
+
+        $itemCategories = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
 
         return view('master.item-categories.index', compact('itemCategories'));
     }

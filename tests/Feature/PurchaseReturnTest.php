@@ -64,6 +64,25 @@ class PurchaseReturnTest extends TestCase
             'branch_id' => $this->branch->id,
             'quantity' => 100,
         ]);
+
+        $pinv = PurchaseInvoice::create([
+            'invoice_number' => 'PINV-TEST-001',
+            'supplier_id' => $this->supplier->id,
+            'branch_id' => $this->branch->id,
+            'invoice_date' => now()->toDateString(),
+            'purchase_type' => 'Local',
+            'total' => 10000,
+            'subtotal' => 10000,
+        ]);
+
+        \App\Models\PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $pinv->id,
+            'item_id' => $this->item->id,
+            'qty' => 100,
+            'cost_price' => 100,
+            'subtotal' => 10000,
+            'net_amount' => 10000,
+        ]);
     }
 
     public function test_purchase_return_reduces_stock_and_posts_correct_journal(): void

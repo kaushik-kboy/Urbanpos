@@ -23,17 +23,40 @@
                 <x-table-column-customizer table-key="master.brands" table-id="brands-table" button-class="btn btn-sm btn-outline-secondary mr-2" />
                 <x-import-button :import-route="route('master.brands.import')" :sample-route="route('master.brands.import-sample')" title="Brand" />
             </div>
+        <div class="card-header bg-light border-bottom">
+            <form method="GET" action="{{ route('master.brands.index') }}" class="row align-items-end">
+                <div class="col-md-4 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Search brand name, prefix, alias...">
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Status</label>
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All Statuses</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-sm btn-primary mr-1">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
+                    <a href="{{ route('master.brands.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
+                </div>
+            </form>
         </div>
         <div class="card-body p-0">
             <table id="brands-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Prefix</th>
-                        <th>Alias Code</th>
-                        <th>Status</th>
-                        <th>Updated Time</th>
-                        <th class="text-right">Actions</th>
+                        <th data-col-key="name">Name</th>
+                        <th data-col-key="prefix">Prefix</th>
+                        <th data-col-key="alias_code">Alias Code</th>
+                        <th data-col-key="status">Status</th>
+                        <th data-col-key="updated_at">Updated Time</th>
+                        <th class="text-right" data-col-key="actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

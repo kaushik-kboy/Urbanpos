@@ -400,7 +400,8 @@ class PurchaseInvoiceController extends Controller
         // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
         $limit  = 100;
         $where  = ['i.status = 1'];
-        $params = [$branchId, $branchId];
+        $todayIndia = \Carbon\Carbon::now('Asia/Kolkata')->toDateString();
+        $params = [$branchId, $branchId, $todayIndia];
 
         $orderSql    = 'i.name ASC';
         $orderParams = [];
@@ -500,6 +501,7 @@ class PurchaseInvoiceController extends Controller
                         ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
                 WHERE pi2.exp_date IS NOT NULL
                   AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                  AND pi2.exp_date >= ?
                 GROUP BY pi2.item_id
             ) ei ON ei.item_id = i.id
             LEFT JOIN gst_taxes gt ON gt.id = i.gst_tax_id
@@ -526,9 +528,10 @@ class PurchaseInvoiceController extends Controller
                 WHERE pi2.item_id IN ({$ph})
                   AND pi2.exp_date IS NOT NULL
                   AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                  AND pi2.exp_date >= ?
                 GROUP BY pi2.item_id
             ";
-            foreach (DB::select($fbSql, $noExpIds) as $fb) {
+            foreach (DB::select($fbSql, array_merge($noExpIds, [$todayIndia])) as $fb) {
                 $expiryFallback[$fb->item_id] = $fb;
             }
         }
@@ -617,12 +620,14 @@ class PurchaseInvoiceController extends Controller
             $stock = (float) (DB::table('closing_stocks')->where('item_id', $item->id)->sum('closing_stock') ?? 0);
         }
 
-        // Check if there is recent purchase invoice exp_date
+        // Check if there is recent purchase invoice exp_date (must not be expired)
+        $todayIndia = \Carbon\Carbon::now('Asia/Kolkata')->toDateString();
         $lastExp = DB::table('purchase_invoice_items as pii')
             ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
             ->where('pii.item_id', $item->id)
             ->whereNotNull('pii.exp_date')
             ->whereRaw("CAST(pii.exp_date AS CHAR) NOT IN ('', '0000-00-00')")
+            ->where('pii.exp_date', '>=', $todayIndia)
             ->orderBy('pi.invoice_date', 'desc')
             ->value('pii.exp_date');
 
@@ -1084,6 +1089,26 @@ class PurchaseInvoiceController extends Controller
                         $v->errors()->add(
                             "items.{$idx}.exp_date",
                             "Expiry date is mandatory for item '{$itemModel->name}' (Row #{$rowNum}) because its Batch/Expiry setting is '{$batchExpiry}'."
+                        );
+                    }
+                }
+
+                if (!empty($line['exp_date'])) {
+                    $todayIndia = \Carbon\Carbon::now('Asia/Kolkata')->startOfDay();
+                    try {
+                        $expCarbon = \Carbon\Carbon::parse($line['exp_date'], 'Asia/Kolkata')->startOfDay();
+                        if ($expCarbon->lt($todayIndia)) {
+                            $rowNum = $idx + 1;
+                            $v->errors()->add(
+                                "items.{$idx}.exp_date",
+                                "Item '{$itemModel->name}' (Row #{$rowNum}): Expired products cannot be entered into Purchase Invoice. Expiry date ({$line['exp_date']}) is in the past."
+                            );
+                        }
+                    } catch (\Exception $e) {
+                        $rowNum = $idx + 1;
+                        $v->errors()->add(
+                            "items.{$idx}.exp_date",
+                            "Item '{$itemModel->name}' (Row #{$rowNum}): Invalid expiry date format."
                         );
                     }
                 }

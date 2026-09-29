@@ -15,9 +15,24 @@ class BrandController extends Controller
     use HasPerPage, Importable;
 
 
-    public function index()
+    public function index(Request $request)
     {
-        $brands = Brand::orderBy('name')->paginate($this->perPage());
+        $query = Brand::query();
+
+        if ($request->filled('search')) {
+            $search = trim($request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('prefix', 'like', "%{$search}%")
+                  ->orWhere('alias_code', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (bool) $request->input('status'));
+        }
+
+        $brands = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
 
         return view('master.brands.index', compact('brands'));
     }

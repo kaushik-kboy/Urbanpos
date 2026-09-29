@@ -74,6 +74,9 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Items</h5>
     <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-outline-danger btn-xs font-weight-bold mr-2 btn-reset-table" id="po-btn-reset-table" title="Clear all table items and reset to 1 empty row">
+            <i class="fas fa-undo mr-1"></i> Reset Table
+        </button>
         <x-table-column-customizer
             table-key="purchase.purchase-orders.items"
             table-id="po-items-table"
@@ -1021,6 +1024,20 @@
         // Initial setup
         updateRowNumbers();
         $('form input').attr('autocomplete', 'off');
+
+        // Reset Table Button Handler: clears table and keeps exactly 1 empty row
+        $(document).on('click', '.btn-reset-table', function (e) {
+            e.preventDefault();
+            let template = $('#po-row-template').html() || '';
+            let html = template.replaceAll('__INDEX__', 0);
+            $('#po-items-body').empty().append(html);
+            rowIndex = 1;
+            updateRowNumbers();
+            calculateTotals();
+            setTimeout(function () {
+                $('#po-items-body tr:first .po-item-code').focus();
+            }, 60);
+        });
 
         // Form Reset Button Handler
         $(document).on('click', '.btn-reset-form', function (e) {

@@ -33,4 +33,8 @@ data_files/
 !/storage/app/backups/.gitignore
 *.png
 /storage/coverage/
-
+__pycache__/
+*.pyc
+scripts/*.py
+scripts/*.txt
+scripts/check_pw.php

@@ -586,6 +586,29 @@
                         letter-spacing: 0.2px;
                     }
                 </style>
+                <!-- Payment Mode Choice Bar -->
+                <div class="p-2 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap">
+                    <span class="font-weight-bold text-dark small text-uppercase mr-2">
+                        <i class="fas fa-money-check-alt mr-1 text-primary"></i> Payment Mode:
+                    </span>
+                    <div class="btn-group btn-group-sm" role="group" id="tender-mode-selector">
+                        <button type="button" class="btn btn-outline-primary font-weight-bold tender-mode-pill" data-mode="cash">
+                            <i class="fas fa-money-bill-wave mr-1"></i> Cash (Alt+C)
+                        </button>
+                        <button type="button" class="btn btn-outline-primary font-weight-bold tender-mode-pill" data-mode="card">
+                            <i class="fas fa-credit-card mr-1"></i> Card (Alt+D)
+                        </button>
+                        <button type="button" class="btn btn-outline-primary font-weight-bold tender-mode-pill" data-mode="credit">
+                            <i class="fas fa-user-clock mr-1"></i> Credit (Alt+E)
+                        </button>
+                        <button type="button" class="btn btn-outline-primary font-weight-bold tender-mode-pill" data-mode="upi">
+                            <i class="fas fa-mobile-alt mr-1"></i> UPI (Alt+U)
+                        </button>
+                        <button type="button" class="btn btn-outline-primary font-weight-bold tender-mode-pill" data-mode="rrn">
+                            <i class="fas fa-receipt mr-1"></i> RRN
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Upper Section: 2 Column Inputs -->
                 <div class="row no-gutters">
@@ -2652,10 +2675,11 @@
                     $('#tender-cash').val(tenderBillTotal.toFixed(2));
                 }
             @else
-                // Default: Cash pre-filled with total
-                $('#tender-cash').val(tenderBillTotal.toFixed(2));
+                // Do not force Cash: present choices and allow selection
+                $('.tender-mode-pill').removeClass('btn-primary text-white').addClass('btn-outline-primary');
+                $('#tender-cash').val('');
                 $('#tender-credit').val('');
-                $('#tender-card').val('0.00');
+                $('#tender-card').val('');
                 $('#tender-wallet').val('');
                 $('#tender-wallet-side').val('');
                 $('#tender-rrn').val('');
@@ -2667,16 +2691,39 @@
             recalcTender();
 
             $('#sb-tender-modal').modal('show');
-            // Bootstrap's own 'shown.bs.modal' handling focuses the modal container itself
-            // shortly after it opens, which can steal focus back from a fixed setTimeout
-            // fired before that settles. Re-focus on 'shown.bs.modal' (.one, so it doesn't
-            // stack across repeated Save clicks) so #tender-cash reliably ends up focused.
             $('#sb-tender-modal').one('shown.bs.modal', function () {
-                $('#tender-cash').focus().select();
+                $('.tender-mode-pill[data-mode="cash"]').focus();
             });
-            setTimeout(function () {
-                $('#tender-cash').focus().select();
-            }, 200);
+        });
+
+        function selectTenderMode(mode) {
+            $('.tender-mode-pill').removeClass('btn-primary text-white').addClass('btn-outline-primary');
+            $(`.tender-mode-pill[data-mode="${mode}"]`).removeClass('btn-outline-primary').addClass('btn-primary text-white');
+
+            $('#tender-cash').val('');
+            $('#tender-credit').val('');
+            $('#tender-card').val('');
+            $('#tender-wallet').val('');
+            $('#tender-rrn').val('');
+
+            let billTotalStr = tenderBillTotal.toFixed(2);
+
+            if (mode === 'cash') {
+                $('#tender-cash').val(billTotalStr).focus().select();
+            } else if (mode === 'card') {
+                $('#tender-card').val(billTotalStr).focus().select();
+            } else if (mode === 'credit') {
+                $('#tender-credit').val(billTotalStr).focus().select();
+            } else if (mode === 'upi') {
+                $('#tender-wallet').val(billTotalStr).focus().select();
+            } else if (mode === 'rrn') {
+                $('#tender-rrn').val(billTotalStr).focus().select();
+            }
+            recalcTender();
+        }
+
+        $(document).on('click', '.tender-mode-pill', function () {
+            selectTenderMode($(this).data('mode'));
         });
 
         // Tender Modal Hotkeys: Cash (Alt+C), UPI (Alt+U), Card (Alt+D), Credit (Alt+E)
@@ -2691,25 +2738,25 @@
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
-                    $('#tender-cash').focus().select();
+                    selectTenderMode('cash');
                     return false;
                 } else if (key === 'U' || code === 'KEYU') {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
-                    $('#tender-wallet').focus().select();
+                    selectTenderMode('upi');
                     return false;
                 } else if (key === 'D' || code === 'KEYD') {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
-                    $('#tender-card').focus().select();
+                    selectTenderMode('card');
                     return false;
                 } else if (key === 'E' || code === 'KEYE') {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
-                    $('#tender-credit').focus().select();
+                    selectTenderMode('credit');
                     return false;
                 }
             }

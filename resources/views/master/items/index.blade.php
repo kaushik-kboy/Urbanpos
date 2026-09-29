@@ -79,25 +79,27 @@
             <table id="items-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th>Id</th>
-                        <th>Name</th>
-                        <th>Alias</th>
-                        <th>Sell Price</th>
-                        <th>Supplier</th>
-                        <th>Updated Time</th>
-                        <th class="text-right">Actions</th>
+                        <th data-col-key="id">Id</th>
+                        <th data-col-key="item_code">Item Code</th>
+                        <th data-col-key="name">Name</th>
+                        <th data-col-key="alias">Alias</th>
+                        <th data-col-key="sell_price">Sell Price</th>
+                        <th data-col-key="supplier">Supplier</th>
+                        <th data-col-key="updated_at">Updated Time</th>
+                        <th class="text-right" data-col-key="actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($items as $item)
                         <tr>
-                            <td>{{ $item->id }}</td>
-                            <td>{{ $item->name }}</td>
-                            <td>{{ $item->alias }}</td>
-                            <td>{{ number_format($item->sell_price, 2) }}</td>
-                            <td>{{ $item->supplier?->name }}</td>
-                            <td>{{ $item->updated_at->format('d-m-Y H:i') }}</td>
-                            <td class="text-right text-nowrap">
+                            <td data-col-key="id">{{ $item->id }}</td>
+                            <td data-col-key="item_code"><span class="badge badge-light border font-weight-bold">{{ $item->item_code ?: ($item->ean_upc_code ?: '—') }}</span></td>
+                            <td data-col-key="name">{{ $item->name }}</td>
+                            <td data-col-key="alias">{{ $item->alias }}</td>
+                            <td data-col-key="sell_price">{{ number_format($item->sell_price, 2) }}</td>
+                            <td data-col-key="supplier">{{ $item->supplier?->name }}</td>
+                            <td data-col-key="updated_at">{{ $item->updated_at->format('d-m-Y H:i') }}</td>
+                            <td class="text-right text-nowrap" data-col-key="actions">
                                 <a href="{{ route('master.barcodes.print', ['item_id' => $item->id, 'qty' => 1]) }}" target="_blank" class="btn btn-xs btn-outline-warning mr-1" title="Print Barcode Stickers"><i class="fas fa-barcode"></i></a>
                                 <a href="{{ route('reports.smart-analytics', ['item_id' => $item->id]) }}" class="btn btn-xs btn-outline-info mr-1" title="View Sales History (360° Analytics)"><i class="fas fa-chart-line"></i></a>
                                 <a href="{{ route('master.items.create', ['copy_from' => $item->id]) }}" class="btn btn-xs btn-outline-primary mr-1" title="Copy Item (New Unique Barcode)"><i class="fas fa-copy"></i></a>
@@ -105,7 +107,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-3">No items yet.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-3">No items yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

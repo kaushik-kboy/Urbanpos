@@ -27,6 +27,7 @@
 <tr class="pr-item-row" data-row-index="{{ $rowId }}">
     <td style="min-width: 140px;" data-col-key="code">
         <input type="hidden" name="items[{{ $rowId }}][item_id]" class="pr-item-id" value="{{ $itemId }}">
+        <input type="hidden" name="items[{{ $rowId }}][batch_no]" class="pr-batch-no" value="{{ data_get($line, 'batch_no', '') }}">
         <input type="text" class="form-control form-control-sm pr-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Press Tab or Enter to search item">
     </td>
     <td style="min-width: 220px;" data-col-key="item">

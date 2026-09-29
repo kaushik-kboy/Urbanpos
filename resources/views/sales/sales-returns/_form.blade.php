@@ -126,6 +126,9 @@
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
     </h5>
     <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-outline-danger btn-sm font-weight-bold mr-2 btn-reset-table" id="sr-btn-reset-table" title="Clear all table items and reset to 1 empty row">
+            <i class="fas fa-undo mr-1"></i> Reset Table
+        </button>
         <x-table-column-customizer
             table-key="sales.sales-returns.items"
             table-id="sr-items-table"
@@ -779,6 +782,22 @@
 
         $(document).on('change', '#customer_id', function () {
             recalculateAll();
+        });
+
+        document.getElementById('sr-btn-reset-table')?.addEventListener('click', function () {
+            const tbody = document.getElementById('sr-items-body');
+            const template = document.getElementById('sr-row-template').innerHTML;
+            const html = template.replaceAll('__INDEX__', 0);
+            const tempWrapper = document.createElement('tbody');
+            tempWrapper.innerHTML = html;
+            tbody.innerHTML = '';
+            tbody.appendChild(tempWrapper.firstElementChild);
+            rowIndex = 1;
+            $('#sr-bill-item-checklist input[type="checkbox"]').prop('checked', false);
+            recalculateAll();
+            setTimeout(function () {
+                tbody.querySelector('.sr-item-code')?.focus();
+            }, 50);
         });
 
         document.getElementById('sr-add-row')?.addEventListener('click', function () {

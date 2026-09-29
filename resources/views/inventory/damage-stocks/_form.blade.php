@@ -54,6 +54,9 @@
             <i class="fas fa-boxes-alt mr-1 text-danger"></i> Damage Stock Items
         </h6>
         <div>
+            <button type="button" id="btn-reset-table" class="btn btn-outline-danger btn-xs px-2 mr-1 font-weight-bold" title="Reset table rows">
+                <i class="fas fa-undo mr-1"></i> Reset Table
+            </button>
             <button type="button" id="btn-quick-item-search" class="btn btn-outline-danger btn-xs px-2 mr-1" title="Open Item Search Modal (F2)">
                 <i class="fas fa-search mr-1"></i> Search Item (F2)
             </button>
@@ -601,6 +604,21 @@
             });
             recalcTotals();
         }
+
+        // Reset Table (Leaves exactly 1 empty default row)
+        $('#btn-reset-table').on('click', function () {
+            const template = document.getElementById('row-template').innerHTML;
+            const html = template.replace(/__INDEX__/g, 0);
+            const $newRow = $(html);
+            $('#items-body').empty().append($newRow);
+            initRowSelect2($newRow);
+            rowIndex = 1;
+            reindexRows();
+            recalcTotals();
+            setTimeout(function () {
+                $newRow.find('.item-code-input').focus();
+            }, 50);
+        });
 
         // Add Row — block if first row has no item yet
         $('#add-row').on('click', function () {

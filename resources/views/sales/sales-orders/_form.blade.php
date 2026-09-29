@@ -98,6 +98,9 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0 text-primary font-weight-bold"><i class="fas fa-boxes mr-1"></i> Order Items</h5>
     <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-outline-danger btn-sm font-weight-bold mr-2 btn-reset-table" id="so-btn-reset-table" title="Clear all table items and reset to 1 empty row">
+            <i class="fas fa-undo mr-1"></i> Reset Table
+        </button>
         <x-table-column-customizer
             table-key="sales.sales-orders.items"
             table-id="so-items-table"
@@ -275,6 +278,17 @@ $(function() {
         $('#so-items-body').append($newRow);
         recalcAll();
         $newRow.find('.so-item-code').focus();
+    });
+
+    $('#so-btn-reset-table').on('click', function(e) {
+        e.preventDefault();
+        let html = $('#so-row-template').html().replace(/__INDEX__/g, 0);
+        $('#so-items-body').empty().append(html);
+        nextIndex = 1;
+        recalcAll();
+        setTimeout(function() {
+            $('#so-items-body tr:first .so-item-code').focus();
+        }, 50);
     });
 
     $(document).off('keydown', '.so-disc-amount, .so-gst-percent, .so-mrp').on('keydown', '.so-disc-amount, .so-gst-percent, .so-mrp', function (e) {
