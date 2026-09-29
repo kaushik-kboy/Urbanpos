@@ -23,22 +23,13 @@
     @php
         $selectedBranch = old('branch_id', $entry->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
-    <div class="field-wrapper col-md-4" data-field="branch_id" data-label="Location / Branch" data-default-order="1" data-core="1">
-        <label for="branch_id" class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-        <div class="input-group">
-            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-            <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
-            <div class="input-group-append">
-                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-            </div>
-        </div>
-    </div>
-    <div class="field-wrapper col-md-4" data-field="entry_date" data-label="Entry Date" data-default-order="2" data-core="1">
+    <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
+    <div class="field-wrapper col-md-6" data-field="entry_date" data-label="Entry Date" data-default-order="2" data-core="1">
         <label for="entry_date" class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>
         <input type="date" name="entry_date" id="entry_date" class="form-control" 
                value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" required>
     </div>
-    <div class="field-wrapper col-md-4" data-field="wastage_type" data-label="Wastage Type" data-default-order="3" data-core="1">
+    <div class="field-wrapper col-md-6" data-field="wastage_type" data-label="Wastage Type" data-default-order="3" data-core="1">
         <label for="wastage_type" class="font-weight-bold">Wastage Type <span class="text-danger">*</span></label>
         <select name="wastage_type" id="wastage_type" class="form-control select2" required>
             <option value="Damage" @selected(($entry->wastage_type ?? old('wastage_type', 'Damage')) === 'Damage')>Damage</option>
@@ -71,16 +62,16 @@
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;">S.No</th>
-                        <th style="width: 155px;">Code / Barcode</th>
-                        <th style="min-width: 280px;" class="text-left">Item Description</th>
-                        <th style="width: 130px;">Exp Dt</th>
-                        <th style="width: 95px;" class="text-right">Qty</th>
-                        <th style="width: 110px;" class="text-right">Cost Price</th>
-                        <th style="width: 110px;" class="text-right">Sell Price</th>
-                        <th style="width: 110px;" class="text-right">MRP</th>
-                        <th style="width: 80px;" class="text-center">GST%</th>
-                        <th style="width: 110px;" class="text-right">GST TaxAmt</th>
-                        <th style="width: 125px;" class="text-right">Net Amount</th>
+                        <th style="width: 145px;">Code / Barcode</th>
+                        <th style="min-width: 240px;" class="text-left">Item Description</th>
+                        <th style="width: 155px; min-width: 150px;">Exp Dt</th>
+                        <th style="width: 75px;" class="text-right">Qty</th>
+                        <th style="width: 85px;" class="text-right">Cost Price</th>
+                        <th style="width: 85px;" class="text-right">Sell Price</th>
+                        <th style="width: 85px;" class="text-right">MRP</th>
+                        <th style="width: 65px;" class="text-center">GST%</th>
+                        <th style="width: 85px;" class="text-right">GST TaxAmt</th>
+                        <th style="width: 95px;" class="text-right">Net Amount</th>
                         <th style="width: 45px;"></th>
                     </tr>
                 </thead>
@@ -620,6 +611,23 @@
             }, 50);
         });
 
+        // Reset Form (Clears remarks and resets table)
+        $(document).on('click', '#btn-reset-form, .btn-reset-form', function () {
+            $('textarea[name="remarks"]').val('');
+            $('#btn-reset-table').trigger('click');
+            if (window.toastr) {
+                toastr.info('Damage Stock form has been reset.');
+            }
+            setTimeout(function () {
+                let $b = $('#branch_id');
+                if ($b.data('select2')) {
+                    $b.data('select2').$container.find('.select2-selection').focus();
+                } else if ($b.length) {
+                    $b.focus();
+                }
+            }, 100);
+        });
+
         // Add Row — block if first row has no item yet
         $('#add-row').on('click', function () {
             if (!$('#items-body tr.item-row:first .item-id-hidden').val()) {
@@ -813,8 +821,10 @@
             let branchId = $('#branch_id').val();
             if (!branchId) {
                 e.preventDefault();
-                alert('Please select a branch.');
-                $('#branch_id').focus();
+                $('#branch_id').addClass('is-invalid').focus();
+                if (window.toastr) {
+                    toastr.warning('Please select a branch.');
+                }
                 return false;
             }
 
@@ -834,8 +844,10 @@
                 if (!itemId && itemCode) {
                     e.preventDefault();
                     hasError = true;
-                    alert('Please select a valid item for code: ' + itemCode);
-                    $row.find('.item-code-input').focus();
+                    $row.find('.item-code-input').addClass('is-invalid').focus();
+                    if (window.toastr) {
+                        toastr.error('Please select a valid item for code: ' + itemCode);
+                    }
                     return false;
                 }
 
@@ -843,8 +855,10 @@
                     e.preventDefault();
                     hasError = true;
                     let desc = $row.find('.item-desc').val() || 'selected item';
-                    alert('Please enter a valid quantity greater than 0 for: ' + desc);
-                    $row.find('.item-qty').focus();
+                    $row.find('.item-qty').addClass('is-invalid').focus();
+                    if (window.toastr) {
+                        toastr.warning('Please enter a valid quantity greater than 0 for: ' + desc);
+                    }
                     return false;
                 }
 
@@ -855,7 +869,9 @@
 
             if (validRows === 0) {
                 e.preventDefault();
-                alert('Pehle item add karein. Please add at least one item before saving.');
+                if (window.toastr) {
+                    toastr.warning('Pehle item add karein. Please add at least one item before saving.');
+                }
                 $('#items-body tr.item-row:first .item-code-input').focus();
                 return false;
             }

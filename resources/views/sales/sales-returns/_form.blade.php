@@ -30,21 +30,12 @@
     @php
         $selectedBranch = old('branch_id', $ret->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
-    <div class="field-wrapper col-md-3 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-        <label for="branch_id" class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-        <div class="input-group">
-            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-            <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
-            <div class="input-group-append">
-                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-            </div>
-        </div>
-    </div>
-    <div class="field-wrapper col-md-2 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
+    <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
+    <div class="field-wrapper col-md-3 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
         <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
         <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" required>
     </div>
-    <div class="field-wrapper col-md-3 mb-3" data-field="sales_type" data-label="Sales Type" data-default-order="4" data-core="1">
+    <div class="field-wrapper col-md-4 mb-3" data-field="sales_type" data-label="Sales Type" data-default-order="4" data-core="1">
         <label for="sales_type" class="font-weight-bold">Sales Type <span class="text-danger">*</span></label>
         <select name="sales_type" id="sales_type" class="form-control" required>
             <option value="Local" @selected(old('sales_type', $ret->sales_type ?? 'Local') === 'Local')>Local (CGST + SGST)</option>
@@ -1308,48 +1299,53 @@
         }
 
         // Header Validation (Inline feedback, no popups)
-        function validateSrHeader(showAlert = false) {
+        function validateSrHeader(showAlert = false, checkFields = ['customer', 'date']) {
             let isValid = true;
             let $cust = $('#customer_id');
             let custVal = $cust.val();
             let $custContainer = $cust.next('.select2-container').find('.select2-selection');
             let $custFeedback = $('#customer_id_error_msg');
             if (!$custFeedback.length) {
-                $custFeedback = $('<div id="customer_id_error_msg" class="invalid-feedback text-danger font-weight-bold d-block mt-1">Please select a Customer first.</div>');
+                $custFeedback = $('<div id="customer_id_error_msg" class="invalid-feedback text-danger font-weight-bold mt-1" style="display:none;">Please select a Customer first.</div>');
                 $cust.closest('.field-wrapper').append($custFeedback);
             }
 
-            if (!custVal) {
-                $cust.addClass('is-invalid');
-                $custContainer.addClass('border-danger');
-                $custFeedback.show();
-                if (showAlert) {
-                    $cust.select2('open');
+            if (checkFields.includes('customer')) {
+                if (!custVal) {
+                    $cust.addClass('is-invalid');
+                    $custContainer.addClass('border-danger');
+                    $custFeedback.css('display', 'block');
+                    if (showAlert) {
+                        $cust.select2('open');
+                    }
+                    isValid = false;
+                } else {
+                    $cust.removeClass('is-invalid');
+                    $custContainer.removeClass('border-danger');
+                    $custFeedback.css('display', 'none');
                 }
-                isValid = false;
-            } else {
-                $cust.removeClass('is-invalid');
-                $custContainer.removeClass('border-danger');
-                $custFeedback.hide();
             }
 
             let $date = $('#return_date');
             let $dateFeedback = $('#return_date_error_msg');
             if (!$dateFeedback.length) {
-                $dateFeedback = $('<div id="return_date_error_msg" class="invalid-feedback text-danger font-weight-bold d-block mt-1">Please enter a valid date.</div>');
+                $dateFeedback = $('<div id="return_date_error_msg" class="invalid-feedback text-danger font-weight-bold mt-1" style="display:none;">Please enter a valid date.</div>');
                 $date.closest('.field-wrapper').append($dateFeedback);
             }
 
-            if (!$date.val()) {
-                $date.addClass('is-invalid border-danger');
-                $dateFeedback.show();
-                if (showAlert && isValid) {
-                    $date.focus();
+            if (checkFields.includes('date')) {
+                let dateVal = ($date.val() || '').trim();
+                if (!dateVal) {
+                    $date.addClass('is-invalid border-danger');
+                    $dateFeedback.css('display', 'block');
+                    if (showAlert && isValid) {
+                        $date.focus();
+                    }
+                    isValid = false;
+                } else {
+                    $date.removeClass('is-invalid border-danger');
+                    $dateFeedback.css('display', 'none');
                 }
-                isValid = false;
-            } else {
-                $date.removeClass('is-invalid border-danger');
-                $dateFeedback.hide();
             }
 
             return isValid;
@@ -1358,13 +1354,13 @@
         $(document).on('click', '#sr-add-row', function (e) {
             if (!$('#customer_id').val()) {
                 e.preventDefault();
-                validateSrHeader(true);
+                validateSrHeader(true, ['customer']);
                 return false;
             }
         });
 
         $('#customer_id').on('change', function () {
-            validateSrHeader(false);
+            validateSrHeader(false, ['customer']);
             let custId = $(this).val();
 
             // Clear previous customer's sales bill selection and items

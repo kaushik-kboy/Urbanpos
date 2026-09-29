@@ -22,15 +22,7 @@
                     <label class="small font-weight-bold mb-1">To Date</label>
                     <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm">
                 </div>
-                <div class="col-md-2 col-sm-6 mb-2">
-                    <label class="small font-weight-bold mb-1">Location</label>
-                    <select name="branch_id" class="form-control form-control-sm">
-                        <option value="">All Locations</option>
-                        @foreach ($branches as $id => $name)
-                            <option value="{{ $id }}" @selected((string) $branchId === (string) $id)>{{ $name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                <input type="hidden" name="branch_id" value="{{ $branchId }}">
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Supplier</label>
                     <select name="supplier_id" class="form-control form-control-sm">
@@ -62,7 +54,8 @@
             <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-shopping-bag mr-1"></i> Purchase Invoices</h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
-                <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV (all)</a>
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-outline-primary mr-2"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</a>
                 <x-table-column-customizer table-key="reports.purchase-detail" table-id="purchase-detail-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>
@@ -74,43 +67,54 @@
                         <th>Inv Date</th>
                         <th>Inv No</th>
                         <th>Supplier</th>
-                        <th>Item</th>
-                        <th class="text-right">Received Qty</th>
-                        <th class="text-right">Purchase Rate</th>
-                        <th class="text-right">MRP</th>
-                        <th class="text-right">GST %</th>
-                        <th class="text-right">Net Amount</th>
+                        <th>GST No</th>
+                        <th class="text-right">Taxable Amt</th>
+                        <th class="text-right">Tax %</th>
+                        <th class="text-right">CGST</th>
+                        <th class="text-right">SGST</th>
+                        <th class="text-right">IGST</th>
+                        <th class="text-right">Freight</th>
+                        <th class="text-right">TCS</th>
+                        <th class="text-right">Total Amount</th>
                         <th>Branch</th>
                         <th class="text-center" style="width: 130px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($invoices as $invoice)
-                        @forelse ($invoice->items as $line)
-                            <tr>
-                                <td>{{ $invoice->invoice_date->format('d-m-Y') }}</td>
-                                <td>{{ $invoice->invoice_number }}</td>
-                                <td>{{ $invoice->supplier?->name }}</td>
-                                <td>{{ $line->item?->name }}</td>
-                                <td class="text-right">{{ $line->qty }}</td>
-                                <td class="text-right">{{ number_format($line->cost_price, 2) }}</td>
-                                <td class="text-right">{{ number_format($line->mrp, 2) }}</td>
-                                <td class="text-right">{{ $line->gst_percent }}</td>
-                                <td class="text-right">{{ number_format($line->net_amount, 2) }}</td>
-                                <td>{{ $invoice->branch?->name }}</td>
-                                <td class="text-center text-nowrap">
-                                    <a href="{{ route('purchase.purchase-invoices.show', $invoice->id) }}" class="btn btn-xs btn-info" title="View Purchase Invoice" target="_blank">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    <a href="{{ route('purchase.purchase-invoices.print', $invoice->id) }}" class="btn btn-xs btn-secondary ml-1" title="Print Invoice" target="_blank">
-                                        <i class="fas fa-print"></i> Print
-                                    </a>
-                                </td>
-                            </tr>
-                        @empty
-                        @endforelse
+                        @php
+                            $taxable = $invoice->items->sum(fn ($i) => (float) $i->net_amount - (float) $i->gst_tax_amount);
+                            $taxPercents = $invoice->items->pluck('gst_percent')->filter(fn ($p) => !is_null($p))->unique()->sort()->implode(', ');
+                            $cgst = (float) ($invoice->total_cgst ?: $invoice->items->sum('cgst_amount'));
+                            $sgst = (float) ($invoice->total_sgst ?: $invoice->items->sum('sgst_amount'));
+                            $igst = (float) ($invoice->total_igst ?: $invoice->items->sum('igst_amount'));
+                            $gstNo = $invoice->supplier_gstin ?: $invoice->supplier?->gst_no;
+                        @endphp
+                        <tr>
+                            <td>{{ $invoice->invoice_date?->format('d-m-Y') }}</td>
+                            <td><span class="font-weight-bold">{{ $invoice->invoice_number }}</span></td>
+                            <td>{{ $invoice->supplier?->name ?? 'Unknown Supplier' }}</td>
+                            <td><small class="text-muted">{{ $gstNo ?: '—' }}</small></td>
+                            <td class="text-right">{{ number_format($taxable, 2) }}</td>
+                            <td class="text-right">{{ $taxPercents ?: '0' }}%</td>
+                            <td class="text-right">{{ number_format($cgst, 2) }}</td>
+                            <td class="text-right">{{ number_format($sgst, 2) }}</td>
+                            <td class="text-right">{{ number_format($igst, 2) }}</td>
+                            <td class="text-right">{{ number_format((float) $invoice->freight, 2) }}</td>
+                            <td class="text-right">{{ number_format((float) $invoice->tcs_amount, 2) }}</td>
+                            <td class="text-right font-weight-bold">{{ number_format((float) $invoice->total, 2) }}</td>
+                            <td>{{ $invoice->branch?->name }}</td>
+                            <td class="text-center text-nowrap">
+                                <a href="{{ route('purchase.purchase-invoices.show', $invoice->id) }}" class="btn btn-xs btn-info" title="View Purchase Invoice" target="_blank">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{{ route('purchase.purchase-invoices.print', $invoice->id) }}" class="btn btn-xs btn-secondary ml-1" title="Print Invoice" target="_blank">
+                                    <i class="fas fa-print"></i> Print
+                                </a>
+                            </td>
+                        </tr>
                     @empty
-                        <tr><td colspan="11" class="text-center text-muted py-3">No purchases in this period.</td></tr>
+                        <tr><td colspan="14" class="text-center text-muted py-3">No purchases in this period.</td></tr>
                     @endforelse
                 </tbody>
             </table>

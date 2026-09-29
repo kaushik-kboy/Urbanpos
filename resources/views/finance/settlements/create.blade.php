@@ -356,10 +356,13 @@ $(function() {
     $('#btn-auto-allocate').on('click', function() {
         let totalPayment = parseFloat($('#total-payment-amount').val()) || 0;
         if (totalPayment <= 0) {
-            alert('Please enter Total Payment Amount first.');
-            $('#total-payment-amount').focus();
+            $('#total-payment-amount').addClass('is-invalid').focus();
+            if (window.toastr) {
+                toastr.warning('Please enter Total Payment Amount first.');
+            }
             return;
         }
+        $('#total-payment-amount').removeClass('is-invalid');
 
         let remaining = totalPayment;
 

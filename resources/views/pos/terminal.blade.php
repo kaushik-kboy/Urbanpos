@@ -40,9 +40,13 @@
                     @endforeach
                 </select>
             </div>
-            <div class="pos-meta-item d-none d-sm-inline-flex">
-                <i class="fas fa-user-circle text-warning mr-1"></i>
-                <span>{{ auth()->user()->name }}</span>
+            <div class="pos-meta-item d-inline-flex align-items-center">
+                <i class="fas fa-user-check text-warning mr-1"></i>
+                <select id="posBillerSelect" class="bg-transparent border-0 text-white font-weight-bold" style="outline:none; cursor:pointer;" title="Biller / Staff Name (Branch-wise)">
+                    @foreach ($branchStaff as $stId => $stName)
+                        <option value="{{ $stId }}" class="text-dark" @selected(($selectedStaffId ?? auth()->id()) == $stId)>{{ $stName }}</option>
+                    @endforeach
+                </select>
             </div>
             @if(isset($activeTillSession))
                 <div class="pos-meta-item">
@@ -1231,6 +1235,51 @@
     ] : null) !!};
     window.EDIT_BILL = {!! isset($editBill) ? json_encode($editBill) : 'null' !!};
     window.TENDER_TYPES = {!! json_encode($tenderTypes ?? []) !!};
+    window.ALL_BRANCH_STAFF = {!! json_encode($allBranchStaff ?? []) !!};
+
+    // Update POS Biller / Staff options based on selected branch
+    function syncPosBranchStaff(branchId) {
+        const billerSelect = document.getElementById('posBillerSelect');
+        if (!billerSelect || !window.ALL_BRANCH_STAFF || !window.ALL_BRANCH_STAFF.length) return;
+        const currentVal = billerSelect.value;
+        const bId = parseInt(branchId, 10);
+        
+        // Filter users assigned to this branch or global users (branch_id null)
+        const filtered = window.ALL_BRANCH_STAFF.filter(u => u.branch_id === null || parseInt(u.branch_id, 10) === bId);
+        // Sort branch-specific staff first, then global staff
+        filtered.sort((a, b) => {
+            const aMatch = parseInt(a.branch_id, 10) === bId ? 0 : 1;
+            const bMatch = parseInt(b.branch_id, 10) === bId ? 0 : 1;
+            if (aMatch !== bMatch) return aMatch - bMatch;
+            return a.name.localeCompare(b.name);
+        });
+
+        billerSelect.innerHTML = '';
+        filtered.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.className = 'text-dark';
+            opt.textContent = u.name;
+            if (String(u.id) === String(currentVal)) {
+                opt.selected = true;
+            }
+            billerSelect.appendChild(opt);
+        });
+
+        if (!billerSelect.value && filtered.length > 0) {
+            billerSelect.value = filtered[0].id;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const branchSelect = document.getElementById('posBranchSelect');
+        if (branchSelect) {
+            branchSelect.addEventListener('change', function () {
+                syncPosBranchStaff(this.value);
+            });
+            syncPosBranchStaff(branchSelect.value);
+        }
+    });
 
     // Digital Clock
     function updateClock() {

@@ -35,16 +35,7 @@
     @php
         $selectedBranch = $po->branch_id ?? ($indent->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?: (\App\Models\Branch::value('id') ?? 1)))));
     @endphp
-    <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-        <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-        <div class="input-group">
-            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
-            <div class="input-group-append">
-                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-            </div>
-        </div>
-    </div>
+    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
 
     <div class="field-wrapper col-md-6" data-field="po_date" data-label="PO Date" data-default-order="3" data-core="1">
         <x-field name="po_date" label="PO Date" type="date" :value="optional($po->po_date ?? now())->format('Y-m-d')" required />
@@ -503,7 +494,7 @@
         function populatePoRow($row, data) {
             if (!data || !data.id) return;
 
-            let codeVal = data.id || data.item_code || data.code || '';
+            let codeVal = data.item_code || data.code || data.barcode || data.id || '';
             $row.find('.po-item-code').val(codeVal);
             $row.find('.po-item-desc').val(data.name + (data.item_code ? ' [' + data.item_code + ']' : ''));
             $row.find('.po-item-select').val(data.id);

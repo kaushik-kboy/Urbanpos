@@ -89,93 +89,169 @@
     </div>
 
     <div class="tab-pane" id="tab-contact">
-        <x-field name="address1" label="Address1" :value="$c->address1 ?? ''" />
-        <x-select name="area_id" label="Area" :options="$areas" :selected="$c->area_id ?? ''" placeholder="Select an area" />
-        <div class="form-group row">
-            <label for="customer_state" class="col-sm-3 col-form-label">State</label>
-            <div class="col-sm-6">
-                <select name="state" id="customer_state" class="form-control select2 @error('state') is-invalid @enderror">
-                    <option value="">-- Select State --</option>
-                    <optgroup label="⭐ Top States">
-                        <option value="Gujarat" @selected(old('state', $c->state ?? '') === 'Gujarat')>Gujarat</option>
-                        <option value="Rajasthan" @selected(old('state', $c->state ?? '') === 'Rajasthan')>Rajasthan</option>
-                        <option value="Maharashtra" @selected(old('state', $c->state ?? '') === 'Maharashtra')>Maharashtra</option>
-                    </optgroup>
-                    <optgroup label="Other States & UTs">
-                        @foreach(\App\Helpers\IndianStates::states() as $stVal => $stLabel)
-                            @if(!in_array($stVal, ['Gujarat', 'Rajasthan', 'Maharashtra']))
-                                <option value="{{ $stVal }}" @selected(old('state', $c->state ?? '') === $stVal)>{{ $stLabel }}</option>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-address-book mr-1 text-primary"></i> Contact Details</h6>
+            <x-form-layout-customizer
+                form-key="master_customers.contact"
+                container-id="customer-contact-fields-grid"
+                title="Customize Contact Details Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="customer-contact-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="address1" data-label="Address1" data-default-order="1">
+                <x-field name="address1" label="Address1" :value="$c->address1 ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="area_id" data-label="Area" data-default-order="2">
+                <x-select name="area_id" label="Area" :options="$areas" :selected="$c->area_id ?? ''" placeholder="Select an area" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="state" data-label="State" data-default-order="3">
+                <div class="form-group row">
+                    <label for="customer_state" class="col-sm-3 col-form-label">State</label>
+                    <div class="col-sm-6">
+                        <select name="state" id="customer_state" class="form-control select2 @error('state') is-invalid @enderror">
+                            <option value="">-- Select State --</option>
+                            <optgroup label="⭐ Top States">
+                                <option value="Gujarat" @selected(old('state', $c->state ?? '') === 'Gujarat')>Gujarat</option>
+                                <option value="Rajasthan" @selected(old('state', $c->state ?? '') === 'Rajasthan')>Rajasthan</option>
+                                <option value="Maharashtra" @selected(old('state', $c->state ?? '') === 'Maharashtra')>Maharashtra</option>
+                            </optgroup>
+                            <optgroup label="Other States & UTs">
+                                @foreach(\App\Helpers\IndianStates::states() as $stVal => $stLabel)
+                                    @if(!in_array($stVal, ['Gujarat', 'Rajasthan', 'Maharashtra']))
+                                        <option value="{{ $stVal }}" @selected(old('state', $c->state ?? '') === $stVal)>{{ $stLabel }}</option>
+                                    @endif
+                                @endforeach
+                            </optgroup>
+                        </select>
+                        @error('state')
+                            <span class="invalid-feedback d-block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="city" data-label="City" data-default-order="4">
+                <div class="form-group row">
+                    <label for="customer_city" class="col-sm-3 col-form-label">City</label>
+                    <div class="col-sm-6">
+                        <select name="city" id="customer_city" class="form-control select2 @error('city') is-invalid @enderror">
+                            <option value="">-- Select City --</option>
+                            @if(!empty(old('city', $c->city ?? '')))
+                                <option value="{{ old('city', $c->city ?? '') }}" selected>{{ old('city', $c->city ?? '') }}</option>
                             @endif
-                        @endforeach
-                    </optgroup>
-                </select>
-                @error('state')
-                    <span class="invalid-feedback d-block">{{ $message }}</span>
-                @enderror
+                        </select>
+                        @error('city')
+                            <span class="invalid-feedback d-block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="country" data-label="Country" data-default-order="5">
+                <x-field name="country" label="Country" :value="$c->country ?? 'India'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="postal_code" data-label="Postal Code" data-default-order="6">
+                <x-field name="postal_code" label="Postal Code" :value="$c->postal_code ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="std_code" data-label="STD Code" data-default-order="7">
+                <x-field name="std_code" label="STD Code" :value="$c->std_code ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="phone" data-label="Phone" data-default-order="8">
+                <x-field name="phone" label="Phone" :value="$c->phone ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="email" data-label="Email" data-default-order="9">
+                <x-field name="email" label="Email" type="email" :value="$c->email ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="remarks" data-label="Remarks" data-default-order="10">
+                <x-textarea name="remarks" label="Remarks" :value="$c->remarks ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="gst_no" data-label="GST No" data-default-order="11">
+                <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="aadhar_no" data-label="Aadhar No" data-default-order="12">
+                <x-field name="aadhar_no" label="Aadhar No" :value="$c->aadhar_no ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="pan_no" data-label="Pan No" data-default-order="13">
+                <x-field name="pan_no" label="Pan No" :value="$c->pan_no ?? ''" />
             </div>
         </div>
-        <div class="form-group row">
-            <label for="customer_city" class="col-sm-3 col-form-label">City</label>
-            <div class="col-sm-6">
-                <select name="city" id="customer_city" class="form-control select2 @error('city') is-invalid @enderror">
-                    <option value="">-- Select City --</option>
-                    @if(!empty(old('city', $c->city ?? '')))
-                        <option value="{{ old('city', $c->city ?? '') }}" selected>{{ old('city', $c->city ?? '') }}</option>
-                    @endif
-                </select>
-                @error('city')
-                    <span class="invalid-feedback d-block">{{ $message }}</span>
-                @enderror
-            </div>
-        </div>
-        <x-field name="country" label="Country" :value="$c->country ?? 'India'" />
-        <x-field name="postal_code" label="Postal Code" :value="$c->postal_code ?? ''" />
-        <x-field name="std_code" label="STD Code" :value="$c->std_code ?? ''" />
-        <x-field name="phone" label="Phone" :value="$c->phone ?? ''" />
-        <x-field name="email" label="Email" type="email" :value="$c->email ?? ''" />
-        <x-textarea name="remarks" label="Remarks" :value="$c->remarks ?? ''" />
-        <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
-        <x-field name="aadhar_no" label="Aadhar No" :value="$c->aadhar_no ?? ''" />
-        <x-field name="pan_no" label="Pan No" :value="$c->pan_no ?? ''" />
     </div>
 
     <div class="tab-pane" id="tab-others">
-        <x-select name="gender" label="Gender" :options="['Male' => 'Male', 'Female' => 'Female']" :selected="$c->gender ?? ''" placeholder="Select" />
-        <x-select name="exempted_reason" label="Exempted Reason" :options="['Other exemption' => 'Other exemption', 'SEZ-Exempt' => 'SEZ-Exempt', 'SEZ-LUT' => 'SEZ-LUT', 'BOND' => 'BOND', 'SEZ-Taxable' => 'SEZ-Taxable']" :selected="$c->exempted_reason ?? ''" placeholder="Select" />
-        @if(!empty($c?->id))
-            <div class="form-group row">
-                <label class="col-sm-3 col-form-label font-weight-bold">
-                    Customer Type
-                    <span class="badge badge-secondary small ml-1"><i class="fas fa-lock mr-1"></i> Locked</span>
-                </label>
-                <div class="col-sm-6">
-                    <input type="text" class="form-control bg-light font-weight-bold" value="{{ $c->customer_type ?? 'RETAIL INVOICE' }}" readonly disabled>
-                    <input type="hidden" name="customer_type" value="{{ $c->customer_type ?? 'RETAIL INVOICE' }}">
-                    <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Customer Type cannot be changed after customer is created.</small>
-                </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-ellipsis-h mr-1 text-primary"></i> Other Details</h6>
+            <x-form-layout-customizer
+                form-key="master_customers.others"
+                container-id="customer-others-fields-grid"
+                title="Customize Other Details Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="customer-others-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="gender" data-label="Gender" data-default-order="1">
+                <x-select name="gender" label="Gender" :options="['Male' => 'Male', 'Female' => 'Female']" :selected="$c->gender ?? ''" placeholder="Select" />
             </div>
-        @else
-            <x-select name="customer_type" label="Customer Type" :options="$customerTypes ?? ['RETAIL INVOICE' => 'RETAIL INVOICE', 'TAX INVOICE' => 'TAX INVOICE', 'EXEMPTED' => 'EXEMPTED', 'E-COMMERCE' => 'E-COMMERCE']" :selected="$c->customer_type ?? 'RETAIL INVOICE'" />
-        @endif
+            <div class="field-wrapper col-md-6" data-field="exempted_reason" data-label="Exempted Reason" data-default-order="2">
+                <x-select name="exempted_reason" label="Exempted Reason" :options="['Other exemption' => 'Other exemption', 'SEZ-Exempt' => 'SEZ-Exempt', 'SEZ-LUT' => 'SEZ-LUT', 'BOND' => 'BOND', 'SEZ-Taxable' => 'SEZ-Taxable']" :selected="$c->exempted_reason ?? ''" placeholder="Select" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="customer_type" data-label="Customer Type" data-default-order="3">
+                @if(!empty($c?->id))
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label font-weight-bold">
+                            Customer Type
+                            <span class="badge badge-secondary small ml-1"><i class="fas fa-lock mr-1"></i> Locked</span>
+                        </label>
+                        <div class="col-sm-6">
+                            <input type="text" class="form-control bg-light font-weight-bold" value="{{ $c->customer_type ?? 'RETAIL INVOICE' }}" readonly disabled>
+                            <input type="hidden" name="customer_type" value="{{ $c->customer_type ?? 'RETAIL INVOICE' }}">
+                            <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Customer Type cannot be changed after customer is created.</small>
+                        </div>
+                    </div>
+                @else
+                    <x-select name="customer_type" label="Customer Type" :options="$customerTypes ?? ['RETAIL INVOICE' => 'RETAIL INVOICE', 'TAX INVOICE' => 'TAX INVOICE', 'EXEMPTED' => 'EXEMPTED', 'E-COMMERCE' => 'E-COMMERCE']" :selected="$c->customer_type ?? 'RETAIL INVOICE'" />
+                @endif
+            </div>
+        </div>
     </div>
 
     <div class="tab-pane" id="tab-pets">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-paw mr-1 text-primary"></i> Pet Details</h6>
+            <x-form-layout-customizer
+                form-key="master_customers.pets"
+                container-id="customer-pet-fields-grid"
+                title="Customize Pet Details Layout"
+            />
+        </div>
         <div id="pet-rows">
             @forelse (($c->pets ?? collect())->all() ?: [null] as $index => $pet)
                 @if ($pet || ! ($c->pets ?? null)?->count())
-                    <div class="pet-row border rounded p-3 mb-3">
+                    <div class="pet-row border rounded p-3 mb-3 bg-light shadow-sm">
                         <input type="hidden" name="pets[{{ $index }}][id]" value="{{ $pet->id ?? '' }}">
                         <input type="hidden" name="pets[{{ $index }}][_delete]" class="pet-delete-flag" value="0">
 
-                        <x-select name="pets[{{ $index }}][breed_id]" label="Breed" :options="$breeds" :selected="$pet->breed_id ?? ''" placeholder="NA" />
-                        <x-select name="pets[{{ $index }}][pet_type_id]" label="Pet Type" :options="$petTypes" :selected="$pet->pet_type_id ?? ''" placeholder="NA" />
-                        <x-field name="pets[{{ $index }}][name]" label="Name" :value="$pet->name ?? ''" />
-                        <x-select name="pets[{{ $index }}][gender]" label="Gender" :options="['Male' => 'Male', 'Female' => 'Female']" :selected="$pet->gender ?? 'Male'" />
-                        <x-field name="pets[{{ $index }}][age]" label="Age" :value="$pet->age ?? ''" />
-                        <x-textarea name="pets[{{ $index }}][remarks]" label="Remarks" :value="$pet->remarks ?? ''" col="6" rows="2" />
-                        <x-field name="pets[{{ $index }}][birth_date]" label="Birth Date" type="date" :value="optional($pet->birth_date ?? null)->format('Y-m-d')" />
+                        <div class="row g-2 form-fields-grid customer-pet-fields-grid" @if($index === 0) id="customer-pet-fields-grid" @endif>
+                            <div class="field-wrapper col-md-6" data-field="breed_id" data-label="Breed" data-default-order="1">
+                                <x-select name="pets[{{ $index }}][breed_id]" label="Breed" :options="$breeds" :selected="$pet->breed_id ?? ''" placeholder="NA" />
+                            </div>
+                            <div class="field-wrapper col-md-6" data-field="pet_type_id" data-label="Pet Type" data-default-order="2">
+                                <x-select name="pets[{{ $index }}][pet_type_id]" label="Pet Type" :options="$petTypes" :selected="$pet->pet_type_id ?? ''" placeholder="NA" />
+                            </div>
+                            <div class="field-wrapper col-md-6" data-field="name" data-label="Name" data-default-order="3">
+                                <x-field name="pets[{{ $index }}][name]" label="Name" :value="$pet->name ?? ''" />
+                            </div>
+                            <div class="field-wrapper col-md-6" data-field="gender" data-label="Gender" data-default-order="4">
+                                <x-select name="pets[{{ $index }}][gender]" label="Gender" :options="['Male' => 'Male', 'Female' => 'Female']" :selected="$pet->gender ?? 'Male'" />
+                            </div>
+                            <div class="field-wrapper col-md-6" data-field="age" data-label="Age" data-default-order="5">
+                                <x-field name="pets[{{ $index }}][age]" label="Age" :value="$pet->age ?? ''" />
+                            </div>
+                            <div class="field-wrapper col-md-6" data-field="birth_date" data-label="Birth Date" data-default-order="6">
+                                <x-field name="pets[{{ $index }}][birth_date]" label="Birth Date" type="date" :value="optional($pet->birth_date ?? null)->format('Y-m-d')" />
+                            </div>
+                            <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
+                                <x-textarea name="pets[{{ $index }}][remarks]" label="Remarks" :value="$pet->remarks ?? ''" col="6" rows="2" />
+                            </div>
+                        </div>
 
-                        <div class="text-right">
+                        <div class="text-right mt-2">
                             <button type="button" class="btn btn-sm btn-outline-danger remove-pet-row"><i class="fas fa-trash"></i> Remove</button>
                         </div>
                     </div>
@@ -184,7 +260,7 @@
             @endforelse
         </div>
 
-        <button type="button" id="add-pet-detail" class="btn btn-link"><i class="fas fa-plus-circle"></i> Add Pet Detail</button>
+        <button type="button" id="add-pet-detail" class="btn btn-primary btn-sm"><i class="fas fa-plus-circle mr-1"></i> Add Pet Detail</button>
     </div>
 
     <div class="tab-pane" id="tab-custom-fields">
@@ -195,65 +271,81 @@
 </div>
 
 <template id="pet-row-template">
-    <div class="pet-row border rounded p-3 mb-3">
+    <div class="pet-row border rounded p-3 mb-3 bg-light shadow-sm">
         <input type="hidden" name="pets[__INDEX__][id]" value="">
         <input type="hidden" name="pets[__INDEX__][_delete]" class="pet-delete-flag" value="0">
 
-        <div class="form-group row">
-            <label class="col-sm-3 col-form-label">Breed</label>
-            <div class="col-sm-6">
-                <select name="pets[__INDEX__][breed_id]" class="form-control">
-                    <option value="">NA</option>
-                    @foreach ($breeds as $id => $name)
-                        <option value="{{ $id }}">{{ $name }}</option>
-                    @endforeach
-                </select>
+        <div class="row g-2 form-fields-grid customer-pet-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="breed_id" data-label="Breed" data-default-order="1">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Breed</label>
+                    <div class="col-sm-6">
+                        <select name="pets[__INDEX__][breed_id]" class="form-control">
+                            <option value="">NA</option>
+                            @foreach ($breeds as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-wrapper col-md-6" data-field="pet_type_id" data-label="Pet Type" data-default-order="2">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Pet Type</label>
+                    <div class="col-sm-6">
+                        <select name="pets[__INDEX__][pet_type_id]" class="form-control">
+                            <option value="">NA</option>
+                            @foreach ($petTypes as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-wrapper col-md-6" data-field="name" data-label="Name" data-default-order="3">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Name</label>
+                    <div class="col-sm-6"><input type="text" name="pets[__INDEX__][name]" class="form-control"></div>
+                </div>
+            </div>
+
+            <div class="field-wrapper col-md-6" data-field="gender" data-label="Gender" data-default-order="4">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Gender</label>
+                    <div class="col-sm-6">
+                        <select name="pets[__INDEX__][gender]" class="form-control">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-wrapper col-md-6" data-field="age" data-label="Age" data-default-order="5">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Age</label>
+                    <div class="col-sm-6"><input type="text" name="pets[__INDEX__][age]" class="form-control"></div>
+                </div>
+            </div>
+
+            <div class="field-wrapper col-md-6" data-field="birth_date" data-label="Birth Date" data-default-order="6">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Birth Date</label>
+                    <div class="col-sm-6"><input type="date" name="pets[__INDEX__][birth_date]" class="form-control"></div>
+                </div>
+            </div>
+
+            <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Remarks</label>
+                    <div class="col-sm-6"><textarea name="pets[__INDEX__][remarks]" rows="2" class="form-control"></textarea></div>
+                </div>
             </div>
         </div>
 
-        <div class="form-group row">
-            <label class="col-sm-3 col-form-label">Pet Type</label>
-            <div class="col-sm-6">
-                <select name="pets[__INDEX__][pet_type_id]" class="form-control">
-                    <option value="">NA</option>
-                    @foreach ($petTypes as $id => $name)
-                        <option value="{{ $id }}">{{ $name }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group row">
-            <label class="col-sm-3 col-form-label">Name</label>
-            <div class="col-sm-6"><input type="text" name="pets[__INDEX__][name]" class="form-control"></div>
-        </div>
-
-        <div class="form-group row">
-            <label class="col-sm-3 col-form-label">Gender</label>
-            <div class="col-sm-6">
-                <select name="pets[__INDEX__][gender]" class="form-control">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group row">
-            <label class="col-sm-3 col-form-label">Age</label>
-            <div class="col-sm-6"><input type="text" name="pets[__INDEX__][age]" class="form-control"></div>
-        </div>
-
-        <div class="form-group row">
-            <label class="col-sm-3 col-form-label">Remarks</label>
-            <div class="col-sm-6"><textarea name="pets[__INDEX__][remarks]" rows="2" class="form-control"></textarea></div>
-        </div>
-
-        <div class="form-group row">
-            <label class="col-sm-3 col-form-label">Birth Date</label>
-            <div class="col-sm-6"><input type="date" name="pets[__INDEX__][birth_date]" class="form-control"></div>
-        </div>
-
-        <div class="text-right">
+        <div class="text-right mt-2">
             <button type="button" class="btn btn-sm btn-outline-danger remove-pet-row"><i class="fas fa-trash"></i> Remove</button>
         </div>
     </div>
@@ -263,12 +355,42 @@
 <script>
     (function () {
         let petIndex = {{ ($c->pets ?? collect())->count() ?: 1 }};
+        let lastPetMeta = null;
+
+        function syncPetRowLayout($grid, metaList) {
+            if (!metaList || !metaList.length) return;
+            metaList.forEach(function (f) {
+                let $field = $grid.find(`.field-wrapper[data-field="${f.field}"]`);
+                if ($field.length) {
+                    $grid.append($field);
+                    $field.removeClass('col-md-2 col-md-3 col-md-4 col-md-6 col-md-12').addClass(f.currentCol);
+                    if (!f.visible) {
+                        $field.addClass('form-field-hidden');
+                    } else {
+                        $field.removeClass('form-field-hidden');
+                    }
+                }
+            });
+        }
+
+        $(document).on('form-layout:applied', function (e, data) {
+            if (data.formKey === 'master_customers.pets') {
+                lastPetMeta = data.fieldsMeta;
+                $('.customer-pet-fields-grid').each(function () {
+                    syncPetRowLayout($(this), data.fieldsMeta);
+                });
+            }
+        });
 
         document.getElementById('add-pet-detail').addEventListener('click', function () {
             const template = document.getElementById('pet-row-template').innerHTML.replaceAll('__INDEX__', petIndex);
             const wrapper = document.createElement('div');
             wrapper.innerHTML = template;
-            document.getElementById('pet-rows').appendChild(wrapper.firstElementChild);
+            const newRow = wrapper.firstElementChild;
+            document.getElementById('pet-rows').appendChild(newRow);
+            if (lastPetMeta) {
+                syncPetRowLayout($(newRow).find('.customer-pet-fields-grid'), lastPetMeta);
+            }
             petIndex++;
         });
 

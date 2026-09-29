@@ -167,23 +167,39 @@ class ReportController extends Controller
 
         $query->orderBy('invoice_date')->orderBy('id');
 
-        // Full-dataset export is server-side and streamed; the on-page table only holds one page of invoices.
+        // Excel export: real .xlsx download matching exact 16 columns
+        if (in_array($request->query('export'), ['excel', 'xlsx'])) {
+            $filename = 'purchase-detail_' . $from . '_to_' . $to . '.xlsx';
+            return (new \App\Exports\PurchaseDetailExport($from, $to, $branchId, $supplierId, $purchaseType, $search))
+                ->download($filename);
+        }
+
+        // Full-dataset export is server-side and streamed; ONE ROW PER INVOICE
         if ($request->query('export') === 'csv') {
             return $this->exportQueryToCsv($query, [
-                'Invoice Date' => '', 'Invoice No' => '', 'Supplier' => '', 'Item' => '', 'Qty' => '', 'Cost' => '', 'MRP' => '', 'GST %' => '', 'Net Amount' => '', 'Branch' => '',
+                'Invoice Date' => '', 'Invoice No' => '', 'Supplier' => '', 'GST No' => '', 'Taxable Amount' => '', 'GST %' => '', 'CGST' => '', 'SGST' => '', 'IGST' => '', 'Freight' => '', 'TCS' => '', 'Total Amount' => '', 'Branch' => '',
             ], 'purchase-detail-report.csv', function ($invoice) {
-                return $invoice->items->map(fn ($line) => [
+                $taxable = $invoice->items->sum(fn ($i) => (float) $i->net_amount - (float) $i->gst_tax_amount);
+                $taxPercents = $invoice->items->pluck('gst_percent')->filter(fn ($p) => !is_null($p))->unique()->sort()->implode(', ');
+                $cgst = (float) ($invoice->total_cgst ?: $invoice->items->sum('cgst_amount'));
+                $sgst = (float) ($invoice->total_sgst ?: $invoice->items->sum('sgst_amount'));
+                $igst = (float) ($invoice->total_igst ?: $invoice->items->sum('igst_amount'));
+
+                return [[
                     $invoice->invoice_date->format('d-m-Y'),
                     $invoice->invoice_number,
                     $invoice->supplier?->name,
-                    $line->item?->name,
-                    $line->qty,
-                    number_format((float) $line->cost_price, 2, '.', ''),
-                    number_format((float) $line->mrp, 2, '.', ''),
-                    $line->gst_percent,
-                    number_format((float) $line->net_amount, 2, '.', ''),
+                    $invoice->supplier_gstin ?: $invoice->supplier?->gst_no,
+                    number_format($taxable, 2, '.', ''),
+                    $taxPercents,
+                    number_format($cgst, 2, '.', ''),
+                    number_format($sgst, 2, '.', ''),
+                    number_format($igst, 2, '.', ''),
+                    number_format((float) $invoice->freight, 2, '.', ''),
+                    number_format((float) $invoice->tcs_amount, 2, '.', ''),
+                    number_format((float) $invoice->total, 2, '.', ''),
                     $invoice->branch?->name,
-                ])->all();
+                ]];
             });
         }
 
@@ -195,6 +211,22 @@ class ReportController extends Controller
         $purchaseTypes = PurchaseInvoice::select('purchase_type')->distinct()->whereNotNull('purchase_type')->pluck('purchase_type');
 
         return view('reports.purchase-detail', compact('invoices', 'from', 'to', 'branchId', 'branches', 'suppliers', 'purchaseTypes', 'search', 'supplierId', 'purchaseType'));
+    }
+
+    /**
+     * Purchase Detail — dedicated invoice-wise real .xlsx export.
+     */
+    public function exportPurchaseDetail(Request $request)
+    {
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $search = $request->input('search');
+        $supplierId = $request->input('supplier_id');
+        $purchaseType = $request->input('purchase_type');
+
+        $filename = 'purchase-detail_' . $from . '_to_' . $to . '.xlsx';
+
+        return (new \App\Exports\PurchaseDetailExport($from, $to, $branchId, $supplierId, $purchaseType, $search))
+            ->download($filename);
     }
 
     public function currentStock(Request $request)

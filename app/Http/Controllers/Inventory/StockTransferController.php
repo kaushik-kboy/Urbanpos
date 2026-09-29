@@ -668,13 +668,15 @@ class StockTransferController extends Controller
         $headerRules = [
             'transfer_date' => ['required', 'date', "before_or_equal:{$today}"],
             'from_branch_id' => ['required', 'exists:branches,id', 'different:to_branch_id'],
-            'to_branch_id' => ['required', 'exists:branches,id'],
+            'to_branch_id' => ['required', 'exists:branches,id', 'different:from_branch_id'],
             'remarks' => ['nullable', 'string'],
             'posting_key' => ['nullable', 'string', 'max:100'],
         ];
 
         $headerMessages = [
             'transfer_date.before_or_equal' => 'Future date is not allowed for Transfer Date.',
+            'from_branch_id.different' => 'From Branch must be different from Destination Branch.',
+            'to_branch_id.different' => 'To Branch must be different from Source Branch.',
         ];
 
         $dynamicService = app(\App\Services\DynamicValidationService::class);

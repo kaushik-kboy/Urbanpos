@@ -29,8 +29,8 @@
                     <i class="fas fa-times mr-1"></i> Cancel
                 </a>
                 <div>
-                    <button type="reset" class="btn btn-outline-secondary mr-2">
-                        <i class="fas fa-eraser mr-1"></i> Clear
+                    <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
+                        <i class="fas fa-undo mr-1"></i> Reset Form
                     </button>
                     <button type="submit" class="btn btn-danger font-weight-bold px-4 shadow-sm">
                         <i class="fas fa-save mr-1"></i> Save Damage Stock (F6)

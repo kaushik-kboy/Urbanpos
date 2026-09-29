@@ -52,16 +52,7 @@
                     @php
                         $selectedBranch = old('branch_id', $sourceOrder->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
                     @endphp
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-                        <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-                        <div class="input-group">
-                            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-                            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
-                            <div class="input-group-append">
-                                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="supplier_id" data-label="Supplier" data-default-order="3" data-core="1">
                         <label class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
                         <select name="supplier_id" class="form-control select2" required>
@@ -130,6 +121,9 @@
                         table-id="grn-items-table"
                         :columns="$grnItemColumns"
                     />
+                    <button type="button" class="btn btn-xs btn-outline-danger font-weight-bold ml-2" id="btn-reset-table" title="Reset item table rows">
+                        <i class="fas fa-undo mr-1"></i> Reset Table
+                    </button>
                     <button type="button" class="btn btn-xs btn-primary ml-2" id="add-row-btn">
                         <i class="fas fa-plus mr-1"></i> Add Item Line
                     </button>
@@ -140,17 +134,17 @@
                     <thead class="thead-light">
                         <tr class="text-center">
                             <th style="width: 40px;" data-col-key="seq">#</th>
-                            <th style="width: 140px;" data-col-key="code">Code / Barcode</th>
-                            <th style="min-width: 230px;" data-col-key="item">Item Description</th>
-                            <th style="width: 100px;" data-col-key="ordered">Ordered</th>
-                            <th style="width: 110px;" data-col-key="received">Received <span class="text-danger">*</span></th>
-                            <th style="width: 110px;" data-col-key="accepted">Accepted <span class="text-danger">*</span></th>
-                            <th style="width: 90px;" data-col-key="rejected">Rejected</th>
-                            <th style="width: 110px;" data-col-key="cost">Unit Cost (₹)</th>
-                            <th style="width: 100px;" data-col-key="mrp">MRP (₹)</th>
-                            <th style="width: 110px;" data-col-key="batch">Batch No</th>
-                            <th style="width: 130px;" data-col-key="exp_date">Expiry Date</th>
-                            <th style="width: 120px;" class="text-right" data-col-key="line_total">Line Total</th>
+                            <th style="width: 130px;" data-col-key="code">Code / Barcode</th>
+                            <th style="min-width: 200px;" data-col-key="item">Item Description</th>
+                            <th style="width: 75px;" data-col-key="ordered">Ordered</th>
+                            <th style="width: 85px;" data-col-key="received">Received <span class="text-danger">*</span></th>
+                            <th style="width: 85px;" data-col-key="accepted">Accepted <span class="text-danger">*</span></th>
+                            <th style="width: 75px;" data-col-key="rejected">Rejected</th>
+                            <th style="width: 90px;" data-col-key="cost">Unit Cost (₹)</th>
+                            <th style="width: 85px;" data-col-key="mrp">MRP (₹)</th>
+                            <th style="width: 90px;" data-col-key="batch">Batch No</th>
+                            <th style="width: 155px; min-width: 150px;" data-col-key="exp_date">Expiry Date</th>
+                            <th style="width: 110px;" class="text-right" data-col-key="line_total">Line Total</th>
                             <th style="width: 40px;" data-col-key="actions"></th>
                         </tr>
                     </thead>
@@ -185,37 +179,37 @@
                             @endphp
                             <tr class="grn-item-row" data-index="{{ $idx }}">
                                 <td class="text-center align-middle row-number" data-col-key="seq">{{ $idx + 1 }}</td>
-                                <td data-col-key="code" style="min-width: 130px;">
+                                <td data-col-key="code" style="min-width: 120px;">
                                     <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" value="{{ $codeVal }}" placeholder="Code / Barcode" autocomplete="off" title="Press Tab or Enter to search item">
                                 </td>
-                                <td data-col-key="item">
+                                <td data-col-key="item" style="min-width: 200px;">
                                     <input type="hidden" name="items[{{ $idx }}][purchase_order_item_id]" value="{{ $poItemId }}">
                                     <input type="hidden" name="items[{{ $idx }}][item_id]" class="prn-item-id item-select" value="{{ $itemId }}">
                                     <input type="text" class="form-control form-control-sm prn-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" value="{{ $nameVal }}" placeholder="Product Description (auto-filled)">
                                 </td>
-                                <td data-col-key="ordered">
-                                    <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
+                                <td data-col-key="ordered" style="width: 75px;">
+                                    <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered px-1" value="{{ $ordered }}" readonly tabindex="-1">
                                 </td>
-                                <td data-col-key="received">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" value="{{ $received }}" placeholder="0.00">
+                                <td data-col-key="received" style="width: 85px;">
+                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received px-1" value="{{ $received }}" placeholder="0.00">
                                 </td>
-                                <td data-col-key="accepted">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" value="{{ $accepted }}" placeholder="0.00">
+                                <td data-col-key="accepted" style="width: 85px;">
+                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted px-1" value="{{ $accepted }}" placeholder="0.00">
                                 </td>
-                                <td data-col-key="rejected">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected" value="{{ $rejected }}" readonly tabindex="-1">
+                                <td data-col-key="rejected" style="width: 75px;">
+                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected px-1" value="{{ $rejected }}" readonly tabindex="-1">
                                 </td>
-                                <td data-col-key="cost">
-                                    <input type="number" step="0.0001" min="0" name="items[{{ $idx }}][unit_cost]" class="form-control form-control-sm text-right row-cost" value="{{ $cost }}" placeholder="0.00">
+                                <td data-col-key="cost" style="width: 90px;">
+                                    <input type="number" step="0.0001" min="0" name="items[{{ $idx }}][unit_cost]" class="form-control form-control-sm text-right row-cost px-1" value="{{ $cost }}" placeholder="0.00">
                                 </td>
-                                <td data-col-key="mrp">
-                                    <input type="number" step="0.01" min="0" name="items[{{ $idx }}][mrp]" class="form-control form-control-sm text-right row-mrp" value="{{ $mrp }}" placeholder="0.00">
+                                <td data-col-key="mrp" style="width: 85px;">
+                                    <input type="number" step="0.01" min="0" name="items[{{ $idx }}][mrp]" class="form-control form-control-sm text-right row-mrp px-1" value="{{ $mrp }}" placeholder="0.00">
                                 </td>
-                                <td data-col-key="batch">
-                                    <input type="text" name="items[{{ $idx }}][batch_no]" class="form-control form-control-sm" value="{{ $batch }}" placeholder="Batch">
+                                <td data-col-key="batch" style="width: 90px;">
+                                    <input type="text" name="items[{{ $idx }}][batch_no]" class="form-control form-control-sm px-1" value="{{ $batch }}" placeholder="Batch">
                                 </td>
-                                <td data-col-key="exp_date">
-                                    <input type="date" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm" value="{{ $exp }}">
+                                <td data-col-key="exp_date" style="width: 155px; min-width: 150px;">
+                                    <input type="date" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm px-1" style="min-width: 140px;" value="{{ $exp }}">
                                 </td>
                                 <td class="text-right align-middle font-weight-bold text-primary row-total" data-col-key="line_total">₹0.00</td>
                                 <td class="text-center align-middle" data-col-key="actions">
@@ -252,6 +246,9 @@
                     <div class="col-md-4 d-flex flex-column justify-content-end text-right">
                         <div class="small text-muted mb-2">Inventory will be received into the selected branch upon saving.</div>
                         <div>
+                            <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
+                                <i class="fas fa-undo mr-1"></i> Reset Form
+                            </button>
                             <a href="{{ route('purchase.purchase-receipt-notes.index') }}" class="btn btn-secondary mr-2">Cancel</a>
                             <button type="submit" class="btn btn-success px-4 font-weight-bold"><i class="fas fa-check-circle mr-1"></i> Save & Inward Goods</button>
                         </div>
@@ -265,37 +262,37 @@
     <template id="row-template">
         <tr class="grn-item-row" data-index="__INDEX__">
             <td class="text-center align-middle row-number" data-col-key="seq">__NUMBER__</td>
-            <td data-col-key="code" style="min-width: 130px;">
+            <td data-col-key="code" style="min-width: 120px;">
                 <input type="text" class="form-control form-control-sm prn-item-code font-weight-bold" placeholder="Code / Barcode" autocomplete="off" title="Press Tab or Enter to search item">
             </td>
-            <td data-col-key="item">
+            <td data-col-key="item" style="min-width: 200px;">
                 <input type="hidden" name="items[__INDEX__][purchase_order_item_id]" value="">
                 <input type="hidden" name="items[__INDEX__][item_id]" class="prn-item-id item-select" value="">
                 <input type="text" class="form-control form-control-sm prn-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" placeholder="Product Description (auto-filled)">
             </td>
-            <td data-col-key="ordered">
-                <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
+            <td data-col-key="ordered" style="width: 75px;">
+                <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered px-1" value="0" readonly tabindex="-1">
             </td>
-            <td data-col-key="received">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received" placeholder="0.00">
+            <td data-col-key="received" style="width: 85px;">
+                <input type="number" step="0.001" min="0" name="items[__INDEX__][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received px-1" placeholder="0.00">
             </td>
-            <td data-col-key="accepted">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted" placeholder="0.00">
+            <td data-col-key="accepted" style="width: 85px;">
+                <input type="number" step="0.001" min="0" name="items[__INDEX__][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted px-1" placeholder="0.00">
             </td>
-            <td data-col-key="rejected">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected" value="0" readonly tabindex="-1">
+            <td data-col-key="rejected" style="width: 75px;">
+                <input type="number" step="0.001" min="0" name="items[__INDEX__][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected px-1" value="0" readonly tabindex="-1">
             </td>
-            <td data-col-key="cost">
-                <input type="number" step="0.0001" min="0" name="items[__INDEX__][unit_cost]" class="form-control form-control-sm text-right row-cost" placeholder="0.00">
+            <td data-col-key="cost" style="width: 90px;">
+                <input type="number" step="0.0001" min="0" name="items[__INDEX__][unit_cost]" class="form-control form-control-sm text-right row-cost px-1" placeholder="0.00">
             </td>
-            <td data-col-key="mrp">
-                <input type="number" step="0.01" min="0" name="items[__INDEX__][mrp]" class="form-control form-control-sm text-right row-mrp" placeholder="0.00">
+            <td data-col-key="mrp" style="width: 85px;">
+                <input type="number" step="0.01" min="0" name="items[__INDEX__][mrp]" class="form-control form-control-sm text-right row-mrp px-1" placeholder="0.00">
             </td>
-            <td data-col-key="batch">
-                <input type="text" name="items[__INDEX__][batch_no]" class="form-control form-control-sm" placeholder="Batch">
+            <td data-col-key="batch" style="width: 90px;">
+                <input type="text" name="items[__INDEX__][batch_no]" class="form-control form-control-sm px-1" placeholder="Batch">
             </td>
-            <td data-col-key="exp_date">
-                <input type="date" name="items[__INDEX__][exp_date]" class="form-control form-control-sm">
+            <td data-col-key="exp_date" style="width: 155px; min-width: 150px;">
+                <input type="date" name="items[__INDEX__][exp_date]" class="form-control form-control-sm px-1" style="min-width: 140px;">
             </td>
             <td class="text-right align-middle font-weight-bold text-primary row-total" data-col-key="line_total">₹0.00</td>
             <td class="text-center align-middle" data-col-key="actions">
@@ -748,8 +745,8 @@
             }, 60);
         });
 
-        // Tab on MRP on last row adds a new row automatically and opens the search modal
-        $(document).on('keydown', '.row-mrp', function (e) {
+        // Tab on MRP or Expiry Date on last row adds a new row automatically and opens the search modal
+        $(document).on('keydown', '.row-mrp, input[name*="[exp_date]"]', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
                 let $nextRow = $currentRow.next('tr.grn-item-row');
@@ -766,6 +763,45 @@
                     $nextRow.find('.prn-item-code').focus();
                 }
             }
+        });
+
+        // Reset Table: Clears all rows and appends 1 pristine empty row
+        function resetPrnTable() {
+            $('#grn-items-body').empty();
+            let template = $('#row-template').html();
+            template = template.replace(/__INDEX__/g, 0);
+            template = template.replace(/__NUMBER__/g, 1);
+            $('#grn-items-body').append(template);
+            rowIndex = 1;
+            recalculate();
+            $('#grn-items-body tr:first .prn-item-code').focus();
+        }
+
+        $('#btn-reset-table').on('click', function () {
+            resetPrnTable();
+            if (window.toastr) {
+                toastr.info('Item table has been reset.');
+            }
+        });
+
+        // Reset Form: Clears header and table
+        $(document).on('click', '#btn-reset-form, .btn-reset-form', function () {
+            $('select[name="supplier_id"]').val('').trigger('change.select2');
+            $('select[name="purchase_order_id"]').val('').trigger('change.select2');
+            $('input[name="supplier_delivery_note_no"]').val('');
+            $('input[name="transporter_name"]').val('');
+            $('input[name="vehicle_number"]').val('');
+            $('textarea[name="remarks"]').val('');
+            resetPrnTable();
+            if (window.toastr) {
+                toastr.info('Form has been reset.');
+            }
+            setTimeout(function () {
+                let $s = $('select[name="supplier_id"]');
+                if ($s.data('select2')) {
+                    $s.data('select2').$container.find('.select2-selection').focus();
+                }
+            }, 100);
         });
 
         // Add row

@@ -202,6 +202,12 @@
                     $el.removeClass('form-field-hidden');
                 }
             });
+
+            $(document).trigger('form-layout:applied', {
+                formKey: formKey,
+                containerId: containerId,
+                fieldsMeta: fieldsMeta
+            });
         }
 
         // Autofocus first actionable field in the header container

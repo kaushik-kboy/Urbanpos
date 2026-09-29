@@ -12,6 +12,7 @@ use App\Models\ItemStock;
 use App\Models\SalesBill;
 use App\Models\SalesOrder;
 use App\Models\SalesQuotation;
+use App\Models\User;
 use App\Services\Accounting\CreditLimitGuard;
 use App\Services\Accounting\FinancialYearGuard;
 use App\Services\Accounting\LedgerPostingService;
@@ -300,6 +301,9 @@ class SalesBillController extends Controller
             // customer's GSTIN actually was right now, not whatever it might
             // be later if edited — see docs/GSTR1-AUDIT.md.
             $customerGstin = \App\Models\Customer::where('id', $data['header']['customer_id'])->value('gst_no');
+            if (empty($data['header']['user_id'])) {
+                $data['header']['user_id'] = auth()->id();
+            }
 
             $salesBill = SalesBill::create(array_merge($data['header'], $totals, [
                 'bill_number' => $this->nextNumber(),
@@ -1317,6 +1321,18 @@ class SalesBillController extends Controller
             ]);
         }
 
+        $activeBranchId = (int) ($salesBill?->branch_id ?: (session('active_branch_id') ?: (auth()->user()?->branch_id ?: Branch::where('status', true)->value('id'))));
+
+        $branchStaff = User::where(function ($q) use ($activeBranchId) {
+                $q->where('branch_id', $activeBranchId)
+                  ->orWhereNull('branch_id');
+            })
+            ->orderByRaw("CASE WHEN branch_id = ? THEN 0 ELSE 1 END", [$activeBranchId])
+            ->orderBy('name')
+            ->pluck('name', 'id');
+
+        $allBranchStaff = User::orderBy('name')->get(['id', 'name', 'branch_id']);
+
         return [
             'customers'        => $customers,
             'selectedCustomer' => $selectedCustomer,
@@ -1325,6 +1341,9 @@ class SalesBillController extends Controller
             'tenderTypes'      => $tenderTypes,
             'customerTypes'    => $customerTypes,
             'salesTypes'       => $salesTypes,
+            'branchStaff'      => $branchStaff,
+            'allBranchStaff'   => $allBranchStaff,
+            'selectedStaffId'  => old('user_id', $salesBill?->user_id ?? auth()->id()),
         ];
     }
 
@@ -1428,6 +1447,7 @@ class SalesBillController extends Controller
             'bill_date' => ['required', 'date', "before_or_equal:{$now}"],
             'customer_id' => ['required', 'exists:customers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
+            'user_id' => ['nullable', 'exists:users,id'],
             'sales_delivery_note_id' => ['nullable', 'exists:sales_delivery_notes,id'],
             'invoice_type' => ['required', 'in:Retail Invoice,Tax Invoice,Exempted'],
             'delivery_type' => ['required', 'string', 'max:255'],

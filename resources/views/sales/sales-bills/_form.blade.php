@@ -106,17 +106,18 @@
         </div>
     </div>
 
-    {{-- Branch (Locked to Top Navbar Active Branch) --}}
-    <div class="field-wrapper col-md-4" data-field="branch_id" data-default-order="3" data-core="1">
-        <label class="font-weight-bold text-dark small mb-1">
-            <i class="fas fa-store mr-1 text-primary"></i> Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Controlled at Top Navbar</span>
-        </label>
-        <div class="input-group input-group-sm">
-            <input type="text" class="form-control form-control-sm font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
-            <div class="input-group-append">
-                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from the top navbar"><i class="fas fa-lock"></i></span>
-            </div>
+    {{-- Branch (Hidden input, active branch controlled at top navbar) --}}
+    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+
+    {{-- Staff / Biller (Branch-wise) --}}
+    <div class="field-wrapper col-md-4" data-field="user_id" data-default-order="3">
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="sales_biller_user_id"><i class="fas fa-user-check text-primary mr-1"></i> Biller / Staff Name</label>
+            <select name="user_id" id="sales_biller_user_id" class="form-control select2" required>
+                @foreach ($branchStaff as $stId => $stName)
+                    <option value="{{ $stId }}" @selected(($selectedStaffId ?? auth()->id()) == $stId)>{{ $stName }}</option>
+                @endforeach
+            </select>
         </div>
     </div>
 
@@ -129,7 +130,7 @@
     <div class="field-wrapper col-md-4" data-field="invoice_type" data-default-order="5">
         <div class="d-flex justify-content-between align-items-center mb-1">
             <label class="font-weight-bold mb-0">Invoice Type</label>
-            <span class="badge badge-warning small d-none" id="invoice-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock mr-1"></i> Customer Locked</span>
+            <span class="text-warning small d-none" id="invoice-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
         </div>
         <x-select name="invoice_type" label="" :options="$customerTypes ?? ['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
     </div>
@@ -148,7 +149,7 @@
     <div class="field-wrapper col-md-4" data-field="sales_type" data-default-order="8">
         <div class="d-flex justify-content-between align-items-center mb-1">
             <label class="font-weight-bold mb-0">Sales Type</label>
-            <span class="badge badge-warning small d-none" id="sales-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock mr-1"></i> Customer Locked</span>
+            <span class="text-warning small d-none" id="sales-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
         </div>
         <x-select name="sales_type" label="" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$selectedSalesType" required />
     </div>
@@ -163,9 +164,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Items</h5>
     <div>
-        <button type="button" class="btn btn-outline-warning btn-sm mr-2 btn-reset-form" title="Reset header form inputs (preserves table items)"><i class="fas fa-undo mr-1"></i> Reset Form</button>
-        <button type="button" class="btn btn-outline-danger btn-sm mr-2 btn-reset-table" id="sb-btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
-        <span class="badge badge-info px-3 py-2" id="sb-branch-badge"><i class="fas fa-store mr-1"></i> Active Branch: Loading…</span>
+        <button type="button" class="btn btn-outline-danger btn-sm btn-reset-table" id="sb-btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
     </div>
 </div>
 
@@ -2223,7 +2222,6 @@
                     // Sync description display & hidden item id
                     $desc.val(item.name + (item.item_code ? ' [' + item.item_code + ']' : ''));
                     $select.val(item.id);
-                    $code.val(item.id);
                     isSyncing = false;
 
                     // Store Product Stock for validation

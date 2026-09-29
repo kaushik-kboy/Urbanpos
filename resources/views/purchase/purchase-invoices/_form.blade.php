@@ -6,7 +6,7 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($inv?->items ?? ($convertedItems ?? collect()));
 
     $selectedSupplier = old('supplier_id', $inv->supplier_id ?? ($sourceRn->supplier_id ?? ($sourcePo->supplier_id ?? '')));
-    $selectedBranch = old('branch_id', $inv->branch_id ?? ($sourceRn->branch_id ?? ($sourcePo->branch_id ?? '')));
+    $selectedBranch = old('branch_id', $inv->branch_id ?? ($sourceRn->branch_id ?? ($sourcePo->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?: (\App\Models\Branch::value('id') ?? 1)))))));
     $selectedPo = old('purchase_order_id', $inv->purchase_order_id ?? ($sourceRn->purchase_order_id ?? ($sourcePo->id ?? '')));
     $grnNumberVal = old('grn_number', $inv->grn_number ?? ($sourceRn->receipt_number ?? ($nextGrnNumber ?? '')));
     $grnDateVal = old('grn_date', optional($inv->grn_date ?? ($sourceRn->receipt_date ?? now()))->format('Y-m-d'));
@@ -39,6 +39,7 @@
 @endif
 
 <input type="hidden" name="purchase_receipt_note_id" value="{{ $rnIdVal }}">
+<input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
 
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h5 class="mb-0 text-muted font-weight-bold text-uppercase small"><i class="fas fa-file-invoice text-primary mr-1"></i> Invoice Details</h5>
@@ -65,10 +66,6 @@
                 </a>
             </div>
         </div>
-    </div>
-
-    <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="3" data-core="1">
-        <x-select name="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" placeholder="Select a Branch" required />
     </div>
 
     <div class="field-wrapper col-md-6" data-field="purchase_order_id" data-label="Purchase Order" data-default-order="4">
@@ -141,7 +138,6 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0">Items</h5>
     <div class="d-flex align-items-center">
-        <button type="button" class="btn btn-outline-warning btn-sm mr-2 btn-reset-form" title="Reset header form inputs (table items preserved)"><i class="fas fa-undo mr-1"></i> Reset Form</button>
         <button type="button" id="pinv-btn-reset-table" class="btn btn-outline-danger btn-sm mr-2 btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
         <x-table-column-customizer
             table-key="purchase.purchase-invoices.items"
@@ -499,7 +495,12 @@
         $('#supplier_id').on('change', function () {
             let val = $(this).val();
             applySupplierPurchaseType(val);
-            validateSupplierInvNo();
+            if ($.trim($('#supplier_inv_no').val())) {
+                validateSupplierInvNo();
+            } else {
+                $('#supplier_inv_no').removeClass('is-invalid border-danger');
+                $('#supplier-inv-feedback-container').hide();
+            }
             updateSupplierPrevInvoicesLink(val);
             updateSupplierOpenPOs(val);
         });
@@ -532,7 +533,7 @@
                     $row.find('input').attr('autocomplete', 'off');
 
                     $row.find('.pinv-item-select').val(it.item_id);
-                    $row.find('.pinv-item-code').val(it.item_id);
+                    $row.find('.pinv-item-code').val(it.item_code || it.code || it.item_id);
                     $row.find('.pinv-item-desc').val(it.name);
                     $row.find('.pinv-qty').val(it.qty > 0 ? it.qty : '');
                     $row.find('.pinv-free-qty').val(it.free_qty > 0 ? it.free_qty : '');
@@ -1098,7 +1099,7 @@
             pendingFocusExpRow = $targetRow;
 
             $targetRow.find('.pinv-item-select').val(itemId);
-            $targetRow.find('.pinv-item-code').val(itemId);
+            $targetRow.find('.pinv-item-code').val(itemCode || itemId);
 
             processPurchaseItemLookup($targetRow, itemId);
             $('#pinv-item-search-modal').modal('hide');
@@ -1653,8 +1654,8 @@
 
             $.getJSON('{{ route("purchase.purchase-invoices.lookup-item") }}', params, function (data) {
                 if (data && data.id) {
-                    // Always show item ID without '#' prefix as requested
-                    let codeVal = data.id;
+                    // Display actual item code
+                    let codeVal = data.item_code || data.ean_upc_code || data.code || data.id;
                     $code.val(codeVal);
 
                     $select.val(data.id);
@@ -1770,24 +1771,46 @@
             return now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
         }
 
+        function parseToYmd(val) {
+            if (!val) return null;
+            val = $.trim(val);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                let p = val.split('-');
+                let y = parseInt(p[0], 10), m = parseInt(p[1], 10), d = parseInt(p[2], 10);
+                if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return val;
+                return null;
+            }
+            let m = val.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+            if (m) {
+                let d = parseInt(m[1], 10);
+                let mo = parseInt(m[2], 10);
+                let y = parseInt(m[3], 10);
+                if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+                    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                }
+            }
+            return null;
+        }
+
         function validatePinvExpDate($input, showToast = false) {
-            let val = $input.val();
+            let rawVal = $.trim($input.val());
             let $row = $input.closest('tr');
             let $badge = $row.find('.pinv-exp-badge');
             let isRequired = $input.prop('required');
             let todayStr = getTodayIsoString();
 
-            if (val && val < todayStr) {
-                $input.addClass('border-danger is-invalid').removeClass('border-success');
-                $badge.removeClass('d-none').addClass('text-danger').html('<i class="fas fa-exclamation-triangle"></i> Expired (Past Date)');
-                if (showToast && window.toastr) {
-                    toastr.clear();
-                    toastr.error('Expiry date cannot be in the past! Please select today or a future date.', 'Invalid Expiry Date');
+            if (rawVal) {
+                let ymd = parseToYmd(rawVal);
+                if (!ymd) {
+                    $input.addClass('border-danger is-invalid').removeClass('border-success');
+                    $badge.removeClass('d-none').addClass('text-danger').html('<i class="fas fa-exclamation-triangle"></i> Invalid Date');
+                    return false;
                 }
-                return false;
-            }
-
-            if (val) {
+                if (ymd < todayStr) {
+                    $input.addClass('border-danger is-invalid').removeClass('border-success');
+                    $badge.removeClass('d-none').addClass('text-danger').html('<i class="fas fa-exclamation-triangle"></i> Expired (Past Date)');
+                    return false;
+                }
                 $badge.addClass('d-none');
                 $input.removeClass('border-danger is-invalid').addClass('border-success');
                 return true;
@@ -1795,7 +1818,7 @@
 
             if (isRequired) {
                 $badge.removeClass('d-none').addClass('text-danger').html('<i class="fas fa-exclamation-circle"></i> Required');
-                $input.addClass('border-danger').removeClass('border-success is-invalid');
+                $input.addClass('border-danger is-invalid').removeClass('border-success');
                 return false;
             }
 
@@ -1811,8 +1834,8 @@
 
         $(document).on('blur', '.pinv-exp-date', function (e) {
             let $input = $(this);
-            let isValid = validatePinvExpDate($input, true);
-            if (!isValid && $input.val()) {
+            let isValid = validatePinvExpDate($input, false);
+            if (!isValid && ($input.val() || $input.prop('required'))) {
                 setTimeout(function () {
                     $input.focus();
                 }, 10);
@@ -1820,15 +1843,14 @@
         });
 
         // Tab & Enter navigation on Exp Date:
-        // If date is invalid or in the past, block navigation ("tab aage hi nahi jayga")!
+        // If date is invalid or in the past, block navigation completely!
         $(document).on('keydown', '.pinv-exp-date', function (e) {
             let isTab = (e.key === 'Tab' && !e.shiftKey);
             let isEnter = (e.key === 'Enter' || e.keyCode === 13);
 
             if (isTab || isEnter) {
-                let isValid = validatePinvExpDate($(this), true);
+                let isValid = validatePinvExpDate($(this), false);
                 if (!isValid && ($(this).val() || $(this).prop('required'))) {
-                    // Invalid/past date: block Tab/Enter navigation completely
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
@@ -1839,6 +1861,36 @@
                     e.preventDefault();
                     $(this).closest('tr').find('.pinv-qty').focus().select();
                 }
+            }
+        });
+
+        // Qty Tab & Enter navigation and validation (PHASE 12)
+        $(document).on('keydown', '.pinv-qty', function (e) {
+            if (e.key === 'Tab' || e.key === 'Enter') {
+                let qty = parseFloat($(this).val()) || 0;
+                let $row = $(this).closest('tr');
+                let itemId = $row.find('.pinv-item-select').val();
+                if (itemId && qty <= 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $(this).addClass('is-invalid border-danger');
+                    let $feedback = $(this).siblings('.pinv-qty-error-msg');
+                    if (!$feedback.length) {
+                        $feedback = $('<div class="pinv-qty-error-msg invalid-feedback text-danger font-weight-bold" style="display:none; font-size:11px;"></div>');
+                        $(this).after($feedback);
+                    }
+                    $feedback.text('Quantity is required and must be greater than 0.').css('display', 'block');
+                    $(this).focus().select();
+                    return false;
+                }
+            }
+        });
+
+        $(document).on('input', '.pinv-qty', function () {
+            let qty = parseFloat($(this).val()) || 0;
+            if (qty > 0) {
+                $(this).removeClass('is-invalid border-danger');
+                $(this).siblings('.pinv-qty-error-msg').css('display', 'none');
             }
         });
 

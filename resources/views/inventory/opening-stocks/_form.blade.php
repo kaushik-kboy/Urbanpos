@@ -20,16 +20,11 @@
 </div>
 
 <div class="row g-2 form-fields-grid mb-3" id="os-header-fields-grid">
-    <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Location / Branch" data-default-order="1" data-core="1">
-        <label for="branch_id" class="font-weight-bold">Location / Branch <span class="text-danger">*</span></label>
-        <select name="branch_id" id="branch_id" class="form-control select2" required>
-            <option value="">-- Select Branch --</option>
-            @foreach ($branches as $bId => $bName)
-                <option value="{{ $bId }}" @selected(($entry->branch_id ?? old('branch_id', 2)) == $bId)>{{ $bName }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="field-wrapper col-md-6" data-field="entry_date" data-label="Entry Date" data-default-order="2" data-core="1">
+    @php
+        $selectedBranch = old('branch_id', $entry->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?: 1))));
+    @endphp
+    <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
+    <div class="field-wrapper col-md-4" data-field="entry_date" data-label="Entry Date" data-default-order="1" data-core="1">
         <label for="entry_date" class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>
         <input type="date" name="entry_date" id="entry_date" class="form-control" value="{{ optional($entry->entry_date ?? now())->format('Y-m-d') }}" required>
     </div>
@@ -54,26 +49,26 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
-            <table class="table table-sm table-bordered table-hover mb-0" id="items-table" style="min-width: 1880px; font-size: 0.875rem;">
+            <table class="table table-sm table-bordered table-hover mb-0" id="items-table" style="min-width: 1750px; font-size: 0.875rem;">
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;">S.No</th>
-                        <th style="width: 155px;">Code / Barcode</th>
-                        <th style="width: 270px;">Item Description</th>
-                        <th style="width: 135px;">Exp Dt</th>
-                        <th style="width: 90px;">Qty</th>
-                        <th style="width: 100px;">Cost Price</th>
-                        <th style="width: 100px;">Sell Price</th>
-                        <th style="width: 100px;">MRP</th>
-                        <th style="width: 80px;">Disc %</th>
-                        <th style="width: 95px;">Disc Amount</th>
-                        <th style="width: 80px;">GST%</th>
-                        <th style="width: 100px;">GST TaxAmt</th>
-                        <th style="width: 165px;">Supplier</th>
-                        <th style="width: 85px;">Scheme Disc%</th>
-                        <th style="width: 95px;">Scheme Amt</th>
-                        <th style="width: 95px;">Scheme Others</th>
-                        <th style="width: 115px;">Net Amount</th>
+                        <th style="width: 145px;">Code / Barcode</th>
+                        <th style="min-width: 240px;">Item Description</th>
+                        <th style="width: 155px; min-width: 150px;">Exp Dt</th>
+                        <th style="width: 75px;">Qty</th>
+                        <th style="width: 85px;">Cost Price</th>
+                        <th style="width: 85px;">Sell Price</th>
+                        <th style="width: 80px;">MRP</th>
+                        <th style="width: 65px;">Disc %</th>
+                        <th style="width: 80px;">Disc Amount</th>
+                        <th style="width: 60px;">GST%</th>
+                        <th style="width: 80px;">GST TaxAmt</th>
+                        <th style="width: 150px;">Supplier</th>
+                        <th style="width: 70px;">Scheme Disc%</th>
+                        <th style="width: 80px;">Scheme Amt</th>
+                        <th style="width: 80px;">Scheme Others</th>
+                        <th style="width: 95px;">Net Amount</th>
                         <th style="width: 45px;"></th>
                     </tr>
                 </thead>
@@ -819,6 +814,22 @@
             }, 50);
         });
 
+        // Reset Form (Clears form and resets table)
+        $(document).on('click', '#btn-reset-form, .btn-reset-form', function () {
+            $('#btn-reset-table').trigger('click');
+            if (window.toastr) {
+                toastr.info('Opening Stock form has been reset.');
+            }
+            setTimeout(function () {
+                let $b = $('#branch_id');
+                if ($b.data('select2')) {
+                    $b.data('select2').$container.find('.select2-selection').focus();
+                } else if ($b.length) {
+                    $b.focus();
+                }
+            }, 100);
+        });
+
         // Add Row — focus item-code (Tab will open modal)
         $('#add-row').on('click', function () {
             // Block add-row if first row has no item yet
@@ -842,7 +853,9 @@
         // Remove Row
         $('#items-body').on('click', '.row-remove', function () {
             if ($('#items-body tr.item-row').length <= 1) {
-                alert('At least one item row is required.');
+                if (window.toastr) {
+                    toastr.info('At least one item row is required.');
+                }
                 return;
             }
             $(this).closest('tr').remove();
@@ -873,8 +886,10 @@
             let branchId = $('#branch_id').val();
             if (!branchId) {
                 e.preventDefault();
-                alert('Please select a branch.');
-                $('#branch_id').focus();
+                $('#branch_id').addClass('is-invalid').focus();
+                if (window.toastr) {
+                    toastr.warning('Please select a branch.');
+                }
                 return false;
             }
 
@@ -894,8 +909,10 @@
                 if (!itemId && itemCode) {
                     e.preventDefault();
                     hasError = true;
-                    alert('Please select a valid item for code: ' + itemCode);
-                    $row.find('.item-code-input').focus();
+                    $row.find('.item-code-input').addClass('is-invalid').focus();
+                    if (window.toastr) {
+                        toastr.error('Please select a valid item for code: ' + itemCode);
+                    }
                     return false;
                 }
 
@@ -903,8 +920,10 @@
                     e.preventDefault();
                     hasError = true;
                     let desc = $row.find('.item-desc').val() || 'selected item';
-                    alert('Please enter a valid quantity greater than 0 for: ' + desc);
-                    $row.find('.item-qty').focus();
+                    $row.find('.item-qty').addClass('is-invalid').focus();
+                    if (window.toastr) {
+                        toastr.warning('Please enter a valid quantity greater than 0 for: ' + desc);
+                    }
                     return false;
                 }
 
@@ -915,7 +934,9 @@
 
             if (validRows === 0) {
                 e.preventDefault();
-                alert('Pehle item add karein. Please add at least one item before saving.');
+                if (window.toastr) {
+                    toastr.warning('Pehle item add karein. Please add at least one item before saving.');
+                }
                 $('#items-body tr.item-row:first .item-code-input').focus();
                 return false;
             }

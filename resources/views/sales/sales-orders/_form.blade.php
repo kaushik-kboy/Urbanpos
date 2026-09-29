@@ -33,16 +33,7 @@
             @endforeach
         </select>
     </div>
-    <div class="field-wrapper col-md-3 form-group" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-        <label>Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-        <div class="input-group input-group-sm">
-            <input type="text" class="form-control form-control-sm font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
-            <div class="input-group-append">
-                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-            </div>
-        </div>
-    </div>
+    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
     <div class="field-wrapper col-md-2 form-group" data-field="order_date" data-label="Order Date" data-default-order="3" data-core="1">
         <label>Order Date <span class="text-danger">*</span></label>
         <input type="date" name="order_date" class="form-control form-control-sm" value="{{ optional($order?->order_date ?? now())->format('Y-m-d') }}" required>
@@ -576,7 +567,7 @@ $(function() {
         soCancellingRow = null;
 
         let $row = soActiveSearchRow;
-        $row.find('.so-item-code').val(itemData.id);
+        $row.find('.so-item-code').val(itemData.code || itemData.id);
         $row.find('.so-item-desc').val(itemData.name + (itemData.code ? ' [' + itemData.code + ']' : ''));
         $row.find('.so-item-select').val(itemData.id);
 
@@ -590,12 +581,36 @@ $(function() {
         recalcAll();
 
         $('#so-item-search-modal').modal('hide');
+        setTimeout(function() {
+            $row.find('.so-qty').focus().select();
+        }, 120);
     });
 
     $(document).on('input', '.so-qty, .so-sell-price, .so-disc-percent, .so-disc-amount, .so-gst-percent', function() {
         let $row = $(this).closest('tr');
         let isDiscPct = $(this).hasClass('so-disc-percent');
         recalcRow($row, isDiscPct);
+    });
+
+    $(document).on('keydown', '.so-qty', function(e) {
+        if (e.key === 'Tab' || e.key === 'Enter') {
+            let qty = parseFloat($(this).val()) || 0;
+            let $row = $(this).closest('tr');
+            let itemId = $row.find('.so-item-select').val();
+            if (itemId && qty <= 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).addClass('is-invalid border-danger text-danger');
+                let $feedback = $(this).siblings('.so-qty-error-msg');
+                if (!$feedback.length) {
+                    $feedback = $('<div class="so-qty-error-msg invalid-feedback text-danger font-weight-bold" style="display:none; font-size:11px;"></div>');
+                    $(this).after($feedback);
+                }
+                $feedback.text('Quantity must be greater than 0').css('display', 'block');
+                $(this).focus().select();
+                return false;
+            }
+        }
     });
 
     $('#so-round-off').on('input', function() {
@@ -632,12 +647,19 @@ $(function() {
         let itemId = $row.find('.so-item-select').val();
         let mrp = parseFloat($row.find('.so-mrp').val()) || 0;
         let $priceInput = $row.find('.so-sell-price');
+        let $qtyFeedback = $qtyInput.siblings('.so-qty-error-msg');
+        if (!$qtyFeedback.length) {
+            $qtyFeedback = $('<div class="so-qty-error-msg invalid-feedback text-danger font-weight-bold" style="display:none; font-size:11px;"></div>');
+            $qtyInput.after($qtyFeedback);
+        }
 
         if (itemId) {
             if (qty <= 0) {
-                $qtyInput.addClass('is-invalid border-danger text-danger').attr('title', 'Quantity must be greater than 0');
+                $qtyInput.addClass('is-invalid border-danger text-danger');
+                $qtyFeedback.text('Quantity must be greater than 0').css('display', 'block');
             } else {
-                $qtyInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
+                $qtyInput.removeClass('is-invalid border-danger text-danger');
+                $qtyFeedback.text('').css('display', 'none');
             }
 
             if (mrp > 0 && price > mrp) {
@@ -645,6 +667,9 @@ $(function() {
             } else {
                 $priceInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
             }
+        } else {
+            $qtyInput.removeClass('is-invalid border-danger text-danger');
+            $qtyFeedback.text('').css('display', 'none');
         }
 
         recalcSummary();
@@ -757,7 +782,6 @@ $(function() {
         if (!cust) {
             e.preventDefault();
             $custContainer.addClass('border-danger');
-            alert('Please select a Customer for this sales order.');
             $('select[name="customer_id"]').select2('open');
             return false;
         } else {
@@ -775,16 +799,18 @@ $(function() {
 
             if (id) {
                 if (q <= 0) {
-                    $q.addClass('is-invalid border-danger');
-                    alert(`Row #${idx + 1}: Quantity must be greater than 0.`);
-                    $q.focus();
+                    $q.addClass('is-invalid border-danger text-danger');
+                    let $fb = $q.siblings('.so-qty-error-msg');
+                    if ($fb.length) {
+                        $fb.text('Quantity must be greater than 0').css('display', 'block');
+                    }
+                    $q.focus().select();
                     hasError = true;
                     return false;
                 }
                 if (m > 0 && p > m) {
-                    $(this).find('.so-sell-price').addClass('is-invalid border-danger');
-                    alert(`Row #${idx + 1}: Selling price cannot exceed MRP.`);
-                    $(this).find('.so-sell-price').focus();
+                    let $sp = $(this).find('.so-sell-price');
+                    $sp.addClass('is-invalid border-danger text-danger').focus();
                     hasError = true;
                     return false;
                 }
@@ -800,9 +826,7 @@ $(function() {
         if (validRows === 0) {
             e.preventDefault();
             if (window.toastr) {
-                toastr.warning('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
-            } else {
-                alert('Pehle item add karein. Please add at least one item before saving.');
+                toastr.warning('Please add at least one item before saving.', 'No Items Added');
             }
             $('#so-items-body tr:first .so-item-code').focus();
             return false;

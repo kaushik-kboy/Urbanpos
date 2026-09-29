@@ -49,63 +49,64 @@
     </td>
 
     {{-- Exp Date --}}
-    <td style="width: 130px;">
+    <td style="width: 155px; min-width: 150px;">
         <input type="date" name="items[{{ $idx }}][exp_date]" 
                value="{{ $expDate }}" 
-               class="form-control form-control-sm item-exp-date">
+               class="form-control form-control-sm item-exp-date px-1"
+               style="min-width: 140px;">
     </td>
 
     {{-- Qty --}}
-    <td style="width: 95px;">
+    <td style="width: 75px;">
         <input type="number" step="0.001" min="0" name="items[{{ $idx }}][qty]" 
                value="{{ $qty }}" 
                placeholder="0.000" 
-               class="form-control form-control-sm item-qty text-right font-weight-bold">
+               class="form-control form-control-sm item-qty text-right font-weight-bold px-1">
     </td>
 
     {{-- Cost Price --}}
-    <td style="width: 110px;">
+    <td style="width: 85px;">
         <input type="number" step="0.01" min="0" name="items[{{ $idx }}][cost_price]" 
                value="{{ is_numeric($costPrice) ? number_format((float)$costPrice, 2, '.', '') : '' }}" 
                placeholder="0.00" 
-               class="form-control form-control-sm item-cost text-right">
+               class="form-control form-control-sm item-cost text-right px-1">
     </td>
 
     {{-- Sell Price --}}
-    <td style="width: 110px;">
+    <td style="width: 85px;">
         <input type="number" step="0.01" min="0" name="items[{{ $idx }}][sell_price]" 
                value="{{ is_numeric($sellPrice) ? number_format((float)$sellPrice, 2, '.', '') : '' }}" 
                placeholder="0.00" 
-               class="form-control form-control-sm item-sell text-right text-muted">
+               class="form-control form-control-sm item-sell text-right text-muted px-1">
     </td>
 
     {{-- MRP --}}
-    <td style="width: 110px;">
+    <td style="width: 85px;">
         <input type="number" step="0.01" min="0" name="items[{{ $idx }}][mrp]" 
                value="{{ is_numeric($mrp) ? number_format((float)$mrp, 2, '.', '') : '' }}" 
                placeholder="0.00" 
-               class="form-control form-control-sm item-mrp text-right">
+               class="form-control form-control-sm item-mrp text-right px-1">
     </td>
 
     {{-- GST % --}}
-    <td style="width: 80px;">
+    <td style="width: 65px;">
         <input type="number" step="0.01" min="0" name="items[{{ $idx }}][gst_percent]" 
                value="{{ is_numeric($gstPercent) ? number_format((float)$gstPercent, 2, '.', '') : '0.00' }}" 
-               class="form-control form-control-sm item-gst-percent text-right">
+               class="form-control form-control-sm item-gst-percent text-right px-1">
     </td>
 
     {{-- GST Tax Amt --}}
-    <td style="width: 110px;">
+    <td style="width: 85px;">
         <input type="text" readonly 
                value="{{ is_numeric($gstTaxAmount) ? number_format((float)$gstTaxAmount, 2, '.', '') : '0.00' }}" 
-               class="form-control form-control-sm item-gst-amount text-right bg-light text-muted">
+               class="form-control form-control-sm item-gst-amount text-right bg-light text-muted px-1">
     </td>
 
     {{-- Net Amt --}}
-    <td style="width: 125px;">
+    <td style="width: 95px;">
         <input type="text" readonly 
                value="{{ is_numeric($netAmount) ? number_format((float)$netAmount, 2, '.', '') : '0.00' }}" 
-               class="form-control form-control-sm item-net-amount text-right bg-light font-weight-bold text-danger">
+               class="form-control form-control-sm item-net-amount text-right bg-light font-weight-bold text-danger px-1">
     </td>
 
     {{-- Action --}}

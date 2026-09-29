@@ -19,6 +19,9 @@
             </div>
             <div class="card-footer">
                 <button type="submit" class="btn btn-primary">Dispatch</button>
+                <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
+                    <i class="fas fa-undo mr-1"></i> Reset Form
+                </button>
                 <a href="{{ route('inventory.stock-transfers.index') }}" class="btn btn-default">Cancel</a>
             </div>
         </form>

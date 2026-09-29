@@ -19,6 +19,7 @@
                 @include('sales.sales-orders._form')
             </div>
             <div class="card-footer text-right">
+                <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields"><i class="fas fa-undo mr-1"></i> Reset Form</button>
                 <a href="{{ route('sales.sales-orders.index') }}" class="btn btn-default mr-2">Cancel</a>
                 <button type="submit" class="btn btn-primary px-4 font-weight-bold">
                     <i class="fas fa-save mr-1"></i> Save Order

@@ -7,7 +7,7 @@
     } elseif ($itemId) {
         $itemObj = \App\Models\Item::find($itemId);
     }
-    $itemCode = $itemId ?: ($itemObj ? $itemObj->id : data_get($line, 'item_code', ''));
+    $itemCode = $itemObj ? ($itemObj->item_code ?: ($itemObj->code ?: ($itemObj->barcode ?: ''))) : data_get($line, 'item_code', '');
     $itemName = $itemObj ? $itemObj->name : data_get($line, 'item_name', '');
 
     $expDate = data_get($line, 'exp_date');
@@ -30,11 +30,11 @@
         <input type="hidden" name="items[{{ $rowId }}][batch_no]" class="pr-batch-no" value="{{ data_get($line, 'batch_no', '') }}">
         <input type="text" class="form-control form-control-sm pr-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Press Tab or Enter to search item">
     </td>
-    <td style="min-width: 220px;" data-col-key="item">
+    <td style="width: 180px; min-width: 160px;" data-col-key="item">
         <input type="text" class="form-control form-control-sm pr-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">
     </td>
-    <td style="width: 130px;" data-col-key="expiry">
-        <input type="date" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm pr-exp-date">
+    <td style="width: 155px; min-width: 150px;" data-col-key="expiry">
+        <input type="date" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm pr-exp-date px-1" style="min-width: 140px;">
     </td>
     <td style="width: 100px;" data-col-key="qty">
         <input type="number" step="0.001" min="0" name="items[{{ $rowId }}][qty]" value="{{ $qty }}"

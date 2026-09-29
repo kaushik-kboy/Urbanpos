@@ -25,21 +25,12 @@
         @php
             $selectedBranch = old('branch_id', $ret->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
         @endphp
-        <div class="field-wrapper col-md-3 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-            <label for="branch_id" class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-            <div class="input-group">
-                <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-                <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
-                <div class="input-group-append">
-                    <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-                </div>
-            </div>
-        </div>
-        <div class="field-wrapper col-md-2 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
+        <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
+        <div class="field-wrapper col-md-3 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
             <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
             <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" required>
         </div>
-        <div class="field-wrapper col-md-3 mb-3" data-field="purchase_type" data-label="Purchase Type" data-default-order="4" data-core="1">
+        <div class="field-wrapper col-md-4 mb-3" data-field="purchase_type" data-label="Purchase Type" data-default-order="4" data-core="1">
             <label for="purchase_type" class="font-weight-bold">Purchase Type <span class="text-danger">*</span></label>
             <select name="purchase_type" id="purchase_type" class="form-control" required>
                 <option value="Local" @selected(old('purchase_type', $ret->purchase_type ?? 'Local') === 'Local')>Local (CGST + SGST)</option>
@@ -104,9 +95,9 @@
     <table class="table table-sm table-bordered table-hover table-items-dense" id="pr-items-table">
         <thead class="bg-light">
             <tr>
-                <th style="width: 170px;" data-col-key="code">Code / Barcode <span class="text-danger">*</span></th>
-                <th style="min-width: 220px;" data-col-key="item">Item Description</th>
-                <th style="width: 130px;" data-col-key="expiry">Exp Date</th>
+                <th style="width: 150px;" data-col-key="code">Code / Barcode <span class="text-danger">*</span></th>
+                <th style="width: 180px; min-width: 160px;" data-col-key="item">Item Description</th>
+                <th style="width: 155px; min-width: 150px;" data-col-key="expiry">Exp Date</th>
                 <th style="width: 95px;" class="text-right" data-col-key="qty">Qty <span class="text-danger">*</span></th>
                 <th style="width: 110px;" class="text-right" data-col-key="cost_price">Cost Price <span class="text-danger">*</span></th>
                 <th style="width: 48px;" class="text-right" data-col-key="disc_percent">Disc %</th>
@@ -337,6 +328,24 @@
             }, 60);
         });
 
+        // Reset Form: Clears header and table
+        $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
+            e.preventDefault();
+            $('#supplier_id').val('').trigger('change.select2');
+            $('#purchase_invoice_id').val('').trigger('change.select2');
+            $('textarea[name="remarks"]').val('');
+            $('#pr-btn-reset-table').trigger('click');
+            if (window.toastr) {
+                toastr.info('Purchase Return form has been reset.');
+            }
+            setTimeout(function () {
+                let $s = $('#supplier_id');
+                if ($s.data('select2')) {
+                    $s.data('select2').$container.find('.select2-selection').focus();
+                }
+            }, 100);
+        });
+
         document.getElementById('pr-add-row')?.addEventListener('click', function () {
             const template = document.getElementById('pr-row-template').innerHTML;
             const html = template.replaceAll('__INDEX__', rowIndex);
@@ -354,7 +363,7 @@
             if (!btn) return;
             const rows = document.querySelectorAll('#pr-items-body .pr-item-row');
             if (rows.length <= 1) {
-                alert('At least one item row is required.');
+                notifyWarn('At least one item row is required.', 'Item Row Required');
                 return;
             }
             btn.closest('tr').remove();
@@ -762,11 +771,7 @@
             if (!prActiveSearchRow || !itemData.id) return;
 
             if ($('#purchase_invoice_id').val() && itemData.remaining_qty !== '' && itemData.remaining_qty !== undefined && parseFloat(itemData.remaining_qty) <= 0) {
-                if (window.toastr) {
-                    toastr.error('No returnable quantity available for this item.', 'Return Not Allowed');
-                } else {
-                    alert('No returnable quantity available for this item.');
-                }
+                notifyWarn('No returnable quantity available for this item.', 'Return Not Allowed');
                 return;
             }
 
@@ -775,7 +780,7 @@
             prLastSelectedRow = prActiveSearchRow;
 
             let $row = prActiveSearchRow;
-            $row.find('.pr-item-code').val(itemData.id);
+            $row.find('.pr-item-code').val(itemData.code || itemData.id);
             $row.find('.pr-item-desc').val(itemData.name);
             $row.find('.pr-item-id').val(itemData.id);
             $row.find('.pr-batch-no').val(itemData.batch_no || '');
@@ -878,7 +883,7 @@
                 let msg = (xhr.responseJSON && xhr.responseJSON.message)
                     ? xhr.responseJSON.message
                     : 'This product was not found for the selected supplier/invoice.';
-                alert(msg);
+                notifyWarn(msg, 'Product Lookup');
                 $input.val('').focus();
                 $row.find('.pr-item-id').val('');
                 $row.find('.pr-item-desc').val('');
@@ -1045,24 +1050,21 @@
                 }
             });
 
-            let isOverLimit = (totalRequestedForThisItem > remainingQty + 0.0001) || (enteredVal > remainingQty + 0.0001);
+            let isOverLimit = (origQty > 0) && ((totalRequestedForThisItem > remainingQty + 0.0001) || (enteredVal > remainingQty + 0.0001));
 
-            if (origQty > 0 && isOverLimit) {
+            let $feedback = $input.siblings('.pr-qty-error-msg');
+            if (!$feedback.length) {
+                $feedback = $('<div class="pr-qty-error-msg invalid-feedback text-danger font-weight-bold" style="display:none; font-size: 11px;"></div>');
+                $input.after($feedback);
+            }
+
+            if (isOverLimit) {
                 $input.addClass('is-invalid border-danger');
                 let remDisp = (remainingQty === parseInt(remainingQty, 10)) ? parseInt(remainingQty, 10) : remainingQty;
-                let errMsg = returnedQty > 0
-                    ? `Return quantity cannot exceed the remaining returnable quantity of ${remDisp}.`
-                    : `Return quantity cannot be greater than the available purchase quantity.`;
+                let errMsg = `Maximum returnable quantity is ${remDisp}.`;
 
                 $input.attr('title', errMsg);
-                if (showAlert) {
-                    if (window.toastr && typeof window.toastr.error === 'function') {
-                        toastr.clear();
-                        toastr.error(errMsg, 'Quantity Validation Error');
-                    } else {
-                        alert(errMsg);
-                    }
-                }
+                $feedback.text(errMsg).css('display', 'block');
                 const submitBtn = document.querySelector('button[type="submit"]');
                 if (submitBtn) {
                     submitBtn.disabled = true;
@@ -1070,13 +1072,29 @@
                 return false;
             } else {
                 $input.removeClass('is-invalid border-danger').removeAttr('title');
+                $feedback.text('').css('display', 'none');
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
                 return true;
             }
         }
 
         $(document).on('input change keyup', '.pr-qty', function () {
-            validatePrQuantity($(this), true);
+            validatePrQuantity($(this), false);
             recalculateAll();
+        });
+
+        $(document).on('keydown', '.pr-qty', function (e) {
+            if (e.key === 'Tab' || e.key === 'Enter') {
+                if (!validatePrQuantity($(this), false)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $(this).focus().select();
+                    return false;
+                }
+            }
         });
 
         function notifyWarn(msg, title) {

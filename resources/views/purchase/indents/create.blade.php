@@ -30,10 +30,17 @@
                 </div>
 
                 <div class="row mb-3 form-fields-grid" id="indent-header-fields-grid">
+                    @php
+                        $activeBranchId = session('active_branch_id', auth()->user()?->branch_id);
+                    @endphp
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Target Branch" data-default-order="1" data-core="1">
                         <label class="font-weight-bold">Target Branch <span class="text-danger">*</span></label>
                         <select name="branch_id" id="branch_id" class="form-control form-control-sm" required>
+                            <option value="">-- Select Target Branch --</option>
                             @foreach ($branches as $bId => $bName)
+                                @if ($activeBranchId && (string)$bId === (string)$activeBranchId)
+                                    @continue
+                                @endif
                                 <option value="{{ $bId }}" @selected(old('branch_id') == $bId)>{{ $bName }}</option>
                             @endforeach
                         </select>
@@ -77,12 +84,14 @@
 
                 <div class="card card-outline card-secondary mb-3 shadow-none border">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
-                        <h6 class="m-0 font-weight-bold text-dark">
-                            <i class="fas fa-boxes mr-1 text-primary"></i> Requisition Items
-                        </h6>
-                        <button type="button" id="btn-add-row" class="btn btn-primary btn-xs px-2">
-                            <i class="fas fa-plus mr-1"></i> Add Item Line
-                        </button>
+                        <div class="d-flex align-items-center">
+                            <button type="button" class="btn btn-outline-danger btn-xs font-weight-bold mr-2" id="btn-reset-table" title="Reset requisition items">
+                                <i class="fas fa-undo mr-1"></i> Reset Table
+                            </button>
+                            <button type="button" id="btn-add-row" class="btn btn-primary btn-xs px-2">
+                                <i class="fas fa-plus mr-1"></i> Add Item Line
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -137,9 +146,14 @@
                 <a href="{{ route('purchase.purchase-indents.index') }}" class="btn btn-secondary">
                     <i class="fas fa-times mr-1"></i> Cancel
                 </a>
-                <button type="submit" class="btn btn-primary font-weight-bold px-4 shadow-sm">
-                    <i class="fas fa-paper-plane mr-1"></i> Submit Requisition for Approval
-                </button>
+                <div>
+                    <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
+                        <i class="fas fa-undo mr-1"></i> Reset Form
+                    </button>
+                    <button type="submit" class="btn btn-primary font-weight-bold px-4 shadow-sm">
+                        <i class="fas fa-paper-plane mr-1"></i> Submit Requisition for Approval
+                    </button>
+                </div>
             </div>
         </form>
     </div>
@@ -643,6 +657,35 @@
                 calculateTotals();
             });
 
+            // Reset Table: Clears all rows and appends 1 pristine empty row
+            function resetIndentTable() {
+                $('#indent-items-body').empty();
+                let $firstRow = addRow();
+                calculateTotals();
+                setTimeout(function () {
+                    $firstRow.find('.indent-item-code').focus();
+                }, 80);
+            }
+
+            $('#btn-reset-table').on('click', function () {
+                resetIndentTable();
+                if (window.toastr) {
+                    toastr.info('Items table has been reset.');
+                }
+            });
+
+            // Reset Form: Clears header and table
+            $(document).on('click', '#btn-reset-form, .btn-reset-form', function () {
+                $('textarea[name="remarks"]').val('');
+                resetIndentTable();
+                if (window.toastr) {
+                    toastr.info('Requisition form has been reset.');
+                }
+                setTimeout(function () {
+                    $('#indent_date').focus();
+                }, 100);
+            });
+
             // Add row button
             $('#btn-add-row').on('click', function () {
                 let $newRow = addRow();
@@ -670,8 +713,10 @@
                 let branchId = $('#branch_id').val();
                 if (!branchId) {
                     e.preventDefault();
-                    alert('Please select a target branch.');
-                    $('#branch_id').focus();
+                    $('#branch_id').addClass('is-invalid').focus();
+                    if (window.toastr) {
+                        toastr.warning('Please select a target branch.');
+                    }
                     return false;
                 }
 

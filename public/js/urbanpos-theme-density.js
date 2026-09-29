@@ -59,8 +59,8 @@
         },
 
         init: function() {
-            var current = this.get();
-            this.set(current);
+            document.documentElement.classList.remove('dark-mode');
+            document.body && document.body.classList.remove('dark-mode');
         }
     };
 

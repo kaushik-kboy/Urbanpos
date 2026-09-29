@@ -21,7 +21,7 @@
             </div>
             <div class="card-footer">
                 <button type="submit" class="btn btn-primary disabled" disabled id="sb-main-save-btn" title="Please select a Customer and add at least 1 item">Save</button>
-                <button type="button" class="btn btn-warning btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset</button>
+                <button type="button" id="btn-reset-form" class="btn btn-warning btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset Form</button>
                 <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-default">Cancel</a>
             </div>
         </form>

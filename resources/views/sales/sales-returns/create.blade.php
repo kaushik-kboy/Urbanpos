@@ -16,7 +16,7 @@
             </div>
             <div class="card-footer">
                 <button type="submit" class="btn btn-primary">Save</button>
-                <button type="button" class="btn btn-warning btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset</button>
+                <button type="button" id="btn-reset-form" class="btn btn-warning btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset Form</button>
                 <a href="{{ route('sales.sales-returns.index') }}" class="btn btn-default">Cancel</a>
             </div>
         </form>

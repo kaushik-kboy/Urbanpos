@@ -389,6 +389,7 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('billwise-sales', [ReportController::class, 'billwiseSales'])->name('billwise-sales');
     Route::get('gst-sales-summary', [ReportController::class, 'gstSalesSummary'])->name('gst-sales-summary');
     Route::get('purchase-detail', [ReportController::class, 'purchaseDetail'])->name('purchase-detail');
+    Route::get('purchase-detail/export', [ReportController::class, 'exportPurchaseDetail'])->name('purchase-detail.export');
     Route::get('current-stock', [ReportController::class, 'currentStock'])->name('current-stock');
     Route::get('sales-return-summary', [ReportController::class, 'salesReturnSummary'])->name('sales-return-summary');
     Route::get('customer-master', [ReportController::class, 'customerMaster'])->name('customer-master');

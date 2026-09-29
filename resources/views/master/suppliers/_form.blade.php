@@ -60,61 +60,100 @@
 
     <!-- Address & Statutory Tab -->
     <div class="tab-pane" id="tab-address">
-        <x-field name="address" label="Address" :value="$s->address ?? ''" />
-        <div class="form-group row">
-            <label for="state" class="col-sm-3 col-form-label">State</label>
-            <div class="col-sm-6">
-                <select name="state" id="state" class="form-control select2 @error('state') is-invalid @enderror">
-                    <option value="">-- Select State --</option>
-                    <optgroup label="⭐ Top States">
-                        <option value="Gujarat" @selected(old('state', $s->state ?? '') === 'Gujarat')>Gujarat</option>
-                        <option value="Rajasthan" @selected(old('state', $s->state ?? '') === 'Rajasthan')>Rajasthan</option>
-                        <option value="Maharashtra" @selected(old('state', $s->state ?? '') === 'Maharashtra')>Maharashtra</option>
-                    </optgroup>
-                    <optgroup label="Other States & UTs">
-                        @foreach(\App\Helpers\IndianStates::states() as $stVal => $stLabel)
-                            @if(!in_array($stVal, ['Gujarat', 'Rajasthan', 'Maharashtra']))
-                                <option value="{{ $stVal }}" @selected(old('state', $s->state ?? '') === $stVal)>{{ $stLabel }}</option>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-map-marker-alt mr-1 text-primary"></i> Address & Statutory Details</h6>
+            <x-form-layout-customizer
+                form-key="master_suppliers.address"
+                container-id="supplier-address-fields-grid"
+                title="Customize Address Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="supplier-address-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="address" data-label="Address" data-default-order="1">
+                <x-field name="address" label="Address" :value="$s->address ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="state" data-label="State" data-default-order="2">
+                <div class="form-group row">
+                    <label for="state" class="col-sm-3 col-form-label">State</label>
+                    <div class="col-sm-6">
+                        <select name="state" id="state" class="form-control select2 @error('state') is-invalid @enderror">
+                            <option value="">-- Select State --</option>
+                            <optgroup label="⭐ Top States">
+                                <option value="Gujarat" @selected(old('state', $s->state ?? '') === 'Gujarat')>Gujarat</option>
+                                <option value="Rajasthan" @selected(old('state', $s->state ?? '') === 'Rajasthan')>Rajasthan</option>
+                                <option value="Maharashtra" @selected(old('state', $s->state ?? '') === 'Maharashtra')>Maharashtra</option>
+                            </optgroup>
+                            <optgroup label="Other States & UTs">
+                                @foreach(\App\Helpers\IndianStates::states() as $stVal => $stLabel)
+                                    @if(!in_array($stVal, ['Gujarat', 'Rajasthan', 'Maharashtra']))
+                                        <option value="{{ $stVal }}" @selected(old('state', $s->state ?? '') === $stVal)>{{ $stLabel }}</option>
+                                    @endif
+                                @endforeach
+                            </optgroup>
+                        </select>
+                        @error('state')
+                            <span class="invalid-feedback d-block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="city" data-label="City" data-default-order="3">
+                <div class="form-group row">
+                    <label for="city" class="col-sm-3 col-form-label">City</label>
+                    <div class="col-sm-6">
+                        <select name="city" id="city" class="form-control select2 @error('city') is-invalid @enderror">
+                            <option value="">-- Select City --</option>
+                            @if(!empty(old('city', $s->city ?? '')))
+                                <option value="{{ old('city', $s->city ?? '') }}" selected>{{ old('city', $s->city ?? '') }}</option>
                             @endif
-                        @endforeach
-                    </optgroup>
-                </select>
-                @error('state')
-                    <span class="invalid-feedback d-block">{{ $message }}</span>
-                @enderror
+                        </select>
+                        @error('city')
+                            <span class="invalid-feedback d-block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="postal_code" data-label="Postal Code" data-default-order="4">
+                <x-field name="postal_code" label="Postal Code" :value="$s->postal_code ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="country" data-label="Country" data-default-order="5">
+                <x-field name="country" label="Country" :value="$s->country ?? 'India'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="phone" data-label="Main Phone" data-default-order="6">
+                <x-field name="phone" label="Main Phone" :value="$s->phone ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="email" data-label="Main Email" data-default-order="7">
+                <x-field name="email" label="Main Email" type="email" :value="$s->email ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="mobile" data-label="Main Mobile" data-default-order="8">
+                <x-field name="mobile" label="Main Mobile" :value="$s->mobile ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="aadhar_no" data-label="Aadhar No" data-default-order="9">
+                <x-field name="aadhar_no" label="Aadhar No" :value="$s->aadhar_no ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="pan_no" data-label="Pan No" data-default-order="10">
+                <x-field name="pan_no" label="Pan No" :value="$s->pan_no ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="gst_no" data-label="GST No" data-default-order="11">
+                <x-field name="gst_no" label="GST No" :value="$s->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
             </div>
         </div>
-        <div class="form-group row">
-            <label for="city" class="col-sm-3 col-form-label">City</label>
-            <div class="col-sm-6">
-                <select name="city" id="city" class="form-control select2 @error('city') is-invalid @enderror">
-                    <option value="">-- Select City --</option>
-                    @if(!empty(old('city', $s->city ?? '')))
-                        <option value="{{ old('city', $s->city ?? '') }}" selected>{{ old('city', $s->city ?? '') }}</option>
-                    @endif
-                </select>
-                @error('city')
-                    <span class="invalid-feedback d-block">{{ $message }}</span>
-                @enderror
-            </div>
-        </div>
-        <x-field name="postal_code" label="Postal Code" :value="$s->postal_code ?? ''" />
-        <x-field name="country" label="Country" :value="$s->country ?? 'India'" />
-        <x-field name="phone" label="Main Phone" :value="$s->phone ?? ''" />
-        <x-field name="email" label="Main Email" type="email" :value="$s->email ?? ''" />
-        <x-field name="mobile" label="Main Mobile" :value="$s->mobile ?? ''" />
-        <x-field name="aadhar_no" label="Aadhar No" :value="$s->aadhar_no ?? ''" />
-        <x-field name="pan_no" label="Pan No" :value="$s->pan_no ?? ''" />
-        <x-field name="gst_no" label="GST No" :value="$s->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
     </div>
 
     <!-- Multiple Contacts Tab -->
     <div class="tab-pane" id="tab-contacts">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0 text-secondary"><i class="fas fa-address-book mr-1"></i> Supplier Contact Persons</h5>
-            <button type="button" class="btn btn-success btn-sm" id="btn-add-contact">
-                <i class="fas fa-plus mr-1"></i> Add Contact Person
-            </button>
+            <div>
+                <x-form-layout-customizer
+                    form-key="master_suppliers.contacts"
+                    container-id="supplier-contacts-fields-grid"
+                    title="Customize Contact Person Layout"
+                />
+                <button type="button" class="btn btn-success btn-sm ml-2" id="btn-add-contact">
+                    <i class="fas fa-plus mr-1"></i> Add Contact Person
+                </button>
+            </div>
         </div>
 
         <div id="contact-rows">
@@ -123,36 +162,34 @@
             @endphp
 
             @forelse ($contacts as $index => $contact)
-                <div class="contact-row card card-outline card-secondary mb-3">
+                <div class="contact-row card card-outline card-secondary mb-3 shadow-sm">
                     <input type="hidden" name="contacts[{{ $index }}][id]" value="{{ $contact->id }}">
                     <input type="hidden" name="contacts[{{ $index }}][_delete]" class="contact-delete-flag" value="0">
-                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                         <strong class="text-muted"><i class="fas fa-user mr-1"></i> Contact Person #{{ $index + 1 }}</strong>
                         <button type="button" class="btn btn-outline-danger btn-xs btn-remove-contact">
                             <i class="fas fa-trash mr-1"></i> Remove
                         </button>
                     </div>
                     <div class="card-body py-2">
-                        <div class="form-row">
-                            <div class="form-group col-md-4">
+                        <div class="row g-2 form-fields-grid supplier-contact-fields-grid" @if($index === 0) id="supplier-contacts-fields-grid" @endif>
+                            <div class="field-wrapper col-md-4" data-field="contact_person" data-label="Contact Person Name" data-default-order="1">
                                 <label class="small font-weight-bold">Contact Person Name</label>
                                 <input type="text" name="contacts[{{ $index }}][contact_person]" class="form-control form-control-sm" value="{{ $contact->contact_person }}" placeholder="Full Name">
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="field-wrapper col-md-4" data-field="designation" data-label="Designation / Role" data-default-order="2">
                                 <label class="small font-weight-bold">Designation / Role</label>
                                 <input type="text" name="contacts[{{ $index }}][designation]" class="form-control form-control-sm" value="{{ $contact->designation }}" placeholder="e.g. Sales Manager, Accountant">
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="field-wrapper col-md-4" data-field="mobile" data-label="Mobile Number" data-default-order="3">
                                 <label class="small font-weight-bold">Mobile Number</label>
                                 <input type="text" name="contacts[{{ $index }}][mobile]" class="form-control form-control-sm" value="{{ $contact->mobile }}" placeholder="Mobile">
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
+                            <div class="field-wrapper col-md-6" data-field="phone" data-label="Phone" data-default-order="4">
                                 <label class="small font-weight-bold">Phone (Landline / Extension)</label>
                                 <input type="text" name="contacts[{{ $index }}][phone]" class="form-control form-control-sm" value="{{ $contact->phone }}" placeholder="Office Phone">
                             </div>
-                            <div class="form-group col-md-6">
+                            <div class="field-wrapper col-md-6" data-field="email" data-label="Email Address" data-default-order="5">
                                 <label class="small font-weight-bold">Email Address</label>
                                 <input type="email" name="contacts[{{ $index }}][email]" class="form-control form-control-sm" value="{{ $contact->email }}" placeholder="email@domain.com">
                             </div>
@@ -179,6 +216,34 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     let contactIndex = {{ count($contacts ?? []) }};
+    let lastContactMeta = null;
+
+    function syncContactRowLayout($grid, metaList) {
+        if (!metaList || !metaList.length) return;
+        metaList.forEach(function (f) {
+            let $field = $grid.find(`.field-wrapper[data-field="${f.field}"]`);
+            if ($field.length) {
+                $grid.append($field);
+                $field.removeClass('col-md-2 col-md-3 col-md-4 col-md-6 col-md-12').addClass(f.currentCol);
+                if (!f.visible) {
+                    $field.addClass('form-field-hidden');
+                } else {
+                    $field.removeClass('form-field-hidden');
+                }
+            }
+        });
+    }
+
+    if (window.jQuery) {
+        window.jQuery(document).on('form-layout:applied', function (e, data) {
+            if (data.formKey === 'master_suppliers.contacts') {
+                lastContactMeta = data.fieldsMeta;
+                window.jQuery('.supplier-contact-fields-grid').each(function () {
+                    syncContactRowLayout(window.jQuery(this), data.fieldsMeta);
+                });
+            }
+        });
+    }
 
     function updateCount() {
         const visibleRows = document.querySelectorAll('.contact-row:not([style*="display: none"])').length;
@@ -193,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const template = `
-            <div class="contact-row card card-outline card-primary mb-3">
+            <div class="contact-row card card-outline card-primary mb-3 shadow-sm">
                 <input type="hidden" name="contacts[${contactIndex}][id]" value="">
                 <input type="hidden" name="contacts[${contactIndex}][_delete]" class="contact-delete-flag" value="0">
                 <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
@@ -203,26 +268,24 @@ document.addEventListener('DOMContentLoaded', function () {
                     </button>
                 </div>
                 <div class="card-body py-2">
-                    <div class="form-row">
-                        <div class="form-group col-md-4">
+                    <div class="row g-2 form-fields-grid supplier-contact-fields-grid">
+                        <div class="field-wrapper col-md-4" data-field="contact_person" data-label="Contact Person Name" data-default-order="1">
                             <label class="small font-weight-bold">Contact Person Name</label>
                             <input type="text" name="contacts[${contactIndex}][contact_person]" class="form-control form-control-sm" placeholder="Full Name">
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="field-wrapper col-md-4" data-field="designation" data-label="Designation / Role" data-default-order="2">
                             <label class="small font-weight-bold">Designation / Role</label>
                             <input type="text" name="contacts[${contactIndex}][designation]" class="form-control form-control-sm" placeholder="e.g. Sales Manager, Accountant">
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="field-wrapper col-md-4" data-field="mobile" data-label="Mobile Number" data-default-order="3">
                             <label class="small font-weight-bold">Mobile Number</label>
                             <input type="text" name="contacts[${contactIndex}][mobile]" class="form-control form-control-sm" placeholder="Mobile">
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
+                        <div class="field-wrapper col-md-6" data-field="phone" data-label="Phone" data-default-order="4">
                             <label class="small font-weight-bold">Phone (Landline / Extension)</label>
                             <input type="text" name="contacts[${contactIndex}][phone]" class="form-control form-control-sm" placeholder="Office Phone">
                         </div>
-                        <div class="form-group col-md-6">
+                        <div class="field-wrapper col-md-6" data-field="email" data-label="Email Address" data-default-order="5">
                             <label class="small font-weight-bold">Email Address</label>
                             <input type="email" name="contacts[${contactIndex}][email]" class="form-control form-control-sm" placeholder="email@domain.com">
                         </div>
@@ -231,7 +294,12 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         `;
 
-        document.getElementById('contact-rows').insertAdjacentHTML('beforeend', template);
+        const contactContainer = document.getElementById('contact-rows');
+        contactContainer.insertAdjacentHTML('beforeend', template);
+        if (lastContactMeta && window.jQuery) {
+            const $newRow = window.jQuery(contactContainer.lastElementChild);
+            syncContactRowLayout($newRow.find('.supplier-contact-fields-grid'), lastContactMeta);
+        }
         contactIndex++;
         updateCount();
     });

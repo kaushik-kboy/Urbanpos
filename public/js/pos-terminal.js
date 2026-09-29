@@ -2065,6 +2065,7 @@
             bill_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
             customer_id: state.customer_id,
             branch_id: state.branch_id,
+            user_id: document.getElementById('posBillerSelect')?.value || null,
             invoice_type: state.invoice_type,
             sales_type: state.sales_type,
             delivery_type: state.delivery_type,

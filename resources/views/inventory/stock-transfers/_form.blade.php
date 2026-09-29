@@ -22,23 +22,23 @@
         $selectedFromBranch = old('from_branch_id', $transfer->from_branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
     <div class="field-wrapper col-md-4" data-field="from_branch_id" data-label="From Branch" data-default-order="1" data-core="1">
-        <label for="from_branch_id" class="font-weight-bold">From Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-        <div class="input-group">
-            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedFromBranch] ?? 'Active Branch' }}">
-            <input type="hidden" name="from_branch_id" id="from_branch_id" value="{{ $selectedFromBranch }}">
-            <div class="input-group-append">
-                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-            </div>
-        </div>
+        <label for="from_branch_id" class="font-weight-bold">From Branch <span class="text-danger">*</span></label>
+        <select name="from_branch_id" id="from_branch_id" class="form-control select2" required>
+            <option value="">-- Select Source Branch --</option>
+            @foreach ($branches as $bId => $bName)
+                <option value="{{ $bId }}" @selected($selectedFromBranch == $bId)>{{ $bName }}</option>
+            @endforeach
+        </select>
     </div>
     <div class="field-wrapper col-md-4" data-field="to_branch_id" data-label="To Branch" data-default-order="2" data-core="1">
         <label for="to_branch_id" class="font-weight-bold">To Branch <span class="text-danger">*</span></label>
         <select name="to_branch_id" id="to_branch_id" class="form-control select2" required>
-            <option value="">-- Select Branch --</option>
+            <option value="">-- Select Destination Branch --</option>
             @foreach ($branches as $bId => $bName)
                 <option value="{{ $bId }}" @selected(old('to_branch_id', $transfer->to_branch_id ?? '') == $bId)>{{ $bName }}</option>
             @endforeach
         </select>
+        <div id="st-branch-error-msg" class="text-danger small font-weight-bold mt-1" style="display:none;">Source and Destination branches cannot be the same.</div>
     </div>
     <div class="field-wrapper col-md-4" data-field="transfer_date" data-label="Transfer Date" data-default-order="3" data-core="1">
         <label for="transfer_date" class="font-weight-bold">Transfer Date <span class="text-danger">*</span></label>
@@ -217,7 +217,8 @@
 
 @push('css')
 <style>
-    .select2-container .select2-selection--single { height: 31px !important; border-color: #ced4da !important; font-size: 0.875rem; }
+    .select2-container { width: 100% !important; }
+    .select2-container .select2-selection--single { height: 31px !important; border-color: #ced4da !important; font-size: 0.875rem; width: 100% !important; }
     .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 29px !important; padding-left: 6px; padding-right: 18px; }
     .select2-container--default .select2-selection--single .select2-selection__arrow { height: 29px !important; right: 3px; }
     .st-isl-item-disabled { cursor: not-allowed !important; opacity: 0.65; }
@@ -242,6 +243,58 @@
         function currentFromBranch() {
             return $('#from_branch_id').val() || '';
         }
+
+        const allFromBranchOptions = $('#from_branch_id option').map(function() {
+            return { val: $(this).val(), text: $(this).text() };
+        }).get();
+        const allToBranchOptions = $('#to_branch_id option').map(function() {
+            return { val: $(this).val(), text: $(this).text() };
+        }).get();
+
+        let syncingBranches = false;
+        function syncBranchExclusion() {
+            if (syncingBranches) return;
+            syncingBranches = true;
+
+            let fromVal = String($('#from_branch_id').val() || '');
+            let toVal = String($('#to_branch_id').val() || '');
+
+            // Rebuild To options excluding fromVal
+            let newToHtml = '';
+            allToBranchOptions.forEach(opt => {
+                if (opt.val && opt.val === fromVal) return;
+                let sel = (opt.val && opt.val === toVal) ? ' selected' : '';
+                newToHtml += `<option value="${opt.val}"${sel}>${opt.text}</option>`;
+            });
+            $('#to_branch_id').html(newToHtml);
+
+            // Rebuild From options excluding toVal
+            let newFromHtml = '';
+            allFromBranchOptions.forEach(opt => {
+                if (opt.val && opt.val === toVal) return;
+                let sel = (opt.val && opt.val === fromVal) ? ' selected' : '';
+                newFromHtml += `<option value="${opt.val}"${sel}>${opt.text}</option>`;
+            });
+            $('#from_branch_id').html(newFromHtml);
+
+            if ($.fn.select2) {
+                try {
+                    $('#to_branch_id').select2({ width: '100%' });
+                    $('#from_branch_id').select2({ width: '100%' });
+                } catch(e) {}
+            }
+            syncingBranches = false;
+        }
+
+        $(document).on('change', '#from_branch_id', function () {
+            syncBranchExclusion();
+        });
+
+        $(document).on('change', '#to_branch_id', function () {
+            syncBranchExclusion();
+        });
+
+        setTimeout(syncBranchExclusion, 100);
 
         function formatToDisplayDate(val) {
             if (!val) return '';
@@ -297,18 +350,20 @@
 
             if (item.exp_date && isExpiredDate(item.exp_date)) {
                 let formattedExp = formatToDisplayDate(item.exp_date);
-                alert('Expiry Validation Error:\n\nProduct "' + (item.name || 'Selected Item') + '" has expired on ' + formattedExp + '!\nTransfer of expired products is not permitted.');
+                if (window.toastr) {
+                    toastr.error('Product "' + (item.name || 'Selected Item') + '" has expired on ' + formattedExp + '! Transfer of expired products is not permitted.', 'Expiry Error');
+                }
                 return false;
             }
 
             const $select = $row.find('.item-select');
-            const displayCode = item.code || item.barcode || '';
+            const displayCode = item.code || item.barcode || item.item_code || '';
             const codeStr = displayCode ? " [" + displayCode + "]" : "";
             const optionText = (item.name || item.text || 'Item') + (item.text && item.text.indexOf('[') !== -1 ? '' : codeStr);
             const option = new Option(optionText, item.id, true, true);
             $select.empty().append(option).trigger('change');
 
-            $row.find('.item-code-input').val(item.id || displayCode);
+            $row.find('.item-code-input').val(displayCode || item.item_code || item.code || item.id);
             const avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
             $row.find('.item-available').val(avail.toFixed(3));
             if (item.batch_no) {
@@ -752,6 +807,23 @@
             }, 50);
         });
 
+        // Reset Form Handler (Clears header fields and resets table)
+        $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
+            e.preventDefault();
+            $('#to_branch_id').val('').trigger('change.select2');
+            $('textarea[name="remarks"]').val('');
+            $('#btn-reset-table').trigger('click');
+            if (window.toastr) {
+                toastr.info('Stock Transfer form has been reset.');
+            }
+            setTimeout(function () {
+                let $from = $('#from_branch_id');
+                if ($from.data('select2')) {
+                    $from.data('select2').$container.find('.select2-selection').focus();
+                }
+            }, 100);
+        });
+
         // Row Remove Handler
         $('#items-body').on('click', '.row-remove', function (e) {
             e.preventDefault();
@@ -801,30 +873,49 @@
         // Expiry Date input: auto-format to DD/MM/YYYY on blur or Enter/Tab, and validate not expired
         $(document).on('change blur', '.item-exp-date', function () {
             let val = $(this).val();
+            let $row = $(this).closest('tr');
+            let $err = $row.find('.st-exp-error');
+            if (!$err.length) {
+                $(this).after('<div class="st-exp-error text-danger small font-weight-bold mt-1" style="display:none;"></div>');
+                $err = $row.find('.st-exp-error');
+            }
             if (val) {
                 let formatted = formatToDisplayDate(val);
                 $(this).val(formatted);
                 if (isExpiredDate(formatted)) {
-                    $(this).addClass('is-invalid');
-                    alert('Expiry Validation Error:\n\nExpired date (' + formatted + ') entered! Transfer of expired products is not allowed.');
+                    $(this).addClass('is-invalid border-danger');
+                    $err.text('Expired date (' + formatted + ') entered! Transfer of expired products is not allowed.').show();
                     $(this).val('').focus();
                 } else {
-                    $(this).removeClass('is-invalid');
+                    $(this).removeClass('is-invalid border-danger');
+                    $err.hide();
                 }
+            } else {
+                $(this).removeClass('is-invalid border-danger');
+                $err.hide();
             }
         });
         $(document).on('keydown', '.item-exp-date', function (e) {
             if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
                 let val = $(this).val();
+                let $row = $(this).closest('tr');
+                let $err = $row.find('.st-exp-error');
+                if (!$err.length) {
+                    $(this).after('<div class="st-exp-error text-danger small font-weight-bold mt-1" style="display:none;"></div>');
+                    $err = $row.find('.st-exp-error');
+                }
                 if (val) {
                     let formatted = formatToDisplayDate(val);
                     $(this).val(formatted);
                     if (isExpiredDate(formatted)) {
-                        $(this).addClass('is-invalid');
-                        alert('Expiry Validation Error:\n\nExpired date (' + formatted + ') entered! Transfer of expired products is not allowed.');
+                        e.preventDefault();
+                        $(this).addClass('is-invalid border-danger');
+                        $err.text('Expired date (' + formatted + ') entered! Transfer of expired products is not allowed.').show();
                         $(this).val('').focus();
+                        return false;
                     } else {
-                        $(this).removeClass('is-invalid');
+                        $(this).removeClass('is-invalid border-danger');
+                        $err.hide();
                     }
                 }
             }
@@ -863,10 +954,11 @@
 
             if (fromBranch && toBranch && fromBranch === toBranch) {
                 $toContainer.addClass('border-danger');
-                alert('Source (From) Branch and Destination (To) Branch cannot be the same!');
+                $('#st-branch-error-msg').text('Source (From) Branch and Destination (To) Branch cannot be the same!').show();
                 return false;
             } else {
                 $toContainer.removeClass('border-danger');
+                $('#st-branch-error-msg').hide();
                 return true;
             }
         }
@@ -950,11 +1042,16 @@
                 let avail = parseFloat($currentRow.find('.item-available').val()) || 0;
 
                 if (itemId) {
+                    let $err = $currentRow.find('.st-qty-error');
+                    if (!$err.length) {
+                        $(this).after('<div class="st-qty-error text-danger small font-weight-bold mt-1" style="display:none;"></div>');
+                        $err = $currentRow.find('.st-qty-error');
+                    }
                     if (q <= 0) {
                         e.preventDefault();
                         e.stopPropagation();
                         $(this).addClass('is-invalid border-danger text-danger').focus();
-                        alert('Quantity must be greater than 0.');
+                        $err.text('Quantity must be greater than 0.').show();
                         return false;
                     }
                     if (avail >= 0 && q > avail) {
@@ -962,9 +1059,10 @@
                         e.stopPropagation();
                         $(this).val(avail);
                         $(this).addClass('is-invalid border-danger text-danger').focus();
-                        alert(`Quantity cannot exceed available stock (${avail})!`);
+                        $err.text(`Quantity cannot exceed available stock (${avail})!`).show();
                         return false;
                     }
+                    $err.hide();
                 }
 
                 // If valid, advance to next row or add row and open search modal

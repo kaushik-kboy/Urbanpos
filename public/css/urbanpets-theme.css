@@ -1374,14 +1374,176 @@ body {
     font-size: 12.5px !important;
 }
 
-.table td a {
+.table td a:not(.btn) {
     color: var(--up-blue) !important;
     font-weight: 600 !important;
     text-decoration: none !important;
 }
 
-.table td a:hover {
+.table td a:not(.btn):hover {
     text-decoration: underline !important;
+}
+
+/* Ensure buttons in table cells always have correct background, text contrast and icon colors */
+.table td a.btn,
+.table td button.btn,
+.table td .btn {
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+}
+
+.table td a.btn-primary,
+.table td button.btn-primary,
+.table td .btn-primary {
+    background-color: var(--up-blue) !important;
+    border-color: var(--up-blue) !important;
+    color: #ffffff !important;
+}
+.table td a.btn-primary *,
+.table td button.btn-primary *,
+.table td .btn-primary * {
+    color: #ffffff !important;
+}
+.table td a.btn-primary:hover,
+.table td button.btn-primary:hover,
+.table td .btn-primary:hover {
+    background-color: var(--up-blue-hover) !important;
+    border-color: var(--up-blue-hover) !important;
+    color: #ffffff !important;
+}
+
+.table td a.btn-info,
+.table td button.btn-info,
+.table td .btn-info {
+    background-color: #17a2b8 !important;
+    border-color: #17a2b8 !important;
+    color: #ffffff !important;
+}
+.table td a.btn-info *,
+.table td button.btn-info *,
+.table td .btn-info * {
+    color: #ffffff !important;
+}
+.table td a.btn-info:hover,
+.table td button.btn-info:hover,
+.table td .btn-info:hover {
+    background-color: #138496 !important;
+    border-color: #117a8b !important;
+    color: #ffffff !important;
+}
+
+.table td a.btn-secondary,
+.table td button.btn-secondary,
+.table td .btn-secondary {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #ffffff !important;
+}
+.table td a.btn-secondary *,
+.table td button.btn-secondary *,
+.table td .btn-secondary * {
+    color: #ffffff !important;
+}
+.table td a.btn-secondary:hover,
+.table td button.btn-secondary:hover,
+.table td .btn-secondary:hover {
+    background-color: #5a6268 !important;
+    border-color: #545b62 !important;
+    color: #ffffff !important;
+}
+
+.table td a.btn-success,
+.table td button.btn-success,
+.table td .btn-success {
+    background-color: var(--up-success) !important;
+    border-color: var(--up-success) !important;
+    color: #ffffff !important;
+}
+.table td a.btn-success *,
+.table td button.btn-success *,
+.table td .btn-success * {
+    color: #ffffff !important;
+}
+.table td a.btn-success:hover,
+.table td button.btn-success:hover,
+.table td .btn-success:hover {
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+    color: #ffffff !important;
+}
+
+.table td a.btn-danger,
+.table td button.btn-danger,
+.table td .btn-danger {
+    background-color: var(--up-danger) !important;
+    border-color: var(--up-danger) !important;
+    color: #ffffff !important;
+}
+.table td a.btn-danger *,
+.table td button.btn-danger *,
+.table td .btn-danger * {
+    color: #ffffff !important;
+}
+
+.table td a.btn-outline-primary,
+.table td button.btn-outline-primary,
+.table td .btn-outline-primary {
+    color: var(--up-blue) !important;
+    border-color: var(--up-blue) !important;
+    background-color: transparent !important;
+}
+.table td a.btn-outline-primary:hover,
+.table td button.btn-outline-primary:hover,
+.table td .btn-outline-primary:hover {
+    background-color: var(--up-blue) !important;
+    color: #ffffff !important;
+}
+.table td a.btn-outline-primary:hover *,
+.table td button.btn-outline-primary:hover *,
+.table td .btn-outline-primary:hover * {
+    color: #ffffff !important;
+}
+
+.table td a.btn-outline-info,
+.table td button.btn-outline-info,
+.table td .btn-outline-info {
+    color: #17a2b8 !important;
+    border-color: #17a2b8 !important;
+    background-color: transparent !important;
+}
+.table td a.btn-outline-info:hover,
+.table td button.btn-outline-info:hover,
+.table td .btn-outline-info:hover {
+    background-color: #17a2b8 !important;
+    color: #ffffff !important;
+}
+.table td a.btn-outline-info:hover *,
+.table td button.btn-outline-info:hover *,
+.table td .btn-outline-info:hover * {
+    color: #ffffff !important;
+}
+
+.table td a.btn-outline-secondary,
+.table td button.btn-outline-secondary,
+.table td .btn-outline-secondary {
+    color: #6c757d !important;
+    border-color: #ced4da !important;
+    background-color: transparent !important;
+}
+.table td a.btn-outline-secondary:hover,
+.table td button.btn-outline-secondary:hover,
+.table td .btn-outline-secondary:hover {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+}
+.table td a.btn-outline-secondary:hover *,
+.table td button.btn-outline-secondary:hover *,
+.table td .btn-outline-secondary:hover * {
+    color: #ffffff !important;
 }
 
 /* ==========================================================================
@@ -1780,14 +1942,14 @@ body {
 }
 
 /* Document & Invoice Number Links */
-.table td a[href*="sales-bills/"],
-.table td a[href*="sales-orders/"],
-.table td a[href*="sales-quotations/"],
-.table td a[href*="sales-returns/"],
-.table td a[href*="purchase-invoices/"],
-.table td a[href*="purchase-orders/"],
-.table td a[href*="receipt-notes/"],
-.table td a[href*="delivery-notes/"] {
+.table td a[href*="sales-bills/"]:not(.btn),
+.table td a[href*="sales-orders/"]:not(.btn),
+.table td a[href*="sales-quotations/"]:not(.btn),
+.table td a[href*="sales-returns/"]:not(.btn),
+.table td a[href*="purchase-invoices/"]:not(.btn),
+.table td a[href*="purchase-orders/"]:not(.btn),
+.table td a[href*="receipt-notes/"]:not(.btn),
+.table td a[href*="delivery-notes/"]:not(.btn) {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
     font-weight: 700 !important;
     color: var(--up-blue) !important;

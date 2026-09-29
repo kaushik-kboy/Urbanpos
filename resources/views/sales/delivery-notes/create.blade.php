@@ -55,16 +55,7 @@
                     @php
                         $selectedBranch = old('branch_id', $sourceOrder->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
                     @endphp
-                    <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
-                        <label class="font-weight-bold">Active Branch <span class="badge badge-light border ml-1 font-weight-normal text-muted">Top Navbar</span></label>
-                        <div class="input-group">
-                            <input type="text" class="form-control font-weight-bold bg-light text-dark" readonly tabindex="-1" value="{{ $branches[$selectedBranch] ?? 'Active Branch' }}">
-                            <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
-                            <div class="input-group-append">
-                                <span class="input-group-text bg-light text-primary" title="Branch is selected globally from top navbar"><i class="fas fa-lock"></i></span>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="customer_id" data-label="Customer" data-default-order="3" data-core="1">
                         <label class="font-weight-bold">Customer <span class="text-danger">*</span></label>
                         <select name="customer_id" class="form-control select2" required>
@@ -151,17 +142,17 @@
                 <table class="table table-bordered table-sm mb-0 table-items-dense" id="sdn-items-table">
                     <thead class="thead-light">
                         <tr class="text-center">
-                            <th style="width: 40px;" data-col-key="seq">#</th>
-                            <th style="width: 155px;" data-col-key="code">Code / Barcode</th>
-                            <th style="min-width: 250px;" data-col-key="item">Item Description</th>
-                            <th style="width: 110px;" data-col-key="ordered">Ordered Qty</th>
-                            <th style="width: 130px;" data-col-key="dispatched">Dispatched Qty <span class="text-danger">*</span></th>
-                            <th style="width: 120px;" data-col-key="price">Unit Price (₹) <span class="text-danger">*</span></th>
-                            <th style="width: 110px;" data-col-key="mrp">MRP (₹)</th>
-                            <th style="width: 120px;" data-col-key="batch">Batch No</th>
-                            <th style="width: 130px;" data-col-key="exp_date">Expiry Date</th>
-                            <th style="width: 130px;" class="text-right" data-col-key="line_total">Line Total</th>
-                            <th style="width: 40px;" data-col-key="actions"></th>
+                            <th style="width: 35px;" data-col-key="seq">#</th>
+                            <th style="width: 140px;" data-col-key="code">Code / Barcode</th>
+                            <th style="min-width: 220px;" data-col-key="item">Item Description</th>
+                            <th style="width: 85px;" data-col-key="ordered">Ordered</th>
+                            <th style="width: 95px;" data-col-key="dispatched">Dispatched <span class="text-danger">*</span></th>
+                            <th style="width: 95px;" data-col-key="price">Price (₹) <span class="text-danger">*</span></th>
+                            <th style="width: 85px;" data-col-key="mrp">MRP (₹)</th>
+                            <th style="width: 105px;" data-col-key="batch">Batch No</th>
+                            <th style="width: 145px; min-width: 145px;" data-col-key="exp_date">Expiry Date</th>
+                            <th style="width: 105px;" class="text-right" data-col-key="line_total">Line Total</th>
+                            <th style="width: 35px;" data-col-key="actions"></th>
                         </tr>
                     </thead>
                     <tbody id="sdn-items-body">
@@ -221,7 +212,7 @@
                                 <td data-col-key="batch">
                                     <input type="text" name="items[{{ $idx }}][batch_no]" class="form-control form-control-sm" value="{{ $batch }}" placeholder="Batch">
                                 </td>
-                                <td data-col-key="exp_date">
+                                <td style="min-width: 145px; width: 145px;" data-col-key="exp_date">
                                     <input type="date" name="items[{{ $idx }}][exp_date]" class="form-control form-control-sm" value="{{ $exp }}">
                                 </td>
                                 <td class="text-right align-middle font-weight-bold text-success row-total" data-col-key="line_total">₹0.00</td>
@@ -255,6 +246,9 @@
                         <input type="text" name="remarks" class="form-control" placeholder="Optional dispatch notes or special delivery instructions" value="{{ old('remarks') }}">
                     </div>
                     <div class="col-md-4 text-right pt-3">
+                        <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
+                            <i class="fas fa-undo mr-1"></i> Reset Form
+                        </button>
                         <a href="{{ route('sales.delivery-notes.index') }}" class="btn btn-secondary mr-2">Cancel</a>
                         <button type="submit" class="btn btn-primary px-4 shadow-sm" id="submit-btn">
                             <i class="fas fa-check-circle mr-1"></i> Save & Dispatch Goods
@@ -303,7 +297,7 @@
             <td data-col-key="batch">
                 <input type="text" name="items[__INDEX__][batch_no]" class="form-control form-control-sm" value="" placeholder="Batch">
             </td>
-            <td data-col-key="exp_date">
+            <td style="min-width: 145px; width: 145px;" data-col-key="exp_date">
                 <input type="date" name="items[__INDEX__][exp_date]" class="form-control form-control-sm" value="">
             </td>
             <td class="text-right align-middle font-weight-bold text-success row-total" data-col-key="line_total">₹0.00</td>
@@ -814,6 +808,27 @@ $(function () {
         setTimeout(function () {
             $('#sdn-items-body tr:first .sdn-item-code').focus();
         }, 50);
+    });
+
+    // Reset Form (Clears header fields and resets table)
+    $(document).on('click', '#btn-reset-form, .btn-reset-form', function () {
+        $('#customer_id').val('').trigger('change.select2');
+        $('input[name="delivery_date"]').val(new Date().toISOString().slice(0, 10));
+        $('input[name="dispatch_through"]').val('');
+        $('input[name="destination"]').val('');
+        $('input[name="vehicle_no"]').val('');
+        $('input[name="transporter_id"]').val('');
+        $('input[name="remarks"]').val('');
+        $('#sdn-btn-reset-table').trigger('click');
+        if (window.toastr) {
+            toastr.info('Delivery Note form has been reset.');
+        }
+        setTimeout(function () {
+            let $c = $('#customer_id');
+            if ($c.data('select2')) {
+                $c.data('select2').$container.find('.select2-selection').focus();
+            }
+        }, 100);
     });
 
     // Tab / Enter at end of row adds new row or focuses next code

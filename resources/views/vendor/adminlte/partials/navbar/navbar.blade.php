@@ -78,12 +78,13 @@
                     <i class="fas fa-compress-arrows-alt" id="table-density-icon"></i>
                 </button>
             </li>
-            {{-- Dark / Light Theme Toggle --}}
+            {{-- Dark / Light Theme Toggle (Commented out per user request - to be refined later)
             <li class="nav-item d-flex align-items-center mr-2" id="top-navbar-theme-wrapper">
                 <button type="button" id="btn-toggle-theme-mode" class="btn btn-sm btn-light border px-2 py-1 shadow-xs text-secondary d-flex align-items-center" title="Toggle Dark/Light Mode (Shift+Alt+D)" style="height: calc(1.5em + .5rem + 2px);">
                     <i class="fas fa-moon" id="theme-mode-icon"></i>
                 </button>
             </li>
+            --}}
         @endauth
 
         {{-- Configured right links --}}

@@ -44,128 +44,129 @@
                title="Product description (auto-filled on code entry)">
         <input type="hidden" name="items[{{ $rowId }}][item_id]" class="item-select item-id-hidden" value="{{ $itemId }}">
     </td>
-    <td style="min-width: 130px;">
+    <td style="width: 155px; min-width: 150px;">
         <input type="date" 
                name="items[{{ $rowId }}][exp_date]" 
                value="{{ $expDate }}" 
-               class="form-control form-control-sm">
+               class="form-control form-control-sm px-1"
+               style="min-width: 140px;">
     </td>
-    <td style="min-width: 85px;">
+    <td style="width: 75px; min-width: 70px;">
         <input type="number" 
                step="0.001" 
                min="0" 
                name="items[{{ $rowId }}][qty]" 
                value="{{ $qty }}" 
-               class="form-control form-control-sm item-qty text-right font-weight-bold" 
+               class="form-control form-control-sm item-qty text-right font-weight-bold px-1" 
                placeholder="0">
     </td>
-    <td style="min-width: 95px;">
+    <td style="width: 85px; min-width: 80px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                name="items[{{ $rowId }}][cost_price]" 
                value="{{ $costPrice }}" 
-               class="form-control form-control-sm item-cost text-right" 
+               class="form-control form-control-sm item-cost text-right px-1" 
                placeholder="0.00">
     </td>
-    <td style="min-width: 95px;">
+    <td style="width: 85px; min-width: 80px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                name="items[{{ $rowId }}][sell_price]" 
                value="{{ $sellPrice }}" 
-               class="form-control form-control-sm item-sell text-right" 
+               class="form-control form-control-sm item-sell text-right px-1" 
                placeholder="0.00">
     </td>
-    <td style="min-width: 95px;">
+    <td style="width: 80px; min-width: 75px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                name="items[{{ $rowId }}][mrp]" 
                value="{{ $mrp }}" 
-               class="form-control form-control-sm item-mrp text-right" 
+               class="form-control form-control-sm item-mrp text-right px-1" 
                placeholder="0.00">
     </td>
-    <td style="min-width: 75px;">
+    <td style="width: 65px; min-width: 60px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                max="100" 
                name="items[{{ $rowId }}][disc_percent]" 
                value="{{ $discPercent }}" 
-               class="form-control form-control-sm item-disc-percent text-right" 
+               class="form-control form-control-sm item-disc-percent text-right px-1" 
                placeholder="0">
     </td>
-    <td style="min-width: 90px;">
+    <td style="width: 80px; min-width: 75px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                name="items[{{ $rowId }}][disc_amount]" 
                value="{{ $discAmount }}" 
-               class="form-control form-control-sm item-disc-amount text-right" 
+               class="form-control form-control-sm item-disc-amount text-right px-1" 
                placeholder="0.00">
     </td>
-    <td style="min-width: 75px;">
+    <td style="width: 60px; min-width: 55px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                max="100" 
                name="items[{{ $rowId }}][gst_percent]" 
                value="{{ $gstPercent }}" 
-               class="form-control form-control-sm item-gst-percent text-right" 
+               class="form-control form-control-sm item-gst-percent text-right px-1" 
                placeholder="0">
     </td>
-    <td style="min-width: 95px;">
+    <td style="width: 80px; min-width: 75px;">
         <input type="number" 
                step="0.01" 
                name="items[{{ $rowId }}][gst_tax_amount]" 
                value="{{ $gstTaxAmount }}" 
-               class="form-control form-control-sm item-gst-amount text-right bg-light" 
+               class="form-control form-control-sm item-gst-amount text-right bg-light px-1" 
                placeholder="0.00" 
                readonly>
     </td>
-    <td style="min-width: 160px;">
-        <select name="items[{{ $rowId }}][supplier_id]" class="form-control form-control-sm item-supplier">
+    <td style="width: 150px; min-width: 140px;">
+        <select name="items[{{ $rowId }}][supplier_id]" class="form-control form-control-sm item-supplier px-1">
             <option value="">-- Default --</option>
             @foreach ($suppliers as $sId => $sName)
                 <option value="{{ $sId }}" @selected($supplierId == $sId)>{{ $sName }}</option>
             @endforeach
         </select>
     </td>
-    <td style="min-width: 80px;">
+    <td style="width: 70px; min-width: 65px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                max="100" 
                name="items[{{ $rowId }}][scheme_disc_percent]" 
                value="{{ $schemeDiscPercent }}" 
-               class="form-control form-control-sm item-scheme-percent text-right" 
+               class="form-control form-control-sm item-scheme-percent text-right px-1" 
                placeholder="0">
     </td>
-    <td style="min-width: 90px;">
+    <td style="width: 80px; min-width: 75px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                name="items[{{ $rowId }}][scheme_amount]" 
                value="{{ $schemeAmount }}" 
-               class="form-control form-control-sm item-scheme-amount text-right" 
+               class="form-control form-control-sm item-scheme-amount text-right px-1" 
                placeholder="0.00">
     </td>
-    <td style="min-width: 90px;">
+    <td style="width: 80px; min-width: 75px;">
         <input type="number" 
                step="0.01" 
                min="0" 
                name="items[{{ $rowId }}][scheme_others]" 
                value="{{ $schemeOthers }}" 
-               class="form-control form-control-sm item-scheme-others text-right" 
+               class="form-control form-control-sm item-scheme-others text-right px-1" 
                placeholder="0.00">
     </td>
-    <td style="min-width: 110px;">
+    <td style="width: 95px; min-width: 90px;">
         <input type="number" 
                step="0.01" 
                name="items[{{ $rowId }}][net_amount]" 
                value="{{ $netAmount }}" 
-               class="form-control form-control-sm item-net font-weight-bold text-right text-success bg-light" 
+               class="form-control form-control-sm item-net font-weight-bold text-right text-success bg-light px-1" 
                placeholder="0.00" 
                readonly>
     </td>

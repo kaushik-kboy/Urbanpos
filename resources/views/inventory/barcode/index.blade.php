@@ -168,8 +168,53 @@
         }, 350);
     });
 
-    // Barcode scanner: fires Enter after scanning
+    let barcodeResultsSelectedIndex = -1;
+
+    function updateBarcodeSelectionHighlight() {
+        const $rows = $tbody.find('tr.barcode-result-row');
+        $rows.removeClass('table-primary');
+        if (barcodeResultsSelectedIndex >= 0 && barcodeResultsSelectedIndex < $rows.length) {
+            const $active = $rows.eq(barcodeResultsSelectedIndex);
+            $active.addClass('table-primary');
+            const el = $active[0];
+            const wrap = document.getElementById('barcode-results-wrap');
+            if (el && wrap) {
+                const elTop = el.offsetTop;
+                const elBottom = elTop + el.offsetHeight;
+                const wrapTop = wrap.scrollTop;
+                const wrapBottom = wrapTop + wrap.clientHeight;
+                if (elTop < wrapTop) {
+                    wrap.scrollTop = elTop;
+                } else if (elBottom > wrapBottom) {
+                    wrap.scrollTop = elBottom - wrap.clientHeight;
+                }
+            }
+        }
+    }
+
+    // Barcode scanner & Keyboard Arrow Navigation
     $input.on('keydown', function (e) {
+        const $rows = $tbody.find('tr.barcode-result-row');
+        if ($rows.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                barcodeResultsSelectedIndex = Math.min(barcodeResultsSelectedIndex + 1, $rows.length - 1);
+                updateBarcodeSelectionHighlight();
+                return;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                barcodeResultsSelectedIndex = Math.max(barcodeResultsSelectedIndex - 1, 0);
+                updateBarcodeSelectionHighlight();
+                return;
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (barcodeResultsSelectedIndex >= 0 && barcodeResultsSelectedIndex < $rows.length) {
+                    $rows.eq(barcodeResultsSelectedIndex).find('.btn-add-result').trigger('click');
+                    return;
+                }
+            }
+        }
+
         if (e.key === 'Enter') {
             e.preventDefault();
             const val = $(this).val().trim();
@@ -194,6 +239,7 @@
         $table.hide();
         $more.addClass('d-none');
         $status.text('Type or scan a barcode to search items…');
+        barcodeResultsSelectedIndex = -1;
     }
 
     function performSearch(q, scannerMode) {
@@ -203,6 +249,7 @@
         $empty.addClass('d-none');
         $table.hide();
         $more.addClass('d-none');
+        barcodeResultsSelectedIndex = -1;
 
         $.getJSON(SEARCH_URL, {
             q: q,
@@ -242,12 +289,12 @@
             }
 
             $table.show();
-            $status.html('Found <strong>' + items.length + '</strong> item(s) for "' + $('<div>').text(q).html() + '"');
+            $status.html('Found <strong>' + items.length + '</strong> item(s) for "' + $('<div>').text(q).html() + '" (Use ↑↓ arrows and Enter to add)');
 
             let html = '';
-            items.forEach(function (item) {
+            items.forEach(function (item, idx) {
                 html += `
-                    <tr>
+                    <tr class="barcode-result-row" data-index="${idx}" style="cursor: pointer;">
                         <td>
                             <strong>${escHtml(item.name)}</strong>
                             <br><small class="text-muted">${escHtml(item.item_code || '')} | Barcode: ${escHtml(item.barcode || '')}</small>
@@ -269,6 +316,9 @@
             });
             $tbody.html(html);
 
+            barcodeResultsSelectedIndex = items.length > 0 ? 0 : -1;
+            updateBarcodeSelectionHighlight();
+
             if (items.length >= 80) {
                 $more.removeClass('d-none');
             }
@@ -279,7 +329,14 @@
     }
 
     /* ─── Add result to queue ─────────────────────────────────── */
-    $tbody.on('click', '.btn-add-result', function () {
+    $tbody.on('click', 'tr.barcode-result-row', function (e) {
+        if ($(e.target).closest('.btn-add-result').length === 0) {
+            $(this).find('.btn-add-result').trigger('click');
+        }
+    });
+
+    $tbody.on('click', '.btn-add-result', function (e) {
+        e.stopPropagation();
         const item = {
             id:         $(this).data('id'),
             code:       $(this).data('code'),

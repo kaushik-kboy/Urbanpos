@@ -32,9 +32,14 @@
             </div>
             <div class="card-footer bg-light d-flex justify-content-between">
                 <a href="{{ route('purchase.purchase-returns.index') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-success px-4 font-weight-bold">
-                    <i class="fas fa-save mr-1"></i> Save Purchase Return
-                </button>
+                <div>
+                    <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
+                        <i class="fas fa-undo mr-1"></i> Reset Form
+                    </button>
+                    <button type="submit" class="btn btn-success px-4 font-weight-bold">
+                        <i class="fas fa-save mr-1"></i> Save Purchase Return
+                    </button>
+                </div>
             </div>
         </form>
     </div>
