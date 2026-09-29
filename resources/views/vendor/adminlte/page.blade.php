@@ -7,7 +7,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}?v=20260921_2">
+    <link rel="stylesheet" href="{{ asset('css/urbanpets-theme.css') }}?v={{ file_exists(public_path('css/urbanpets-theme.css')) ? filemtime(public_path('css/urbanpets-theme.css')) : '20260929' }}">
+    <script>
+        (function() {
+            try {
+                var theme = localStorage.getItem('urbanpos_theme');
+                if (theme === 'dark' || (!theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark-mode');
+                }
+                var density = localStorage.getItem('urbanpos_table_density');
+                if (density === 'comfortable') {
+                    document.documentElement.classList.add('density-comfortable');
+                } else {
+                    document.documentElement.classList.add('density-compact');
+                }
+            } catch(e) {}
+        })();
+    </script>
     <style>
         /* Global Compact Styles for all Item Tables across POS */
         .table-items-dense th {
@@ -139,6 +155,7 @@
     </div>
     @auth
         <x-date-settings-modal />
+        <x-command-palette />
     @endauth
 @stop
 
@@ -209,5 +226,6 @@
     <script src="{{ asset('js/pos-latency-monitor.js') }}?v={{ file_exists(public_path('js/pos-latency-monitor.js')) ? filemtime(public_path('js/pos-latency-monitor.js')) : '1.0' }}"></script>
     <script src="{{ asset('js/pos-telemetry.js') }}?v={{ file_exists(public_path('js/pos-telemetry.js')) ? filemtime(public_path('js/pos-telemetry.js')) : '1.0' }}"></script>
     <script src="{{ asset('js/form-sequential-validator.js') }}?v={{ file_exists(public_path('js/form-sequential-validator.js')) ? filemtime(public_path('js/form-sequential-validator.js')) : '1.0' }}"></script>
+    <script src="{{ asset('js/urbanpos-theme-density.js') }}?v={{ file_exists(public_path('js/urbanpos-theme-density.js')) ? filemtime(public_path('js/urbanpos-theme-density.js')) : '1.0' }}"></script>
     @endauth
 @stop

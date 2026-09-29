@@ -22,20 +22,21 @@
 
     <div class="mt-4 mb-2">
         <div class="position-relative">
-            <div class="input-group input-group-lg shadow-sm">
+            <div class="input-group input-group-lg shadow-sm" style="cursor: pointer;" onclick="if(window.openUrbanPosCommandPalette){ window.openUrbanPosCommandPalette(); }">
                 <div class="input-group-prepend">
                     <span class="input-group-text bg-white border-right-0 text-primary">
                         <i class="fas fa-search"></i>
                     </span>
                 </div>
-                <input type="text" id="dashboardSearchInput" class="form-control border-left-0 pl-0" placeholder="Search for modules, reports, or settings..." autocomplete="off">
-            </div>
-
-            <!-- Search Results Dropdown -->
-            <div id="dashboardSearchResults" class="dropdown-menu w-100 shadow-lg mt-1 rounded" style="display: none; max-height: 350px; overflow-y: auto; position: absolute; z-index: 1000;">
-                <!-- Results injected via JS -->
+                <input type="text" id="dashboardSearchInput" class="form-control border-left-0 border-right-0 pl-0 bg-white" placeholder="Search modules, invoices, reports, or settings... (Press Ctrl + K)" readonly style="cursor: pointer;">
+                <div class="input-group-append">
+                    <span class="input-group-text bg-white border-left-0">
+                        <kbd class="up-kbd-chip"><i class="fas fa-bolt text-warning mr-1"></i>Ctrl K</kbd>
+                    </span>
+                </div>
             </div>
         </div>
+
     </div>
 @stop
 

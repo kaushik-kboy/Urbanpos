@@ -15,7 +15,16 @@
         {{-- Custom left links --}}
         @yield('content_top_nav_left')
 
-
+        {{-- Global Command Palette Trigger Button (Ctrl+K) --}}
+        @auth
+        <li class="nav-item ml-2 d-none d-md-flex align-items-center">
+            <button type="button" id="btn-open-command-palette" class="btn btn-sm btn-light border up-spotlight-btn d-flex align-items-center text-muted px-2 py-1 shadow-xs" title="Open Spotlight Command Palette (Ctrl+K)">
+                <i class="fas fa-search text-primary mr-2" style="font-size: 0.85rem;"></i>
+                <span class="d-none d-lg-inline mr-3" style="font-size: 0.82rem;">Quick Search / Commands...</span>
+                <kbd class="up-kbd-chip">Ctrl K</kbd>
+            </button>
+        </li>
+        @endauth
     </ul>
 
     {{-- Navbar right links --}}
@@ -62,6 +71,18 @@
                     <span class="mr-1 text-white" style="animation: pulse 1.5s infinite; font-size: 0.7rem;">&#9679;</span>
                     <i class="fas fa-heartbeat mr-1"></i> 100% Healthy
                 </a>
+            </li>
+            {{-- Modern Table Density Switcher --}}
+            <li class="nav-item d-flex align-items-center mr-2" id="top-navbar-density-wrapper">
+                <button type="button" id="btn-toggle-table-density" class="btn btn-sm btn-light border px-2 py-1 shadow-xs text-secondary d-flex align-items-center" title="Toggle Table Density (Compact / Comfortable - Shift+Alt+C)" style="height: calc(1.5em + .5rem + 2px);">
+                    <i class="fas fa-compress-arrows-alt" id="table-density-icon"></i>
+                </button>
+            </li>
+            {{-- Dark / Light Theme Toggle --}}
+            <li class="nav-item d-flex align-items-center mr-2" id="top-navbar-theme-wrapper">
+                <button type="button" id="btn-toggle-theme-mode" class="btn btn-sm btn-light border px-2 py-1 shadow-xs text-secondary d-flex align-items-center" title="Toggle Dark/Light Mode (Shift+Alt+D)" style="height: calc(1.5em + .5rem + 2px);">
+                    <i class="fas fa-moon" id="theme-mode-icon"></i>
+                </button>
             </li>
         @endauth
 
