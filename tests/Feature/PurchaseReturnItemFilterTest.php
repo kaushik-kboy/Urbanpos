@@ -99,7 +99,7 @@ class PurchaseReturnItemFilterTest extends TestCase
             'status' => true,
         ]);
 
-        // Create Purchase Invoice for Supplier A with itemInvoicedA
+        // Create Purchase Invoice A for Supplier A with itemInvoicedA
         $this->invoiceA = PurchaseInvoice::create([
             'invoice_number' => 'PI-TEST-FILTER-001',
             'invoice_date' => now()->toDateString(),
@@ -121,6 +121,30 @@ class PurchaseReturnItemFilterTest extends TestCase
             'disc_percent' => 0,
             'disc_amount' => 0,
             'total' => 590,
+        ]);
+
+        // Create Purchase Invoice B for Supplier A with itemSupplierA (so it appears in invoice history)
+        $invoiceB = PurchaseInvoice::create([
+            'invoice_number' => 'PI-TEST-FILTER-002',
+            'invoice_date' => now()->toDateString(),
+            'supplier_id' => $this->supplierA->id,
+            'branch_id' => $this->branch->id,
+            'purchase_type' => 'Local',
+            'status' => 'Posted',
+            'total' => 1416,
+            'total_gst' => 216,
+            'total_qty' => 5,
+        ]);
+
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $invoiceB->id,
+            'item_id' => $this->itemSupplierA->id,
+            'qty' => 5,
+            'cost_price' => 120,
+            'gst_percent' => 18,
+            'disc_percent' => 0,
+            'disc_amount' => 0,
+            'total' => 708,
         ]);
 
         $this->manager = User::factory()->create(['branch_id' => $this->branch->id]);
@@ -175,16 +199,16 @@ class PurchaseReturnItemFilterTest extends TestCase
         $response->assertStatus(404);
         $this->assertFalse($response->json('success'));
 
-        // Looking up Supplier A's product while Supplier A is selected -> should succeed
+        // Looking up Supplier A's invoiced product while Supplier A is selected -> should succeed
         $responseA = $this->actingAs($this->manager)->getJson(route('purchase.purchase-returns.lookup-item', [
             'supplier_id' => $this->supplierA->id,
-            'query' => $this->itemSupplierA->item_code,
+            'query' => $this->itemInvoicedA->item_code,
             'branch_id' => $this->branch->id,
         ]));
 
         $responseA->assertOk();
         $this->assertTrue($responseA->json('success'));
-        $this->assertEquals($this->itemSupplierA->id, $responseA->json('id'));
+        $this->assertEquals($this->itemInvoicedA->id, $responseA->json('id'));
     }
 
     public function test_store_validation_rejects_foreign_supplier_items(): void

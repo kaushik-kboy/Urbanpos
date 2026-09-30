@@ -127,6 +127,7 @@ class GlobalActiveBranchEnforcementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('name="branch_id" value="' . $this->branch2->id . '"', false);
-        $response->assertSee('Controlled at Top Navbar');
+        // Branch is a hidden input controlled at top navbar (not a visible dropdown)
+        $response->assertSee('type="hidden" name="branch_id"', false);
     }
 }

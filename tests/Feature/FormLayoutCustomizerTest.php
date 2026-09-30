@@ -44,7 +44,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('sb-header-fields-grid');
         $response->assertSee('data-field="customer_id"', false);
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="bill_date"', false);
     }
 
@@ -186,7 +185,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('po-header-fields-grid');
         $response->assertSee('data-field="supplier_id"', false);
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="po_date"', false);
     }
 
@@ -199,7 +197,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('grn-header-fields-grid');
         $response->assertSee('data-field="receipt_date"', false);
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="supplier_id"', false);
     }
 
@@ -224,7 +221,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertOk();
         $response->assertSee('Customize Layout');
         $response->assertSee('os-header-fields-grid');
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="entry_date"', false);
     }
 
@@ -236,7 +232,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertOk();
         $response->assertSee('Customize Layout');
         $response->assertSee('ds-header-fields-grid');
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="entry_date"', false);
         $response->assertSee('data-field="wastage_type"', false);
     }
@@ -262,7 +257,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('sq-header-fields-grid');
         $response->assertSee('data-field="customer_id"', false);
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="quotation_date"', false);
     }
 
@@ -275,7 +269,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('so-header-fields-grid');
         $response->assertSee('data-field="customer_id"', false);
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="order_date"', false);
     }
 
@@ -288,7 +281,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('sdn-header-fields-grid');
         $response->assertSee('data-field="delivery_date"', false);
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="customer_id"', false);
     }
 
@@ -301,7 +293,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('sr-header-fields-grid');
         $response->assertSee('data-field="customer_id"', false);
-        $response->assertSee('data-field="branch_id"', false);
         $response->assertSee('data-field="return_date"', false);
     }
 
@@ -385,7 +376,6 @@ class FormLayoutCustomizerTest extends TestCase
         $response->assertSee('Customize Layout');
         $response->assertSee('purchase-return-header-grid');
         $response->assertSee('data-field="supplier_id"', false);
-        $response->assertSee('data-field="branch_id"', false);
     }
 
     public function test_purchase_indent_create_page_renders_form_layout_customizer(): void
