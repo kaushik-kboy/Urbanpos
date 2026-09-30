@@ -65,7 +65,7 @@ class BulkUpdateController extends Controller
         $lookups = [
             'gst_taxes' => GstTax::where('status', true)->orderBy('percentage')->get(['id', 'description', 'percentage']),
             'item_categories' => ItemCategory::where('status', true)->orderBy('name')->get(['id', 'name']),
-            'item_category_values' => ItemCategoryValue::where('status', true)->orderBy('value')->get(['id', 'value']),
+            'item_category_values' => ItemCategoryValue::where('status', true)->orderBy('name')->get(['id', 'name']),
             'brands' => Brand::where('status', true)->orderBy('name')->get(['id', 'name']),
             'branches' => Branch::where('status', true)->orderBy('name')->get(['id', 'name']),
             'customer_categories' => CustomerCategory::where('status', true)->orderBy('name')->get(['id', 'name']),

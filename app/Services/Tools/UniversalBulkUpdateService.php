@@ -52,9 +52,9 @@ class UniversalBulkUpdateService
                 'code_field' => 'item_code',
                 'filterable_fields' => [
                     'gst_tax_id' => ['label' => 'Current GST Tax Slab', 'type' => 'relation', 'relation_table' => 'gst_taxes', 'relation_label' => 'description'],
-                    'category_value_id' => ['label' => 'Category', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'value'],
+                    'category_value_id' => ['label' => 'Category', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'name'],
                     'brand_id' => ['label' => 'Brand', 'type' => 'relation', 'relation_table' => 'brands', 'relation_label' => 'name'],
-                    'department_value_id' => ['label' => 'Department', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'value'],
+                    'department_value_id' => ['label' => 'Department', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'name'],
                     'hsn_code' => ['label' => 'HSN Code', 'type' => 'string'],
                     'status' => ['label' => 'Active Status', 'type' => 'boolean'],
                     'allow_negative_stock' => ['label' => 'Allow Negative Stock', 'type' => 'boolean'],
@@ -64,9 +64,9 @@ class UniversalBulkUpdateService
                 'updatable_fields' => [
                     'gst_tax_id' => ['label' => 'New GST Tax Slab', 'type' => 'relation', 'relation_table' => 'gst_taxes', 'relation_label' => 'description'],
                     'hsn_code' => ['label' => 'HSN Code', 'type' => 'string'],
-                    'category_value_id' => ['label' => 'Category', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'value'],
+                    'category_value_id' => ['label' => 'Category', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'name'],
                     'brand_id' => ['label' => 'Brand', 'type' => 'relation', 'relation_table' => 'brands', 'relation_label' => 'name'],
-                    'department_value_id' => ['label' => 'Department', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'value'],
+                    'department_value_id' => ['label' => 'Department', 'type' => 'relation', 'relation_table' => 'item_category_values', 'relation_label' => 'name'],
                     'status' => ['label' => 'Status', 'type' => 'boolean'],
                     'allow_negative_stock' => ['label' => 'Allow Negative Stock', 'type' => 'boolean'],
                     'tax_inclusive' => ['label' => 'Tax Inclusive Flag', 'type' => 'boolean'],
@@ -100,7 +100,7 @@ class UniversalBulkUpdateService
                 'model' => Brand::class,
                 'table' => 'brands',
                 'label_field' => 'name',
-                'code_field' => 'code',
+                'code_field' => 'alias_code',
                 'filterable_fields' => [
                     'status' => ['label' => 'Status', 'type' => 'boolean'],
                 ],
@@ -117,7 +117,7 @@ class UniversalBulkUpdateService
                 'model' => ItemCategory::class,
                 'table' => 'item_categories',
                 'label_field' => 'name',
-                'code_field' => 'code',
+                'code_field' => 'id',
                 'filterable_fields' => [
                     'status' => ['label' => 'Status', 'type' => 'boolean'],
                 ],
@@ -132,8 +132,8 @@ class UniversalBulkUpdateService
                 'icon' => 'fas fa-folder-tree text-teal',
                 'model' => ItemCategoryValue::class,
                 'table' => 'item_category_values',
-                'label_field' => 'value',
-                'code_field' => 'code',
+                'label_field' => 'name',
+                'code_field' => 'id',
                 'filterable_fields' => [
                     'item_category_id' => ['label' => 'Parent Category', 'type' => 'relation', 'relation_table' => 'item_categories', 'relation_label' => 'name'],
                     'status' => ['label' => 'Status', 'type' => 'boolean'],
@@ -214,7 +214,7 @@ class UniversalBulkUpdateService
                 'model' => Supplier::class,
                 'table' => 'suppliers',
                 'label_field' => 'name',
-                'code_field' => 'gstin',
+                'code_field' => 'gst_no',
                 'filterable_fields' => [
                     'state' => ['label' => 'State', 'type' => 'string'],
                     'city' => ['label' => 'City', 'type' => 'string'],

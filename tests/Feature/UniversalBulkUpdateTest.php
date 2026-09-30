@@ -55,9 +55,20 @@ class UniversalBulkUpdateTest extends TestCase
         $cashierRes = $this->actingAs($this->cashier)->get(route('tools.bulk-updater.index'));
         $cashierRes->assertStatus(403);
 
+        // Seed ItemCategory and ItemCategoryValue with real records
+        $cat = \App\Models\ItemCategory::create(['name' => 'PET FOOD', 'status' => true]);
+        \App\Models\ItemCategoryValue::create(['item_category_id' => $cat->id, 'name' => 'Dry Food', 'status' => true]);
+
         // Admin should access console successfully
         $adminRes = $this->actingAs($this->admin)->get(route('tools.bulk-updater.index'));
         $adminRes->assertStatus(200);
+
+        // Verify every module tab loads without SQL errors
+        $service = app(\App\Services\Tools\UniversalBulkUpdateService::class);
+        foreach (array_keys($service->getModuleDefinitions()) as $modKey) {
+            $res = $this->actingAs($this->admin)->get(route('tools.bulk-updater.index', ['module' => $modKey]));
+            $res->assertStatus(200);
+        }
         $adminRes->assertSee('Universal Bulk Operations Studio');
         $adminRes->assertSee('Product Items & Catalog');
     }
