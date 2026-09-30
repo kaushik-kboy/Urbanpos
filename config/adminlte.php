@@ -1005,6 +1005,12 @@ return [
                     'active' => ['tools/custom-fields*'],
                 ],
                 [
+                    'text' => 'Form Validations',
+                    'url' => 'tools/form-validations',
+                    'icon' => 'fas fa-fw fa-check-double text-success',
+                    'active' => ['tools/form-validations*'],
+                ],
+                [
                     'text' => 'Master Migration',
                     'url' => 'tools/master-migration',
                     'icon' => 'fas fa-fw fa-database',
@@ -1088,49 +1094,6 @@ return [
                         ['text' => 'Trial Balance', 'url' => 'finance/reports/trial-balance', 'icon' => 'fas fa-fw fa-balance-scale'],
                         ['text' => 'Profit & Loss', 'url' => 'finance/reports/profit-loss', 'icon' => 'fas fa-fw fa-chart-pie'],
                     ],
-                ],
-            ],
-        ],
-        [
-            'text' => 'Tools & Utilities',
-            'icon' => 'fas fa-fw fa-tools',
-            'can'  => 'manage-tools',
-            'submenu' => [
-                [
-                    'text' => 'Database Backups',
-                    'url' => 'tools/backups',
-                    'icon' => 'fas fa-fw fa-database text-primary',
-                    'active' => ['tools/backups*'],
-                ],
-                [
-                    'text' => 'Universal Bulk Modifier',
-                    'url' => 'tools/bulk-updater',
-                    'icon' => 'fas fa-fw fa-layer-group text-primary',
-                    'active' => ['tools/bulk-updater*'],
-                ],
-                [
-                    'text' => 'Form Validations',
-                    'url' => 'tools/form-validations',
-                    'icon' => 'fas fa-fw fa-check-double text-success',
-                    'active' => ['tools/form-validations*'],
-                ],
-                [
-                    'text' => 'System Health',
-                    'url' => 'tools/system-health',
-                    'icon' => 'fas fa-fw fa-heartbeat text-danger',
-                    'active' => ['tools/system-health*'],
-                ],
-                [
-                    'text' => 'System Error Logs',
-                    'url' => 'tools/system-error-logs',
-                    'icon' => 'fas fa-fw fa-bug text-warning',
-                    'active' => ['tools/system-error-logs*'],
-                ],
-                [
-                    'text' => 'WhatsApp Settings',
-                    'url' => 'tools/whatsapp-settings',
-                    'icon' => 'fab fa-fw fa-whatsapp text-success',
-                    'active' => ['tools/whatsapp-settings*'],
                 ],
             ],
         ],
