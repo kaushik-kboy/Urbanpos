@@ -327,6 +327,12 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('backups/download/{filename}', [\App\Http\Controllers\Tools\DatabaseBackupController::class, 'download'])->name('backups.download');
     Route::delete('backups/{filename}', [\App\Http\Controllers\Tools\DatabaseBackupController::class, 'destroy'])->name('backups.destroy');
 
+    // Universal Bulk Operations Studio (All Modules & Tables)
+    Route::get('bulk-updater', [\App\Http\Controllers\Tools\BulkUpdateController::class, 'index'])->name('bulk-updater.index');
+    Route::get('bulk-updater/table-columns', [\App\Http\Controllers\Tools\BulkUpdateController::class, 'getTableColumns'])->name('bulk-updater.table-columns');
+    Route::post('bulk-updater/preview', [\App\Http\Controllers\Tools\BulkUpdateController::class, 'preview'])->name('bulk-updater.preview');
+    Route::post('bulk-updater/execute', [\App\Http\Controllers\Tools\BulkUpdateController::class, 'execute'])->name('bulk-updater.execute');
+
     // System Error & Exception Hub (Module-wise & Date-wise)
     Route::get('system-error-logs', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'index'])->name('system-error-logs.index');
     Route::get('system-error-logs/export', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'export'])->name('system-error-logs.export');

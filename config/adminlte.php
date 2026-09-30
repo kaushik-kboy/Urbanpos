@@ -1028,6 +1028,12 @@ return [
                     'active' => ['tools/backups*'],
                 ],
                 [
+                    'text' => 'Universal Bulk Modifier',
+                    'url' => 'tools/bulk-updater',
+                    'icon' => 'fas fa-fw fa-layer-group text-primary',
+                    'active' => ['tools/bulk-updater*'],
+                ],
+                [
                     'text' => 'Manage Subscription',
                     'url' => 'tools/manage-subscription',
                     'icon' => 'fas fa-fw fa-certificate',
@@ -1095,6 +1101,12 @@ return [
                     'url' => 'tools/backups',
                     'icon' => 'fas fa-fw fa-database text-primary',
                     'active' => ['tools/backups*'],
+                ],
+                [
+                    'text' => 'Universal Bulk Modifier',
+                    'url' => 'tools/bulk-updater',
+                    'icon' => 'fas fa-fw fa-layer-group text-primary',
+                    'active' => ['tools/bulk-updater*'],
                 ],
                 [
                     'text' => 'Form Validations',
