@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\File;
 
 class DatabaseBackup extends Command
 {
-    protected $signature = 'db:backup {--tag=pre_import}';
+    protected $signature = 'db:snapshot {--tag=pre_import}';
     protected $description = 'Create a full SQL snapshot backup of the current database';
 
     public function handle(): int

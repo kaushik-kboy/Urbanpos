@@ -134,6 +134,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'sales-returns.create',
             'till.open',
             'till.close',
+            'customers.create',
         ]);
     }
 }

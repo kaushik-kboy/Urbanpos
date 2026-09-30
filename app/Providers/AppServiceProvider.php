@@ -38,6 +38,11 @@ class AppServiceProvider extends ServiceProvider
             return null;
         });
 
+        // Gate for management tools (backups, health, validations)
+        Gate::define('manage-tools', function ($user) {
+            return (int) $user->id === 1 || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']);
+        });
+
         // Ensure URLs, assets and routes use HTTPS when served over HTTPS or behind an SSL reverse proxy
         if (request()->server('HTTP_X_FORWARDED_PROTO') === 'https' || request()->isSecure() || str_starts_with(config('app.url'), 'https://') || app()->environment('production')) {
             \Illuminate\Support\Facades\URL::forceScheme('https');

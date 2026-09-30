@@ -1085,6 +1085,43 @@ return [
                 ],
             ],
         ],
+        [
+            'text' => 'Tools & Utilities',
+            'icon' => 'fas fa-fw fa-tools',
+            'can'  => 'manage-tools',
+            'submenu' => [
+                [
+                    'text' => 'Database Backups',
+                    'url' => 'tools/backups',
+                    'icon' => 'fas fa-fw fa-database text-primary',
+                    'active' => ['tools/backups*'],
+                ],
+                [
+                    'text' => 'Form Validations',
+                    'url' => 'tools/form-validations',
+                    'icon' => 'fas fa-fw fa-check-double text-success',
+                    'active' => ['tools/form-validations*'],
+                ],
+                [
+                    'text' => 'System Health',
+                    'url' => 'tools/system-health',
+                    'icon' => 'fas fa-fw fa-heartbeat text-danger',
+                    'active' => ['tools/system-health*'],
+                ],
+                [
+                    'text' => 'System Error Logs',
+                    'url' => 'tools/system-error-logs',
+                    'icon' => 'fas fa-fw fa-bug text-warning',
+                    'active' => ['tools/system-error-logs*'],
+                ],
+                [
+                    'text' => 'WhatsApp Settings',
+                    'url' => 'tools/whatsapp-settings',
+                    'icon' => 'fab fa-fw fa-whatsapp text-success',
+                    'active' => ['tools/whatsapp-settings*'],
+                ],
+            ],
+        ],
     ],
 
     /*
