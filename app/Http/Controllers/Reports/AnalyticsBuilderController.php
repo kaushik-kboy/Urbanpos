@@ -687,7 +687,7 @@ class AnalyticsBuilderController extends Controller
                 return [$from, $to];
             case 'this_month':
             default:
-                return [Carbon::now()->startOfMonth(), Carbon::now()->endOfDay()];
+                return [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()];
         }
     }
 
