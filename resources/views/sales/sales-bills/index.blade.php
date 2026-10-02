@@ -161,6 +161,7 @@
                                 @else
                                     <a href="{{ route('sales.sales-bills.show', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
                                 @endif
+                            </td>
                             <td>
                                 @if ($bill->bill_date)
                                     @php
@@ -170,6 +171,7 @@
                                     {{ $bill->bill_date->format('d-m-Y') }} <span class="text-muted small">{{ $timeStr }}</span>
                                 @endif
                             </td>
+                            <td>{{ $bill->customer?->name ?: 'Walk-in' }}</td>
                             <td>{{ $bill->customer?->mobile }}</td>
                             <td>{{ $bill->branch?->name }}</td>
                             <td>{{ $bill->invoice_type }}</td>
