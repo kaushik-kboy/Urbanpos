@@ -60,10 +60,11 @@
                 'seq'       => ['label' => 'S.No', 'default' => true],
                 'code'      => ['label' => 'Code / Barcode', 'default' => true],
                 'item'      => ['label' => 'Item Description', 'default' => true],
-                'batch'     => ['label' => 'Batch', 'default' => true],
                 'expiry'    => ['label' => 'Exp Dt', 'default' => true],
                 'available' => ['label' => 'Available', 'default' => true],
                 'qty'       => ['label' => 'Qty', 'default' => true],
+                'unit_cost' => ['label' => 'Unit Cost (₹)', 'default' => true],
+                'amount'    => ['label' => 'Amount (₹)', 'default' => true],
                 'actions'   => ['label' => 'Actions', 'default' => true],
             ];
         @endphp
@@ -86,16 +87,17 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
-            <table class="table table-sm table-bordered table-hover mb-0 table-items-dense" id="items-table" style="min-width: 900px; font-size: 0.875rem;">
+            <table class="table table-sm table-bordered table-hover mb-0 table-items-dense" id="items-table" style="min-width: 980px; font-size: 0.875rem;">
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;" data-col-key="seq">S.No</th>
-                        <th style="width: 155px;" data-col-key="code">Code / Barcode</th>
-                        <th style="width: 250px;" data-col-key="item">Item Description</th>
-                        <th style="width: 120px;" data-col-key="batch">Batch</th>
-                        <th style="width: 135px;" data-col-key="expiry">Exp Dt</th>
-                        <th style="width: 100px;" data-col-key="available">Available</th>
-                        <th style="width: 90px;" data-col-key="qty">Qty</th>
+                        <th style="width: 145px;" data-col-key="code">Code / Barcode</th>
+                        <th style="min-width: 240px;" data-col-key="item">Item Description</th>
+                        <th style="width: 150px;" data-col-key="expiry">Exp Dt</th>
+                        <th style="width: 95px;" data-col-key="available">Available</th>
+                        <th style="width: 95px;" data-col-key="qty">Qty</th>
+                        <th style="width: 105px;" class="text-right" data-col-key="unit_cost">Unit Cost (₹)</th>
+                        <th style="width: 115px;" class="text-right" data-col-key="amount">Amount (₹)</th>
                         <th style="width: 45px;" data-col-key="actions"></th>
                     </tr>
                 </thead>
@@ -109,8 +111,9 @@
                 <tfoot class="bg-light font-weight-bold" style="position: sticky; bottom: 0; z-index: 10; border-top: 2px solid #dee2e6;">
                     <tr>
                         <td colspan="5" class="text-right align-middle">Total Qty:</td>
-                        <td></td>
-                        <td class="text-right align-middle text-primary" id="footer-total-qty">0.000</td>
+                        <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty">0.000</td>
+                        <td class="text-right align-middle">Total Amount:</td>
+                        <td class="text-right align-middle text-success font-weight-bold" id="footer-total-amount">0.00</td>
                         <td></td>
                     </tr>
                 </tfoot>
@@ -271,6 +274,10 @@
     .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 29px !important; padding-left: 6px; padding-right: 18px; }
     .select2-container--default .select2-selection--single .select2-selection__arrow { height: 29px !important; right: 3px; }
     .st-isl-item-disabled { cursor: not-allowed !important; opacity: 0.65; }
+    .item-exp-date[readonly] {
+        pointer-events: none !important;
+        user-select: none !important;
+    }
 </style>
 @endpush
 
@@ -417,16 +424,36 @@
             const avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
             $row.find('.item-available').val(avail.toFixed(3));
 
-            let batchNo = item.batch_no || '';
+            let hasBatches = false;
+            if (item.batch_no && String(item.batch_no).trim() !== '' && String(item.batch_no).trim() !== '—') {
+                hasBatches = true;
+            } else if (item.batches && Array.isArray(item.batches)) {
+                hasBatches = item.batches.some(function(b) {
+                    return b && b.batch_no && String(b.batch_no).trim() !== '' && String(b.batch_no).trim() !== '—';
+                });
+            }
+
+            let batchNo = hasBatches ? (item.batch_no || '') : '';
             $row.find('.item-batch-no').val(batchNo);
-            $row.find('.item-batch-text').text(batchNo || '—');
-            $row.find('.item-batch-badge').attr('title', batchNo || 'No Batch');
+
+            let $batchWrap = $row.find('.st-batch-btn-wrap');
+            if (hasBatches) {
+                $batchWrap.removeClass('d-none');
+                $row.find('.st-batch-badge-text, .item-batch-text').text(batchNo || 'Batch');
+                $row.find('.st-btn-choose-batch').attr('title', batchNo ? ('Batch: ' + batchNo + ' (Click to change)') : 'Multiple batches available! Click to choose batch');
+            } else {
+                $batchWrap.addClass('d-none');
+                $row.find('.st-batch-badge-text, .item-batch-text').text('');
+            }
+
+            let unitCost = parseFloat(item.unit_cost !== undefined ? item.unit_cost : (item.cost_price || 0)) || 0;
+            $row.find('.item-cost').val(unitCost.toFixed(2));
 
             if (item.exp_date) {
                 let formattedExp = formatToDisplayDate(item.exp_date);
-                $row.find('.item-exp-date, input[name*="[exp_date]"]').val(formattedExp);
+                $row.find('.item-exp-date, input[name*="[exp_date]"]').val(formattedExp).attr('data-original-exp', formattedExp).data('original-exp', formattedExp);
             } else {
-                $row.find('.item-exp-date, input[name*="[exp_date]"]').val('');
+                $row.find('.item-exp-date, input[name*="[exp_date]"]').val('').attr('data-original-exp', '').data('original-exp', '');
             }
 
             recalcTotals();
@@ -686,8 +713,9 @@
                         if (applyItemToRow($targetRow, fullItem, true) === false) {
                             return;
                         }
-                        if (fullItem.batches && fullItem.batches.length > 1) {
-                            showStBatchModal($targetRow, fullItem, fullItem.batches);
+                        let realBatches = (fullItem.batches || []).filter(b => b && b.batch_no && String(b.batch_no).trim() !== '' && String(b.batch_no).trim() !== '—');
+                        if (realBatches.length > 1) {
+                            showStBatchModal($targetRow, fullItem, realBatches);
                         } else {
                             setTimeout(function () {
                                 $targetRow.find('.item-qty').focus().select();
@@ -835,12 +863,24 @@
         function applyBatchToRow($row, batch) {
             let batchNo = batch.batch_no || '';
             $row.find('.item-batch-no').val(batchNo);
-            $row.find('.item-batch-text').text(batchNo || '—');
-            $row.find('.item-batch-badge').attr('title', batchNo || 'No Batch');
+
+            let $batchWrap = $row.find('.st-batch-btn-wrap');
+            if (batchNo) {
+                $batchWrap.removeClass('d-none');
+                $row.find('.st-batch-badge-text, .item-batch-text').text(batchNo);
+                $row.find('.st-btn-choose-batch').attr('title', 'Batch: ' + batchNo + ' (Click to change)');
+            } else {
+                $batchWrap.addClass('d-none');
+                $row.find('.st-batch-badge-text, .item-batch-text').text('');
+            }
+
+            if (batch.cost_price !== undefined && parseFloat(batch.cost_price) > 0) {
+                $row.find('.item-cost').val(parseFloat(batch.cost_price).toFixed(2));
+            }
 
             if (batch.exp_date) {
                 let formatted = formatToDisplayDate(batch.exp_date);
-                $row.find('.item-exp-date, input[name*="[exp_date]"]').val(formatted);
+                $row.find('.item-exp-date, input[name*="[exp_date]"]').val(formatted).attr('data-original-exp', formatted).data('original-exp', formatted);
             }
 
             let qtyAvail = parseFloat(batch.qty !== undefined ? batch.qty : (batch.available_qty || 0));
@@ -918,6 +958,26 @@
                         if (window.toastr) toastr.info('No batches found for this item.', 'Batches');
                     }
                 });
+            }
+        });
+
+        // Safeguards to prevent Expiry Date from ever disappearing or getting wiped out on click/keydown/blur
+        $(document).on('focus', '.item-exp-date[readonly]', function () {
+            $(this).blur();
+        });
+
+        $(document).on('keydown', '.item-exp-date', function (e) {
+            if ($(this).prop('readonly') || $(this).attr('readonly') || e.which === 8 || e.which === 46) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        $(document).on('input change blur', '.item-exp-date', function () {
+            let $el = $(this);
+            let orig = $el.attr('data-original-exp') || $el.data('original-exp');
+            if (!$el.val() && orig) {
+                $el.val(orig);
             }
         });
 
@@ -999,10 +1059,13 @@
                 $row.find('.item-id-input, .item-select').val('');
                 $row.find('.item-desc-input').val('');
                 $row.find('.item-batch-no').val('');
-                $row.find('.item-batch-text').text('—');
+                $row.find('.st-batch-btn-wrap').addClass('d-none');
+                $row.find('.st-batch-badge-text, .item-batch-text').text('');
                 $row.find('.item-exp-date').val('');
                 $row.find('.item-available').val('0.000');
                 $row.find('.item-qty').val('');
+                $row.find('.item-cost').val('0.00');
+                $row.find('.item-amount').val('0.00');
                 $row.data('item-data', null);
                 $row.data('last-processed-code', '');
                 recalcTotals();
@@ -1037,8 +1100,9 @@
                     if (applyItemToRow($row, res.item, true) === false) {
                         return;
                     }
-                    if (res.item.batches && res.item.batches.length > 1) {
-                        showStBatchModal($row, res.item, res.item.batches);
+                    let realBatches = (res.item.batches || []).filter(b => b && b.batch_no && String(b.batch_no).trim() !== '' && String(b.batch_no).trim() !== '—');
+                    if (realBatches.length > 1) {
+                        showStBatchModal($row, res.item, realBatches);
                     } else {
                         setTimeout(function () {
                             $row.find('.item-qty').focus().select();
@@ -1138,7 +1202,11 @@
                     $row.find('.item-desc-input').val('');
                     $row.find('.item-available').val('0.000');
                     $row.find('.item-batch-no').val('');
-                    $row.find('.item-batch-text').text('—');
+                    $row.find('.st-batch-btn-wrap').addClass('d-none');
+                    $row.find('.st-batch-badge-text, .item-batch-text').text('');
+                    $row.find('.item-exp-date').val('');
+                    $row.find('.item-cost').val('0.00');
+                    $row.find('.item-amount').val('0.00');
                     $row.data('last-processed-code', '');
                     $row.data('item-data', null);
                     recalcTotals();
@@ -1210,11 +1278,22 @@
 
         function recalcTotals() {
             let totalQty = 0;
+            let totalAmount = 0;
             $('#items-body tr.item-row').each(function () {
-                totalQty += parseFloat($(this).find('.item-qty').val()) || 0;
+                let qty = parseFloat($(this).find('.item-qty').val()) || 0;
+                let cost = parseFloat($(this).find('.item-cost').val()) || 0;
+                let rowAmount = qty * cost;
+                $(this).find('.item-amount').val(rowAmount.toFixed(2));
+                totalQty += qty;
+                totalAmount += rowAmount;
             });
             $('#footer-total-qty').text(totalQty.toFixed(3));
+            $('#footer-total-amount').text(totalAmount.toFixed(2));
         }
+
+        $(document).on('input change', '.item-qty, .item-cost', function () {
+            recalcTotals();
+        });
 
         function reindexSno() {
             $('#items-body tr.item-row').each(function (idx) {
@@ -1512,6 +1591,8 @@
             });
             reindexSno();
         });
+
+        recalcTotals();
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'F2') {

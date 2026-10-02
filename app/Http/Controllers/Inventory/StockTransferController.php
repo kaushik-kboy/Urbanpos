@@ -53,7 +53,10 @@ class StockTransferController extends Controller
             $query->where('status', $request->status);
         }
 
-        $stockTransfers = $query->latest('transfer_date')->paginate(20)->withQueryString();
+        $stockTransfers = $query->orderByDesc('transfer_date')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
         $branches = Branch::orderBy('name')->get();
         $statuses = StockTransfer::select('status')->distinct()->whereNotNull('status')->pluck('status');
 
@@ -106,6 +109,37 @@ class StockTransferController extends Controller
                 $qty = (float) $line['qty'];
                 $item = $itemsById[$line['item_id']];
                 $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
+                $expDate = !empty($line['exp_date']) ? $line['exp_date'] : null;
+                if (empty($expDate) && $batchNo) {
+                    $expDate = DB::table('stock_ledger')
+                        ->where('item_id', $item->id)
+                        ->where('batch_no', $batchNo)
+                        ->whereNotNull('exp_date')
+                        ->whereNotIn('exp_date', ['', '0000-00-00'])
+                        ->orderByDesc('id')
+                        ->value('exp_date');
+                    if (empty($expDate)) {
+                        $expDate = DB::table('purchase_invoice_items')
+                            ->where('item_id', $item->id)
+                            ->where('batch_no', $batchNo)
+                            ->whereNotNull('exp_date')
+                            ->whereNotIn('exp_date', ['', '0000-00-00'])
+                            ->orderByDesc('id')
+                            ->value('exp_date');
+                    }
+                    if (empty($expDate)) {
+                        $expDate = DB::table('opening_stock_items')
+                            ->where('item_id', $item->id)
+                            ->where('batch_no', $batchNo)
+                            ->whereNotNull('exp_date')
+                            ->whereNotIn('exp_date', ['', '0000-00-00'])
+                            ->orderByDesc('id')
+                            ->value('exp_date');
+                    }
+                }
+                if (empty($expDate)) {
+                    $expDate = $this->resolveItemExpiry($item, null);
+                }
 
                 $ledgerRow = $this->stockLedger->post(
                     itemId: $item->id,
@@ -116,11 +150,17 @@ class StockTransferController extends Controller
                     referenceType: StockTransfer::class,
                     referenceId: $stockTransfer->id,
                     documentDate: $data['header']['transfer_date'],
-                    expDate: $line['exp_date'] ?? null,
+                    expDate: $expDate,
                     batchNo: $batchNo,
                 );
 
-                $unitCost = (float) $ledgerRow->unit_cost;
+                $unitCost = (float) ($line['unit_cost'] ?? 0);
+                if ($unitCost <= 0) {
+                    $unitCost = (float) $ledgerRow->unit_cost;
+                }
+                if ($unitCost <= 0) {
+                    $unitCost = (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0)));
+                }
                 $totalValue += $qty * $unitCost;
 
                 $tax = $isInterstate
@@ -130,7 +170,7 @@ class StockTransferController extends Controller
                 $stockTransfer->items()->create([
                     'item_id' => $item->id,
                     'batch_no' => $batchNo,
-                    'exp_date' => $line['exp_date'] ?? null,
+                    'exp_date' => $expDate,
                     'qty' => $qty,
                     'unit_cost' => $unitCost,
                     'gst_percent' => $tax['gst_percent'] ?? 0,
@@ -231,6 +271,33 @@ class StockTransferController extends Controller
                 $receivedQty = min((float) $input['received_qty'], (float) $line->qty);
 
                 if ($receivedQty > 0) {
+                    $unitCost = (float) $line->unit_cost;
+                    if ($unitCost <= 0) {
+                        $unitCost = (float) ($line->item?->cost_price ?: ($line->item?->landing_cost ?: ($line->item?->sell_price ?: 0)));
+                    }
+                    $expDate = $line->exp_date?->toDateString();
+                    if (empty($expDate) && $line->batch_no) {
+                        $expDate = DB::table('stock_ledger')
+                            ->where('item_id', $line->item_id)
+                            ->where('batch_no', $line->batch_no)
+                            ->whereNotNull('exp_date')
+                            ->whereNotIn('exp_date', ['', '0000-00-00'])
+                            ->orderByDesc('id')
+                            ->value('exp_date');
+                        if (empty($expDate)) {
+                            $expDate = DB::table('purchase_invoice_items')
+                                ->where('item_id', $line->item_id)
+                                ->where('batch_no', $line->batch_no)
+                                ->whereNotNull('exp_date')
+                                ->whereNotIn('exp_date', ['', '0000-00-00'])
+                                ->orderByDesc('id')
+                                ->value('exp_date');
+                        }
+                    }
+                    if (empty($expDate) && $line->item) {
+                        $expDate = $this->resolveItemExpiry($line->item, null);
+                    }
+
                     // Received at the DISPATCH-time cost snapshot, never the destination's
                     // own (possibly zero/stale) average — same value-conservation rule as
                     // Phase 2's repack/kit work.
@@ -239,11 +306,11 @@ class StockTransferController extends Controller
                         branchId: $stockTransfer->to_branch_id,
                         movementType: 'TRANSFER_IN',
                         qtyDelta: $receivedQty,
-                        unitCost: (float) $line->unit_cost,
+                        unitCost: $unitCost,
                         referenceType: StockTransfer::class,
                         referenceId: $stockTransfer->id,
                         documentDate: now()->toDateString(),
-                        expDate: $line->exp_date?->toDateString(),
+                        expDate: $expDate,
                         batchNo: $line->batch_no ?? null,
                     );
                 }
@@ -410,6 +477,7 @@ class StockTransferController extends Controller
                 COALESCE(i.item_code, '')  AS item_code,
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
                 COALESCE(st.quantity, 0)   AS qty,
+                COALESCE(i.cost_price, i.landing_cost, 0) AS unit_cost,
                 ei.exp_date
             FROM items i
             LEFT JOIN item_stocks st
@@ -477,6 +545,8 @@ class StockTransferController extends Controller
                 'exp_date' => $exp,
                 'qty'      => (float) $row->qty,
                 'available_qty' => (float) $row->qty,
+                'unit_cost' => (float) ($row->unit_cost ?? 0),
+                'cost_price' => (float) ($row->unit_cost ?? 0),
             ];
         }
 
@@ -524,6 +594,8 @@ class StockTransferController extends Controller
                 'brand' => $item->brand?->name ?? '-',
                 'available_qty' => (float) ($stock?->quantity ?? 0),
                 'exp_date' => $this->resolveItemExpiry($item, $stock),
+                'unit_cost' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
+                'cost_price' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
             ];
         }));
     }
@@ -571,11 +643,12 @@ class StockTransferController extends Controller
 
         $batches = [];
         foreach ($resolvedBatches as $b) {
-            if ($b['remaining_qty'] > 0) {
+            $bNo = !empty($b['batch_no']) ? trim($b['batch_no']) : '';
+            if ($b['remaining_qty'] > 0 && $bNo !== '') {
                 $batches[] = [
                     'productname' => $item->name,
                     'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                    'batch_no' => $b['batch_no'] ?: '',
+                    'batch_no' => $bNo,
                     'exp_date' => $b['exp_date'],
                     'qty' => $b['remaining_qty'],
                     'cost_price' => $b['cost_price'],
@@ -583,19 +656,6 @@ class StockTransferController extends Controller
                     'mrp' => $b['mrp'],
                 ];
             }
-        }
-
-        if (empty($batches) && $avail > 0) {
-            $batches[] = [
-                'productname' => $item->name,
-                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                'batch_no' => '',
-                'exp_date' => $this->resolveItemExpiry($item, $stock),
-                'qty' => $avail,
-                'cost_price' => $item->cost_price,
-                'sell_price' => $item->sell_price,
-                'mrp' => $item->mrp,
-            ];
         }
 
         $defaultBatch = !empty($batches) ? $batches[0] : null;
@@ -613,6 +673,11 @@ class StockTransferController extends Controller
         $displayCode = $item->item_code ?: ($item->ean_upc_code ? "Barcode: {$item->ean_upc_code}" : "");
         $codeStr = $displayCode ? " [{$displayCode}]" : "";
 
+        $defaultCost = $defaultBatch ? (float) ($defaultBatch['cost_price'] ?? 0) : 0;
+        if ($defaultCost <= 0) {
+            $defaultCost = (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0)));
+        }
+
         return response()->json([
             'found' => true,
             'item' => [
@@ -625,6 +690,8 @@ class StockTransferController extends Controller
                 'batch_no' => $batchNo,
                 'available_qty' => $availQty,
                 'exp_date' => $expDate,
+                'unit_cost' => $defaultCost,
+                'cost_price' => $defaultCost,
                 'batches' => $batches,
             ],
         ]);
@@ -643,6 +710,32 @@ class StockTransferController extends Controller
             ->whereNotNull('exp_date')
             ->whereNotIn('exp_date', ['', '0000-00-00'])
             ->orderBy('id', 'desc')
+            ->value('exp_date');
+
+        if ($fbExp) {
+            try {
+                return \Carbon\Carbon::parse($fbExp)->format('Y-m-d');
+            } catch (\Throwable) {}
+        }
+
+        $fbExp = DB::table('stock_ledger')
+            ->where('item_id', $item->id)
+            ->whereNotNull('exp_date')
+            ->whereNotIn('exp_date', ['', '0000-00-00'])
+            ->orderByDesc('id')
+            ->value('exp_date');
+
+        if ($fbExp) {
+            try {
+                return \Carbon\Carbon::parse($fbExp)->format('Y-m-d');
+            } catch (\Throwable) {}
+        }
+
+        $fbExp = DB::table('opening_stock_items')
+            ->where('item_id', $item->id)
+            ->whereNotNull('exp_date')
+            ->whereNotIn('exp_date', ['', '0000-00-00'])
+            ->orderByDesc('id')
             ->value('exp_date');
 
         if ($fbExp) {
@@ -716,6 +809,7 @@ class StockTransferController extends Controller
             'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
+            'items.*.unit_cost' => ['nullable', 'numeric'],
         ]);
 
         $todayStr = now()->toDateString();

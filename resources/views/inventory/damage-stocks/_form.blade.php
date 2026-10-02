@@ -4,6 +4,18 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($entry?->items ?? collect());
 @endphp
 
+@push('css')
+<style>
+.item-exp-date[readonly] {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+.item-exp-date[readonly]::-webkit-calendar-picker-indicator {
+    display: none !important;
+}
+</style>
+@endpush
+
 <div class="d-flex justify-content-between align-items-center mb-2">
     <div class="d-flex align-items-center">
         <h6 class="font-weight-bold text-dark mb-0 mr-2"><i class="fas fa-boxes-alt text-danger mr-1"></i> Damage / Wastage Header</h6>
@@ -246,7 +258,10 @@
             }
 
             if (item.exp_date) {
-                $row.find('.item-exp-date').val(item.exp_date.substring(0, 10));
+                let exp = item.exp_date.toString().substring(0, 10);
+                $row.find('.item-exp-date').val(exp).attr('data-original-exp', exp).data('original-exp', exp);
+            } else {
+                $row.find('.item-exp-date').val('').attr('data-original-exp', '').data('original-exp', '');
             }
 
             const $qty = $row.find('.item-qty');
@@ -689,6 +704,26 @@
             }
             $(this).closest('tr').remove();
             reindexRows();
+        });
+
+        // Safeguards to prevent Expiry Date from ever disappearing or getting wiped out on click/keydown/blur
+        $(document).on('focus', '.item-exp-date[readonly]', function () {
+            $(this).blur();
+        });
+
+        $(document).on('keydown', '.item-exp-date', function (e) {
+            if ($(this).prop('readonly') || $(this).attr('readonly') || e.which === 8 || e.which === 46) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        $(document).on('input change blur', '.item-exp-date', function () {
+            let $el = $(this);
+            let orig = $el.attr('data-original-exp') || $el.data('original-exp');
+            if (!$el.val() && orig) {
+                $el.val(orig);
+            }
         });
 
         // Open modal on item code: Tab/Enter/F2 ONLY — mouse click does NOT open modal

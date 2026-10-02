@@ -49,11 +49,15 @@
     </td>
 
     {{-- Exp Date --}}
-    <td style="width: 155px; min-width: 150px;">
+    <td style="width: 155px; min-width: 150px;" title="Expiry date (Read-only)">
         <input type="date" name="items[{{ $idx }}][exp_date]" 
                value="{{ $expDate }}" 
-               class="form-control form-control-sm item-exp-date px-1"
-               style="min-width: 140px;">
+               data-original-exp="{{ $expDate }}"
+               readonly
+               tabindex="-1"
+               style="pointer-events: none; min-width: 140px;"
+               class="form-control form-control-sm item-exp-date px-1 bg-light"
+               title="Expiry date (Read-only)">
     </td>
 
     {{-- Qty --}}

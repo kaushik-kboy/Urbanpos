@@ -137,10 +137,19 @@
             <label class="font-weight-bold mb-1" for="bill_date">
                 <i class="far fa-calendar-alt text-primary mr-1"></i> Bill Date & Time <span class="text-danger">*</span>
             </label>
+            @php
+                $billDateVal = now();
+                if (isset($bill) && $bill->bill_date) {
+                    $billDateVal = $bill->bill_date;
+                    if ($billDateVal->format('H:i:s') === '00:00:00' && $bill->created_at) {
+                        $billDateVal = $bill->bill_date->copy()->setTimeFrom($bill->created_at);
+                    }
+                }
+            @endphp
             <input type="datetime-local" name="bill_date" id="bill_date" 
                    class="form-control @error('bill_date') is-invalid @enderror" 
-                   value="{{ old('bill_date', optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')) }}" 
-                   min="2020-01-01T00:00" max="{{ now()->format('Y-m-d\TH:i') }}" required>
+                   value="{{ old('bill_date', $billDateVal->format('Y-m-d\TH:i')) }}" 
+                   min="2020-01-01T00:00" max="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}" required>
             @error('bill_date')
                 <div class="invalid-feedback d-block">{{ $message }}</div>
             @enderror
@@ -1971,6 +1980,8 @@
         function validateStockErrors() {
             let itemTotals = {};
             let itemStocks = {};
+            let batchTotals = {};
+            let batchStocks = {};
             let todayStr = new Date().toISOString().substring(0, 10);
 
             $('#sb-items-body tr').each(function () {
@@ -1980,10 +1991,23 @@
                 if (stockVal === undefined || stockVal === '') stockVal = $(this).data('stock');
                 let stock = parseFloat(stockVal);
 
+                let batchNo = $(this).find('.sb-item-batch-no').val() || '';
+                let batchStockVal = $(this).find('.sb-item-batch-stock').val();
+                if (batchStockVal === undefined || batchStockVal === '') batchStockVal = $(this).data('batch-stock');
+                let batchStock = (batchStockVal !== undefined && batchStockVal !== '') ? parseFloat(batchStockVal) : null;
+
                 if (itemId) {
                     itemTotals[itemId] = (itemTotals[itemId] || 0) + qty;
                     if (!isNaN(stock)) {
                         itemStocks[itemId] = stock;
+                    }
+
+                    if (batchNo) {
+                        let bKey = itemId + '___' + batchNo;
+                        batchTotals[bKey] = (batchTotals[bKey] || 0) + qty;
+                        if (batchStock !== null && !isNaN(batchStock)) {
+                            batchStocks[bKey] = batchStock;
+                        }
                     }
                 }
             });
@@ -2008,6 +2032,11 @@
                     let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
                                           ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
 
+                    let batchNo = $row.find('.sb-item-batch-no').val() || '';
+                    let bKey = batchNo ? (itemId + '___' + batchNo) : null;
+                    let bTotal = bKey ? (batchTotals[bKey] || 0) : 0;
+                    let bStock = (bKey && batchStocks[bKey] !== undefined) ? batchStocks[bKey] : null;
+
                     if (qty <= 0) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Quantity must be greater than 0.');
@@ -2016,7 +2045,17 @@
                             firstErrorMsg = `Row #${idx + 1}: Quantity must be greater than 0.`;
                             firstErrorEl = $qtyInput;
                         }
-                    } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock) {
+                    } else if (!isAllowNegative && bStock !== null && bStock >= 0 && (bTotal > bStock + 0.0001)) {
+                        $qtyInput.addClass('border-danger text-danger is-invalid')
+                                 .attr('title', 'Batch ' + batchNo + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(bTotal) + ' across rows)!');
+                        $row.find('.sb-qty-error-msg').text('Batch ' + batchNo + ' has only ' + formatDigits(bStock) + ' available.').show();
+                        hasError = true;
+                        if (!firstErrorMsg) {
+                            let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
+                            firstErrorMsg = `${itemName} [Batch: ${batchNo}]: Quantity (${formatDigits(bTotal)}) exceeds available batch stock (${formatDigits(bStock)}).`;
+                            firstErrorEl = $qtyInput;
+                        }
+                    } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock + 0.0001) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
                         $row.find('.sb-qty-error-msg').text('Maximum available quantity is ' + formatDigits(stock) + '.').show();
@@ -2275,7 +2314,9 @@
                     let exp = $target.data('exp') || '';
                     let sell = $target.data('sell') || '';
                     let mrp = $target.data('mrp') || '';
-                    applyBatchToRow(exp, sell, mrp);
+                    let batch = $target.data('batch') || '';
+                    let batchQty = $target.data('qty');
+                    applyBatchToRow(exp, sell, mrp, batch, batchQty);
                 }
             } else if (e.key >= '1' && e.key <= '9') {
                 let numIdx = parseInt(e.key, 10) - 1;
@@ -2287,7 +2328,9 @@
                         let exp = $target.data('exp') || '';
                         let sell = $target.data('sell') || '';
                         let mrp = $target.data('mrp') || '';
-                        applyBatchToRow(exp, sell, mrp);
+                        let batch = $target.data('batch') || '';
+                        let batchQty = $target.data('qty');
+                        applyBatchToRow(exp, sell, mrp, batch, batchQty);
                     }
                 }
             }
@@ -2298,10 +2341,17 @@
             $(this).addClass('batch-row-selected');
         });
 
-        function applyBatchToRow(exp, sell, mrp, batch) {
+        function applyBatchToRow(exp, sell, mrp, batch, batchQty) {
             if (!activeModalRow) return;
             if (batch !== undefined) {
                 activeModalRow.find('.sb-item-batch-no').val(batch || '');
+            }
+            if (batchQty !== undefined && batchQty !== null && batchQty !== '') {
+                let bQtyNum = parseFloat(batchQty);
+                if (!isNaN(bQtyNum)) {
+                    activeModalRow.find('.sb-item-batch-stock').val(bQtyNum);
+                    activeModalRow.data('batch-stock', bQtyNum).attr('data-batch-stock', bQtyNum);
+                }
             }
             if (exp) {
                 let cleanExp = exp.toString().substring(0, 10);
@@ -2333,7 +2383,8 @@
             let sell = $(this).data('sell') || '';
             let mrp = $(this).data('mrp') || '';
             let batch = $(this).data('batch') || '';
-            applyBatchToRow(exp, sell, mrp, batch);
+            let batchQty = $(this).data('qty');
+            applyBatchToRow(exp, sell, mrp, batch, batchQty);
         });
 
         $(document).on('click', '.batch-select-row', function () {
@@ -2342,7 +2393,8 @@
             let sell = $(this).data('sell') || '';
             let mrp = $(this).data('mrp') || '';
             let batch = $(this).data('batch') || '';
-            applyBatchToRow(exp, sell, mrp, batch);
+            let batchQty = $(this).data('qty');
+            applyBatchToRow(exp, sell, mrp, batch, batchQty);
         });
 
         // Click on batch button in row to re-open modal
@@ -2454,6 +2506,11 @@
                         let singleBatch = batches[0];
                         if (singleBatch && singleBatch.batch_no) {
                             $row.find('.sb-item-batch-no').val(singleBatch.batch_no);
+                        }
+                        if (singleBatch && singleBatch.qty !== undefined && singleBatch.qty !== null) {
+                            let bQty = parseFloat(singleBatch.qty) || 0;
+                            $row.find('.sb-item-batch-stock').val(bQty);
+                            $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
                         }
                     }
 
@@ -2640,6 +2697,28 @@
 
             let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
                                   ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
+
+            let batchNo = $row.find('.sb-item-batch-no').val() || '';
+            let batchStockVal = $row.find('.sb-item-batch-stock').val();
+            if (batchStockVal === undefined || batchStockVal === '') batchStockVal = $row.data('batch-stock');
+            let batchStock = (batchStockVal !== undefined && batchStockVal !== '' && batchStockVal !== null) ? parseFloat(batchStockVal) : null;
+
+            if (!isAllowNegative && batchNo && batchStock !== null && !isNaN(batchStock) && batchStock >= 0) {
+                let totalForBatch = 0;
+                $('#sb-items-body tr').each(function () {
+                    if ($(this).find('.sb-item-select').val() === itemId && ($(this).find('.sb-item-batch-no').val() || '') === batchNo) {
+                        totalForBatch += parseFloat($(this).find('.sb-qty').val()) || 0;
+                    }
+                });
+
+                if (totalForBatch > batchStock + 0.0001) {
+                    let errMsg = 'Selected batch ' + batchNo + ' has only ' + formatDigits(batchStock) + ' available.';
+                    $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
+                    $row.find('.sb-qty-error-msg').text(errMsg).show();
+                    updateSaveButtonState();
+                    return false;
+                }
+            }
 
             if (!isAllowNegative && stock >= 0) {
                 let totalForItem = 0;
@@ -2875,16 +2954,16 @@
                     $('#tender-cash').val(tenderBillTotal.toFixed(2));
                 }
             @else
-                // Do not force Cash: present choices and allow selection
-                $('.tender-mode-pill').removeClass('btn-primary text-white').addClass('btn-outline-primary');
-                $('#tender-cash').val('');
-                $('#tender-credit').val('');
-                $('#tender-card').val('');
-                $('#tender-wallet').val('');
-                $('#tender-wallet-side').val('');
-                $('#tender-rrn').val('');
-                $('#tender-card-no').val('');
-                $('#tender-wallet-refno').val('');
+                let curPaymentType = ($('#payment_type').val() || '').toLowerCase();
+                let initialMode = 'cash';
+                if (curPaymentType === 'upi' || curPaymentType === 'wallet') {
+                    initialMode = 'upi';
+                } else if (curPaymentType === 'card') {
+                    initialMode = 'card';
+                } else if (curPaymentType === 'credit') {
+                    initialMode = 'credit';
+                }
+                selectTenderMode(initialMode);
             @endif
             $('#tender-error').addClass('d-none').text('');
 
@@ -2892,7 +2971,16 @@
 
             $('#sb-tender-modal').modal('show');
             $('#sb-tender-modal').one('shown.bs.modal', function () {
-                $('.tender-mode-pill[data-mode="cash"]').focus();
+                let curPaymentType = ($('#payment_type').val() || '').toLowerCase();
+                if (curPaymentType === 'upi' || curPaymentType === 'wallet') {
+                    $('#tender-wallet').focus().select();
+                } else if (curPaymentType === 'card') {
+                    $('#tender-card').focus().select();
+                } else if (curPaymentType === 'credit') {
+                    $('#tender-credit').focus().select();
+                } else {
+                    $('#tender-cash').focus().select();
+                }
             });
         });
 
@@ -2996,7 +3084,8 @@
             let cashType = TENDER_TYPES.find(t => t.type === 'Cash' || t.name.toLowerCase() === 'cash') || TENDER_TYPES[0];
             let creditType = TENDER_TYPES.find(t => t.type === 'Credit' || t.name.toLowerCase() === 'credit') || cashType;
             let cardType = TENDER_TYPES.find(t => t.type === 'Card' || t.name.toLowerCase() === 'card') || cashType;
-            let walletType = TENDER_TYPES.find(t => t.type === 'Wallet' || t.name.toLowerCase() === 'wallet') || cashType;
+            let upiType = TENDER_TYPES.find(t => t.name.toLowerCase() === 'upi') || TENDER_TYPES.find(t => t.type === 'Wallet' || t.name.toLowerCase() === 'wallet') || cashType;
+            let walletType = TENDER_TYPES.find(t => t.name.toLowerCase() === 'wallet') || upiType;
             let rrnType = TENDER_TYPES.find(t => t.name.toLowerCase() === 'rrn' || t.type === 'Finance') || walletType;
 
             let selectedWalletTypeName = $('#tender-wallet-type').val();
@@ -3035,9 +3124,11 @@
             if (card > 0 && cardType) {
                 payments.push({ tender_type_id: cardType.id, amount: card });
             }
-            if (wallet > 0 && walletType) {
+            if (wallet > 0) {
+                let isUpiMode = $('.tender-mode-pill[data-mode="upi"]').hasClass('btn-primary') || ($('#payment_type').val() || '').toLowerCase() === 'upi';
+                let chosenTender = isUpiMode ? upiType : walletType;
                 payments.push({
-                    tender_type_id: walletType.id,
+                    tender_type_id: chosenTender ? chosenTender.id : walletType.id,
                     tender_type_value_id: walletValueId,
                     amount: wallet
                 });
@@ -3083,6 +3174,23 @@
             let $form = $('#sales-bill-form').length ? $('#sales-bill-form') : $('form[action*="sales-bills"]').first();
             $form.find('input[name^="payments"]').remove();
             $form.find('input[name="save_action"]').remove();
+
+            // Sync final payment_type string on form
+            let finalPaymentMode = 'Cash';
+            if (wallet > 0 && effectiveCash <= 0 && credit <= 0 && card <= 0 && rrn <= 0) {
+                finalPaymentMode = 'UPI';
+            } else if (card > 0 && effectiveCash <= 0 && credit <= 0 && wallet <= 0 && rrn <= 0) {
+                finalPaymentMode = 'Card';
+            } else if (credit > 0 && effectiveCash <= 0 && card <= 0 && wallet <= 0 && rrn <= 0) {
+                finalPaymentMode = 'Credit';
+            } else if (effectiveCash > 0 && credit <= 0 && card <= 0 && wallet <= 0 && rrn <= 0) {
+                finalPaymentMode = 'Cash';
+            } else if (payments.length > 1) {
+                finalPaymentMode = 'Split';
+            }
+            $('#payment_type').val(finalPaymentMode).trigger('change');
+            $form.find('input[name="payment_type"]').remove();
+            $form.append(`<input type="hidden" name="payment_type" value="${finalPaymentMode}">`);
 
             payments.forEach(function (p, i) {
                 $form.append(`<input type="hidden" name="payments[${i}][tender_type_id]" value="${p.tender_type_id}">`);

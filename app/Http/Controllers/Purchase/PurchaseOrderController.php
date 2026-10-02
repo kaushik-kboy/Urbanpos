@@ -61,7 +61,10 @@ class PurchaseOrderController extends Controller
             $query->where('status', $request->status);
         }
 
-        $purchaseOrders = $query->latest('po_date')->paginate(20)->withQueryString();
+        $purchaseOrders = $query->orderByDesc('po_date')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
         $branches = Branch::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
         $statuses = PurchaseOrder::select('status')->distinct()->whereNotNull('status')->pluck('status');

@@ -68,7 +68,11 @@
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <span class="text-muted small d-block">Bill Date & Time</span>
-                    <strong>{{ $salesBill->bill_date->format('d-m-Y h:i A') }}</strong>
+                    @php
+                        $hasTime = $salesBill->bill_date && $salesBill->bill_date->format('H:i:s') !== '00:00:00';
+                        $timeStr = $hasTime ? $salesBill->bill_date->format('h:i A') : ($salesBill->created_at ? $salesBill->created_at->format('h:i A') : ($salesBill->bill_date ? $salesBill->bill_date->format('h:i A') : ''));
+                    @endphp
+                    <strong>{{ $salesBill->bill_date ? $salesBill->bill_date->format('d-m-Y') . ' ' . $timeStr : '—' }}</strong>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <span class="text-muted small d-block">Customer</span>

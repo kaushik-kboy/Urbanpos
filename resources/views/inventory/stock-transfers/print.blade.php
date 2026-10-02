@@ -141,16 +141,66 @@
         <tbody>
             @foreach ($stockTransfer->items as $idx => $line)
                 @php
-                    $lineTotal = (float)$line->qty * (float)$line->unit_cost;
+                    $unitCost = (float) $line->unit_cost;
+                    if ($unitCost <= 0) {
+                        $unitCost = (float) ($line->item?->cost_price ?: ($line->item?->landing_cost ?: ($line->item?->purchase_rate ?: ($line->item?->sell_price ?: 0))));
+                    }
+                    $lineTotal = (float) $line->qty * $unitCost;
+
+                    $expDate = $line->exp_date;
+                    if (empty($expDate) && $line->batch_no && $line->item_id) {
+                        $expDateVal = \Illuminate\Support\Facades\DB::table('stock_ledger')
+                            ->where('item_id', $line->item_id)
+                            ->where('batch_no', $line->batch_no)
+                            ->whereNotNull('exp_date')
+                            ->whereNotIn('exp_date', ['', '0000-00-00'])
+                            ->orderByDesc('id')
+                            ->value('exp_date');
+                        if (empty($expDateVal)) {
+                            $expDateVal = \Illuminate\Support\Facades\DB::table('purchase_invoice_items')
+                                ->where('item_id', $line->item_id)
+                                ->where('batch_no', $line->batch_no)
+                                ->whereNotNull('exp_date')
+                                ->whereNotIn('exp_date', ['', '0000-00-00'])
+                                ->orderByDesc('id')
+                                ->value('exp_date');
+                        }
+                        if (!empty($expDateVal)) {
+                            try {
+                                $expDate = \Carbon\Carbon::parse($expDateVal);
+                            } catch (\Throwable) {}
+                        }
+                    }
+                    if (empty($expDate) && $line->item_id) {
+                        $itemExp = \Illuminate\Support\Facades\DB::table('purchase_invoice_items')
+                            ->where('item_id', $line->item_id)
+                            ->whereNotNull('exp_date')
+                            ->whereNotIn('exp_date', ['', '0000-00-00'])
+                            ->orderByDesc('id')
+                            ->value('exp_date');
+                        if (empty($itemExp)) {
+                            $itemExp = \Illuminate\Support\Facades\DB::table('stock_ledger')
+                                ->where('item_id', $line->item_id)
+                                ->whereNotNull('exp_date')
+                                ->whereNotIn('exp_date', ['', '0000-00-00'])
+                                ->orderByDesc('id')
+                                ->value('exp_date');
+                        }
+                        if (!empty($itemExp)) {
+                            try {
+                                $expDate = \Carbon\Carbon::parse($itemExp);
+                            } catch (\Throwable) {}
+                        }
+                    }
                 @endphp
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
                     <td class="font-bold">{{ $line->item?->name }}</td>
-                    <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
+                    <td class="text-center">{{ $expDate ? $expDate->format('d-m-Y') : '—' }}</td>
                     <td class="text-right font-bold">{{ number_format($line->qty, 3) }}</td>
                     <td class="text-right">{{ $line->received_qty !== null ? number_format($line->received_qty, 3) : '—' }}</td>
-                    <td class="text-right">₹{{ number_format($line->unit_cost, 2) }}</td>
+                    <td class="text-right">₹{{ number_format($unitCost, 2) }}</td>
                     <td class="text-right font-bold">₹{{ number_format($lineTotal, 2) }}</td>
                 </tr>
             @endforeach

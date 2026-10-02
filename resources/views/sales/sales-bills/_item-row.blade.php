@@ -32,7 +32,7 @@
         $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
     }
 @endphp
-<tr data-stock="{{ $lineStock }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
+<tr data-stock="{{ $lineStock }}" data-batch-stock="{{ $line->batch_stock ?? '' }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
     <td class="text-center align-middle font-weight-bold sb-sr-no" data-col-key="seq">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     <td style="min-width: 110px;" data-col-key="code">
         <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter or F2 to search item">
@@ -51,6 +51,7 @@
                value="{{ $selectedItemId }}">
         <input type="hidden" name="items[{{ $index }}][stock]" class="sb-item-stock-val" value="{{ $lineStock }}">
         <input type="hidden" name="items[{{ $index }}][batch_no]" class="sb-item-batch-no" value="{{ $line->batch_no ?? '' }}">
+        <input type="hidden" name="items[{{ $index }}][batch_stock]" class="sb-item-batch-stock" value="{{ $line->batch_stock ?? '' }}">
     </td>
     <td style="width: 135px;" data-col-key="expiry" title="Expiry date (Read-only)">
         <div class="input-group input-group-sm">

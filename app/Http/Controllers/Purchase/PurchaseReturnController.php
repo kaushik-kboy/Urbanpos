@@ -32,7 +32,9 @@ class PurchaseReturnController extends Controller
 
     public function index(Request $request)
     {
-        $query = PurchaseReturn::with(['supplier', 'branch', 'purchaseInvoice'])->latest('return_date');
+        $query = PurchaseReturn::with(['supplier', 'branch', 'purchaseInvoice'])
+            ->orderByDesc('return_date')
+            ->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));

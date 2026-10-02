@@ -33,9 +33,59 @@
                     @php $grandTotal = 0; @endphp
                     @foreach ($stockTransfer->items as $line)
                         @php
-                            $lineAmount = $line->qty * $line->unit_cost;
+                            $unitCost = (float) $line->unit_cost;
+                            if ($unitCost <= 0) {
+                                $unitCost = (float) ($line->item?->cost_price ?: ($line->item?->landing_cost ?: ($line->item?->purchase_rate ?: ($line->item?->sell_price ?: 0))));
+                            }
+                            $lineAmount = (float) $line->qty * $unitCost;
                             $grandTotal += $lineAmount;
                             $itemCode = $line->item?->item_code ?: ($line->item?->ean_upc_code ?: '');
+
+                            $expDate = $line->exp_date;
+                            if (empty($expDate) && $line->batch_no && $line->item_id) {
+                                $expDateVal = \Illuminate\Support\Facades\DB::table('stock_ledger')
+                                    ->where('item_id', $line->item_id)
+                                    ->where('batch_no', $line->batch_no)
+                                    ->whereNotNull('exp_date')
+                                    ->whereNotIn('exp_date', ['', '0000-00-00'])
+                                    ->orderByDesc('id')
+                                    ->value('exp_date');
+                                if (empty($expDateVal)) {
+                                    $expDateVal = \Illuminate\Support\Facades\DB::table('purchase_invoice_items')
+                                        ->where('item_id', $line->item_id)
+                                        ->where('batch_no', $line->batch_no)
+                                        ->whereNotNull('exp_date')
+                                        ->whereNotIn('exp_date', ['', '0000-00-00'])
+                                        ->orderByDesc('id')
+                                        ->value('exp_date');
+                                }
+                                if (!empty($expDateVal)) {
+                                    try {
+                                        $expDate = \Carbon\Carbon::parse($expDateVal);
+                                    } catch (\Throwable) {}
+                                }
+                            }
+                            if (empty($expDate) && $line->item_id) {
+                                $itemExp = \Illuminate\Support\Facades\DB::table('purchase_invoice_items')
+                                    ->where('item_id', $line->item_id)
+                                    ->whereNotNull('exp_date')
+                                    ->whereNotIn('exp_date', ['', '0000-00-00'])
+                                    ->orderByDesc('id')
+                                    ->value('exp_date');
+                                if (empty($itemExp)) {
+                                    $itemExp = \Illuminate\Support\Facades\DB::table('stock_ledger')
+                                        ->where('item_id', $line->item_id)
+                                        ->whereNotNull('exp_date')
+                                        ->whereNotIn('exp_date', ['', '0000-00-00'])
+                                        ->orderByDesc('id')
+                                        ->value('exp_date');
+                                }
+                                if (!empty($itemExp)) {
+                                    try {
+                                        $expDate = \Carbon\Carbon::parse($itemExp);
+                                    } catch (\Throwable) {}
+                                }
+                            }
                         @endphp
                         <tr>
                             <td class="text-center align-middle text-muted font-weight-bold">{{ $loop->iteration }}</td>
@@ -57,16 +107,16 @@
                                 @endif
                             </td>
                             <td class="text-center align-middle">
-                                @if($line->exp_date)
-                                    @php $isExpired = $line->exp_date < now()->startOfDay(); @endphp
+                                @if($expDate)
+                                    @php $isExpired = $expDate < now()->startOfDay(); @endphp
                                     <span class="badge {{ $isExpired ? 'badge-danger' : 'badge-secondary' }} px-2 py-1">
-                                        {{ $line->exp_date->format('d-m-Y') }}
+                                        {{ $expDate->format('d-m-Y') }}
                                     </span>
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
-                            <td class="text-right align-middle">{{ number_format($line->unit_cost, 2) }}</td>
+                            <td class="text-right align-middle">{{ number_format($unitCost, 2) }}</td>
                             <td class="text-right align-middle font-weight-bold">{{ number_format($line->qty, 3) }}</td>
                             <td class="text-right align-middle font-weight-bold text-primary">{{ number_format($lineAmount, 2) }}</td>
                             <td class="text-right align-middle">{{ $line->received_qty !== null ? number_format($line->received_qty, 3) : '—' }}</td>

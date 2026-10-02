@@ -23,7 +23,9 @@ class SalesQuotationController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesQuotation::with(['customer', 'branch'])->latest('quotation_date');
+        $query = SalesQuotation::with(['customer', 'branch'])
+            ->orderByDesc('quotation_date')
+            ->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));

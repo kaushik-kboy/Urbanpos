@@ -294,7 +294,11 @@
                 <td class="text-right" style="width: 45%;">Date: {{ $salesBill->bill_date->format('d/m/Y') }}</td>
             </tr>
             <tr>
-                <td class="text-left">Time: {{ $salesBill->bill_date ? $salesBill->bill_date->format('h:i A') : ($salesBill->created_at ? $salesBill->created_at->format('h:i A') : now()->format('h:i A')) }}</td>
+                @php
+                    $recHasTime = $salesBill->bill_date && $salesBill->bill_date->format('H:i:s') !== '00:00:00';
+                    $recTimeStr = $recHasTime ? $salesBill->bill_date->format('h:i A') : ($salesBill->created_at ? $salesBill->created_at->format('h:i A') : ($salesBill->bill_date ? $salesBill->bill_date->format('h:i A') : now()->format('h:i A')));
+                @endphp
+                <td class="text-left">Time: {{ $recTimeStr }}</td>
                 <td class="text-right">{{ $salesBill->sales_type }}</td>
             </tr>
             @if ($salesBill->customer && $salesBill->customer->name !== 'Walk-in Customer')

@@ -44,7 +44,9 @@ class SalesBillController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesBill::with(['customer', 'branch', 'payments.tenderType'])->orderByDesc('id');
+        $query = SalesBill::with(['customer', 'branch', 'payments.tenderType'])
+            ->orderByDesc('bill_date')
+            ->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -583,7 +585,7 @@ class SalesBillController extends Controller
             ->orderBy('bill_date', 'desc')
             ->orderBy('id', 'desc')
             ->limit(100)
-            ->get(['id', 'bill_number', 'bill_date', 'total', 'invoice_type', 'status'])
+            ->get(['id', 'bill_number', 'bill_date', 'created_at', 'total', 'invoice_type', 'status'])
             ->map(function ($bill) {
                 $formattedDate = '';
                 if ($bill->bill_date) {
@@ -591,7 +593,9 @@ class SalesBillController extends Controller
                     if ($month === 'Sep') {
                         $month = 'Sept';
                     }
-                    $formattedDate = $bill->bill_date->format('d ') . $month . $bill->bill_date->format(' y h:i a');
+                    $hasTime = $bill->bill_date->format('H:i:s') !== '00:00:00';
+                    $timeStr = $hasTime ? $bill->bill_date->format('h:i a') : ($bill->created_at ? $bill->created_at->format('h:i a') : $bill->bill_date->format('h:i a'));
+                    $formattedDate = $bill->bill_date->format('d ') . $month . $bill->bill_date->format(' y ') . $timeStr;
                 }
 
                 return [
@@ -775,6 +779,16 @@ class SalesBillController extends Controller
             'tender_type_value_id' => $p['tender_type_value_id'] ?? null,
             'amount' => $p['amount'],
         ])->all());
+
+        // Sync header payment_type with actual tender payments (e.g. UPI, Card, Cash, Split)
+        if (count($payments) === 1) {
+            $tt = \App\Models\TenderType::find($payments[0]['tender_type_id']);
+            if ($tt) {
+                $salesBill->update(['payment_type' => $tt->name]);
+            }
+        } elseif (count($payments) > 1) {
+            $salesBill->update(['payment_type' => 'Split']);
+        }
     }
 
     /**

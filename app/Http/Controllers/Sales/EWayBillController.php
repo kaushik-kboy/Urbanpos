@@ -106,7 +106,10 @@ class EWayBillController extends Controller
             });
         }
 
-        $bills = $query->orderBy('bill_date', 'desc')->paginate(25)->withQueryString();
+        $bills = $query->orderByDesc('bill_date')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
 
         // Summary Statistics
         $totalEligibleCount = SalesBill::where('total', '>=', 50000)->orWhereNotNull('eway_bill_no')->count();

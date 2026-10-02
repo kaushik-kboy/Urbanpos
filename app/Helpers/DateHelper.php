@@ -121,6 +121,42 @@ class DateHelper
     }
 
     /**
+     * Normalize raw user datetime input into standard MySQL 'YYYY-MM-DD HH:mm:ss'.
+     * Preserves hours, minutes, seconds from datetime-local inputs, and falls back to current time
+     * if only a date was supplied.
+     */
+    public static function normalizeDateTime(?string $raw): ?string
+    {
+        if (empty($raw)) {
+            return null;
+        }
+
+        $str = trim((string) $raw);
+        if ($str === '') {
+            return null;
+        }
+
+        try {
+            // 1. If contains time separator (T or space with colon)
+            if (str_contains($str, 'T') || preg_match('/\s\d{1,2}:\d{2}/', $str)) {
+                $cleanStr = str_replace('T', ' ', $str);
+                $parsed = Carbon::parse($cleanStr);
+                return $parsed ? $parsed->format('Y-m-d H:i:s') : null;
+            }
+
+            // 2. Date only: normalize date and append current time
+            $normDate = self::normalize($str);
+            if ($normDate !== null) {
+                return $normDate . ' ' . date('H:i:s');
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
      * Format a date string from DB (Y-m-d) to display format.
      */
     public static function format(?string $date, string $format = 'd-m-Y'): string

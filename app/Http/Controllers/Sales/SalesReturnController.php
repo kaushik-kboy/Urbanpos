@@ -30,7 +30,9 @@ class SalesReturnController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesReturn::with(['customer', 'branch', 'salesBill'])->latest('return_date');
+        $query = SalesReturn::with(['customer', 'branch', 'salesBill'])
+            ->orderByDesc('return_date')
+            ->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));

@@ -26,7 +26,9 @@ class DamageStockController extends Controller
 
     public function index(Request $request)
     {
-        $query = DamageStock::with(['branch', 'items.item'])->latest('entry_date');
+        $query = DamageStock::with(['branch', 'items.item'])
+            ->orderByDesc('entry_date')
+            ->orderByDesc('id');
 
         // Location / Branch filter
         if ($request->filled('branch_id')) {
@@ -372,10 +374,40 @@ class DamageStockController extends Controller
 
             $tax = $this->taxEngine->calculate($qty, $costPrice, $item);
 
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
+            $expDate = !empty($line['exp_date']) ? $this->normalizeDate($line['exp_date']) : null;
+            if (empty($expDate) && $batchNo) {
+                $expDate = DB::table('stock_ledger')
+                    ->where('item_id', $line['item_id'])
+                    ->where('batch_no', $batchNo)
+                    ->whereNotNull('exp_date')
+                    ->whereNotIn('exp_date', ['', '0000-00-00'])
+                    ->orderByDesc('id')
+                    ->value('exp_date');
+                if (empty($expDate)) {
+                    $expDate = DB::table('purchase_invoice_items')
+                        ->where('item_id', $line['item_id'])
+                        ->where('batch_no', $batchNo)
+                        ->whereNotNull('exp_date')
+                        ->whereNotIn('exp_date', ['', '0000-00-00'])
+                        ->orderByDesc('id')
+                        ->value('exp_date');
+                }
+                if (empty($expDate)) {
+                    $expDate = DB::table('opening_stock_items')
+                        ->where('item_id', $line['item_id'])
+                        ->where('batch_no', $batchNo)
+                        ->whereNotNull('exp_date')
+                        ->whereNotIn('exp_date', ['', '0000-00-00'])
+                        ->orderByDesc('id')
+                        ->value('exp_date');
+                }
+            }
+
             return [
                 'item_id' => $line['item_id'],
-                'batch_no' => !empty($line['batch_no']) ? trim($line['batch_no']) : null,
-                'exp_date' => !empty($line['exp_date']) ? $this->normalizeDate($line['exp_date']) : null,
+                'batch_no' => $batchNo,
+                'exp_date' => $expDate,
                 'qty' => $qty,
                 'cost_price' => $costPrice,
                 'sell_price' => (float) ($line['sell_price'] ?? 0),

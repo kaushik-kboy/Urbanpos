@@ -34,7 +34,9 @@ class PurchaseInvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder'])->orderByDesc('id');
+        $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder'])
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));

@@ -1999,7 +1999,8 @@
         const tenderTypes = window.TENDER_TYPES || [];
         const cashTender = tenderTypes.find(t => (t.name && t.name.toLowerCase() === 'cash') || t.type === 'Cash') || tenderTypes[0] || { id: 1 };
         const cardTender = tenderTypes.find(t => (t.name && t.name.toLowerCase() === 'card') || t.type === 'Card') || cashTender;
-        const walletTender = tenderTypes.find(t => (t.name && (t.name.toLowerCase() === 'wallet' || t.name.toLowerCase() === 'upi')) || t.type === 'Wallet') || cashTender;
+        const upiTender = tenderTypes.find(t => t.name && t.name.toLowerCase() === 'upi') || tenderTypes.find(t => (t.name && (t.name.toLowerCase() === 'wallet' || t.name.toLowerCase() === 'upi')) || t.type === 'Wallet') || cashTender;
+        const walletTender = tenderTypes.find(t => (t.name && (t.name.toLowerCase() === 'wallet' || t.name.toLowerCase() === 'upi')) || t.type === 'Wallet') || upiTender;
         const creditTender = tenderTypes.find(t => (t.name && t.name.toLowerCase() === 'credit') || t.type === 'Credit') || cashTender;
 
         if (state.tender_mode === 'Split') {
@@ -2027,7 +2028,7 @@
             if (cashAmt > 0) payments.push({ tender_type_id: cashTender.id, amount: cashAmt });
             if (cardAmt > 0) payments.push({ tender_type_id: cardTender.id, amount: cardAmt });
             if (walletAmt > 0) {
-                const wPayload = { tender_type_id: walletTender.id, amount: walletAmt };
+                const wPayload = { tender_type_id: (upiTender ? upiTender.id : walletTender.id), amount: walletAmt };
                 if (walletValueId) wPayload.tender_type_value_id = walletValueId;
                 payments.push(wPayload);
             }
@@ -2050,7 +2051,7 @@
                 const gpay = walletTender.values.find(v => v.name.toUpperCase() === 'GPAY');
                 if (gpay) walletValueId = gpay.id;
             }
-            const p = { tender_type_id: walletTender.id, amount: totals.grandTotal };
+            const p = { tender_type_id: (upiTender ? upiTender.id : walletTender.id), amount: totals.grandTotal };
             if (walletValueId) p.tender_type_value_id = walletValueId;
             payments.push(p);
         } else {

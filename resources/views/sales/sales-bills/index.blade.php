@@ -161,9 +161,15 @@
                                 @else
                                     <a href="{{ route('sales.sales-bills.show', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
                                 @endif
+                            <td>
+                                @if ($bill->bill_date)
+                                    @php
+                                        $hasTime = $bill->bill_date->format('H:i:s') !== '00:00:00';
+                                        $timeStr = $hasTime ? $bill->bill_date->format('h:i A') : ($bill->created_at ? $bill->created_at->format('h:i A') : $bill->bill_date->format('h:i A'));
+                                    @endphp
+                                    {{ $bill->bill_date->format('d-m-Y') }} <span class="text-muted small">{{ $timeStr }}</span>
+                                @endif
                             </td>
-                            <td>{{ $bill->bill_date ? $bill->bill_date->format('d-m-Y h:i A') : '' }}</td>
-                            <td>{{ $bill->customer?->name }}</td>
                             <td>{{ $bill->customer?->mobile }}</td>
                             <td>{{ $bill->branch?->name }}</td>
                             <td>{{ $bill->invoice_type }}</td>

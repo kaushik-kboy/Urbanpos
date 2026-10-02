@@ -24,7 +24,9 @@ class SalesOrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesOrder::with(['customer', 'branch'])->latest('order_date');
+        $query = SalesOrder::with(['customer', 'branch'])
+            ->orderByDesc('order_date')
+            ->orderByDesc('id');
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));

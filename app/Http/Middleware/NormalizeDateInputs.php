@@ -40,6 +40,14 @@ class NormalizeDateInputs
     ];
 
     /**
+     * Common request keys that represent datetime values (which must preserve time).
+     */
+    protected array $dateTimeKeys = [
+        'bill_date',
+        'eway_valid_until',
+    ];
+
+    /**
      * Handle an incoming request and normalize any incoming user date inputs to MySQL YYYY-MM-DD.
      */
     public function handle(Request $request, Closure $next): Response
@@ -63,6 +71,14 @@ class NormalizeDateInputs
         foreach ($data as $key => $value) {
             if (is_array($value)) {
                 $data[$key] = $this->normalizeArray($value);
+            } elseif (is_string($value) && $this->isDateTimeKey($key)) {
+                $trimmed = trim($value);
+                if ($trimmed !== '') {
+                    $norm = DateHelper::normalizeDateTime($trimmed);
+                    if ($norm !== null) {
+                        $data[$key] = $norm;
+                    }
+                }
             } elseif (is_string($value) && $this->isDateKey($key)) {
                 $trimmed = trim($value);
                 if ($trimmed !== '') {
@@ -78,6 +94,18 @@ class NormalizeDateInputs
     }
 
     /**
+     * Determine if a given key is a candidate for datetime normalization.
+     */
+    protected function isDateTimeKey(string|int $key): bool
+    {
+        if (!is_string($key)) {
+            return false;
+        }
+
+        return in_array(strtolower($key), $this->dateTimeKeys, true);
+    }
+
+    /**
      * Determine if a given key is a candidate for date normalization.
      */
     protected function isDateKey(string|int $key): bool
@@ -87,6 +115,10 @@ class NormalizeDateInputs
         }
 
         $lower = strtolower($key);
+        if ($this->isDateTimeKey($lower)) {
+            return false;
+        }
+
         if (in_array($lower, $this->dateKeys, true)) {
             return true;
         }

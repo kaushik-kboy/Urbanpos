@@ -42,7 +42,10 @@ class OpeningStockController extends Controller
             $query->where('branch_id', $request->branch_id);
         }
 
-        $openingStocks = $query->latest('entry_date')->paginate(20)->withQueryString();
+        $openingStocks = $query->orderByDesc('entry_date')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
         $branches = Branch::orderBy('name')->get();
 
         return view('inventory.opening-stocks.index', compact('openingStocks', 'branches'));
