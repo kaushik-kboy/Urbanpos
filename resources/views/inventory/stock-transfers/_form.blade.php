@@ -1301,30 +1301,54 @@
         }
 
         $('#items-body').on('input', '.item-qty', function () {
-            let val = $(this).val();
-            let q = parseFloat(val);
-            let avail = parseFloat($(this).closest('tr').find('.item-available').val()) || 0;
-            let itemId = $(this).closest('tr').find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+            let $thisInput = $(this);
+            let $thisRow = $thisInput.closest('tr');
+            let itemId = $thisRow.find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+            let batchNo = $thisRow.find('.item-batch-no').val() || '';
+            let avail = parseFloat($thisRow.find('.item-available').val()) || 0;
+            let q = parseFloat($thisInput.val()) || 0;
 
             if (itemId && !isNaN(q)) {
-                if (avail > 0 && q > avail) {
-                    $(this).val(avail);
-                    q = avail;
-                }
-                if (q <= 0) {
-                    $(this).addClass('is-invalid border-danger text-danger').attr('title', 'Quantity must be greater than 0');
+                // Sum qty across ALL rows with same item + same batch (including this row)
+                let totalUsed = 0;
+                $('#items-body tr.item-row').each(function () {
+                    let rId = $(this).find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                    let rBatch = $(this).find('.item-batch-no').val() || '';
+                    if (rId == itemId && rBatch === batchNo) {
+                        totalUsed += parseFloat($(this).find('.item-qty').val()) || 0;
+                    }
+                });
+
+                if (avail > 0 && totalUsed > avail + 0.0001) {
+                    // Calculate max this row can accept
+                    let usedByOthers = totalUsed - q;
+                    let maxThisRow = Math.max(0, avail - usedByOthers);
+                    $thisInput.val(maxThisRow.toFixed(3));
+                    $thisInput.addClass('is-invalid border-danger text-danger');
+                    let batchLabel = batchNo ? ` (Batch: ${batchNo})` : '';
+                    if (window.toastr) {
+                        toastr.error(
+                            `Stock available for this batch${batchLabel} is only ${avail.toFixed(3)}. ` +
+                            `Combined qty across all rows cannot exceed available stock!`,
+                            'Stock Limit Exceeded'
+                        );
+                    }
+                } else if (q <= 0 && avail > 0) {
+                    $thisInput.addClass('is-invalid border-danger text-danger').attr('title', 'Quantity must be greater than 0');
                 } else {
-                    $(this).removeClass('is-invalid border-danger text-danger').attr('title', '');
+                    $thisInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
                 }
             }
             recalcTotals();
         });
+
 
         // Strict quantity validation and keyboard navigation: Tab or Enter advances ONLY if valid and <= available stock
         $(document).off('keydown', '.item-qty').on('keydown', '.item-qty', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
                 let itemId = $currentRow.find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                let batchNo = $currentRow.find('.item-batch-no').val() || '';
                 let q = parseFloat($(this).val()) || 0;
                 let avail = parseFloat($currentRow.find('.item-available').val()) || 0;
 
@@ -1341,15 +1365,31 @@
                         $err.text('Quantity must be greater than 0.').show();
                         return false;
                     }
-                    if (avail >= 0 && q > avail) {
+
+                    // Check total across all rows with same item+batch
+                    let totalUsed = 0;
+                    let $thisInput = $(this);
+                    $('#items-body tr.item-row').each(function () {
+                        let rId = $(this).find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+                        let rBatch = $(this).find('.item-batch-no').val() || '';
+                        if (rId == itemId && rBatch === batchNo) {
+                            totalUsed += parseFloat($(this).find('.item-qty').val()) || 0;
+                        }
+                    });
+
+                    if (avail > 0 && totalUsed > avail + 0.0001) {
                         e.preventDefault();
                         e.stopPropagation();
-                        $(this).val(avail);
+                        let usedByOthers = totalUsed - q;
+                        let maxThisRow = Math.max(0, avail - usedByOthers);
+                        $(this).val(maxThisRow.toFixed(3));
                         $(this).addClass('is-invalid border-danger text-danger').focus();
-                        $err.text(`Quantity cannot exceed available stock (${avail})!`).show();
+                        let batchLabel = batchNo ? ` (Batch: ${batchNo})` : '';
+                        $err.text(`Total qty for this item${batchLabel} (${totalUsed.toFixed(3)}) exceeds available stock (${avail.toFixed(3)}).`).show();
                         return false;
                     }
                     $err.hide();
+                    $(this).removeClass('is-invalid border-danger text-danger');
                 }
 
                 // If valid, advance to next row or add row and open search modal
@@ -1367,6 +1407,7 @@
                 }
             }
         });
+
 
         $(document).on('change', '.item-qty', function () {
             validateStQty($(this), false);
