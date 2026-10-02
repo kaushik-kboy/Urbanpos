@@ -60,6 +60,7 @@
                 'seq'       => ['label' => 'S.No', 'default' => true],
                 'code'      => ['label' => 'Code / Barcode', 'default' => true],
                 'item'      => ['label' => 'Item Description', 'default' => true],
+                'batch'     => ['label' => 'Batch', 'default' => true],
                 'expiry'    => ['label' => 'Exp Dt', 'default' => true],
                 'available' => ['label' => 'Available', 'default' => true],
                 'qty'       => ['label' => 'Qty', 'default' => true],
@@ -90,7 +91,8 @@
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;" data-col-key="seq">S.No</th>
                         <th style="width: 155px;" data-col-key="code">Code / Barcode</th>
-                        <th style="width: 270px;" data-col-key="item">Item Description</th>
+                        <th style="width: 250px;" data-col-key="item">Item Description</th>
+                        <th style="width: 120px;" data-col-key="batch">Batch</th>
                         <th style="width: 135px;" data-col-key="expiry">Exp Dt</th>
                         <th style="width: 100px;" data-col-key="available">Available</th>
                         <th style="width: 90px;" data-col-key="qty">Qty</th>
@@ -106,7 +108,7 @@
                 </tbody>
                 <tfoot class="bg-light font-weight-bold" style="position: sticky; bottom: 0; z-index: 10; border-top: 2px solid #dee2e6;">
                     <tr>
-                        <td colspan="4" class="text-right align-middle">Total Qty:</td>
+                        <td colspan="5" class="text-right align-middle">Total Qty:</td>
                         <td></td>
                         <td class="text-right align-middle text-primary" id="footer-total-qty">0.000</td>
                         <td></td>
@@ -205,6 +207,53 @@
                 <small class="text-muted mt-2 d-block" id="st-isl-count-label"></small>
             </div>
             <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     BATCH SELECTION MODAL — Stock Transfer Batch Picker
+     ============================================================ -->
+<div class="modal fade" id="st-batch-modal" tabindex="-1" role="dialog" aria-labelledby="stBatchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content shadow border-primary">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="stBatchModalLabel">
+                    <i class="fas fa-layer-group mr-1"></i> Select Batch for Stock Transfer
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="alert alert-info py-2 mb-3 small font-weight-bold d-flex justify-content-between align-items-center">
+                    <div>
+                        Item: <span id="st-batch-modal-item-title" class="text-dark font-weight-bold"></span> | 
+                        Code: <span id="st-batch-modal-item-code" class="text-dark font-weight-bold"></span>
+                    </div>
+                    <div id="st-batch-modal-branch-info" class="text-muted small"></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="st-modal-batches-table">
+                        <thead class="bg-dark text-white">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th class="text-center" style="width: 140px;">Batch No</th>
+                                <th class="text-center" style="width: 140px;">Expiry Date</th>
+                                <th class="text-right" style="width: 120px;">Available Qty</th>
+                                <th class="text-center" style="width: 90px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="st-modal-batches-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer py-2 justify-content-between">
+                <span class="text-muted small"><i class="fas fa-keyboard mr-1"></i>Use Arrow Keys &amp; Enter to select batch</span>
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -345,7 +394,7 @@
             return false;
         }
 
-        function applyItemToRow($row, item) {
+        function applyItemToRow($row, item, skipFocus = false) {
             if (!$row || !$row.length) return false;
 
             if (item.exp_date && isExpiredDate(item.exp_date)) {
@@ -356,24 +405,22 @@
                 return false;
             }
 
-            const $select = $row.find('.item-select');
-            const displayCode = item.code || item.barcode || item.item_code || '';
+            const displayCode = item.item_code || item.code || item.barcode || '';
             const codeStr = displayCode ? " [" + displayCode + "]" : "";
             const optionText = (item.name || item.text || 'Item') + (item.text && item.text.indexOf('[') !== -1 ? '' : codeStr);
-            const option = new Option(optionText, item.id, true, true);
-            $select.empty().append(option).trigger('change');
 
-            $row.find('.item-code-input').val(displayCode || item.item_code || item.code || item.id);
+            $row.find('.item-code-input').val(displayCode);
+            $row.find('.item-desc-input').val(optionText);
+            $row.find('.item-id-input, .item-select').val(item.id);
+            $row.data('item-data', item);
+
             const avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
             $row.find('.item-available').val(avail.toFixed(3));
-            if (item.batch_no) {
-                $row.find('.item-batch-no').val(item.batch_no);
-                $row.find('.item-batch-text').text(item.batch_no);
-                $row.find('.item-batch-display').removeClass('d-none');
-            } else {
-                $row.find('.item-batch-no').val('');
-                $row.find('.item-batch-display').addClass('d-none');
-            }
+
+            let batchNo = item.batch_no || '';
+            $row.find('.item-batch-no').val(batchNo);
+            $row.find('.item-batch-text').text(batchNo || '—');
+            $row.find('.item-batch-badge').attr('title', batchNo || 'No Batch');
 
             if (item.exp_date) {
                 let formattedExp = formatToDisplayDate(item.exp_date);
@@ -382,13 +429,12 @@
                 $row.find('.item-exp-date, input[name*="[exp_date]"]').val('');
             }
 
-            const $qty = $row.find('.item-qty');
-            // Do not default qty to 1; keep blank as requested
-
             recalcTotals();
-            setTimeout(function() {
-                $qty.focus().select();
-            }, 80);
+            if (!skipFocus) {
+                setTimeout(function() {
+                    $row.find('.item-qty').focus().select();
+                }, 80);
+            }
             return true;
         }
 
@@ -627,13 +673,32 @@
                 return false;
             }
             if (item && activeTargetRow) {
-                if (applyItemToRow(activeTargetRow, item) === false) {
-                    return false;
-                }
+                let $targetRow = activeTargetRow;
                 stItemSelectedInModal = true;
                 stCancellingRow = null;
-                stLastSelectedRow = activeTargetRow;
+                stLastSelectedRow = $targetRow;
                 $('#st-item-search-modal').modal('hide');
+
+                // Query item details with all batches for current branch
+                $.getJSON(itemByCodeUrl, { item_id: item.id, branch_id: currentFromBranch() }, function (res) {
+                    if (res && res.found && res.item) {
+                        let fullItem = res.item;
+                        if (applyItemToRow($targetRow, fullItem, true) === false) {
+                            return;
+                        }
+                        if (fullItem.batches && fullItem.batches.length > 1) {
+                            showStBatchModal($targetRow, fullItem, fullItem.batches);
+                        } else {
+                            setTimeout(function () {
+                                $targetRow.find('.item-qty').focus().select();
+                            }, 80);
+                        }
+                    } else {
+                        applyItemToRow($targetRow, item, false);
+                    }
+                }).fail(function () {
+                    applyItemToRow($targetRow, item, false);
+                });
             }
         });
 
@@ -648,7 +713,7 @@
             stModalOpen = false;
             stModalClosing = true;
             if (!stItemSelectedInModal && activeTargetRow && activeTargetRow.length) {
-                let selectedId = activeTargetRow.find('.item-id-input').val();
+                let selectedId = activeTargetRow.find('.item-id-input, .item-select').val();
                 if (!selectedId) {
                     stCancellingRow = activeTargetRow;
                 }
@@ -692,88 +757,179 @@
             activeTargetRow = null;
         });
 
-        let stMouseDown = false;
-        $(document).on('mousedown', '.item-code-input', function () {
-            stMouseDown = true;
-        });
+        // ============================================================
+        // BATCH SELECTION MODAL LOGIC (Stock Transfer)
+        // ============================================================
+        let stActiveBatchRow = null;
+        let stActiveBatchItem = null;
+        let stBatchSelectedIndex = 0;
 
-        function checkAndOpenStModal($input) {
-            if (stModalOpen || stModalClosing) return false;
-            let $row = $input.closest('tr');
-            if ($row.find('.item-select').val()) return false;
-            openItemModal($row, $input.val());
-            return true;
-        }
+        function showStBatchModal($row, item, batches) {
+            stActiveBatchRow = $row;
+            stActiveBatchItem = item;
+            $('#st-batch-modal-item-title').text(item.name || 'Selected Item');
+            $('#st-batch-modal-item-code').text(item.item_code || item.code || '—');
+            let branchName = $('#from_branch_id option:selected').text() || 'From Branch';
+            $('#st-batch-modal-branch-info').text('Branch: ' + branchName);
 
-        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
-        $(document).off('click focus keydown', '.item-code-input')
-            .on('focus', '.item-code-input', function () {
-                if (stMouseDown) {
-                    stMouseDown = false;
-                    return; // Focused by mouse click - do not open modal!
-                }
-                // Focused by Tab / Keyboard navigation!
-                checkAndOpenStModal($(this));
-            })
-            .on('keydown', '.item-code-input', function (e) {
-                if (e.key === 'Enter' || e.key === 'F2') {
-                    e.preventDefault();
-                    checkAndOpenStModal($(this));
-                }
-            })
-            .on('click', '.item-code-input', function () {
-                stMouseDown = false;
+            let $tbody = $('#st-modal-batches-body');
+            $tbody.empty();
+
+            if (!batches || batches.length === 0) {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No batches recorded for this item. Existing stock can be transferred without batch.</td></tr>');
+                $('#st-batch-modal').modal('show');
+                return;
+            }
+
+            let currentBatchNo = $row.find('.item-batch-no').val() || '';
+            let html = '';
+            batches.forEach(function (b, idx) {
+                let isExpired = b.exp_date && isExpiredDate(b.exp_date);
+                let expBadge = b.exp_date
+                    ? (isExpired
+                        ? `<span class="badge badge-danger px-2 py-1"><i class="fas fa-ban mr-1"></i>EXPIRED (${formatToDisplayDate(b.exp_date)})</span>`
+                        : `<span class="badge badge-info px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${formatToDisplayDate(b.exp_date)}</span>`)
+                    : `<span class="text-muted">—</span>`;
+                let batchLabel = b.batch_no ? `<span class="badge badge-secondary px-2 py-1 font-weight-bold">${b.batch_no}</span>` : `<span class="badge badge-light border text-muted">No Batch</span>`;
+                let qtyAvail = parseFloat(b.qty !== undefined ? b.qty : (b.available_qty || 0));
+                let isSelected = (currentBatchNo && b.batch_no === currentBatchNo);
+                let rowClass = 'st-batch-row ' + (isSelected ? 'table-success ' : '') + (isExpired ? 'text-muted bg-light ' : '');
+                let rowStyle = isExpired ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
+                let selectBtn = isExpired
+                    ? `<button type="button" class="btn btn-xs btn-danger" disabled><i class="fas fa-ban mr-1"></i>Expired</button>`
+                    : `<button type="button" class="btn btn-xs btn-success st-btn-pick-batch font-weight-bold px-2"><i class="fas fa-check mr-1"></i>Select</button>`;
+
+                html += `
+                    <tr class="${rowClass}" style="${rowStyle}" data-idx="${idx}">
+                        <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                        <td class="align-middle text-center">${batchLabel}</td>
+                        <td class="align-middle text-center">${expBadge}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">${qtyAvail.toFixed(3)}</td>
+                        <td class="align-middle text-center">${selectBtn}</td>
+                    </tr>`;
             });
 
-        // Tab starts from first field (to_branch_id) on page load
+            $tbody.html(html);
+
+            $tbody.find('tr.st-batch-row').each(function () {
+                let idx = $(this).data('idx');
+                $(this).data('batch', batches[idx]);
+            });
+
+            stBatchSelectedIndex = 0;
+            highlightStBatchRow();
+            $('#st-batch-modal').modal('show');
+        }
+
+        function highlightStBatchRow() {
+            let $rows = $('#st-modal-batches-body tr.st-batch-row').filter(function () {
+                let b = $(this).data('batch');
+                return !b || !b.exp_date || !isExpiredDate(b.exp_date);
+            });
+            $('#st-modal-batches-body tr').removeClass('table-primary');
+            if (stBatchSelectedIndex >= 0 && stBatchSelectedIndex < $rows.length) {
+                $rows.eq(stBatchSelectedIndex).addClass('table-primary');
+            }
+        }
+
+        function applyBatchToRow($row, batch) {
+            let batchNo = batch.batch_no || '';
+            $row.find('.item-batch-no').val(batchNo);
+            $row.find('.item-batch-text').text(batchNo || '—');
+            $row.find('.item-batch-badge').attr('title', batchNo || 'No Batch');
+
+            if (batch.exp_date) {
+                let formatted = formatToDisplayDate(batch.exp_date);
+                $row.find('.item-exp-date, input[name*="[exp_date]"]').val(formatted);
+            }
+
+            let qtyAvail = parseFloat(batch.qty !== undefined ? batch.qty : (batch.available_qty || 0));
+            $row.find('.item-available').val(qtyAvail.toFixed(3));
+            recalcTotals();
+        }
+
+        $(document).on('click', '.st-batch-row, .st-btn-pick-batch', function (e) {
+            e.stopPropagation();
+            let $tr = $(this).hasClass('st-batch-row') ? $(this) : $(this).closest('tr');
+            let batch = $tr.data('batch');
+            if (!batch) return;
+
+            if (batch.exp_date && isExpiredDate(batch.exp_date)) {
+                if (window.toastr) toastr.error('This batch has expired! Transfer of expired products is not permitted.', 'Expired Batch');
+                return;
+            }
+
+            if (stActiveBatchRow && stActiveBatchRow.length) {
+                applyBatchToRow(stActiveBatchRow, batch);
+                let $targetRow = stActiveBatchRow;
+                $('#st-batch-modal').modal('hide');
+                setTimeout(function () {
+                    $targetRow.find('.item-qty').focus().select();
+                }, 80);
+            }
+        });
+
+        // Batch Modal Keyboard Navigation (ArrowUp / ArrowDown / Enter)
+        $(document).on('keydown', function (e) {
+            if ($('#st-batch-modal').is(':visible')) {
+                let $rows = $('#st-modal-batches-body tr.st-batch-row').filter(function () {
+                    let b = $(this).data('batch');
+                    return !b || !b.exp_date || !isExpiredDate(b.exp_date);
+                });
+                if ($rows.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    stBatchSelectedIndex = Math.min(stBatchSelectedIndex + 1, $rows.length - 1);
+                    highlightStBatchRow();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    stBatchSelectedIndex = Math.max(stBatchSelectedIndex - 1, 0);
+                    highlightStBatchRow();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (stBatchSelectedIndex >= 0 && stBatchSelectedIndex < $rows.length) {
+                        $rows.eq(stBatchSelectedIndex).trigger('click');
+                    }
+                }
+            }
+        });
+
+        // Select / Change batch button click on table row
+        $(document).on('click', '.st-btn-choose-batch', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let $row = $(this).closest('tr.item-row');
+            let itemId = $row.find('.item-id-input, .item-select').val();
+            if (!itemId) {
+                if (window.toastr) toastr.warning('Please select an item first.', 'Item Required');
+                $row.find('.item-code-input').focus();
+                return;
+            }
+            let itemData = $row.data('item-data');
+            if (itemData && itemData.batches && itemData.batches.length > 0) {
+                showStBatchModal($row, itemData, itemData.batches);
+            } else {
+                $.getJSON(itemByCodeUrl, { item_id: itemId, branch_id: currentFromBranch() }, function (res) {
+                    if (res && res.found && res.item) {
+                        $row.data('item-data', res.item);
+                        showStBatchModal($row, res.item, res.item.batches || []);
+                    } else {
+                        if (window.toastr) toastr.info('No batches found for this item.', 'Batches');
+                    }
+                });
+            }
+        });
+
+        // Tab starts from first field on page load
         setTimeout(function () {
-            let $first = $('#to_branch_id');
-            if ($first.length && $first.data('select2')) {
-                $first.data('select2').$container.find('.select2-selection').focus();
-            } else if ($first.length) {
-                $first.focus();
+            let $from = $('#from_branch_id');
+            if ($from.length && $from.data('select2')) {
+                $from.data('select2').$container.find('.select2-selection').focus();
+            } else if ($from.length) {
+                $from.focus();
             }
         }, 150);
-
-        function initRowSelect2($row) {
-            const $select = $row.find('.item-select');
-            if ($select.hasClass('select2-hidden-accessible')) return;
-
-            $select.select2({
-                placeholder: 'Search item name or code...',
-                allowClear: true,
-                width: '100%',
-                minimumInputLength: 1,
-                ajax: {
-                    url: searchItemsUrl,
-                    dataType: 'json',
-                    delay: 200,
-                    data: function (params) {
-                        return { q: params.term, branch_id: currentFromBranch() };
-                    },
-                    processResults: function (data) {
-                        return { results: data.map(function (item) { return { id: item.id, text: item.text, itemData: item }; }) };
-                    },
-                    cache: true
-                }
-            });
-
-            $select.on('select2:select', function (e) {
-                const data = e.params.data.itemData;
-                if (!data) return;
-                applyItemToRow($row, data);
-            });
-            $select.on('select2:clear', function () {
-                $row.find('.item-code-input').val('');
-                $row.find('.item-available').val('0.000');
-                $row.find('.item-exp-date').val('');
-            });
-        }
-
-        // Initialize Select2 on any pre-rendered item rows
-        $('#items-body tr.item-row').each(function () {
-            initRowSelect2($(this));
-        });
 
         // Add Row Handler
         function addNewRow() {
@@ -784,7 +940,6 @@
             $('#items-body').append($newRow);
             rowIndex++;
             reindexSno();
-            initRowSelect2($newRow);
             return $newRow;
         }
 
@@ -808,7 +963,6 @@
             $('#items-body').empty().append($newRow);
             rowIndex = 1;
             reindexSno();
-            initRowSelect2($newRow);
             recalcTotals();
             setTimeout(function () {
                 $newRow.find('.item-code-input').focus();
@@ -842,10 +996,15 @@
             } else {
                 let $row = $(this).closest('tr.item-row');
                 $row.find('.item-code-input').val('');
-                $row.find('.item-select').val(null).trigger('change');
+                $row.find('.item-id-input, .item-select').val('');
+                $row.find('.item-desc-input').val('');
+                $row.find('.item-batch-no').val('');
+                $row.find('.item-batch-text').text('—');
                 $row.find('.item-exp-date').val('');
                 $row.find('.item-available').val('0.000');
                 $row.find('.item-qty').val('');
+                $row.data('item-data', null);
+                $row.data('last-processed-code', '');
                 recalcTotals();
             }
         });
@@ -875,10 +1034,16 @@
                     }
                     $row.data('last-processed-code', code || res.item.item_code || res.item.id);
                     $input.removeClass('is-invalid border-danger');
-                    applyItemToRow($row, res.item);
-                    setTimeout(function () {
-                        $row.find('.item-qty').focus().select();
-                    }, 60);
+                    if (applyItemToRow($row, res.item, true) === false) {
+                        return;
+                    }
+                    if (res.item.batches && res.item.batches.length > 1) {
+                        showStBatchModal($row, res.item, res.item.batches);
+                    } else {
+                        setTimeout(function () {
+                            $row.find('.item-qty').focus().select();
+                        }, 60);
+                    }
                 } else if (res && res.error) {
                     $row.data('last-processed-code', null);
                     $input.addClass('is-invalid border-danger');
@@ -906,7 +1071,26 @@
             });
         }
 
-        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+        function checkBranchAndOpenStModal($input) {
+            let branchId = currentFromBranch();
+            if (!branchId) {
+                $('#from-branch-warning').removeClass('d-none');
+                if (window.toastr) {
+                    toastr.warning('Please select "From Branch" first.', 'Branch Required');
+                }
+                $('#from_branch_id').focus();
+                return false;
+            }
+            $('#from-branch-warning').addClass('d-none');
+            if (stModalOpen || stModalClosing) return false;
+            let $row = $input.closest('tr.item-row');
+            if ($row.find('.item-id-input, .item-select').val()) return false;
+            let prefill = $.trim($input.val());
+            openItemModal($row, prefill);
+            return true;
+        }
+
+        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation (matching PO reference)
         $(document).off('keydown change input', '.item-code-input')
             .on('keydown', '.item-code-input', function (e) {
                 if (e.key === 'Enter') {
@@ -916,7 +1100,7 @@
                     if (val) {
                         processStItemLookup($row, val, true);
                     } else {
-                        openItemModal($row, '');
+                        checkBranchAndOpenStModal($(this));
                     }
                 } else if (e.key === 'Tab' && !e.shiftKey) {
                     let val = $.trim($(this).val());
@@ -926,15 +1110,14 @@
                         processStItemLookup($row, val, true);
                     } else {
                         e.preventDefault();
-                        openItemModal($row, '');
+                        checkBranchAndOpenStModal($(this));
                     }
                 } else if (e.key === 'F2') {
                     e.preventDefault();
-                    let $row = $(this).closest('tr.item-row');
-                    openItemModal($row, '');
+                    checkBranchAndOpenStModal($(this));
                 } else if (e.key === 'Escape') {
                     let $row = $(this).closest('tr.item-row');
-                    let itemId = $row.find('.item-select').val();
+                    let itemId = $row.find('.item-id-input, .item-select').val();
                     if (!itemId && $('#items-body tr.item-row').length > 1) {
                         e.preventDefault();
                         let $prevRow = $row.prev('tr.item-row');
@@ -951,9 +1134,13 @@
                 let val = $.trim($(this).val());
                 let $row = $(this).closest('tr.item-row');
                 if (!val) {
-                    $row.find('.item-select').val(null).trigger('change');
+                    $row.find('.item-id-input, .item-select').val('');
+                    $row.find('.item-desc-input').val('');
                     $row.find('.item-available').val('0.000');
+                    $row.find('.item-batch-no').val('');
+                    $row.find('.item-batch-text').text('—');
                     $row.data('last-processed-code', '');
+                    $row.data('item-data', null);
                     recalcTotals();
                     return;
                 }
@@ -965,7 +1152,7 @@
             });
 
         // Clicking on description also opens item search modal
-        $(document).on('click', '.item-select', function () {
+        $(document).on('click', '.item-select, .item-desc-input', function () {
             let $row = $(this).closest('tr.item-row');
             openItemModal($row, '');
         });

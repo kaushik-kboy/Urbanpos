@@ -467,7 +467,7 @@ class StockTransferController extends Controller
                 continue;
             }
 
-            $displayCode = $row->ean_upc_code ?: ($row->item_code ?: '');
+            $displayCode = $row->item_code ?: ($row->ean_upc_code ?: '');
             $result[] = [
                 'id'       => $row->id,
                 'name'     => $row->name,
@@ -511,14 +511,16 @@ class StockTransferController extends Controller
 
         return response()->json($items->map(function ($item) {
             $stock = $item->stocks->first();
-            $displayCode = $item->ean_upc_code ?: ($item->item_code ? "Item: {$item->item_code}" : "");
+            $displayCode = $item->item_code ?: ($item->ean_upc_code ? "Barcode: {$item->ean_upc_code}" : "");
             $codeStr = $displayCode ? " [{$displayCode}]" : "";
 
             return [
                 'id' => $item->id,
                 'text' => "{$item->name}{$codeStr}",
                 'name' => $item->name,
-                'code' => $item->ean_upc_code ?: ($item->item_code ?: ''),
+                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'item_code' => $item->item_code ?: '',
+                'barcode' => $item->ean_upc_code ?: '',
                 'brand' => $item->brand?->name ?? '-',
                 'available_qty' => (float) ($stock?->quantity ?? 0),
                 'exp_date' => $this->resolveItemExpiry($item, $stock),
@@ -529,20 +531,27 @@ class StockTransferController extends Controller
     public function getItemByCode(Request $request)
     {
         $code = trim($request->input('code', ''));
-        if ($code === '') {
+        $itemId = (int) $request->input('item_id');
+        if ($code === '' && ! $itemId) {
             return response()->json(['found' => false]);
         }
 
         $branchId = (int) $request->input('branch_id');
 
-        $item = Item::where('status', true)
-            ->with(['stocks' => fn ($query) => $query->where('branch_id', $branchId)])
-            ->where(function ($q) use ($code) {
-                $q->where('ean_upc_code', $code)
-                  ->orWhere('item_code', $code)
+        $query = Item::where('status', true)
+            ->with(['stocks' => fn ($query) => $query->where('branch_id', $branchId)]);
+
+        if ($itemId > 0) {
+            $query->where('id', $itemId);
+        } else {
+            $query->where(function ($q) use ($code) {
+                $q->where('item_code', $code)
+                  ->orWhere('ean_upc_code', $code)
                   ->orWhere('alias', $code);
-            })
-            ->first();
+            });
+        }
+
+        $item = $query->first();
 
         if (! $item) {
             return response()->json(['found' => false]);
@@ -576,6 +585,19 @@ class StockTransferController extends Controller
             }
         }
 
+        if (empty($batches) && $avail > 0) {
+            $batches[] = [
+                'productname' => $item->name,
+                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'batch_no' => '',
+                'exp_date' => $this->resolveItemExpiry($item, $stock),
+                'qty' => $avail,
+                'cost_price' => $item->cost_price,
+                'sell_price' => $item->sell_price,
+                'mrp' => $item->mrp,
+            ];
+        }
+
         $defaultBatch = !empty($batches) ? $batches[0] : null;
         $batchNo = $defaultBatch ? $defaultBatch['batch_no'] : null;
         $expDate = $defaultBatch ? $defaultBatch['exp_date'] : $this->resolveItemExpiry($item, $stock);
@@ -588,7 +610,7 @@ class StockTransferController extends Controller
             ]);
         }
 
-        $displayCode = $item->ean_upc_code ?: ($item->item_code ? "Item: {$item->item_code}" : "");
+        $displayCode = $item->item_code ?: ($item->ean_upc_code ? "Barcode: {$item->ean_upc_code}" : "");
         $codeStr = $displayCode ? " [{$displayCode}]" : "";
 
         return response()->json([
@@ -597,7 +619,9 @@ class StockTransferController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
                 'text' => "{$item->name}{$codeStr}",
-                'code' => $item->ean_upc_code ?: ($item->item_code ?: ''),
+                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'item_code' => $item->item_code ?: '',
+                'barcode' => $item->ean_upc_code ?: '',
                 'batch_no' => $batchNo,
                 'available_qty' => $availQty,
                 'exp_date' => $expDate,
