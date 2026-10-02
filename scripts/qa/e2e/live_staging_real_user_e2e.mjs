@@ -277,7 +277,10 @@ try {
 
     // Select first selectable item
     await page.locator('#isl-items-body tr.isl-item-row:not(.isl-item-disabled) .isl-btn-select').first().click();
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => {
+        const val = document.querySelector('#sb-items-body tr:first-child .sb-item-desc')?.value;
+        return typeof val === 'string' && val.trim().length > 0;
+    }, { timeout: 8000 }).catch(() => {});
 
     const sbItemDesc = await page.locator('#sb-items-body tr:first-child .sb-item-desc').inputValue();
     record('SB Item Row Population', !!sbItemDesc, `Selected: ${sbItemDesc}`);
