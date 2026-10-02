@@ -312,7 +312,7 @@
                             <button type="button" class="btn btn-outline-primary font-weight-bold mr-2" onclick="printSampleReceipt()">
                                 <i class="fas fa-eye mr-1"></i> Test Print
                             </button>
-                            <button type="submit" class="btn btn-success font-weight-bold px-4 shadow">
+                            <button type="submit" id="btn-save-receipt-settings" class="btn btn-success font-weight-bold px-4 shadow">
                                 <i class="fas fa-save mr-1"></i> Save Receipt Settings
                             </button>
                         </div>
@@ -1206,6 +1206,66 @@
 
     function printSampleReceipt() {
         window.print();
+    }
+
+    // AJAX Save handler with clear feedback
+    if (window.jQuery) {
+        window.jQuery('#receipt-designer-form').on('submit', function (e) {
+            e.preventDefault();
+            var form = this;
+            var $form = window.jQuery(form);
+            var $btn = $form.find('#btn-save-receipt-settings');
+            var origHtml = $btn.html();
+
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving Profile...');
+
+            var formData = new FormData(form);
+
+            window.jQuery.ajax({
+                url: $form.attr('action'),
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                success: function (res) {
+                    $btn.removeClass('btn-success').addClass('btn-info').html('<i class="fas fa-check mr-1"></i> Saved Successfully!');
+                    setTimeout(function () {
+                        $btn.prop('disabled', false).removeClass('btn-info').addClass('btn-success').html(origHtml);
+                    }, 2000);
+
+                    var msg = (res && res.message) ? res.message : 'Print profile settings saved successfully!';
+                    if (window.toastr) {
+                        window.toastr.success(msg, 'Print Profile Saved');
+                    } else {
+                        alert(msg);
+                    }
+                },
+                error: function (xhr) {
+                    $btn.prop('disabled', false).html(origHtml);
+                    var errMsg = 'Failed to save print profile. Please check required fields.';
+                    if (xhr.responseJSON) {
+                        if (xhr.responseJSON.errors) {
+                            var errArr = [];
+                            window.jQuery.each(xhr.responseJSON.errors, function (k, v) {
+                                errArr.push(Array.isArray(v) ? v[0] : v);
+                            });
+                            errMsg = errArr.join('<br>');
+                        } else if (xhr.responseJSON.message) {
+                            errMsg = xhr.responseJSON.message;
+                        }
+                    }
+                    if (window.toastr) {
+                        window.toastr.error(errMsg, 'Save Error');
+                    } else {
+                        alert(errMsg.replace(/<br>/g, '\n'));
+                    }
+                }
+            });
+        });
     }
 
     // Initialize layout on page load

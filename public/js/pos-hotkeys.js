@@ -408,13 +408,149 @@
             }
         }
 
-        // Guard: If any modal is currently open (e.g. Tender modal), do NOT execute global page navigation shortcuts
         let $ = window.jQuery;
-        if ($ && ($('.modal.show, #sb-tender-modal:visible, #posSplitModal:visible').length > 0)) {
+
+        // 4. Modal Hotkeys & Tender Interception
+        // Check if Sales Bill Tender Modal or POS Split Modal is active
+        let isTenderModalOpen = false;
+        if ($) {
+            isTenderModalOpen = $('#sb-tender-modal').is(':visible') || $('#sb-tender-modal').hasClass('show') || $('#posSplitModal').is(':visible');
+        } else {
+            let tm = document.getElementById('sb-tender-modal');
+            if (tm && (tm.classList.contains('show') || tm.style.display === 'block')) isTenderModalOpen = true;
+        }
+
+        if (isTenderModalOpen) {
+            if (keyCombo === 'ALT+C') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (typeof window.selectTenderMode === 'function') {
+                    window.selectTenderMode('cash');
+                } else if ($) {
+                    $('.tender-mode-pill[data-mode="cash"]').trigger('click');
+                }
+                return;
+            }
+            if (keyCombo === 'ALT+U') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (typeof window.selectTenderMode === 'function') {
+                    window.selectTenderMode('upi');
+                } else if ($) {
+                    $('.tender-mode-pill[data-mode="upi"]').trigger('click');
+                }
+                return;
+            }
+            if (keyCombo === 'ALT+D') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (typeof window.selectTenderMode === 'function') {
+                    window.selectTenderMode('card');
+                } else if ($) {
+                    $('.tender-mode-pill[data-mode="card"]').trigger('click');
+                }
+                return;
+            }
+            if (keyCombo === 'ALT+E') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (typeof window.selectTenderMode === 'function') {
+                    window.selectTenderMode('credit');
+                } else if ($) {
+                    $('.tender-mode-pill[data-mode="credit"]').trigger('click');
+                }
+                return;
+            }
+            if (keyCombo === 'ALT+S') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if ($) {
+                    $('#tender-save-btn').trigger('click');
+                }
+                return;
+            }
+
+            // Suppress ANY page navigation shortcuts while Tender Modal is open
+            if (target && target.target_url) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return;
+            }
+            if (DEFAULT_ACTIONS[keyCombo] && DEFAULT_ACTIONS[keyCombo].target_url) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return;
+            }
+        }
+
+        // POS Terminal Context (Touch/High-Speed POS Screen)
+        let isPosTerminal = document.body && (document.body.classList.contains('pos-terminal-body') || !!document.querySelector('.pos-terminal-container'));
+        if (isPosTerminal) {
+            if (keyCombo === 'ALT+C') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.querySelector('[data-mode="Cash"]')?.click();
+                return;
+            }
+            if (keyCombo === 'ALT+U') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.querySelector('[data-mode="UPI"]')?.click();
+                return;
+            }
+            if (keyCombo === 'ALT+D') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.querySelector('[data-mode="Card"]')?.click();
+                return;
+            }
+            if (keyCombo === 'ALT+E') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.querySelector('[data-mode="Credit"]')?.click();
+                return;
+            }
+            if (keyCombo === 'ALT+S') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.querySelector('[data-mode="Split"]')?.click();
+                return;
+            }
+        }
+
+        // Guard: If ANY modal is currently open, block ALL global page navigation shortcuts to prevent losing modal state / data
+        if ($ && ($('.modal.show, .modal:visible').length > 0)) {
+            if (target && target.target_url) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return;
+            }
+            if (DEFAULT_ACTIONS[keyCombo] && DEFAULT_ACTIONS[keyCombo].target_url) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return;
+            }
             return;
         }
 
-        // 4. Global Navigation Shortcuts (Alt + Key, Ctrl + Shift + Key)
+        // Sales Bill / Billing Form Context: Alt+C opens / focuses Customer Lookup instead of navigating away
+        if (keyCombo === 'ALT+C') {
+            let $custField = $ ? $('#customer_id') : document.getElementById('customer_id');
+            if ($custField && ($custField.length || $custField.nodeType)) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if ($ && $('#customer_id').data('select2')) {
+                    $('#customer_id').select2('open');
+                } else if ($) {
+                    $('#customer_id').focus();
+                } else {
+                    document.getElementById('customer_id')?.focus();
+                }
+                return;
+            }
+        }
+
+        // 5. Global Navigation Shortcuts (Alt + Key, Ctrl + Shift + Key)
         if (target && target.target_url) {
             e.preventDefault();
             e.stopImmediatePropagation();

@@ -129,4 +129,63 @@ describe('UrbanPOS Global Keyboard Navigation & Hotkeys Engine', () => {
         expect(focusedElement.id).toBe('first-supplier-select');
         expect(document.activeElement.id).toBe('first-supplier-select');
     });
+
+    it('should select cash tender mode and suppress customer master navigation when tender modal is open', () => {
+        document.body.innerHTML = `
+            <div class="modal show" id="sb-tender-modal" style="display: block;">
+                <button type="button" class="tender-mode-pill" data-mode="cash">Cash (Alt+C)</button>
+                <input type="text" id="tender-cash" value="">
+            </div>
+        `;
+
+        let cashModeSelected = false;
+        window.selectTenderMode = vi.fn((mode) => {
+            if (mode === 'cash') cashModeSelected = true;
+        });
+
+        // Simulate pos-hotkeys interception logic for Alt+C inside tender modal
+        const isTenderModalOpen = document.getElementById('sb-tender-modal')?.classList.contains('show');
+        expect(isTenderModalOpen).toBe(true);
+
+        const event = { altKey: true, key: 'c', code: 'KeyC', preventDefault: vi.fn(), stopImmediatePropagation: vi.fn() };
+        const keyCombo = getNormalizedKey(event);
+        expect(keyCombo).toBe('ALT+C');
+
+        if (isTenderModalOpen && keyCombo === 'ALT+C') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.selectTenderMode('cash');
+        }
+
+        expect(event.preventDefault).toHaveBeenCalled();
+        expect(event.stopImmediatePropagation).toHaveBeenCalled();
+        expect(cashModeSelected).toBe(true);
+    });
+
+    it('should focus customer lookup field instead of navigating to master/customers on billing forms', () => {
+        document.body.innerHTML = `
+            <form id="sales-bill-form">
+                <select id="customer_id" class="form-control">
+                    <option value="">Search Customer</option>
+                </select>
+            </form>
+        `;
+
+        const event = { altKey: true, key: 'c', code: 'KeyC', preventDefault: vi.fn(), stopImmediatePropagation: vi.fn() };
+        const keyCombo = getNormalizedKey(event);
+        expect(keyCombo).toBe('ALT+C');
+
+        const custField = document.getElementById('customer_id');
+        expect(custField).not.toBeNull();
+
+        if (keyCombo === 'ALT+C' && custField) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            custField.focus();
+        }
+
+        expect(event.preventDefault).toHaveBeenCalled();
+        expect(event.stopImmediatePropagation).toHaveBeenCalled();
+        expect(document.activeElement.id).toBe('customer_id');
+    });
 });

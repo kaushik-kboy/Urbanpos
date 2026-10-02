@@ -97,6 +97,10 @@ class ReceiptSetting extends Model
      */
     public static function forDocument(string $documentType = 'sales_bill', ?int $branchId = null): self
     {
+        if ($branchId && ! Branch::whereKey($branchId)->exists()) {
+            $branchId = null;
+        }
+
         if ($branchId) {
             $specific = static::where('document_type', $documentType)
                 ->where('branch_id', $branchId)

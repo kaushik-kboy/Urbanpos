@@ -126,13 +126,13 @@ class ReceiptDesignerController extends Controller
             'custom_css'             => 'nullable|string|max:2000',
         ]);
 
+        $branchId = !empty($validated['branch_id']) ? (int) $validated['branch_id'] : null;
+
         $supportedTypes = ReceiptSetting::supportedTypes();
         $docType = $validated['document_type'] ?? 'sales_bill';
         if (!array_key_exists($docType, $supportedTypes)) {
             $docType = 'sales_bill';
         }
-
-        $branchId = !empty($validated['branch_id']) ? (int) $validated['branch_id'] : null;
 
         $settings = ReceiptSetting::forDocument($docType, $branchId);
 
@@ -171,6 +171,16 @@ class ReceiptDesignerController extends Controller
         }
 
         $settings->update($data);
+
+        // Also sync base template if branch-specific so printing never falls back to unconfigured state
+        if ($branchId !== null) {
+            $baseSettings = ReceiptSetting::where('document_type', $docType)->whereNull('branch_id')->first();
+            if ($baseSettings) {
+                $baseData = $data;
+                $baseData['branch_id'] = null;
+                $baseSettings->update($baseData);
+            }
+        }
 
         $typeLabel = $supportedTypes[$docType]['label'] ?? $docType;
         $branchName = $branchId ? (\App\Models\Branch::find($branchId)?->name ?? "Branch #{$branchId}") : 'All Branches';

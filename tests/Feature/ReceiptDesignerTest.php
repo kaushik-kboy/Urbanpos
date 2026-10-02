@@ -247,4 +247,29 @@ class ReceiptDesignerTest extends TestCase
         $responsePr->assertStatus(200);
         $responsePr->assertSee('Purchase Return');
     }
+
+    public function test_user_can_save_receipt_profile_via_ajax_with_empty_or_null_branch_id(): void
+    {
+        $payload = [
+            'document_type'  => 'sales_bill',
+            'branch_id'      => '', // Empty branch id - should be safely saved as null for all branches
+            'store_name'     => 'URBAN PETS AJAX STORE',
+            'paper_size'     => '80mm',
+            'font_size'      => 'normal',
+            'header_address' => 'Sample test address for thermal invoice printer profile',
+            'footer_policy'  => 'Standard policy statement.',
+        ];
+
+        $response = $this->actingAs($this->user)->postJson(route('tools.receipt-designer.update'), $payload);
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $settings = ReceiptSetting::where('document_type', 'sales_bill')->whereNull('branch_id')->first();
+        $this->assertNotNull($settings);
+        $this->assertEquals('URBAN PETS AJAX STORE', $settings->store_name);
+        $this->assertEquals('80mm', $settings->paper_size);
+    }
 }
+
