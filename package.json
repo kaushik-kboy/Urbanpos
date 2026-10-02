@@ -5,7 +5,8 @@
         "build": "vite build",
         "dev": "vite",
         "test:frontend": "vitest run --pool=forks",
-        "test:blade-js": "node scripts/check-blade-js-syntax.cjs"
+        "test:blade-js": "node scripts/check-blade-js-syntax.cjs",
+        "test:e2e-live": "node scripts/qa/e2e/live_staging_real_user_e2e.mjs"
     },
     "devDependencies": {
         "@popperjs/core": "^2.11.6",

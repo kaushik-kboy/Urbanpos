@@ -38,3 +38,4 @@ __pycache__/
 scripts/*.py
 scripts/*.txt
 scripts/check_pw.php
+test-results/
