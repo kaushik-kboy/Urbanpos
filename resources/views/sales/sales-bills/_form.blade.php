@@ -29,60 +29,74 @@
     display: none !important;
 }
 
-/* Compact Sales Bill UI */
+/* Compact Single-Screen Sales Bill UI */
+.content-header {
+    padding: 6px 0.5rem !important;
+}
+.content-wrapper > .content {
+    padding: 0 0.5rem !important;
+}
+.card-body {
+    padding: 0.5rem 0.75rem !important;
+}
 .sb-compact-section-header {
-    margin-bottom: 0.35rem !important;
+    margin-bottom: 0.2rem !important;
 }
 .sb-compact-section-header h5, 
 .sb-compact-section-header h6 {
-    font-size: 0.95rem;
+    font-size: 0.88rem !important;
     font-weight: 700;
+    margin-bottom: 0 !important;
 }
 .sb-divider-compact {
-    margin-top: 0.45rem !important;
-    margin-bottom: 0.45rem !important;
+    margin-top: 0.3rem !important;
+    margin-bottom: 0.3rem !important;
     border-color: #e9ecef;
 }
 #sb-header-fields-grid .form-group,
 #sb-additional-fields-grid .form-group {
-    margin-bottom: 0.35rem !important;
+    margin-bottom: 0.2rem !important;
 }
 #sb-header-fields-grid label,
 #sb-additional-fields-grid label {
-    font-size: 0.78rem !important;
-    margin-bottom: 0.15rem !important;
+    font-size: 0.76rem !important;
+    margin-bottom: 0.1rem !important;
     font-weight: 600;
     color: #495057;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 #sb-header-fields-grid .form-control,
 #sb-additional-fields-grid .form-control {
-    font-size: 0.85rem;
-    height: calc(1.5em + 0.5rem + 2px);
-    padding: 0.2rem 0.5rem;
+    font-size: 0.82rem;
+    height: 28px !important;
+    padding: 0.15rem 0.45rem;
 }
 #sb-header-fields-grid .select2-container .select2-selection--single,
 #sb-additional-fields-grid .select2-container .select2-selection--single {
-    height: calc(1.5em + 0.5rem + 2px) !important;
-    font-size: 0.85rem;
+    height: 28px !important;
+    font-size: 0.82rem;
 }
 #sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: calc(1.5em + 0.5rem);
-    padding-left: 0.5rem;
+    line-height: 26px !important;
+    padding-left: 0.45rem;
 }
 #sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: calc(1.5em + 0.5rem + 2px);
+    height: 26px !important;
 }
 #sb-additional-fields-grid textarea.form-control {
-    height: auto !important;
-    min-height: 38px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.85rem;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.82rem;
+    resize: none;
 }
 
 /* Scrollable Items Container & Sticky Header */
 .sb-items-scroll-container {
-    max-height: clamp(220px, 32vh, 320px);
-    min-height: 150px;
+    height: clamp(170px, 26vh, 230px);
+    max-height: clamp(170px, 26vh, 230px);
     overflow-y: auto;
     overflow-x: auto;
     position: relative;
@@ -96,9 +110,9 @@
     background-color: #f4f6f9 !important;
     z-index: 5;
     box-shadow: inset 0 -1px 0 #dee2e6, 0 1px 2px rgba(0, 0, 0, 0.06);
-    padding-top: 0.35rem;
-    padding-bottom: 0.35rem;
-    font-size: 0.82rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 0.80rem;
 }
 .sb-items-scroll-container #sb-items-table tfoot td {
     position: sticky;
@@ -106,9 +120,9 @@
     background-color: #f8f9fa !important;
     z-index: 4;
     box-shadow: inset 0 1px 0 #dee2e6;
-    padding-top: 0.3rem;
-    padding-bottom: 0.3rem;
-    font-size: 0.85rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 0.82rem;
 }
 
 /* Ensure Item Description stays wide and legible */
@@ -117,18 +131,18 @@
 }
 #sb-items-table .sb-item-desc {
     min-width: 240px !important;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
 }
 
 /* Dense table row padding */
 .table-items-dense td {
-    padding: 0.25rem 0.35rem !important;
+    padding: 0.2rem 0.35rem !important;
     vertical-align: middle !important;
 }
 .table-items-dense .form-control-sm {
-    height: calc(1.4em + 0.4rem + 2px);
-    padding: 0.15rem 0.35rem;
-    font-size: 0.84rem;
+    height: 26px !important;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.82rem;
 }
 </style>
 @endpush
@@ -169,20 +183,20 @@
 
 <div class="row g-2 form-fields-grid" id="sb-header-fields-grid">
     {{-- Bill Number --}}
-    <div class="field-wrapper col-md-4" data-field="bill_number" data-default-order="1">
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4" data-field="bill_number" data-default-order="1">
         @if(!empty($bill?->id))
-            <div class="form-group mb-2">
+            <div class="form-group mb-1">
                 <label class="font-weight-bold mb-1">Bill No</label>
                 <input type="text" name="bill_number" class="form-control font-weight-bold bg-light" value="{{ $bill->bill_number }}" readonly>
             </div>
         @else
-            <div class="form-group mb-2">
+            <div class="form-group mb-1">
                 <label class="font-weight-bold">Bill No</label>
                 <div class="input-group">
-                    <input type="text" name="bill_number" class="form-control font-weight-bold bg-light" value="{{ old('bill_number', '') }}" placeholder="Auto-Generated on Save" readonly>
+                    <input type="text" name="bill_number" class="form-control font-weight-bold bg-light" value="{{ old('bill_number', '') }}" placeholder="Auto" readonly>
                     <div class="input-group-append">
-                        <span class="input-group-text bg-white text-muted small">
-                            <i class="fas fa-lock mr-1 text-secondary"></i> Assigned on Save
+                        <span class="input-group-text bg-white text-muted px-1 small" title="Auto-Generated on Save">
+                            <i class="fas fa-lock text-secondary"></i>
                         </span>
                     </div>
                 </div>
@@ -191,12 +205,12 @@
     </div>
 
     {{-- Customer --}}
-    <div class="field-wrapper col-md-8" data-field="customer_id" data-default-order="2" data-core="1">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-4 col-md-5 col-sm-8" data-field="customer_id" data-default-order="2" data-core="1">
+        <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
-                <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs font-weight-bold">
-                    <i class="fas fa-user-plus mr-1"></i> + New Customer
+                <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs py-0 font-weight-bold" style="font-size: 10px;">
+                    <i class="fas fa-user-plus mr-1"></i> + New
                 </button>
             </div>
             {{-- No `required` attr: customer can be added before or after items in sales bills --}}
@@ -208,10 +222,10 @@
             </select>
 
         </div>
-        <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-2 shadow-sm align-items-center justify-content-between">
+        <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between">
             <div>
                 <i class="fas fa-coins text-warning mr-1"></i>
-                <strong>Loyalty Points:</strong> <span id="sb-loyalty-pts" class="text-primary font-weight-bold">0.00</span> pts
+                <strong>Loyalty:</strong> <span id="sb-loyalty-pts" class="text-primary font-weight-bold">0.00</span> pts
                 <span class="text-muted">(≈ ₹<span id="sb-loyalty-val">0.00</span>)</span>
             </div>
             <span id="sb-loyalty-notice" class="badge badge-success"></span>
@@ -222,9 +236,9 @@
     <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
 
     {{-- Staff / Biller (Branch-wise) --}}
-    <div class="field-wrapper col-md-4" data-field="user_id" data-default-order="3">
-        <div class="form-group mb-2">
-            <label class="font-weight-bold mb-1" for="sales_biller_user_id"><i class="fas fa-user-check text-primary mr-1"></i> Biller / Staff Name</label>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-4" data-field="user_id" data-default-order="3">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="sales_biller_user_id"><i class="fas fa-user-check text-primary mr-1"></i> Biller / Staff</label>
             <select name="user_id" id="sales_biller_user_id" class="form-control select2" required>
                 @foreach ($branchStaff as $stId => $stName)
                     <option value="{{ $stId }}" @selected(($selectedStaffId ?? auth()->id()) == $stId)>{{ $stName }}</option>
@@ -234,8 +248,8 @@
     </div>
 
     {{-- Bill Date & Time --}}
-    <div class="field-wrapper col-md-4" data-field="bill_date" data-default-order="4" data-core="1">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-4" data-field="bill_date" data-default-order="4" data-core="1">
+        <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="bill_date">
                 <i class="far fa-calendar-alt text-primary mr-1"></i> Bill Date & Time <span class="text-danger">*</span>
             </label>
@@ -258,9 +272,23 @@
         </div>
     </div>
 
+    {{-- Payment Type --}}
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-4" data-field="payment_type" data-default-order="9">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="payment_type">
+                <i class="fas fa-money-bill-wave text-primary mr-1"></i> Payment Mode
+            </label>
+            <select name="payment_type" id="payment_type" class="form-control select2">
+                @foreach (['Cash' => 'Cash', 'UPI' => 'UPI', 'Card' => 'Card', 'Credit' => 'Credit', 'Bank Transfer' => 'Bank Transfer', 'Cheque' => 'Cheque'] as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('payment_type', ($bill && $bill->payment_type && strtolower($bill->payment_type) !== 'none') ? $bill->payment_type : 'Cash') == $val)>{{ $txt }}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+
     {{-- Invoice Type --}}
-    <div class="field-wrapper col-md-4" data-field="invoice_type" data-default-order="5">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="invoice_type" data-default-order="5">
+        <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <label class="font-weight-bold mb-0" for="invoice_type">
                     <i class="fas fa-file-invoice text-primary mr-1"></i> Invoice Type <span class="text-danger">*</span>
@@ -276,8 +304,8 @@
     </div>
 
     {{-- Delivery Type --}}
-    <div class="field-wrapper col-md-4" data-field="delivery_type" data-default-order="6">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="delivery_type" data-default-order="6">
+        <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="delivery_type">
                 <i class="fas fa-truck text-primary mr-1"></i> Delivery Type <span class="text-danger">*</span>
             </label>
@@ -290,8 +318,8 @@
     </div>
 
     {{-- Delivery Time --}}
-    <div class="field-wrapper col-md-4" data-field="delivery_time" data-default-order="7">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="delivery_time" data-default-order="7">
+        <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="delivery_time">
                 <i class="far fa-clock text-primary mr-1"></i> Delivery Time
             </label>
@@ -302,8 +330,8 @@
     </div>
 
     {{-- Sales Type --}}
-    <div class="field-wrapper col-md-4" data-field="sales_type" data-default-order="8">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="sales_type" data-default-order="8">
+        <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <label class="font-weight-bold mb-0" for="sales_type">
                     <i class="fas fa-map-marker-alt text-primary mr-1"></i> Sales Type <span class="text-danger">*</span>
@@ -317,43 +345,21 @@
             </select>
         </div>
     </div>
-
-    {{-- Payment Type --}}
-    <div class="field-wrapper col-md-4" data-field="payment_type" data-default-order="9">
-        <div class="form-group mb-2">
-            <label class="font-weight-bold mb-1" for="payment_type">
-                <i class="fas fa-money-bill-wave text-primary mr-1"></i> Payment Mode
-            </label>
-            <select name="payment_type" id="payment_type" class="form-control select2">
-                @foreach (['Cash' => 'Cash', 'UPI' => 'UPI', 'Card' => 'Card', 'Credit' => 'Credit', 'Bank Transfer' => 'Bank Transfer', 'Cheque' => 'Cheque'] as $val => $txt)
-                    <option value="{{ $val }}" @selected(old('payment_type', ($bill && $bill->payment_type && strtolower($bill->payment_type) !== 'none') ? $bill->payment_type : 'Cash') == $val)>{{ $txt }}</option>
-                @endforeach
-            </select>
-        </div>
-    </div>
-</div>
-
-<hr class="sb-divider-compact">
-<div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
-    <h5 class="mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Items</h5>
-    <div>
-        <button type="button" class="btn btn-outline-danger btn-sm btn-reset-table" id="sb-btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
-    </div>
 </div>
 
 {{-- Unsaved Bill Draft Recovery Alert Banner --}}
 @if(empty($bill?->id))
-<div id="sb-draft-recovery-alert" class="alert alert-warning py-2 px-3 mb-2 shadow-sm d-none align-items-center justify-content-between">
+<div id="sb-draft-recovery-alert" class="alert alert-warning py-1 px-3 mb-1 shadow-sm d-none align-items-center justify-content-between" style="font-size: 0.85rem;">
     <div>
         <i class="fas fa-history mr-2 text-dark"></i>
-        <strong>Unsaved Bill Draft Found!</strong> You have an unsaved draft from <span id="sb-draft-saved-time" class="font-weight-bold text-dark"></span> containing <span id="sb-draft-item-count" class="badge badge-dark">0</span> item(s).
+        <strong>Draft Found!</strong> Saved from <span id="sb-draft-saved-time" class="font-weight-bold text-dark"></span> (<span id="sb-draft-item-count" class="badge badge-dark">0</span> items).
     </div>
     <div>
-        <button type="button" class="btn btn-success btn-xs font-weight-bold px-3 py-1 shadow-sm mr-2" id="btn-restore-bill-draft">
-            <i class="fas fa-undo mr-1"></i> Restore Bill
+        <button type="button" class="btn btn-success btn-xs font-weight-bold px-2 py-0 shadow-sm mr-1" id="btn-restore-bill-draft">
+            <i class="fas fa-undo mr-1"></i> Restore
         </button>
-        <button type="button" class="btn btn-outline-secondary btn-xs px-2" id="btn-discard-bill-draft">
-            <i class="fas fa-trash-alt mr-1"></i> Discard Draft
+        <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2" id="btn-discard-bill-draft">
+            <i class="fas fa-trash-alt mr-1"></i> Discard
         </button>
     </div>
 </div>
@@ -376,13 +382,19 @@
         'actions'      => ['label' => 'Actions', 'default' => true],
     ];
 @endphp
+
+<hr class="sb-divider-compact">
 <div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
     <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-boxes mr-1 text-primary"></i> Bill Items</h6>
-    <x-table-column-customizer
-        table-key="sales.sales-bills.items"
-        table-id="sb-items-table"
-        :columns="$sbItemColumns"
-    />
+    <div class="d-flex align-items-center">
+        <button type="button" id="sb-add-row" class="btn btn-primary btn-xs font-weight-bold mr-2"><i class="fas fa-plus"></i> Add Row</button>
+        <button type="button" class="btn btn-outline-danger btn-xs mr-2 btn-reset-table" id="sb-btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
+        <x-table-column-customizer
+            table-key="sales.sales-bills.items"
+            table-id="sb-items-table"
+            :columns="$sbItemColumns"
+        />
+    </div>
 </div>
 
 <div class="table-responsive sb-items-scroll-container">
@@ -426,11 +438,11 @@
     </table>
 </div>
 
-<button type="button" id="sb-add-row" class="btn btn-link btn-sm font-weight-bold py-1"><i class="fas fa-plus-circle"></i> Add Row</button>
+<button type="button" id="sb-add-row-bottom" onclick="$('#sb-add-row').click()" class="btn btn-link btn-xs font-weight-bold py-0"><i class="fas fa-plus-circle"></i> Add Row</button>
 
 <hr class="sb-divider-compact">
 <div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
-    <h5 class="mb-0"><i class="fas fa-calculator mr-1 text-primary"></i> Bill Totals & Notes</h5>
+    <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Notes</h6>
     <x-form-layout-customizer 
         form-key="sales_bills.additional" 
         container-id="sb-additional-fields-grid" 
@@ -438,49 +450,52 @@
         button-class="btn btn-outline-primary btn-xs font-weight-bold shadow-sm" />
 </div>
 
-<div class="alert alert-light border py-1 px-3 d-flex justify-content-between align-items-center mb-2">
-    <div>
-        <span class="text-muted mr-2 font-weight-bold">Final Bill Total:</span>
-        <strong class="text-success h4 mb-0">₹<span id="display-sb-final-total">0.00</span></strong>
+<div class="d-flex justify-content-between align-items-center bg-light border rounded px-3 py-1 my-1">
+    <div class="d-flex align-items-center">
+        <span class="text-muted mr-2 font-weight-bold" style="font-size: 0.88rem;">Final Bill Total:</span>
+        <strong class="text-success h5 mb-0 mr-3">₹<span id="display-sb-final-total">0.00</span></strong>
+        <div id="sb-total-items-badge" class="d-inline-block"><span class="badge badge-secondary px-2 py-1">0 Items</span></div>
     </div>
-    <div id="sb-total-items-badge"><span class="badge badge-secondary px-3 py-2">0 Items</span></div>
+    <div class="small text-muted font-weight-bold">
+        <i class="fas fa-keyboard mr-1"></i> F2: Search Item | Tab: Next Field
+    </div>
 </div>
 
 <div class="row g-2 form-fields-grid" id="sb-additional-fields-grid">
-    <div class="field-wrapper col-md-6" data-field="round_off" data-label="Round off Amount" data-default-order="1">
-        <div class="form-group mb-2">
-            <label class="font-weight-bold mb-1" for="round_off">Round off Amount</label>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="round_off" data-label="Round off Amount" data-default-order="1">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="round_off">Round off</label>
             <input type="number" step="0.01" name="round_off" id="round_off" class="form-control" value="{{ old('round_off', $bill->round_off ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="2">
-        <div class="form-group mb-2">
-            <label class="font-weight-bold mb-1" for="total_extra_cess">Total Extra Cess</label>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="2">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="total_extra_cess">Extra Cess</label>
             <input type="number" step="0.01" name="total_extra_cess" id="total_extra_cess" class="form-control" value="{{ old('total_extra_cess', $bill->total_extra_cess ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-md-6" data-field="gst_calamity_cess" data-label="GST Calamity Cess" data-default-order="3">
-        <div class="form-group mb-2">
-            <label class="font-weight-bold mb-1" for="gst_calamity_cess">GST Calamity Cess</label>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="gst_calamity_cess" data-label="GST Calamity Cess" data-default-order="3">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="gst_calamity_cess">Calamity Cess</label>
             <input type="number" step="0.01" name="gst_calamity_cess" id="gst_calamity_cess" class="form-control" value="{{ old('gst_calamity_cess', $bill->gst_calamity_cess ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="4">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="total_weight" data-label="Total Weight" data-default-order="4">
+        <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="total_weight">Total Weight</label>
             <input type="number" step="0.01" name="total_weight" id="total_weight" class="form-control" value="{{ old('total_weight', $bill->total_weight ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-md-6" data-field="remarks" data-label="Remarks" data-default-order="5">
-        <div class="form-group mb-2">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="remarks" data-label="Remarks" data-default-order="5">
+        <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="remarks">Remarks</label>
-            <textarea name="remarks" id="remarks" rows="1" class="form-control" style="min-height: 38px; resize: vertical;" placeholder="Any remarks for this bill...">{{ old('remarks', $bill->remarks ?? '') }}</textarea>
+            <textarea name="remarks" id="remarks" rows="1" class="form-control" placeholder="Remarks...">{{ old('remarks', $bill->remarks ?? '') }}</textarea>
         </div>
     </div>
-    <div class="field-wrapper col-md-6" data-field="message" data-label="Message" data-default-order="6">
-        <div class="form-group mb-2">
-            <label class="font-weight-bold mb-1" for="message">Message</label>
-            <textarea name="message" id="message" rows="1" class="form-control" style="min-height: 38px; resize: vertical;" placeholder="Print invoice footer message...">{{ old('message', $bill->message ?? '') }}</textarea>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="message" data-label="Message" data-default-order="6">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="message">Footer Message</label>
+            <textarea name="message" id="message" rows="1" class="form-control" placeholder="Footer msg...">{{ old('message', $bill->message ?? '') }}</textarea>
         </div>
     </div>
 </div>
