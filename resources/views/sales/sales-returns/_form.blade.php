@@ -4,6 +4,18 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($ret?->items ?? collect());
 @endphp
 
+@push('css')
+<style>
+.sr-exp-date[readonly] {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+.sr-exp-date[readonly]::-webkit-calendar-picker-indicator {
+    display: none !important;
+}
+</style>
+@endpush
+
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-undo text-primary mr-1"></i> Sales Return Header</h6>
     <x-form-layout-customizer
@@ -485,7 +497,7 @@
                     $row.find('.sr-item-desc').val(it.name + (it.item_code ? ' [' + it.item_code + ']' : ''));
                     $row.find('.sr-item-select').val(it.id);
                     let exp = batches.length && batches[0].exp_date ? batches[0].exp_date.toString().substring(0, 10) : (it.exp_date ? it.exp_date.toString().substring(0, 10) : '');
-                    $row.find('.sr-exp-date').val(exp);
+                    $row.find('.sr-exp-date').val(exp).attr('data-original-exp', exp).data('original-exp', exp);
                     let sell = batches.length && batches[0].sell_price > 0 ? batches[0].sell_price : (it.sell_price || 0);
                     let mrp = batches.length && batches[0].mrp > 0 ? batches[0].mrp : (it.mrp || 0);
                     $row.find('.sr-price').val(sell > 0 ? parseFloat(sell).toFixed(2) : '');
@@ -568,6 +580,26 @@
             .on('input', '.sr-item-code', function () {
                 $(this).removeClass('is-invalid border-danger');
             });
+
+        // Safeguards to prevent Expiry Date from ever disappearing or getting wiped out on click/keydown/blur
+        $(document).on('focus', '.sr-exp-date[readonly]', function () {
+            $(this).blur();
+        });
+
+        $(document).on('keydown', '.sr-exp-date', function (e) {
+            if ($(this).prop('readonly') || $(this).attr('readonly') || e.which === 8 || e.which === 46) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        $(document).on('input change blur', '.sr-exp-date', function () {
+            let $el = $(this);
+            let orig = $el.attr('data-original-exp') || $el.data('original-exp');
+            if (!$el.val() && orig) {
+                $el.val(orig);
+            }
+        });
 
         // Clicking on description also opens item search modal
         $(document).on('click', '.sr-item-desc', function () {
@@ -1325,7 +1357,10 @@
             if (gstPctInput) gstPctInput.value = item.gst_percent || 0;
 
             const expInput = row.querySelector('.sr-exp-date');
-            if (expInput && item.exp_date) expInput.value = item.exp_date;
+            if (expInput && item.exp_date) {
+                expInput.value = item.exp_date;
+                expInput.setAttribute('data-original-exp', item.exp_date);
+            }
 
             document.getElementById('sr-items-body').appendChild(row);
             rowIndex++;
@@ -2147,7 +2182,7 @@
                 $nr.find('.sr-disc-percent').val(discPercent > 0 ? discPercent : '');
                 $nr.find('.sr-disc-amount').val(discAmount > 0 ? discAmount.toFixed(2) : '');
                 $nr.find('.sr-gst-percent').val(gstPercent);
-                $nr.find('.sr-exp-date').val(expDate);
+                $nr.find('.sr-exp-date').val(expDate).attr('data-original-exp', expDate).data('original-exp', expDate);
 
                 tbody.appendChild(newRow);
                 rowIndex++;

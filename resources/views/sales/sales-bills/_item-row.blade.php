@@ -52,17 +52,19 @@
         <input type="hidden" name="items[{{ $index }}][stock]" class="sb-item-stock-val" value="{{ $lineStock }}">
         <input type="hidden" name="items[{{ $index }}][batch_no]" class="sb-item-batch-no" value="{{ $line->batch_no ?? '' }}">
     </td>
-    <td style="width: 135px;" data-col-key="expiry">
+    <td style="width: 135px;" data-col-key="expiry" title="Expiry date (Read-only)">
         <div class="input-group input-group-sm">
             <input type="date"
                    name="items[{{ $index }}][exp_date]"
                    value="{{ $expDateVal }}"
+                   data-original-exp="{{ $expDateVal }}"
                    readonly
                    tabindex="-1"
                    class="form-control form-control-sm sb-exp-date bg-light"
+                   style="pointer-events: none;"
                    autocomplete="off"
                    title="Expiry date (Read-only)">
-            <div class="input-group-append sb-batch-btn-wrap d-none">
+            <div class="input-group-append sb-batch-btn-wrap d-none" style="pointer-events: auto;">
                 <button type="button" tabindex="-1" class="btn btn-warning btn-xs sb-btn-choose-batch" title="Multiple batches available! Click to choose batch">
                     <i class="fas fa-layer-group"></i>
                 </button>

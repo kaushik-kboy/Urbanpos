@@ -60,11 +60,14 @@
                value="{{ $rowId === '__INDEX__' ? '' : data_get($line, 'sales_bill_item_id') }}">
     </td>
     {{-- Exp Date --}}
-    <td style="width: 135px;" data-col-key="expiry">
+    <td style="width: 135px;" data-col-key="expiry" title="Expiry date (Read-only)">
         <input type="date" name="items[{{ $rowId }}][exp_date]"
                value="{{ $rowId === '__INDEX__' ? '' : $expDate }}"
+               data-original-exp="{{ $rowId === '__INDEX__' ? '' : $expDate }}"
                class="form-control form-control-sm sr-exp-date bg-light"
-               readonly tabindex="-1">
+               style="pointer-events: none;"
+               readonly tabindex="-1"
+               title="Expiry date (Read-only)">
     </td>
     {{-- Qty --}}
     <td style="width: 100px;" data-col-key="qty">

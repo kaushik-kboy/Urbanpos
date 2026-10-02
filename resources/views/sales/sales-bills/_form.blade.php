@@ -21,6 +21,13 @@
 .batch-nav-row {
     cursor: pointer;
 }
+.sb-exp-date[readonly] {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+.sb-exp-date[readonly]::-webkit-calendar-picker-indicator {
+    display: none !important;
+}
 </style>
 @endpush
 
@@ -1652,7 +1659,8 @@
             activeSearchRow.find('.sb-item-select').val(itemId);
             let itemExp = $row.data('exp');
             if (itemExp) {
-                activeSearchRow.find('.sb-exp-date').val(itemExp.toString().substring(0, 10));
+                let cleanExp = itemExp.toString().substring(0, 10);
+                activeSearchRow.find('.sb-exp-date').val(cleanExp).attr('data-original-exp', cleanExp).data('original-exp', cleanExp);
             }
             processItemLookup(null, activeSearchRow, itemId);
             $('#sb-item-search-modal').modal('hide');
@@ -2273,7 +2281,7 @@
                     }
                     return;
                 }
-                activeModalRow.find('.sb-exp-date').val(cleanExp);
+                activeModalRow.find('.sb-exp-date').val(cleanExp).attr('data-original-exp', cleanExp).data('original-exp', cleanExp);
             }
             if (sell && parseFloat(sell) > 0) activeModalRow.find('.sb-sell-price').val(parseFloat(sell).toFixed(2));
             if (mrp && parseFloat(mrp) > 0) activeModalRow.find('.sb-mrp').val(parseFloat(mrp).toFixed(2));
@@ -2405,7 +2413,7 @@
                             bestExp = item.exp_date.toString().substring(0, 10);
                         }
                         if (bestExp) {
-                            $exp.val(bestExp);
+                            $exp.val(bestExp).attr('data-original-exp', bestExp).data('original-exp', bestExp);
                         }
                     }
 
@@ -2523,12 +2531,32 @@
             if (!itemId) {
                 $row.find('.sb-item-code').val('');
                 $row.find('.sb-item-stock').val('');
-                $row.find('.sb-exp-date').val('');
+                $row.find('.sb-exp-date').val('').removeAttr('data-original-exp').removeData('original-exp');
                 $row.find('.sb-batch-btn-wrap').addClass('d-none');
                 return;
             }
 
             processItemLookup(null, $row, itemId);
+        });
+
+        // Safeguards to prevent Expiry Date from ever disappearing or getting wiped out on click/keydown/blur
+        $(document).on('focus', '.sb-exp-date[readonly]', function () {
+            $(this).blur();
+        });
+
+        $(document).on('keydown', '.sb-exp-date', function (e) {
+            if ($(this).prop('readonly') || $(this).attr('readonly') || e.which === 8 || e.which === 46) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        $(document).on('input change blur', '.sb-exp-date', function () {
+            let $el = $(this);
+            let orig = $el.attr('data-original-exp') || $el.data('original-exp');
+            if (!$el.val() && orig) {
+                $el.val(orig);
+            }
         });
 
         // 3. Real-time Calculation Listeners
@@ -3336,7 +3364,12 @@
 
                     $newRow.find('.sb-sell-price').val(it.sell_price);
                     $newRow.find('.sb-mrp').val(it.mrp);
-                    $newRow.find('.sb-exp-date').val(it.exp_date);
+                    if (it.exp_date) {
+                        let cleanExp = it.exp_date.toString().substring(0, 10);
+                        $newRow.find('.sb-exp-date').val(cleanExp).attr('data-original-exp', cleanExp).data('original-exp', cleanExp);
+                    } else {
+                        $newRow.find('.sb-exp-date').val('');
+                    }
                     $newRow.find('.sb-gst-percent').val(it.gst_percent);
                     $newRow.find('.sb-disc-percent').val(it.disc_percent);
                     $newRow.find('.sb-disc-amount').val(it.disc_amount);
