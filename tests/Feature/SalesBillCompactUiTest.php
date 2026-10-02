@@ -75,5 +75,12 @@ class SalesBillCompactUiTest extends TestCase
 
         // 7. Verify auto-scroll focus listener is rendered for keyboard flow
         $this->assertStringContainsString('Auto-scroll items container when focused field moves out of visible view', $content);
+
+        // 8. Verify rich POS footer elements
+        $this->assertStringContainsString('sb-rich-footer', $content);
+        $this->assertStringContainsString('id="display-sb-final-total"', $content);
+        $this->assertStringContainsString('id="sb-total-items-badge"', $content);
+        $this->assertStringContainsString('id="sb-main-save-btn"', $content);
+        $this->assertStringContainsString('id="btn-reset-form"', $content);
     }
 }

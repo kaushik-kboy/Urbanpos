@@ -30,17 +30,23 @@
 }
 
 /* Compact Single-Screen Sales Bill UI */
+.main-footer {
+    display: none !important;
+}
+.content-wrapper {
+    min-height: auto !important;
+}
 .content-header {
-    padding: 6px 0.5rem !important;
+    padding: 4px 0.5rem !important;
 }
 .content-wrapper > .content {
-    padding: 0 0.5rem !important;
+    padding: 0 0.5rem 0.4rem 0.5rem !important;
 }
 .card-body {
-    padding: 0.5rem 0.75rem !important;
+    padding: 0.35rem 0.65rem !important;
 }
 .sb-compact-section-header {
-    margin-bottom: 0.2rem !important;
+    margin-bottom: 0.15rem !important;
 }
 .sb-compact-section-header h5, 
 .sb-compact-section-header h6 {
@@ -49,18 +55,18 @@
     margin-bottom: 0 !important;
 }
 .sb-divider-compact {
-    margin-top: 0.3rem !important;
-    margin-bottom: 0.3rem !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
     border-color: #e9ecef;
 }
 #sb-header-fields-grid .form-group,
 #sb-additional-fields-grid .form-group {
-    margin-bottom: 0.2rem !important;
+    margin-bottom: 0.15rem !important;
 }
 #sb-header-fields-grid label,
 #sb-additional-fields-grid label {
     font-size: 0.76rem !important;
-    margin-bottom: 0.1rem !important;
+    margin-bottom: 0.08rem !important;
     font-weight: 600;
     color: #495057;
     white-space: nowrap;
@@ -95,8 +101,8 @@
 
 /* Scrollable Items Container & Sticky Header */
 .sb-items-scroll-container {
-    height: clamp(170px, 26vh, 230px);
-    max-height: clamp(170px, 26vh, 230px);
+    height: clamp(140px, 22vh, 195px);
+    max-height: clamp(140px, 22vh, 195px);
     overflow-y: auto;
     overflow-x: auto;
     position: relative;
@@ -143,6 +149,16 @@
     height: 26px !important;
     padding: 0.1rem 0.35rem;
     font-size: 0.82rem;
+}
+
+/* Rich Pinned POS Footer */
+.sb-rich-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background-color: #f8f9fa !important;
+    border-top: 2px solid #dee2e6 !important;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
 }
 </style>
 @endpush
@@ -450,16 +466,6 @@
         button-class="btn btn-outline-primary btn-xs font-weight-bold shadow-sm" />
 </div>
 
-<div class="d-flex justify-content-between align-items-center bg-light border rounded px-3 py-1 my-1">
-    <div class="d-flex align-items-center">
-        <span class="text-muted mr-2 font-weight-bold" style="font-size: 0.88rem;">Final Bill Total:</span>
-        <strong class="text-success h5 mb-0 mr-3">₹<span id="display-sb-final-total">0.00</span></strong>
-        <div id="sb-total-items-badge" class="d-inline-block"><span class="badge badge-secondary px-2 py-1">0 Items</span></div>
-    </div>
-    <div class="small text-muted font-weight-bold">
-        <i class="fas fa-keyboard mr-1"></i> F2: Search Item | Tab: Next Field
-    </div>
-</div>
 
 <div class="row g-2 form-fields-grid" id="sb-additional-fields-grid">
     <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="round_off" data-label="Round off Amount" data-default-order="1">
@@ -822,25 +828,25 @@
                         <table class="tender-table">
                             <tbody>
                                 <tr>
-                                    <td class="tender-label">Cash (Alt+C)</td>
+                                    <td class="tender-label">A). Cash (Alt+C)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-cash" class="form-control text-left font-weight-bold" placeholder="0.00" autocomplete="off">
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="tender-label">Credit (Alt+E)</td>
+                                    <td class="tender-label">B). Credit (Alt+E)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-credit" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="tender-label">Card (Alt+D)</td>
+                                    <td class="tender-label">C). Card (Alt+D)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-card" class="form-control text-left font-weight-bold" placeholder="0.00" autocomplete="off">
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="tender-label">UPI / Wallet (Alt+U)</td>
+                                    <td class="tender-label">W). Wallet / UPI (Alt+U)</td>
                                     <td>
                                         <input type="number" step="any" id="tender-wallet" class="form-control text-left font-weight-bold" placeholder="" autocomplete="off">
                                     </td>
