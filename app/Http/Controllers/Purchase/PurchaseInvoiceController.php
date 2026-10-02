@@ -584,23 +584,32 @@ class PurchaseInvoiceController extends Controller
         $defaultBranchId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?: 0));
         $branchId = (int) ($request->input('branch_id') ?: $defaultBranchId);
 
+        $exactMatchOnly = $request->boolean('exact_match_only');
+
         $item = null;
         if (! empty($itemId)) {
             $item = Item::where('status', true)->with('gstTax:id,percentage')->find($itemId);
         }
 
         if (! $item && $query !== '') {
-            if (is_numeric($query)) {
+            // Check exact item_code or ean_upc_code first (crucial for barcode / code inputs)
+            $item = Item::where('status', true)
+                ->where(function ($q) use ($query) {
+                    $q->where('item_code', $query)
+                      ->orWhere('ean_upc_code', $query);
+                })
+                ->with('gstTax:id,percentage')
+                ->first();
+
+            // Check primary key only if numeric and not found by code/barcode
+            if (! $item && is_numeric($query)) {
                 $item = Item::where('status', true)->with('gstTax:id,percentage')->find((int) $query);
             }
 
-            if (! $item) {
+            // Fallback to name search only if NOT exact_match_only
+            if (! $item && ! $exactMatchOnly) {
                 $item = Item::where('status', true)->with('gstTax:id,percentage')
-                    ->where(function ($q) use ($query) {
-                        $q->where('item_code', $query)
-                            ->orWhere('ean_upc_code', $query)
-                            ->orWhere('name', 'like', "%{$query}%");
-                    })
+                    ->where('name', 'like', "%{$query}%")
                     ->first();
             }
         }

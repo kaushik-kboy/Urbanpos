@@ -340,25 +340,135 @@ $(function() {
         return true;
     }
 
-    // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
-    $(document).off('click focus keydown', '.sq-item-code')
-        .on('focus', '.sq-item-code', function () {
-            if (sqMouseDown) {
-                sqMouseDown = false;
-                return; // Focused by mouse click - do not open modal!
+    const SQ_LOOKUP_URL = '{{ route("sales.sales-bills.lookup-item") }}';
+
+    function processSqItemLookup($row, itemId, query, isDirectLookup = false) {
+        let custId = $('#customer_id').val() || $('select[name="customer_id"]').val();
+        if (!custId) {
+            if (typeof toastr !== 'undefined') toastr.warning('Please select a Customer first.');
+            else alert('Please select a Customer first.');
+            let $c = $('#customer_id, select[name="customer_id"]');
+            if ($c.data('select2')) $c.select2('open'); else $c.focus();
+            return;
+        }
+
+        if (query && window.PosScanGuard) {
+            let scanCheck = window.PosScanGuard.filterScan(query);
+            if (!scanCheck.allowed) {
+                return; // Ignore duplicate bounce
             }
-            // Focused by Tab / Keyboard navigation!
-            checkCustomerAndOpenSqModal($(this));
-        })
+        }
+
+        let branchId = $('#branch_id').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+        let params = { branch_id: branchId };
+        if (itemId) {
+            params.item_id = itemId;
+        } else if (query) {
+            params.query = query;
+            if (isDirectLookup) {
+                params.exact_match_only = 1;
+            }
+        } else {
+            return;
+        }
+
+        $.getJSON(SQ_LOOKUP_URL, params, function (res) {
+            if (res && res.found && res.item) {
+                let it = res.item;
+                $row.data('last-processed-code', query || it.item_code || it.ean_upc_code || it.id);
+                $row.find('.sq-item-code').removeClass('is-invalid border-danger').val(it.item_code || it.ean_upc_code || it.id);
+                $row.find('.sq-item-desc').val(it.name + (it.item_code ? ' [' + it.item_code + ']' : ''));
+                $row.find('.sq-item-select').val(it.id);
+
+                let batches = res.batches || [];
+                let sell = batches.length && batches[0].sell_price > 0 ? batches[0].sell_price : (it.sell_price || 0);
+                let mrp = batches.length && batches[0].mrp > 0 ? batches[0].mrp : (it.mrp || 0);
+                $row.find('.sq-sell-price').val(parseFloat(sell).toFixed(2));
+                $row.find('.sq-mrp').val(parseFloat(mrp).toFixed(2));
+                $row.find('.sq-gst-percent').val(parseFloat(it.gst_tax ? it.gst_tax.percentage : (it.gst_percent || 0)).toFixed(2));
+
+                recalcRow($row);
+                setTimeout(function () {
+                    $row.find('.sq-qty').focus().select();
+                }, 60);
+            } else {
+                $row.data('last-processed-code', null);
+                $row.find('.sq-item-code').addClass('is-invalid border-danger');
+                let msg = "Product not found for this Item Code/Barcode.";
+                if (typeof toastr !== 'undefined') {
+                    toastr.warning(msg, 'Item Not Found');
+                } else {
+                    alert(msg);
+                }
+                setTimeout(function () {
+                    $row.find('.sq-item-code').focus().select();
+                }, 50);
+            }
+        });
+    }
+
+    // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+    $(document).off('keydown change input', '.sq-item-code')
         .on('keydown', '.sq-item-code', function (e) {
-            if (e.key === 'Enter' || e.key === 'F2') {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                let val = $.trim($(this).val());
+                let $row = $(this).closest('tr');
+                if (val) {
+                    processSqItemLookup($row, null, val, true);
+                } else {
+                    checkCustomerAndOpenSqModal($(this));
+                }
+            } else if (e.key === 'Tab' && !e.shiftKey) {
+                let val = $.trim($(this).val());
+                let $row = $(this).closest('tr');
+                if (val) {
+                    e.preventDefault();
+                    processSqItemLookup($row, null, val, true);
+                } else {
+                    e.preventDefault();
+                    checkCustomerAndOpenSqModal($(this));
+                }
+            } else if (e.key === 'F2') {
                 e.preventDefault();
                 checkCustomerAndOpenSqModal($(this));
+            } else if (e.key === 'Escape') {
+                let $row = $(this).closest('tr');
+                let itemId = $row.find('.sq-item-select').val();
+                if (!itemId && $('#sq-items-body tr').length > 1) {
+                    e.preventDefault();
+                    let $prevRow = $row.prev('tr');
+                    $row.remove();
+                    recalcAll();
+                    if ($prevRow.length) {
+                        $prevRow.find('.sq-qty').focus().select();
+                    }
+                }
             }
         })
-        .on('click', '.sq-item-code', function () {
-            sqMouseDown = false;
+        .on('change', '.sq-item-code', function () {
+            let $input = $(this);
+            let query = $.trim($input.val());
+            let $row = $input.closest('tr');
+            if (!query) {
+                $row.find('.sq-item-select').val('');
+                $row.find('.sq-item-desc').val('');
+                $row.data('last-processed-code', '');
+                recalcRow($row);
+                return;
+            }
+            if ($row.data('last-processed-code') === query) return;
+            processSqItemLookup($row, null, query, true);
+        })
+        .on('input', '.sq-item-code', function () {
+            $(this).removeClass('is-invalid border-danger');
         });
+
+    // Clicking on description also opens item search modal
+    $(document).on('click', '.sq-item-desc', function () {
+        let $code = $(this).closest('tr').find('.sq-item-code');
+        checkCustomerAndOpenSqModal($code);
+    });
 
     // Tab starts from first field (customer_id) on page load
     setTimeout(function () {

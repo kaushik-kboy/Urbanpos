@@ -506,7 +506,9 @@ class PurchaseReturnController extends Controller
         ]));
         $items = $this->itemList($subReq)->getData(true)['items'] ?? [];
 
-        if (empty($items)) {
+        $exactMatchOnly = $request->boolean('exact_match_only');
+
+        if (empty($items) && ! $exactMatchOnly) {
             $subReq = Request::create('', 'GET', array_merge($request->all(), [
                 'code' => '',
                 'search' => $query,

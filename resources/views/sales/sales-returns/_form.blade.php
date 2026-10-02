@@ -297,6 +297,7 @@
         let srActiveSearchRow = null;
         let srIslDebounce = null;
         const SR_ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
+        const SR_LOOKUP_URL = '{{ route("sales.sales-bills.lookup-item") }}';
 
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL — open on click of Code/Barcode field
@@ -333,25 +334,136 @@
             return true;
         }
 
-        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
-        $(document).off('click focus keydown', '.sr-item-code')
-            .on('focus', '.sr-item-code', function () {
-                if (srMouseDown) {
-                    srMouseDown = false;
-                    return; // Focused by mouse click - do not open modal!
+        function processSrItemLookup($row, itemId, query, isDirectLookup = false) {
+            let custId = $('#customer_id').val();
+            if (!custId) {
+                validateSrHeader(true);
+                return;
+            }
+            if ($('#sales_bill_id').val()) {
+                $('#sr-bill-item-error').text('Items are restricted to the selected Sales Bill. Please check items from the list above.').show();
+                $('#sr-bill-item-checklist').focus();
+                return;
+            }
+
+            if (query && window.PosScanGuard) {
+                let scanCheck = window.PosScanGuard.filterScan(query);
+                if (!scanCheck.allowed) {
+                    return; // Ignore duplicate bounce
                 }
-                // Focused by Tab / Keyboard navigation!
-                checkCustomerAndOpenSrModal($(this));
-            })
+            }
+
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let params = { branch_id: branchId, show_all: 1 };
+            if (itemId) {
+                params.item_id = itemId;
+            } else if (query) {
+                params.query = query;
+                if (isDirectLookup) {
+                    params.exact_match_only = 1;
+                }
+            } else {
+                return;
+            }
+
+            $.getJSON(SR_LOOKUP_URL, params, function (res) {
+                if (res && res.found && res.item) {
+                    let it = res.item;
+                    let batches = res.batches || [];
+                    $row.data('last-processed-code', query || it.item_code || it.ean_upc_code || it.id);
+                    $row.find('.sr-item-code').removeClass('is-invalid border-danger').val(it.item_code || it.ean_upc_code || it.id);
+                    $row.find('.sr-item-desc').val(it.name + (it.item_code ? ' [' + it.item_code + ']' : ''));
+                    $row.find('.sr-item-select').val(it.id);
+                    let exp = batches.length && batches[0].exp_date ? batches[0].exp_date.toString().substring(0, 10) : (it.exp_date ? it.exp_date.toString().substring(0, 10) : '');
+                    $row.find('.sr-exp-date').val(exp);
+                    let sell = batches.length && batches[0].sell_price > 0 ? batches[0].sell_price : (it.sell_price || 0);
+                    let mrp = batches.length && batches[0].mrp > 0 ? batches[0].mrp : (it.mrp || 0);
+                    $row.find('.sr-price').val(sell > 0 ? parseFloat(sell).toFixed(2) : '');
+                    $row.find('.sr-mrp').val(mrp > 0 ? parseFloat(mrp).toFixed(2) : '');
+                    $row.find('.sr-gst-percent').val(it.gst_tax ? it.gst_tax.percentage : (it.gst_percent || ''));
+                    $row.find('.sr-disc-percent').val('').trigger('input');
+                    $row.find('.sr-disc-amount').val('');
+                    recalculateRow($row[0]);
+                    setTimeout(function () {
+                        $row.find('.sr-qty').focus().select();
+                    }, 60);
+                } else {
+                    $row.data('last-processed-code', null);
+                    $row.find('.sr-item-code').addClass('is-invalid border-danger');
+                    let msg = "Product not found for this Item Code/Barcode.";
+                    if (window.toastr) {
+                        toastr.warning(msg, 'Item Not Found');
+                    }
+                    setTimeout(function () {
+                        $row.find('.sr-item-code').focus().select();
+                    }, 50);
+                }
+            });
+        }
+
+        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+        $(document).off('keydown change input', '.sr-item-code')
             .on('keydown', '.sr-item-code', function (e) {
-                if (e.key === 'Enter' || e.key === 'F2') {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        processSrItemLookup($row, null, val, true);
+                    } else {
+                        checkCustomerAndOpenSrModal($(this));
+                    }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        e.preventDefault();
+                        processSrItemLookup($row, null, val, true);
+                    } else {
+                        e.preventDefault();
+                        checkCustomerAndOpenSrModal($(this));
+                    }
+                } else if (e.key === 'F2') {
                     e.preventDefault();
                     checkCustomerAndOpenSrModal($(this));
+                } else if (e.key === 'Escape') {
+                    let $row = $(this).closest('tr');
+                    let itemId = $row.find('.sr-item-select').val();
+                    if (!itemId && $('#sr-items-body tr').length > 1) {
+                        e.preventDefault();
+                        let $prevRow = $row.prev('tr');
+                        $row.remove();
+                        updateSrRowNumbers();
+                        calculateSrTotals();
+                        if ($prevRow.length) {
+                            $prevRow.find('.sr-qty').focus().select();
+                        }
+                    }
                 }
             })
-            .on('click', '.sr-item-code', function () {
-                srMouseDown = false;
+            .on('change', '.sr-item-code', function () {
+                let $input = $(this);
+                let query = $.trim($input.val());
+                let $row = $input.closest('tr');
+                if (!query) {
+                    $row.find('.sr-item-select').val('');
+                    $row.find('.sr-item-desc').val('');
+                    $row.data('last-processed-code', '');
+                    recalculateRow($row[0]);
+                    return;
+                }
+                if ($row.data('last-processed-code') === query) return;
+                processSrItemLookup($row, null, query, true);
+            })
+            .on('input', '.sr-item-code', function () {
+                $(this).removeClass('is-invalid border-danger');
             });
+
+        // Clicking on description also opens item search modal
+        $(document).on('click', '.sr-item-desc', function () {
+            let $code = $(this).closest('tr').find('.sr-item-code');
+            checkCustomerAndOpenSrModal($code);
+        });
 
         // Tab starts from first field (customer_id) on page load
         setTimeout(function () {

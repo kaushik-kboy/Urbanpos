@@ -519,6 +519,13 @@
             code = (code || '').trim();
             if (!code) return;
 
+            if (window.PosScanGuard) {
+                let scanCheck = window.PosScanGuard.filterScan(code);
+                if (!scanCheck.allowed) {
+                    return; // Ignore duplicate bounce
+                }
+            }
+
             const currentBranch = $('#branch_id').val() || 2;
             $.ajax({
                 url: itemByCodeUrl,
@@ -526,14 +533,29 @@
                 dataType: 'json',
                 success: function (res) {
                     if (res && res.found && res.item) {
+                        $row.data('last-processed-code', code || res.item.item_code || res.item.id);
+                        $row.find('.item-code-input').removeClass('is-invalid border-danger');
                         applyItemToRow($row, res.item);
+                        setTimeout(function () {
+                            $row.find('.item-qty').focus().select();
+                        }, 60);
                     } else {
-                        // Not found by exact match -> Open Item Search Modal with entered query!
-                        openItemModal($row, code);
+                        $row.data('last-processed-code', null);
+                        $row.find('.item-code-input').addClass('is-invalid border-danger');
+                        const errMsg = "Product not found for this Item Code/Barcode.";
+                        if (window.toastr && typeof window.toastr.warning === 'function') {
+                            toastr.clear();
+                            toastr.warning(errMsg, 'Item Not Found');
+                        } else {
+                            alert(errMsg);
+                        }
+                        setTimeout(function () {
+                            $row.find('.item-code-input').focus().select();
+                        }, 50);
                     }
                 },
                 error: function () {
-                    openItemModal($row, code);
+                    $row.find('.item-code-input').addClass('is-invalid border-danger');
                 }
             });
         }
@@ -664,23 +686,68 @@
             openItemModal($row, $input.val());
         }
 
-        $('#items-body').off('click focus keydown', '.item-code-input')
-            .on('focus', '.item-code-input', function () {
-                if (osMouseDown) {
-                    osMouseDown = false;
-                    return; // mouse click — do not open modal
-                }
-                checkAndOpenOsModal($(this));
-            })
+        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+        $('#items-body').off('keydown change input', '.item-code-input')
             .on('keydown', '.item-code-input', function (e) {
-                if (e.key === 'Enter' || e.key === 'F2') {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr.item-row');
+                    if (val) {
+                        lookupCode($row, val);
+                    } else {
+                        checkAndOpenOsModal($(this));
+                    }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr.item-row');
+                    if (val) {
+                        e.preventDefault();
+                        lookupCode($row, val);
+                    } else {
+                        e.preventDefault();
+                        checkAndOpenOsModal($(this));
+                    }
+                } else if (e.key === 'F2') {
                     e.preventDefault();
                     checkAndOpenOsModal($(this));
+                } else if (e.key === 'Escape') {
+                    let $row = $(this).closest('tr.item-row');
+                    let itemId = $row.find('.item-select').val();
+                    if (!itemId && $('#items-body tr.item-row').length > 1) {
+                        e.preventDefault();
+                        let $prevRow = $row.prev('tr.item-row');
+                        $row.remove();
+                        reindexSno();
+                        recalcTotals();
+                        if ($prevRow.length) {
+                            $prevRow.find('.item-qty').focus().select();
+                        }
+                    }
                 }
             })
-            .on('click', '.item-code-input', function () {
-                osMouseDown = false;
+            .on('change', '.item-code-input', function () {
+                let val = $.trim($(this).val());
+                let $row = $(this).closest('tr.item-row');
+                if (!val) {
+                    $row.find('.item-select').val('');
+                    $row.find('.item-desc-input').val('');
+                    recalcRow($row);
+                    $row.data('last-processed-code', '');
+                    return;
+                }
+                if ($row.data('last-processed-code') === val) return;
+                lookupCode($row, val);
+            })
+            .on('input', '.item-code-input', function () {
+                $(this).removeClass('is-invalid border-danger');
             });
+
+        // Clicking on description also opens item search modal
+        $(document).on('click', '.item-desc-input', function () {
+            let $code = $(this).closest('tr.item-row').find('.item-code-input');
+            checkAndOpenOsModal($code);
+        });
 
         $(document).off('keydown', '.item-gst-percent, .item-scheme-others, .item-scheme-amount').on('keydown', '.item-gst-percent, .item-scheme-others, .item-scheme-amount', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
@@ -706,19 +773,7 @@
             }
         });
 
-        // Event listeners on items-body
-        $('#items-body').on('change', '.item-code-input', function () {
-            const $row = $(this).closest('tr');
-            lookupCode($row, $(this).val());
-        });
 
-        $('#items-body').on('keypress', '.item-code-input', function (e) {
-            if (e.which === 13) {
-                e.preventDefault();
-                const $row = $(this).closest('tr');
-                lookupCode($row, $(this).val());
-            }
-        });
 
         // Click search icon button in row
         $('#items-body').on('click', '.open-item-modal', function (e) {

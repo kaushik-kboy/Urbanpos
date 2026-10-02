@@ -279,25 +279,7 @@
             return true;
         }
 
-        // Tab or Enter/F2 opens modal. Mouse click DOES NOT open modal.
-        $(document).off('click focus keydown', '.su-item-code')
-            .on('focus', '.su-item-code', function () {
-                if (suMouseDown) {
-                    suMouseDown = false;
-                    return; // Focused by mouse click - do not open modal!
-                }
-                // Focused by Tab / Keyboard navigation!
-                checkAndOpenSuModal($(this));
-            })
-            .on('keydown', '.su-item-code', function (e) {
-                if (e.key === 'Enter' || e.key === 'F2') {
-                    e.preventDefault();
-                    checkAndOpenSuModal($(this));
-                }
-            })
-            .on('click', '.su-item-code', function () {
-                suMouseDown = false;
-            });
+        // Standardized Barcode & Item Code events are bound in the Item Lookup section below
 
         // Tab starts from first field (branch_id) on page load
         setTimeout(function () {
@@ -602,30 +584,118 @@
             let $row = suActiveSearchRow;
             $('#su-item-search-modal').modal('hide');
 
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            $.getJSON(SU_LOOKUP_URL, { item_id: itemId, branch_id: branchId }, function (res) {
-                if (res && res.found && res.item) {
-                    applyItemToSuRow($row, res.item, res.batches || []);
-                }
-            });
+            processSuItemLookup($row, itemId, null, false);
         });
 
-        // Direct Code typing and Enter/Blur lookup
-        $(document).on('keydown blur', '.su-item-code', function (e) {
-            if (e.type === 'keydown' && e.key !== 'Enter') return;
-            if (e.type === 'keydown' && e.key === 'Enter') e.preventDefault();
-
-            let $input = $(this);
-            let query = $.trim($input.val());
-            let $row = $input.closest('tr');
-            if (!query) return;
-
+        function processSuItemLookup($row, itemId, query, isDirectLookup = false) {
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            $.getJSON(SU_LOOKUP_URL, { query: query, branch_id: branchId }, function (res) {
+            let $code = $row.find('.su-item-code');
+
+            if (query && window.PosScanGuard) {
+                let scanCheck = window.PosScanGuard.filterScan(query);
+                if (!scanCheck.allowed) {
+                    return; // Ignore duplicate bounce
+                }
+            }
+
+            let params = { branch_id: branchId };
+            if (itemId) {
+                params.item_id = itemId;
+            } else if (query) {
+                params.query = query;
+                if (isDirectLookup) {
+                    params.exact_match_only = 1;
+                }
+            } else {
+                return;
+            }
+
+            $.getJSON(SU_LOOKUP_URL, params, function (res) {
                 if (res && res.found && res.item) {
+                    $row.data('last-processed-code', query || res.item.item_code || res.item.ean_upc_code || res.item.id);
+                    $code.removeClass('is-invalid border-danger');
                     applyItemToSuRow($row, res.item, res.batches || []);
+                } else {
+                    $row.data('last-processed-code', null);
+                    $code.addClass('is-invalid border-danger');
+                    const errMsg = "Product not found for this Item Code/Barcode.";
+                    if (window.toastr && typeof window.toastr.warning === 'function') {
+                        toastr.clear();
+                        toastr.warning(errMsg, 'Item Not Found');
+                    } else {
+                        alert(errMsg);
+                    }
+                    setTimeout(function () {
+                        $code.focus().select();
+                    }, 50);
                 }
             });
+        }
+
+        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+        $(document).off('keydown change input', '.su-item-code')
+            .on('keydown', '.su-item-code', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        // Direct exact lookup without opening popup modal
+                        processSuItemLookup($row, null, val, true);
+                    } else {
+                        // Empty field -> Open Item Search Modal
+                        checkAndOpenSuModal($(this));
+                    }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        e.preventDefault();
+                        processSuItemLookup($row, null, val, true);
+                    } else {
+                        e.preventDefault();
+                        checkAndOpenSuModal($(this));
+                    }
+                } else if (e.key === 'F2') {
+                    e.preventDefault();
+                    checkAndOpenSuModal($(this));
+                } else if (e.key === 'Escape') {
+                    let $row = $(this).closest('tr');
+                    let itemId = $row.find('.su-item-id').val();
+                    if (!itemId && $('#items-body tr.su-item-row').length > 1) {
+                        e.preventDefault();
+                        let $prevRow = $row.prev('tr.su-item-row');
+                        $row.remove();
+                        rowIndex--;
+                        if ($prevRow.length) {
+                            $prevRow.find('.su-physical-qty').focus().select();
+                        }
+                    }
+                }
+            })
+            .on('change', '.su-item-code', function () {
+                let $input = $(this);
+                let query = $.trim($input.val());
+                let $row = $input.closest('tr');
+                if (!query) {
+                    $row.find('.su-item-id').val('');
+                    $row.find('.su-item-desc').val('');
+                    $row.find('.su-current-stock').text('0.000');
+                    $row.data('last-processed-code', '');
+                    return;
+                }
+
+                if ($row.data('last-processed-code') === query) return;
+                processSuItemLookup($row, null, query, true);
+            })
+            .on('input', '.su-item-code', function () {
+                $(this).removeClass('is-invalid border-danger');
+            });
+
+        // Clicking on description also opens item search modal
+        $(document).on('click', '.su-item-desc', function () {
+            let $code = $(this).closest('tr').find('.su-item-code');
+            checkAndOpenSuModal($code);
         });
 
         // Form submit validation and empty row pruning

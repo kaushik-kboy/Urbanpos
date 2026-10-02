@@ -49,9 +49,9 @@
 @endphp
 <tr style="line-height: 1.15;">
     <td class="text-center align-middle font-weight-bold pinv-sr-no px-0" style="width:28px; min-width:28px;" data-col-key="sr">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
-    {{-- Code: show item_code only (no barcode) --}}
-    <td class="px-1" style="width:85px; min-width:85px;" data-col-key="code">
-        <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold px-1" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code" title="Enter item code">
+    {{-- Code / Barcode --}}
+    <td class="px-1" style="width:110px; min-width:100px;" data-col-key="code">
+        <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold px-1" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter or scan Code / Barcode (Enter/F2 for Search)">
     </td>
     {{-- Description --}}
     <td class="px-1" style="min-width:180px; width:195px;" data-col-key="desc">
@@ -114,6 +114,6 @@
     <td class="px-1 text-right align-middle font-weight-bold text-success pinv-row-net" style="width:85px; min-width:85px; font-size:0.84rem;" data-col-key="net">{{ $netAmtVal }}</td>
     {{-- Remove --}}
     <td class="px-0 text-center align-middle" style="width:32px; min-width:32px;" data-col-key="action">
-        <button type="button" class="btn btn-xs btn-outline-danger pinv-remove-row"><i class="fas fa-times"></i></button>
+        <button type="button" class="btn btn-xs btn-outline-danger pinv-remove-row" tabindex="-1"><i class="fas fa-times"></i></button>
     </td>
 </tr>

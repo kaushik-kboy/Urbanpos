@@ -1316,8 +1316,37 @@
                 } else if (e.key === 'F2') {
                     e.preventDefault();
                     openItemSearchModal($(this));
+                } else if (e.key === 'Escape' || (e.key === 'Backspace' && !$(this).val())) {
+                    let $row = $(this).closest('tr');
+                    let itemId = $row.find('.sb-item-select').val();
+                    if (!itemId && $('#sb-items-body tr').length > 1) {
+                        e.preventDefault();
+                        let $prevRow = $row.prev('tr');
+                        $row.remove();
+                        updateRowNumbers();
+                        calculateTotals();
+                        if ($prevRow.length) {
+                            $prevRow.find('.sb-qty').focus().select();
+                        }
+                        return false;
+                    }
                 }
             });
+
+        // If user leaves an empty row and clicks elsewhere, automatically prune it
+        $(document).on('blur', '.sb-item-code', function () {
+            let $row = $(this).closest('tr');
+            setTimeout(function () {
+                if ($('#sb-item-search-modal').is(':visible') || $('#sb-item-search-modal').hasClass('show')) return;
+                let itemId = $row.find('.sb-item-select').val();
+                let codeVal = $.trim($row.find('.sb-item-code').val());
+                if (!itemId && !codeVal && $('#sb-items-body tr').length > 1) {
+                    $row.remove();
+                    updateRowNumbers();
+                    calculateTotals();
+                }
+            }, 250);
+        });
 
         // Clicking on description also opens item search modal
         $(document).on('click', '.sb-item-desc', function () {
@@ -1586,6 +1615,21 @@
             }, 350);
 
             if (!sbItemSelectedInModal && sbCancellingRow && sbCancellingRow.length) {
+                let hasItemId = sbCancellingRow.find('.sb-item-select').val();
+                let codeVal = $.trim(sbCancellingRow.find('.sb-item-code').val());
+                let totalRows = $('#sb-items-body tr').length;
+                if (!hasItemId && !codeVal && totalRows > 1) {
+                    let $prevRow = sbCancellingRow.prev('tr');
+                    sbCancellingRow.remove();
+                    updateRowNumbers();
+                    calculateTotals();
+                    sbCancellingRow = null;
+                    activeSearchRow = null;
+                    if ($prevRow.length) {
+                        $prevRow.find('.sb-qty').focus().select();
+                    }
+                    return;
+                }
                 let $targetInput = sbCancellingRow.find('.sb-item-code');
                 sbCancellingRow = null;
                 activeSearchRow = null;
@@ -1608,6 +1652,24 @@
             $('#sb-branch-badge').html('<i class="fas fa-store mr-1"></i> Active Branch: <strong>' + branchName + '</strong>');
         }
         updateBranchBadge();
+
+        function pruneEmptyRows() {
+            let removed = false;
+            $('#sb-items-body tr').each(function () {
+                let $r = $(this);
+                let itemId = $r.find('.sb-item-select').val();
+                let code = $.trim($r.find('.sb-item-code').val());
+                if (!itemId && !code && $('#sb-items-body tr').length > 1) {
+                    $r.remove();
+                    removed = true;
+                }
+            });
+            if (removed) {
+                updateRowNumbers();
+                calculateTotals();
+            }
+            return removed;
+        }
 
         function updateRowNumbers() {
             $('#sb-items-body tr').each(function (idx) {
@@ -2130,7 +2192,11 @@
                 let cleanExp = exp.toString().substring(0, 10);
                 let todayStr = new Date().toISOString().substring(0, 10);
                 if (cleanExp < todayStr) {
-                    alert('Cannot select expired batch (Expired on ' + cleanExp + '). Selling expired products is prohibited.');
+                    if (window.toastr) {
+                        toastr.error('Cannot select expired batch (Expired on ' + cleanExp + '). Selling expired products is prohibited.', 'Expired Batch');
+                    } else {
+                        console.warn('Cannot select expired batch: ' + cleanExp);
+                    }
                     return;
                 }
                 activeModalRow.find('.sb-exp-date').val(cleanExp);
@@ -2196,6 +2262,12 @@
             if (itemId) {
                 params.item_id = itemId;
             } else if (query) {
+                if (window.PosScanGuard) {
+                    let scanCheck = window.PosScanGuard.filterScan(query);
+                    if (!scanCheck.allowed) {
+                        return; // Ignore duplicate hardware bounce
+                    }
+                }
                 params.query = query;
                 if (isDirectLookup) {
                     params.exact_match_only = 1;
@@ -2601,16 +2673,11 @@
                 return false;
             }
 
+            // Hide any item or batch modal currently open
+            $('#sb-item-search-modal, #sb-batch-modal').modal('hide');
+
             // Prune empty rows (where no item is selected) if multiple rows exist
-            $('#sb-items-body tr').each(function () {
-                let $r = $(this);
-                let itemId = $r.find('.sb-item-select').val();
-                if (!itemId && $('#sb-items-body tr').length > 1) {
-                    $r.remove();
-                }
-            });
-            updateRowNumbers();
-            calculateTotals();
+            pruneEmptyRows();
 
             // 2. Validate All Line Items (Task 11)
             let valResult = validateStockErrors();
@@ -2719,14 +2786,16 @@
             }
             recalcTender();
         }
+        window.selectTenderMode = selectTenderMode;
 
         $(document).on('click', '.tender-mode-pill', function () {
             selectTenderMode($(this).data('mode'));
         });
 
-        // Tender Modal Hotkeys: Cash (Alt+C), UPI (Alt+U), Card (Alt+D), Credit (Alt+E)
+        // Tender Modal Hotkeys: Cash (Alt+C), UPI (Alt+U), Card (Alt+D), Credit (Alt+E), Save (Alt+S)
         $(document).on('keydown', function (e) {
-            if (!$('#sb-tender-modal').is(':visible')) return;
+            let $tenderModal = $('#sb-tender-modal');
+            if (!$tenderModal.is(':visible') && !$tenderModal.hasClass('show')) return;
 
             let key = (e.key || '').toUpperCase();
             let code = (e.code || '').toUpperCase();
@@ -2755,6 +2824,12 @@
                     e.stopPropagation();
                     e.stopImmediatePropagation();
                     selectTenderMode('credit');
+                    return false;
+                } else if (key === 'S' || code === 'KEYS') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    $('#tender-save-btn').trigger('click');
                     return false;
                 }
             }
@@ -2935,15 +3010,54 @@
         }
 
         // Form Reset Button Handler: resets header form fields without deleting table items (Task 4)
-        $(document).on('click', '.btn-reset-form', function (e) {
+        $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
             e.preventDefault();
             if (confirm('Reset header form inputs? (Existing table items will be preserved)')) {
-                $('#remarks').val('');
-                $('#customer_id').val('').trigger('change.select2');
+                // Unlock customer-locked fields first
+                unlockCustomerTypes();
+
+                // Clear customer select2 & loyalty/invoices
+                $('#customer_id').val('').trigger('change');
+                resetCustomerInvoices();
+                $('#sb-customer-loyalty-badge').addClass('d-none');
+                $('#sb-loyalty-pts').text('0.00');
+                $('#sb-loyalty-val').text('0.00');
+
+                // Reset bill date to current local datetime
+                const now = new Date();
+                const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                $('#bill_date').val(localIso).trigger('change');
+                $('#bill_date').removeClass('is-invalid');
+                $('#bill_date_future_error').remove();
+
+                // Reset biller / staff to default if available
+                let defaultBillerId = "{{ $selectedStaffId ?? auth()->id() }}";
+                if (defaultBillerId) {
+                    $('#sales_biller_user_id').val(defaultBillerId).trigger('change');
+                }
+
+                // Reset select dropdowns
+                $('select[name="invoice_type"]').val('Retail Invoice').trigger('change');
+                $('select[name="delivery_type"]').val('Delivered').trigger('change');
+                $('input[name="delivery_time"]').val('');
+                $('select[name="sales_type"]').val('Local').trigger('change');
+                $('select[name="payment_type"]').val('Cash').trigger('change');
+
+                // Reset additional / footer inputs
                 $('input[name="round_off"]').val('0.00');
                 $('input[name="total_extra_cess"]').val('0.00');
                 $('input[name="gst_calamity_cess"]').val('0.00');
+                $('input[name="total_weight"]').val('0');
+                $('#remarks').val('');
+                $('#message').val('');
+
+                // Clear draft and alert banner
+                localStorage.removeItem(DRAFT_KEY);
+                $('#sb-draft-recovery-alert').addClass('d-none');
+
+                // Recalculate totals
                 calculateTotals();
+
                 if (window.toastr) {
                     toastr.info('Header form inputs have been reset. Existing table items are preserved.', 'Form Reset');
                 }
@@ -3223,9 +3337,6 @@
                 updateSaveButtonState();
                 return false;
             }
-            localStorage.removeItem(DRAFT_KEY);
-        });
-        $(document).on('click', '.btn-reset-form', function () {
             localStorage.removeItem(DRAFT_KEY);
         });
         // Initial check for save button status

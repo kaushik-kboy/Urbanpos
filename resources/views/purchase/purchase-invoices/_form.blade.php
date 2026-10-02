@@ -117,7 +117,7 @@
 @php
     $pinvItemColumns = [
         'seq'          => ['label' => '#', 'default' => true],
-        'code'         => ['label' => 'Code', 'default' => true],
+        'code'         => ['label' => 'Code / Barcode', 'default' => true],
         'item'         => ['label' => 'Description', 'default' => true],
         'expiry'       => ['label' => 'Exp Date', 'default' => true],
         'qty'          => ['label' => 'Qty', 'default' => true],
@@ -206,7 +206,7 @@
         <thead>
             <tr>
                 <th style="width:28px; min-width:28px;" class="text-center px-0" data-col-key="seq">#</th>
-                <th style="width:85px; min-width:85px;" class="px-1" data-col-key="code">Code</th>
+                <th style="width:110px; min-width:100px;" class="px-1" data-col-key="code">Code / Barcode</th>
                 <th style="min-width:180px; width:195px;" class="px-1" data-col-key="item">Description</th>
                 <th style="width:80px; min-width:80px;" class="px-1" data-col-key="batch">Batch</th>
                 <th style="width:115px; min-width:115px;" class="px-1" data-col-key="expiry">Exp Date</th>
@@ -507,8 +507,10 @@
 
         // Dynamic Open PO by Supplier & Auto-select + Auto-populate items
         let _loadingPoId = null;
-        function loadPoItemsIntoPinv(poId) {
+        function loadPoItemsIntoPinv(poId, force = false) {
             if (!poId || _loadingPoId === poId) return;
+            let isEdit = {{ isset($inv) && $inv->id ? 'true' : 'false' }};
+            if (isEdit && !force) return;
             _loadingPoId = poId;
 
             let url = "{{ url('purchase/purchase-orders') }}/" + poId + "/items";
@@ -571,8 +573,14 @@
 
         $('#purchase_order_id').on('change', function () {
             let poId = $(this).val();
-            if (poId) {
-                loadPoItemsIntoPinv(poId);
+            if (!poId) return;
+            let hasExistingItems = $('#pinv-items-body tr').find('.pinv-item-select').filter((_, el) => !!$(el).val()).length > 0;
+            if (hasExistingItems) {
+                if (confirm('Load items from this Purchase Order? Existing table items will be replaced.')) {
+                    loadPoItemsIntoPinv(poId, true);
+                }
+            } else {
+                loadPoItemsIntoPinv(poId, true);
             }
         });
 
@@ -600,7 +608,12 @@
                 $poSelect.html(optionsHtml);
                 if (foundMatch && currentVal) {
                     $poSelect.val(currentVal).trigger('change.select2');
-                    loadPoItemsIntoPinv(currentVal);
+                    // In edit mode or if invoice already has items, NEVER auto-overwrite table with PO items on load
+                    let isEdit = {{ isset($inv) && $inv->id ? 'true' : 'false' }};
+                    let hasExistingItems = $('#pinv-items-body tr').find('.pinv-item-select').filter((_, el) => !!$(el).val()).length > 0;
+                    if (!isEdit && !hasExistingItems) {
+                        loadPoItemsIntoPinv(currentVal);
+                    }
                 } else {
                     $poSelect.val('').trigger('change.select2');
                 }
@@ -903,13 +916,6 @@
             }
         });
 
-        function focusExpDateField($row) {
-            if (!$row || !$row.length) return;
-            let $exp = $row.find('.pinv-exp-date');
-            if ($exp.length) {
-                $exp.trigger('focus').focus().trigger('click');
-            }
-        }
 
         /* ================================================================
            ITEM SEARCH MODAL — open on Code/Barcode focus
@@ -1198,25 +1204,7 @@
             return true;
         }
 
-        // Open modal on Code/Barcode field: Tab or Enter/F2 — Mouse Click disabled
-        $(document).off('click focus keydown', '.pinv-item-code')
-            .on('focus', '.pinv-item-code', function () {
-                if (pinvMouseDown) {
-                    pinvMouseDown = false;
-                    return; // Focused by mouse click - do not open modal!
-                }
-                // Focused by Tab / keyboard navigation!
-                checkSupplierAndOpenPinvModal($(this));
-            })
-            .on('keydown', '.pinv-item-code', function (e) {
-                if (e.key === 'Enter' || e.key === 'F2') {
-                    e.preventDefault();
-                    checkSupplierAndOpenPinvModal($(this));
-                }
-            })
-            .on('click', '.pinv-item-code', function () {
-                pinvMouseDown = false;
-            });
+        // Standardized Barcode & Item Code events are bound in the Item Lookup section below
 
         // Tab starts from invoice_date on page load (Task 2)
         setTimeout(function () {
@@ -1601,12 +1589,6 @@
             let $exp = $row.find('.pinv-exp-date');
             if ($exp.length) {
                 $exp[0].focus();
-                setTimeout(function () {
-                    $exp[0].focus();
-                }, 60);
-                setTimeout(function () {
-                    $exp[0].focus();
-                }, 180);
             }
         }
 
@@ -1637,23 +1619,36 @@
             }
         }
 
-        function processPurchaseItemLookup($row, itemId, query) {
+        function processPurchaseItemLookup($row, itemId, query, isDirectLookup = false) {
             let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
             let $select = $row.find('.pinv-item-select');
             let $desc = $row.find('.pinv-item-desc');
             let $code = $row.find('.pinv-item-code');
+
+            if (query && window.PosScanGuard) {
+                let scanCheck = window.PosScanGuard.filterScan(query);
+                if (!scanCheck.allowed) {
+                    return; // Ignore duplicate hardware bounce
+                }
+            }
 
             let params = { branch_id: branchId };
             if (itemId) {
                 params.item_id = itemId;
             } else if (query) {
                 params.query = query;
+                if (isDirectLookup) {
+                    params.exact_match_only = 1;
+                }
             } else {
                 return;
             }
 
             $.getJSON('{{ route("purchase.purchase-invoices.lookup-item") }}', params, function (data) {
                 if (data && data.id) {
+                    $row.data('last-processed-code', query || data.item_code || data.ean_upc_code || data.id);
+                    $code.removeClass('is-invalid border-danger');
+
                     // Display actual item code
                     let codeVal = data.item_code || data.ean_upc_code || data.code || data.id;
                     $code.val(codeVal);
@@ -1685,30 +1680,101 @@
 
                     calculateRow($row, 'base');
 
-                    // Next field focus: Always direct trigger Exp-date
-                    focusExpDateField($row);
+                    // Standard Barcode Flow: Focus Qty or Batch No if mandatory
+                    setTimeout(function () {
+                        let isExpMandatory = (data.batch_expiry_details === 'Mandatory' || data.batch_expiry_details === 'Days' || data.batch_expiry_details === 'Month');
+                        if (isExpMandatory && !$row.find('.pinv-batch-no').val()) {
+                            $row.find('.pinv-batch-no').focus().select();
+                        } else {
+                            $row.find('.pinv-qty').focus().select();
+                        }
+                    }, 60);
                 } else {
-                    $code.addClass('is-invalid');
-                    setTimeout(function () { $code.removeClass('is-invalid'); }, 2500);
+                    $row.data('last-processed-code', null);
+                    $code.addClass('is-invalid border-danger');
+                    const errMsg = "Product not found for this Item Code/Barcode.";
+                    if (window.toastr && typeof window.toastr.warning === 'function') {
+                        toastr.clear();
+                        toastr.warning(errMsg, 'Item Not Found');
+                    } else {
+                        alert(errMsg);
+                    }
+                    setTimeout(function () {
+                        $code.focus().select();
+                    }, 50);
                 }
             });
         }
 
-        // 1. Code Input: When entering code, automatically get Description & all other values
-        $(document).on('change blur keydown', '.pinv-item-code', function (e) {
-            if (e.type === 'keydown' && e.key !== 'Enter') {
-                return;
-            }
-            if (e.type === 'keydown' && e.key === 'Enter') {
-                e.preventDefault();
-            }
+        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+        $(document).off('keydown change input', '.pinv-item-code')
+            .on('keydown', '.pinv-item-code', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        // Direct exact lookup without opening popup modal
+                        processPurchaseItemLookup($row, null, val, true);
+                    } else {
+                        // Empty field -> Open Item Search Modal
+                        checkSupplierAndOpenPinvModal($(this));
+                    }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        e.preventDefault();
+                        processPurchaseItemLookup($row, null, val, true);
+                    } else {
+                        e.preventDefault();
+                        checkSupplierAndOpenPinvModal($(this));
+                    }
+                } else if (e.key === 'F2') {
+                    e.preventDefault();
+                    checkSupplierAndOpenPinvModal($(this));
+                } else if (e.key === 'Escape') {
+                    let $row = $(this).closest('tr');
+                    let itemId = $row.find('.pinv-item-select').val();
+                    if (!itemId && $('#pinv-items-body tr').length > 1) {
+                        e.preventDefault();
+                        let $prevRow = $row.prev('tr');
+                        $row.remove();
+                        updateRowNumbers();
+                        calculateTotals();
+                        if ($prevRow.length) {
+                            $prevRow.find('.pinv-qty').focus().select();
+                        }
+                    }
+                }
+            })
+            .on('change', '.pinv-item-code', function () {
+                let $input = $(this);
+                let query = $.trim($input.val());
+                let $row = $input.closest('tr');
+                if (!query) {
+                    let existingItemId = $row.find('.pinv-item-select').val();
+                    if (existingItemId) {
+                        $row.find('.pinv-item-select').val('');
+                        $row.find('.pinv-item-desc').val('');
+                        updateExpiryRequirement($row, 'Not Required', 0);
+                        calculateRow($row);
+                    }
+                    $row.data('last-processed-code', '');
+                    return;
+                }
 
-            let $input = $(this);
-            let $row = $input.closest('tr');
-            let query = $.trim($input.val());
-            if (!query) return;
+                if ($row.data('last-processed-code') === query) return;
+                processPurchaseItemLookup($row, null, query, true);
+            })
+            .on('input', '.pinv-item-code', function () {
+                $(this).removeClass('is-invalid border-danger');
+            });
 
-            processPurchaseItemLookup($row, null, query);
+        // Clicking on description also opens item search modal
+        $(document).on('click', '.pinv-item-desc', function () {
+            let $code = $(this).closest('tr').find('.pinv-item-code');
+            checkSupplierAndOpenPinvModal($code);
         });
 
         // 2. Item Selection: Auto-populate Code, Cost, Sell, MRP, GST, Margin %, Profit %, and apply Batch/Expiry rule
@@ -1983,8 +2049,6 @@
                 let dupMsg = $('#supplier-inv-feedback').text() || 'Supplier Invoice Number is already recorded for this supplier.';
                 if (window.toastr) {
                     toastr.error(dupMsg, 'Duplicate Invoice Number');
-                } else {
-                    alert(dupMsg);
                 }
                 $('#supplier_inv_no').focus();
                 return false;
@@ -2010,11 +2074,9 @@
 
             if (priceError) {
                 e.preventDefault();
-                let errMsg = "Row #" + priceError.row + " (" + priceError.item + "):\nSell Price (₹" + priceError.sell.toFixed(2) + ") must be greater than Cost Price (₹" + priceError.cost.toFixed(2) + ")!";
+                let errMsg = "Row #" + priceError.row + " (" + priceError.item + "): Sell Price (₹" + priceError.sell.toFixed(2) + ") must be greater than Cost Price (₹" + priceError.cost.toFixed(2) + ")!";
                 if (window.toastr) {
-                    toastr.error(errMsg.replace(/\n/g, ' '), 'Price Validation Error');
-                } else {
-                    alert(errMsg);
+                    toastr.error(errMsg, 'Price Validation Error');
                 }
                 priceError.$input.focus().addClass('border-danger text-danger');
                 return false;
@@ -2041,11 +2103,9 @@
 
             if (mrpError) {
                 e.preventDefault();
-                let errMsg = "Row #" + mrpError.row + " (" + mrpError.item + "):\nSell Price (₹" + mrpError.sell.toFixed(2) + ") must not exceed MRP (₹" + mrpError.mrp.toFixed(2) + ")!";
+                let errMsg = "Row #" + mrpError.row + " (" + mrpError.item + "): Sell Price (₹" + mrpError.sell.toFixed(2) + ") must not exceed MRP (₹" + mrpError.mrp.toFixed(2) + ")!";
                 if (window.toastr) {
-                    toastr.error(errMsg.replace(/\n/g, ' '), 'Price Validation Error');
-                } else {
-                    alert(errMsg);
+                    toastr.error(errMsg, 'Price Validation Error');
                 }
                 mrpError.$input.focus().addClass('border-warning text-warning');
                 return false;
@@ -2072,11 +2132,9 @@
 
             if (mrpCostError) {
                 e.preventDefault();
-                let errMsg = "Row #" + mrpCostError.row + " (" + mrpCostError.item + "):\nMRP (₹" + mrpCostError.mrp.toFixed(2) + ") must be greater than Cost Price (₹" + mrpCostError.cost.toFixed(2) + ")!";
+                let errMsg = "Row #" + mrpCostError.row + " (" + mrpCostError.item + "): MRP (₹" + mrpCostError.mrp.toFixed(2) + ") must be greater than Cost Price (₹" + mrpCostError.cost.toFixed(2) + ")!";
                 if (window.toastr) {
-                    toastr.error(errMsg.replace(/\n/g, ' '), 'Price Validation Error');
-                } else {
-                    alert(errMsg);
+                    toastr.error(errMsg, 'Price Validation Error');
                 }
                 mrpCostError.$input.focus().addClass('border-danger text-danger');
                 return false;
@@ -2089,7 +2147,10 @@
             if (invAmt > 0 && Math.abs(diff) > 0.01) {
                 e.preventDefault();
                 let diffMsg = (diff > 0 ? '+' : '') + diff.toFixed(2);
-                alert("Supplier Invoice Amount [₹" + invAmt.toFixed(2) + "] must match the Final Amount [₹" + finalTotal.toFixed(2) + "] before saving!\n\nDifference: ₹" + diffMsg);
+                let amtMsg = "Supplier Invoice Amount [₹" + invAmt.toFixed(2) + "] must match the Final Amount [₹" + finalTotal.toFixed(2) + "] before saving! Difference: ₹" + diffMsg;
+                if (window.toastr) {
+                    toastr.warning(amtMsg, 'Amount Mismatch');
+                }
                 $('input[name="supplier_inv_amount"]').focus().addClass('is-invalid');
                 checkAmountMatch();
                 return false;
@@ -2223,7 +2284,9 @@
             if (!supp) {
                 e.preventDefault();
                 $suppContainer.addClass('border-danger');
-                alert('Please select a Supplier for this purchase invoice.');
+                if (window.toastr) {
+                    toastr.warning('Please select a Supplier for this purchase invoice.', 'Supplier Required');
+                }
                 $('select[name="supplier_id"]').select2('open');
                 return false;
             } else {
@@ -2237,13 +2300,17 @@
                 $suppInvInput.addClass('is-invalid border-danger');
                 $('#supplier-inv-feedback').text('Supplier Invoice Number is required before saving.').show();
                 $('#supplier-inv-feedback-container').show();
-                alert('Supplier Invoice Number is required before saving.');
+                if (window.toastr) {
+                    toastr.warning('Supplier Invoice Number is required before saving.', 'Invoice Number Required');
+                }
                 $suppInvInput.focus();
                 return false;
             }
             if ($suppInvInput.hasClass('is-invalid')) {
                 e.preventDefault();
-                alert('Please resolve the Supplier Invoice Number error before saving.');
+                if (window.toastr) {
+                    toastr.warning('Please resolve the Supplier Invoice Number error before saving.', 'Invoice Number Error');
+                }
                 $suppInvInput.focus();
                 return false;
             }
@@ -2260,14 +2327,18 @@
                 if (id) {
                     if (q <= 0) {
                         $q.addClass('is-invalid border-danger');
-                        alert(`Row #${idx + 1}: Quantity must be greater than 0.`);
+                        if (window.toastr) {
+                            toastr.warning(`Row #${idx + 1}: Quantity must be greater than 0.`, 'Invalid Quantity');
+                        }
                         $q.focus();
                         hasError = true;
                         return false;
                     }
                     if (cost <= 0) {
                         $cost.addClass('is-invalid border-danger');
-                        alert(`Row #${idx + 1}: Cost price must be greater than 0.`);
+                        if (window.toastr) {
+                            toastr.warning(`Row #${idx + 1}: Cost price must be greater than 0.`, 'Invalid Cost');
+                        }
                         $cost.focus();
                         hasError = true;
                         return false;
@@ -2280,8 +2351,6 @@
                         let errMsg = `Row #${idx + 1}: Expiry date (${expVal}) cannot be in the past!`;
                         if (window.toastr) {
                             toastr.error(errMsg, 'Invalid Expiry Date');
-                        } else {
-                            alert(errMsg);
                         }
                         $exp.focus();
                         hasError = true;
@@ -2292,8 +2361,6 @@
                         let errMsg = `Row #${idx + 1}: Expiry date is required for this item.`;
                         if (window.toastr) {
                             toastr.error(errMsg, 'Expiry Date Required');
-                        } else {
-                            alert(errMsg);
                         }
                         $exp.focus();
                         hasError = true;
@@ -2310,7 +2377,9 @@
 
             if (validRows === 0) {
                 e.preventDefault();
-                alert('Pehle item add karein. Please add at least one valid item before saving.');
+                if (window.toastr) {
+                    toastr.warning('Pehle item add karein. Please add at least one valid item before saving.', 'No Items Added');
+                }
                 $('#pinv-items-body tr:first .pinv-item-code').focus();
                 return false;
             }
@@ -2350,19 +2419,66 @@
         }
 
         // Form Reset Button Handler: resets header form fields without deleting table items (Task 4)
-        $(document).on('click', '.btn-reset-form', function (e) {
+        $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
             e.preventDefault();
             if (confirm('Reset header form inputs? (Existing table items will be preserved)')) {
-                $('#remarks').val('');
-                $('#supplier_inv_no').val('');
+                // Reset Supplier & trigger associated cascades (PO list, prev invoices link, lock indicator)
+                $('#supplier_id').val('').trigger('change');
+                applySupplierPurchaseType(null);
+                updateSupplierPrevInvoicesLink('');
+                updateSupplierOpenPOs('');
+
+                // Reset PO
+                $('#purchase_order_id').val('').trigger('change.select2');
+
+                // Reset Purchase Type & C-Form
+                $('#purchase_type').val('Local').trigger('change');
+                $('select[name="c_form"]').val('No Forms').trigger('change');
+
+                // Reset Dates to today
+                let now = new Date();
+                let pad = n => String(n).padStart(2, '0');
+                let todayParts = { day: now.getDate(), month: now.getMonth() + 1, year: now.getFullYear() };
+                let todayFormatted = typeof window.formatParts === 'function' && typeof window.UrbanPosDateConfig !== 'undefined'
+                    ? window.formatParts(todayParts, window.UrbanPosDateConfig.getFormat())
+                    : (todayParts.year + '-' + pad(todayParts.month) + '-' + pad(todayParts.day));
+
+                function setDateVal($input, val) {
+                    if (!$input.length) return;
+                    $input.val(val).trigger('change');
+                    let dp = $input.data('daterangepicker');
+                    if (dp && typeof moment !== 'undefined') {
+                        let m = moment();
+                        dp.setStartDate(m);
+                        dp.setEndDate(m);
+                    }
+                }
+
+                setDateVal($('#invoice_date'), todayFormatted);
+                setDateVal($('#grn_date'), todayFormatted);
+                setDateVal($('#supplier_inv_date'), todayFormatted);
+
+                // Reset Supplier Inv No & Amount & Feedbacks
+                $('#supplier_inv_no').val('').removeClass('is-invalid border-danger');
+                $('#supplier-inv-feedback-container').hide();
+                $('#supplier-inv-feedback').text('');
+                $('#supplier_inv_amount').val('');
+                $('#supplier-inv-amount-match-status').empty().removeClass('text-success text-danger');
+
+                // Reset Footer & Additional Fields
                 $('#freight').val('0.00');
                 $('#round_off').val('0.00');
                 $('#scheme_item_disc_amt').val('0.00');
                 $('#scheme_item_disc_percent').val('');
                 $('#other_disc_amt').val('0.00');
                 $('#total_extra_cess').val('0.00');
+                $('#total_weight').val('0');
                 $('#tcs_amount').val('0.00');
+                $('#remarks').val('');
+                $('#message').val('');
+
                 calculateTotals();
+
                 if (window.toastr) {
                     toastr.info('Header form inputs have been reset. Existing table items are preserved.', 'Form Reset');
                 }

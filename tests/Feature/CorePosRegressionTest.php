@@ -273,4 +273,50 @@ class CorePosRegressionTest extends TestCase
         $this->assertEquals(560.00, (float) $session->actual_cash);
         $this->assertEquals(10.00, (float) $session->variance);
     }
+
+    /**
+     * Test Purchase Invoice lookupItem prioritizes exact item_code over primary key id (Task 5 regression guard).
+     */
+    public function test_purchase_invoice_item_lookup_prioritizes_item_code_over_primary_key_id(): void
+    {
+        $this->actingAs($this->user);
+
+        $gst = GstTax::firstOrCreate(['percentage' => 18], ['name' => 'GST 18%', 'description' => '18% GST', 'status' => true]);
+
+        // Item 1 has database ID 9999, but item_code 'CODE-OTHER'
+        $itemWithId = Item::create([
+            'id' => 9999,
+            'name' => 'Item Having ID 9999',
+            'item_code' => 'CODE-OTHER',
+            'cost_price' => 50,
+            'sell_price' => 80,
+            'mrp' => 90,
+            'gst_tax_id' => $gst->id,
+            'status' => true,
+        ]);
+
+        // Item 2 has different ID, but item_code '9999'
+        $itemWithCode = Item::create([
+            'name' => 'Target Product With Code 9999',
+            'item_code' => '9999',
+            'cost_price' => 120,
+            'sell_price' => 180,
+            'mrp' => 200,
+            'gst_tax_id' => $gst->id,
+            'status' => true,
+        ]);
+
+        // When looking up query='9999', it must match the item whose item_code is '9999', not the item whose id is 9999!
+        $response = $this->getJson(route('purchase.purchase-invoices.lookup-item', [
+            'query' => '9999',
+            'branch_id' => $this->branch->id,
+        ]));
+
+        $response->assertOk();
+        $data = $response->json();
+        $this->assertNotNull($data);
+        $this->assertEquals($itemWithCode->id, $data['id']);
+        $this->assertEquals('9999', $data['item_code']);
+        $this->assertEquals('Target Product With Code 9999', $data['name']);
+    }
 }

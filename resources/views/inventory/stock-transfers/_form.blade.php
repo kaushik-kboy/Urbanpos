@@ -606,7 +606,11 @@
             if (!item) return false;
 
             if (item.exp_date && isExpiredDate(item.exp_date)) {
-                alert('Expiry Validation Error:\n\nProduct "' + (item.name || 'Selected Item') + '" has expired on ' + formatToDisplayDate(item.exp_date) + '!\nTransfer of expired products is not permitted.');
+                if (window.toastr) {
+                    toastr.error('Product "' + (item.name || 'Selected Item') + '" has expired on ' + formatToDisplayDate(item.exp_date) + '! Transfer of expired products is not permitted.', 'Expiry Error');
+                } else {
+                    console.warn('Expired item: ' + item.name);
+                }
                 return false;
             }
 
@@ -615,7 +619,11 @@
             }
             let avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
             if (avail <= 0) {
-                alert('Product "' + (item.name || 'Selected Item') + '" has 0 available stock in this branch.');
+                if (window.toastr) {
+                    toastr.warning('Product "' + (item.name || 'Selected Item') + '" has 0 available stock in this branch.', 'Out of Stock');
+                } else {
+                    console.warn('0 available stock: ' + item.name);
+                }
                 return false;
             }
             if (item && activeTargetRow) {
@@ -842,32 +850,124 @@
             }
         });
 
-        // Barcode / Code input: pressing Enter directly fetches item or opens modal
-        $(document).on('keydown', '.item-code-input', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                let code = $(this).val().trim();
-                let $row = $(this).closest('tr');
-                if (!code) {
+        function processStItemLookup($row, code, isDirectLookup = false) {
+            code = (code || '').trim();
+            if (!code) return;
+            let $input = $row.find('.item-code-input');
+
+            if (window.PosScanGuard) {
+                let scanCheck = window.PosScanGuard.filterScan(code);
+                if (!scanCheck.allowed) {
+                    return; // Ignore duplicate bounce
+                }
+            }
+
+            $.getJSON(itemByCodeUrl, { code: code, branch_id: currentFromBranch() }, function (res) {
+                if (res && res.found && res.item) {
+                    if (res.item.exp_date && isExpiredDate(res.item.exp_date)) {
+                        if (window.toastr) {
+                            toastr.error('Product "' + res.item.name + '" has expired on ' + formatToDisplayDate(res.item.exp_date) + '! Transfer of expired products is not permitted.', 'Expiry Error');
+                        }
+                        $row.data('last-processed-code', null);
+                        $input.addClass('is-invalid border-danger');
+                        setTimeout(function () { $input.focus().select(); }, 50);
+                        return;
+                    }
+                    $row.data('last-processed-code', code || res.item.item_code || res.item.id);
+                    $input.removeClass('is-invalid border-danger');
+                    applyItemToRow($row, res.item);
+                    setTimeout(function () {
+                        $row.find('.item-qty').focus().select();
+                    }, 60);
+                } else if (res && res.error) {
+                    $row.data('last-processed-code', null);
+                    $input.addClass('is-invalid border-danger');
+                    if (window.toastr) {
+                        toastr.error(res.error, 'Stock Transfer Error');
+                    }
+                    setTimeout(function () { $input.focus().select(); }, 50);
+                } else {
+                    $row.data('last-processed-code', null);
+                    $input.addClass('is-invalid border-danger');
+                    let errMsg = "Product not found for this Item Code/Barcode.";
+                    if (window.toastr) {
+                        toastr.warning(errMsg, 'Item Not Found');
+                    }
+                    setTimeout(function () { $input.focus().select(); }, 50);
+                }
+            }).fail(function () {
+                $row.data('last-processed-code', null);
+                $input.addClass('is-invalid border-danger');
+                let errMsg = "Product not found for this Item Code/Barcode.";
+                if (window.toastr) {
+                    toastr.warning(errMsg, 'Item Not Found');
+                }
+                setTimeout(function () { $input.focus().select(); }, 50);
+            });
+        }
+
+        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+        $(document).off('keydown change input', '.item-code-input')
+            .on('keydown', '.item-code-input', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr.item-row');
+                    if (val) {
+                        processStItemLookup($row, val, true);
+                    } else {
+                        openItemModal($row, '');
+                    }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr.item-row');
+                    if (val) {
+                        e.preventDefault();
+                        processStItemLookup($row, val, true);
+                    } else {
+                        e.preventDefault();
+                        openItemModal($row, '');
+                    }
+                } else if (e.key === 'F2') {
+                    e.preventDefault();
+                    let $row = $(this).closest('tr.item-row');
                     openItemModal($row, '');
+                } else if (e.key === 'Escape') {
+                    let $row = $(this).closest('tr.item-row');
+                    let itemId = $row.find('.item-select').val();
+                    if (!itemId && $('#items-body tr.item-row').length > 1) {
+                        e.preventDefault();
+                        let $prevRow = $row.prev('tr.item-row');
+                        $row.remove();
+                        reindexSno();
+                        recalcTotals();
+                        if ($prevRow.length) {
+                            $prevRow.find('.item-qty').focus().select();
+                        }
+                    }
+                }
+            })
+            .on('change', '.item-code-input', function () {
+                let val = $.trim($(this).val());
+                let $row = $(this).closest('tr.item-row');
+                if (!val) {
+                    $row.find('.item-select').val(null).trigger('change');
+                    $row.find('.item-available').val('0.000');
+                    $row.data('last-processed-code', '');
+                    recalcTotals();
                     return;
                 }
-                $.getJSON(itemByCodeUrl, { code: code, branch_id: currentFromBranch() }, function (res) {
-                    if (res && res.found && res.item) {
-                        if (res.item.exp_date && isExpiredDate(res.item.exp_date)) {
-                            alert('Expiry Validation Error:\n\nProduct "' + res.item.name + '" has expired on ' + formatToDisplayDate(res.item.exp_date) + '!\nTransfer of expired products is not permitted.');
-                            return;
-                        }
-                        applyItemToRow($row, res.item);
-                    } else if (res && res.error) {
-                        alert('Stock Transfer Error:\n\n' + res.error);
-                    } else {
-                        openItemModal($row, code);
-                    }
-                }).fail(function () {
-                    openItemModal($row, code);
-                });
-            }
+                if ($row.data('last-processed-code') === val) return;
+                processStItemLookup($row, val, true);
+            })
+            .on('input', '.item-code-input', function () {
+                $(this).removeClass('is-invalid border-danger');
+            });
+
+        // Clicking on description also opens item search modal
+        $(document).on('click', '.item-select', function () {
+            let $row = $(this).closest('tr.item-row');
+            openItemModal($row, '');
         });
 
         // Expiry Date input: auto-format to DD/MM/YYYY on blur or Enter/Tab, and validate not expired

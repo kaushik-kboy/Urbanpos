@@ -511,24 +511,7 @@
             return true;
         }
 
-        $(document).off('click focus keydown', '.pr-item-code')
-            .on('focus', '.pr-item-code', function () {
-                if (prMouseDown) {
-                    prMouseDown = false;
-                    return; // Focused by mouse click - do not open modal!
-                }
-                // Focused by Tab / keyboard navigation!
-                checkSupplierAndOpenPrModal($(this));
-            })
-            .on('keydown', '.pr-item-code', function (e) {
-                if (e.key === 'Enter' || e.key === 'F2') {
-                    e.preventDefault();
-                    checkSupplierAndOpenPrModal($(this));
-                }
-            })
-            .on('click', '.pr-item-code', function () {
-                prMouseDown = false;
-            });
+        // Standardized Barcode & Item Code events are bound in the Item Lookup section below
 
         // Tab starts from supplier on page load
         setTimeout(function () {
@@ -823,18 +806,10 @@
             prActiveSearchRow = null;
         });
 
-        // Direct Code typing and Enter/Blur lookup
-        $(document).on('keydown blur', '.pr-item-code', function (e) {
-            if (e.type === 'keydown' && e.key !== 'Enter') return;
-            if (e.type === 'keydown' && e.key === 'Enter') e.preventDefault();
-
-            let $input = $(this);
-            let query = $.trim($input.val());
-            let $row = $input.closest('tr');
-            if (!query) return;
-
+        function processPrItemLookup($row, itemId, query, isDirectLookup = false) {
             let supplierId = $('#supplier_id').val();
             let invoiceId = $('#purchase_invoice_id').val();
+            let $input = $row.find('.pr-item-code');
 
             if (!supplierId && !invoiceId) {
                 if (window.toastr) {
@@ -849,16 +824,36 @@
                 return;
             }
 
+            if (query && window.PosScanGuard) {
+                let scanCheck = window.PosScanGuard.filterScan(query);
+                if (!scanCheck.allowed) {
+                    return; // Ignore duplicate bounce
+                }
+            }
+
             let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
-            $.getJSON(PR_LOOKUP_URL, {
-                query: query,
+            let params = {
                 branch_id: branchId,
                 supplier_id: supplierId,
                 purchase_invoice_id: invoiceId
-            }, function (res) {
+            };
+            if (itemId) {
+                params.item_id = itemId;
+            } else if (query) {
+                params.query = query;
+                if (isDirectLookup) {
+                    params.exact_match_only = 1;
+                }
+            } else {
+                return;
+            }
+
+            $.getJSON(PR_LOOKUP_URL, params, function (res) {
                 if (res && res.id) {
-                    $row.find('.pr-item-code').val(res.id || res.item_id || query);
-                    $row.find('.pr-item-desc').val(res.name);
+                    $row.data('last-processed-code', query || res.item_code || res.ean_upc_code || res.id);
+                    $input.removeClass('is-invalid border-danger');
+                    $input.val(res.item_code || res.ean_upc_code || res.id || query);
+                    $row.find('.pr-item-desc').val(res.name + (res.item_code ? ' [' + res.item_code + ']' : ''));
                     $row.find('.pr-item-id').val(res.id);
 
                     if (parseFloat(res.cost_price) > 0) {
@@ -877,17 +872,97 @@
                         $row.find('.pr-exp-date').val(res.exp_date);
                     }
                     recalculateAll();
-                    $row.find('.pr-qty').focus().select();
+                    setTimeout(function () {
+                        $row.find('.pr-qty').focus().select();
+                    }, 60);
+                } else {
+                    $row.data('last-processed-code', null);
+                    $input.addClass('is-invalid border-danger');
+                    let msg = "Product not found for this Item Code/Barcode.";
+                    if (window.toastr) {
+                        toastr.warning(msg, 'Item Not Found');
+                    }
+                    setTimeout(function () {
+                        $input.focus().select();
+                    }, 50);
                 }
             }).fail(function (xhr) {
+                $row.data('last-processed-code', null);
+                $input.addClass('is-invalid border-danger');
                 let msg = (xhr.responseJSON && xhr.responseJSON.message)
                     ? xhr.responseJSON.message
                     : 'This product was not found for the selected supplier/invoice.';
-                notifyWarn(msg, 'Product Lookup');
-                $input.val('').focus();
-                $row.find('.pr-item-id').val('');
-                $row.find('.pr-item-desc').val('');
+                if (window.toastr) {
+                    toastr.warning(msg, 'Product Lookup');
+                }
+                setTimeout(function () {
+                    $input.focus().select();
+                }, 50);
             });
+        }
+
+        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
+        $(document).off('keydown change input', '.pr-item-code')
+            .on('keydown', '.pr-item-code', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        processPrItemLookup($row, null, val, true);
+                    } else {
+                        checkSupplierAndOpenPrModal($(this));
+                    }
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    let val = $.trim($(this).val());
+                    let $row = $(this).closest('tr');
+                    if (val) {
+                        e.preventDefault();
+                        processPrItemLookup($row, null, val, true);
+                    } else {
+                        e.preventDefault();
+                        checkSupplierAndOpenPrModal($(this));
+                    }
+                } else if (e.key === 'F2') {
+                    e.preventDefault();
+                    checkSupplierAndOpenPrModal($(this));
+                } else if (e.key === 'Escape') {
+                    let $row = $(this).closest('tr');
+                    let itemId = $row.find('.pr-item-id').val();
+                    if (!itemId && $('#pr-items-body tr').length > 1) {
+                        e.preventDefault();
+                        let $prevRow = $row.prev('tr');
+                        $row.remove();
+                        updateRowNumbers();
+                        recalculateAll();
+                        if ($prevRow.length) {
+                            $prevRow.find('.pr-qty').focus().select();
+                        }
+                    }
+                }
+            })
+            .on('change', '.pr-item-code', function () {
+                let $input = $(this);
+                let query = $.trim($input.val());
+                let $row = $input.closest('tr');
+                if (!query) {
+                    $row.find('.pr-item-id').val('');
+                    $row.find('.pr-item-desc').val('');
+                    $row.data('last-processed-code', '');
+                    recalculateAll();
+                    return;
+                }
+                if ($row.data('last-processed-code') === query) return;
+                processPrItemLookup($row, null, query, true);
+            })
+            .on('input', '.pr-item-code', function () {
+                $(this).removeClass('is-invalid border-danger');
+            });
+
+        // Clicking on description also opens item search modal
+        $(document).on('click', '.pr-item-desc', function () {
+            let $code = $(this).closest('tr').find('.pr-item-code');
+            checkSupplierAndOpenPrModal($code);
         });
 
         // Filter Invoices when Supplier changes
