@@ -1345,62 +1345,6 @@
                 }
             }
 
-            // Landing Cost Price = (Cost of billed quantity - Line discount) / (Billed Qty + Free Qty)
-            let totalQty = qty + freeQty;
-            let landingCost = 0;
-            if (totalQty > 0 && cost > 0) {
-                let baseAfterDisc = Math.max(0, base - discAmt);
-                landingCost = baseAfterDisc / totalQty;
-            } else if (cost > 0) {
-                landingCost = cost;
-            }
-
-            let $landingInput = $row.find('.pinv-landing-cost');
-            if ($landingInput.length) {
-                $landingInput.val(landingCost > 0 ? landingCost.toFixed(2) : '');
-                if (freeQty > 0 || discAmt > 0) {
-                    $landingInput.attr('title', 'Landing Cost Price: ₹' + landingCost.toFixed(2) + ' (Effective unit cost for ' + totalQty + ' units [' + qty + ' billed + ' + freeQty + ' free])');
-                } else {
-                    $landingInput.attr('title', 'Landing Cost Price');
-                }
-            }
-
-            // Effective cost used for profit, margin %, and markup % calculations
-            let effectiveCost = landingCost > 0 ? landingCost : cost;
-
-            // Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Landing Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100
-            // Profit % = Profit Amount ÷ Landing Cost × 100
-            let baseSell = sell > 0 ? sell : mrp;
-            let sellExclGst = (baseSell > 0) ? (baseSell / (1 + (gst / 100))) : 0;
-            let profitAmount = (sellExclGst > 0 && effectiveCost > 0) ? (sellExclGst - effectiveCost) : null;
-            let marginPct = (sellExclGst > 0 && profitAmount !== null) ? ((profitAmount / sellExclGst) * 100) : null;
-            let profitPct = (effectiveCost > 0 && profitAmount !== null) ? ((profitAmount / effectiveCost) * 100) : null;
-            $row.find('.pinv-margin').val(marginPct !== null && isFinite(marginPct) ? marginPct.toFixed(2) + '%' : '');
-            $row.find('.pinv-profit').val(profitPct !== null && isFinite(profitPct) ? profitPct.toFixed(2) + '%' : '');
-
-            // Price validations (Visual only - does not block keyboard/tab navigation)
-            let $sellInput = $row.find('.pinv-sell');
-            let $mrpInput = $row.find('.pinv-mrp');
-            $sellInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
-            $mrpInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
-
-            let benchmarkCost = effectiveCost > 0 ? effectiveCost : cost;
-            if (benchmarkCost > 0 && sell > 0 && sell <= benchmarkCost) {
-                $sellInput.addClass('border-danger text-danger')
-                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must be greater than Landing Cost (₹' + benchmarkCost.toFixed(2) + ')!');
-            } else if (mrp > 0 && sell > 0 && sell > mrp) {
-                $sellInput.addClass('border-warning text-warning')
-                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must not exceed MRP (₹' + mrp.toFixed(2) + ')!');
-            }
-
-            if (benchmarkCost > 0 && mrp > 0 && mrp <= benchmarkCost) {
-                $mrpInput.addClass('border-danger text-danger')
-                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') must be greater than Landing Cost (₹' + benchmarkCost.toFixed(2) + ')!');
-            } else if (sell > 0 && mrp > 0 && mrp < sell) {
-                $mrpInput.addClass('border-warning text-warning')
-                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') cannot be less than Sell Price (₹' + sell.toFixed(2) + ')!');
-            }
-
             // Real-time inline field validation (Task 11)
             let $qtyInput = $row.find('.pinv-qty');
             let $costInput = $row.find('.pinv-cost');
@@ -1436,6 +1380,8 @@
                 let qty = parseFloat($r.find('.pinv-qty').val()) || 0;
                 let freeQty = parseFloat($r.find('.pinv-free-qty').val()) || 0;
                 let cost = parseFloat($r.find('.pinv-cost').val()) || 0;
+                let sell = parseFloat($r.find('.pinv-sell').val()) || 0;
+                let mrp = parseFloat($r.find('.pinv-mrp').val()) || 0;
                 let discAmt = parseFloat($r.find('.pinv-disc-amount').val()) || 0;
                 let gst = parseFloat($r.find('.pinv-gst').val()) || 0;
 
@@ -1448,6 +1394,8 @@
                     qty: qty,
                     freeQty: freeQty,
                     cost: cost,
+                    sell: sell,
+                    mrp: mrp,
                     base: base,
                     discAmt: discAmt,
                     baseAfterDisc: baseAfterDisc,
@@ -1489,6 +1437,65 @@
                 } else {
                     d.$row.find('.pinv-gst-amt').val('');
                     d.$row.find('.pinv-row-net').text('');
+                }
+
+                // True Landing Cost = (Billed Base Cost - Line Disc - Allocated Scheme/Other Disc) / (Billed Qty + Free Qty)
+                let totalUnits = d.qty + d.freeQty;
+                let trueLandingCost = 0;
+                if (totalUnits > 0 && d.cost > 0) {
+                    let netCostAfterAllDisc = Math.max(0, d.baseAfterDisc - extraDeduction);
+                    trueLandingCost = netCostAfterAllDisc / totalUnits;
+                } else if (d.cost > 0) {
+                    trueLandingCost = d.cost;
+                }
+
+                let $landingInput = d.$row.find('.pinv-landing-cost');
+                if ($landingInput.length) {
+                    $landingInput.val(trueLandingCost > 0 ? trueLandingCost.toFixed(2) : '');
+                    let discBreakdown = [];
+                    if (d.freeQty > 0) discBreakdown.push(d.freeQty + ' free');
+                    if (d.discAmt > 0) discBreakdown.push('₹' + d.discAmt.toFixed(2) + ' item disc');
+                    if (extraDeduction > 0) discBreakdown.push('₹' + extraDeduction.toFixed(2) + ' scheme/other disc');
+
+                    if (discBreakdown.length > 0) {
+                        $landingInput.attr('title', 'Landing Cost Price: ₹' + trueLandingCost.toFixed(2) + ' (Effective unit cost after ' + discBreakdown.join(', ') + ')');
+                    } else {
+                        $landingInput.attr('title', 'Landing Cost Price');
+                    }
+                }
+
+                // Effective cost used for Margin % and Profit % calculations
+                let effectiveCost = trueLandingCost > 0 ? trueLandingCost : d.cost;
+                let baseSell = d.sell > 0 ? d.sell : d.mrp;
+                let sellExclGst = (baseSell > 0) ? (baseSell / (1 + (d.gst / 100))) : 0;
+                let profitAmount = (sellExclGst > 0 && effectiveCost > 0) ? (sellExclGst - effectiveCost) : null;
+                let marginPct = (sellExclGst > 0 && profitAmount !== null) ? ((profitAmount / sellExclGst) * 100) : null;
+                let profitPct = (effectiveCost > 0 && profitAmount !== null) ? ((profitAmount / effectiveCost) * 100) : null;
+
+                d.$row.find('.pinv-margin').val(marginPct !== null && isFinite(marginPct) ? marginPct.toFixed(2) + '%' : '');
+                d.$row.find('.pinv-profit').val(profitPct !== null && isFinite(profitPct) ? profitPct.toFixed(2) + '%' : '');
+
+                // Inline price validations against True Landing Cost
+                let $sellInput = d.$row.find('.pinv-sell');
+                let $mrpInput = d.$row.find('.pinv-mrp');
+                $sellInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
+                $mrpInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
+
+                let benchmarkCost = effectiveCost > 0 ? effectiveCost : d.cost;
+                if (benchmarkCost > 0 && d.sell > 0 && d.sell <= benchmarkCost) {
+                    $sellInput.addClass('border-danger text-danger')
+                              .attr('title', 'Sell Price (₹' + d.sell.toFixed(2) + ') must be greater than Landing Cost (₹' + benchmarkCost.toFixed(2) + ')!');
+                } else if (d.mrp > 0 && d.sell > 0 && d.sell > d.mrp) {
+                    $sellInput.addClass('border-warning text-warning')
+                              .attr('title', 'Sell Price (₹' + d.sell.toFixed(2) + ') must not exceed MRP (₹' + d.mrp.toFixed(2) + ')!');
+                }
+
+                if (benchmarkCost > 0 && d.mrp > 0 && d.mrp <= benchmarkCost) {
+                    $mrpInput.addClass('border-danger text-danger')
+                             .attr('title', 'MRP (₹' + d.mrp.toFixed(2) + ') must be greater than Landing Cost (₹' + benchmarkCost.toFixed(2) + ')!');
+                } else if (d.sell > 0 && d.mrp > 0 && d.mrp < d.sell) {
+                    $mrpInput.addClass('border-warning text-warning')
+                             .attr('title', 'MRP (₹' + d.mrp.toFixed(2) + ') cannot be less than Sell Price (₹' + d.sell.toFixed(2) + ')!');
                 }
 
                 totalQty += (d.qty + d.freeQty);

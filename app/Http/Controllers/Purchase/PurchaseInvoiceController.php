@@ -809,8 +809,8 @@ class PurchaseInvoiceController extends Controller
 
             $freeQty = (float) ($line['free_qty'] ?? 0);
             $totalQty = $qty + $freeQty;
-            $baseCostAfterItemDisc = max(0, ($qty * $costPrice) - (float) ($baseInfo['disc_amount'] ?? 0));
-            $effectiveCost = $totalQty > 0 ? round($baseCostAfterItemDisc / $totalQty, 4) : $costPrice;
+            $baseCostAfterAllDisc = max(0, ($qty * $costPrice) - (float) ($baseInfo['disc_amount'] ?? 0) - $extraDeduction);
+            $effectiveCost = $totalQty > 0 ? round($baseCostAfterAllDisc / $totalQty, 4) : $costPrice;
 
             return [
                 'item_id' => $line['item_id'],
@@ -1102,6 +1102,39 @@ class PurchaseInvoiceController extends Controller
             $itemIds = collect($rawItems)->pluck('item_id')->filter()->unique();
             $itemsMap = Item::whereIn('id', $itemIds)->get()->keyBy('id');
 
+            $totalHeaderDiscount = (float) ($request->input('scheme_item_disc_amt') ?? 0)
+                + (float) ($request->input('other_disc_amt') ?? 0);
+
+            $totalBaseAfterItemDisc = 0.0;
+            $lineBases = [];
+            foreach ($rawItems as $idx => $line) {
+                $qty = (float) ($line['qty'] ?? 0);
+                $cost = (float) ($line['cost_price'] ?? 0);
+                $disc = (float) ($line['disc_amount'] ?? 0);
+                $baseAfter = max(0, ($qty * $cost) - $disc);
+                $lineBases[$idx] = $baseAfter;
+                $totalBaseAfterItemDisc += $baseAfter;
+            }
+
+            $allocatedHeaderDiscounts = [];
+            $remDisc = $totalHeaderDiscount;
+            $cnt = count($rawItems);
+            $curr = 0;
+            foreach ($rawItems as $idx => $line) {
+                $curr++;
+                if ($totalBaseAfterItemDisc > 0 && $totalHeaderDiscount > 0) {
+                    if ($curr === $cnt) {
+                        $allocated = round($remDisc, 2);
+                    } else {
+                        $allocated = round(($lineBases[$idx] / $totalBaseAfterItemDisc) * $totalHeaderDiscount, 2);
+                        $remDisc -= $allocated;
+                    }
+                } else {
+                    $allocated = 0.0;
+                }
+                $allocatedHeaderDiscounts[$idx] = max(0, $allocated);
+            }
+
             foreach ($rawItems as $idx => $line) {
                 $itemId = $line['item_id'] ?? null;
                 $itemModel = $itemsMap->get($itemId);
@@ -1145,8 +1178,9 @@ class PurchaseInvoiceController extends Controller
                 $qty = (float) ($line['qty'] ?? 0);
                 $freeQty = (float) ($line['free_qty'] ?? 0);
                 $discAmount = (float) ($line['disc_amount'] ?? 0);
+                $extraDisc = $allocatedHeaderDiscounts[$idx] ?? 0.0;
                 $totalQty = $qty + $freeQty;
-                $landingCost = $totalQty > 0 ? max(0, ($qty * $costPrice) - $discAmount) / $totalQty : $costPrice;
+                $landingCost = $totalQty > 0 ? max(0, ($qty * $costPrice) - $discAmount - $extraDisc) / $totalQty : $costPrice;
                 $benchmarkCost = $landingCost > 0 ? $landingCost : $costPrice;
 
                 $mrp = (float) ($line['mrp'] ?? 0);

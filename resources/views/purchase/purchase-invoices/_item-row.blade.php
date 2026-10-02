@@ -47,7 +47,9 @@
     $numDiscAmt = (float) $discAmountVal;
     $totalUnits = $numQty + $numFree;
 
-    if ($totalUnits > 0 && $costVal > 0) {
+    if (isset($line->effective_cost) && (float)$line->effective_cost > 0) {
+        $landingCostVal = round((float)$line->effective_cost, 2);
+    } elseif ($totalUnits > 0 && $costVal > 0) {
         $baseAfterDisc = max(0, ($numQty * $costVal) - $numDiscAmt);
         $landingCostVal = round($baseAfterDisc / $totalUnits, 2);
     } else {

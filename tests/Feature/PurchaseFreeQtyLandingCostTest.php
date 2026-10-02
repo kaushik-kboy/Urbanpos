@@ -235,4 +235,120 @@ class PurchaseFreeQtyLandingCostTest extends TestCase
         $response = $this->actingAs($this->user)->post(route('purchase.purchase-invoices.store'), $payload);
         $response->assertSessionHasNoErrors();
     }
+
+    /**
+     * Test that Scheme ItemDiscAmt and OtherDiscAmt are proportionally allocated across
+     * all invoice items, reducing each item's effective landing cost and updating stock valuation.
+     */
+    public function test_scheme_item_disc_and_other_disc_proportionally_reduce_landing_cost_and_update_valuation(): void
+    {
+        $item1 = Item::create([
+            'name' => 'Pet Supplement Drops 50ml',
+            'item_code' => 'PET001',
+            'cost_price' => 100.00,
+            'landing_cost' => 100.00,
+            'sell_price' => 150.00,
+            'mrp' => 180.00,
+            'gst_tax_id' => $this->gst18->id,
+            'status' => true,
+        ]);
+
+        $item2 = Item::create([
+            'name' => 'Pet Dental Chew Bone Large',
+            'item_code' => 'PET002',
+            'cost_price' => 100.00,
+            'landing_cost' => 100.00,
+            'sell_price' => 150.00,
+            'mrp' => 180.00,
+            'gst_tax_id' => $this->gst18->id,
+            'status' => true,
+        ]);
+
+        // Item 1: 10 billed @ 100 = 1,000 base
+        // Item 2: 10 billed + 2 free @ 100 = 1,000 base (12 total units)
+        // Total Base = 2,000
+        // Header discounts: Scheme Disc = Rs 200, Other Disc = Rs 100 => Total Header Disc = Rs 300
+        // Proportional Allocation:
+        // Item 1: 50% of 300 = Rs 150. Net Cost = 1,000 - 150 = Rs 850. Landing Cost = 850 / 10 = Rs 85.00
+        // Item 2: 50% of 300 = Rs 150. Net Cost = 1,000 - 150 = Rs 850. Landing Cost = 850 / 12 = Rs 70.8333
+        // Taxable: 850 + 850 = 1,700. GST 18% = 306. Net Total = 2,006.00
+        $payload = [
+            'invoice_date' => now()->toDateString(),
+            'supplier_id' => $this->supplier->id,
+            'branch_id' => $this->branch->id,
+            'purchase_type' => 'Local',
+            'c_form' => 'No Forms',
+            'scheme_item_disc_amt' => 200.00,
+            'other_disc_amt' => 100.00,
+            'supplier_inv_amount' => 2006.00,
+            'items' => [
+                [
+                    'item_id' => $item1->id,
+                    'qty' => 10,
+                    'free_qty' => 0,
+                    'cost_price' => 100.00,
+                    'sell_price' => 150.00,
+                    'mrp' => 180.00,
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => 18,
+                ],
+                [
+                    'item_id' => $item2->id,
+                    'qty' => 10,
+                    'free_qty' => 2,
+                    'cost_price' => 100.00,
+                    'sell_price' => 150.00,
+                    'mrp' => 180.00,
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => 18,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($this->user)->post(route('purchase.purchase-invoices.store'), $payload);
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('purchase.purchase-invoices.index'));
+
+        $invoice = PurchaseInvoice::with('items')->latest('id')->firstOrFail();
+        $this->assertEquals(2006.00, (float) $invoice->total);
+        $this->assertEquals(22.00, (float) $invoice->total_qty);
+
+        // Item 1 verification
+        $line1 = $invoice->items->firstWhere('item_id', $item1->id);
+        $this->assertEquals(85.00, round((float) $line1->effective_cost, 2));
+
+        $item1->refresh();
+        $this->assertEquals(85.00, round((float) $item1->landing_cost, 2));
+
+        $stock1 = ItemStock::where('item_id', $item1->id)->where('branch_id', $this->branch->id)->firstOrFail();
+        $this->assertEquals(85.00, round((float) $stock1->landing_cost, 2));
+
+        $ledger1 = StockLedger::where('reference_type', PurchaseInvoice::class)
+            ->where('reference_id', $invoice->id)
+            ->where('item_id', $item1->id)
+            ->firstOrFail();
+        $this->assertEquals(10.0, (float) $ledger1->qty_in);
+        $this->assertEquals(85.00, round((float) $ledger1->unit_cost, 2));
+        $this->assertEquals(850.00, round((float) $ledger1->value_in, 2));
+
+        // Item 2 verification
+        $line2 = $invoice->items->firstWhere('item_id', $item2->id);
+        $this->assertEquals(70.8333, round((float) $line2->effective_cost, 4));
+
+        $item2->refresh();
+        $this->assertEquals(70.83, round((float) $item2->landing_cost, 2));
+
+        $stock2 = ItemStock::where('item_id', $item2->id)->where('branch_id', $this->branch->id)->firstOrFail();
+        $this->assertEquals(70.83, round((float) $stock2->landing_cost, 2));
+
+        $ledger2 = StockLedger::where('reference_type', PurchaseInvoice::class)
+            ->where('reference_id', $invoice->id)
+            ->where('item_id', $item2->id)
+            ->firstOrFail();
+        $this->assertEquals(12.0, (float) $ledger2->qty_in);
+        $this->assertEquals(70.83, round((float) $ledger2->unit_cost, 2));
+        $this->assertEquals(850.00, round((float) $ledger2->value_in, 2));
+    }
 }
