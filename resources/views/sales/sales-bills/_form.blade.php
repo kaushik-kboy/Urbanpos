@@ -1878,11 +1878,22 @@
                 }
 
                 let $discPctInput = $row.find('.sb-disc-percent');
-                if (discPct < 0 || discPct > 100) {
+                let $discAmtInput = $row.find('.sb-disc-amount');
+                let isDiscPctInvalid = discPct < 0 || discPct > 100;
+                let isDiscAmtInvalid = discAmt < 0 || (base > 0 && discAmt > base);
+
+                if (isDiscPctInvalid) {
                     $discPctInput.addClass('border-danger text-danger is-invalid')
-                                 .attr('title', 'Discount cannot exceed 100%');
+                                 .attr('title', 'Discount % cannot exceed 100%');
                 } else {
                     $discPctInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+
+                if (isDiscAmtInvalid) {
+                    $discAmtInput.addClass('border-danger text-danger is-invalid')
+                                 .attr('title', 'Discount amount cannot exceed item gross total (₹' + base.toFixed(2) + ')');
+                } else {
+                    $discAmtInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                 }
 
                 let $exp = $row.find('.sb-exp-date');
@@ -2036,6 +2047,28 @@
                         if (!firstErrorMsg) {
                             firstErrorMsg = `Row #${idx + 1}: Product has expired (${exp}) and cannot be sold.`;
                             firstErrorEl = $row.find('.sb-exp-date');
+                        }
+                    }
+
+                    let lineDiscPct = parseFloat($row.find('.sb-disc-percent').val()) || 0;
+                    let lineDiscAmt = parseFloat($row.find('.sb-disc-amount').val()) || 0;
+                    let lineBase = qty * sellPrice;
+
+                    if (lineDiscPct < 0 || lineDiscPct > 100) {
+                        $row.find('.sb-disc-percent').addClass('border-danger text-danger is-invalid');
+                        hasError = true;
+                        if (!firstErrorMsg) {
+                            firstErrorMsg = `Row #${idx + 1}: Discount % (${lineDiscPct}%) cannot exceed 100%.`;
+                            firstErrorEl = $row.find('.sb-disc-percent');
+                        }
+                    }
+
+                    if (lineDiscAmt < 0 || (lineBase > 0 && lineDiscAmt > lineBase)) {
+                        $row.find('.sb-disc-amount').addClass('border-danger text-danger is-invalid');
+                        hasError = true;
+                        if (!firstErrorMsg) {
+                            firstErrorMsg = `Row #${idx + 1}: Discount amount (₹${lineDiscAmt}) cannot exceed item gross total (₹${lineBase.toFixed(2)}).`;
+                            firstErrorEl = $row.find('.sb-disc-amount');
                         }
                     }
                 } else {

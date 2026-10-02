@@ -56,9 +56,9 @@ class StoreSalesBillRequest extends FormRequest
             'items.*.qty'              => ['required', 'numeric', 'min:0.001'],
             'items.*.sell_price'       => ['required', 'numeric', 'min:0'],
             'items.*.mrp'              => ['nullable', 'numeric', 'min:0'],
-            'items.*.disc_percent'     => ['nullable', 'numeric', 'min:0'],
+            'items.*.disc_percent'     => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.disc_amount'      => ['nullable', 'numeric', 'min:0'],
-            'items.*.gst_percent'      => ['nullable', 'numeric', 'min:0'],
+            'items.*.gst_percent'      => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             // ── Payments ──────────────────────────────────────────────────
             'payments'                        => ['nullable', 'array'],
@@ -68,9 +68,28 @@ class StoreSalesBillRequest extends FormRequest
         ];
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $items = $this->input('items', []);
+            if (is_array($items)) {
+                foreach ($items as $idx => $line) {
+                    $qty = (float) ($line['qty'] ?? 0);
+                    $sellPrice = (float) ($line['sell_price'] ?? 0);
+                    $discAmount = (float) ($line['disc_amount'] ?? 0);
+                    $gross = round($qty * $sellPrice, 2);
+                    if ($gross > 0 && $discAmount > $gross) {
+                        $validator->errors()->add("items.{$idx}.disc_amount", "Row #" . ($idx + 1) . ": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross}).");
+                    }
+                }
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [
+            'items.*.disc_percent.max'  => 'Discount % cannot exceed 100%.',
             'bill_date.before_or_equal' => 'Future date and time is not allowed for Bill Date.',
             'bill_date.after_or_equal' => 'Bill Date must be a valid date from year 2020 onwards.',
         ];

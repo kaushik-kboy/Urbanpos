@@ -263,11 +263,30 @@
             const gstPercent = parseFloat(row.querySelector('.pr-gst-percent')?.value) || 0;
 
             const base = qty * cost;
-            if (discAmount > base && base > 0) {
-                discAmount = base;
+            const isDiscPctInvalid = !isNaN(discPercent) && (discPercent > 100 || discPercent < 0);
+            const isDiscAmtInvalid = !isNaN(discAmount) && (discAmount > (base + 0.001) || discAmount < 0);
+
+            const $pctInput = $(row).find('.pr-disc-percent');
+            const $amtInput = $(row).find('.pr-disc-amount');
+
+            if (isDiscPctInvalid) {
+                $pctInput.addClass('is-invalid border-danger text-danger bg-light-danger');
+                $pctInput.attr('title', 'Discount % cannot exceed 100%');
+            } else {
+                $pctInput.removeClass('is-invalid border-danger text-danger bg-light-danger');
+                $pctInput.removeAttr('title');
             }
 
-            const taxable = Math.max(0, base - discAmount);
+            if (isDiscAmtInvalid) {
+                $amtInput.addClass('is-invalid border-danger text-danger bg-light-danger');
+                $amtInput.attr('title', 'Discount amount cannot exceed line cost total');
+            } else {
+                $amtInput.removeClass('is-invalid border-danger text-danger bg-light-danger');
+                $amtInput.removeAttr('title');
+            }
+
+            const clampedDiscAmt = Math.min(Math.max(0, discAmount), base);
+            const taxable = Math.max(0, base - clampedDiscAmt);
             const gstAmount = Math.round((taxable * gstPercent / 100) * 100) / 100;
             const net = taxable + gstAmount;
 
@@ -276,7 +295,7 @@
                 netSpan.innerText = net.toFixed(2);
             }
 
-            return { qty, cost, discAmount, taxable, gstAmount, net };
+            return { qty, cost, discAmount: clampedDiscAmt, taxable, gstAmount, net, isInvalid: isDiscPctInvalid || isDiscAmtInvalid };
         }
 
         function recalculateAll() {
@@ -285,6 +304,7 @@
             let totalTaxable = 0;
             let totalGst = 0;
             let totalNet = 0;
+            let hasInvalidDisc = false;
 
             document.querySelectorAll('#pr-items-body .pr-item-row').forEach(row => {
                 const res = recalculateRow(row);
@@ -293,6 +313,9 @@
                 totalTaxable += res.taxable;
                 totalGst += res.gstAmount;
                 totalNet += res.net;
+                if (res.isInvalid) {
+                    hasInvalidDisc = true;
+                }
             });
 
             const roundOff = parseFloat(document.getElementById('round_off')?.value) || 0;
@@ -308,7 +331,12 @@
             const submitBtn = document.querySelector('button[type="submit"]');
             if (submitBtn) {
                 const hasValidItems = totalQty > 0 && document.querySelectorAll('#pr-items-body .pr-item-row').length > 0;
-                submitBtn.disabled = !hasValidItems;
+                submitBtn.disabled = !hasValidItems || hasInvalidDisc;
+                if (hasInvalidDisc) {
+                    submitBtn.title = 'Discount percentage ya discount amount 100% / line total se zyada hai. Kripya use theek karein.';
+                } else {
+                    submitBtn.removeAttribute('title');
+                }
             }
         }
 
@@ -378,17 +406,10 @@
             if (target.matches('.pr-disc-percent')) {
                 let valStr = target.value;
                 let val = parseFloat(valStr);
-                if (valStr.includes('-') || val < 0) {
-                    val = 0;
-                    target.value = 0;
-                } else if (val > 100) {
-                    val = 100;
-                    target.value = 100;
-                }
                 const qty = parseFloat(row.querySelector('.pr-qty')?.value) || 0;
                 const cost = parseFloat(row.querySelector('.pr-cost')?.value) || 0;
                 const base = qty * cost;
-                const discAmt = (!isNaN(val) && val > 0 && base > 0) ? Math.round((base * val / 100) * 100) / 100 : 0;
+                const discAmt = (!isNaN(val) && val >= 0 && base > 0) ? Math.round((base * val / 100) * 100) / 100 : 0;
                 const discAmtInput = row.querySelector('.pr-disc-amount');
                 if (discAmtInput) {
                     discAmtInput.value = discAmt > 0 ? discAmt.toFixed(2) : '';
@@ -396,18 +417,10 @@
             } else if (target.matches('.pr-disc-amount')) {
                 let valStr = target.value;
                 let val = parseFloat(valStr);
-                if (valStr.includes('-') || val < 0) {
-                    val = 0;
-                    target.value = 0;
-                }
                 const qty = parseFloat(row.querySelector('.pr-qty')?.value) || 0;
                 const cost = parseFloat(row.querySelector('.pr-cost')?.value) || 0;
                 const base = qty * cost;
-                if (base > 0 && val > base) {
-                    val = base;
-                    target.value = base.toFixed(2);
-                }
-                const discPct = (!isNaN(val) && val > 0 && base > 0) ? Math.min(100, Math.round((val / base * 100) * 100) / 100) : 0;
+                const discPct = (!isNaN(val) && val >= 0 && base > 0) ? Math.round((val / base * 100) * 100) / 100 : 0;
                 const discPctInput = row.querySelector('.pr-disc-percent');
                 if (discPctInput) {
                     discPctInput.value = discPct > 0 ? discPct.toFixed(2) : '';
@@ -1229,6 +1242,27 @@
                 if (!validatePrQuantity($qtyInput, true)) {
                     e.preventDefault();
                     $qtyInput.focus().select();
+                    hasError = true;
+                    return false;
+                }
+
+                let discPct = parseFloat($row.find('.pr-disc-percent').val()) || 0;
+                let discAmt = parseFloat($row.find('.pr-disc-amount').val()) || 0;
+                let costVal = parseFloat($row.find('.pr-cost').val()) || 0;
+                let baseVal = qty * costVal;
+
+                if (discPct > 100 || discPct < 0) {
+                    e.preventDefault();
+                    notifyWarn(`Discount % 100 se zyada nahi ho sakta for "${itemName}"! Kripya sahi discount enter karein.`, 'Invalid Discount');
+                    $row.find('.pr-disc-percent').focus().select();
+                    hasError = true;
+                    return false;
+                }
+
+                if (discAmt > (baseVal + 0.001) || discAmt < 0) {
+                    e.preventDefault();
+                    notifyWarn(`Discount amount line total se zyada nahi ho sakta for "${itemName}"! Kripya sahi discount enter karein.`, 'Invalid Discount');
+                    $row.find('.pr-disc-amount').focus().select();
                     hasError = true;
                     return false;
                 }

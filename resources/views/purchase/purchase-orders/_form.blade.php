@@ -190,7 +190,7 @@
         <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="$po->scheme_item_disc_amt ?? 0" />
     </div>
     <div class="field-wrapper col-md-6" data-field="scheme_item_disc_percent" data-label="Scheme ItemDisc%" data-default-order="4">
-        <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="$po->scheme_item_disc_percent ?? 0" />
+        <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" min="0" max="100" :value="$po->scheme_item_disc_percent ?? 0" />
     </div>
     <div class="field-wrapper col-md-6" data-field="other_disc_amt" data-label="OtherDiscAmt" data-default-order="5">
         <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="$po->other_disc_amt ?? 0" />
@@ -886,6 +886,21 @@
                 }
             }
 
+            let isDiscPctInvalid = discPct < 0 || discPct > 100;
+            let isDiscAmtInvalid = discAmt < 0 || (base > 0 && discAmt > base);
+
+            if (isDiscPctInvalid) {
+                $discPct.addClass('border-danger text-danger is-invalid').attr('title', 'Discount % cannot exceed 100%');
+            } else {
+                $discPct.removeClass('border-danger text-danger is-invalid').attr('title', '');
+            }
+
+            if (isDiscAmtInvalid) {
+                $discAmt.addClass('border-danger text-danger is-invalid').attr('title', 'Discount amount cannot exceed item total (₹' + base.toFixed(2) + ')');
+            } else {
+                $discAmt.removeClass('border-danger text-danger is-invalid').attr('title', '');
+            }
+
             scheduleCalculatePoTotals();
             return { qty, base, discAmt };
         }
@@ -1182,7 +1197,52 @@
                     hasError = true;
                     return false;
                 }
+
+                let $discPct = $row.find('.po-disc-percent');
+                let discPctVal = parseFloat($discPct.val()) || 0;
+                let $discAmt = $row.find('.po-disc-amount');
+                let discAmtVal = parseFloat($discAmt.val()) || 0;
+                let costVal = parseFloat($row.find('.po-cost').val()) || 0;
+                let baseTotal = qty * costVal;
+
+                if (discPctVal < 0 || discPctVal > 100) {
+                    e.preventDefault();
+                    $discPct.addClass('is-invalid border-danger');
+                    let msg = `Row for "${itemName}": Discount % (${discPctVal}%) cannot exceed 100%.`;
+                    if (window.toastr) toastr.warning(msg, 'Invalid Discount %');
+                    else alert(msg);
+                    $discPct.focus().select();
+                    hasError = true;
+                    return false;
+                }
+
+                if (discAmtVal < 0 || (baseTotal > 0 && discAmtVal > baseTotal)) {
+                    e.preventDefault();
+                    $discAmt.addClass('is-invalid border-danger');
+                    let msg = `Row for "${itemName}": Discount amount (₹${discAmtVal}) cannot exceed item total (₹${baseTotal.toFixed(2)}).`;
+                    if (window.toastr) toastr.warning(msg, 'Invalid Discount Amount');
+                    else alert(msg);
+                    $discAmt.focus().select();
+                    hasError = true;
+                    return false;
+                }
             });
+
+            let $schemePct = $('input[name="scheme_item_disc_percent"]');
+            let schemePctVal = parseFloat($schemePct.val()) || 0;
+            if (schemePctVal < 0 || schemePctVal > 100) {
+                e.preventDefault();
+                $schemePct.addClass('is-invalid border-danger');
+                if (window.toastr) {
+                    toastr.warning('Scheme Item Discount % cannot exceed 100%.', 'Invalid Scheme Discount');
+                } else {
+                    alert('Scheme Item Discount % cannot exceed 100%.');
+                }
+                $schemePct.focus().select();
+                return false;
+            } else {
+                $schemePct.removeClass('is-invalid border-danger');
+            }
 
             if (hasError) return false;
 

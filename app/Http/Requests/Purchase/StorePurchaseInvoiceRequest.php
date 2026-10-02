@@ -60,16 +60,37 @@ class StorePurchaseInvoiceRequest extends FormRequest
             'items.*.cost_price'           => ['required', 'numeric', 'min:0'],
             'items.*.sell_price'           => ['nullable', 'numeric', 'min:0'],
             'items.*.mrp'                  => ['nullable', 'numeric', 'min:0'],
-            'items.*.disc_percent'         => ['nullable', 'numeric', 'min:0'],
+            'items.*.disc_percent'         => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.disc_amount'          => ['nullable', 'numeric', 'min:0'],
-            'items.*.gst_percent'          => ['nullable', 'numeric', 'min:0'],
+            'items.*.gst_percent'          => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.gst_tax_amount'       => ['nullable', 'numeric', 'min:0'],
+            'scheme_item_disc_percent'     => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $items = $this->input('items', []);
+            if (is_array($items)) {
+                foreach ($items as $idx => $line) {
+                    $qty = (float) ($line['qty'] ?? 0);
+                    $costPrice = (float) ($line['cost_price'] ?? 0);
+                    $discAmount = (float) ($line['disc_amount'] ?? 0);
+                    $gross = round($qty * $costPrice, 2);
+                    if ($gross > 0 && $discAmount > $gross) {
+                        $validator->errors()->add("items.{$idx}.disc_amount", "Row #" . ($idx + 1) . ": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross}).");
+                    }
+                }
+            }
+        });
     }
 
     public function messages(): array
     {
         return [
+            'items.*.disc_percent.max'     => 'Discount % cannot exceed 100%.',
+            'scheme_item_disc_percent.max' => 'Scheme Item Discount % cannot exceed 100%.',
             'header.invoice_date.required' => 'Invoice date is required.',
             'header.supplier_id.required'  => 'Supplier is required.',
             'header.branch_id.required'    => 'Branch is required.',

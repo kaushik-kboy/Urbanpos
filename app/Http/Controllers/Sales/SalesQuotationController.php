@@ -272,10 +272,22 @@ class SalesQuotationController extends Controller
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.sell_price' => ['required', 'numeric', 'min:0'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
-            'items.*.disc_percent' => ['nullable', 'numeric', 'min:0'],
+            'items.*.disc_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.disc_amount' => ['nullable', 'numeric', 'min:0'],
-            'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
+            'items.*.gst_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
+
+        foreach ($validated['items'] as $idx => $line) {
+            $qty = (float) ($line['qty'] ?? 0);
+            $sellPrice = (float) ($line['sell_price'] ?? 0);
+            $discAmount = (float) ($line['disc_amount'] ?? 0);
+            $gross = round($qty * $sellPrice, 2);
+            if ($gross > 0 && $discAmount > $gross) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "items.{$idx}.disc_amount" => ["Row #" . ($idx + 1) . ": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross})."],
+                ]);
+            }
+        }
 
         return ['header' => $header, 'items' => $validated['items']];
     }

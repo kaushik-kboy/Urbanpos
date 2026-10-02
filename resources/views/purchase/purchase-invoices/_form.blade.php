@@ -294,7 +294,7 @@
         <x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
     </div>
     <div class="field-wrapper col-md-6" data-field="scheme_item_disc_percent" data-label="Scheme ItemDisc%" data-default-order="10">
-        <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="isset($inv->scheme_item_disc_percent) && $inv->scheme_item_disc_percent != 0 ? $inv->scheme_item_disc_percent : ''" />
+        <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" min="0" max="100" :value="isset($inv->scheme_item_disc_percent) && $inv->scheme_item_disc_percent != 0 ? $inv->scheme_item_disc_percent : ''" />
     </div>
 </div>
 
@@ -1363,6 +1363,21 @@
                 } else {
                     $costInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                 }
+
+                let isDiscPctInvalid = discPct < 0 || discPct > 100;
+                let isDiscAmtInvalid = discAmt < 0 || (base > 0 && discAmt > base);
+
+                if (isDiscPctInvalid) {
+                    $discPct.addClass('border-danger text-danger is-invalid').attr('title', 'Discount % cannot exceed 100%');
+                } else {
+                    $discPct.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+
+                if (isDiscAmtInvalid) {
+                    $discAmt.addClass('border-danger text-danger is-invalid').attr('title', 'Discount amount cannot exceed item total (₹' + base.toFixed(2) + ')');
+                } else {
+                    $discAmt.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
             }
 
             scheduleCalculateTotals();
@@ -2412,9 +2427,50 @@
                         hasError = true;
                         return false;
                     }
+
+                    let $discPct = $(this).find('.pinv-disc-percent');
+                    let discPctVal = parseFloat($discPct.val()) || 0;
+                    let $discAmt = $(this).find('.pinv-disc-amount');
+                    let discAmtVal = parseFloat($discAmt.val()) || 0;
+                    let baseTotal = q * cost;
+
+                    if (discPctVal < 0 || discPctVal > 100) {
+                        $discPct.addClass('is-invalid border-danger');
+                        if (window.toastr) {
+                            toastr.warning(`Row #${idx + 1}: Discount % (${discPctVal}%) cannot exceed 100%.`, 'Invalid Discount %');
+                        }
+                        $discPct.focus();
+                        hasError = true;
+                        return false;
+                    }
+
+                    if (discAmtVal < 0 || (baseTotal > 0 && discAmtVal > baseTotal)) {
+                        $discAmt.addClass('is-invalid border-danger');
+                        if (window.toastr) {
+                            toastr.warning(`Row #${idx + 1}: Discount amount (₹${discAmtVal}) cannot exceed item total (₹${baseTotal.toFixed(2)}).`, 'Invalid Discount Amount');
+                        }
+                        $discAmt.focus();
+                        hasError = true;
+                        return false;
+                    }
+
                     validRows++;
                 }
             });
+
+            let $schemePct = $('input[name="scheme_item_disc_percent"]');
+            let schemePctVal = parseFloat($schemePct.val()) || 0;
+            if (schemePctVal < 0 || schemePctVal > 100) {
+                e.preventDefault();
+                $schemePct.addClass('is-invalid border-danger');
+                if (window.toastr) {
+                    toastr.warning('Scheme Item Discount % cannot exceed 100%.', 'Invalid Scheme Discount');
+                }
+                $schemePct.focus();
+                return false;
+            } else {
+                $schemePct.removeClass('is-invalid border-danger');
+            }
 
             if (hasError) {
                 e.preventDefault();

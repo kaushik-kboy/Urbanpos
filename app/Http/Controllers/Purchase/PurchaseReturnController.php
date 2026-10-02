@@ -861,6 +861,25 @@ class PurchaseReturnController extends Controller
             'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        foreach ($validated['items'] as $index => $itemLine) {
+            $qty = (float) ($itemLine['qty'] ?? 0);
+            $costPrice = (float) ($itemLine['cost_price'] ?? 0);
+            $discAmount = (float) ($itemLine['disc_amount'] ?? 0);
+            $discPercent = (float) ($itemLine['disc_percent'] ?? 0);
+            $lineGross = round($qty * $costPrice, 2);
+
+            if ($discPercent > 100) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.disc_percent" => "Item #".($index + 1).": Discount percentage cannot exceed 100%.",
+                ]);
+            }
+            if ($discAmount > ($lineGross + 0.01)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.disc_amount" => "Item #".($index + 1).": Discount amount (₹{$discAmount}) cannot exceed line total cost (₹{$lineGross}).",
+                ]);
+            }
+        }
+
         $currentReturnId = $request->route('purchase_return')
             ? (is_object($request->route('purchase_return')) ? $request->route('purchase_return')->id : (int) $request->route('purchase_return'))
             : null;

@@ -771,6 +771,21 @@ $(function() {
             } else {
                 $priceInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
             }
+
+            let isDiscPctInvalid = discPct < 0 || discPct > 100;
+            let isDiscAmtInvalid = discAmt < 0 || (base > 0 && discAmt > base);
+
+            if (isDiscPctInvalid) {
+                discPctInput.addClass('is-invalid border-danger text-danger').attr('title', 'Discount % cannot exceed 100%');
+            } else {
+                discPctInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
+            }
+
+            if (isDiscAmtInvalid) {
+                discAmtInput.addClass('is-invalid border-danger text-danger').attr('title', 'Discount amount cannot exceed item gross total (₹' + base.toFixed(2) + ')');
+            } else {
+                discAmtInput.removeClass('is-invalid border-danger text-danger').attr('title', '');
+            }
         } else {
             $qtyInput.removeClass('is-invalid border-danger text-danger');
             $qtyFeedback.text('').css('display', 'none');
@@ -918,6 +933,33 @@ $(function() {
                     hasError = true;
                     return false;
                 }
+
+                let $discPct = $(this).find('.sq-disc-percent');
+                let discPctVal = parseFloat($discPct.val()) || 0;
+                let $discAmt = $(this).find('.sq-disc-amount');
+                let discAmtVal = parseFloat($discAmt.val()) || 0;
+                let baseTotal = q * p;
+
+                if (discPctVal < 0 || discPctVal > 100) {
+                    $discPct.addClass('is-invalid border-danger text-danger');
+                    let msg = `Row #${idx + 1}: Discount % (${discPctVal}%) cannot exceed 100%.`;
+                    if (window.toastr) toastr.warning(msg, 'Invalid Discount %');
+                    else alert(msg);
+                    $discPct.focus().select();
+                    hasError = true;
+                    return false;
+                }
+
+                if (discAmtVal < 0 || (baseTotal > 0 && discAmtVal > baseTotal)) {
+                    $discAmt.addClass('is-invalid border-danger text-danger');
+                    let msg = `Row #${idx + 1}: Discount amount (₹${discAmtVal}) cannot exceed item gross total (₹${baseTotal.toFixed(2)}).`;
+                    if (window.toastr) toastr.warning(msg, 'Invalid Discount Amount');
+                    else alert(msg);
+                    $discAmt.focus().select();
+                    hasError = true;
+                    return false;
+                }
+
                 validRows++;
             }
         });

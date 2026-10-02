@@ -52,10 +52,10 @@
         <input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm so-mrp text-right" autocomplete="off" placeholder="0.00">
     </td>
     <td style="width: 90px;" data-col-key="disc_percent">
-        <input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm so-disc-percent text-right" autocomplete="off" placeholder="0%">
+        <input type="number" step="0.01" min="0" max="100" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm so-disc-percent text-right" autocomplete="off" placeholder="0%">
     </td>
     <td style="width: 100px;" data-col-key="disc_amt">
-        <input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm so-disc-amount text-right" autocomplete="off" placeholder="0.00">
+        <input type="number" step="0.01" min="0" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm so-disc-amount text-right" autocomplete="off" placeholder="0.00">
     </td>
     <td style="width: 85px;" data-col-key="gst_percent">
         <input type="number" step="0.01" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" readonly tabindex="-1" class="form-control form-control-sm so-gst-percent text-right bg-light" autocomplete="off" placeholder="0%" title="GST % (Read-only)">

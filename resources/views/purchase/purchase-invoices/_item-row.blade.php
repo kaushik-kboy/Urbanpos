@@ -121,9 +121,9 @@
     {{-- Profit % --}}
     <td class="px-0" style="width:50px; min-width:50px;" data-col-key="profit"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-profit bg-light text-right px-1 font-weight-bold" value="{{ $profitVal !== null && $profitVal != 0 ? number_format($profitVal, 1).'%' : '' }}" autocomplete="off" title="Profit %"></td>
     {{-- Disc % --}}
-    <td class="px-0" style="width:48px; min-width:48px;" data-col-key="disc_pct"><input type="number" step="0.01" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent text-right px-1" autocomplete="off" placeholder="0%"></td>
+    <td class="px-0" style="width:48px; min-width:48px;" data-col-key="disc_pct"><input type="number" step="0.01" min="0" max="100" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent text-right px-1" autocomplete="off" placeholder="0%"></td>
     {{-- Disc Amt --}}
-    <td class="px-1" style="width:70px; min-width:70px;" data-col-key="disc_amt"><input type="number" step="0.01" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm pinv-disc-amount text-right px-1" autocomplete="off"></td>
+    <td class="px-1" style="width:70px; min-width:70px;" data-col-key="disc_amt"><input type="number" step="0.01" min="0" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm pinv-disc-amount text-right px-1" autocomplete="off"></td>
     {{-- GST % --}}
     <td class="px-0" style="width:45px; min-width:45px;" data-col-key="gst"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm pinv-gst bg-light text-right px-1" autocomplete="off" placeholder="0%" title="GST % (Read-only)"></td>
     {{-- GST Tax Amt --}}
