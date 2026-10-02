@@ -137,7 +137,12 @@
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
-                    <td class="font-bold">{{ $line->item?->name }}</td>
+                    <td class="font-bold">
+                        {{ $line->item?->name }}
+                        @if($line->salesBill)
+                            <div style="font-size: 10px; font-weight: normal; color: #555;">Bill #{{ $line->salesBill->bill_number }}</div>
+                        @endif
+                    </td>
                     <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
                     <td class="text-right font-bold">{{ number_format($line->qty, 3) }}</td>
                     <td class="text-right">₹{{ number_format($line->sell_price, 2) }}</td>

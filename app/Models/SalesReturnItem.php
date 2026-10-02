@@ -11,7 +11,7 @@ class SalesReturnItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'sales_return_id', 'item_id', 'batch_no', 'exp_date', 'qty', 'sell_price', 'cost_at_sale', 'mrp',
+        'sales_return_id', 'sales_bill_id', 'sales_bill_item_id', 'item_id', 'batch_no', 'exp_date', 'qty', 'sell_price', 'cost_at_sale', 'mrp',
         'disc_percent', 'disc_amount', 'gst_percent', 'gst_tax_amount',
         'cgst_amount', 'sgst_amount', 'igst_amount', 'net_amount',
     ];
@@ -23,6 +23,16 @@ class SalesReturnItem extends Model
     public function salesReturn(): BelongsTo
     {
         return $this->belongsTo(SalesReturn::class);
+    }
+
+    public function salesBill(): BelongsTo
+    {
+        return $this->belongsTo(SalesBill::class);
+    }
+
+    public function salesBillItem(): BelongsTo
+    {
+        return $this->belongsTo(SalesBillItem::class);
     }
 
     public function item(): BelongsTo

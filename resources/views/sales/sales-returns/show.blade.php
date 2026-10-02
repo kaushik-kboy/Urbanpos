@@ -88,7 +88,12 @@
                             <tr>
                                 <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
                                 <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
-                                <td class="font-weight-bold">{{ $line->item?->name }}</td>
+                                <td class="font-weight-bold">
+                                    {{ $line->item?->name }}
+                                    @if($line->salesBill)
+                                        <span class="badge badge-info ml-1" style="font-size: 11px;"><i class="fas fa-file-invoice mr-1"></i>Bill #{{ $line->salesBill->bill_number }}</span>
+                                    @endif
+                                </td>
                                 <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
                                 <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 3) }}</td>
                                 <td class="text-right">₹{{ number_format($line->sell_price, 2) }}</td>

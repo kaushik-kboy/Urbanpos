@@ -15,7 +15,12 @@
 
 <div class="row g-2 form-fields-grid mb-3" id="sr-header-fields-grid">
     <div class="field-wrapper col-md-4 mb-3" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
-        <label for="customer_id" class="font-weight-bold">Customer <span class="text-danger">*</span></label>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
+            <button type="button" class="btn btn-xs btn-primary font-weight-bold" id="sr-btn-open-history" title="Pick items from customer's previous sales bills">
+                <i class="fas fa-history mr-1"></i> Pick from History
+            </button>
+        </div>
         <select name="customer_id" id="customer_id" class="form-control select2" required>
             <option value="">-- Select Customer --</option>
             @php
@@ -117,6 +122,9 @@
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
     </h5>
     <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-outline-info btn-sm font-weight-bold mr-2" id="sr-btn-open-history-header" title="Pick items from customer's previous bills across multiple dates">
+            <i class="fas fa-history mr-1"></i> Pick from Purchase History
+        </button>
         <button type="button" class="btn btn-outline-danger btn-sm font-weight-bold mr-2 btn-reset-table" id="sr-btn-reset-table" title="Clear all table items and reset to 1 empty row">
             <i class="fas fa-undo mr-1"></i> Reset Table
         </button>
@@ -215,6 +223,108 @@
 <template id="sr-row-template">
     @include('sales.sales-returns._item-row', ['items' => $items, 'index' => '__INDEX__', 'line' => null])
 </template>
+
+{{-- ============================================================
+     CUSTOMER PURCHASE HISTORY PICKER MODAL (Multi-Bill / Multi-Date)
+     ============================================================ --}}
+<div class="modal fade" id="sr-customer-history-modal" tabindex="-1" role="dialog" aria-labelledby="srHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 8px; overflow: hidden;">
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);">
+                <div class="d-flex align-items-center">
+                    <div class="bg-white text-primary rounded-circle mr-3 shadow-sm d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <i class="fas fa-history fa-lg"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title font-weight-bold mb-0 text-white" id="srHistoryModalLabel">
+                            Customer Purchase History Picker
+                        </h5>
+                        <small class="text-white-50">Select items across multiple invoices to return in this credit note</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge badge-light text-primary font-weight-bold px-3 py-2 mr-3 shadow-sm" id="sr-cph-customer-badge" style="font-size: 13px;">
+                        <i class="fas fa-user mr-1"></i> <span id="sr-cph-customer-name">Customer</span>
+                    </span>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.85; text-shadow: none;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-body p-3 bg-light">
+                {{-- Search & Date Filter Bar --}}
+                <div class="card shadow-sm border-0 mb-3">
+                    <div class="card-body p-2">
+                        <div class="row align-items-center g-2">
+                            <div class="col-md-5">
+                                <div class="input-group input-group-sm">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" id="sr-cph-search-input" class="form-control border-left-0" placeholder="Search item name, code, barcode, or bill #..." autocomplete="off">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-outline-secondary" type="button" id="sr-cph-search-clear" title="Clear search">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-5 text-md-center">
+                                <div class="btn-group btn-group-sm" role="group" id="sr-cph-date-pills">
+                                    <button type="button" class="btn btn-outline-primary active" data-days="30">Last 30 Days</button>
+                                    <button type="button" class="btn btn-outline-primary" data-days="60">Last 60 Days</button>
+                                    <button type="button" class="btn btn-outline-primary" data-days="90">Last 90 Days</button>
+                                    <button type="button" class="btn btn-outline-primary" data-days="all">All Time</button>
+                                </div>
+                            </div>
+                            <div class="col-md-2 text-md-right text-right">
+                                <span class="badge badge-info py-2 px-2 font-weight-bold" id="sr-cph-stats-badge">0 Bills Found</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Loading Spinner --}}
+                <div id="sr-cph-loading" class="text-center py-5 d-none">
+                    <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <div class="mt-3 font-weight-bold text-muted">Fetching customer purchase history...</div>
+                </div>
+
+                {{-- Empty State --}}
+                <div id="sr-cph-empty" class="text-center py-5 d-none">
+                    <i class="fas fa-receipt fa-3x text-muted mb-3 opacity-50"></i>
+                    <h5 class="text-muted font-weight-bold">No Invoices Found</h5>
+                    <p class="text-muted mb-0">This customer has no purchase history in the selected time range.</p>
+                </div>
+
+                {{-- Accordion List of Bills --}}
+                <div id="sr-cph-bills-container"></div>
+            </div>
+
+            <div class="modal-footer bg-white border-top d-flex justify-content-between align-items-center py-2 px-3">
+                <div class="d-flex align-items-center">
+                    <span class="badge badge-primary px-3 py-2 font-weight-bold mr-3" style="font-size: 13px;">
+                        <span id="sr-cph-selected-count">0</span> item(s) selected
+                    </span>
+                    <span class="font-weight-bold text-dark" style="font-size: 14px;">
+                        Est. Refund Total: <strong class="text-success h6 mb-0 ml-1" id="sr-cph-selected-total">₹0.00</strong>
+                    </span>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mr-2 font-weight-bold px-3" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm" id="sr-cph-btn-add-selected" disabled>
+                        <i class="fas fa-plus-circle mr-1"></i> Add Selected Items to Return
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 {{-- ============================================================
      ITEM SEARCH MODAL for Sales Return — opens on Code/Barcode click
@@ -1578,7 +1688,8 @@
                 }
 
                 // Check 2: Qty exceeds remaining returnable quantity
-                if (hasBill) {
+                let hasLineBillLimit = ($qtyInput.attr('data-remaining-qty') !== undefined && $qtyInput.attr('data-remaining-qty') !== '');
+                if (hasBill || hasLineBillLimit) {
                     if (remQty <= 0) {
                         e.preventDefault();
                         let errMsg = "No returnable quantity available for this item.";
@@ -1636,6 +1747,429 @@
                     }
                 });
             });
+        });
+
+        // ============================================================
+        // CUSTOMER PURCHASE HISTORY PICKER (Multi-Bill / Multi-Date)
+        // ============================================================
+        let cphRawData = null;
+        let cphCurrentDays = 30;
+
+        function openCustomerHistoryModal() {
+            let custId = $('#customer_id').val();
+            if (!custId) {
+                validateSrHeader(true, ['customer']);
+                return;
+            }
+
+            let custName = $('#customer_id option:selected').text() || 'Selected Customer';
+            $('#sr-cph-customer-name').text(custName);
+            $('#sr-cph-search-input').val('');
+            $('#sr-customer-history-modal').modal('show');
+            fetchCustomerPurchaseHistory(cphCurrentDays);
+        }
+
+        $('#sr-btn-open-history, #sr-btn-open-history-header').on('click', function (e) {
+            e.preventDefault();
+            openCustomerHistoryModal();
+        });
+
+        $('#sr-cph-date-pills button').on('click', function () {
+            $('#sr-cph-date-pills button').removeClass('active');
+            $(this).addClass('active');
+            cphCurrentDays = $(this).data('days');
+            fetchCustomerPurchaseHistory(cphCurrentDays);
+        });
+
+        $('#sr-cph-search-input').on('input', function () {
+            filterCustomerPurchaseHistory($(this).val());
+        });
+
+        $('#sr-cph-search-clear').on('click', function () {
+            $('#sr-cph-search-input').val('');
+            filterCustomerPurchaseHistory('');
+        });
+
+        function fetchCustomerPurchaseHistory(days) {
+            let custId = $('#customer_id').val();
+            if (!custId) return;
+
+            $('#sr-cph-loading').removeClass('d-none');
+            $('#sr-cph-empty').addClass('d-none');
+            $('#sr-cph-bills-container').empty();
+            $('#sr-cph-stats-badge').text('Loading...');
+            updateCphFooterCounters();
+
+            let url = `/sales/sales-returns/customer-purchased-items/${custId}?days=${days}`;
+            @if(!empty($ret?->id))
+                url += `&ignore_return_id={{ $ret->id }}`;
+            @endif
+
+            $.getJSON(url, function (res) {
+                $('#sr-cph-loading').addClass('d-none');
+                cphRawData = res;
+                let bills = res.bills || [];
+
+                if (bills.length === 0) {
+                    $('#sr-cph-empty').removeClass('d-none');
+                    $('#sr-cph-stats-badge').text('0 Bills Found');
+                    return;
+                }
+
+                $('#sr-cph-stats-badge').text(`${res.summary.total_bills} Bills (${res.summary.total_returnable_items} Returnable Items)`);
+                renderCustomerPurchaseHistoryBills(bills);
+            }).fail(function () {
+                $('#sr-cph-loading').addClass('d-none');
+                $('#sr-cph-bills-container').html('<div class="alert alert-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Failed to load customer purchase history. Please try again.</div>');
+            });
+        }
+
+        function renderCustomerPurchaseHistoryBills(bills) {
+            let $container = $('#sr-cph-bills-container');
+            $container.empty();
+
+            // Check what items are already in the return table
+            let existingReturnMap = {};
+            $('#sr-items-body .sr-item-row').each(function () {
+                let itId = $(this).find('.sr-item-select').val();
+                let bId = $(this).find('.sr-item-bill-id').val();
+                if (itId) {
+                    let k = (bId || '') + '_' + itId;
+                    existingReturnMap[k] = parseFloat($(this).find('.sr-qty').val()) || 0;
+                }
+            });
+
+            bills.forEach(function (bill, bIdx) {
+                let collapseId = `cph-bill-collapse-${bill.id}`;
+                let billHeaderId = `cph-bill-header-${bill.id}`;
+
+                let itemsHtml = '';
+                let returnableCountInBill = 0;
+
+                bill.items.forEach(function (item) {
+                    let remQty = parseFloat(item.remaining_qty) || 0;
+                    let origQty = parseFloat(item.original_qty) || 0;
+                    let retQty = parseFloat(item.already_returned_qty) || 0;
+                    let isReturnable = remQty > 0;
+                    if (isReturnable) returnableCountInBill++;
+
+                    let key = bill.id + '_' + item.item_id;
+                    let isAlreadyAdded = existingReturnMap[key] !== undefined;
+                    let prefilledQty = isAlreadyAdded ? existingReturnMap[key] : remQty;
+
+                    itemsHtml += `
+                        <tr class="cph-item-row ${!isReturnable ? 'bg-light text-muted' : ''}"
+                            data-item-search="${(item.item_name + ' ' + item.item_code + ' ' + bill.bill_number).toLowerCase()}">
+                            <td class="text-center align-middle" style="width: 40px;">
+                                <input type="checkbox" class="sr-cph-item-chk"
+                                    ${!isReturnable ? 'disabled' : ''}
+                                    ${isAlreadyAdded ? 'checked' : ''}
+                                    data-bill-id="${bill.id}"
+                                    data-bill-no="${bill.bill_number}"
+                                    data-bill-date="${bill.bill_date}"
+                                    data-bill-item-id="${item.sales_bill_item_id}"
+                                    data-item-id="${item.item_id}"
+                                    data-item-name="${item.item_name}"
+                                    data-item-code="${item.item_code}"
+                                    data-exp-date="${item.exp_date || ''}"
+                                    data-orig-qty="${origQty}"
+                                    data-ret-qty="${retQty}"
+                                    data-rem-qty="${remQty}"
+                                    data-sell-price="${item.sell_price}"
+                                    data-mrp="${item.mrp}"
+                                    data-disc-percent="${item.disc_percent}"
+                                    data-disc-amount="${item.disc_amount}"
+                                    data-gst-percent="${item.gst_percent}">
+                            </td>
+                            <td class="align-middle">
+                                <div class="font-weight-bold text-dark">${item.item_name}</div>
+                                <small class="text-muted">${item.item_code ? 'Code: ' + item.item_code : ''} ${item.exp_date ? ' | Exp: ' + item.exp_date : ''}</small>
+                            </td>
+                            <td class="text-right align-middle font-weight-bold">${origQty.toFixed(origQty % 1 === 0 ? 0 : 3)}</td>
+                            <td class="text-right align-middle text-muted">${retQty.toFixed(retQty % 1 === 0 ? 0 : 3)}</td>
+                            <td class="text-right align-middle">
+                                ${isReturnable
+                                    ? `<span class="badge badge-success px-2 py-1 font-weight-bold" style="font-size: 12px;">${remQty.toFixed(remQty % 1 === 0 ? 0 : 3)}</span>`
+                                    : `<span class="badge badge-secondary px-2 py-1">0 (Exhausted)</span>`
+                                }
+                            </td>
+                            <td class="text-right align-middle">
+                                <span class="font-weight-bold">₹${item.sell_price.toFixed(2)}</span>
+                                ${item.disc_percent > 0 ? `<small class="text-danger d-block">-${item.disc_percent}%</small>` : ''}
+                            </td>
+                            <td class="text-right align-middle">${item.gst_percent}%</td>
+                            <td class="text-right align-middle" style="width: 120px;">
+                                <input type="number" step="0.001" min="0.001" max="${remQty}"
+                                    class="form-control form-control-sm text-right sr-cph-item-qty font-weight-bold"
+                                    value="${prefilledQty.toFixed(prefilledQty % 1 === 0 ? 0 : 3)}"
+                                    ${!isReturnable ? 'disabled' : ''}
+                                    style="min-width: 80px;">
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                let cardHtml = `
+                    <div class="card border mb-3 shadow-sm cph-bill-card" id="cph-card-${bill.id}" data-bill-search="${bill.bill_number.toLowerCase()}">
+                        <div class="card-header bg-white py-2 px-3 d-flex flex-wrap justify-content-between align-items-center" id="${billHeaderId}">
+                            <div class="d-flex align-items-center mb-1 mb-md-0" style="cursor: pointer;" data-toggle="collapse" data-target="#${collapseId}">
+                                <i class="fas fa-chevron-down text-primary mr-2 cph-collapse-icon"></i>
+                                <span class="badge badge-primary px-2 py-1 mr-2 font-weight-bold" style="font-size: 13px;">
+                                    <i class="fas fa-file-invoice mr-1"></i> Bill #${bill.bill_number}
+                                </span>
+                                <span class="text-muted small mr-3"><i class="far fa-calendar-alt mr-1"></i>${bill.bill_date}</span>
+                                ${bill.branch_name ? `<span class="badge badge-light border text-muted mr-3"><i class="fas fa-store mr-1"></i>${bill.branch_name}</span>` : ''}
+                                <span class="font-weight-bold text-dark mr-2">Total: <strong class="text-success">₹${bill.total.toFixed(2)}</strong></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge badge-info px-2 py-1 mr-3">
+                                    ${returnableCountInBill}/${bill.items.length} Returnable
+                                </span>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input sr-cph-bill-select-all" id="sr-cph-sel-all-${bill.id}" data-bill-id="${bill.id}" ${returnableCountInBill === 0 ? 'disabled' : ''}>
+                                    <label class="custom-control-label font-weight-bold small text-primary" for="sr-cph-sel-all-${bill.id}" style="cursor: pointer;">
+                                        Select All in Bill
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="${collapseId}" class="collapse show" aria-labelledby="${billHeaderId}">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="bg-light text-muted small">
+                                            <tr>
+                                                <th style="width: 40px;" class="text-center"></th>
+                                                <th>Item Name & Code</th>
+                                                <th class="text-right" style="width: 80px;">Sold Qty</th>
+                                                <th class="text-right" style="width: 80px;">Returned</th>
+                                                <th class="text-right" style="width: 90px;">Returnable</th>
+                                                <th class="text-right" style="width: 90px;">Sold Rate</th>
+                                                <th class="text-right" style="width: 60px;">GST %</th>
+                                                <th class="text-right" style="width: 120px;">Return Qty</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${itemsHtml}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $container.append(cardHtml);
+            });
+
+            updateCphFooterCounters();
+        }
+
+        function filterCustomerPurchaseHistory(query) {
+            let q = $.trim(query).toLowerCase();
+            if (!q) {
+                $('.cph-bill-card').show();
+                $('.cph-item-row').show();
+                return;
+            }
+
+            $('.cph-bill-card').each(function () {
+                let $card = $(this);
+                let billSearch = $card.attr('data-bill-search') || '';
+                let billMatches = billSearch.indexOf(q) !== -1;
+
+                let visibleRows = 0;
+                $card.find('.cph-item-row').each(function () {
+                    let itemSearch = $(this).attr('data-item-search') || '';
+                    if (billMatches || itemSearch.indexOf(q) !== -1) {
+                        $(this).show();
+                        visibleRows++;
+                    } else {
+                        $(this).hide();
+                    }
+                });
+
+                if (visibleRows > 0) {
+                    $card.show();
+                    $card.find('.collapse').collapse('show');
+                } else {
+                    $card.hide();
+                }
+            });
+        }
+
+        // Toggle "Select All in Bill"
+        $(document).on('change', '.sr-cph-bill-select-all', function () {
+            let billId = $(this).data('bill-id');
+            let isChecked = $(this).is(':checked');
+            let $card = $(`#cph-card-${billId}`);
+            $card.find('.sr-cph-item-chk:not(:disabled)').prop('checked', isChecked);
+            updateCphFooterCounters();
+        });
+
+        // Individual item checkbox change
+        $(document).on('change', '.sr-cph-item-chk, .sr-cph-item-qty', function () {
+            let $row = $(this).closest('tr');
+            let $chk = $row.find('.sr-cph-item-chk');
+            if ($(this).hasClass('sr-cph-item-qty')) {
+                let val = parseFloat($(this).val()) || 0;
+                let max = parseFloat($chk.attr('data-rem-qty')) || 0;
+                if (val > max) {
+                    $(this).val(max);
+                } else if (val <= 0) {
+                    $(this).val(Math.min(1, max));
+                }
+                if (!$chk.is(':checked') && val > 0) {
+                    $chk.prop('checked', true);
+                }
+            }
+            updateCphFooterCounters();
+        });
+
+        function updateCphFooterCounters() {
+            let totalSelected = 0;
+            let estRefundTotal = 0;
+
+            $('.sr-cph-item-chk:checked').each(function () {
+                totalSelected++;
+                let $chk = $(this);
+                let $row = $chk.closest('tr');
+                let qty = parseFloat($row.find('.sr-cph-item-qty').val()) || 0;
+                let price = parseFloat($chk.attr('data-sell-price')) || 0;
+                let discPct = parseFloat($chk.attr('data-disc-percent')) || 0;
+
+                let base = qty * price;
+                let discAmt = discPct > 0 ? (base * discPct / 100) : 0;
+                let net = Math.max(0, base - discAmt);
+                estRefundTotal += net;
+            });
+
+            $('#sr-cph-selected-count').text(totalSelected);
+            $('#sr-cph-selected-total').text('₹' + estRefundTotal.toFixed(2));
+            $('#sr-cph-btn-add-selected').prop('disabled', totalSelected === 0);
+        }
+
+        // Add Selected Items to Return
+        $('#sr-cph-btn-add-selected').on('click', function () {
+            let selectedCheckboxes = $('.sr-cph-item-chk:checked');
+            if (selectedCheckboxes.length === 0) return;
+
+            const tbody = document.getElementById('sr-items-body');
+
+            // If table has empty placeholder row, remove it
+            let $firstRow = $(tbody).find('.sr-item-row').first();
+            if ($firstRow.length && !$firstRow.find('.sr-item-select').val() && $(tbody).find('.sr-item-row').length === 1) {
+                tbody.innerHTML = '';
+            } else if ($(tbody).find('td[colspan]').length > 0) {
+                tbody.innerHTML = '';
+            }
+
+            let addedCount = 0;
+            let billIdsUsed = [];
+
+            selectedCheckboxes.each(function () {
+                let $chk = $(this);
+                let $cphRow = $chk.closest('tr');
+
+                let itemId = $chk.attr('data-item-id');
+                let billId = $chk.attr('data-bill-id');
+                let billItemId = $chk.attr('data-bill-item-id');
+                let billNo = $chk.attr('data-bill-no');
+                let billDate = $chk.attr('data-bill-date');
+                let itemName = $chk.attr('data-item-name');
+                let itemCode = $chk.attr('data-item-code') || '';
+                let expDate = $chk.attr('data-exp-date') || '';
+                let origQty = parseFloat($chk.attr('data-orig-qty')) || 0;
+                let retQty = parseFloat($chk.attr('data-ret-qty')) || 0;
+                let remQty = parseFloat($chk.attr('data-rem-qty')) || 0;
+                let sellPrice = parseFloat($chk.attr('data-sell-price')) || 0;
+                let mrp = parseFloat($chk.attr('data-mrp')) || 0;
+                let discPercent = parseFloat($chk.attr('data-disc-percent')) || 0;
+                let discAmount = parseFloat($chk.attr('data-disc-amount')) || 0;
+                let gstPercent = parseFloat($chk.attr('data-gst-percent')) || 0;
+                let returnQty = parseFloat($cphRow.find('.sr-cph-item-qty').val()) || remQty;
+
+                if (billId) billIdsUsed.push(billId);
+
+                // Check if already in table
+                let $existingRow = null;
+                $(tbody).find('.sr-item-row').each(function () {
+                    let thisItemId = $(this).find('.sr-item-select').val();
+                    let thisBillId = $(this).find('.sr-item-bill-id').val();
+                    if (String(thisItemId) === String(itemId) && String(thisBillId) === String(billId)) {
+                        $existingRow = $(this);
+                        return false;
+                    }
+                });
+
+                if ($existingRow && $existingRow.length) {
+                    $existingRow.find('.sr-qty').val(returnQty);
+                    recalculateRow($existingRow[0], 'qty');
+                    addedCount++;
+                    return;
+                }
+
+                // Add new row via template
+                const template = document.getElementById('sr-row-template').innerHTML;
+                const html = template.replaceAll('__INDEX__', rowIndex);
+                const tempTable = document.createElement('table');
+                tempTable.innerHTML = '<tbody>' + html + '</tbody>';
+                const newRow = tempTable.querySelector('tr');
+                if (!newRow) return;
+
+                let $nr = $(newRow);
+                $nr.find('.sr-item-select').val(itemId);
+                $nr.find('.sr-item-bill-id').val(billId);
+                $nr.find('.sr-item-bill-item-id').val(billItemId);
+
+                // Code / Barcode (readonly)
+                $nr.find('.sr-item-code').val(itemId).prop('readonly', true).attr('title', `From Bill #${billNo}`);
+
+                // Description + Bill Badge
+                $nr.find('.sr-item-desc').val(itemName + (itemCode ? ' [' + itemCode + ']' : ''));
+                $nr.find('.sr-bill-badge-text').text(`Bill #${billNo}` + (billDate ? ` (${billDate})` : ''));
+                $nr.find('.sr-bill-badge-wrapper').show();
+
+                // Quantities
+                $nr.find('.sr-qty').val(returnQty)
+                    .attr('max', remQty)
+                    .attr('data-original-qty', origQty)
+                    .attr('data-returned-qty', retQty)
+                    .attr('data-remaining-qty', remQty);
+
+                let maxLabelText = (retQty > 0)
+                    ? `Remaining: ${remQty} (Orig: ${origQty}, Ret: ${retQty})`
+                    : `Max: ${origQty}`;
+                $nr.find('.sr-max-qty-label').text(maxLabelText).show();
+
+                // Pricing & Tax
+                $nr.find('.sr-price').val(sellPrice.toFixed(2));
+                $nr.find('.sr-mrp').val(mrp.toFixed(2));
+                $nr.find('.sr-disc-percent').val(discPercent > 0 ? discPercent : '');
+                $nr.find('.sr-disc-amount').val(discAmount > 0 ? discAmount.toFixed(2) : '');
+                $nr.find('.sr-gst-percent').val(gstPercent);
+                $nr.find('.sr-exp-date').val(expDate);
+
+                tbody.appendChild(newRow);
+                rowIndex++;
+                recalculateRow(newRow, 'qty');
+                addedCount++;
+            });
+
+            // If all selected items originate from 1 single bill, sync the header sales_bill_id
+            let uniqueBills = [...new Set(billIdsUsed)];
+            if (uniqueBills.length === 1 && !$('#sales_bill_id').val()) {
+                $('#sales_bill_id').val(uniqueBills[0]).trigger('change.select2');
+            } else if (uniqueBills.length > 1) {
+                // Multi-bill mode: keep header bill clear so line-level bill IDs govern each item
+                $('#sales_bill_id').val('').trigger('change.select2');
+            }
+
+            $('#sr-customer-history-modal').modal('hide');
+            recalculateAll();
+
+            if (window.toastr) {
+                toastr.success(`${addedCount} item(s) added from purchase history!`, 'Items Added');
+            }
         });
 
         // Initialize calculations

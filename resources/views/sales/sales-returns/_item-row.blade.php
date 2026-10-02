@@ -28,6 +28,11 @@
                placeholder="Code / Barcode"
                title="Enter item code or barcode">
     </td>
+    @php
+        $lineBillId = data_get($line, 'sales_bill_id');
+        $lineBillNo = data_get($line, 'bill_number') ?: (data_get($line, 'salesBill') ? data_get($line, 'salesBill')->bill_number : ($lineBillId ? \App\Models\SalesBill::where('id', $lineBillId)->value('bill_number') : null));
+        $lineBillDate = data_get($line, 'bill_date');
+    @endphp
     {{-- Description (readonly, auto-filled) --}}
     <td style="min-width: 220px;" data-col-key="item">
         <input type="text"
@@ -36,10 +41,23 @@
                tabindex="-1"
                value="{{ $rowId === '__INDEX__' ? '' : $itemDesc }}"
                placeholder="Product Description">
+        <div class="sr-bill-badge-wrapper mt-1" style="{{ $lineBillNo ? '' : 'display:none;' }}">
+            <span class="badge badge-info font-weight-normal sr-bill-badge" style="font-size: 11px;">
+                <i class="fas fa-file-invoice mr-1"></i><span class="sr-bill-badge-text">{{ $lineBillNo ? "Bill #{$lineBillNo}" . ($lineBillDate ? " ({$lineBillDate})" : "") : "" }}</span>
+            </span>
+        </div>
         <input type="hidden"
                name="items[{{ $rowId }}][item_id]"
                class="sr-item-select"
                value="{{ $rowId === '__INDEX__' ? '' : $itemId }}">
+        <input type="hidden"
+               name="items[{{ $rowId }}][sales_bill_id]"
+               class="sr-item-bill-id"
+               value="{{ $rowId === '__INDEX__' ? '' : $lineBillId }}">
+        <input type="hidden"
+               name="items[{{ $rowId }}][sales_bill_item_id]"
+               class="sr-item-bill-item-id"
+               value="{{ $rowId === '__INDEX__' ? '' : data_get($line, 'sales_bill_item_id') }}">
     </td>
     {{-- Exp Date --}}
     <td style="width: 135px;" data-col-key="expiry">

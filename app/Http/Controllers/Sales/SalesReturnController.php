@@ -107,11 +107,16 @@ class SalesReturnController extends Controller
         try {
             $salesReturn = DB::transaction(function () use ($data) {
                 // Mutex: the customer row (every return - billed or not - draws on the same customer-wide pool)
-                // and then the original bill. MUST be the first statements of the transaction so the consistent
+                // and then the original bills. MUST be the first statements of the transaction so the consistent
                 // reads below see every return committed by whoever held the lock before us.
                 Customer::whereKey($data['header']['customer_id'])->lockForUpdate()->first();
+                $allBillIds = collect($data['items'])->pluck('sales_bill_id')->filter()->unique()->all();
                 if (! empty($data['header']['sales_bill_id'])) {
-                    SalesBill::whereKey($data['header']['sales_bill_id'])->lockForUpdate()->first();
+                    $allBillIds[] = (int) $data['header']['sales_bill_id'];
+                }
+                $allBillIds = array_unique(array_filter($allBillIds));
+                if (! empty($allBillIds)) {
+                    SalesBill::whereIn('id', $allBillIds)->lockForUpdate()->get();
                 }
 
                 // A double-click / retry with the same posting_key queued behind the first
@@ -159,21 +164,21 @@ class SalesReturnController extends Controller
 
     public function show(SalesReturn $salesReturn)
     {
-        $salesReturn->load(['customer', 'branch', 'salesBill', 'items.item']);
+        $salesReturn->load(['customer', 'branch', 'salesBill', 'items.item', 'items.salesBill']);
 
         return view('sales.sales-returns.show', compact('salesReturn'));
     }
 
     public function print(SalesReturn $salesReturn)
     {
-        $salesReturn->load(['customer', 'branch', 'salesBill', 'items.item']);
+        $salesReturn->load(['customer', 'branch', 'salesBill', 'items.item', 'items.salesBill']);
 
         return view('sales.sales-returns.print', compact('salesReturn'));
     }
 
     public function edit(SalesReturn $salesReturn)
     {
-        $salesReturn->load('items');
+        $salesReturn->load(['items.item', 'items.salesBill']);
 
         return view('sales.sales-returns.edit', array_merge(['salesReturn' => $salesReturn], $this->formOptions()));
     }
@@ -187,8 +192,13 @@ class SalesReturnController extends Controller
 
         DB::transaction(function () use ($data, $salesReturn) {
             Customer::whereKey($data['header']['customer_id'])->lockForUpdate()->first();
+            $allBillIds = collect($data['items'])->pluck('sales_bill_id')->filter()->unique()->all();
             if (! empty($data['header']['sales_bill_id'])) {
-                SalesBill::whereKey($data['header']['sales_bill_id'])->lockForUpdate()->first();
+                $allBillIds[] = (int) $data['header']['sales_bill_id'];
+            }
+            $allBillIds = array_unique(array_filter($allBillIds));
+            if (! empty($allBillIds)) {
+                SalesBill::whereIn('id', $allBillIds)->lockForUpdate()->get();
             }
             $this->assertReturnableAgainstBill($data['header'], $data['items'], $salesReturn->id);
 
@@ -313,6 +323,125 @@ class SalesReturnController extends Controller
     }
 
     /**
+     * AJAX endpoint: return all purchased items for a customer, grouped by sales bill,
+     * with remaining returnable quantities.
+     */
+    public function customerPurchasedItems(Customer $customer, Request $request)
+    {
+        $days = $request->input('days', 30);
+        $ignoreReturnId = $request->integer('ignore_return_id');
+
+        $billsQuery = SalesBill::where('customer_id', $customer->id)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'Cancelled');
+            });
+
+        if ($days !== 'all' && is_numeric($days) && (int) $days > 0) {
+            $cutoff = now()->subDays((int) $days)->startOfDay();
+            $billsQuery->where('bill_date', '>=', $cutoff);
+        }
+
+        $bills = $billsQuery->with(['items.item', 'branch'])->latest('bill_date')->get();
+
+        // Calculate already returned quantities per bill and item
+        $alreadyReturnedRows = DB::table('sales_return_items as sri')
+            ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
+            ->where('sr.customer_id', $customer->id)
+            ->when($ignoreReturnId, fn ($q) => $q->where('sr.id', '!=', $ignoreReturnId))
+            ->select(
+                DB::raw('COALESCE(sri.sales_bill_id, sr.sales_bill_id) as bill_id'),
+                'sri.item_id',
+                DB::raw('SUM(sri.qty) as returned_qty')
+            )
+            ->groupBy('bill_id', 'sri.item_id')
+            ->get();
+
+        $returnedMap = [];
+        foreach ($alreadyReturnedRows as $row) {
+            if ($row->bill_id) {
+                $key = $row->bill_id . '_' . $row->item_id;
+                $returnedMap[$key] = ($returnedMap[$key] ?? 0.0) + (float) $row->returned_qty;
+            }
+        }
+
+        $resultBills = [];
+        $totalItemsCount = 0;
+        $totalReturnableItemsCount = 0;
+
+        foreach ($bills as $bill) {
+            $billItems = [];
+            foreach ($bill->items as $line) {
+                $totalItemsCount++;
+                $origQty = (float) $line->qty;
+                $key = $bill->id . '_' . $line->item_id;
+                $alreadyRet = (float) ($returnedMap[$key] ?? 0);
+                $remQty = max(0, round($origQty - $alreadyRet, 4));
+
+                if ($remQty > 0) {
+                    $totalReturnableItemsCount++;
+                }
+
+                $discPercent = (float) ($line->disc_percent ?? 0);
+                $discAmount = 0.0;
+                if ($remQty > 0) {
+                    if ($discPercent > 0) {
+                        $discAmount = round((($remQty * (float)$line->sell_price) * $discPercent / 100), 2);
+                    } else if ($origQty > 0) {
+                        $discAmount = round(((float)($line->disc_amount ?? 0) / $origQty) * $remQty, 2);
+                    }
+                }
+
+                $billItems[] = [
+                    'sales_bill_item_id'   => $line->id,
+                    'sales_bill_id'        => $bill->id,
+                    'bill_number'          => $bill->bill_number,
+                    'bill_date'            => $bill->bill_date ? $bill->bill_date->format('d-m-Y') : '',
+                    'item_id'              => $line->item_id,
+                    'item_name'            => $line->item?->name ?? 'Unknown',
+                    'item_code'            => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
+                    'exp_date'             => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
+                    'original_qty'         => $origQty,
+                    'already_returned_qty' => $alreadyRet,
+                    'remaining_qty'        => $remQty,
+                    'qty'                  => $remQty,
+                    'sell_price'           => (float) $line->sell_price,
+                    'mrp'                  => (float) ($line->mrp ?? 0),
+                    'disc_percent'         => $discPercent,
+                    'disc_amount'          => $discAmount,
+                    'gst_percent'          => (float) ($line->gst_percent ?? 0),
+                    'net_amount'           => (float) ($line->net_amount ?? 0),
+                ];
+            }
+
+            $dateStr = $bill->bill_date ? $bill->bill_date->format('d-m-Y') : '';
+            $resultBills[] = [
+                'id'                      => $bill->id,
+                'bill_number'             => $bill->bill_number,
+                'bill_date'               => $dateStr,
+                'branch_name'             => $bill->branch?->name ?? '',
+                'total'                   => (float) $bill->total,
+                'items'                   => $billItems,
+                'returnable_items_count'  => collect($billItems)->filter(fn($i) => $i['remaining_qty'] > 0)->count(),
+            ];
+        }
+
+        return response()->json([
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'phone' => $customer->phone ?: $customer->mobile,
+            ],
+            'days' => $days,
+            'bills' => $resultBills,
+            'summary' => [
+                'total_bills' => count($resultBills),
+                'total_items' => $totalItemsCount,
+                'total_returnable_items' => $totalReturnableItemsCount,
+            ]
+        ]);
+    }
+
+    /**
      * AJAX endpoint: return total qty sold for an item (optionally per customer).
      * Used by SR form when no specific sales bill is selected — prevents return qty > total sold qty.
      */
@@ -372,8 +501,9 @@ class SalesReturnController extends Controller
     {
         foreach ($createdItems as $itemLine) {
             $originalCost = null;
-            if ($salesReturn->sales_bill_id) {
-                $q = SalesBillItem::where('sales_bill_id', $salesReturn->sales_bill_id)
+            $lineBillId = $itemLine->sales_bill_id ?: $salesReturn->sales_bill_id;
+            if ($lineBillId) {
+                $q = SalesBillItem::where('sales_bill_id', $lineBillId)
                     ->where('item_id', $itemLine->item_id);
                 if (!empty($itemLine->batch_no)) {
                     $q->where('batch_no', $itemLine->batch_no);
@@ -473,14 +603,17 @@ class SalesReturnController extends Controller
             );
 
             $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
-            if (!$batchNo && !empty($header['sales_bill_id'])) {
-                $batchNo = SalesBillItem::where('sales_bill_id', $header['sales_bill_id'])
+            $lineBillId = !empty($line['sales_bill_id']) ? (int) $line['sales_bill_id'] : (!empty($header['sales_bill_id']) ? (int) $header['sales_bill_id'] : null);
+            if (!$batchNo && $lineBillId) {
+                $batchNo = SalesBillItem::where('sales_bill_id', $lineBillId)
                     ->where('item_id', $line['item_id'])
                     ->value('batch_no');
             }
 
             return [
                 'item_id' => $line['item_id'],
+                'sales_bill_id' => $lineBillId,
+                'sales_bill_item_id' => !empty($line['sales_bill_item_id']) ? (int) $line['sales_bill_item_id'] : null,
                 'batch_no' => $batchNo,
                 'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
                 'qty' => $qty,
@@ -528,7 +661,18 @@ class SalesReturnController extends Controller
      */
     private function assertReturnableAgainstBill(array $header, array $items, ?int $currentReturnId): void
     {
-        if (empty($header['sales_bill_id'])) {
+        $headerBillId = !empty($header['sales_bill_id']) ? (int) $header['sales_bill_id'] : null;
+
+        // Group items by sales_bill_id (from line item or header)
+        $itemsWithBill = [];
+        foreach ($items as $itemLine) {
+            $billId = !empty($itemLine['sales_bill_id']) ? (int) $itemLine['sales_bill_id'] : $headerBillId;
+            if ($billId) {
+                $itemsWithBill[$billId][] = $itemLine;
+            }
+        }
+
+        if (empty($itemsWithBill)) {
             // NO ORIGINAL BILL selected. Business rule: the return is allowed only against what THIS customer
             // actually bought (non-cancelled bills, all branches) minus what they have already returned
             // (billed or not). Never unlimited.
@@ -537,70 +681,82 @@ class SalesReturnController extends Controller
             return;
         }
 
-        $bill = SalesBill::with('items.item')->find($header['sales_bill_id']);
-        if (! $bill) {
-            return;
-        }
+        // Validate each bill's items
+        foreach ($itemsWithBill as $billId => $billLines) {
+            $bill = SalesBill::with('items.item')->find($billId);
+            if (! $bill) {
+                continue;
+            }
 
-        if ((int) $bill->customer_id !== (int) ($header['customer_id'] ?? 0)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'sales_bill_id' => ["Sales Bill #{$bill->bill_number} does not belong to the selected customer."],
-            ]);
-        }
-
-        if ($bill->status === 'Cancelled') {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'sales_bill_id' => ["Sales Bill #{$bill->bill_number} is cancelled and cannot be returned against."],
-            ]);
-        }
-
-        $billItemQtys = $bill->items->groupBy('item_id')->map->sum('qty');
-
-        // Group requested quantities across submitted rows by item_id
-        $totalQtyByItem = [];
-        foreach ($items as $itemLine) {
-            $itemId = (int) $itemLine['item_id'];
-            $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $itemLine['qty'];
-        }
-
-        $alreadyReturnedQtys = DB::table('sales_return_items as sri')
-            ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
-            ->where('sr.sales_bill_id', $bill->id)
-            ->when($currentReturnId, fn ($q) => $q->where('sr.id', '!=', $currentReturnId))
-            ->whereIn('sri.item_id', array_keys($totalQtyByItem))
-            ->groupBy('sri.item_id')
-            ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
-            ->pluck('returned_qty', 'item_id')
-            ->all();
-
-        foreach ($totalQtyByItem as $itemId => $requestedQty) {
-            if (! isset($billItemQtys[$itemId])) {
-                $itemModel = Item::find($itemId);
-                $name = $itemModel?->name ?? "Item #{$itemId}";
+            if ((int) $bill->customer_id !== (int) ($header['customer_id'] ?? 0)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'items' => ["The item '{$name}' does not belong to Sales Bill #{$bill->bill_number}."],
+                    'sales_bill_id' => ["Sales Bill #{$bill->bill_number} does not belong to the selected customer."],
                 ]);
             }
 
-            $origQty = (float) $billItemQtys[$itemId];
-            $alreadyReturned = (float) ($alreadyReturnedQtys[$itemId] ?? 0);
-            $remaining = max(0, round($origQty - $alreadyReturned, 4));
-
-            if ($remaining <= 0) {
+            if ($bill->status === 'Cancelled') {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'items' => ['No returnable quantity available for this item.'],
+                    'sales_bill_id' => ["Sales Bill #{$bill->bill_number} is cancelled and cannot be returned against."],
                 ]);
             }
 
-            if (round($requestedQty, 4) > round($remaining, 4)) {
-                $remDisplay = ($remaining == (int) $remaining) ? (int) $remaining : $remaining;
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'items' => ["Return quantity cannot exceed the remaining returnable quantity of {$remDisplay}."],
-                ]);
+            $billItemQtys = $bill->items->groupBy('item_id')->map->sum('qty');
+
+            // Group requested quantities across submitted rows for this bill by item_id
+            $totalQtyByItem = [];
+            foreach ($billLines as $itemLine) {
+                $itemId = (int) $itemLine['item_id'];
+                $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $itemLine['qty'];
+            }
+
+            $alreadyReturnedQtys = DB::table('sales_return_items as sri')
+                ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
+                ->where(function ($q) use ($billId) {
+                    $q->where('sri.sales_bill_id', $billId)
+                      ->orWhere(function ($q2) use ($billId) {
+                          $q2->whereNull('sri.sales_bill_id')->where('sr.sales_bill_id', $billId);
+                      });
+                })
+                ->when($currentReturnId, fn ($q) => $q->where('sr.id', '!=', $currentReturnId))
+                ->whereIn('sri.item_id', array_keys($totalQtyByItem))
+                ->groupBy('sri.item_id')
+                ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
+                ->pluck('returned_qty', 'item_id')
+                ->all();
+
+            foreach ($totalQtyByItem as $itemId => $requestedQty) {
+                if (! isset($billItemQtys[$itemId])) {
+                    $itemModel = Item::find($itemId);
+                    $name = $itemModel?->name ?? "Item #{$itemId}";
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => ["The item '{$name}' does not belong to Sales Bill #{$bill->bill_number}."],
+                    ]);
+                }
+
+                $origQty = (float) $billItemQtys[$itemId];
+                $alreadyReturned = (float) ($alreadyReturnedQtys[$itemId] ?? 0);
+                $remaining = max(0, round($origQty - $alreadyReturned, 4));
+
+                if ($remaining <= 0) {
+                    $itemModel = Item::find($itemId);
+                    $name = $itemModel?->name ?? "Item #{$itemId}";
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => ["No returnable quantity available for item '{$name}' on Bill #{$bill->bill_number}."],
+                    ]);
+                }
+
+                if (round($requestedQty, 4) > round($remaining, 4)) {
+                    $itemModel = Item::find($itemId);
+                    $name = $itemModel?->name ?? "Item #{$itemId}";
+                    $remDisplay = ($remaining == (int) $remaining) ? (int) $remaining : $remaining;
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => ["Return quantity for '{$name}' cannot exceed the remaining returnable quantity of {$remDisplay} on Bill #{$bill->bill_number}."],
+                    ]);
+                }
             }
         }
 
-        // A billed return also draws on the customer-wide pool, so it cannot be combined with
+        // Billed returns also draw on the customer-wide pool, so it cannot be combined with
         // no-bill returns to get back more than the customer ever bought.
         $this->assertWithinCustomerPool($header, $items, $currentReturnId, true);
     }
@@ -692,6 +848,8 @@ class SalesReturnController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.sales_bill_id' => ['nullable', 'exists:sales_bills,id'],
+            'items.*.sales_bill_item_id' => ['nullable', 'exists:sales_bill_items,id'],
             'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],

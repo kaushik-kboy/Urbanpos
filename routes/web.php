@@ -281,6 +281,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     $gatedResource('delivery-notes', SalesDeliveryNoteController::class, 'sales-delivery-notes', ['edit', 'update']);
     $gatedResource('sales-bills', SalesBillController::class, 'sales-bills');
     Route::get('sales-returns/customer-bills/{customer}', [SalesReturnController::class, 'customerBills'])->name('sales-returns.customer-bills');
+    Route::get('sales-returns/customer-purchased-items/{customer}', [SalesReturnController::class, 'customerPurchasedItems'])->name('sales-returns.customer-purchased-items');
     Route::get('sales-returns/bill-items/{salesBill}', [SalesReturnController::class, 'billItems'])->name('sales-returns.bill-items');
     Route::get('sales-returns/item-sold-qty', [SalesReturnController::class, 'itemSoldQty'])->name('sales-returns.item-sold-qty');
     Route::get('sales-returns/{salesReturn}/print', [SalesReturnController::class, 'print'])->name('sales-returns.print');
