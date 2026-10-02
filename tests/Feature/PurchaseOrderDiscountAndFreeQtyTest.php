@@ -241,4 +241,37 @@ class PurchaseOrderDiscountAndFreeQtyTest extends TestCase
         $this->assertEquals(2.0, (float) $response->json('items.0.free_qty'));
         $this->assertEquals(77.5, (float) $response->json('items.0.effective_cost'));
     }
+
+    /**
+     * Test item search endpoint works with search term, code, and branch without SQL parameter errors.
+     */
+    public function test_purchase_item_list_search_endpoint_succeeds_without_sql_errors(): void
+    {
+        Item::create([
+            'name' => 'Searchable Test Item',
+            'item_code' => 'SRCH001',
+            'cost_price' => 50.00,
+            'sell_price' => 80.00,
+            'mrp' => 100.00,
+            'gst_tax_id' => $this->gst18->id,
+            'status' => true,
+        ]);
+
+        // Search by name
+        $resName = $this->actingAs($this->user)->getJson(route('purchase.purchase-invoices.item-list', [
+            'branch_id' => $this->branch->id,
+            'search' => 'Searchable',
+        ]));
+        $resName->assertOk();
+        $resName->assertJsonStructure(['items']);
+        $this->assertNotEmpty($resName->json('items'));
+
+        // Search by code
+        $resCode = $this->actingAs($this->user)->getJson(route('purchase.purchase-invoices.item-list', [
+            'branch_id' => $this->branch->id,
+            'code' => 'SRCH001',
+        ]));
+        $resCode->assertOk();
+        $this->assertNotEmpty($resCode->json('items'));
+    }
 }

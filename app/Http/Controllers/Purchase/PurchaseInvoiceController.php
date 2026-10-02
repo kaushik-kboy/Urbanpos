@@ -413,7 +413,7 @@ class PurchaseInvoiceController extends Controller
         $limit  = 100;
         $where  = ['i.status = 1'];
         $todayIndia = \Carbon\Carbon::now('Asia/Kolkata')->toDateString();
-        $params = [$branchId, $branchId, $todayIndia];
+        $params = [$branchId];
 
         $orderSql    = 'i.name ASC';
         $orderParams = [];
@@ -540,12 +540,17 @@ class PurchaseInvoiceController extends Controller
         $expiryFallback = [];
         if (! empty($noExpIds)) {
             $ph = implode(',', array_fill(0, count($noExpIds), '?'));
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $fbCostSub = $isSqlite ? 'MAX(pi2.cost_price) AS cost_price' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.cost_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS cost_price";
+            $fbSellSub = $isSqlite ? 'MAX(pi2.sell_price) AS sell_price' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS sell_price";
+            $fbMrpSub  = $isSqlite ? 'MAX(pi2.mrp) AS mrp' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS mrp";
+
             $fbSql = "
                 SELECT pi2.item_id,
                        MIN(pi2.exp_date) AS exp_date,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.cost_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS cost_price,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS sell_price,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS mrp
+                       {$fbCostSub},
+                       {$fbSellSub},
+                       {$fbMrpSub}
                 FROM purchase_invoice_items pi2
                 WHERE pi2.item_id IN ({$ph})
                   AND pi2.exp_date IS NOT NULL
