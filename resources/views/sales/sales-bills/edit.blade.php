@@ -16,19 +16,14 @@
                 @include('sales.sales-bills._form')
             </div>
             <div class="card-footer sb-rich-footer py-2 px-3 d-flex justify-content-between align-items-center flex-wrap">
-                {{-- Left: Live Items Count, Final Bill Total & Keyboard Shortcuts --}}
+                {{-- Left: Live Items Count & Final Bill Total --}}
                 <div class="d-flex align-items-center flex-wrap">
                     <div id="sb-total-items-badge" class="d-inline-block mr-3">
                         <span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">0 Items</span>
                     </div>
-                    <div class="d-flex align-items-baseline mr-3">
+                    <div class="d-flex align-items-baseline">
                         <span class="text-muted font-weight-bold mr-1" style="font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.5px;">Final Total:</span>
                         <span class="text-success font-weight-bold" style="font-size: 1.35rem; line-height: 1;">₹<span id="display-sb-final-total">0.00</span></span>
-                    </div>
-                    <div class="d-none d-lg-flex align-items-center text-muted pl-2 border-left" style="font-size: 0.78rem;">
-                        <span class="mr-2"><kbd class="bg-white text-dark border px-1 shadow-xs">F2</kbd> Search Item</span>
-                        <span class="mr-2"><kbd class="bg-white text-dark border px-1 shadow-xs">Tab</kbd> Next Field</span>
-                        <span><kbd class="bg-white text-dark border px-1 shadow-xs">Enter</kbd> Confirm</span>
                     </div>
                 </div>
 
@@ -47,4 +42,8 @@
             </div>
         </form>
     </div>
+@stop
+
+@section('footer')
+    <!-- Sales Bill Footer Suppressed -->
 @stop

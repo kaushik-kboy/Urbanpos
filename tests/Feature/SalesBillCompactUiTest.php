@@ -82,5 +82,12 @@ class SalesBillCompactUiTest extends TestCase
         $this->assertStringContainsString('id="sb-total-items-badge"', $content);
         $this->assertStringContainsString('id="sb-main-save-btn"', $content);
         $this->assertStringContainsString('id="btn-reset-form"', $content);
+
+        // 9. Verify removed elements as requested by user
+        $this->assertStringNotContainsString('id="sb-add-row-bottom"', $content);
+        $this->assertStringNotContainsString('Urban Pets UI 2.0', $content);
+        $this->assertStringNotContainsString('F2 Search Item', $content);
+        $this->assertStringNotContainsString('Tab Next Field', $content);
+        $this->assertStringNotContainsString('Enter Confirm', $content);
     }
 }

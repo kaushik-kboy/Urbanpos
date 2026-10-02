@@ -35,7 +35,7 @@
 <tr data-stock="{{ $lineStock }}" data-batch-stock="{{ $line->batch_stock ?? '' }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
     <td class="text-center align-middle font-weight-bold sb-sr-no" data-col-key="seq">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     <td style="min-width: 110px;" data-col-key="code">
-        <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter or F2 to search item">
+        <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Code / Barcode">
     </td>
     <td style="min-width: 250px;" data-col-key="item">
         <input type="text"

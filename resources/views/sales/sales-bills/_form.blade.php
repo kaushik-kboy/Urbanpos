@@ -30,8 +30,15 @@
 }
 
 /* Compact Single-Screen Sales Bill UI */
-.main-footer {
+.main-footer, footer.main-footer {
     display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    visibility: hidden !important;
+    overflow: hidden !important;
 }
 .content-wrapper {
     min-height: auto !important;
@@ -453,8 +460,6 @@
         </tfoot>
     </table>
 </div>
-
-<button type="button" id="sb-add-row-bottom" onclick="$('#sb-add-row').click()" class="btn btn-link btn-xs font-weight-bold py-0"><i class="fas fa-plus-circle"></i> Add Row</button>
 
 <hr class="sb-divider-compact">
 <div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
@@ -3743,6 +3748,7 @@
         setTimeout(function () {
             updateSaveButtonState();
         }, 300);
+        $('.main-footer, footer.main-footer').remove();
 
     });
 </script>
