@@ -62,7 +62,10 @@
     {{-- Bill Number --}}
     <div class="field-wrapper col-md-4" data-field="bill_number" data-default-order="1">
         @if(!empty($bill?->id))
-            <x-field name="bill_number" label="Bill No" :value="$bill->bill_number" readonly />
+            <div class="form-group mb-2">
+                <label class="font-weight-bold mb-1">Bill No</label>
+                <input type="text" name="bill_number" class="form-control font-weight-bold bg-light" value="{{ $bill->bill_number }}" readonly>
+            </div>
         @else
             <div class="form-group mb-2">
                 <label class="font-weight-bold">Bill No</label>
@@ -123,40 +126,92 @@
 
     {{-- Bill Date & Time --}}
     <div class="field-wrapper col-md-4" data-field="bill_date" data-default-order="4" data-core="1">
-        <x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" min="2020-01-01T00:00" max="{{ now()->format('Y-m-d\TH:i') }}" required />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="bill_date">
+                <i class="far fa-calendar-alt text-primary mr-1"></i> Bill Date & Time <span class="text-danger">*</span>
+            </label>
+            <input type="datetime-local" name="bill_date" id="bill_date" 
+                   class="form-control @error('bill_date') is-invalid @enderror" 
+                   value="{{ old('bill_date', optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')) }}" 
+                   min="2020-01-01T00:00" max="{{ now()->format('Y-m-d\TH:i') }}" required>
+            @error('bill_date')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+        </div>
     </div>
 
     {{-- Invoice Type --}}
     <div class="field-wrapper col-md-4" data-field="invoice_type" data-default-order="5">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-            <label class="font-weight-bold mb-0">Invoice Type</label>
-            <span class="text-warning small d-none" id="invoice-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
+        <div class="form-group mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="font-weight-bold mb-0" for="invoice_type">
+                    <i class="fas fa-file-invoice text-primary mr-1"></i> Invoice Type <span class="text-danger">*</span>
+                </label>
+                <span class="text-warning small d-none" id="invoice-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
+            </div>
+            <select name="invoice_type" id="invoice_type" class="form-control select2" required>
+                @foreach (($customerTypes ?? ['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']) as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('invoice_type', $bill->invoice_type ?? 'Retail Invoice') == $val)>{{ $txt }}</option>
+                @endforeach
+            </select>
         </div>
-        <x-select name="invoice_type" label="" :options="$customerTypes ?? ['Retail Invoice' => 'Retail Invoice', 'Tax Invoice' => 'Tax Invoice', 'Exempted' => 'Exempted']" :selected="$bill->invoice_type ?? 'Retail Invoice'" required />
     </div>
 
     {{-- Delivery Type --}}
     <div class="field-wrapper col-md-4" data-field="delivery_type" data-default-order="6">
-        <x-select name="delivery_type" label="Delivery Type" :options="['Delivered' => 'Delivered', 'Home Delivery' => 'Home Delivery', 'Pickup' => 'Pickup']" :selected="$bill->delivery_type ?? 'Delivered'" required />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="delivery_type">
+                <i class="fas fa-truck text-primary mr-1"></i> Delivery Type <span class="text-danger">*</span>
+            </label>
+            <select name="delivery_type" id="delivery_type" class="form-control select2" required>
+                @foreach (['Delivered' => 'Delivered', 'Home Delivery' => 'Home Delivery', 'Pickup' => 'Pickup'] as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('delivery_type', $bill->delivery_type ?? 'Delivered') == $val)>{{ $txt }}</option>
+                @endforeach
+            </select>
+        </div>
     </div>
 
     {{-- Delivery Time --}}
     <div class="field-wrapper col-md-4" data-field="delivery_time" data-default-order="7">
-        <x-field name="delivery_time" label="Delivery Time" type="time" :value="$bill->delivery_time ?? ''" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="delivery_time">
+                <i class="far fa-clock text-primary mr-1"></i> Delivery Time
+            </label>
+            <input type="time" name="delivery_time" id="delivery_time" 
+                   class="form-control @error('delivery_time') is-invalid @enderror" 
+                   value="{{ old('delivery_time', $bill->delivery_time ?? '') }}">
+        </div>
     </div>
 
     {{-- Sales Type --}}
     <div class="field-wrapper col-md-4" data-field="sales_type" data-default-order="8">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-            <label class="font-weight-bold mb-0">Sales Type</label>
-            <span class="text-warning small d-none" id="sales-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
+        <div class="form-group mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="font-weight-bold mb-0" for="sales_type">
+                    <i class="fas fa-map-marker-alt text-primary mr-1"></i> Sales Type <span class="text-danger">*</span>
+                </label>
+                <span class="text-warning small d-none" id="sales-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
+            </div>
+            <select name="sales_type" id="sales_type" class="form-control select2" required>
+                @foreach (($salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']) as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('sales_type', $selectedSalesType ?? 'Local') == $val)>{{ $txt }}</option>
+                @endforeach
+            </select>
         </div>
-        <x-select name="sales_type" label="" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$selectedSalesType" required />
     </div>
 
     {{-- Payment Type --}}
     <div class="field-wrapper col-md-4" data-field="payment_type" data-default-order="9">
-        <x-select name="payment_type" label="Payment Mode" :options="['Cash' => 'Cash', 'UPI' => 'UPI', 'Card' => 'Card', 'Credit' => 'Credit', 'Bank Transfer' => 'Bank Transfer', 'Cheque' => 'Cheque']" :selected="old('payment_type', ($bill && $bill->payment_type && strtolower($bill->payment_type) !== 'none') ? $bill->payment_type : 'Cash')" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="payment_type">
+                <i class="fas fa-money-bill-wave text-primary mr-1"></i> Payment Mode
+            </label>
+            <select name="payment_type" id="payment_type" class="form-control select2">
+                @foreach (['Cash' => 'Cash', 'UPI' => 'UPI', 'Card' => 'Card', 'Credit' => 'Credit', 'Bank Transfer' => 'Bank Transfer', 'Cheque' => 'Cheque'] as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('payment_type', ($bill && $bill->payment_type && strtolower($bill->payment_type) !== 'none') ? $bill->payment_type : 'Cash') == $val)>{{ $txt }}</option>
+                @endforeach
+            </select>
+        </div>
     </div>
 </div>
 
@@ -275,22 +330,40 @@
 
 <div class="row g-2 form-fields-grid" id="sb-additional-fields-grid">
     <div class="field-wrapper col-md-6" data-field="round_off" data-label="Round off Amount" data-default-order="1">
-        <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="$bill->round_off ?? 0" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="round_off">Round off Amount</label>
+            <input type="number" step="0.01" name="round_off" id="round_off" class="form-control" value="{{ old('round_off', $bill->round_off ?? 0) }}">
+        </div>
     </div>
     <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="2">
-        <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$bill->total_extra_cess ?? 0" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="total_extra_cess">Total Extra Cess</label>
+            <input type="number" step="0.01" name="total_extra_cess" id="total_extra_cess" class="form-control" value="{{ old('total_extra_cess', $bill->total_extra_cess ?? 0) }}">
+        </div>
     </div>
     <div class="field-wrapper col-md-6" data-field="gst_calamity_cess" data-label="GST Calamity Cess" data-default-order="3">
-        <x-field name="gst_calamity_cess" label="GST Calamity Cess" type="number" step="0.01" :value="$bill->gst_calamity_cess ?? 0" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="gst_calamity_cess">GST Calamity Cess</label>
+            <input type="number" step="0.01" name="gst_calamity_cess" id="gst_calamity_cess" class="form-control" value="{{ old('gst_calamity_cess', $bill->gst_calamity_cess ?? 0) }}">
+        </div>
     </div>
     <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="4">
-        <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$bill->total_weight ?? 0" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="total_weight">Total Weight</label>
+            <input type="number" step="0.01" name="total_weight" id="total_weight" class="form-control" value="{{ old('total_weight', $bill->total_weight ?? 0) }}">
+        </div>
     </div>
     <div class="field-wrapper col-md-6" data-field="remarks" data-label="Remarks" data-default-order="5">
-        <x-textarea name="remarks" label="Remarks" :value="$bill->remarks ?? ''" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="remarks">Remarks</label>
+            <textarea name="remarks" id="remarks" rows="2" class="form-control" placeholder="Any remarks for this bill...">{{ old('remarks', $bill->remarks ?? '') }}</textarea>
+        </div>
     </div>
     <div class="field-wrapper col-md-6" data-field="message" data-label="Message" data-default-order="6">
-        <x-textarea name="message" label="Message" :value="$bill->message ?? ''" />
+        <div class="form-group mb-2">
+            <label class="font-weight-bold mb-1" for="message">Message</label>
+            <textarea name="message" id="message" rows="2" class="form-control" placeholder="Print invoice footer message...">{{ old('message', $bill->message ?? '') }}</textarea>
+        </div>
     </div>
 </div>
 

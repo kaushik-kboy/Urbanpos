@@ -89,6 +89,42 @@
     }
     .field-wrapper {
         transition: order 0.2s ease, width 0.2s ease;
+        margin-bottom: 0.5rem;
+    }
+    /* Ensure all form-fields-grid elements render uniformly stacked and clean */
+    .form-fields-grid .field-wrapper .form-group {
+        margin-bottom: 0.25rem;
+    }
+    .form-fields-grid .field-wrapper .form-group.row {
+        margin-left: 0;
+        margin-right: 0;
+        display: block;
+    }
+    .form-fields-grid .field-wrapper .form-group.row > label.col-form-label {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+        padding: 0 0 4px 0;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #1e293b;
+        text-align: left;
+    }
+    .form-fields-grid .field-wrapper .form-group.row > div[class*="col-"] {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+        padding: 0;
+    }
+    .form-fields-grid .field-wrapper .select2-container,
+    .form-fields-grid .field-wrapper .form-control {
+        width: 100% !important;
+    }
+    .form-fields-grid .field-wrapper label {
+        font-size: 0.85rem;
+        color: #1e293b;
     }
 </style>
 @endpush
@@ -128,7 +164,7 @@
             if (!fieldName) return;
 
             let $label = $el.find('label').first();
-            let labelText = cleanLabel($label.text()) || fieldName;
+            let labelText = $el.data('label') || cleanLabel($label.text()) || fieldName;
             let isCore = $el.data('core') == 1 || $label.find('.text-danger').length > 0 || $el.find('[required]').length > 0;
             let defaultOrder = parseInt($el.data('default-order') || (idx + 1), 10);
 
