@@ -144,6 +144,7 @@
                 <th class="text-right" style="width: 60px;">Qty</th>
                 <th class="text-right" style="width: 50px;">Free</th>
                 <th class="text-right" style="width: 80px;">Cost Rate</th>
+                <th class="text-right" style="width: 70px;">Disc Amt</th>
                 <th class="text-right" style="width: 60px;">GST %</th>
                 <th class="text-right" style="width: 70px;">GST Amt</th>
                 <th class="text-right" style="width: 90px;">Net Amount</th>
@@ -158,6 +159,7 @@
                     <td class="text-right">{{ number_format($row->qty, 2) }}</td>
                     <td class="text-right">{{ $row->free_qty > 0 ? number_format($row->free_qty, 2) : '-' }}</td>
                     <td class="text-right">{{ number_format($row->cost_price, 2) }}</td>
+                    <td class="text-right">{{ $row->disc_amount > 0 ? number_format($row->disc_amount, 2) : '-' }}</td>
                     <td class="text-right">{{ number_format($row->gst_percent, 2) }}%</td>
                     <td class="text-right">{{ number_format($row->gst_tax_amount, 2) }}</td>
                     <td class="text-right font-bold">{{ number_format($row->net_amount, 2) }}</td>
@@ -169,7 +171,7 @@
                 <td colspan="3" class="text-right">Totals:</td>
                 <td class="text-right">{{ number_format($purchaseOrder->items->sum('qty'), 2) }}</td>
                 <td class="text-right">{{ number_format($purchaseOrder->items->sum('free_qty'), 2) }}</td>
-                <td colspan="2"></td>
+                <td colspan="3"></td>
                 <td class="text-right">₹{{ number_format($purchaseOrder->total_gst, 2) }}</td>
                 <td class="text-right">₹{{ number_format($purchaseOrder->total, 2) }}</td>
             </tr>
@@ -188,6 +190,24 @@
             </td>
             <td style="width: 40%; vertical-align: top;">
                 <table style="width: 100%; border-collapse: collapse;">
+                    @if($purchaseOrder->scheme_item_disc_amt > 0)
+                        <tr>
+                            <td style="padding: 3px 0;">Scheme Discount:</td>
+                            <td class="text-right" style="padding: 3px 0;">-₹{{ number_format((float)$purchaseOrder->scheme_item_disc_amt, 2) }}</td>
+                        </tr>
+                    @endif
+                    @if($purchaseOrder->other_disc_amt > 0)
+                        <tr>
+                            <td style="padding: 3px 0;">Other Discount:</td>
+                            <td class="text-right" style="padding: 3px 0;">-₹{{ number_format((float)$purchaseOrder->other_disc_amt, 2) }}</td>
+                        </tr>
+                    @endif
+                    @if($purchaseOrder->freight > 0)
+                        <tr>
+                            <td style="padding: 3px 0;">Freight:</td>
+                            <td class="text-right" style="padding: 3px 0;">₹{{ number_format((float)$purchaseOrder->freight, 2) }}</td>
+                        </tr>
+                    @endif
                     <tr>
                         <td style="padding: 3px 0;">Total Tax (GST):</td>
                         <td class="text-right" style="padding: 3px 0;">₹{{ number_format((float)($purchaseOrder->total_gst ?? 0), 2) }}</td>

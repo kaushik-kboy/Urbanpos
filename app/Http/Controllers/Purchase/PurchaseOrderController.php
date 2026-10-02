@@ -112,7 +112,7 @@ class PurchaseOrderController extends Controller
         $data = $this->validateData($request);
 
         $purchaseOrder = DB::transaction(function () use ($data) {
-            $lines = $this->computeLines($data['items']);
+            $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
             $purchaseOrder = PurchaseOrder::create(array_merge($data['header'], $totals, [
@@ -169,7 +169,7 @@ class PurchaseOrderController extends Controller
         $data = $this->validateData($request);
 
         DB::transaction(function () use ($data, $purchaseOrder) {
-            $lines = $this->computeLines($data['items']);
+            $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
             $purchaseOrder->update(array_merge($data['header'], $totals));
@@ -267,6 +267,7 @@ class PurchaseOrderController extends Controller
                 'qty' => (float) $poItem->qty,
                 'free_qty' => (float) $poItem->free_qty,
                 'cost_price' => (float) $poItem->cost_price,
+                'effective_cost' => (float) ($poItem->effective_cost ?: $poItem->cost_price),
                 'sell_price' => (float) $poItem->sell_price,
                 'mrp' => (float) $poItem->mrp,
                 'disc_percent' => (float) $poItem->disc_percent,
@@ -286,6 +287,9 @@ class PurchaseOrderController extends Controller
                 'branch_id' => $purchaseOrder->branch_id,
                 'freight' => (float) $purchaseOrder->freight,
                 'round_off' => (float) $purchaseOrder->round_off,
+                'scheme_item_disc_amt' => (float) $purchaseOrder->scheme_item_disc_amt,
+                'scheme_item_disc_percent' => (float) $purchaseOrder->scheme_item_disc_percent,
+                'other_disc_amt' => (float) $purchaseOrder->other_disc_amt,
             ],
             'items' => $items,
         ]);
@@ -317,9 +321,15 @@ class PurchaseOrderController extends Controller
         ];
     }
 
-    private function computeLines(array $items): array
+    private function computeLines(array $items, array $header = []): array
     {
-        return collect($items)->map(function ($line) {
+        $totalHeaderDiscount = (float) ($header['scheme_item_disc_amt'] ?? 0)
+            + (float) ($header['other_disc_amt'] ?? 0);
+
+        // Pre-calculate line base after line discount
+        $lineBases = [];
+        $totalBaseAfterItemDisc = 0.0;
+        foreach ($items as $idx => $line) {
             $qty = (float) $line['qty'];
             $costPrice = (float) $line['cost_price'];
             $base = $qty * $costPrice;
@@ -329,16 +339,60 @@ class PurchaseOrderController extends Controller
             if ($discAmount <= 0 && $discPercent > 0) {
                 $discAmount = round($base * $discPercent / 100, 2);
             }
+            $baseAfter = max(0, $base - $discAmount);
+            $lineBases[$idx] = [
+                'base' => $base,
+                'disc_percent' => $discPercent,
+                'disc_amount' => $discAmount,
+                'base_after' => $baseAfter,
+            ];
+            $totalBaseAfterItemDisc += $baseAfter;
+        }
+
+        // Allocate header discount proportionally
+        $allocatedHeaderDiscounts = [];
+        $remDisc = $totalHeaderDiscount;
+        $cnt = count($items);
+        $curr = 0;
+        foreach ($items as $idx => $line) {
+            $curr++;
+            if ($totalBaseAfterItemDisc > 0 && $totalHeaderDiscount > 0) {
+                if ($curr === $cnt) {
+                    $allocated = round($remDisc, 2);
+                } else {
+                    $allocated = round(($lineBases[$idx]['base_after'] / $totalBaseAfterItemDisc) * $totalHeaderDiscount, 2);
+                    $remDisc -= $allocated;
+                }
+            } else {
+                $allocated = 0.0;
+            }
+            $allocatedHeaderDiscounts[$idx] = max(0, $allocated);
+        }
+
+        $result = [];
+        foreach ($items as $idx => $line) {
+            $qty = (float) $line['qty'];
+            $freeQty = (float) ($line['free_qty'] ?? 0);
+            $costPrice = (float) $line['cost_price'];
+            $base = $lineBases[$idx]['base'];
+            $discPercent = $lineBases[$idx]['disc_percent'];
+            $discAmount = $lineBases[$idx]['disc_amount'];
+            $extraDeduction = $allocatedHeaderDiscounts[$idx] ?? 0.0;
 
             $gstPercent = (float) ($line['gst_percent'] ?? 0);
             $gstTaxAmount = round(($base - $discAmount) * $gstPercent / 100, 2);
             $netAmount = round(($base - $discAmount) + $gstTaxAmount, 2);
 
-            return [
+            $totalQty = $qty + $freeQty;
+            $baseCostAfterAllDisc = max(0, $base - $discAmount - $extraDeduction);
+            $effectiveCost = $totalQty > 0 ? round($baseCostAfterAllDisc / $totalQty, 4) : $costPrice;
+
+            $result[] = [
                 'item_id' => $line['item_id'],
                 'qty' => $qty,
-                'free_qty' => (float) ($line['free_qty'] ?? 0),
+                'free_qty' => $freeQty,
                 'cost_price' => $costPrice,
+                'effective_cost' => $effectiveCost,
                 'sell_price' => (float) ($line['sell_price'] ?? 0),
                 'mrp' => (float) ($line['mrp'] ?? 0),
                 'disc_percent' => $discPercent,
@@ -347,7 +401,9 @@ class PurchaseOrderController extends Controller
                 'gst_tax_amount' => $gstTaxAmount,
                 'net_amount' => $netAmount,
             ];
-        })->all();
+        }
+
+        return $result;
     }
 
     private function computeTotals(array $lines, array $data): array
@@ -357,6 +413,7 @@ class PurchaseOrderController extends Controller
         $roundOff     = (float) ($data['header']['round_off']            ?? 0);
         $otherDiscAmt = (float) ($data['header']['other_disc_amt']       ?? 0);
         $schemeDiscAmt= (float) ($data['header']['scheme_item_disc_amt'] ?? 0);
+        $schemeDiscPct= (float) ($data['header']['scheme_item_disc_percent'] ?? 0);
         $totalExtCess = (float) ($data['header']['total_extra_cess']     ?? 0);
         $totalWeight  = (float) ($data['header']['total_weight']         ?? 0);
 
@@ -365,12 +422,13 @@ class PurchaseOrderController extends Controller
             'disc_amount'         => round($collection->sum('disc_amount'), 2),
             'total_gst'           => round($collection->sum('gst_tax_amount'), 2),
             'total_qty'           => $collection->sum('qty') + $collection->sum('free_qty'),
-            'total'               => round($collection->sum('net_amount') + $freight + $roundOff - $otherDiscAmt - $schemeDiscAmt, 2),
+            'total'               => round($collection->sum('net_amount') + $freight + $roundOff + $totalExtCess - $otherDiscAmt - $schemeDiscAmt, 2),
             // Normalize nullable numeric fields to 0 so MySQL strict mode doesn't reject null
             'freight'             => $freight,
             'round_off'           => $roundOff,
             'other_disc_amt'      => $otherDiscAmt,
             'scheme_item_disc_amt'=> $schemeDiscAmt,
+            'scheme_item_disc_percent' => $schemeDiscPct,
             'total_extra_cess'    => $totalExtCess,
             'total_weight'        => $totalWeight,
         ];
@@ -388,6 +446,7 @@ class PurchaseOrderController extends Controller
             'freight' => ['nullable', 'numeric', 'min:0'],
             'round_off' => ['nullable', 'numeric'],
             'scheme_item_disc_amt' => ['nullable', 'numeric', 'min:0'],
+            'scheme_item_disc_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'other_disc_amt' => ['nullable', 'numeric', 'min:0'],
             'total_extra_cess' => ['nullable', 'numeric', 'min:0'],
             'total_weight' => ['nullable', 'numeric', 'min:0'],

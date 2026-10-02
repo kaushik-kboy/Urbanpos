@@ -61,6 +61,18 @@
                     <span class="text-muted d-block small">Total Tax (GST)</span>
                     <strong>₹{{ number_format((float)($purchaseOrder->total_gst ?? 0), 2) }}</strong>
                 </div>
+                @if ($purchaseOrder->scheme_item_disc_amt > 0)
+                    <div class="col-md-3 mb-2">
+                        <span class="text-muted d-block small">Scheme Discount</span>
+                        <strong class="text-danger">₹{{ number_format((float)$purchaseOrder->scheme_item_disc_amt, 2) }}</strong>
+                    </div>
+                @endif
+                @if ($purchaseOrder->other_disc_amt > 0)
+                    <div class="col-md-3 mb-2">
+                        <span class="text-muted d-block small">Other Discount</span>
+                        <strong class="text-danger">₹{{ number_format((float)$purchaseOrder->other_disc_amt, 2) }}</strong>
+                    </div>
+                @endif
                 <div class="col-md-3 mb-2">
                     <span class="text-muted d-block small">Grand Total</span>
                     <strong class="text-success h6 font-weight-bold">₹{{ number_format((float)($purchaseOrder->total ?? 0), 2) }}</strong>
@@ -84,6 +96,7 @@
                             <th class="text-right">Ordered Qty</th>
                             <th class="text-right">Free Qty</th>
                             <th class="text-right">Cost Price</th>
+                            <th class="text-right">Landing Cost</th>
                             <th class="text-right">Disc Amt</th>
                             <th class="text-right">GST %</th>
                             <th class="text-right">GST Tax</th>
@@ -99,6 +112,7 @@
                                 <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 2) }}</td>
                                 <td class="text-right">{{ $line->free_qty > 0 ? number_format($line->free_qty, 2) : '—' }}</td>
                                 <td class="text-right">₹{{ number_format($line->cost_price, 2) }}</td>
+                                <td class="text-right font-weight-bold text-info">₹{{ number_format((float)($line->effective_cost > 0 ? $line->effective_cost : $line->cost_price), 2) }}</td>
                                 <td class="text-right">{{ $line->disc_amount > 0 ? '₹' . number_format($line->disc_amount, 2) : '—' }}</td>
                                 <td class="text-right">{{ number_format($line->gst_percent, 2) }}%</td>
                                 <td class="text-right">₹{{ number_format($line->gst_tax_amount, 2) }}</td>
@@ -106,7 +120,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="text-center py-3 text-muted">No items recorded on this purchase order.</td>
+                                <td colspan="11" class="text-center py-3 text-muted">No items recorded on this purchase order.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -115,7 +129,7 @@
                             <td colspan="3" class="text-right">Totals:</td>
                             <td class="text-right text-primary">{{ number_format($purchaseOrder->items->sum('qty'), 2) }}</td>
                             <td class="text-right">{{ number_format($purchaseOrder->items->sum('free_qty'), 2) }}</td>
-                            <td colspan="3"></td>
+                            <td colspan="4"></td>
                             <td class="text-right">₹{{ number_format($purchaseOrder->total_gst, 2) }}</td>
                             <td class="text-right text-success">₹{{ number_format($purchaseOrder->total, 2) }}</td>
                         </tr>

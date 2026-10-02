@@ -14,7 +14,7 @@ class PurchaseOrder extends Model
     protected $fillable = [
         'po_number', 'po_date', 'supplier_id', 'branch_id', 'purchase_indent_id', 'purchase_type', 'c_form',
         'item_disc_amount', 'disc_percent', 'disc_amount', 'freight', 'round_off',
-        'scheme_item_disc_amt', 'other_disc_amt', 'total_gst', 'total_extra_cess',
+        'scheme_item_disc_amt', 'scheme_item_disc_percent', 'other_disc_amt', 'total_gst', 'total_extra_cess',
         'total_qty', 'total_weight', 'total', 'remarks', 'message', 'status',
         'cancellation_reason', 'cancelled_at', 'cancelled_by_id',
     ];

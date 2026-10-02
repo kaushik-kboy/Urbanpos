@@ -108,9 +108,12 @@
                 <th style="width:75px" class="text-right" data-col-key="stock">Stock</th>
                 <th style="width:75px" class="text-right" data-col-key="qty" data-can-hide="false">Qty</th>
                 <th style="width:45px" class="text-right" data-col-key="free">Free</th>
-                <th style="width:95px" class="text-right" data-col-key="cost">Cost Price</th>
-                <th style="width:95px" class="text-right" data-col-key="sell">Sell Price</th>
-                <th style="width:90px" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width:90px" class="text-right" data-col-key="cost">Cost Price</th>
+                <th style="width:90px" class="text-right" data-col-key="landing_cost" title="Landing Cost Price (Effective unit cost after free qty & discount)">Landing Cost</th>
+                <th style="width:90px" class="text-right" data-col-key="sell">Sell Price</th>
+                <th style="width:85px" class="text-right" data-col-key="mrp">MRP</th>
+                <th style="width:50px" class="text-right" data-col-key="margin" title="Margin %">Margin %</th>
+                <th style="width:50px" class="text-right" data-col-key="profit" title="Profit %">Profit %</th>
                 <th style="width:48px" class="text-right" data-col-key="disc_pct">Disc %</th>
                 <th style="width:85px" class="text-right" data-col-key="disc_amt">Disc Amt</th>
                 <th style="width:45px" class="text-right" data-col-key="gst">GST%</th>
@@ -130,7 +133,7 @@
                 <td colspan="4" class="text-right align-middle">Totals:</td>
                 <td class="text-right align-middle text-primary" id="po-footer-qty" data-col-key="qty">0</td>
                 <td class="text-right align-middle text-muted" id="po-footer-free" data-col-key="free">0</td>
-                <td colspan="4"></td>
+                <td colspan="7"></td>
                 <td class="text-right align-middle text-danger" id="po-footer-disc" data-col-key="disc_amt">0.00</td>
                 <td></td>
                 <td class="text-right align-middle text-success h6 mb-0" id="po-footer-net" data-col-key="net">0.00</td>
@@ -151,7 +154,7 @@
                 <strong class="h5 text-primary" id="po-summary-qty">0</strong>
             </div>
             <div class="col-md-3 border-right">
-                <small class="text-muted d-block">Total Discount</small>
+                <small class="text-muted d-block">Total Discount (Line + Scheme + Other)</small>
                 <strong class="h5 text-danger" id="po-summary-disc">₹0.00</strong>
             </div>
             <div class="col-md-3 border-right">
@@ -186,19 +189,22 @@
     <div class="field-wrapper col-md-6" data-field="scheme_item_disc_amt" data-label="Scheme ItemDiscAmt" data-default-order="3">
         <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="$po->scheme_item_disc_amt ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="other_disc_amt" data-label="OtherDiscAmt" data-default-order="4">
+    <div class="field-wrapper col-md-6" data-field="scheme_item_disc_percent" data-label="Scheme ItemDisc%" data-default-order="4">
+        <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" :value="$po->scheme_item_disc_percent ?? 0" />
+    </div>
+    <div class="field-wrapper col-md-6" data-field="other_disc_amt" data-label="OtherDiscAmt" data-default-order="5">
         <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="$po->other_disc_amt ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="5">
+    <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="6">
         <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$po->total_extra_cess ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="6">
+    <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="7">
         <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$po->total_weight ?? 0" />
     </div>
-    <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
+    <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="8">
         <x-textarea name="remarks" label="Remarks" :value="$po->remarks ?? ($indent ? 'Requisition from Indent #' . $indent->indent_number . ($indent->remarks ? ' - ' . $indent->remarks : '') : '')" />
     </div>
-    <div class="field-wrapper col-md-12" data-field="message" data-label="Message" data-default-order="8">
+    <div class="field-wrapper col-md-12" data-field="message" data-label="Message" data-default-order="9">
         <x-textarea name="message" label="Message" :value="$po->message ?? ''" />
     </div>
 </div>
@@ -778,8 +784,65 @@
         });
 
         /* ================================================================
-           CALCULATIONS & ROW EVENTS
+           CALCULATIONS & ROW EVENTS (Option 1 Consistency)
            ================================================================ */
+        let poTotalsRafId = null;
+        function scheduleCalculatePoTotals() {
+            if (poTotalsRafId) {
+                cancelAnimationFrame(poTotalsRafId);
+            }
+            poTotalsRafId = requestAnimationFrame(function () {
+                poTotalsRafId = null;
+                calculatePoTotals();
+            });
+        }
+
+        // Sync Scheme ItemDisc% <-> Scheme ItemDiscAmt
+        let isSyncingSchemeDisc = false;
+        function syncSchemeDiscount(source) {
+            if (isSyncingSchemeDisc) return;
+            isSyncingSchemeDisc = true;
+
+            let totalBaseCost = 0;
+            $('#po-items-body tr').each(function () {
+                let qty = parseFloat($(this).find('.po-qty').val()) || 0;
+                let cost = parseFloat($(this).find('.po-cost').val()) || 0;
+                let disc = parseFloat($(this).find('.po-disc-amount').val()) || 0;
+                totalBaseCost += Math.max(0, (qty * cost) - disc);
+            });
+
+            let $amtInput = $('input[name="scheme_item_disc_amt"]');
+            let $pctInput = $('input[name="scheme_item_disc_percent"]');
+
+            if (source === 'percent') {
+                let pct = parseFloat($pctInput.val()) || 0;
+                if (pct > 0 && totalBaseCost > 0) {
+                    let amt = Math.round((totalBaseCost * pct / 100) * 100) / 100;
+                    $amtInput.val(amt > 0 ? amt.toFixed(2) : '');
+                } else if (!pct) {
+                    $amtInput.val('');
+                }
+            } else if (source === 'amount') {
+                let amt = parseFloat($amtInput.val()) || 0;
+                if (amt > 0 && totalBaseCost > 0) {
+                    let pct = Math.round(((amt / totalBaseCost) * 100) * 100) / 100;
+                    $pctInput.val(pct > 0 ? pct.toFixed(2) : '');
+                } else if (!amt) {
+                    $pctInput.val('');
+                }
+            }
+
+            isSyncingSchemeDisc = false;
+            scheduleCalculatePoTotals();
+        }
+
+        $(document).on('input', 'input[name="scheme_item_disc_percent"]', function () {
+            syncSchemeDiscount('percent');
+        });
+        $(document).on('input', 'input[name="scheme_item_disc_amt"]', function () {
+            syncSchemeDiscount('amount');
+        });
+
         function calculatePoRow($row, source = null) {
             let qty      = parseFloat($row.find('.po-qty').val()) || 0;
             let cost     = parseFloat($row.find('.po-cost').val()) || 0;
@@ -789,7 +852,6 @@
             let discAmtVal = ($discAmt.val() || '').toString().trim();
             let discPct  = parseFloat(discPctVal) || 0;
             let discAmt  = parseFloat(discAmtVal) || 0;
-            let gstPct   = parseFloat($row.find('.po-gst').val()) || 0;
 
             let base = qty * cost;
 
@@ -820,63 +882,136 @@
                 }
             }
 
-            // Net = (qty × cost) - disc + GST
-            let afterDisc = Math.max(0, base - discAmt);
-            let gstAmt    = Math.round((afterDisc * gstPct / 100) * 100) / 100;
-            let net       = afterDisc + gstAmt;
-
-            $row.find('.po-row-net').text(net.toFixed(2));
-
-            calculatePoTotals();
-            return { qty, base, discAmt, net };
+            scheduleCalculatePoTotals();
+            return { qty, base, discAmt };
         }
 
         function calculatePoTotals() {
-            let totalQty  = 0;
-            let totalFree = 0;
-            let totalDisc = 0;
-            let totalNet  = 0;
+            let schemeDisc = parseFloat($('input[name="scheme_item_disc_amt"]').val()) || 0;
+            let otherDisc  = parseFloat($('input[name="other_disc_amt"]').val()) || 0;
+            let totalHeaderDiscount = schemeDisc + otherDisc;
+
+            let rowsData = [];
+            let totalBaseAfterItemDisc = 0;
 
             $('#po-items-body tr').each(function () {
-                let qty  = parseFloat($(this).find('.po-qty').val()) || 0;
-                let free = parseFloat($(this).find('.po-free-qty').val()) || 0;
-                let cost = parseFloat($(this).find('.po-cost').val()) || 0;
-                let discAmt = parseFloat($(this).find('.po-disc-amount').val()) || 0;
-                let gstPct  = parseFloat($(this).find('.po-gst').val()) || 0;
+                let $r = $(this);
+                let qty     = parseFloat($r.find('.po-qty').val()) || 0;
+                let freeQty = parseFloat($r.find('.po-free-qty').val()) || 0;
+                let cost    = parseFloat($r.find('.po-cost').val()) || 0;
+                let sell    = parseFloat($r.find('.po-sell').val()) || 0;
+                let mrp     = parseFloat($r.find('.po-mrp').val()) || 0;
+                let discAmt = parseFloat($r.find('.po-disc-amount').val()) || 0;
+                let gst     = parseFloat($r.find('.po-gst').val()) || 0;
 
                 let base = qty * cost;
-                let afterDisc = Math.max(0, base - discAmt);
-                let gstAmt    = Math.round((afterDisc * gstPct / 100) * 100) / 100;
-                let net       = afterDisc + gstAmt;
+                let baseAfterDisc = Math.max(0, base - discAmt);
+                totalBaseAfterItemDisc += baseAfterDisc;
 
-                // Update row net display
-                $(this).find('.po-row-net').text(net.toFixed(2));
-
-                totalQty  += qty;
-                totalFree += free;
-                totalDisc += discAmt;
-                totalNet  += net;
+                rowsData.push({
+                    $row: $r,
+                    qty: qty,
+                    freeQty: freeQty,
+                    cost: cost,
+                    sell: sell,
+                    mrp: mrp,
+                    base: base,
+                    discAmt: discAmt,
+                    baseAfterDisc: baseAfterDisc,
+                    gst: gst
+                });
             });
+
+            let totalQty     = 0;
+            let totalFree    = 0;
+            let totalLineDisc = 0;
+            let totalNetAmt  = 0;
+            let remainingDiscount = totalHeaderDiscount;
+
+            for (let i = 0; i < rowsData.length; i++) {
+                let d = rowsData[i];
+                let isLast = (i === rowsData.length - 1);
+
+                // Proportional header discount allocation
+                let extraDeduction = 0;
+                if (totalBaseAfterItemDisc > 0 && totalHeaderDiscount > 0) {
+                    if (isLast) {
+                        extraDeduction = Math.round(remainingDiscount * 100) / 100;
+                    } else {
+                        extraDeduction = Math.round(((d.baseAfterDisc / totalBaseAfterItemDisc) * totalHeaderDiscount) * 100) / 100;
+                        remainingDiscount -= extraDeduction;
+                    }
+                }
+                extraDeduction = Math.max(0, extraDeduction);
+
+                // Row net calculation: (Base - Line Disc) + GST
+                let taxAmt = Math.round((d.baseAfterDisc * (d.gst / 100)) * 100) / 100;
+                let net    = Math.round((d.baseAfterDisc + taxAmt) * 100) / 100;
+
+                d.$row.find('.po-row-net').text(net.toFixed(2));
+
+                // Landing Cost = (Billed Base - Line Disc - Allocated Scheme/Other Disc) / (Qty + Free Qty)
+                let totalUnits = d.qty + d.freeQty;
+                let trueLandingCost = 0;
+                if (totalUnits > 0 && d.cost > 0) {
+                    let netCostAfterAllDisc = Math.max(0, d.baseAfterDisc - extraDeduction);
+                    trueLandingCost = netCostAfterAllDisc / totalUnits;
+                } else if (d.cost > 0) {
+                    trueLandingCost = d.cost;
+                }
+
+                let $landingInput = d.$row.find('.po-landing-cost');
+                if ($landingInput.length) {
+                    $landingInput.val(trueLandingCost > 0 ? trueLandingCost.toFixed(2) : '');
+                    let discBreakdown = [];
+                    if (d.freeQty > 0) discBreakdown.push(d.freeQty + ' free');
+                    if (d.discAmt > 0) discBreakdown.push('₹' + d.discAmt.toFixed(2) + ' item disc');
+                    if (extraDeduction > 0) discBreakdown.push('₹' + extraDeduction.toFixed(2) + ' scheme/other disc');
+
+                    if (discBreakdown.length > 0) {
+                        $landingInput.attr('title', 'Landing Cost Price: ₹' + trueLandingCost.toFixed(2) + ' (Effective unit cost after ' + discBreakdown.join(', ') + ')');
+                    } else {
+                        $landingInput.attr('title', 'Landing Cost Price');
+                    }
+                }
+
+                // Margins & Profit %
+                let effectiveCost = trueLandingCost > 0 ? trueLandingCost : d.cost;
+                let baseSell = d.sell > 0 ? d.sell : d.mrp;
+                let sellExclGst = (baseSell > 0) ? (baseSell / (1 + (d.gst / 100))) : 0;
+                let profitAmount = (sellExclGst > 0 && effectiveCost > 0) ? (sellExclGst - effectiveCost) : null;
+                let marginPct = (sellExclGst > 0 && profitAmount !== null) ? ((profitAmount / sellExclGst) * 100) : null;
+                let profitPct = (effectiveCost > 0 && profitAmount !== null) ? ((profitAmount / effectiveCost) * 100) : null;
+
+                d.$row.find('.po-margin').val(marginPct !== null && isFinite(marginPct) ? marginPct.toFixed(1) + '%' : '');
+                d.$row.find('.po-profit').val(profitPct !== null && isFinite(profitPct) ? profitPct.toFixed(1) + '%' : '');
+
+                totalQty      += d.qty;
+                totalFree     += d.freeQty;
+                totalLineDisc += d.discAmt;
+                totalNetAmt   += net;
+            }
 
             // Footer row
             $('#po-footer-qty').text(totalQty % 1 === 0 ? totalQty : totalQty.toFixed(3));
             $('#po-footer-free').text(totalFree % 1 === 0 ? totalFree : totalFree.toFixed(3));
-            $('#po-footer-disc').text(totalDisc.toFixed(2));
-            $('#po-footer-net').text(totalNet.toFixed(2));
+            $('#po-footer-disc').text(totalLineDisc.toFixed(2));
+            $('#po-footer-net').text(totalNetAmt.toFixed(2));
 
             // Summary card
             let freight    = parseFloat($('input[name="freight"]').val()) || 0;
             let roundOff   = parseFloat($('input[name="round_off"]').val()) || 0;
             let extraCess  = parseFloat($('input[name="total_extra_cess"]').val()) || 0;
-            let grandTotal = totalNet + freight + roundOff + extraCess;
+            let totalAllDisc = totalLineDisc + totalHeaderDiscount;
+            let grandTotal = totalNetAmt + freight + roundOff + extraCess - totalHeaderDiscount;
 
             $('#po-summary-qty').text(totalQty % 1 === 0 ? totalQty : totalQty.toFixed(3));
-            $('#po-summary-disc').text('₹' + totalDisc.toFixed(2));
-            $('#po-summary-items').text('₹' + totalNet.toFixed(2));
-            $('#po-summary-grand').text('₹' + grandTotal.toFixed(2));
+            $('#po-summary-disc').text('₹' + totalAllDisc.toFixed(2));
+            $('#po-summary-items').text('₹' + totalNetAmt.toFixed(2));
+            $('#po-summary-grand').text('₹' + Math.max(0, grandTotal).toFixed(2));
         }
 
-        $(document).on('input', '.po-qty, .po-free-qty, .po-cost, .po-gst', function () {
+        $(document).on('input', '.po-qty, .po-free-qty, .po-cost, .po-sell, .po-mrp, .po-gst', function () {
             calculatePoRow($(this).closest('tr'));
         });
         $(document).on('input', '.po-disc-percent', function () {
@@ -886,13 +1021,13 @@
             calculatePoRow($(this).closest('tr'), 'amount');
         });
 
-        // Recalculate grand total when freight/cess/roundoff changes
-        $(document).on('input', 'input[name="freight"], input[name="round_off"], input[name="total_extra_cess"]', function () {
-            calculatePoTotals();
+        // Recalculate when charges or discounts change
+        $(document).on('input', 'input[name="other_disc_amt"], input[name="freight"], input[name="round_off"], input[name="total_extra_cess"]', function () {
+            scheduleCalculatePoTotals();
         });
 
-        // Initial calculation on page load (for edit forms with existing items)
-        calculatePoTotals();
+        // Initial calculation on page load
+        scheduleCalculatePoTotals();
 
 
         function addPoRowAndOpenSearchModal() {
@@ -1096,7 +1231,7 @@
             $('#po-items-body').empty().append(html);
             rowIndex = 1;
             updateRowNumbers();
-            calculateTotals();
+            scheduleCalculatePoTotals();
             setTimeout(function () {
                 $('#po-items-body tr:first .po-item-code').focus();
             }, 60);
