@@ -165,8 +165,11 @@ class DynamicValidationService
                         array_unshift($ruleList, 'required');
                     }
                 } else {
-                    // Core structural identity and foreign keys that must never be stripped of 'required'
-                    // to prevent MySQL 1048 Not Null constraint violations
+                    // Core structural identity and foreign keys that must NEVER be stripped of 'required'
+                    // because they map to NOT NULL DB columns or are mandatory for record integrity.
+                    // NOTE: Auto-generated document numbers (bill_number, invoice_number, etc.) are
+                    // intentionally excluded — they are nullable columns assigned by the controller,
+                    // and treating them as required when is_required=false causes silent form failures.
                     $protectedKeys = [
                         'name',
                         'item_code',
@@ -177,17 +180,6 @@ class DynamicValidationService
                         'customer_id',
                         'from_branch_id',
                         'to_branch_id',
-                        'bill_number',
-                        'invoice_number',
-                        'po_number',
-                        'return_number',
-                        'indent_number',
-                        'receipt_number',
-                        'delivery_number',
-                        'transfer_number',
-                        'entry_number',
-                        'damage_number',
-                        'update_number',
                     ];
                     if (!in_array($targetField, $protectedKeys, true)) {
                         $ruleList = array_values(array_filter($ruleList, fn ($r) => $r !== 'required'));
