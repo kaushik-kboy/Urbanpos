@@ -28,6 +28,108 @@
 .sb-exp-date[readonly]::-webkit-calendar-picker-indicator {
     display: none !important;
 }
+
+/* Compact Sales Bill UI */
+.sb-compact-section-header {
+    margin-bottom: 0.35rem !important;
+}
+.sb-compact-section-header h5, 
+.sb-compact-section-header h6 {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+.sb-divider-compact {
+    margin-top: 0.45rem !important;
+    margin-bottom: 0.45rem !important;
+    border-color: #e9ecef;
+}
+#sb-header-fields-grid .form-group,
+#sb-additional-fields-grid .form-group {
+    margin-bottom: 0.35rem !important;
+}
+#sb-header-fields-grid label,
+#sb-additional-fields-grid label {
+    font-size: 0.78rem !important;
+    margin-bottom: 0.15rem !important;
+    font-weight: 600;
+    color: #495057;
+}
+#sb-header-fields-grid .form-control,
+#sb-additional-fields-grid .form-control {
+    font-size: 0.85rem;
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.2rem 0.5rem;
+}
+#sb-header-fields-grid .select2-container .select2-selection--single,
+#sb-additional-fields-grid .select2-container .select2-selection--single {
+    height: calc(1.5em + 0.5rem + 2px) !important;
+    font-size: 0.85rem;
+}
+#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: calc(1.5em + 0.5rem);
+    padding-left: 0.5rem;
+}
+#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: calc(1.5em + 0.5rem + 2px);
+}
+#sb-additional-fields-grid textarea.form-control {
+    height: auto !important;
+    min-height: 38px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+/* Scrollable Items Container & Sticky Header */
+.sb-items-scroll-container {
+    max-height: clamp(220px, 32vh, 320px);
+    min-height: 150px;
+    overflow-y: auto;
+    overflow-x: auto;
+    position: relative;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+}
+.sb-items-scroll-container #sb-items-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f4f6f9 !important;
+    z-index: 5;
+    box-shadow: inset 0 -1px 0 #dee2e6, 0 1px 2px rgba(0, 0, 0, 0.06);
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+    font-size: 0.82rem;
+}
+.sb-items-scroll-container #sb-items-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    background-color: #f8f9fa !important;
+    z-index: 4;
+    box-shadow: inset 0 1px 0 #dee2e6;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+    font-size: 0.85rem;
+}
+
+/* Ensure Item Description stays wide and legible */
+#sb-items-table [data-col-key="item"] {
+    min-width: 250px !important;
+}
+#sb-items-table .sb-item-desc {
+    min-width: 240px !important;
+    font-size: 0.85rem;
+}
+
+/* Dense table row padding */
+.table-items-dense td {
+    padding: 0.25rem 0.35rem !important;
+    vertical-align: middle !important;
+}
+.table-items-dense .form-control-sm {
+    height: calc(1.4em + 0.4rem + 2px);
+    padding: 0.15rem 0.35rem;
+    font-size: 0.84rem;
+}
 </style>
 @endpush
 
@@ -48,7 +150,7 @@
     </div>
 @endif
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
     <h5 class="mb-0"><i class="fas fa-file-invoice mr-1 text-primary"></i> Bill Header</h5>
     <div class="d-flex align-items-center">
         <x-form-layout-customizer 
@@ -231,8 +333,8 @@
     </div>
 </div>
 
-<hr>
-<div class="d-flex justify-content-between align-items-center mb-3">
+<hr class="sb-divider-compact">
+<div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
     <h5 class="mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Items</h5>
     <div>
         <button type="button" class="btn btn-outline-danger btn-sm btn-reset-table" id="sb-btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
@@ -241,7 +343,7 @@
 
 {{-- Unsaved Bill Draft Recovery Alert Banner --}}
 @if(empty($bill?->id))
-<div id="sb-draft-recovery-alert" class="alert alert-warning py-2 px-3 mb-3 shadow-sm d-none align-items-center justify-content-between">
+<div id="sb-draft-recovery-alert" class="alert alert-warning py-2 px-3 mb-2 shadow-sm d-none align-items-center justify-content-between">
     <div>
         <i class="fas fa-history mr-2 text-dark"></i>
         <strong>Unsaved Bill Draft Found!</strong> You have an unsaved draft from <span id="sb-draft-saved-time" class="font-weight-bold text-dark"></span> containing <span id="sb-draft-item-count" class="badge badge-dark">0</span> item(s).
@@ -274,7 +376,7 @@
         'actions'      => ['label' => 'Actions', 'default' => true],
     ];
 @endphp
-<div class="d-flex justify-content-between align-items-center mb-2">
+<div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
     <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-boxes mr-1 text-primary"></i> Bill Items</h6>
     <x-table-column-customizer
         table-key="sales.sales-bills.items"
@@ -283,13 +385,13 @@
     />
 </div>
 
-<div class="table-responsive">
-    <table class="table table-sm table-bordered table-items-dense" id="sb-items-table">
+<div class="table-responsive sb-items-scroll-container">
+    <table class="table table-sm table-bordered table-items-dense mb-0" id="sb-items-table">
         <thead class="bg-light">
             <tr>
                 <th style="width: 35px;" class="text-center" data-col-key="seq">#</th>
                 <th style="width: 120px;" data-col-key="code">Code / Barcode</th>
-                <th style="min-width: 230px;" data-col-key="item">Item Description</th>
+                <th style="min-width: 250px;" data-col-key="item">Item Description</th>
                 <th style="width: 140px;" data-col-key="expiry">Exp Date</th>
                 <th style="width: 85px;" class="text-right" data-col-key="qty">Qty</th>
                 <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
@@ -324,10 +426,10 @@
     </table>
 </div>
 
-<button type="button" id="sb-add-row" class="btn btn-link btn-sm font-weight-bold"><i class="fas fa-plus-circle"></i> Add Row</button>
+<button type="button" id="sb-add-row" class="btn btn-link btn-sm font-weight-bold py-1"><i class="fas fa-plus-circle"></i> Add Row</button>
 
-<hr>
-<div class="d-flex justify-content-between align-items-center mb-3">
+<hr class="sb-divider-compact">
+<div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
     <h5 class="mb-0"><i class="fas fa-calculator mr-1 text-primary"></i> Bill Totals & Notes</h5>
     <x-form-layout-customizer 
         form-key="sales_bills.additional" 
@@ -336,7 +438,7 @@
         button-class="btn btn-outline-primary btn-xs font-weight-bold shadow-sm" />
 </div>
 
-<div class="alert alert-light border py-2 d-flex justify-content-between align-items-center mb-3">
+<div class="alert alert-light border py-1 px-3 d-flex justify-content-between align-items-center mb-2">
     <div>
         <span class="text-muted mr-2 font-weight-bold">Final Bill Total:</span>
         <strong class="text-success h4 mb-0">₹<span id="display-sb-final-total">0.00</span></strong>
@@ -372,13 +474,13 @@
     <div class="field-wrapper col-md-6" data-field="remarks" data-label="Remarks" data-default-order="5">
         <div class="form-group mb-2">
             <label class="font-weight-bold mb-1" for="remarks">Remarks</label>
-            <textarea name="remarks" id="remarks" rows="2" class="form-control" placeholder="Any remarks for this bill...">{{ old('remarks', $bill->remarks ?? '') }}</textarea>
+            <textarea name="remarks" id="remarks" rows="1" class="form-control" style="min-height: 38px; resize: vertical;" placeholder="Any remarks for this bill...">{{ old('remarks', $bill->remarks ?? '') }}</textarea>
         </div>
     </div>
     <div class="field-wrapper col-md-6" data-field="message" data-label="Message" data-default-order="6">
         <div class="form-group mb-2">
             <label class="font-weight-bold mb-1" for="message">Message</label>
-            <textarea name="message" id="message" rows="2" class="form-control" placeholder="Print invoice footer message...">{{ old('message', $bill->message ?? '') }}</textarea>
+            <textarea name="message" id="message" rows="1" class="form-control" style="min-height: 38px; resize: vertical;" placeholder="Print invoice footer message...">{{ old('message', $bill->message ?? '') }}</textarea>
         </div>
     </div>
 </div>
@@ -2789,6 +2891,23 @@
                     e.preventDefault();
                     $('#sb-add-row').trigger('click');
                 }
+            }
+        });
+
+        // Auto-scroll items container when focused field moves out of visible view (keyboard navigation)
+        $('#sb-items-table').on('focus', 'input, select, button', function () {
+            const el = this;
+            const container = el.closest('.sb-items-scroll-container');
+            if (!container) return;
+            const elRect = el.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const thead = container.querySelector('thead');
+            const headerHeight = thead ? thead.offsetHeight : 38;
+
+            if (elRect.bottom > containerRect.bottom) {
+                container.scrollTop += (elRect.bottom - containerRect.bottom) + 8;
+            } else if (elRect.top < containerRect.top + headerHeight) {
+                container.scrollTop -= (containerRect.top + headerHeight - elRect.top) + 6;
             }
         });
 

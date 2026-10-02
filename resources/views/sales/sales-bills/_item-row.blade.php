@@ -37,7 +37,7 @@
     <td style="min-width: 110px;" data-col-key="code">
         <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter or F2 to search item">
     </td>
-    <td style="min-width: 220px;" data-col-key="item">
+    <td style="min-width: 250px;" data-col-key="item">
         <input type="text"
                class="form-control form-control-sm sb-item-desc bg-light font-weight-bold text-truncate"
                readonly
