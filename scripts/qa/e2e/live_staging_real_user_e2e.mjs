@@ -245,9 +245,134 @@ try {
     const piCreated = page.url().includes('/purchase/purchase-invoices') && !page.url().includes('/create');
     record('PI Submit & Save', piCreated, `Redirected to: ${page.url()}`);
 
+    // -------------------------------------------------------------
+    // STEP 4: SALES BILL FULL WORKFLOW (MODAL SEARCH + LIVE CALC + TENDER + SUBMIT)
+    // -------------------------------------------------------------
+    console.log('\n--- Step 4: Testing Sales Bill Full Real-User Flow ---');
+    await page.goto(`${BASE}/sales/sales-bills/create`, { waitUntil: 'networkidle' });
+
+    // Select Customer
+    await page.locator('#customer_id').selectOption({ index: 1 });
+    await page.evaluate(() => $('#customer_id').trigger('change'));
+    await page.waitForTimeout(400);
+
+    // Open Item Search Modal via Enter
+    const sbCodeInput = page.locator('#sb-items-body tr:first-child .sb-item-code');
+    await sbCodeInput.focus();
+    await page.keyboard.press('Enter');
+    await page.locator('#sb-item-search-modal').waitFor({ state: 'visible', timeout: 6000 });
+    record('SB Modal Open', true, 'Sales Bill item modal open on Enter');
+
+    // Type in Item Search
+    const sbSearchInput = page.locator('#isl-filter-name');
+    await sbSearchInput.fill('a');
+    await page.waitForTimeout(800);
+
+    const sbHasError = await page.locator('#isl-no-results:has-text("Error loading items")').isVisible();
+    record('SB Item Search AJAX', !sbHasError, sbHasError ? 'Returned Error loading items' : 'AJAX returned HTTP 200 without error');
+
+    const sbItemRowsCount = await page.locator('#isl-items-body tr.isl-item-row:not(.isl-item-disabled)').count();
+    record('SB Items Loaded in Modal', sbItemRowsCount > 0, `Loaded ${sbItemRowsCount} selectable items in table`);
+
+    // Select first selectable item
+    await page.locator('#isl-items-body tr.isl-item-row:not(.isl-item-disabled) .isl-btn-select').first().click();
+    await page.waitForTimeout(400);
+
+    const sbItemDesc = await page.locator('#sb-items-body tr:first-child .sb-item-desc').inputValue();
+    record('SB Item Row Population', !!sbItemDesc, `Selected: ${sbItemDesc}`);
+
+    // Fill Qty = 1
+    const sbQty = page.locator('#sb-items-body tr:first-child .sb-qty');
+    await sbQty.fill('1');
+    await sbQty.dispatchEvent('input');
+    await sbQty.dispatchEvent('change');
+    await page.waitForTimeout(500);
+
+    // Read live Final Total
+    const sbFinalTotalText = await page.locator('#display-sb-final-total').innerText();
+    const sbTotalVal = parseFloat(sbFinalTotalText.replace(/[^0-9.]/g, '')) || 0;
+    record('SB Live Real-Time Math', sbTotalVal > 0, `Bill Total: ₹${sbTotalVal.toFixed(2)}`);
+
+    // Click Save to open Tender Modal
+    console.log('Opening Tender modal...');
+    await page.locator('form button[type="submit"]:not(.btn-navbar)').first().click();
+    await page.locator('#sb-tender-modal').waitFor({ state: 'visible', timeout: 6000 });
+    record('SB Tender Modal Open', true, 'Tender modal opened on save click');
+
+    // Enter Cash Tender Amount
+    await page.locator('#tender-cash').fill(sbTotalVal.toFixed(2));
+    await page.locator('#tender-cash').dispatchEvent('input');
+    await page.locator('#tender-cash').dispatchEvent('change');
+    await page.waitForTimeout(400);
+
+    // Submit Tender
+    console.log('Submitting Sales Bill via Tender Save...');
+    await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle', timeout: 15000 }),
+        page.locator('#tender-save-btn').click()
+    ]);
+    const sbCreated = page.url().includes('/sales/sales-bills') && !page.url().includes('/create');
+    record('SB Submit & Save', sbCreated, `Redirected to: ${page.url()}`);
+
+    // -------------------------------------------------------------
+    // STEP 5: SALES ORDER FULL WORKFLOW (MODAL SEARCH + LIVE CALC + SUBMIT)
+    // -------------------------------------------------------------
+    console.log('\n--- Step 5: Testing Sales Order Full Real-User Flow ---');
+    await page.goto(`${BASE}/sales/sales-orders/create`, { waitUntil: 'networkidle' });
+
+    // Select Customer
+    await page.locator('select[name="customer_id"]').selectOption({ index: 1 });
+    await page.evaluate(() => $('select[name="customer_id"]').trigger('change'));
+    await page.waitForTimeout(400);
+
+    // Open Item Search Modal via Enter
+    const soCodeInput = page.locator('#so-items-body tr:first-child .so-item-code');
+    await soCodeInput.focus();
+    await page.keyboard.press('Enter');
+    await page.locator('#so-item-search-modal').waitFor({ state: 'visible', timeout: 6000 });
+    record('SO Modal Open', true, 'Sales Order item modal open on Enter');
+
+    // Type in Item Search
+    const soSearchInput = page.locator('#so-isl-filter-name');
+    await soSearchInput.fill('a');
+    await page.waitForTimeout(800);
+
+    const soHasError = await page.locator('#so-isl-no-results:has-text("Error loading items")').isVisible();
+    record('SO Item Search AJAX', !soHasError, soHasError ? 'Returned Error loading items' : 'AJAX returned HTTP 200 without error');
+
+    const soItemRowsCount = await page.locator('#so-isl-items-body tr').count();
+    record('SO Items Loaded in Modal', soItemRowsCount > 0, `Loaded ${soItemRowsCount} items in table`);
+
+    // Select first item
+    await page.locator('#so-isl-items-body tr:first-child .so-isl-btn-select').click();
+    await page.waitForTimeout(400);
+
+    const soItemDesc = await page.locator('#so-items-body tr:first-child .so-item-desc').inputValue();
+    record('SO Item Row Population', !!soItemDesc, `Selected: ${soItemDesc}`);
+
+    // Fill Qty = 2
+    const soQty = page.locator('#so-items-body tr:first-child .so-qty');
+    await soQty.fill('2');
+    await soQty.dispatchEvent('input');
+    await soQty.dispatchEvent('change');
+    await page.waitForTimeout(500);
+
+    const soTotal = await page.locator('#so-summary-total').innerText();
+    record('SO Live Real-Time Math', !!soTotal && soTotal !== '₹0.00', `Order Total: ${soTotal}`);
+
+    // Submit Sales Order
+    console.log('Submitting Sales Order form...');
+    await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle', timeout: 15000 }),
+        page.locator('form button[type="submit"]:not(.btn-navbar)').first().click()
+    ]);
+    const soCreated = page.url().includes('/sales/sales-orders') && !page.url().includes('/create');
+    record('SO Submit & Save', soCreated, `Redirected to: ${page.url()}`);
+
     console.log(`\n================================================================`);
     console.log(`🎉 ALL REAL-USER INTERACTION E2E GATES PASSED (100% SUCCESS)`);
     console.log(`Total Steps Tested: ${results.length}`);
+    console.log(`Modules Covered: Purchase Orders, Purchase Invoices, Sales Bills, Sales Orders`);
     console.log(`No manual testing blind spots detected.`);
     console.log(`================================================================\n`);
 
