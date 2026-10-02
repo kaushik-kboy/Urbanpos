@@ -123,7 +123,7 @@
 
     {{-- Bill Date & Time --}}
     <div class="field-wrapper col-md-4" data-field="bill_date" data-default-order="4" data-core="1">
-        <x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" max="{{ now()->format('Y-m-d\TH:i') }}" required />
+        <x-field name="bill_date" label="Bill Date & Time" type="datetime-local" :value="optional($bill->bill_date ?? now())->format('Y-m-d\TH:i')" min="2020-01-01T00:00" max="{{ now()->format('Y-m-d\TH:i') }}" required />
     </div>
 
     {{-- Invoice Type --}}
@@ -1858,11 +1858,17 @@
             }
 
             let $date = $('input[name="bill_date"]');
-            if (!$date.val()) {
+            const dateVal = $date.val();
+            const now = new Date();
+            const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            const yearMatch = dateVal ? dateVal.match(/^(\d{4})/) : null;
+            const parsedYear = yearMatch ? parseInt(yearMatch[1], 10) : 0;
+
+            if (!dateVal || parsedYear < 2020 || parsedYear > 2035 || dateVal > localIso) {
                 if (markFields) $date.addClass('is-invalid border-danger');
                 if (showAlert && isValid) {
-                    let msg = 'Please select a Bill Date.';
-                    if (window.toastr) toastr.warning(msg, 'Date Required');
+                    let msg = !dateVal ? 'Please select a Bill Date.' : (dateVal > localIso ? 'Future Bill Date & Time is not allowed.' : 'Please enter a valid Bill Date (Year between 2020 and 2035).');
+                    if (window.toastr) toastr.warning(msg, 'Invalid Date');
                     else alert(msg);
                     $date.focus();
                 }
@@ -3080,8 +3086,8 @@
         // Ensure 1 empty row on initialization if table is empty
         ensureSingleEmptySbRow();
 
-        // Prevent future dates on bill_date
-        $('#bill_date').on('change blur input', function () {
+        // Prevent future dates and unrealistic years on bill_date
+        $('#bill_date').on('change blur', function () {
             const now = new Date();
             const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
             let $dateFeedback = $('#bill_date_future_error');
@@ -3089,7 +3095,18 @@
                 $dateFeedback = $('<div id="bill_date_future_error" class="invalid-feedback text-danger font-weight-bold d-block mt-1"></div>');
                 $('#bill_date').parent().append($dateFeedback);
             }
-            if (this.value && this.value > localIso) {
+            if (!this.value) {
+                $dateFeedback.hide().text('');
+                return;
+            }
+            const yearMatch = this.value.match(/^(\d{4})/);
+            const parsedYear = yearMatch ? parseInt(yearMatch[1], 10) : 0;
+
+            if (parsedYear < 2020 || parsedYear > 2035) {
+                this.value = localIso;
+                $dateFeedback.text('Invalid year (' + (yearMatch ? yearMatch[1] : 'invalid') + '). Date must be between 2020 and 2035. Reset to current time.').show();
+                setTimeout(() => $dateFeedback.fadeOut(), 4000);
+            } else if (this.value > localIso) {
                 this.value = localIso;
                 $dateFeedback.text('Future date & time is not allowed. Reset to current time.').show();
                 setTimeout(() => $dateFeedback.fadeOut(), 3000);

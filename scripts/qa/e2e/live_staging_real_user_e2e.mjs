@@ -94,7 +94,8 @@ try {
     // Type query in Item Search Box
     const poSearchInput = page.locator('#po-isl-filter-name');
     await poSearchInput.fill('a');
-    await page.waitForTimeout(800); // Allow debounce & AJAX to complete
+    await poSearchInput.dispatchEvent('input');
+    await page.locator('#po-isl-items-body tr').first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
 
     // Assert NO "Error loading items"
     const poHasError = await page.locator('#po-isl-no-results:has-text("Error loading items")').isVisible();

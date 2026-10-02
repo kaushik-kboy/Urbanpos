@@ -1444,7 +1444,7 @@ class SalesBillController extends Controller
         $now = now()->addMinutes(2)->format('Y-m-d H:i:s');
         $headerRules = [
             'bill_number' => ['nullable', 'string', 'max:100'],
-            'bill_date' => ['required', 'date', "before_or_equal:{$now}"],
+            'bill_date' => ['required', 'date', 'after_or_equal:2020-01-01 00:00:00', "before_or_equal:{$now}"],
             'customer_id' => ['required', 'exists:customers,id'],
             'branch_id' => ['required', 'exists:branches,id'],
             'user_id' => ['nullable', 'exists:users,id'],
@@ -1466,6 +1466,7 @@ class SalesBillController extends Controller
 
         $headerMessages = [
             'bill_date.before_or_equal' => 'Future date and time is not allowed for Bill Date.',
+            'bill_date.after_or_equal' => 'Bill Date must be a valid date from year 2020 onwards.',
         ];
 
         $currentBill = $ignoreId ?: $request->route('sales_bill');
