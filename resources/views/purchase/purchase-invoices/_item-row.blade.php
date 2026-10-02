@@ -27,11 +27,6 @@
     $mrpVal = isset($line->mrp) && $line->mrp != 0 ? (float)$line->mrp : (float)($selectedItem->mrp ?? 0);
     $gstVal = isset($line->gst_percent) && $line->gst_percent != 0 ? (float)$line->gst_percent : (float)($selectedItem?->gstTax?->percentage ?? 0);
 
-    $baseSellVal = $sellVal > 0 ? $sellVal : $mrpVal;
-    $sellExclGstVal = ($baseSellVal > 0) ? ($baseSellVal / (1 + ($gstVal / 100))) : 0;
-    $marginVal = ($sellExclGstVal > 0 && $costVal > 0) ? round((($sellExclGstVal - $costVal) / $sellExclGstVal) * 100, 2) : null;
-    $profitVal = ($costVal > 0 && $sellExclGstVal > 0) ? round((($sellExclGstVal - $costVal) / $costVal) * 100, 2) : null;
-
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
     $freeQtyVal = isset($line->free_qty) && $line->free_qty != 0 ? $line->free_qty : '';
     $costPriceVal = isset($line->cost_price) && $line->cost_price != 0 ? $line->cost_price : ($selectedItem?->cost_price > 0 ? $selectedItem->cost_price : '');
@@ -46,6 +41,25 @@
     if (!empty($line->exp_date)) {
         $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
     }
+
+    $numQty = (float) $qtyVal;
+    $numFree = (float) $freeQtyVal;
+    $numDiscAmt = (float) $discAmountVal;
+    $totalUnits = $numQty + $numFree;
+
+    if ($totalUnits > 0 && $costVal > 0) {
+        $baseAfterDisc = max(0, ($numQty * $costVal) - $numDiscAmt);
+        $landingCostVal = round($baseAfterDisc / $totalUnits, 2);
+    } else {
+        $landingCostVal = $costVal > 0 ? $costVal : ($selectedItem?->landing_cost > 0 ? (float)$selectedItem->landing_cost : null);
+    }
+
+    $effectiveCostForProfit = ($landingCostVal !== null && $landingCostVal > 0) ? $landingCostVal : $costVal;
+
+    $baseSellVal = $sellVal > 0 ? $sellVal : $mrpVal;
+    $sellExclGstVal = ($baseSellVal > 0) ? ($baseSellVal / (1 + ($gstVal / 100))) : 0;
+    $marginVal = ($sellExclGstVal > 0 && $effectiveCostForProfit > 0) ? round((($sellExclGstVal - $effectiveCostForProfit) / $sellExclGstVal) * 100, 2) : null;
+    $profitVal = ($effectiveCostForProfit > 0 && $sellExclGstVal > 0) ? round((($sellExclGstVal - $effectiveCostForProfit) / $effectiveCostForProfit) * 100, 2) : null;
 @endphp
 <tr style="line-height: 1.15;">
     <td class="text-center align-middle font-weight-bold pinv-sr-no px-0" style="width:28px; min-width:28px;" data-col-key="sr">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
@@ -91,9 +105,11 @@
     {{-- Qty --}}
     <td class="px-1" style="width:65px; min-width:65px;" data-col-key="qty"><input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm pinv-qty text-right px-1" autocomplete="off"></td>
     {{-- Free --}}
-    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="free"><input type="number" step="0.001" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" placeholder="0"></td>
+    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="free"><input type="number" step="0.001" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" placeholder="0" title="Free Quantity"></td>
     {{-- Cost Price --}}
-    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="cost"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost text-right px-1" autocomplete="off"></td>
+    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="cost"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost text-right px-1" autocomplete="off" title="Invoice Cost Price"></td>
+    {{-- Landing Cost --}}
+    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="landing_cost"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-landing-cost bg-light text-right px-1 font-weight-bold text-info" value="{{ $landingCostVal !== null && $landingCostVal > 0 ? number_format($landingCostVal, 2) : '' }}" autocomplete="off" title="Landing Cost Price (Effective unit cost after free qty & discount)"></td>
     {{-- Sell Price --}}
     <td class="px-1" style="width:80px; min-width:80px;" data-col-key="sell"><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm pinv-sell text-right px-1" autocomplete="off"></td>
     {{-- MRP --}}

@@ -91,6 +91,7 @@
                             <th class="text-right">Qty</th>
                             <th class="text-right">Free</th>
                             <th class="text-right">Cost Price</th>
+                            <th class="text-right">Landing Cost</th>
                             <th class="text-right">Sell Price</th>
                             <th class="text-right">MRP</th>
                             <th class="text-right">Disc Amt</th>
@@ -101,6 +102,12 @@
                     </thead>
                     <tbody>
                         @forelse ($purchaseInvoice->items as $idx => $line)
+                            @php
+                                $lineTotalUnits = $line->qty + $line->free_qty;
+                                $lineLandingCost = $line->effective_cost > 0
+                                    ? (float)$line->effective_cost
+                                    : ($lineTotalUnits > 0 ? max(0, ($line->qty * $line->cost_price) - $line->disc_amount) / $lineTotalUnits : (float)$line->cost_price);
+                            @endphp
                             <tr>
                                 <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
                                 <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
@@ -109,6 +116,7 @@
                                 <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 3) }}</td>
                                 <td class="text-right">{{ $line->free_qty > 0 ? number_format($line->free_qty, 3) : '—' }}</td>
                                 <td class="text-right">₹{{ number_format($line->cost_price, 2) }}</td>
+                                <td class="text-right font-weight-bold text-info">₹{{ number_format($lineLandingCost, 2) }}</td>
                                 <td class="text-right">₹{{ number_format($line->sell_price, 2) }}</td>
                                 <td class="text-right">₹{{ number_format($line->mrp, 2) }}</td>
                                 <td class="text-right">{{ $line->disc_amount > 0 ? '₹' . number_format($line->disc_amount, 2) : '—' }}</td>
@@ -118,7 +126,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="text-center py-3 text-muted">No items recorded on this invoice.</td>
+                                <td colspan="14" class="text-center py-3 text-muted">No items recorded on this invoice.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -126,7 +134,7 @@
                         <tr>
                             <td colspan="4" class="text-right">Totals:</td>
                             <td class="text-right text-primary">{{ number_format($purchaseInvoice->items->sum('qty') + $purchaseInvoice->items->sum('free_qty'), 3) }}</td>
-                            <td colspan="4"></td>
+                            <td colspan="5"></td>
                             <td class="text-right text-danger">₹{{ number_format($purchaseInvoice->items->sum('disc_amount'), 2) }}</td>
                             <td></td>
                             <td class="text-right">₹{{ number_format($purchaseInvoice->total_gst, 2) }}</td>

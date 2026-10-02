@@ -214,11 +214,17 @@ class PurchaseInvoiceController extends Controller
                     ]);
                 }
                 foreach ($lines as $line) {
+                    $effectiveCost = (float) ($line['effective_cost'] ?? $line['cost_price']);
                     Item::whereKey($line['item_id'])->update(array_filter([
                         'cost_price' => $line['cost_price'],
+                        'landing_cost' => $effectiveCost,
                         'sell_price' => $line['sell_price'] ?: null,
                         'mrp' => $line['mrp'] ?: null,
                     ], fn ($v) => $v !== null));
+
+                    ItemStock::where('item_id', $line['item_id'])
+                        ->where('branch_id', $purchaseInvoice->branch_id)
+                        ->update(['landing_cost' => $effectiveCost]);
                 }
             } else {
                 $this->postStockAndItemMaster($purchaseInvoice, $lines);
@@ -307,6 +313,7 @@ class PurchaseInvoiceController extends Controller
     {
         foreach ($lines as $line) {
             $qtyIn = (float) $line['qty'] + (float) $line['free_qty'];
+            $effectiveCost = (float) ($line['effective_cost'] ?? $line['cost_price']);
 
             if ($qtyIn > 0) {
                 $this->stockLedger->post(
@@ -314,7 +321,7 @@ class PurchaseInvoiceController extends Controller
                     branchId: $purchaseInvoice->branch_id,
                     movementType: 'PURCHASE_RECEIPT',
                     qtyDelta: $qtyIn,
-                    unitCost: $line['cost_price'],
+                    unitCost: $effectiveCost,
                     referenceType: PurchaseInvoice::class,
                     referenceId: $purchaseInvoice->id,
                     documentDate: $purchaseInvoice->invoice_date->toDateString(),
@@ -325,9 +332,14 @@ class PurchaseInvoiceController extends Controller
 
             Item::whereKey($line['item_id'])->update(array_filter([
                 'cost_price' => $line['cost_price'],
+                'landing_cost' => $effectiveCost,
                 'sell_price' => $line['sell_price'] ?: null,
                 'mrp' => $line['mrp'] ?: null,
             ], fn ($v) => $v !== null));
+
+            ItemStock::where('item_id', $line['item_id'])
+                ->where('branch_id', $purchaseInvoice->branch_id)
+                ->update(['landing_cost' => $effectiveCost]);
         }
     }
 
@@ -795,13 +807,19 @@ class PurchaseInvoiceController extends Controller
                 ? round(($tax['disc_amount'] / $baseInfo['base']) * 100, 2)
                 : $baseInfo['disc_percent'];
 
+            $freeQty = (float) ($line['free_qty'] ?? 0);
+            $totalQty = $qty + $freeQty;
+            $baseCostAfterItemDisc = max(0, ($qty * $costPrice) - (float) ($baseInfo['disc_amount'] ?? 0));
+            $effectiveCost = $totalQty > 0 ? round($baseCostAfterItemDisc / $totalQty, 4) : $costPrice;
+
             return [
                 'item_id' => $line['item_id'],
                 'batch_no' => !empty($line['batch_no']) ? trim($line['batch_no']) : null,
                 'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
                 'qty' => $qty,
-                'free_qty' => (float) ($line['free_qty'] ?? 0),
+                'free_qty' => $freeQty,
                 'cost_price' => $costPrice,
+                'effective_cost' => $effectiveCost,
                 'sell_price' => (float) ($line['sell_price'] ?? 0),
                 'mrp' => (float) ($line['mrp'] ?? 0),
                 'disc_percent' => $effectiveDiscPercent,
@@ -1122,16 +1140,23 @@ class PurchaseInvoiceController extends Controller
                     }
                 }
 
-                // Rule: Sell Price must be greater than Cost Price
+                // Rule: Sell Price must be greater than Landing Cost / Cost Price
                 $costPrice = (float) ($line['cost_price'] ?? 0);
+                $qty = (float) ($line['qty'] ?? 0);
+                $freeQty = (float) ($line['free_qty'] ?? 0);
+                $discAmount = (float) ($line['disc_amount'] ?? 0);
+                $totalQty = $qty + $freeQty;
+                $landingCost = $totalQty > 0 ? max(0, ($qty * $costPrice) - $discAmount) / $totalQty : $costPrice;
+                $benchmarkCost = $landingCost > 0 ? $landingCost : $costPrice;
+
                 $mrp = (float) ($line['mrp'] ?? 0);
                 if (isset($line['sell_price']) && $line['sell_price'] !== null && $line['sell_price'] !== '') {
                     $sellPrice = (float) $line['sell_price'];
-                    if ($costPrice > 0 && $sellPrice <= $costPrice) {
+                    if ($benchmarkCost > 0 && $sellPrice <= $benchmarkCost) {
                         $rowNum = $idx + 1;
                         $v->errors()->add(
                             "items.{$idx}.sell_price",
-                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must be greater than cost price (₹{$costPrice})."
+                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must be greater than Landing Cost (₹" . number_format($benchmarkCost, 2) . ")."
                         );
                     }
                     if ($mrp > 0 && $sellPrice > $mrp) {

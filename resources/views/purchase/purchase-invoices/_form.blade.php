@@ -123,6 +123,7 @@
         'qty'          => ['label' => 'Qty', 'default' => true],
         'free'         => ['label' => 'Free', 'default' => true],
         'cost_price'   => ['label' => 'Cost Price', 'default' => true],
+        'landing_cost' => ['label' => 'Landing Cost', 'default' => true],
         'sell_price'   => ['label' => 'Sell Price', 'default' => true],
         'mrp'          => ['label' => 'MRP', 'default' => true],
         'margin'       => ['label' => 'Margin %', 'default' => true],
@@ -157,7 +158,7 @@
         background-color: #fff;
     }
     #pinv-items-table {
-        min-width: 1140px;
+        min-width: 1220px;
         width: 100%;
         margin-bottom: 0;
     }
@@ -213,6 +214,7 @@
                 <th style="width:65px; min-width:65px;" class="px-1" data-col-key="qty">Qty</th>
                 <th style="width:45px; min-width:45px;" class="px-0" data-col-key="free">Free</th>
                 <th style="width:80px; min-width:80px;" class="px-1" data-col-key="cost_price">Cost Price</th>
+                <th style="width:80px; min-width:80px;" class="px-1" data-col-key="landing_cost" title="Landing Cost Price (Effective unit cost after free qty & discount)">Landing Cost</th>
                 <th style="width:80px; min-width:80px;" class="px-1" data-col-key="sell_price">Sell Price</th>
                 <th style="width:75px; min-width:75px;" class="px-1" data-col-key="mrp">MRP</th>
                 <th style="width:50px; min-width:50px;" class="px-0" title="Margin %" data-col-key="margin">Margin %</th>
@@ -239,6 +241,7 @@
                 <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty"></td>
                 <td class="align-middle"></td>
                 <td class="text-right align-middle font-weight-bold" id="footer-total-cost"></td>
+                <td class="align-middle"></td>
                 <td colspan="4" class="text-right align-middle">Total Discount:</td>
                 <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="footer-total-disc"></td>
                 <td class="text-right align-middle small text-muted">GST:</td>
@@ -1301,62 +1304,14 @@
             let gstStr = $row.find('.pinv-gst').val();
 
             let qty = parseFloat(qtyStr) || 0;
+            let freeQty = parseFloat($row.find('.pinv-free-qty').val()) || 0;
             let cost = parseFloat(costStr) || 0;
             let sell = parseFloat(sellStr) || 0;
             let mrp = parseFloat(mrpStr) || 0;
             let gst = parseFloat(gstStr) || 0;
             let base = qty * cost;
 
-            // Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100
-            // Profit % = Profit Amount ÷ Cost Price × 100
-            let baseSell = sell > 0 ? sell : mrp;
-            let sellExclGst = (baseSell > 0) ? (baseSell / (1 + (gst / 100))) : 0;
-            let profitAmount = (sellExclGst > 0 && cost > 0) ? (sellExclGst - cost) : null;
-            let marginPct = (sellExclGst > 0 && profitAmount !== null) ? ((profitAmount / sellExclGst) * 100) : null;
-            let profitPct = (cost > 0 && profitAmount !== null) ? ((profitAmount / cost) * 100) : null;
-            $row.find('.pinv-margin').val(marginPct !== null ? marginPct.toFixed(2) + '%' : '');
-            $row.find('.pinv-profit').val(profitPct !== null ? profitPct.toFixed(2) + '%' : '');
-
-            // Price validations (Visual only - does not block keyboard/tab navigation)
-            let $sellInput = $row.find('.pinv-sell');
-            let $mrpInput = $row.find('.pinv-mrp');
-            $sellInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
-            $mrpInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
-
-            if (cost > 0 && sell > 0 && sell <= cost) {
-                $sellInput.addClass('border-danger text-danger')
-                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must be greater than Cost Price (₹' + cost.toFixed(2) + ')!');
-            } else if (mrp > 0 && sell > 0 && sell > mrp) {
-                $sellInput.addClass('border-warning text-warning')
-                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must not exceed MRP (₹' + mrp.toFixed(2) + ')!');
-            }
-
-            if (cost > 0 && mrp > 0 && mrp <= cost) {
-                $mrpInput.addClass('border-danger text-danger')
-                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') must be greater than Cost Price (₹' + cost.toFixed(2) + ')!');
-            } else if (sell > 0 && mrp > 0 && mrp < sell) {
-                $mrpInput.addClass('border-warning text-warning')
-                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') cannot be less than Sell Price (₹' + sell.toFixed(2) + ')!');
-            }
-
-            // Real-time inline field validation (Task 11)
-            let $qtyInput = $row.find('.pinv-qty');
-            let $costInput = $row.find('.pinv-cost');
-            let itemId = $row.find('.pinv-item-select').val();
-            if (itemId) {
-                if (qty <= 0) {
-                    $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', 'Quantity must be greater than 0');
-                } else {
-                    $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
-                }
-
-                if (cost <= 0) {
-                    $costInput.addClass('border-danger text-danger is-invalid').attr('title', 'Cost price must be greater than 0');
-                } else {
-                    $costInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
-                }
-            }
-
+            // Synchronize line discount percentage & amount
             let $discPct = $row.find('.pinv-disc-percent');
             let $discAmt = $row.find('.pinv-disc-amount');
 
@@ -1380,13 +1335,87 @@
                     $discPct.val('');
                 }
             } else {
-                // Qty or Cost changed
+                // Qty, Cost, or Free Qty changed
                 if (discPct > 0 && base > 0) {
                     discAmt = Math.round((base * discPct / 100) * 100) / 100;
                     $discAmt.val(discAmt > 0 ? discAmt.toFixed(2) : '');
                 } else if (discAmt > 0 && base > 0) {
                     discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
                     $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
+                }
+            }
+
+            // Landing Cost Price = (Cost of billed quantity - Line discount) / (Billed Qty + Free Qty)
+            let totalQty = qty + freeQty;
+            let landingCost = 0;
+            if (totalQty > 0 && cost > 0) {
+                let baseAfterDisc = Math.max(0, base - discAmt);
+                landingCost = baseAfterDisc / totalQty;
+            } else if (cost > 0) {
+                landingCost = cost;
+            }
+
+            let $landingInput = $row.find('.pinv-landing-cost');
+            if ($landingInput.length) {
+                $landingInput.val(landingCost > 0 ? landingCost.toFixed(2) : '');
+                if (freeQty > 0 || discAmt > 0) {
+                    $landingInput.attr('title', 'Landing Cost Price: ₹' + landingCost.toFixed(2) + ' (Effective unit cost for ' + totalQty + ' units [' + qty + ' billed + ' + freeQty + ' free])');
+                } else {
+                    $landingInput.attr('title', 'Landing Cost Price');
+                }
+            }
+
+            // Effective cost used for profit, margin %, and markup % calculations
+            let effectiveCost = landingCost > 0 ? landingCost : cost;
+
+            // Margin % = [(Selling Price incl. GST ÷ (1 + GST%/100)) − Landing Cost] ÷ [Selling Price incl. GST ÷ (1 + GST%/100)] × 100
+            // Profit % = Profit Amount ÷ Landing Cost × 100
+            let baseSell = sell > 0 ? sell : mrp;
+            let sellExclGst = (baseSell > 0) ? (baseSell / (1 + (gst / 100))) : 0;
+            let profitAmount = (sellExclGst > 0 && effectiveCost > 0) ? (sellExclGst - effectiveCost) : null;
+            let marginPct = (sellExclGst > 0 && profitAmount !== null) ? ((profitAmount / sellExclGst) * 100) : null;
+            let profitPct = (effectiveCost > 0 && profitAmount !== null) ? ((profitAmount / effectiveCost) * 100) : null;
+            $row.find('.pinv-margin').val(marginPct !== null && isFinite(marginPct) ? marginPct.toFixed(2) + '%' : '');
+            $row.find('.pinv-profit').val(profitPct !== null && isFinite(profitPct) ? profitPct.toFixed(2) + '%' : '');
+
+            // Price validations (Visual only - does not block keyboard/tab navigation)
+            let $sellInput = $row.find('.pinv-sell');
+            let $mrpInput = $row.find('.pinv-mrp');
+            $sellInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
+            $mrpInput.removeClass('border-danger text-danger border-warning text-warning is-invalid').attr('title', '');
+
+            let benchmarkCost = effectiveCost > 0 ? effectiveCost : cost;
+            if (benchmarkCost > 0 && sell > 0 && sell <= benchmarkCost) {
+                $sellInput.addClass('border-danger text-danger')
+                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must be greater than Landing Cost (₹' + benchmarkCost.toFixed(2) + ')!');
+            } else if (mrp > 0 && sell > 0 && sell > mrp) {
+                $sellInput.addClass('border-warning text-warning')
+                          .attr('title', 'Sell Price (₹' + sell.toFixed(2) + ') must not exceed MRP (₹' + mrp.toFixed(2) + ')!');
+            }
+
+            if (benchmarkCost > 0 && mrp > 0 && mrp <= benchmarkCost) {
+                $mrpInput.addClass('border-danger text-danger')
+                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') must be greater than Landing Cost (₹' + benchmarkCost.toFixed(2) + ')!');
+            } else if (sell > 0 && mrp > 0 && mrp < sell) {
+                $mrpInput.addClass('border-warning text-warning')
+                         .attr('title', 'MRP (₹' + mrp.toFixed(2) + ') cannot be less than Sell Price (₹' + sell.toFixed(2) + ')!');
+            }
+
+            // Real-time inline field validation (Task 11)
+            let $qtyInput = $row.find('.pinv-qty');
+            let $costInput = $row.find('.pinv-cost');
+            let itemId = $row.find('.pinv-item-select').val();
+            if (itemId) {
+                if (qty <= 0) {
+                    $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', 'Quantity must be greater than 0');
+                } else {
+                    $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                }
+
+                if (cost <= 0) {
+                    $costInput.addClass('border-danger text-danger is-invalid').attr('title', 'Cost price must be greater than 0');
+                } else {
+                    $costInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                 }
             }
 

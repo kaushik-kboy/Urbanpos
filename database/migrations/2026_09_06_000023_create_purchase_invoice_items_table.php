@@ -16,6 +16,7 @@ return new class extends Migration
             $table->decimal('qty', 12, 3);
             $table->decimal('free_qty', 12, 3)->default(0);
             $table->decimal('cost_price', 12, 2)->default(0);
+            $table->decimal('effective_cost', 12, 4)->default(0);
             $table->decimal('sell_price', 12, 2)->default(0);
             $table->decimal('mrp', 12, 2)->default(0);
             $table->decimal('disc_percent', 5, 2)->default(0);
