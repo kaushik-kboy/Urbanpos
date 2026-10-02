@@ -1614,30 +1614,25 @@
                 islModalClosing = false;
             }, 350);
 
-            if (!sbItemSelectedInModal && sbCancellingRow && sbCancellingRow.length) {
-                let hasItemId = sbCancellingRow.find('.sb-item-select').val();
-                let codeVal = $.trim(sbCancellingRow.find('.sb-item-code').val());
-                let totalRows = $('#sb-items-body tr').length;
-                if (!hasItemId && !codeVal && totalRows > 1) {
-                    let $prevRow = sbCancellingRow.prev('tr');
-                    sbCancellingRow.remove();
-                    updateRowNumbers();
-                    calculateTotals();
-                    sbCancellingRow = null;
-                    activeSearchRow = null;
-                    if ($prevRow.length) {
-                        $prevRow.find('.sb-qty').focus().select();
+            if (!sbItemSelectedInModal) {
+                if (sbCancellingRow && sbCancellingRow.length) {
+                    let hasItemId = sbCancellingRow.find('.sb-item-select').val();
+                    let codeVal = $.trim(sbCancellingRow.find('.sb-item-code').val());
+                    let totalRows = $('#sb-items-body tr').length;
+                    if (!hasItemId && !codeVal && totalRows > 1) {
+                        sbCancellingRow.remove();
+                        updateRowNumbers();
+                        calculateTotals();
                     }
-                    return;
                 }
-                let $targetInput = sbCancellingRow.find('.sb-item-code');
                 sbCancellingRow = null;
                 activeSearchRow = null;
                 setTimeout(function () {
-                    if ($targetInput.length) {
-                        $targetInput.focus().select();
+                    let $roundOff = $('input[name="round_off"], #round_off');
+                    if ($roundOff.length) {
+                        $roundOff.first().focus().select();
                     }
-                }, 60);
+                }, 80);
                 return;
             }
 

@@ -107,7 +107,10 @@ try {
 
     // Select first item
     await page.locator('#po-isl-items-body tr:first-child .po-isl-btn-select').click();
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => {
+        const val = document.querySelector('#po-items-body tr:first-child .po-item-desc')?.value;
+        return typeof val === 'string' && val.trim().length > 2;
+    }, { timeout: 8000 }).catch(() => {});
 
     // Verify item populated into line
     const poItemName = await page.locator('#po-items-body tr:first-child .po-item-desc').inputValue();
@@ -173,7 +176,8 @@ try {
     // Type in Item Search
     const piSearchInput = page.locator('#pinv-isl-filter-name');
     await piSearchInput.fill('a');
-    await page.waitForTimeout(800);
+    await piSearchInput.dispatchEvent('input');
+    await page.locator('#pinv-isl-items-body tr').first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
 
     const piHasError = await page.locator('#pinv-isl-no-results:has-text("Error loading items")').isVisible();
     record('PI Item Search AJAX', !piHasError, piHasError ? 'Returned Error loading items' : 'AJAX returned HTTP 200 without error');
@@ -183,7 +187,10 @@ try {
 
     // Select first item
     await page.locator('#pinv-isl-items-body tr:first-child .pinv-isl-btn-select').click();
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => {
+        const val = document.querySelector('#pinv-items-body tr:first-child .pinv-item-desc')?.value;
+        return typeof val === 'string' && val.trim().length > 0;
+    }, { timeout: 8000 }).catch(() => {});
 
     // Fill Qty = 5, Free Qty = 1
     const piQty = page.locator('#pinv-items-body tr:first-child .pinv-qty');
@@ -339,7 +346,8 @@ try {
     // Type in Item Search
     const soSearchInput = page.locator('#so-isl-filter-name');
     await soSearchInput.fill('a');
-    await page.waitForTimeout(800);
+    await soSearchInput.dispatchEvent('input');
+    await page.locator('#so-isl-items-body tr').first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
 
     const soHasError = await page.locator('#so-isl-no-results:has-text("Error loading items")').isVisible();
     record('SO Item Search AJAX', !soHasError, soHasError ? 'Returned Error loading items' : 'AJAX returned HTTP 200 without error');
@@ -349,7 +357,10 @@ try {
 
     // Select first item
     await page.locator('#so-isl-items-body tr:first-child .so-isl-btn-select').click();
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => {
+        const val = document.querySelector('#so-items-body tr:first-child .so-item-desc')?.value;
+        return typeof val === 'string' && val.trim().length > 0;
+    }, { timeout: 8000 }).catch(() => {});
 
     const soItemDesc = await page.locator('#so-items-body tr:first-child .so-item-desc').inputValue();
     record('SO Item Row Population', !!soItemDesc, `Selected: ${soItemDesc}`);

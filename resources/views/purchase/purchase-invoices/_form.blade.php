@@ -1143,26 +1143,28 @@
             islModalClosing = true;
             setTimeout(function() { islModalClosing = false; }, 350);
 
-            if (!itemSelectedInModal && cancellingRow && cancellingRow.length) {
-                let totalRows = $('#pinv-items-body tr').length;
-                if (totalRows > 1) {
-                    cancellingRow.remove();
-                    updateRowNumbers();
-                    calculateTotals();
-                } else {
-                    cancellingRow.find('.pinv-item-code').val('');
-                    cancellingRow.find('.pinv-item-desc').val('');
+            if (!itemSelectedInModal) {
+                if (cancellingRow && cancellingRow.length) {
+                    let totalRows = $('#pinv-items-body tr').length;
+                    if (totalRows > 1) {
+                        cancellingRow.remove();
+                        updateRowNumbers();
+                        calculateTotals();
+                    } else {
+                        cancellingRow.find('.pinv-item-code').val('');
+                        cancellingRow.find('.pinv-item-desc').val('');
+                    }
                 }
                 cancellingRow = null;
                 activeSearchRow = null;
                 setTimeout(function() {
-                    let $freight = $('#freight');
+                    let $freight = $('input[name="freight"], #freight');
                     if ($freight.length) {
-                        $freight.focus().select();
+                        $freight.first().focus().select();
                     } else {
                         $('#pinv-add-row').focus();
                     }
-                }, 60);
+                }, 80);
                 return;
             }
 

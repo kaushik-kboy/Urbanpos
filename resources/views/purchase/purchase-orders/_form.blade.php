@@ -624,23 +624,27 @@
             islModalClosing = true;
             setTimeout(function () { islModalClosing = false; }, 350);
 
-            if (!poItemSelectedInModal && poCancellingRow && poCancellingRow.length) {
-                let totalRows = $('#po-items-body tr').length;
-                if (totalRows > 1) {
-                    poCancellingRow.remove();
-                    updateRowNumbers();
-                    calculatePoTotals();
-                } else {
-                    poCancellingRow.find('.po-item-code').val('');
-                    poCancellingRow.find('.po-item-desc').val('');
+            if (!poItemSelectedInModal) {
+                if (poCancellingRow && poCancellingRow.length) {
+                    let totalRows = $('#po-items-body tr').length;
+                    if (totalRows > 1) {
+                        poCancellingRow.remove();
+                        updateRowNumbers();
+                        calculatePoTotals();
+                    } else {
+                        poCancellingRow.find('.po-item-code').val('');
+                        poCancellingRow.find('.po-item-desc').val('');
+                    }
                 }
                 poCancellingRow = null;
                 activeSearchRow = null;
                 pendingFocusQtyRow = null;
                 setTimeout(function () {
-                    let $target = $('#po-add-row, #freight, button[type=submit]');
-                    $target.first().focus();
-                }, 60);
+                    let $target = $('input[name="freight"], #freight');
+                    if ($target.length) {
+                        $target.first().focus().select();
+                    }
+                }, 80);
                 return;
             }
 

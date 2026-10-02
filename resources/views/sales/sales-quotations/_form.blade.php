@@ -503,22 +503,26 @@ $(function() {
         sqModalClosing = true;
         setTimeout(function () { sqModalClosing = false; }, 350);
 
-        if (!sqItemSelectedInModal && sqCancellingRow && sqCancellingRow.length) {
-            let totalRows = $('#sq-items-body tr').length;
-            if (totalRows > 1) {
-                sqCancellingRow.remove();
-                updateSqRowNumbers();
-                calculateSqTotals();
-            } else {
-                sqCancellingRow.find('.sq-item-code').val('');
-                sqCancellingRow.find('.sq-item-desc').val('');
+        if (!sqItemSelectedInModal) {
+            if (sqCancellingRow && sqCancellingRow.length) {
+                let totalRows = $('#sq-items-body tr').length;
+                if (totalRows > 1) {
+                    sqCancellingRow.remove();
+                    updateSqRowNumbers();
+                    calculateSqTotals();
+                } else {
+                    sqCancellingRow.find('.sq-item-code').val('');
+                    sqCancellingRow.find('.sq-item-desc').val('');
+                }
             }
             sqCancellingRow = null;
             sqActiveSearchRow = null;
             setTimeout(function () {
-                let $target = $('#sq-add-row, #freight, button[type=submit]');
-                $target.first().focus();
-            }, 60);
+                let $target = $('form button[type="submit"]:not(.btn-navbar)').first();
+                if ($target.length) {
+                    $target.focus();
+                }
+            }, 80);
             return;
         }
 
