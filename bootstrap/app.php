@@ -26,7 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->report(function (\Throwable $e) {
             try {
-                app(\App\Services\System\ErrorLoggerService::class)->capture($e, request());
+                $req = app()->bound('request') ? request() : null;
+                app(\App\Services\System\ErrorLoggerService::class)->capture($e, $req);
             } catch (\Throwable $ignored) {
                 // Fail-safe: ignore
             }

@@ -1363,7 +1363,15 @@
                 }
             }
 
-            calculateTotals();
+            scheduleCalculateTotals();
+        }
+
+        let _calcTotalsRaf = null;
+        function scheduleCalculateTotals() {
+            if (_calcTotalsRaf) cancelAnimationFrame(_calcTotalsRaf);
+            _calcTotalsRaf = requestAnimationFrame(function () {
+                calculateTotals();
+            });
         }
 
         function calculateTotals() {
@@ -2043,7 +2051,7 @@
                 $('input[name="scheme_item_disc_percent"]').val('');
             }
             schemeSyncing = false;
-            calculateTotals();
+            scheduleCalculateTotals();
         });
 
         $(document).on('input', 'input[name="scheme_item_disc_percent"]', function () {
@@ -2058,7 +2066,7 @@
                 $('input[name="scheme_item_disc_amt"]').val('');
             }
             schemeSyncing = false;
-            calculateTotals();
+            scheduleCalculateTotals();
         });
 
         function syncSchemePercentFromAmount() {
@@ -2072,7 +2080,7 @@
         }
 
         $(document).on('input change', 'input[name="supplier_inv_amount"], input[name="freight"], input[name="round_off"], input[name="other_disc_amt"], input[name="tcs_amount"]', function () {
-            calculateTotals();
+            scheduleCalculateTotals();
         });
 
         // 4. Form Submit Guard

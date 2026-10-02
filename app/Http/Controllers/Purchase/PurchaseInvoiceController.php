@@ -475,26 +475,12 @@ class PurchaseInvoiceController extends Controller
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
                 COALESCE(
                     NULLIF(st.quantity, 0),
-                    (SELECT NULLIF(SUM(ist.quantity), 0) FROM item_stocks ist WHERE ist.item_id = i.id),
-                    (SELECT NULLIF(SUM(cs.closing_stock), 0) FROM closing_stocks cs WHERE cs.item_id = i.id),
                     0
                 )                          AS qty,
-                COALESCE(
-                    NULLIF(ei.cost_price, 0),
-                    NULLIF(i.cost_price, 0),
-                    0
-                )                          AS cost_price,
-                COALESCE(
-                    NULLIF(ei.sell_price, 0),
-                    NULLIF(i.sell_price, 0),
-                    0
-                )                          AS sell_price,
-                COALESCE(
-                    NULLIF(ei.mrp, 0),
-                    NULLIF(i.mrp, 0),
-                    0
-                )                          AS mrp,
-                ei.exp_date,
+                COALESCE(NULLIF(i.cost_price, 0), 0) AS cost_price,
+                COALESCE(NULLIF(i.sell_price, 0), 0) AS sell_price,
+                COALESCE(NULLIF(i.mrp, 0), 0)        AS mrp,
+                NULL                       AS exp_date,
                 COALESCE(i.batch_expiry_details, 'Not Required') AS batch_expiry_details,
                 i.shelf_life_days,
                 i.minimum_shelf_life_days,
@@ -502,20 +488,6 @@ class PurchaseInvoiceController extends Controller
             FROM items i
             LEFT JOIN item_stocks st
                    ON st.item_id = i.id AND st.branch_id = ?
-            LEFT JOIN (
-                SELECT pi2.item_id,
-                       MIN(pi2.exp_date) AS exp_date,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.cost_price ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS cost_price,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS sell_price,
-                       SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp        ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS mrp
-                FROM purchase_invoice_items pi2
-                INNER JOIN purchase_invoices pih
-                        ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
-                WHERE pi2.exp_date IS NOT NULL
-                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
-                  AND pi2.exp_date >= ?
-                GROUP BY pi2.item_id
-            ) ei ON ei.item_id = i.id
             LEFT JOIN gst_taxes gt ON gt.id = i.gst_tax_id
             {$whereClause}
             ORDER BY {$orderSql}
@@ -524,6 +496,44 @@ class PurchaseInvoiceController extends Controller
 
         $finalParams = array_merge($params, $orderParams);
         $rows = DB::select($sql, $finalParams);
+
+        // Branch-specific expiry and pricing, looked up ONLY for the (<=100) rows returned.
+        // Prevents full table scan on purchase_invoice_items on every item search.
+        if (! empty($rows)) {
+            $ids = array_map(fn ($r) => $r->id, $rows);
+            $ph0 = implode(',', array_fill(0, count($ids), '?'));
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $costPriceSub = $isSqlite ? 'MAX(pi2.cost_price) AS cost_price' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.cost_price ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS cost_price";
+            $sellPriceSub = $isSqlite ? 'MAX(pi2.sell_price) AS sell_price' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS sell_price";
+            $mrpSub = $isSqlite ? 'MAX(pi2.mrp) AS mrp' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp ORDER BY pih.invoice_date DESC, pi2.id DESC SEPARATOR ','), ',', 1) AS mrp";
+
+            $eiSql = "
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date,
+                       {$costPriceSub},
+                       {$sellPriceSub},
+                       {$mrpSub}
+                FROM purchase_invoice_items pi2
+                INNER JOIN purchase_invoices pih ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
+                WHERE pi2.item_id IN ({$ph0})
+                  AND pi2.exp_date IS NOT NULL
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                  AND pi2.exp_date >= ?
+                GROUP BY pi2.item_id
+            ";
+            $ei = [];
+            foreach (DB::select($eiSql, array_merge([$branchId], $ids, [$todayIndia])) as $e) {
+                $ei[$e->item_id] = $e;
+            }
+            foreach ($rows as $row) {
+                if (isset($ei[$row->id])) {
+                    $row->exp_date = $ei[$row->id]->exp_date;
+                    if ((float) ($ei[$row->id]->cost_price ?? 0) > 0) $row->cost_price = $ei[$row->id]->cost_price;
+                    if ((float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
+                    if ((float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
+                }
+            }
+        }
 
         // Cross-branch fallback for exp_date/pricing if not found in branch
         $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
@@ -637,20 +647,6 @@ class PurchaseInvoiceController extends Controller
         if ($stock <= 0) {
             $stock = (float) (ItemStock::where('item_id', $item->id)->sum('quantity') ?? 0);
         }
-        if ($stock <= 0) {
-            $stock = (float) (DB::table('closing_stocks')->where('item_id', $item->id)->sum('closing_stock') ?? 0);
-        }
-
-        // Check if there is recent purchase invoice exp_date (must not be expired)
-        $todayIndia = \Carbon\Carbon::now('Asia/Kolkata')->toDateString();
-        $lastExp = DB::table('purchase_invoice_items as pii')
-            ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
-            ->where('pii.item_id', $item->id)
-            ->whereNotNull('pii.exp_date')
-            ->whereRaw("CAST(pii.exp_date AS CHAR) NOT IN ('', '0000-00-00')")
-            ->where('pii.exp_date', '>=', $todayIndia)
-            ->orderBy('pi.invoice_date', 'desc')
-            ->value('pii.exp_date');
 
         return response()->json([
             'id'                      => $item->id,
@@ -662,7 +658,7 @@ class PurchaseInvoiceController extends Controller
             'mrp'                     => (float) ($item->mrp ?? 0),
             'stock'                   => $stock,
             'qty'                     => $stock,
-            'exp_date'                => $lastExp ? \Carbon\Carbon::parse($lastExp)->format('Y-m-d') : null,
+            'exp_date'                => null,
             'gst_percent'             => (float) ($item->gstTax?->percentage ?? 0),
             'batch_expiry_details'    => $item->batch_expiry_details ?? 'Not Required',
             'shelf_life_days'         => $item->shelf_life_days ? (int) $item->shelf_life_days : null,

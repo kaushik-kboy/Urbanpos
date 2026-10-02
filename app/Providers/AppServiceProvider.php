@@ -44,7 +44,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Ensure URLs, assets and routes use HTTPS when served over HTTPS or behind an SSL reverse proxy
-        if (request()->server('HTTP_X_FORWARDED_PROTO') === 'https' || request()->isSecure() || str_starts_with(config('app.url'), 'https://') || app()->environment('production')) {
+        $isHttps = str_starts_with(config('app.url'), 'https://')
+            || app()->environment('production')
+            || (!app()->runningInConsole() && app()->bound('request') && (request()->server('HTTP_X_FORWARDED_PROTO') === 'https' || request()->isSecure()));
+        if ($isHttps) {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
     }
