@@ -244,4 +244,17 @@ class SystemErrorLogTest extends TestCase
             'method' => 'BROWSER',
         ]);
     }
+
+    public function test_diagnostic_test_error_can_be_triggered_by_admin(): void
+    {
+        $response = $this->actingAs($this->user)->post(route('tools.system-error-logs.test'));
+
+        $response->assertRedirect(route('tools.system-error-logs.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('system_error_logs', [
+            'error_type' => 'RuntimeException',
+            'status'     => 'Unresolved',
+        ]);
+    }
 }

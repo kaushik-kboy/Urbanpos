@@ -12,8 +12,27 @@
                 Track, inspect, and debug application errors, breaks, and exceptions module-wise & date-wise in real-time.
             </p>
         </div>
-        <div class="mt-2 mt-sm-0">
-            <a href="{{ route('tools.system-error-logs.export', request()->query()) }}" class="btn btn-outline-secondary btn-sm mr-2 shadow-sm font-weight-bold">
+        <div class="mt-2 mt-sm-0 d-flex align-items-center flex-wrap" style="gap: 6px;">
+            <div class="btn-group btn-group-sm shadow-sm" role="group">
+                <button type="button" class="btn btn-outline-primary dropdown-toggle font-weight-bold" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="autoRefreshBtn">
+                    <i class="fas fa-sync-alt mr-1"></i> Auto-Refresh: <span id="autoRefreshLabel">Off</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="javascript:void(0)" onclick="setAutoRefresh(0)">Off</a>
+                    <a class="dropdown-item" href="javascript:void(0)" onclick="setAutoRefresh(15)">Every 15s</a>
+                    <a class="dropdown-item" href="javascript:void(0)" onclick="setAutoRefresh(30)">Every 30s</a>
+                    <a class="dropdown-item" href="javascript:void(0)" onclick="setAutoRefresh(60)">Every 60s</a>
+                </div>
+            </div>
+
+            <form action="{{ route('tools.system-error-logs.test') }}" method="POST" class="d-inline" onsubmit="return confirm('Trigger a diagnostic test error to verify that real-time logging is active?');">
+                @csrf
+                <button type="submit" class="btn btn-outline-info btn-sm shadow-sm font-weight-bold" title="Generate a test log entry to verify logger health">
+                    <i class="fas fa-vial mr-1"></i> Test Logger
+                </button>
+            </form>
+
+            <a href="{{ route('tools.system-error-logs.export', request()->query()) }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
                 <i class="fas fa-file-csv mr-1"></i> Export CSV
             </a>
             <button type="button" class="btn btn-outline-danger btn-sm shadow-sm font-weight-bold" data-toggle="modal" data-target="#clearOldModal">
@@ -33,6 +52,19 @@
             </button>
         </div>
     @endif
+
+    {{-- Health & Monitoring Status Notice --}}
+    <div class="alert alert-light border shadow-xs d-flex align-items-center justify-content-between py-2 px-3 mb-3">
+        <div class="d-flex align-items-center">
+            <span class="badge badge-success px-2 py-1 mr-2"><i class="fas fa-check-circle mr-1"></i> Monitoring Active</span>
+            <span class="small text-muted">
+                Application exceptions & client JS crashes are logged automatically. If only older records appear, your system is stable with no new errors. Click <strong>Test Logger</strong> to verify.
+            </span>
+        </div>
+        <span class="small text-muted font-italic d-none d-md-inline">
+            <i class="fas fa-sort-amount-down text-primary mr-1"></i> Sorted by latest occurrence
+        </span>
+    </div>
 
     {{-- Top Metrics KPI Cards --}}
     <div class="row">
@@ -268,11 +300,14 @@
                                 </div>
                             </td>
                             <td>
-                                <div class="font-weight-bold text-dark">{{ $log->created_at ? $log->created_at->format('d M Y') : 'N/A' }}</div>
-                                <div class="text-xs text-muted">{{ $log->created_at ? $log->created_at->format('h:i:s A') : '' }}</div>
-                                @if(($log->occurrence_count ?? 1) > 1 && $log->last_seen_at)
-                                    <div class="text-xs text-warning font-weight-bold mt-1" title="Most recent occurrence">
-                                        <i class="fas fa-history mr-1"></i>Last: {{ $log->last_seen_at->format('d M, h:i A') }}
+                                @php
+                                    $displayTime = $log->last_seen_at ?? $log->created_at;
+                                @endphp
+                                <div class="font-weight-bold text-dark">{{ $displayTime ? $displayTime->format('d M Y') : 'N/A' }}</div>
+                                <div class="text-xs text-muted">{{ $displayTime ? $displayTime->format('h:i:s A') : '' }}</div>
+                                @if(($log->occurrence_count ?? 1) > 1)
+                                    <div class="text-xs text-info font-weight-bold mt-1" title="First logged on {{ $log->created_at ? $log->created_at->format('d M Y, h:i A') : '' }}">
+                                        <i class="fas fa-history mr-1"></i>First: {{ $log->created_at ? $log->created_at->format('d M, h:i A') : 'N/A' }}
                                     </div>
                                 @endif
                             </td>
@@ -479,6 +514,35 @@
 
 @section('js')
 <script>
+    // Auto-Refresh Logic
+    let autoRefreshTimer = null;
+    function setAutoRefresh(seconds) {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+        localStorage.setItem('error_hub_auto_refresh', seconds);
+        const label = document.getElementById('autoRefreshLabel');
+        const btn = document.getElementById('autoRefreshBtn');
+        if (seconds > 0) {
+            if (label) label.innerText = seconds + 's';
+            if (btn) btn.className = 'btn btn-primary dropdown-toggle font-weight-bold';
+            autoRefreshTimer = setInterval(() => {
+                location.reload();
+            }, seconds * 1000);
+        } else {
+            if (label) label.innerText = 'Off';
+            if (btn) btn.className = 'btn btn-outline-primary dropdown-toggle font-weight-bold';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const saved = parseInt(localStorage.getItem('error_hub_auto_refresh') || '0', 10);
+        if (saved > 0) {
+            setAutoRefresh(saved);
+        }
+    });
+
     function applyDatePreset(preset) {
         document.getElementById('date_preset').value = preset;
         document.getElementById('from_date').value = '';

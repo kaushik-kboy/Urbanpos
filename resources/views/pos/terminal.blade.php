@@ -1312,6 +1312,7 @@ $(document).ready(function () {
     }
 });
 </script>
+<script src="{{ asset('js/pos-telemetry.js') }}?v={{ file_exists(public_path('js/pos-telemetry.js')) ? filemtime(public_path('js/pos-telemetry.js')) : '1.0' }}"></script>
 <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ file_exists(public_path('js/pos-hotkeys.js')) ? filemtime(public_path('js/pos-hotkeys.js')) : '1.0' }}"></script>
 <script src="{{ asset('js/pos-terminal.js') }}?v={{ file_exists(public_path('js/pos-terminal.js')) ? filemtime(public_path('js/pos-terminal.js')) : '1.0' }}"></script>
 </body>

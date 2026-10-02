@@ -52,10 +52,10 @@ class SystemErrorLogController extends Controller
         }
 
         if (!empty($fromDate)) {
-            $query->whereDate('created_at', '>=', $fromDate);
+            $query->whereDate(DB::raw('COALESCE(last_seen_at, created_at)'), '>=', $fromDate);
         }
         if (!empty($toDate)) {
-            $query->whereDate('created_at', '<=', $toDate);
+            $query->whereDate(DB::raw('COALESCE(last_seen_at, created_at)'), '<=', $toDate);
         }
 
         // 4. Keyword search
@@ -73,7 +73,7 @@ class SystemErrorLogController extends Controller
         // Clone query for metrics before pagination
         $totalErrors = SystemErrorLog::count();
         $unresolvedCount = SystemErrorLog::where('status', 'Unresolved')->count();
-        $todayCount = SystemErrorLog::whereDate('created_at', Carbon::today())->count();
+        $todayCount = SystemErrorLog::whereDate(DB::raw('COALESCE(last_seen_at, created_at)'), Carbon::today())->count();
 
         // Group counts by module
         $moduleStats = SystemErrorLog::select('module', DB::raw('count(*) as total'), DB::raw('sum(case when status = "Unresolved" then 1 else 0 end) as unresolved'))
@@ -105,9 +105,9 @@ class SystemErrorLogController extends Controller
             'General',
         ];
 
-        // Paginated results
+        // Paginated results sorted by most recent occurrence
         $logs = $query->with(['user', 'branch', 'resolver'])
-            ->orderBy('created_at', 'desc')
+            ->orderByRaw('COALESCE(last_seen_at, created_at) DESC')
             ->paginate(20)
             ->withQueryString();
 
@@ -213,10 +213,10 @@ class SystemErrorLogController extends Controller
             $query->where('status', $request->input('status'));
         }
         if ($request->filled('from_date')) {
-            $query->whereDate('created_at', '>=', $request->input('from_date'));
+            $query->whereDate(DB::raw('COALESCE(last_seen_at, created_at)'), '>=', $request->input('from_date'));
         }
         if ($request->filled('to_date')) {
-            $query->whereDate('created_at', '<=', $request->input('to_date'));
+            $query->whereDate(DB::raw('COALESCE(last_seen_at, created_at)'), '<=', $request->input('to_date'));
         }
 
         $filename = 'system_error_logs_' . date('Ymd_His') . '.csv';
@@ -225,7 +225,7 @@ class SystemErrorLogController extends Controller
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['ID', 'Module', 'Error Type', 'Message', 'Occurrences', 'Last Seen', 'File', 'Line', 'URL', 'Method', 'User', 'Branch', 'Status', 'Date Time']);
 
-            $query->orderBy('created_at', 'desc')->chunk(200, function ($rows) use ($handle) {
+            $query->orderByRaw('COALESCE(last_seen_at, created_at) DESC')->chunk(200, function ($rows) use ($handle) {
                 foreach ($rows as $row) {
                     fputcsv($handle, [
                         $row->id,
@@ -288,5 +288,26 @@ class SystemErrorLogController extends Controller
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Trigger a diagnostic test log to verify that the logging hub is operational.
+     */
+    public function triggerTest(Request $request)
+    {
+        $logger = app(\App\Services\System\ErrorLoggerService::class);
+        $testEx = new \RuntimeException('Diagnostic test exception manually triggered to verify Error Hub health.');
+        $log = $logger->capture($testEx, $request);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Diagnostic test error logged successfully with ID #' . ($log?->id ?? 'N/A'),
+                'log_id'  => $log?->id,
+            ]);
+        }
+
+        return redirect()->route('tools.system-error-logs.index')
+            ->with('success', 'Diagnostic test error #' . ($log?->id ?? '') . ' logged successfully! Hub is actively working.');
     }
 }
