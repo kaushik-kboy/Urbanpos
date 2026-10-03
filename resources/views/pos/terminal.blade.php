@@ -99,7 +99,7 @@
                     <thead>
                         <tr>
                             <th class="text-center" style="width: 35px;">#</th>
-                            <th class="text-center" style="width: 65px;">Code</th>
+                            <th class="text-center" style="width: 75px;">Code</th>
                             <th>Description</th>
                             <th class="text-center" style="width: 100px;">Exp Date</th>
                             <th class="text-center" style="width: 75px;">Qty</th>

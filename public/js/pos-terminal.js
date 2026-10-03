@@ -818,7 +818,7 @@
             const newItem = {
                 id: itemId,
                 name: item.name || item.productname || 'Unknown Item',
-                code: item.item_code || item.code || '',
+                code: item.item_code || item.code || item.barcode || '',
                 exp_date: expDate,
                 sell_price: parseFloat(item.sell_price || item.mrp || 0),
                 mrp: parseFloat(item.mrp || item.sell_price || 0),
@@ -1090,11 +1090,13 @@
             const discPctVal = item.disc_percent > 0 ? item.disc_percent : '';
             const discAmtVal = item.disc_amount > 0 ? parseFloat(item.disc_amount).toFixed(2) : '';
 
+            const itemCodeDisp = item.code || item.item_code || (item.id ? String(item.id) : '-');
+
             html += `
                 <tr>
                     <td class="text-center font-weight-bold text-muted" style="width: 35px;">${idx + 1}</td>
-                    <td class="text-center font-weight-bold" style="width: 65px;">
-                        <span class="badge badge-light border font-monospace text-dark">${item.id}</span>
+                    <td class="text-center font-weight-bold" style="width: 75px;">
+                        <span class="badge badge-light border font-monospace text-dark" title="Item Code: ${escapeHtml(itemCodeDisp)} (ID: ${item.id})">${escapeHtml(itemCodeDisp)}</span>
                     </td>
                     <td>
                         <div class="font-weight-bold text-dark text-truncate" style="max-width: 280px;" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
