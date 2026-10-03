@@ -18,20 +18,9 @@
             </div>
             <div class="card-footer sb-rich-footer py-2 px-3" style="border-top: 2px solid #dee2e6;">
                 <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
-                    {{-- Left: Live Items Count + Action Buttons (F2, F3, F6) --}}
-                    <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
-                        <div id="sb-total-items-badge" class="d-inline-block">
-                            <span class="badge badge-secondary px-3 py-2 font-weight-bold" style="font-size: 0.95rem; line-height: 1.4;">0 Items</span>
-                        </div>
-                        <button type="button" id="sb-btn-f2-search" class="btn btn-dark font-weight-bold px-3 py-2 shadow-sm" style="font-size: 1rem; min-width: 80px; letter-spacing: 0.5px;" title="F2 — Item Search">
-                            <i class="fas fa-search mr-1"></i> F2
-                        </button>
-                        <button type="button" id="sb-btn-f3-add" class="btn btn-primary font-weight-bold px-3 py-2 shadow-sm" style="font-size: 1rem; min-width: 80px; letter-spacing: 0.5px;" title="F3 — Add Row">
-                            <i class="fas fa-plus mr-1"></i> F3
-                        </button>
-                        <button type="button" id="sb-btn-f6-tender" class="btn btn-success font-weight-bold px-4 py-2 shadow-sm" style="font-size: 1.05rem; min-width: 100px; letter-spacing: 0.5px;" title="F6 — Save &amp; Tender">
-                            <i class="fas fa-check-circle mr-1"></i> F6
-                        </button>
+                    {{-- Left: Live Items Count --}}
+                    <div id="sb-total-items-badge" class="d-inline-block">
+                        <span class="badge badge-secondary px-3 py-2 font-weight-bold" style="font-size: 0.95rem; line-height: 1.4;">0 Items</span>
                     </div>
 
                     {{-- Right: Final Bill Total --}}
