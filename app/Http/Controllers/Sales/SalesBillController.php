@@ -287,10 +287,11 @@ class SalesBillController extends Controller
             }
 
             $salesBill = DB::transaction(function () use ($data, $request) {
-                if (!empty($data['header']['bill_date'])) {
-                    $data['header']['bill_date'] = \Carbon\Carbon::parse($data['header']['bill_date'], 'Asia/Kolkata')->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
-                } else {
+                $isDateReadonly = app(\App\Services\DynamicValidationService::class)->isFieldReadonly('sales_bills', 'bill_date');
+                if ($isDateReadonly || empty($data['header']['bill_date'])) {
                     $data['header']['bill_date'] = \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m-d H:i:s');
+                } else {
+                    $data['header']['bill_date'] = \Carbon\Carbon::parse($data['header']['bill_date'], 'Asia/Kolkata')->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
                 }
 
                 $lines = $this->computeLines($data['items'], $data['header']);
@@ -516,7 +517,12 @@ class SalesBillController extends Controller
         $oldTotal = (float) $salesBill->total;
 
         DB::transaction(function () use ($data, $salesBill, $oldCustomerId, $oldTotal) {
-            if (!empty($data['header']['bill_date'])) {
+            $isDateReadonly = app(\App\Services\DynamicValidationService::class)->isFieldReadonly('sales_bills', 'bill_date');
+            if ($isDateReadonly) {
+                $data['header']['bill_date'] = $salesBill->bill_date
+                    ? $salesBill->bill_date->copy()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s')
+                    : \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m-d H:i:s');
+            } elseif (!empty($data['header']['bill_date'])) {
                 $data['header']['bill_date'] = \Carbon\Carbon::parse($data['header']['bill_date'], 'Asia/Kolkata')->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
             }
 
@@ -1462,6 +1468,11 @@ class SalesBillController extends Controller
             return !empty($item['item_id']) && (float)($item['qty'] ?? 0) > 0;
         })->values()->all();
         $request->merge(['items' => $filteredItems]);
+
+        // Auto-assign next bill number on create if not provided (e.g. from POS or auto-number form)
+        if (!$request->filled('bill_number') && (!$ignoreId && !$request->route('sales_bill'))) {
+            $request->merge(['bill_number' => $this->nextNumber()]);
+        }
 
         $now = now()->setTimezone('Asia/Kolkata')->addMinutes(5)->format('Y-m-d H:i:s');
         $headerRules = [

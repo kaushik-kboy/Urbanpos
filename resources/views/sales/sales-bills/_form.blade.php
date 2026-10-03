@@ -472,11 +472,19 @@
     </div>
 
     {{-- Bill Date & Time --}}
+    @php
+        $isBillDateReadonly = app(\App\Services\DynamicValidationService::class)->isFieldReadonly('sales_bills', 'bill_date');
+    @endphp
     <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="bill_date" data-default-order="4" data-core="1">
         <div class="form-group mb-1">
-            <label class="font-weight-bold mb-1" for="bill_date">
-                <i class="far fa-calendar-alt text-primary mr-1"></i> Bill Date & Time <span class="text-danger">*</span>
-            </label>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="font-weight-bold mb-0" for="bill_date">
+                    <i class="far fa-calendar-alt text-primary mr-1"></i> Bill Date & Time <span class="text-danger">*</span>
+                </label>
+                @if($isBillDateReadonly)
+                    <span class="badge badge-secondary small" title="Read-only mode enabled in Form Validations"><i class="fas fa-lock mr-1"></i>Read-Only</span>
+                @endif
+            </div>
             @php
                 $billDateVal = now()->setTimezone('Asia/Kolkata');
                 if (isset($bill) && $bill->bill_date) {
@@ -486,10 +494,19 @@
                     }
                 }
             @endphp
-            <input type="datetime-local" name="bill_date" id="bill_date" 
-                   class="form-control @error('bill_date') is-invalid @enderror" 
-                   value="{{ old('bill_date', $billDateVal->format('Y-m-d\TH:i')) }}" 
-                   min="2020-01-01T00:00" max="{{ now()->setTimezone('Asia/Kolkata')->addMinutes(5)->format('Y-m-d\TH:i') }}" required>
+            <div class="input-group">
+                <input type="datetime-local" name="bill_date" id="bill_date" 
+                       class="form-control @error('bill_date') is-invalid @enderror" 
+                       value="{{ old('bill_date', $billDateVal->format('Y-m-d\TH:i')) }}" 
+                       min="2020-01-01T00:00" max="{{ now()->setTimezone('Asia/Kolkata')->addMinutes(5)->format('Y-m-d\TH:i') }}" 
+                       @if($isBillDateReadonly) readonly tabindex="-1" style="background-color: #e9ecef !important; pointer-events: none; cursor: not-allowed;" onkeydown="return false;" @endif
+                       required>
+                @if($isBillDateReadonly)
+                    <div class="input-group-append">
+                        <span class="input-group-text bg-light text-muted" title="Locked by Form Validations"><i class="fas fa-lock text-secondary"></i></span>
+                    </div>
+                @endif
+            </div>
             @error('bill_date')
                 <div class="invalid-feedback d-block">{{ $message }}</div>
             @enderror
@@ -3903,6 +3920,14 @@
         ensureSingleEmptySbRow();
 
         // Prevent future dates and unrealistic years on bill_date
+        @if($isBillDateReadonly)
+        $('#bill_date').prop('readOnly', true).css({'pointer-events': 'none', 'background-color': '#e9ecef', 'cursor': 'not-allowed'}).on('mousedown click keydown focus', function(e) {
+            e.preventDefault();
+            this.blur();
+            return false;
+        });
+        @endif
+
         $('#bill_date').on('change blur', function () {
             const localIso = getIndianDateTimeIso();
             let $dateFeedback = $('#bill_date_future_error');

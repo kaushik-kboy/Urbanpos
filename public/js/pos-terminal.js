@@ -2262,6 +2262,7 @@
         const payload = {
             _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || window.CSRF_TOKEN,
             posting_key: 'pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            bill_number: (window.NEXT_BILL_NUMBER || null),
             bill_date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
             customer_id: state.customer_id,
             branch_id: state.branch_id,

@@ -1262,6 +1262,7 @@
         'pets_summary' => $defaultPetSummary,
     ] : null) !!};
     window.EDIT_BILL = {!! isset($editBill) ? json_encode($editBill) : 'null' !!};
+    window.NEXT_BILL_NUMBER = "{{ $nextBillNumber ?? '' }}";
     window.TENDER_TYPES = {!! json_encode($tenderTypes ?? []) !!};
     window.ALL_BRANCH_STAFF = {!! json_encode($allBranchStaff ?? []) !!};
 
