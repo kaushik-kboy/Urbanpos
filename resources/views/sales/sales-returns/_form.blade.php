@@ -994,7 +994,7 @@
             }
         }
 
-        function recalculateAll() {
+        function recalculateAll(isManualRoundOff) {
             let totalQty = 0;
             let totalDisc = 0;
             let totalTaxable = 0;
@@ -1010,10 +1010,25 @@
                 totalNet += res.net;
             });
 
-            const roundOff = parseFloat(document.getElementById('round_off')?.value) || 0;
             const extraCess = parseFloat(document.getElementById('total_extra_cess')?.value) || 0;
             const calamityCess = parseFloat(document.getElementById('gst_calamity_cess')?.value) || 0;
-            const grandTotal = totalNet + roundOff + extraCess + calamityCess;
+            const rawTotal = totalNet + extraCess + calamityCess;
+
+            let roundOff = 0;
+            let grandTotal = 0;
+            const roundOffInput = document.getElementById('round_off');
+
+            if (isManualRoundOff) {
+                roundOff = parseFloat(roundOffInput?.value) || 0;
+                grandTotal = Math.round((rawTotal + roundOff) * 100) / 100;
+            } else {
+                const roundedTotal = Math.round(rawTotal);
+                roundOff = Math.round((roundedTotal - rawTotal) * 100) / 100;
+                if (roundOffInput) {
+                    roundOffInput.value = roundOff !== 0 ? roundOff.toFixed(2) : '0.00';
+                }
+                grandTotal = roundedTotal;
+            }
 
             document.getElementById('footer-sr-qty').innerText = totalQty.toFixed(3);
             document.getElementById('footer-sr-disc').innerText = '₹' + totalDisc.toFixed(2);
@@ -1201,7 +1216,7 @@
         });
 
 
-        document.getElementById('round_off')?.addEventListener('input', recalculateAll);
+        document.getElementById('round_off')?.addEventListener('input', function() { recalculateAll(true); });
         document.getElementById('total_extra_cess')?.addEventListener('input', recalculateAll);
         document.getElementById('gst_calamity_cess')?.addEventListener('input', recalculateAll);
 

@@ -132,7 +132,7 @@
                     <div class="card-body p-0">
                         <ul class="list-group list-group-flush">
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <a href="{{ route('reports.purchase-detail') }}" class="font-weight-bold text-dark">Purchase Invoice Detail</a>
+                                <a href="{{ route('reports.purchase-detail') }}" class="font-weight-bold text-dark">GST Purchase Detail</a>
                                 <span class="badge badge-success badge-pill"><i class="fas fa-arrow-right"></i></span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center">

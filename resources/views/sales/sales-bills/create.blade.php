@@ -5,9 +5,6 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center py-0">
         <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-file-invoice mr-1 text-primary"></i> Create Sales Bill</h1>
-        <a href="{{ route('pos.terminal') }}" class="btn btn-success btn-xs font-weight-bold shadow-sm">
-            <i class="fas fa-cash-register mr-1"></i> Modern POS Terminal
-        </a>
     </div>
 @stop
 
@@ -19,30 +16,36 @@
                 <x-error-summary />
                 @include('sales.sales-bills._form')
             </div>
-            <div class="card-footer sb-rich-footer py-2 px-3 d-flex justify-content-between align-items-center flex-wrap">
-                {{-- Left: Live Items Count & Final Bill Total --}}
-                <div class="d-flex align-items-center flex-wrap">
-                    <div id="sb-total-items-badge" class="d-inline-block mr-3">
-                        <span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">0 Items</span>
+            <div class="card-footer sb-rich-footer py-2 px-3" style="border-top: 2px solid #dee2e6;">
+                <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 6px;">
+                    {{-- Left: Live Items Count + Hotkeys --}}
+                    <div class="d-flex align-items-center" style="gap: 8px;">
+                        <div id="sb-total-items-badge" class="d-inline-block">
+                            <span class="badge badge-secondary px-3 py-2 font-weight-bold" style="font-size: 0.85rem;">0 Items</span>
+                        </div>
+                        {{-- Hotkey badges (key only, no labels) --}}
+                        <span class="badge badge-dark py-2 px-3" style="font-size: 0.9rem; letter-spacing: 1px; cursor: default;" title="F2 — Item Search">F2</span>
+                        <span class="badge badge-dark py-2 px-3" style="font-size: 0.9rem; letter-spacing: 1px; cursor: default;" title="F3 — Add Row">F3</span>
+                        <span class="badge badge-success py-2 px-3" style="font-size: 0.9rem; letter-spacing: 1px; cursor: default;" title="F6 — Save &amp; Tender">F6</span>
                     </div>
+
+                    {{-- Right: Final Bill Total --}}
                     <div class="d-flex align-items-baseline">
-                        <span class="text-muted font-weight-bold mr-1" style="font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.5px;">Final Total:</span>
-                        <span class="text-success font-weight-bold" style="font-size: 1.35rem; line-height: 1;">₹<span id="display-sb-final-total">0.00</span></span>
+                        <span class="text-muted font-weight-bold mr-1" style="font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.5px;">FINAL TOTAL:</span>
+                        <span class="text-success font-weight-bold" style="font-size: 1.45rem; line-height: 1;">₹<span id="display-sb-final-total">0.00</span></span>
                     </div>
                 </div>
 
-                {{-- Right: Actions (Reset, Cancel, Save) --}}
-                <div class="d-flex align-items-center">
-                    <button type="button" id="btn-reset-form" class="btn btn-warning btn-sm font-weight-bold btn-reset-form mr-2 shadow-xs">
-                        <i class="fas fa-undo mr-1"></i> Reset Form
-                    </button>
-                    <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-outline-secondary btn-sm font-weight-bold mr-2 shadow-xs">
-                        <i class="fas fa-times mr-1"></i> Cancel
-                    </a>
-                    <button type="submit" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm disabled" disabled id="sb-main-save-btn" title="Please select a Customer and add at least 1 item">
-                        <i class="fas fa-check-circle mr-1"></i> Save Bill
-                    </button>
-                </div>
+                {{-- Hidden buttons still needed for JS/form submission (triggered by function keys) --}}
+                <button type="button" id="btn-reset-form" class="btn btn-warning btn-sm font-weight-bold btn-reset-form d-none">
+                    <i class="fas fa-undo mr-1"></i> Reset Form
+                </button>
+                <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-outline-secondary btn-sm font-weight-bold d-none" id="btn-cancel-bill">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm disabled d-none" disabled id="sb-main-save-btn" title="Please select a Customer and add at least 1 item">
+                    <i class="fas fa-check-circle mr-1"></i> Save Bill
+                </button>
             </div>
         </form>
     </div>

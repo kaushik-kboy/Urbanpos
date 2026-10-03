@@ -109,7 +109,7 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary mr-2 shadow-sm" onclick="window.print()">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-success mr-2 shadow-sm" onclick="exportTableToCSV('reportDataTable', '{{ $module ?? 'report' }}')">
+                <button type="button" class="btn btn-sm btn-outline-success mr-2 shadow-sm d-none" onclick="exportTableToCSV('reportDataTable', '{{ $module ?? 'report' }}')">
                     <i class="fas fa-file-csv mr-1"></i> Export CSV
                 </button>
                 @if(($module ?? null) === 'gst-sales-taxwise')

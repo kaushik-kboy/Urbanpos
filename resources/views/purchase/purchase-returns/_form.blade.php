@@ -298,7 +298,7 @@
             return { qty, cost, discAmount: clampedDiscAmt, taxable, gstAmount, net, isInvalid: isDiscPctInvalid || isDiscAmtInvalid };
         }
 
-        function recalculateAll() {
+        function recalculateAll(isManualRoundOff) {
             let totalQty = 0;
             let totalDisc = 0;
             let totalTaxable = 0;
@@ -318,8 +318,22 @@
                 }
             });
 
-            const roundOff = parseFloat(document.getElementById('round_off')?.value) || 0;
-            const grandTotal = totalNet + roundOff;
+            const rawTotal = totalNet;
+            let roundOff = 0;
+            let grandTotal = 0;
+            const roundOffInput = document.getElementById('round_off');
+
+            if (isManualRoundOff) {
+                roundOff = parseFloat(roundOffInput?.value) || 0;
+                grandTotal = Math.round((rawTotal + roundOff) * 100) / 100;
+            } else {
+                const roundedTotal = Math.round(rawTotal);
+                roundOff = Math.round((roundedTotal - rawTotal) * 100) / 100;
+                if (roundOffInput) {
+                    roundOffInput.value = roundOff !== 0 ? roundOff.toFixed(2) : '0.00';
+                }
+                grandTotal = roundedTotal;
+            }
 
             document.getElementById('footer-pr-qty').innerText = totalQty.toFixed(3);
             document.getElementById('footer-pr-disc').innerText = '₹' + totalDisc.toFixed(2);
@@ -444,7 +458,7 @@
             }
         });
 
-        document.getElementById('round_off')?.addEventListener('input', recalculateAll);
+        document.getElementById('round_off')?.addEventListener('input', function() { recalculateAll(true); });
 
         $(document).off('keydown', '.pr-disc-amount, .pr-gst-percent').on('keydown', '.pr-disc-amount, .pr-gst-percent', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {

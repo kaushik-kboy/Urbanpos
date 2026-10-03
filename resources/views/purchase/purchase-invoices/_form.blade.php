@@ -237,17 +237,25 @@
         </tbody>
         <tfoot class="bg-light font-weight-bold">
             <tr>
-                <td colspan="5" class="text-right align-middle">Totals:</td>
-                <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty"></td>
-                <td class="align-middle"></td>
-                <td class="text-right align-middle font-weight-bold" id="footer-total-cost"></td>
-                <td class="align-middle"></td>
-                <td colspan="4" class="text-right align-middle">Total Discount:</td>
-                <td colspan="2" class="text-right align-middle text-danger font-weight-bold" id="footer-total-disc"></td>
-                <td class="text-right align-middle small text-muted">GST:</td>
-                <td class="text-right align-middle font-weight-bold text-dark" id="footer-total-gst"></td>
-                <td class="text-right align-middle text-success font-weight-bold" id="footer-grand-net"></td>
-                <td></td>
+                <td class="text-center align-middle" data-col-key="seq">&nbsp;</td>
+                <td class="text-right align-middle" data-col-key="code" style="white-space:nowrap;">Totals:</td>
+                <td class="align-middle" data-col-key="item"></td>
+                <td class="align-middle" data-col-key="batch"></td>
+                <td class="align-middle" data-col-key="expiry"></td>
+                <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty" data-col-key="qty"></td>
+                <td class="align-middle" data-col-key="free"></td>
+                <td class="text-right align-middle font-weight-bold" id="footer-total-cost" data-col-key="cost_price"></td>
+                <td class="align-middle" data-col-key="landing_cost"></td>
+                <td class="align-middle" data-col-key="sell_price"></td>
+                <td class="align-middle" data-col-key="mrp"></td>
+                <td class="align-middle" data-col-key="margin"></td>
+                <td class="text-right align-middle small text-muted" data-col-key="profit" style="white-space:nowrap;">Total Disc:</td>
+                <td class="align-middle" data-col-key="disc_percent"></td>
+                <td class="text-right align-middle text-danger font-weight-bold" id="footer-total-disc" data-col-key="disc_amt"></td>
+                <td class="align-middle" data-col-key="gst_percent"></td>
+                <td class="text-right align-middle font-weight-bold text-dark" id="footer-total-gst" data-col-key="gst_amt"></td>
+                <td class="text-right align-middle text-success font-weight-bold" id="footer-grand-net" data-col-key="net_amt"></td>
+                <td data-col-key="actions"></td>
             </tr>
         </tfoot>
     </table>
@@ -1648,8 +1656,16 @@
         function focusExpDateField($row) {
             if (!$row || !$row.length) return;
             let $exp = $row.find('.pinv-exp-date');
-            if ($exp.length) {
+            // If exp date column is visible, focus it
+            if ($exp.length && !$exp.closest('td').hasClass('table-col-hidden') && $exp.is(':visible')) {
                 $exp[0].focus();
+            } else {
+                // Fall back to qty field if expiry is hidden
+                let $qty = $row.find('.pinv-qty');
+                if ($qty.length && $qty.is(':visible')) {
+                    $qty[0].focus();
+                    $qty[0].select && $qty[0].select();
+                }
             }
         }
 

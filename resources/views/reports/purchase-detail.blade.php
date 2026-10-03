@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Purchase Detail')
+@section('title', 'GST Purchase Detail')
 
 @section('content_header')
-    <h1>Purchase Detail</h1>
+    <h1>GST Purchase Detail</h1>
 @stop
 
 @section('content')
@@ -55,7 +55,7 @@
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
                 <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-outline-primary mr-2"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
-                <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</a>
+                {{-- Export CSV removed --}}
                 <x-table-column-customizer table-key="reports.purchase-detail" table-id="purchase-detail-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

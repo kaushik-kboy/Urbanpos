@@ -7,11 +7,11 @@
 @stop
 
 @section('content')
-    <div class="card card-primary card-outline">
+    <div class="card card-primary card-outline mb-0">
         <form action="{{ route('sales.sales-bills.update', $salesBill) }}" method="POST" id="sales-bill-form" novalidate>
             @csrf
             @method('PUT')
-            <div class="card-body">
+            <div class="card-body py-2 px-3">
                 <x-error-summary />
                 @include('sales.sales-bills._form')
             </div>

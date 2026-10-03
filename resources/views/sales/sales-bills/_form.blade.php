@@ -29,7 +29,101 @@
     display: none !important;
 }
 
-/* Compact Single-Screen Sales Bill UI */
+/* =========================================================================
+   DESKTOP & LANDSCAPE DISPLAYS (min-width: 992px and min-height: 550px)
+   Single-screen fixed layout: NO page-level vertical scroller
+   ========================================================================= */
+@media (min-width: 992px) and (min-height: 550px) {
+    html, body {
+        overflow: hidden !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+    body {
+        padding-bottom: 38px !important;
+    }
+    .wrapper {
+        overflow: hidden !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+    .content-wrapper {
+        min-height: auto !important;
+        overflow: hidden !important;
+        max-height: calc(100vh - 38px) !important;
+    }
+    .content-header {
+        padding: 3px 0.5rem !important;
+    }
+    .content-wrapper > .content {
+        padding: 0 0.5rem 0 0.5rem !important;
+        overflow: hidden !important;
+    }
+    .sb-items-scroll-container {
+        height: calc(100vh - 360px);
+        max-height: calc(100vh - 360px);
+        min-height: 200px;
+    }
+}
+
+/* =========================================================================
+   TABLETS, SMALL SCREENS & SHORT VIEWPORTS (< 992px or height < 550px)
+   Smooth page scroll enabled so all fields and tables remain 100% accessible
+   ========================================================================= */
+@media (max-width: 991.98px), (max-height: 549.98px) {
+    html, body {
+        overflow-y: auto !important;
+        height: auto !important;
+        max-height: none !important;
+        padding-bottom: 44px !important;
+    }
+    .wrapper {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+    .content-wrapper {
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    .content-wrapper > .content {
+        overflow: visible !important;
+        padding: 0 0.5rem 0.5rem 0.5rem !important;
+    }
+    .sb-items-scroll-container {
+        min-height: 220px;
+        max-height: 50vh;
+    }
+    .sb-rich-footer {
+        position: sticky;
+        bottom: 38px;
+        z-index: 1020;
+    }
+}
+
+/* =========================================================================
+   MOBILE SCREENS (< 576px)
+   Stack footer actions and optimize touch inputs
+   ========================================================================= */
+@media (max-width: 575.98px) {
+    .sb-rich-footer {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px;
+        padding: 0.4rem 0.5rem !important;
+    }
+    .sb-rich-footer .d-flex {
+        justify-content: space-between;
+    }
+    .content-header h1 {
+        font-size: 1rem !important;
+    }
+    #sb-header-fields-grid label,
+    #sb-additional-fields-grid label {
+        font-size: 0.75rem !important;
+    }
+}
+
 .main-footer, footer.main-footer {
     display: none !important;
     height: 0 !important;
@@ -40,78 +134,174 @@
     visibility: hidden !important;
     overflow: hidden !important;
 }
-.content-wrapper {
-    min-height: auto !important;
-}
-.content-header {
-    padding: 4px 0.5rem !important;
-}
-.content-wrapper > .content {
-    padding: 0 0.5rem 0.4rem 0.5rem !important;
-}
 .card-body {
-    padding: 0.35rem 0.65rem !important;
+    padding: 0.25rem 0.65rem 0.15rem 0.65rem !important;
 }
 .sb-compact-section-header {
-    margin-bottom: 0.15rem !important;
+    margin-bottom: 0.1rem !important;
 }
 .sb-compact-section-header h5, 
 .sb-compact-section-header h6 {
-    font-size: 0.88rem !important;
+    font-size: 0.85rem !important;
     font-weight: 700;
     margin-bottom: 0 !important;
 }
 .sb-divider-compact {
-    margin-top: 0.25rem !important;
-    margin-bottom: 0.25rem !important;
+    margin-top: 0.15rem !important;
+    margin-bottom: 0.15rem !important;
     border-color: #e9ecef;
 }
 #sb-header-fields-grid .form-group,
 #sb-additional-fields-grid .form-group {
-    margin-bottom: 0.15rem !important;
+    margin-bottom: 0.12rem !important;
+}
+#sb-header-fields-grid .form-group > label,
+#sb-additional-fields-grid .form-group > label {
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    line-height: 18px !important;
+    margin-bottom: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 3px !important;
+}
+#sb-header-fields-grid .form-group > .d-flex,
+#sb-additional-fields-grid .form-group > .d-flex {
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    line-height: 18px !important;
+    margin-bottom: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+#sb-header-fields-grid .form-group > .d-flex label,
+#sb-additional-fields-grid .form-group > .d-flex label {
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    line-height: 18px !important;
+    margin-bottom: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 3px !important;
 }
 #sb-header-fields-grid label,
 #sb-additional-fields-grid label {
-    font-size: 0.76rem !important;
-    margin-bottom: 0.08rem !important;
+    font-size: 0.73rem !important;
+    margin-bottom: 0 !important;
+    font-weight: 600 !important;
+    color: #495057 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 18px !important;
+}
+#sb-header-fields-grid label i,
+#sb-additional-fields-grid label i {
+    margin-right: 3px !important;
+}
+#sb-header-fields-grid label .text-danger,
+#sb-additional-fields-grid label .text-danger {
+    margin-left: 2px !important;
+}
+/* Customer Invoices Modal styles */
+#cim-table-wrap {
+    max-height: 380px;
+    overflow-y: auto;
+}
+.cim-row {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.12s ease-in-out;
+}
+.cim-row:hover {
+    background-color: #f1f8ff !important;
+}
+.cim-row.cim-row-selected,
+.cim-row.table-primary {
+    background-color: #d1ecf1 !important;
+    color: #0c5460 !important;
+    outline: 2px solid #17a2b8;
+    position: relative;
+    z-index: 1;
+}
+.cim-row.cim-row-selected td,
+.cim-row.table-primary td {
+    background-color: #d1ecf1 !important;
     font-weight: 600;
-    color: #495057;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+}
+#btn-quick-add-customer {
+    height: 16px !important;
+    line-height: 14px !important;
+    padding: 0 4px !important;
+    font-size: 9.5px !important;
+    border-radius: 2px !important;
+    margin: 0 !important;
 }
 #sb-header-fields-grid .form-control,
-#sb-additional-fields-grid .form-control {
-    font-size: 0.82rem;
-    height: 28px !important;
-    padding: 0.15rem 0.45rem;
-}
+#sb-additional-fields-grid .form-control,
 #sb-header-fields-grid .select2-container .select2-selection--single,
 #sb-additional-fields-grid .select2-container .select2-selection--single {
-    height: 28px !important;
-    font-size: 0.82rem;
-}
-#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 26px !important;
-    padding-left: 0.45rem;
-}
-#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow {
     height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    font-size: 0.80rem !important;
+    line-height: 24px !important;
+    padding: 0 0.4rem !important;
+    box-sizing: border-box !important;
+    border-radius: 3px !important;
+}
+#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered,
+#sb-additional-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 24px !important;
+    padding-left: 0.35rem !important;
+    padding-right: 18px !important;
+    font-size: 0.80rem !important;
+}
+#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow,
+#sb-additional-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 24px !important;
+    top: 1px !important;
+    right: 2px !important;
+}
+#sb-header-fields-grid input[type="datetime-local"],
+#sb-header-fields-grid input[type="time"] {
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    line-height: 24px !important;
+    padding: 0 0.35rem !important;
+    font-size: 0.80rem !important;
+    box-sizing: border-box !important;
+}
+#sb-header-fields-grid input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+#sb-header-fields-grid input[type="time"]::-webkit-calendar-picker-indicator {
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: pointer;
+}
+#sb-header-fields-grid input[type="datetime-local"]::-webkit-datetime-edit,
+#sb-header-fields-grid input[type="time"]::-webkit-datetime-edit {
+    padding: 0 !important;
+    line-height: 24px !important;
 }
 #sb-additional-fields-grid textarea.form-control {
-    height: 28px !important;
-    min-height: 28px !important;
-    padding: 0.15rem 0.45rem;
-    font-size: 0.82rem;
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.80rem;
     resize: none;
 }
 
-/* Scrollable Items Container & Sticky Header */
+/* Scrollable Items Container & Sticky Header - only table scrolls internally */
 .sb-items-scroll-container {
-    height: clamp(140px, 22vh, 195px);
-    max-height: clamp(140px, 22vh, 195px);
-    overflow-y: auto;
-    overflow-x: auto;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
     position: relative;
     border: 1px solid #ced4da;
     border-radius: 4px;
@@ -123,9 +313,9 @@
     background-color: #f4f6f9 !important;
     z-index: 5;
     box-shadow: inset 0 -1px 0 #dee2e6, 0 1px 2px rgba(0, 0, 0, 0.06);
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
-    font-size: 0.80rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.78rem;
 }
 .sb-items-scroll-container #sb-items-table tfoot td {
     position: sticky;
@@ -133,9 +323,9 @@
     background-color: #f8f9fa !important;
     z-index: 4;
     box-shadow: inset 0 1px 0 #dee2e6;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
-    font-size: 0.82rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.80rem;
 }
 
 /* Ensure Item Description stays wide and legible */
@@ -144,18 +334,18 @@
 }
 #sb-items-table .sb-item-desc {
     min-width: 240px !important;
-    font-size: 0.84rem;
+    font-size: 0.82rem;
 }
 
 /* Dense table row padding */
 .table-items-dense td {
-    padding: 0.2rem 0.35rem !important;
+    padding: 0.12rem 0.25rem !important;
     vertical-align: middle !important;
 }
 .table-items-dense .form-control-sm {
-    height: 26px !important;
-    padding: 0.1rem 0.35rem;
-    font-size: 0.82rem;
+    height: 24px !important;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.80rem;
 }
 
 /* Rich Pinned POS Footer */
@@ -166,6 +356,17 @@
     background-color: #f8f9fa !important;
     border-top: 2px solid #dee2e6 !important;
     box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+    padding: 0.25rem 0.65rem !important;
+}
+
+/* F2 Item Search Modal — larger row padding & font */
+#isl-items-table tbody td {
+    padding: 0.45rem 0.65rem !important;
+    font-size: 0.97rem !important;
+    vertical-align: middle !important;
+}
+#isl-items-table tbody tr:hover td {
+    background-color: #f1f8ff !important;
 }
 </style>
 @endpush
@@ -228,10 +429,10 @@
     </div>
 
     {{-- Customer --}}
-    <div class="field-wrapper col-lg-4 col-md-5 col-sm-8" data-field="customer_id" data-default-order="2" data-core="1">
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="customer_id" data-default-order="2" data-core="1">
         <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
-                <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
+                <label for="customer_id" class="font-weight-bold mb-0"><i class="fas fa-user text-primary mr-1"></i> Customer <span class="text-danger">*</span></label>
                 <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs py-0 font-weight-bold" style="font-size: 10px;">
                     <i class="fas fa-user-plus mr-1"></i> + New
                 </button>
@@ -259,7 +460,7 @@
     <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
 
     {{-- Staff / Biller (Branch-wise) --}}
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-4" data-field="user_id" data-default-order="3">
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="user_id" data-default-order="3">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="sales_biller_user_id"><i class="fas fa-user-check text-primary mr-1"></i> Biller / Staff</label>
             <select name="user_id" id="sales_biller_user_id" class="form-control select2" required>
@@ -271,7 +472,7 @@
     </div>
 
     {{-- Bill Date & Time --}}
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-4" data-field="bill_date" data-default-order="4" data-core="1">
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="bill_date" data-default-order="4" data-core="1">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="bill_date">
                 <i class="far fa-calendar-alt text-primary mr-1"></i> Bill Date & Time <span class="text-danger">*</span>
@@ -292,20 +493,6 @@
             @error('bill_date')
                 <div class="invalid-feedback d-block">{{ $message }}</div>
             @enderror
-        </div>
-    </div>
-
-    {{-- Payment Type --}}
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-4" data-field="payment_type" data-default-order="9">
-        <div class="form-group mb-1">
-            <label class="font-weight-bold mb-1" for="payment_type">
-                <i class="fas fa-money-bill-wave text-primary mr-1"></i> Payment Mode
-            </label>
-            <select name="payment_type" id="payment_type" class="form-control select2">
-                @foreach (['Cash' => 'Cash', 'UPI' => 'UPI', 'Card' => 'Card', 'Credit' => 'Credit', 'Bank Transfer' => 'Bank Transfer', 'Cheque' => 'Cheque'] as $val => $txt)
-                    <option value="{{ $val }}" @selected(old('payment_type', ($bill && $bill->payment_type && strtolower($bill->payment_type) !== 'none') ? $bill->payment_type : 'Cash') == $val)>{{ $txt }}</option>
-                @endforeach
-            </select>
         </div>
     </div>
 
@@ -368,6 +555,20 @@
             </select>
         </div>
     </div>
+
+    {{-- Payment Type --}}
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="payment_type" data-default-order="9">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="payment_type">
+                <i class="fas fa-money-bill-wave text-primary mr-1"></i> Payment Mode
+            </label>
+            <select name="payment_type" id="payment_type" class="form-control select2">
+                @foreach (['Cash' => 'Cash', 'UPI' => 'UPI', 'Card' => 'Card', 'Credit' => 'Credit', 'Bank Transfer' => 'Bank Transfer', 'Cheque' => 'Cheque'] as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('payment_type', ($bill && $bill->payment_type && strtolower($bill->payment_type) !== 'none') ? $bill->payment_type : 'Cash') == $val)>{{ $txt }}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
 </div>
 
 {{-- Unsaved Bill Draft Recovery Alert Banner --}}
@@ -410,7 +611,7 @@
 <div class="d-flex justify-content-between align-items-center mb-1 sb-compact-section-header">
     <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-boxes mr-1 text-primary"></i> Bill Items</h6>
     <div class="d-flex align-items-center">
-        <button type="button" id="sb-add-row" class="btn btn-primary btn-xs font-weight-bold mr-2"><i class="fas fa-plus"></i> Add Row</button>
+        <button type="button" id="sb-add-row" class="btn btn-primary btn-xs font-weight-bold mr-2" title="Add new row (F3)"><i class="fas fa-plus"></i> Add Row</button>
         <button type="button" class="btn btn-outline-danger btn-xs mr-2 btn-reset-table" id="sb-btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
         <x-table-column-customizer
             table-key="sales.sales-bills.items"
@@ -479,31 +680,37 @@
             <input type="number" step="0.01" name="round_off" id="round_off" class="form-control" value="{{ old('round_off', $bill->round_off ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="2">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="bill_discount" data-label="Bill Discount" data-default-order="2">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-danger" for="bill_discount"><i class="fas fa-tag mr-1"></i>Bill Discount</label>
+            <input type="number" step="0.01" min="0" name="bill_discount" id="bill_discount" class="form-control text-danger font-weight-bold" value="{{ old('bill_discount', $bill->bill_discount ?? 0) }}" placeholder="0.00">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="3">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="total_extra_cess">Extra Cess</label>
             <input type="number" step="0.01" name="total_extra_cess" id="total_extra_cess" class="form-control" value="{{ old('total_extra_cess', $bill->total_extra_cess ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="gst_calamity_cess" data-label="GST Calamity Cess" data-default-order="3">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="gst_calamity_cess" data-label="GST Calamity Cess" data-default-order="4">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="gst_calamity_cess">Calamity Cess</label>
             <input type="number" step="0.01" name="gst_calamity_cess" id="gst_calamity_cess" class="form-control" value="{{ old('gst_calamity_cess', $bill->gst_calamity_cess ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="total_weight" data-label="Total Weight" data-default-order="4">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="total_weight" data-label="Total Weight" data-default-order="5">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="total_weight">Total Weight</label>
             <input type="number" step="0.01" name="total_weight" id="total_weight" class="form-control" value="{{ old('total_weight', $bill->total_weight ?? 0) }}">
         </div>
     </div>
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="remarks" data-label="Remarks" data-default-order="5">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="remarks" data-label="Remarks" data-default-order="6">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="remarks">Remarks</label>
             <textarea name="remarks" id="remarks" rows="1" class="form-control" placeholder="Remarks...">{{ old('remarks', $bill->remarks ?? '') }}</textarea>
         </div>
     </div>
-    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="message" data-label="Message" data-default-order="6">
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="message" data-label="Message" data-default-order="7">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="message">Footer Message</label>
             <textarea name="message" id="message" rows="1" class="form-control" placeholder="Footer msg...">{{ old('message', $bill->message ?? '') }}</textarea>
@@ -521,12 +728,12 @@
      ITEM SEARCH MODAL — opens on Code/Barcode field focus
      ============================================================ -->
 <div class="modal fade" id="sb-item-search-modal" tabindex="-1" role="dialog" aria-labelledby="sbItemSearchLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-dialog" role="document" style="max-width: 98vw; width: 98vw; margin: 0.5rem auto;">
         <div class="modal-content">
             <div class="modal-header bg-dark text-white py-2">
-                <h5 class="modal-title" id="sbItemSearchLabel">
+                <h4 class="modal-title font-weight-bold" id="sbItemSearchLabel" style="font-size: 1.15rem; letter-spacing: 0.3px;">
                     <i class="fas fa-search mr-2"></i>Select Item
-                </h5>
+                </h4>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -535,31 +742,31 @@
                 <!-- Filters -->
                 <div class="row mb-3 align-items-center">
                     <div class="col-md-4">
-                        <div class="input-group input-group-sm">
+                        <div class="input-group">
                             <div class="input-group-prepend">
                                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                             </div>
-                            <input type="text" id="isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off">
+                            <input type="text" id="isl-filter-name" class="form-control" placeholder="Search product name, code or barcode…" autocomplete="off" style="font-size: 0.95rem; height: 36px;">
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="input-group input-group-sm">
+                        <div class="input-group">
                             <div class="input-group-prepend">
                                 <span class="input-group-text"><i class="fas fa-barcode"></i></span>
                             </div>
-                            <input type="text" id="isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
+                            <input type="text" id="isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off" style="font-size: 0.95rem; height: 36px;">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="custom-control custom-checkbox ml-1">
                             <input type="checkbox" class="custom-control-input" id="isl-filter-show-all">
-                            <label class="custom-control-label font-weight-bold text-dark small" for="isl-filter-show-all" style="cursor: pointer;">
+                            <label class="custom-control-label font-weight-bold text-dark" for="isl-filter-show-all" style="cursor: pointer; font-size: 0.92rem;">
                                 <i class="fas fa-boxes text-primary mr-1"></i> Show All (Stock + Non-Stock)
                             </label>
                         </div>
                     </div>
                     <div class="col-md-2 text-right">
-                        <button type="button" id="isl-btn-clear" class="btn btn-sm btn-outline-secondary">
+                        <button type="button" id="isl-btn-clear" class="btn btn-outline-secondary" style="font-size: 0.92rem; height: 36px;">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
                     </div>
@@ -576,17 +783,17 @@
                 </div>
 
                 <!-- Items Table -->
-                <div class="table-responsive" id="isl-table-wrap">
-                    <table class="table table-sm table-bordered table-hover mb-0" id="isl-items-table">
+                <div class="table-responsive" id="isl-table-wrap" style="max-height: 60vh; overflow-y: auto;">
+                    <table class="table table-bordered table-hover mb-0" id="isl-items-table" style="font-size: 0.97rem;">
                         <thead class="bg-dark text-white">
                             <tr>
-                                <th class="text-center" style="width: 40px;">#</th>
-                                <th>Product Name</th>
-                                <th class="text-center" style="width: 140px;">Code</th>
-                                <th class="text-right" style="width: 100px;">Qty (Stock)</th>
-                                <th class="text-right" style="width: 105px;">Sell Price</th>
-                                <th class="text-right" style="width: 105px;">MRP</th>
-                                <th class="text-center" style="width: 80px;">Select</th>
+                                <th class="text-center" style="width: 44px; font-size: 0.9rem; padding: 0.5rem;">#</th>
+                                <th style="font-size: 0.9rem; padding: 0.5rem;">Product Name</th>
+                                <th class="text-center" style="width: 150px; font-size: 0.9rem; padding: 0.5rem;">Code</th>
+                                <th class="text-right" style="width: 110px; font-size: 0.9rem; padding: 0.5rem;">Qty (Stock)</th>
+                                <th class="text-right" style="width: 115px; font-size: 0.9rem; padding: 0.5rem;">Sell Price</th>
+                                <th class="text-right" style="width: 115px; font-size: 0.9rem; padding: 0.5rem;">MRP</th>
+                                <th class="text-center" style="width: 90px; font-size: 0.9rem; padding: 0.5rem;">Select</th>
                             </tr>
                         </thead>
                         <tbody id="isl-items-body">
@@ -594,10 +801,10 @@
                         </tbody>
                     </table>
                 </div>
-                <small class="text-muted mt-2 d-block" id="isl-count-label"></small>
+                <div class="mt-2" id="isl-count-label" style="font-size: 0.92rem; color: #6c757d;"></div>
             </div>
             <div class="modal-footer py-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" style="font-size: 0.95rem;">Close</button>
             </div>
         </div>
     </div>
@@ -1015,7 +1222,7 @@
 
                 <div class="table-responsive" id="cim-table-wrap">
                     <table class="table table-sm table-bordered table-hover mb-0" id="cim-table">
-                        <thead class="bg-light">
+                        <thead class="bg-light sticky-top">
                             <tr>
                                 <th style="width: 45px;" class="text-center">#</th>
                                 <th style="width: 170px;">Date</th>
@@ -1033,7 +1240,13 @@
                     <ul class="pagination pagination-sm mb-0" id="cim-pagination"></ul>
                 </div>
             </div>
-            <div class="modal-footer py-2 bg-light">
+            <div class="modal-footer py-2 bg-light d-flex justify-content-between align-items-center">
+                <span class="text-muted small">
+                    <kbd class="bg-white text-dark border px-1">&uarr;</kbd> <kbd class="bg-white text-dark border px-1">&darr;</kbd> Navigate &bull; 
+                    <kbd class="bg-white text-dark border px-1">Enter</kbd> View &bull; 
+                    <kbd class="bg-white text-dark border px-1">E</kbd> Edit &bull; 
+                    <kbd class="bg-white text-dark border px-1">P</kbd> Print
+                </span>
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -1414,19 +1627,19 @@
                     ? `<span class="badge badge-danger ml-1">${inv.status}</span>`
                     : '';
                 html += `
-                    <tr>
+                    <tr class="cim-row" data-index="${idx}" data-view-url="${inv.view_url || ''}" data-edit-url="${inv.edit_url || ''}" data-print-url="${inv.print_url || ''}">
                         <td class="text-center font-weight-bold text-muted">${start + idx + 1}</td>
                         <td><i class="far fa-calendar-alt mr-1 text-muted"></i>${inv.bill_date}</td>
                         <td class="font-weight-bold text-primary">${inv.bill_number} ${statusBadge}</td>
                         <td class="text-right font-weight-bold text-success">₹${parseFloat(inv.total).toFixed(2)}</td>
                         <td class="text-center text-nowrap">
-                            <a href="${inv.view_url}" target="_blank" class="btn btn-xs btn-outline-info mr-1" title="View Bill">
+                            <a href="${inv.view_url}" target="_blank" class="btn btn-xs btn-outline-info mr-1 cim-btn-view" title="View Bill">
                                 <i class="fas fa-eye mr-1"></i>View
                             </a>
-                            <a href="${inv.edit_url}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Edit Bill">
+                            <a href="${inv.edit_url}" target="_blank" class="btn btn-xs btn-outline-primary mr-1 cim-btn-edit" title="Edit Bill">
                                 <i class="fas fa-edit mr-1"></i>Edit
                             </a>
-                            <a href="${inv.print_url}" target="_blank" class="btn btn-xs btn-outline-secondary" title="Print Bill Receipt">
+                            <a href="${inv.print_url}" target="_blank" class="btn btn-xs btn-outline-secondary cim-btn-print" title="Print Bill Receipt">
                                 <i class="fas fa-print mr-1"></i>Print
                             </a>
                         </td>
@@ -1435,6 +1648,9 @@
             });
             $('#cim-tbody').html(html);
             $('#cim-page-info').text(`Showing ${start + 1} to ${end} of ${total} entries`);
+
+            // Highlight first row by default
+            $('#cim-tbody tr.cim-row').first().addClass('table-primary cim-row-selected');
 
             // Build pagination
             let pagHtml = '';
@@ -1458,6 +1674,119 @@
             if (p) {
                 cimCurrentPage = p;
                 renderCustomerInvoicesPage();
+            }
+        });
+
+        // Auto focus search input when Customer Invoices modal is shown
+        $('#customer-invoices-modal').on('shown.bs.modal show.bs.modal', function () {
+            setTimeout(function () {
+                $('#cim-filter-input').focus().select();
+                let $rows = $('#cim-tbody tr.cim-row');
+                if ($rows.length && !$('#cim-tbody tr.cim-row.cim-row-selected').length) {
+                    $rows.first().addClass('table-primary cim-row-selected');
+                }
+            }, 60);
+        });
+
+        // Hover selects row
+        $(document).on('mouseenter', '#cim-tbody tr.cim-row', function () {
+            $('#cim-tbody tr.cim-row').removeClass('table-primary cim-row-selected');
+            $(this).addClass('table-primary cim-row-selected');
+        });
+
+        // Click row to select
+        $(document).on('click', '#cim-tbody tr.cim-row', function (e) {
+            if ($(e.target).closest('a, button').length) return;
+            $('#cim-tbody tr.cim-row').removeClass('table-primary cim-row-selected');
+            $(this).addClass('table-primary cim-row-selected');
+        });
+
+        // Double-click row to open View Bill
+        $(document).on('dblclick', '#cim-tbody tr.cim-row', function (e) {
+            if ($(e.target).closest('a, button').length) return;
+            let $viewBtn = $(this).find('.cim-btn-view');
+            if ($viewBtn.length) {
+                window.open($viewBtn.attr('href'), '_blank');
+            } else {
+                let viewUrl = $(this).data('view-url');
+                if (viewUrl) window.open(viewUrl, '_blank');
+            }
+        });
+
+        // Keyboard navigation inside Customer Invoices Modal (ArrowUp, ArrowDown, Enter, Esc, E, P, PageUp, PageDown)
+        $(document).on('keydown', function (e) {
+            let $modal = $('#customer-invoices-modal');
+            if (!$modal.is(':visible') && !$modal.hasClass('show')) return;
+
+            let $rows = $('#cim-tbody tr.cim-row');
+            if (!$rows.length) return;
+
+            let $current = $('#cim-tbody tr.cim-row.cim-row-selected');
+            let idx = $rows.index($current);
+            if (idx === -1) idx = 0;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                idx = (idx + 1) >= $rows.length ? 0 : idx + 1;
+                $rows.removeClass('table-primary cim-row-selected');
+                let $target = $rows.eq(idx).addClass('table-primary cim-row-selected');
+                if ($target[0]) {
+                    $target[0].scrollIntoView({ block: 'nearest' });
+                }
+                return false;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                idx = (idx - 1) < 0 ? $rows.length - 1 : idx - 1;
+                $rows.removeClass('table-primary cim-row-selected');
+                let $target = $rows.eq(idx).addClass('table-primary cim-row-selected');
+                if ($target[0]) {
+                    $target[0].scrollIntoView({ block: 'nearest' });
+                }
+                return false;
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                let $target = $current.length ? $current : $rows.first();
+                if ($target.length) {
+                    let $viewBtn = $target.find('.cim-btn-view');
+                    if ($viewBtn.length) {
+                        window.open($viewBtn.attr('href'), '_blank');
+                    } else {
+                        let viewUrl = $target.data('view-url');
+                        if (viewUrl) window.open(viewUrl, '_blank');
+                    }
+                }
+                return false;
+            } else if (e.key === 'PageDown') {
+                e.preventDefault();
+                idx = Math.min($rows.length - 1, idx + 5);
+                $rows.removeClass('table-primary cim-row-selected');
+                let $target = $rows.eq(idx).addClass('table-primary cim-row-selected');
+                if ($target[0]) $target[0].scrollIntoView({ block: 'nearest' });
+                return false;
+            } else if (e.key === 'PageUp') {
+                e.preventDefault();
+                idx = Math.max(0, idx - 5);
+                $rows.removeClass('table-primary cim-row-selected');
+                let $target = $rows.eq(idx).addClass('table-primary cim-row-selected');
+                if ($target[0]) $target[0].scrollIntoView({ block: 'nearest' });
+                return false;
+            } else if ((e.key === 'e' || e.key === 'E') && !$(e.target).is('input, textarea')) {
+                let $target = $current.length ? $current : $rows.first();
+                let $editBtn = $target.find('.cim-btn-edit');
+                if ($editBtn.length) {
+                    e.preventDefault();
+                    window.open($editBtn.attr('href'), '_blank');
+                }
+            } else if ((e.key === 'p' || e.key === 'P') && !$(e.target).is('input, textarea')) {
+                let $target = $current.length ? $current : $rows.first();
+                let $printBtn = $target.find('.cim-btn-print');
+                if ($printBtn.length) {
+                    e.preventDefault();
+                    window.open($printBtn.attr('href'), '_blank');
+                }
             }
         });
 
@@ -2286,7 +2615,8 @@
 
             let extraCess = parseFloat($('input[name="total_extra_cess"]').val()) || 0;
             let calCess = parseFloat($('input[name="gst_calamity_cess"]').val()) || 0;
-            let rawTotal = totalNet + extraCess + calCess;
+            let billDiscount = Math.max(0, parseFloat($('input[name="bill_discount"]').val()) || 0);
+            let rawTotal = Math.max(0, totalNet + extraCess + calCess - billDiscount);
 
             let finalTotal = 0;
             let roundOff = 0;
@@ -2305,6 +2635,14 @@
             $('#footer-sb-disc').text(totalDisc > 0 ? totalDisc.toFixed(2) : '');
             $('#footer-sb-tax').text(totalGst > 0 ? totalGst.toFixed(2) : '');
             $('#footer-sb-net').text(totalNet > 0 ? totalNet.toFixed(2) : '');
+
+            // Show bill discount indicator
+            if (billDiscount > 0) {
+                $('#display-sb-final-total').closest('span').find('.sb-bill-disc-label').remove();
+                $('#display-sb-final-total').attr('title', 'Includes Bill Discount: -₹' + billDiscount.toFixed(2));
+            } else {
+                $('#display-sb-final-total').removeAttr('title');
+            }
 
             $('#display-sb-final-total').text(finalTotal > 0 ? finalTotal.toFixed(2) : '0.00');
             $('#sb-total-items-badge').html('<span class="badge badge-primary px-3 py-2 font-weight-bold">' + itemCount + ' Item' + (itemCount === 1 ? '' : 's') + '</span>');
@@ -2798,7 +3136,7 @@
             calculateTotals();
         });
 
-        // 4. Add Row
+        // 4. Add Row (also triggered by F3)
         $('#sb-add-row').on('click', function () {
             let html = $('#sb-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#sb-items-body');
@@ -2810,6 +3148,70 @@
             updateRowNumbers();
             calculateTotals();
             $newRow.find('.sb-item-code').focus();
+        });
+
+        // Item Search F2 button click — focus the last empty code field or add a new row
+        $('#sb-add-row-f2').on('click', function () {
+            let $lastEmptyCode = null;
+            $('#sb-items-body tr').each(function () {
+                let $code = $(this).find('.sb-item-code');
+                if (!$(this).find('.sb-item-select').val() && $code.length) {
+                    $lastEmptyCode = $code;
+                }
+            });
+            if ($lastEmptyCode && $lastEmptyCode.length) {
+                $lastEmptyCode.focus();
+                openItemSearchModal($lastEmptyCode);
+            } else {
+                // Add a new row then open search
+                $('#sb-add-row').trigger('click');
+                setTimeout(function() {
+                    let $code = $('#sb-items-body tr:last').find('.sb-item-code');
+                    if ($code.length) openItemSearchModal($code);
+                }, 80);
+            }
+        });
+
+        // Bill Discount input — recalculate totals
+        $(document).on('input change', 'input[name="bill_discount"]', function () {
+            calculateTotals();
+        });
+
+        // Global F-key handler: F3 = Add Row, F6 = Open/Save Tender
+        $(document).on('keydown', function (e) {
+            // Skip if inside modals (except for F6 in tender)
+            let tenderOpen = $('#sb-tender-modal').is(':visible') || $('#sb-tender-modal').hasClass('show');
+            let anyModalOpen = $('.modal.show').length > 0 && !tenderOpen;
+            if (anyModalOpen) return;
+            if ($(e.target).is('input[type="text"], input[type="number"], input[type="datetime-local"], input[type="time"], textarea, select, .select2-search__field')) {
+                // Allow F-keys even in inputs (except F6 which is handled below)
+                if (e.key !== 'F3' && e.key !== 'F6') return;
+            }
+
+            if (e.key === 'F3') {
+                e.preventDefault();
+                $('#sb-add-row').trigger('click');
+                return false;
+            }
+
+            if (e.key === 'F6') {
+                e.preventDefault();
+                if (tenderOpen) {
+                    // F6 in tender modal = save
+                    $('#tender-save-btn').trigger('click');
+                } else {
+                    // F6 outside tender = open tender (same as submit)
+                    let $saveBtn = $('#sb-main-save-btn');
+                    if (!$saveBtn.prop('disabled') && !$saveBtn.hasClass('disabled')) {
+                        $saveBtn.trigger('click');
+                    } else {
+                        // Show reason
+                        let reason = $saveBtn.attr('title') || 'Please complete the form first.';
+                        if (window.toastr) toastr.warning(reason, 'Cannot Open Tender');
+                    }
+                }
+                return false;
+            }
         });
 
         // Strict stock validation for sales bill quantity
@@ -3604,6 +4006,7 @@
                         $('#sb-draft-saved-time').text(draft.saved_at || 'earlier today');
                         $('#sb-draft-item-count').text(draft.items.length);
                         $('#sb-draft-recovery-alert').removeClass('d-none').addClass('d-flex');
+                        setTimeout(fitSalesBillLayout, 60);
                     }
                 }
             } catch (e) {
@@ -3684,6 +4087,7 @@
                 }, 200);
 
                 $('#sb-draft-recovery-alert').addClass('d-none').removeClass('d-flex');
+                setTimeout(fitSalesBillLayout, 60);
 
                 // Trigger background stock refresh for restored items
                 setTimeout(function() {
@@ -3706,6 +4110,7 @@
             if (confirm('Discard this saved bill draft?')) {
                 localStorage.removeItem(DRAFT_KEY);
                 $('#sb-draft-recovery-alert').addClass('d-none').removeClass('d-flex');
+                setTimeout(fitSalesBillLayout, 60);
             }
         });
         @endif
@@ -3743,11 +4148,60 @@
             }
             localStorage.removeItem(DRAFT_KEY);
         });
+        // Dynamic single-screen layout fit: ensures ZERO window/page scrolling
+        // and precisely sizes the items table to fill available viewport space
+        function fitSalesBillLayout() {
+            var isDesktop = window.matchMedia('(min-width: 992px) and (min-height: 550px)').matches;
+            var $container = $('.sb-items-scroll-container');
+            var $footer = $('.sb-rich-footer');
+            var $keyboardBar = $('.pos-keyboard-bar');
+            if (!$container.length || !$footer.length) return;
+
+            if (!isDesktop) {
+                // On mobile / small screens, let responsive CSS handle height naturally with page scroll
+                $container.css({
+                    'height': '',
+                    'max-height': ''
+                });
+                return;
+            }
+
+            // Target bottom is the top edge of shortcut keyboard bar, or viewport height
+            var targetBottom = ($keyboardBar.length && $keyboardBar.is(':visible'))
+                ? $keyboardBar[0].getBoundingClientRect().top
+                : window.innerHeight;
+
+            var footerRect = $footer[0].getBoundingClientRect();
+            var currentHeight = $container[0].getBoundingClientRect().height;
+
+            // Difference between shortcut bar top and current card footer bottom
+            var gap = targetBottom - footerRect.bottom;
+
+            // Calculate exact height to dock footer right above the keyboard bar without page scroll
+            var targetHeight = Math.max(160, Math.floor(currentHeight + gap - 1));
+
+            $container.css({
+                'height': targetHeight + 'px',
+                'max-height': targetHeight + 'px'
+            });
+        }
+
         // Initial check for save button status
         updateSaveButtonState();
+        fitSalesBillLayout();
         setTimeout(function () {
             updateSaveButtonState();
-        }, 300);
+            fitSalesBillLayout();
+        }, 100);
+        setTimeout(function () {
+            fitSalesBillLayout();
+        }, 350);
+        $(window).on('resize orientationchange', function () {
+            fitSalesBillLayout();
+        });
+        $(document).on('collapsed.lte.pushmenu shown.lte.pushmenu', function () {
+            setTimeout(fitSalesBillLayout, 250);
+        });
         $('.main-footer, footer.main-footer').remove();
 
     });

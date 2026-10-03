@@ -695,7 +695,7 @@ return [
                                 ['text' => 'ReceiptNote Nowise Summary', 'url' => 'reports/view/receiptnote-nowise-summary', 'icon' => 'fas fa-fw fa-receipt'],
                                 ['text' => 'ReceiptNote Nowise Detail', 'url' => 'reports/view/receiptnote-nowise-detail', 'icon' => 'fas fa-fw fa-list-alt'],
                                 ['text' => 'Purchase Summary', 'url' => 'reports/view/purchase-summary', 'icon' => 'fas fa-fw fa-file-invoice-dollar'],
-                                ['text' => 'Purchase Detail', 'url' => 'reports/purchase-detail', 'icon' => 'fas fa-fw fa-cart-arrow-down'],
+                                ['text' => 'GST Purchase Detail', 'url' => 'reports/purchase-detail', 'icon' => 'fas fa-fw fa-cart-arrow-down'],
                                 ['text' => 'GIN Summary', 'url' => 'reports/view/gin-summary', 'icon' => 'fas fa-fw fa-warehouse'],
                                 ['text' => 'Purchase Detail Serial', 'url' => 'reports/view/purchase-detail-serial', 'icon' => 'fas fa-fw fa-barcode'],
                                 ['text' => 'GIN Detail', 'url' => 'reports/view/gin-detail', 'icon' => 'fas fa-fw fa-dolly'],

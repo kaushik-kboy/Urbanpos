@@ -89,5 +89,18 @@ class SalesBillCompactUiTest extends TestCase
         $this->assertStringNotContainsString('F2 Search Item', $content);
         $this->assertStringNotContainsString('Tab Next Field', $content);
         $this->assertStringNotContainsString('Enter Confirm', $content);
+
+        // 10. Verify no page-level scroller (overflow: hidden) and dynamic screen fitting
+        $this->assertStringContainsString('overflow: hidden !important', $content);
+        $this->assertStringContainsString('fitSalesBillLayout', $content);
+
+        // 11. Verify customer invoices modal keyboard navigation & unified label layout
+        $this->assertStringContainsString('id="customer-invoices-modal"', $content);
+        $this->assertStringContainsString('cim-row', $content);
+        $this->assertStringContainsString('cim-row-selected', $content);
+        $this->assertStringContainsString('ArrowDown', $content);
+        $this->assertStringContainsString('ArrowUp', $content);
+        $this->assertStringContainsString('justify-content: flex-start !important', $content);
+        $this->assertStringContainsString('<i class="fas fa-user text-primary mr-1"></i> Customer', $content);
     }
 }
