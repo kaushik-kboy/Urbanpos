@@ -425,25 +425,52 @@ class PurchaseInvoiceController extends Controller
             $sExact  = $search;
             $sPrefix = "{$search}%";
 
+            // Multi-token fuzzy matching: e.g. "item 30 kg" matches "item b 30 kg"
+            // Also handles unit combos: e.g. "30kg" matches both "30kg" and "30 kg"
+            $tokens = array_values(array_filter(preg_split('/\s+/', $search), fn($t) => $t !== ''));
+            $tokenConds = [];
+            $tokenParams = [];
+
+            foreach ($tokens as $token) {
+                if (preg_match('/^(\d+(?:\.\d+)?)([a-zA-Z]+)$/', $token, $m)) {
+                    $num = $m[1];
+                    $unit = $m[2];
+                    $tokenConds[] = '(i.name LIKE ? OR (i.name LIKE ? AND i.name LIKE ?))';
+                    $tokenParams[] = "%{$token}%";
+                    $tokenParams[] = "%{$num}%";
+                    $tokenParams[] = "%{$unit}%";
+                } else {
+                    $tokenConds[] = 'i.name LIKE ?';
+                    $tokenParams[] = "%{$token}%";
+                }
+            }
+
+            $nameWhereSql = $tokenConds ? implode(' AND ', $tokenConds) : 'i.name LIKE ?';
+            if (!$tokenConds) {
+                $tokenParams[] = $sWild;
+            }
+
             // Barcode (ean_upc_code) only matches exact or prefix — never substring in middle of 13-digit barcode!
             // Item code matches exact or prefix
-            // Item name matches substring
-            $where[] = '(i.name LIKE ? OR i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
-            $params  = array_merge($params, [$sWild, $sExact, $sPrefix, $sExact, $sPrefix]);
+            // Item name matches multi-token or contiguous phrase
+            $where[] = "({$nameWhereSql} OR i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)";
+            $params  = array_merge($params, $tokenParams, [$sExact, $sPrefix, $sExact, $sPrefix]);
 
-            // Rank exact code / barcode match first, then prefix, then name
+            // Rank exact code / barcode match first, then prefix, then exact name, then prefix, then phrase, then multi-token
             $orderSql = "
                 CASE
                     WHEN i.item_code = ? THEN 1
                     WHEN i.ean_upc_code = ? THEN 2
                     WHEN i.item_code LIKE ? THEN 3
                     WHEN i.ean_upc_code LIKE ? THEN 4
-                    WHEN i.name LIKE ? THEN 5
-                    ELSE 6
+                    WHEN i.name = ? THEN 5
+                    WHEN i.name LIKE ? THEN 6
+                    WHEN i.name LIKE ? THEN 7
+                    ELSE 8
                 END ASC,
                 i.name ASC
             ";
-            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sPrefix];
+            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sExact, $sPrefix, $sWild];
         }
 
         if ($code !== '') {

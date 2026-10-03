@@ -222,6 +222,29 @@
             document.body.removeChild(link);
         };
     </script>
+    @php
+        $dynSvc = app(\App\Services\DynamicValidationService::class);
+        $activeDynMod = $dynSvc->resolveModuleFromRequest();
+        $activeDynConfigs = $activeDynMod ? $dynSvc->getConfigsForModule($activeDynMod)->values() : collect();
+        $activeDynConfigsJson = $activeDynConfigs->isNotEmpty() ? $activeDynConfigs->map(function($c) {
+            return [
+                'field_name' => $c->field_name,
+                'field_label' => $c->field_label,
+                'field_type' => $c->field_type,
+                'is_required' => (bool)$c->is_required,
+                'is_readonly' => (bool)$c->is_readonly,
+                'block_future_date' => (bool)$c->block_future_date,
+                'is_unique' => (bool)$c->is_unique,
+                'custom_error_message' => $c->custom_error_message,
+            ];
+        })->toJson() : '[]';
+    @endphp
+    @if($activeDynConfigs->isNotEmpty())
+    <script>
+        window.DYNAMIC_FORM_MODULE = {!! json_encode($activeDynMod) !!};
+        window.DYNAMIC_FORM_CONFIGS = {!! $activeDynConfigsJson !!};
+    </script>
+    @endif
     <script src="{{ asset('js/pos-hotkeys.js') }}?v={{ file_exists(public_path('js/pos-hotkeys.js')) ? filemtime(public_path('js/pos-hotkeys.js')) : '1.0' }}"></script>
     <script src="{{ asset('js/pos-latency-monitor.js') }}?v={{ file_exists(public_path('js/pos-latency-monitor.js')) ? filemtime(public_path('js/pos-latency-monitor.js')) : '1.0' }}"></script>
     <script src="{{ asset('js/pos-telemetry.js') }}?v={{ file_exists(public_path('js/pos-telemetry.js')) ? filemtime(public_path('js/pos-telemetry.js')) : '1.0' }}"></script>

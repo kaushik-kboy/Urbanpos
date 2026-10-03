@@ -227,19 +227,20 @@
 
         // 2. Check compulsory / required for Header or Standard fields
         if (required) {
+            const customMsg = $field.data('custom-error-message');
             if ($field.is('select')) {
                 if (val === null || val === undefined || String(val).trim() === '') {
                     const label = getFieldLabel($field);
-                    return { valid: false, message: 'Please select ' + label + ' before proceeding.' };
+                    return { valid: false, message: customMsg || ('Please select ' + label + ' before proceeding.') };
                 }
             } else if ($field.is(':checkbox')) {
                 if (!$field.is(':checked')) {
-                    return { valid: false, message: 'This checkbox is required.' };
+                    return { valid: false, message: customMsg || 'This checkbox is required.' };
                 }
             } else if ($field.is(':radio')) {
                 const name = $field.attr('name');
                 if (!$('input[name="' + name + '"]:checked').length) {
-                    return { valid: false, message: 'Please make a selection.' };
+                    return { valid: false, message: customMsg || 'Please make a selection.' };
                 }
             } else {
                 if (!$field.is('[type="datetime-local"], [type="time"]') && ($field.hasClass('datepicker') || $field.is('[type="date"]') || ($field.attr('name') && $field.attr('name').includes('date')))) {
@@ -255,7 +256,7 @@
                 }
                 if (!val || String(val).trim() === '') {
                     const label = getFieldLabel($field);
-                    return { valid: false, message: label + ' is compulsory and cannot be empty.' };
+                    return { valid: false, message: customMsg || (label + ' is compulsory and cannot be empty.') };
                 }
             }
         }
@@ -264,9 +265,10 @@
         var maxAttr = $field.attr('max');
         var blockFuture = $field.data('block-future-date') || Boolean(maxAttr);
         if (blockFuture && val && String(val).trim() !== '') {
+            const dateCustomMsg = $field.data('custom-error-message');
             if ($field.is('[type="datetime-local"]')) {
                 if (maxAttr && val > maxAttr) {
-                    return { valid: false, message: 'Future date & time is not allowed for this field.' };
+                    return { valid: false, message: dateCustomMsg || 'Future date & time is not allowed for this field.' };
                 }
             } else if (!$field.is('[type="time"]')) {
                 var rawStr = String(val).trim();
@@ -280,7 +282,7 @@
                     var maxIso = (maxAttr && /^\d{4}-\d{2}-\d{2}$/.test(maxAttr)) ? maxAttr : todayIso;
 
                     if (inputIso > maxIso) {
-                        return { valid: false, message: 'Future date is not allowed for this field.' };
+                        return { valid: false, message: dateCustomMsg || 'Future date is not allowed for this field.' };
                     }
                 }
             }
@@ -459,6 +461,90 @@
         // Track the current active input
         let currentActiveControl = null;
         let isRedirecting = false;
+
+        // 0. DYNAMIC FORM VALIDATIONS INTEGRATION (from Tools -> Form Field Validations)
+        function applyDynamicFormValidations() {
+            if (!window.DYNAMIC_FORM_CONFIGS || !Array.isArray(window.DYNAMIC_FORM_CONFIGS) || !window.DYNAMIC_FORM_CONFIGS.length) {
+                return;
+            }
+
+            const autoDocs = [
+                'bill_number', 'invoice_number', 'po_number', 'return_number', 'indent_number',
+                'receipt_number', 'delivery_number', 'transfer_number', 'entry_number',
+                'damage_number', 'update_number', 'grn_number', 'voucher_number', 'quotation_number', 'order_number'
+            ];
+
+            window.DYNAMIC_FORM_CONFIGS.forEach(function (cfg) {
+                if (!cfg || !cfg.field_name) return;
+
+                const fn = cfg.field_name;
+                const selectors = [
+                    `input[name="${fn}"]`,
+                    `select[name="${fn}"]`,
+                    `textarea[name="${fn}"]`,
+                    `#${fn}`,
+                    `[data-field="${fn}"] input`,
+                    `[data-field="${fn}"] select`,
+                    `[data-field="${fn}"] textarea`
+                ];
+                const $el = $(selectors.join(', ')).filter(':not([type="hidden"])');
+                if (!$el.length) return;
+
+                const $wrapper = $el.closest('.form-group, .field-wrapper');
+
+                // 1. Readonly toggle
+                if (cfg.is_readonly) {
+                    $el.each(function () {
+                        const $input = $(this);
+                        $input.prop('readonly', true).attr('readonly', 'readonly');
+                        $input.addClass('bg-light').css({ 'background-color': '#e9ecef', 'cursor': 'not-allowed' });
+                        if ($input[0]._flatpickr) {
+                            try { $input[0]._flatpickr.destroy(); } catch (e) {}
+                            $input.prop('readonly', true).attr('readonly', 'readonly');
+                        }
+                        if ($input.is('select')) {
+                            $input.css({ 'pointer-events': 'none', 'background-color': '#e9ecef' }).attr('tabindex', '-1');
+                            $input.next('.select2-container').css({ 'pointer-events': 'none', 'opacity': '0.85' });
+                        }
+                    });
+                }
+
+                // 2. Required toggle
+                if (cfg.is_required) {
+                    if (!autoDocs.includes(fn)) {
+                        $el.prop('required', true).attr('required', 'required');
+                        if ($wrapper.length && $wrapper.find('label .text-danger, label .required').length === 0) {
+                            const $label = $wrapper.find('label').first();
+                            if ($label.length) {
+                                $label.append(' <span class="text-danger font-weight-bold">*</span>');
+                            }
+                        }
+                    }
+                } else if (!cfg.is_required && !['name', 'branch_id', 'supplier_id', 'customer_id'].includes(fn)) {
+                    $el.prop('required', false).removeAttr('required');
+                    if ($wrapper.length) {
+                        $wrapper.find('label .text-danger, label .required').remove();
+                    }
+                }
+
+                // 3. Block future date
+                if (cfg.block_future_date && (cfg.field_type === 'date' || cfg.field_type === 'datetime')) {
+                    const today = new Date().toISOString().substring(0, 10);
+                    $el.attr('max', today);
+                    $el.data('block-future-date', true);
+                }
+
+                // 4. Custom error message
+                if (cfg.custom_error_message) {
+                    $el.data('custom-error-message', cfg.custom_error_message);
+                }
+            });
+        }
+
+        // Apply immediately and on dynamic modal opens
+        applyDynamicFormValidations();
+        $(document).on('shown.bs.modal', applyDynamicFormValidations);
+        setTimeout(applyDynamicFormValidations, 250);
 
         function isManagedForm($form) {
             if (!$form || !$form.length) return false;

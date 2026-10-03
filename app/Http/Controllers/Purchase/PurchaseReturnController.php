@@ -322,7 +322,22 @@ class PurchaseReturnController extends Controller
                 ]);
 
             if ($search !== '') {
-                $query->where('i.name', 'like', "%{$search}%");
+                $tokens = array_values(array_filter(preg_split('/\s+/', $search), fn($t) => $t !== ''));
+                foreach ($tokens as $token) {
+                    if (preg_match('/^(\d+(?:\.\d+)?)([a-zA-Z]+)$/', $token, $m)) {
+                        $num = $m[1];
+                        $unit = $m[2];
+                        $query->where(function ($q) use ($token, $num, $unit) {
+                            $q->where('i.name', 'like', "%{$token}%")
+                              ->orWhere(function ($q2) use ($num, $unit) {
+                                  $q2->where('i.name', 'like', "%{$num}%")
+                                     ->where('i.name', 'like', "%{$unit}%");
+                              });
+                        });
+                    } else {
+                        $query->where('i.name', 'like', "%{$token}%");
+                    }
+                }
             }
             if ($code !== '') {
                 $query->where(function ($cq) use ($code) {

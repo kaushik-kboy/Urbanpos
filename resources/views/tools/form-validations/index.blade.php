@@ -158,7 +158,7 @@
                                             $isDateField = in_array($field->field_type, ['date', 'datetime'], true);
                                             $isProtectedCore = in_array($field->field_name, [
                                                 'name', 'branch_id', 'supplier_id', 'customer_id', 'from_branch_id', 'to_branch_id',
-                                                'bill_number', 'invoice_number', 'po_number', 'item_code', 'code'
+                                                'item_code', 'code'
                                             ], true);
                                         @endphp
                                         <tr class="field-row" data-field-name="{{ strtolower($field->field_name) }}" data-field-label="{{ strtolower($field->field_label) }}">

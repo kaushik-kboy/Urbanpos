@@ -270,7 +270,7 @@ class CustomerController extends Controller
             $activeSalesTypes = ['Local', 'Interstate'];
         }
 
-        $validated = $request->validate([
+        $rules = [
             // General
             'title' => ['nullable', 'in:Mr,Ms,Mrs,M/s,Dr'],
             'name' => ['required', 'string', 'max:255'],
@@ -308,13 +308,19 @@ class CustomerController extends Controller
             'gender' => ['nullable', 'in:Male,Female'],
             'exempted_reason' => ['nullable', 'string', 'max:255'],
             'customer_type' => ['required', Rule::in($activeCustomerTypes)],
-        ], [
+        ];
+
+        $messages = [
             'mobile.required' => 'Customer mobile number is required.',
             'mobile.digits' => 'Customer mobile number must be exactly 10 digits.',
             'mobile.unique' => 'A customer with this mobile number already exists.',
             'customer_type.in' => 'Selected Customer Type is invalid or inactive.',
             'sales_type.in' => 'Selected Sales Type is invalid or inactive.',
-        ]);
+        ];
+
+        app(\App\Services\DynamicValidationService::class)->applyTo('customers', $rules, $messages, $customer?->id);
+
+        $validated = $request->validate($rules, $messages);
 
         if ($request->has('pets')) {
             foreach ($request->input('pets', []) as $idx => $pet) {

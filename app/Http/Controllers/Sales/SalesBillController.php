@@ -957,27 +957,58 @@ class SalesBillController extends Controller
             $sExact  = $search;
             $sPrefix = "{$search}%";
 
+            // Multi-token fuzzy matching: e.g. "item 30 kg" matches "item b 30 kg"
+            // Also handles unit combos: e.g. "30kg" matches both "30kg" and "30 kg"
+            $tokens = array_values(array_filter(preg_split('/\s+/', $search), fn($t) => $t !== ''));
+            $tokenConds = [];
+            $tokenParams = [];
+
+            foreach ($tokens as $token) {
+                if (preg_match('/^(\d+(?:\.\d+)?)([a-zA-Z]+)$/', $token, $m)) {
+                    $num = $m[1];
+                    $unit = $m[2];
+                    $tokenConds[] = '(name LIKE ? OR (name LIKE ? AND name LIKE ?))';
+                    $tokenParams[] = "%{$token}%";
+                    $tokenParams[] = "%{$num}%";
+                    $tokenParams[] = "%{$unit}%";
+                } else {
+                    $tokenConds[] = 'name LIKE ?';
+                    $tokenParams[] = "%{$token}%";
+                }
+            }
+
+            $nameWhereSql = $tokenConds ? implode(' AND ', $tokenConds) : 'name LIKE ?';
+            if (!$tokenConds) {
+                $tokenParams[] = $sWild;
+            }
+
             // Barcode (ean_upc_code) only matches exact or prefix — never substring in middle of 13-digit barcode!
             // Item code matches exact or prefix
-            // Item name matches substring
-            // Candidate ids come from separate index-friendly lookups joined in (an OR across four columns
-            // forced a per-row evaluation of the whole item x stock join: ~2x slower).
-            $candJoins[] = 'INNER JOIN (SELECT id FROM items WHERE name LIKE ? UNION SELECT id FROM items WHERE item_code = ? UNION SELECT id FROM items WHERE item_code LIKE ? UNION SELECT id FROM items WHERE ean_upc_code = ? UNION SELECT id FROM items WHERE ean_upc_code LIKE ?) cs ON cs.id = i.id';
-            $candParams  = array_merge($candParams, [$sWild, $sExact, $sPrefix, $sExact, $sPrefix]);
+            // Item name matches multi-token or contiguous phrase
+            $candJoins[] = "INNER JOIN (
+                SELECT id FROM items WHERE ({$nameWhereSql})
+                UNION SELECT id FROM items WHERE item_code = ?
+                UNION SELECT id FROM items WHERE item_code LIKE ?
+                UNION SELECT id FROM items WHERE ean_upc_code = ?
+                UNION SELECT id FROM items WHERE ean_upc_code LIKE ?
+            ) cs ON cs.id = i.id";
+            $candParams  = array_merge($candParams, $tokenParams, [$sExact, $sPrefix, $sExact, $sPrefix]);
 
-            // Rank exact code / barcode match first, then prefix, then name
+            // Rank exact code / barcode match first, then prefix, then exact name, then prefix, then phrase, then multi-token
             $orderSql = "
                 CASE
                     WHEN i.item_code = ? THEN 1
                     WHEN i.ean_upc_code = ? THEN 2
                     WHEN i.item_code LIKE ? THEN 3
                     WHEN i.ean_upc_code LIKE ? THEN 4
-                    WHEN i.name LIKE ? THEN 5
-                    ELSE 6
+                    WHEN i.name = ? THEN 5
+                    WHEN i.name LIKE ? THEN 6
+                    WHEN i.name LIKE ? THEN 7
+                    ELSE 8
                 END ASC,
                 i.name ASC
             ";
-            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sPrefix];
+            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sExact, $sPrefix, $sWild];
         }
 
         if ($code !== '') {

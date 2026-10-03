@@ -285,6 +285,68 @@ class DynamicValidationService
     }
 
     /**
+     * Resolve module key from current HTTP Request.
+     */
+    public function resolveModuleFromRequest(?\Illuminate\Http\Request $request = null): ?string
+    {
+        $request = $request ?: (function_exists('request') ? request() : null);
+        if (!$request) {
+            return null;
+        }
+
+        $uri = trim((string) $request->path(), '/');
+        $routeName = (string) ($request->route() ? $request->route()->getName() : '');
+
+        $map = [
+            'sales/sales-bills' => 'sales_bills',
+            'sales.sales-bills' => 'sales_bills',
+            'pos' => 'sales_bills',
+            'sales/sales-returns' => 'sales_returns',
+            'sales.sales-returns' => 'sales_returns',
+            'sales/sales-quotations' => 'sales_quotations',
+            'sales.sales-quotations' => 'sales_quotations',
+            'sales/sales-orders' => 'sales_orders',
+            'sales.sales-orders' => 'sales_orders',
+            'sales/delivery-notes' => 'sales_delivery_notes',
+            'sales.delivery-notes' => 'sales_delivery_notes',
+            'purchase/purchase-invoices' => 'purchase_invoices',
+            'purchase.purchase-invoices' => 'purchase_invoices',
+            'purchase/purchase-orders' => 'purchase_orders',
+            'purchase.purchase-orders' => 'purchase_orders',
+            'purchase/receipt-notes' => 'purchase_receipt_notes',
+            'purchase.receipt-notes' => 'purchase_receipt_notes',
+            'purchase/purchase-indents' => 'purchase_indents',
+            'purchase.purchase-indents' => 'purchase_indents',
+            'purchase/purchase-returns' => 'purchase_returns',
+            'purchase.purchase-returns' => 'purchase_returns',
+            'inventory/stock-transfers' => 'stock_transfers',
+            'inventory.stock-transfers' => 'stock_transfers',
+            'inventory/opening-stocks' => 'opening_stocks',
+            'inventory.opening-stocks' => 'opening_stocks',
+            'inventory/damage-stocks' => 'damage_stocks',
+            'inventory.damage-stocks' => 'damage_stocks',
+            'inventory/stock-updates' => 'stock_updates',
+            'inventory.stock-updates' => 'stock_updates',
+            'master/customers' => 'customers',
+            'master.customers' => 'customers',
+            'master/suppliers' => 'suppliers',
+            'master.suppliers' => 'suppliers',
+            'master/items' => 'items',
+            'master.items' => 'items',
+            'master/branches' => 'branches',
+            'master.branches' => 'branches',
+        ];
+
+        foreach ($map as $key => $module) {
+            if (str_starts_with($uri, $key) || str_starts_with($routeName, $key)) {
+                return $module;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Clear cached validation rules.
      */
     public function clearCache(?string $moduleKey = null): void
