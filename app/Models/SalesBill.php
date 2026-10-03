@@ -36,6 +36,29 @@ class SalesBill extends Model
         'einvoice_synced_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function ($bill) {
+            if (empty($bill->bill_date)) {
+                $bill->bill_date = \Carbon\Carbon::now('Asia/Kolkata');
+            } elseif ($bill->bill_date instanceof \DateTimeInterface) {
+                $bill->bill_date = \Carbon\Carbon::instance($bill->bill_date)->setTimezone('Asia/Kolkata');
+            } else {
+                $bill->bill_date = \Carbon\Carbon::parse($bill->bill_date, 'Asia/Kolkata')->setTimezone('Asia/Kolkata');
+            }
+        });
+
+        static::updating(function ($bill) {
+            if ($bill->isDirty('bill_date') && !empty($bill->bill_date)) {
+                if ($bill->bill_date instanceof \DateTimeInterface) {
+                    $bill->bill_date = \Carbon\Carbon::instance($bill->bill_date)->setTimezone('Asia/Kolkata');
+                } else {
+                    $bill->bill_date = \Carbon\Carbon::parse($bill->bill_date, 'Asia/Kolkata')->setTimezone('Asia/Kolkata');
+                }
+            }
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

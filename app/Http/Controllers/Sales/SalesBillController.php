@@ -288,6 +288,12 @@ class SalesBillController extends Controller
             }
 
             $salesBill = DB::transaction(function () use ($data, $request) {
+                if (!empty($data['header']['bill_date'])) {
+                    $data['header']['bill_date'] = \Carbon\Carbon::parse($data['header']['bill_date'], 'Asia/Kolkata')->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
+                } else {
+                    $data['header']['bill_date'] = \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m-d H:i:s');
+                }
+
                 $lines = $this->computeLines($data['items'], $data['header']);
                 
                 // If converted from delivery note, physical stock was already deducted at dispatch
@@ -511,6 +517,10 @@ class SalesBillController extends Controller
         $oldTotal = (float) $salesBill->total;
 
         DB::transaction(function () use ($data, $salesBill, $oldCustomerId, $oldTotal) {
+            if (!empty($data['header']['bill_date'])) {
+                $data['header']['bill_date'] = \Carbon\Carbon::parse($data['header']['bill_date'], 'Asia/Kolkata')->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
+            }
+
             $this->stockLedger->reverseByReference(SalesBill::class, $salesBill->id);
 
             $lines = $this->computeLines($data['items'], $data['header']);
@@ -1455,7 +1465,7 @@ class SalesBillController extends Controller
         })->values()->all();
         $request->merge(['items' => $filteredItems]);
 
-        $now = now()->addMinutes(2)->format('Y-m-d H:i:s');
+        $now = now()->setTimezone('Asia/Kolkata')->addMinutes(5)->format('Y-m-d H:i:s');
         $headerRules = [
             'bill_number' => ['nullable', 'string', 'max:100'],
             'bill_date' => ['required', 'date', 'after_or_equal:2020-01-01 00:00:00', "before_or_equal:{$now}"],

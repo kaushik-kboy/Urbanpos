@@ -1058,7 +1058,7 @@
                     <td class="text-center" style="width: 75px;">
                         <input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" placeholder="0" value="${discPctVal}" data-idx="${idx}" data-field="disc_percent">
                     </td>
-                    <td class="text-center" style="width: 80px;">
+                    <td class="text-center" style="width: 83px;">
                         <input type="number" step="0.01" min="0" class="pos-row-input pos-disc-amount text-right" placeholder="0.00" value="${discAmtVal}" data-idx="${idx}" data-field="disc_amount">
                     </td>
                     <td class="text-right font-weight-bold text-success pos-row-net" data-idx="${idx}" style="width: 95px; font-size: 0.95rem;">
@@ -2194,7 +2194,7 @@
         const payload = {
             _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || window.CSRF_TOKEN,
             posting_key: 'pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-            bill_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            bill_date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
             customer_id: state.customer_id,
             branch_id: state.branch_id,
             user_id: document.getElementById('posBillerSelect')?.value || null,

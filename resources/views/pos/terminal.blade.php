@@ -106,7 +106,7 @@
                             <th class="text-right" style="width: 80px;">Sell</th>
                             <th class="text-right" style="width: 80px;">MRP</th>
                             <th class="text-center" style="width: 75px;">Dis %</th>
-                            <th class="text-center" style="width: 80px;">Dis Amt</th>
+                            <th class="text-center" style="width: 83px;">Dis Amt</th>
                             <th class="text-right" style="width: 95px;">Net Amount</th>
                             <th class="text-center" style="width: 35px;"></th>
                         </tr>

@@ -478,18 +478,18 @@
                 <i class="far fa-calendar-alt text-primary mr-1"></i> Bill Date & Time <span class="text-danger">*</span>
             </label>
             @php
-                $billDateVal = now();
+                $billDateVal = now()->setTimezone('Asia/Kolkata');
                 if (isset($bill) && $bill->bill_date) {
-                    $billDateVal = $bill->bill_date;
+                    $billDateVal = $bill->bill_date->copy()->setTimezone('Asia/Kolkata');
                     if ($billDateVal->format('H:i:s') === '00:00:00' && $bill->created_at) {
-                        $billDateVal = $bill->bill_date->copy()->setTimeFrom($bill->created_at);
+                        $billDateVal = $billDateVal->setTimeFrom($bill->created_at->copy()->setTimezone('Asia/Kolkata'));
                     }
                 }
             @endphp
             <input type="datetime-local" name="bill_date" id="bill_date" 
                    class="form-control @error('bill_date') is-invalid @enderror" 
                    value="{{ old('bill_date', $billDateVal->format('Y-m-d\TH:i')) }}" 
-                   min="2020-01-01T00:00" max="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}" required>
+                   min="2020-01-01T00:00" max="{{ now()->setTimezone('Asia/Kolkata')->addMinutes(5)->format('Y-m-d\TH:i') }}" required>
             @error('bill_date')
                 <div class="invalid-feedback d-block">{{ $message }}</div>
             @enderror
@@ -2410,10 +2410,18 @@
                 isValid = false;
             }
 
+            function getIndianDateTimeIso() {
+                try {
+                    return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).replace(' ', 'T').slice(0, 16);
+                } catch(e) {
+                    const d = new Date();
+                    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                }
+            }
+
             let $date = $('input[name="bill_date"]');
             const dateVal = $date.val();
-            const now = new Date();
-            const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            const localIso = getIndianDateTimeIso();
             const yearMatch = dateVal ? dateVal.match(/^(\d{4})/) : null;
             const parsedYear = yearMatch ? parseInt(yearMatch[1], 10) : 0;
 
@@ -3838,9 +3846,8 @@
                 $('#sb-loyalty-pts').text('0.00');
                 $('#sb-loyalty-val').text('0.00');
 
-                // Reset bill date to current local datetime
-                const now = new Date();
-                const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                // Reset bill date to current Indian Standard Time (Asia/Kolkata)
+                const localIso = getIndianDateTimeIso();
                 $('#bill_date').val(localIso).trigger('change');
                 $('#bill_date').removeClass('is-invalid');
                 $('#bill_date_future_error').remove();
@@ -3897,8 +3904,7 @@
 
         // Prevent future dates and unrealistic years on bill_date
         $('#bill_date').on('change blur', function () {
-            const now = new Date();
-            const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            const localIso = getIndianDateTimeIso();
             let $dateFeedback = $('#bill_date_future_error');
             if (!$dateFeedback.length) {
                 $dateFeedback = $('<div id="bill_date_future_error" class="invalid-feedback text-danger font-weight-bold d-block mt-1"></div>');
