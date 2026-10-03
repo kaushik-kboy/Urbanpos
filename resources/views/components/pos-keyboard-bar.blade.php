@@ -8,36 +8,36 @@
         </span>
     </div>
 
-    <div class="pos-shortcuts-group d-flex align-items-center flex-nowrap" style="gap: 4px;">
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('search_item');" title="Search Item / Barcode (F2)">
+    <div class="pos-shortcuts-group d-flex align-items-center flex-nowrap" style="gap: 6px;">
+        <button type="button" tabindex="-1" class="btn font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('search_item');" title="Search Item / Barcode (F2)">
             <span class="badge badge-primary mr-1">F2</span> Item Search
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('new_entry');" title="Create New Record (F3)">
+        <button type="button" tabindex="-1" class="btn font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('new_entry');" title="Create New Record (F3)">
             <span class="badge badge-info mr-1">F3</span> New
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('edit_entry');" title="Edit Record (F4)">
+        <button type="button" tabindex="-1" class="btn font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('edit_entry');" title="Edit Record (F4)">
             <span class="badge badge-secondary mr-1">F4</span> Edit
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('view_records');" title="View Records / List (F7)">
-            <span class="badge badge-info mr-1" style="background-color: #6C3BE8; color: #fff;">F7</span> View
+        <button type="button" tabindex="-1" class="btn font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('view_records');" title="View Records / List (F7)">
+            <span class="badge badge-info mr-1" style="background-color: #6C3BE8 !important; color: #fff !important;">F7</span> View
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs btn-outline-success font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('save_form');" title="Save Bill / Tender (F6)">
+        <button type="button" tabindex="-1" class="btn btn-outline-success font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('save_form');" title="Save Bill / Tender (F6)">
             <span class="badge badge-success mr-1">F6</span> Save &amp; Tender
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('print_form');" title="Print Slip (F8)">
+        <button type="button" tabindex="-1" class="btn font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('print_form');" title="Print Slip (F8)">
             <span class="badge badge-warning mr-1">F8</span> Print
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs btn-outline-warning font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('clear_form');" title="Clear / Reset (F9)">
+        <button type="button" tabindex="-1" class="btn btn-outline-warning font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('clear_form');" title="Clear / Reset (F9)">
             <span class="badge badge-danger mr-1">F9</span> Reset
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-xs font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('close_modal');" title="Close Modal / Back (F10 / Esc)">
+        <button type="button" tabindex="-1" class="btn font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('close_modal');" title="Close Modal / Back (F10 / Esc)">
             <span class="badge badge-light mr-1">F10</span> Close/Back
         </button>
     </div>

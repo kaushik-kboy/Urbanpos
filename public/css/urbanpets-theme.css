@@ -647,18 +647,19 @@ p, span, label, small {
     z-index: 1035 !important;
     background-color: #FFFFFF !important;
     border-top: 1px solid var(--up-border) !important;
-    box-shadow: 0 -4px 18px rgba(11, 31, 82, 0.07) !important;
+    box-shadow: 0 -4px 18px rgba(11, 31, 82, 0.08) !important;
     color: var(--up-text-primary) !important;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    font-size: 11.5px !important;
-    min-height: 38px !important;
-    height: 38px !important;
-    padding: 2px 10px !important;
+    font-size: 0.95rem !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    padding: 4px 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     flex-wrap: nowrap !important;
-    overflow: hidden !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
     user-select: none !important;
     transition: left 0.3s ease-in-out !important;
 }
@@ -677,7 +678,7 @@ p, span, label, small {
 
 /* Ensure page body has adequate clearance for the fixed bottom bar */
 body {
-    padding-bottom: 44px !important;
+    padding-bottom: 54px !important;
 }
 
 /* Shortcuts Tag & Latency Indicator */
@@ -685,9 +686,9 @@ body {
     background-color: var(--up-blue-soft) !important;
     color: var(--up-blue) !important;
     border: 1px solid var(--up-blue-border) !important;
-    font-size: 10.5px !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
-    padding: 2px 6px !important;
+    padding: 3px 8px !important;
     border-radius: 5px !important;
     letter-spacing: 0.03em !important;
 }
@@ -697,10 +698,10 @@ body {
     background-color: var(--up-bg) !important;
     border: 1px solid var(--up-border) !important;
     color: var(--up-text-primary) !important;
-    font-size: 10.5px !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
     border-radius: 5px !important;
-    padding: 2px 6px !important;
+    padding: 3px 8px !important;
     transition: all 0.15s ease !important;
 }
 
@@ -743,40 +744,41 @@ body {
 /* Center Action Shortcut Buttons */
 .pos-keyboard-bar .btn {
     background-color: #FFFFFF !important;
-    border: 1px solid var(--up-border) !important;
-    color: var(--up-text-primary) !important;
-    font-size: 11.5px !important;
-    font-weight: 600 !important;
-    padding: 2px 6px !important;
+    border: 1px solid #ced4da !important;
+    color: #212529 !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    padding: 4px 10px !important;
+    height: 36px !important;
     border-radius: 5px !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 3px !important;
-    box-shadow: 0 1px 2px rgba(11, 31, 82, 0.04) !important;
+    gap: 4px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
     transition: all 0.15s ease !important;
     white-space: nowrap !important;
     flex-shrink: 0 !important;
-    line-height: 1.4 !important;
+    line-height: 1.2 !important;
 }
 
 .pos-keyboard-bar .btn:hover {
-    background-color: var(--up-bg) !important;
-    border-color: #B9D0F3 !important;
-    color: var(--up-blue) !important;
+    background-color: #f1f5f9 !important;
+    border-color: #007bff !important;
+    color: #0056b3 !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 2px 5px rgba(23, 105, 232, 0.12) !important;
+    box-shadow: 0 3px 6px rgba(0, 123, 255, 0.16) !important;
 }
 
 /* Keycaps inside Action Buttons */
 .pos-keyboard-bar .btn .badge {
     font-family: 'Inter', -apple-system, monospace !important;
-    font-size: 10px !important;
-    font-weight: 700 !important;
-    padding: 1px 4px !important;
-    border-radius: 3px !important;
-    letter-spacing: 0.02em !important;
-    box-shadow: 0 1px 1px rgba(11, 31, 82, 0.06) !important;
-    margin-right: 2px !important;
+    font-size: 0.92rem !important;
+    font-weight: 800 !important;
+    padding: 2px 7px !important;
+    border-radius: 4px !important;
+    letter-spacing: 0.03em !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+    margin-right: 3px !important;
 }
 
 /* F2 Item Search: Soft Blue */
@@ -935,16 +937,20 @@ body {
 /* Responsive No-Scroll Optimizations */
 @media (max-width: 1400px) {
     .pos-keyboard-bar {
-        padding: 2px 6px !important;
+        padding: 3px 8px !important;
     }
     .pos-keyboard-bar .btn {
+        padding: 3px 8px !important;
+        font-size: 0.88rem !important;
+    }
+    .pos-keyboard-bar .btn .badge {
+        font-size: 0.85rem !important;
         padding: 2px 5px !important;
-        font-size: 11px !important;
     }
     .pos-keyboard-bar a.badge-dark,
     .pos-keyboard-bar a.badge {
-        padding: 2px 4px !important;
-        font-size: 10.5px !important;
+        padding: 2px 5px !important;
+        font-size: 11px !important;
     }
 }
 
