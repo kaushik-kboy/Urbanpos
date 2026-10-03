@@ -45,7 +45,6 @@ class SalesBillController extends Controller
     public function index(Request $request)
     {
         $query = SalesBill::with(['customer', 'branch', 'payments.tenderType'])
-            ->orderByDesc('bill_date')
             ->orderByDesc('id');
 
         if ($request->filled('search')) {
@@ -592,8 +591,7 @@ class SalesBillController extends Controller
 
         $bills = SalesBill::where('customer_id', $customer->id)
             ->withCount('items')
-            ->orderBy('bill_date', 'desc')
-            ->orderBy('id', 'desc')
+            ->orderByDesc('id')
             ->limit(100)
             ->get(['id', 'bill_number', 'bill_date', 'created_at', 'total', 'invoice_type', 'status'])
             ->map(function ($bill) {

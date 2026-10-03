@@ -201,11 +201,9 @@
                 let loc = window.location.pathname;
                 if (loc.includes('/pos')) {
                     if ($('#posListModal').length) {
-                        let listUrl = (window.APP_URL || '') + '/sales/sales-bills?is_iframe=1&mode=edit';
-                        if ($('#posListIframe').attr('src') !== listUrl) {
-                            $('#posListLoader').css('display', 'flex');
-                            $('#posListIframe').attr('src', listUrl);
-                        }
+                        let listUrl = (window.APP_URL || '') + '/sales/sales-bills?is_iframe=1&mode=edit&_t=' + Date.now();
+                        $('#posListLoader').css('display', 'flex');
+                        $('#posListIframe').attr('src', listUrl);
                         $('#posListModal').modal('show');
                     } else {
                         navigateTo('sales/sales-bills');
@@ -295,11 +293,9 @@
                 // POS terminal — show the sales bill list in a modal
                 if (loc.includes('/pos')) {
                     if ($('#posListModal').length) {
-                        let listUrl = (window.APP_URL || '') + '/sales/sales-bills?is_iframe=1&mode=view';
-                        if ($('#posListIframe').attr('src') !== listUrl) {
-                            $('#posListLoader').css('display', 'flex');
-                            $('#posListIframe').attr('src', listUrl);
-                        }
+                        let listUrl = (window.APP_URL || '') + '/sales/sales-bills?is_iframe=1&mode=view&_t=' + Date.now();
+                        $('#posListLoader').css('display', 'flex');
+                        $('#posListIframe').attr('src', listUrl);
                         $('#posListModal').modal('show');
                     } else {
                         navigateTo('sales/sales-bills');

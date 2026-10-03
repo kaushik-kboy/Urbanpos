@@ -1307,6 +1307,18 @@
             });
             syncPosBranchStaff(branchSelect.value);
         }
+
+        $('#posListModal').on('show.bs.modal', function () {
+            const iframe = document.getElementById('posListIframe');
+            if (iframe) {
+                let src = iframe.getAttribute('src') || '';
+                let mode = src.includes('mode=edit') ? 'edit' : 'view';
+                let listUrl = (window.APP_URL || '') + '/sales/sales-bills?is_iframe=1&mode=' + mode + '&_t=' + Date.now();
+                const loader = document.getElementById('posListLoader');
+                if (loader) loader.style.display = 'flex';
+                iframe.src = listUrl;
+            }
+        });
     });
 
     // Digital Clock
