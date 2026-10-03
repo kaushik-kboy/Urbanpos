@@ -470,6 +470,22 @@
         $('.form-customizer-wrapper').each(function() {
             initCustomizerWrapper($(this));
         });
+
+        // Nested modal z-index & backdrop handling
+        $(document).on('show.bs.modal', '.modal', function () {
+            var zIndex = 1050 + (10 * $('.modal:visible').length);
+            $(this).css('z-index', zIndex);
+            setTimeout(function() {
+                $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+            }, 0);
+        });
+        $(document).on('hidden.bs.modal', '.modal', function () {
+            if ($('.modal:visible').length > 0) {
+                setTimeout(function() {
+                    $(document.body).addClass('modal-open');
+                }, 0);
+            }
+        });
     });
 })();
 </script>

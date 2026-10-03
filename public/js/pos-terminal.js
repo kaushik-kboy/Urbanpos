@@ -14,7 +14,7 @@
         sales_type: 'Local',
         delivery_type: 'Delivered',
         bill_discount: 0,
-        tender_mode: 'Cash', // Cash, UPI, Card, Split
+        tender_mode: null, // Cash, UPI, Card, Split, Credit (No default mode)
         split_payments: {
             cash: 0,
             card: 0,
@@ -219,24 +219,24 @@
         document.getElementById('posBtnSaveOnly')?.addEventListener('click', () => submitSale('save'));
         document.getElementById('posBtnSaveWhatsApp')?.addEventListener('click', () => submitSale('whatsapp'));
         document.getElementById('posBtnCancelTender')?.addEventListener('click', function () {
-            state.tender_mode = 'Cash';
+            state.tender_mode = null;
             state.cash_received = 0;
             state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
             $('#posSplitRowCash, #posSplitRowCard, #posSplitRowWallet, #posSplitRowCredit').hide();
             $('#posSplitDispTotal').text('₹ 0.00');
             $('#posSplitSection').hide();
             document.querySelectorAll('.pos-tender-btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.mode === 'Cash');
+                b.classList.remove('active');
             });
             toggleTenderControls();
             if (cashReceivedInput) cashReceivedInput.value = '';
-            showNotification('Tender selection reset to default Cash', 'info');
+            showNotification('Payment mode selection cleared', 'info');
         });
 
         // Action bar buttons
         document.getElementById('posHoldBtn')?.addEventListener('click', holdCurrentBill);
         document.getElementById('posRecallBtn')?.addEventListener('click', recallHeldBill);
-        document.getElementById('posClearBtn')?.addEventListener('click', clearCart);
+        document.getElementById('posClearBtn')?.addEventListener('click', resetTerminalAll);
 
         // Split modal handlers
         $(document).on('input', '.split-input', function () {
@@ -389,7 +389,15 @@
         $(document).on('input change', '.pos-disc-percent', function () {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
-            const val = parseFloat($(this).val()) || 0;
+            let val = parseFloat($(this).val()) || 0;
+            if (val > 100) {
+                val = 100;
+                $(this).val(100);
+                showNotification('Discount cannot exceed 100%', 'warning');
+            } else if (val < 0) {
+                val = 0;
+                $(this).val(0);
+            }
             state.cart[idx].disc_percent = val;
             recalculateRow(idx, 'percent');
         });
@@ -397,7 +405,17 @@
         $(document).on('input change', '.pos-disc-amount', function () {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
-            const val = parseFloat($(this).val()) || 0;
+            let val = parseFloat($(this).val()) || 0;
+            const item = state.cart[idx];
+            const base = (item.qty || 1) * (item.sell_price || 0);
+            if (base > 0 && val > base) {
+                val = base;
+                $(this).val(base.toFixed(2));
+                showNotification('Discount amount cannot exceed 100% of line total', 'warning');
+            } else if (val < 0) {
+                val = 0;
+                $(this).val('0.00');
+            }
             state.cart[idx].disc_amount = val;
             recalculateRow(idx, 'amount');
         });
@@ -741,6 +759,8 @@
 
             state.cart[existingIdx].qty += 1;
             if (availableStock !== null) state.cart[existingIdx].stock = availableStock;
+            const existingQtyInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${existingIdx}"]`) : null;
+            if (existingQtyInput) existingQtyInput.value = state.cart[existingIdx].qty;
             recalculateRow(existingIdx, 'qty');
             targetIdx = existingIdx;
         } else {
@@ -789,11 +809,16 @@
         const item = state.cart[idx];
         if (!item) return;
 
-        const base = item.qty * item.sell_price;
+        const base = Math.max(0, item.qty * item.sell_price);
+
+        if (item.disc_percent > 100) item.disc_percent = 100;
+        if (item.disc_percent < 0) item.disc_percent = 0;
+        if (base > 0 && item.disc_amount > base) item.disc_amount = base;
+        if (item.disc_amount < 0) item.disc_amount = 0;
 
         if (source === 'percent') {
             if (base > 0 && item.disc_percent > 0) {
-                item.disc_amount = Math.round((base * item.disc_percent / 100) * 100) / 100;
+                item.disc_amount = Math.min(base, Math.round((base * item.disc_percent / 100) * 100) / 100);
             } else {
                 item.disc_amount = 0;
             }
@@ -801,7 +826,7 @@
             if (amtInput) amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
         } else if (source === 'amount') {
             if (base > 0 && item.disc_amount > 0) {
-                item.disc_percent = Math.round(((item.disc_amount / base) * 100) * 100) / 100;
+                item.disc_percent = Math.min(100, Math.round(((item.disc_amount / base) * 100) * 100) / 100);
             } else {
                 item.disc_percent = 0;
             }
@@ -809,11 +834,16 @@
             if (pctInput) pctInput.value = item.disc_percent > 0 ? item.disc_percent : '';
         } else { // qty changed
             if (item.disc_percent > 0 && base > 0) {
-                item.disc_amount = Math.round((base * item.disc_percent / 100) * 100) / 100;
+                item.disc_amount = Math.min(base, Math.round((base * item.disc_percent / 100) * 100) / 100);
                 const amtInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-amount[data-idx="${idx}"]`) : null;
                 if (amtInput) amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
             } else if (item.disc_amount > 0 && base > 0) {
-                item.disc_percent = Math.round(((item.disc_amount / base) * 100) * 100) / 100;
+                if (item.disc_amount > base) {
+                    item.disc_amount = base;
+                    const amtInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-amount[data-idx="${idx}"]`) : null;
+                    if (amtInput) amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
+                }
+                item.disc_percent = Math.min(100, Math.round(((item.disc_amount / base) * 100) * 100) / 100);
                 const pctInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-percent[data-idx="${idx}"]`) : null;
                 if (pctInput) pctInput.value = item.disc_percent > 0 ? item.disc_percent : '';
             }
@@ -887,14 +917,56 @@
         focusScanner();
     }
 
-    function clearCart() {
-        if (state.cart.length === 0) return;
-        if (confirm('Clear all items in cart?')) {
-            state.cart = [];
-            renderCart();
-            focusScanner();
+    function resetTerminalAll() {
+        if (state.cart.length > 0 || state.customer_id) {
+            if (!confirm('Are you sure you want to reset terminal? All items, customer, discounts, and payment modes will be cleared.')) {
+                return;
+            }
         }
+
+        // 1. Clear cart
+        state.cart = [];
+
+        // 2. Clear customer
+        state.customer_id = null;
+        const $custSelect = $('#posCustomerSelect');
+        if ($custSelect.length) {
+            $custSelect.val(null).trigger('change.select2');
+        }
+        $('#posSelectedCustomerBox').hide();
+        $('#posCustomerInvoicesSection').hide();
+        $('#posCustomerSearchWrapper').show();
+        $('#posSelectedCustPets').hide();
+        $('#posSelectedCustPetsText').text('');
+        $('#posSelectedCustPetsTbody').empty();
+        $('#posLoyaltyContainer').hide();
+        $('#posCustomerInvoicesTable tbody').empty();
+
+        // 3. Clear prices and discounts
+        state.bill_discount = 0;
+        state.cash_received = 0;
+        if (cashReceivedInput) cashReceivedInput.value = '';
+
+        // 4. Reset payment mode
+        state.tender_mode = null;
+        document.querySelectorAll('.pos-tender-btn').forEach(b => b.classList.remove('active'));
+        state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
+        $('#posSplitRowCash, #posSplitRowCard, #posSplitRowWallet, #posSplitRowCredit').hide();
+        $('#posSplitDispTotal').text('₹ 0.00');
+        $('#posSplitSection').hide();
+        toggleTenderControls();
+
+        // 5. Clear scan input
+        if (scanInput) scanInput.value = '';
+
+        // 6. Re-render UI
+        renderCart();
+        focusScanner();
+        showNotification('Terminal reset completely (Items, customer, discounts & tender mode cleared).', 'info');
     }
+
+    const clearCart = resetTerminalAll;
+    window.resetTerminalAll = resetTerminalAll;
 
     // Calculations & Rendering
     function computeTotals() {
@@ -1272,6 +1344,37 @@
         // Add / Edit Customer Form submission
         $('#posQuickCustomerForm').on('submit', function (e) {
             e.preventDefault();
+
+            // Validate Pet Details (Point 4: Gender is compulsory if pet details entered)
+            let petGenderInvalid = false;
+            let invalidPetSelect = null;
+            $('#pos-pet-rows .pos-pet-row').each(function () {
+                if ($(this).find('.pos-pet-delete-flag').val() === '1') return;
+                const name = $(this).find('.pos-pet-name').val()?.trim() || '';
+                const breed = $(this).find('select[name*="[breed_id]"]').val() || '';
+                const petType = $(this).find('select[name*="[pet_type_id]"]').val() || '';
+                const age = $(this).find('input[name*="[age]"]').val()?.trim() || '';
+                const gender = $(this).find('.pos-pet-gender').val() || '';
+
+                const hasData = name || breed || petType || age || gender;
+                if (hasData && (!gender || (gender !== 'Male' && gender !== 'Female'))) {
+                    petGenderInvalid = true;
+                    invalidPetSelect = $(this).find('.pos-pet-gender');
+                    return false;
+                }
+            });
+
+            if (petGenderInvalid) {
+                $('#posCustFormAlertText').text('Pet Gender is compulsory (Male / Female). Please select Male or Female.');
+                $('#posCustFormAlert').removeClass('d-none');
+                $('#pos-tab-pets-link').tab('show');
+                if (invalidPetSelect) {
+                    invalidPetSelect.addClass('is-invalid border-danger').focus();
+                }
+                showNotification('Pet Gender is compulsory (Male / Female). Please select a gender.', 'danger');
+                return false;
+            }
+
             const custId = $('#posCustId').val();
             const isEdit = Boolean(custId);
 
@@ -1913,6 +2016,31 @@
             return;
         }
 
+        // Validate Payment Mode selected (Point 3)
+        if (!state.tender_mode) {
+            const payMsg = 'Payment mode pehle select karo! (Please select a payment mode first)';
+            showNotification(payMsg, 'warning');
+            if (typeof toastr !== 'undefined') toastr.warning(payMsg, 'Payment Mode Required');
+            alert(payMsg);
+            if (typeof sound !== 'undefined' && sound.error) sound.error();
+            document.querySelector('.pos-tender-btn')?.focus();
+            return;
+        }
+
+        // Validate Discounts <= 100% (Point 2)
+        for (let i = 0; i < state.cart.length; i++) {
+            const itm = state.cart[i];
+            const base = (itm.qty || 1) * (itm.sell_price || 0);
+            if (itm.disc_percent > 100) {
+                alert(`Discount on "${itm.name}" cannot exceed 100%!`);
+                return;
+            }
+            if (base > 0 && itm.disc_amount > (base + 0.01)) {
+                alert(`Discount amount on "${itm.name}" cannot exceed 100% of line total!`);
+                return;
+            }
+        }
+
         // Validate stock locally before checkout
         for (let i = 0; i < state.cart.length; i++) {
             const cItem = state.cart[i];
@@ -2054,9 +2182,12 @@
             const p = { tender_type_id: (upiTender ? upiTender.id : walletTender.id), amount: totals.grandTotal };
             if (walletValueId) p.tender_type_value_id = walletValueId;
             payments.push(p);
-        } else {
+        } else if (state.tender_mode === 'Cash') {
             // Cash
             payments.push({ tender_type_id: cashTender.id, amount: totals.grandTotal });
+        } else {
+            alert('Please select a Payment Mode first!');
+            return;
         }
 
         // Build Payload matching backend expectations
@@ -2207,6 +2338,11 @@
                 if (typeof window.openPosItemSearchModal === 'function') {
                     window.openPosItemSearchModal();
                 }
+            }
+            // F9: Reset Terminal (Items, Customer, Discounts, Tender mode)
+            else if (e.key === 'F9' || e.code === 'F9') {
+                e.preventDefault();
+                resetTerminalAll();
             }
         });
     }
@@ -2403,11 +2539,11 @@
                     <tr class="${rowClass} ${idx === 0 && !isBlocked ? 'table-primary' : ''}" style="${rowStyle}"
                         data-item='${JSON.stringify(it).replace(/'/g, "&#39;")}'>
                         <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                        <td class="align-middle text-center">${codeBadge}</td>
                         <td class="align-middle font-weight-bold text-dark">
                             ${escapeHtml(it.name)}
                             ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : '')}
                         </td>
-                        <td class="align-middle text-center">${codeBadge}</td>
                         <td class="align-middle text-right">${qtyBadge}</td>
                         <td class="align-middle text-right font-weight-bold text-primary">₹${parseFloat(it.sell_price || 0).toFixed(2)}</td>
                         <td class="align-middle text-right text-muted">₹${parseFloat(it.mrp || 0).toFixed(2)}</td>

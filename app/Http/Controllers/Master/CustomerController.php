@@ -270,7 +270,7 @@ class CustomerController extends Controller
             $activeSalesTypes = ['Local', 'Interstate'];
         }
 
-        return $request->validate([
+        $validated = $request->validate([
             // General
             'title' => ['nullable', 'in:Mr,Ms,Mrs,M/s,Dr'],
             'name' => ['required', 'string', 'max:255'],
@@ -315,6 +315,22 @@ class CustomerController extends Controller
             'customer_type.in' => 'Selected Customer Type is invalid or inactive.',
             'sales_type.in' => 'Selected Sales Type is invalid or inactive.',
         ]);
+
+        if ($request->has('pets')) {
+            foreach ($request->input('pets', []) as $idx => $pet) {
+                if (!empty($pet['_delete'])) {
+                    continue;
+                }
+                $hasPetInfo = !empty($pet['name']) || !empty($pet['pet_type_id']) || !empty($pet['breed_id']) || !empty($pet['age']) || !empty($pet['birth_date']) || !empty($pet['gender']);
+                if ($hasPetInfo && (empty($pet['gender']) || !in_array($pet['gender'], ['Male', 'Female']))) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        "pets.{$idx}.gender" => 'Pet Gender is compulsory (Male / Female). Please select a valid gender.',
+                    ]);
+                }
+            }
+        }
+
+        return $validated;
     }
 
     protected function importModel(): string

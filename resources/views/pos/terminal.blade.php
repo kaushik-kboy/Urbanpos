@@ -153,8 +153,8 @@
                         <i class="fas fa-play-circle mr-1"></i> Recall (Alt+R)
                         <span id="posHeldCountBadge" class="badge badge-warning ml-1" style="display: none;">0</span>
                     </button>
-                    <button type="button" id="posClearBtn" class="btn btn-outline-danger btn-sm font-weight-bold shadow-sm" title="Clear Entire Cart (F9)">
-                        <i class="fas fa-trash-alt mr-1"></i> Clear Cart (F9)
+                    <button type="button" id="posClearBtn" class="btn btn-outline-danger btn-sm font-weight-bold shadow-sm" title="Reset All / Clear Terminal (F9)">
+                        <i class="fas fa-undo mr-1"></i> Reset Terminal (F9)
                     </button>
                 </div>
             </footer>
@@ -299,7 +299,7 @@
 
             <!-- Tender Selector Pills -->
             <div class="pos-tender-grid">
-                <button type="button" class="pos-tender-btn active" data-mode="Cash">
+                <button type="button" class="pos-tender-btn" data-mode="Cash">
                     <i class="fas fa-money-bill-wave text-success"></i>
                     <span>Cash (Alt+C)</span>
                 </button>
@@ -328,7 +328,7 @@
             </div>
 
             <!-- Cash Tender Controls -->
-            <div id="posCashSection">
+            <div id="posCashSection" style="display: none;">
                 <div class="form-group mb-2">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <label class="small font-weight-bold text-muted mb-0">Cash Tendered (₹)</label>
@@ -406,7 +406,7 @@
 <div class="modal fade" id="posAddCustomerModal" tabindex="-1" role="dialog" aria-labelledby="posCustomerModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document">
         <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header py-3 px-4 text-white" style="background-color: var(--pos-header-bg);">
+            <div class="modal-header py-3 px-4 text-white d-flex justify-content-between align-items-center" style="background-color: var(--pos-header-bg);">
                 <h5 class="modal-title font-weight-bold mb-0" id="posCustomerModalTitle">
                     <i class="fas fa-user-plus mr-2"></i> Add Customer
                 </h5>
@@ -459,8 +459,17 @@
                     <div class="tab-content pt-2" id="posCustTabContent">
                         <!-- 1. General Tab -->
                         <div class="tab-pane fade show active" id="pos-tab-general" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-user-tag mr-1 text-primary"></i> General Fields</h6>
+                                <x-form-layout-customizer
+                                    form-key="pos.customer.general"
+                                    container-id="pos-cust-general-grid"
+                                    button-class="btn btn-outline-secondary btn-xs font-weight-bold"
+                                    title="Customize General Fields Layout"
+                                />
+                            </div>
+                            <div class="row form-fields-grid" id="pos-cust-general-grid">
+                                <div class="field-wrapper col-md-3 mb-3" data-field="title" data-label="Title" data-default-order="1">
                                     <label class="font-weight-600 small mb-1">Title</label>
                                     <select name="title" id="posCust_title" class="form-control form-control-sm">
                                         <option value="Mr" selected>Mr</option>
@@ -470,31 +479,31 @@
                                         <option value="Dr">Dr</option>
                                     </select>
                                 </div>
-                                <div class="col-md-5 mb-3">
+                                <div class="field-wrapper col-md-5 mb-3" data-field="name" data-label="Name" data-default-order="2" data-core="1">
                                     <label class="font-weight-600 small mb-1">Name <span class="text-danger">*</span></label>
                                     <input type="text" name="name" id="posCust_name" class="form-control form-control-sm" required placeholder="Customer Name">
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="mobile" data-label="Mobile Number" data-default-order="3" data-core="1">
                                     <label class="font-weight-600 small mb-1">Mobile Number <span class="text-danger">*</span></label>
                                     <input type="text" name="mobile" id="posCust_mobile" class="form-control form-control-sm" required maxlength="10" placeholder="10-digit mobile">
                                 </div>
 
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="customer_category_id" data-label="Category" data-default-order="4">
                                     <label class="font-weight-600 small mb-1">Category</label>
                                     <select name="customer_category_id" id="posCust_customer_category_id" class="form-control form-control-sm">
                                         <option value="">Select a category</option>
                                         @if(isset($customerCategories))
-                                            @foreach($customerCategories as $catId => $catName)
-                                                <option value="{{ $catId }}">{{ $catName }}</option>
-                                            @endforeach
+                                             @foreach($customerCategories as $catId => $catName)
+                                                 <option value="{{ $catId }}">{{ $catName }}</option>
+                                             @endforeach
                                         @endif
                                     </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="customer_code" data-label="Customer Id" data-default-order="5">
                                     <label class="font-weight-600 small mb-1">Customer Id / Code</label>
                                     <input type="text" name="customer_code" id="posCust_customer_code" class="form-control form-control-sm" placeholder="Auto / Custom Code">
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="sales_type" data-label="Sales Type" data-default-order="6">
                                     <label class="font-weight-600 small mb-1">Sales Type</label>
                                     <select name="sales_type" id="posCust_sales_type" class="form-control form-control-sm">
                                         <option value="Local" selected>Local</option>
@@ -502,7 +511,7 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="payment_mode" data-label="Payment Mode" data-default-order="7">
                                     <label class="font-weight-600 small mb-1">Payment Mode</label>
                                     <select name="payment_mode" id="posCust_payment_mode" class="form-control form-control-sm">
                                         <option value="Cash Only" selected>Cash Only</option>
@@ -512,24 +521,24 @@
                                         <option value="Cash on Delivery">Cash on Delivery</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="credit_limit" data-label="Credit Limit" data-default-order="8">
                                     <label class="font-weight-600 small mb-1">Credit Limit (₹)</label>
                                     <input type="number" step="0.01" name="credit_limit" id="posCust_credit_limit" class="form-control form-control-sm" value="1000000">
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="credit_balance" data-label="Credit Balance" data-default-order="9">
                                     <label class="font-weight-600 small mb-1">Credit Balance (₹)</label>
                                     <input type="number" step="0.01" name="credit_balance" id="posCust_credit_balance" class="form-control form-control-sm" value="0">
                                 </div>
 
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="monthly_credit_balance" data-label="Monthly Credit Balance" data-default-order="10">
                                     <label class="font-weight-600 small mb-1">Monthly Credit Balance (₹)</label>
                                     <input type="number" step="0.01" name="monthly_credit_balance" id="posCust_monthly_credit_balance" class="form-control form-control-sm" value="0">
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="credit_days" data-label="Credit Days" data-default-order="11">
                                     <label class="font-weight-600 small mb-1">Credit Days</label>
                                     <input type="number" name="credit_days" id="posCust_credit_days" class="form-control form-control-sm" value="1000">
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="branch_id" data-label="Branch" data-default-order="12">
                                     <label class="font-weight-600 small mb-1">Branch</label>
                                     <select name="branch_id" id="posCust_branch_id" class="form-control form-control-sm">
                                         <option value="">GLOBAL</option>
@@ -541,14 +550,14 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-3 mb-3">
+                                <div class="field-wrapper col-md-3 mb-3" data-field="status" data-label="Status" data-default-order="13">
                                     <label class="font-weight-600 small mb-1">Status</label>
                                     <select name="status" id="posCust_status" class="form-control form-control-sm">
                                         <option value="1" selected>Active</option>
                                         <option value="0">Inactive</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3 mb-3">
+                                <div class="field-wrapper col-md-3 mb-3" data-field="gst_type" data-label="GST Type" data-default-order="14">
                                     <label class="font-weight-600 small mb-1">GST Type</label>
                                     <select name="gst_type" id="posCust_gst_type" class="form-control form-control-sm">
                                         @php
@@ -562,14 +571,14 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-3 mb-3">
+                                <div class="field-wrapper col-md-3 mb-3" data-field="sms_consent" data-label="SMS Consent" data-default-order="15">
                                     <label class="font-weight-600 small mb-1">SMS Consent</label>
                                     <select name="sms_consent" id="posCust_sms_consent" class="form-control form-control-sm">
                                         <option value="1" selected>Yes</option>
                                         <option value="0">No</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3 mb-3">
+                                <div class="field-wrapper col-md-3 mb-3" data-field="sales_formula" data-label="Sales Formula" data-default-order="16">
                                     <label class="font-weight-600 small mb-1">Sales Formula</label>
                                     <input type="text" name="sales_formula" id="posCust_sales_formula" class="form-control form-control-sm" placeholder="Optional">
                                 </div>
@@ -578,12 +587,21 @@
 
                         <!-- 2. Contact Details Tab -->
                         <div class="tab-pane fade" id="pos-tab-contact" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-address-book mr-1 text-success"></i> Contact Details</h6>
+                                <x-form-layout-customizer
+                                    form-key="pos.customer.contact"
+                                    container-id="pos-cust-contact-grid"
+                                    button-class="btn btn-outline-secondary btn-xs font-weight-bold"
+                                    title="Customize Contact Details Layout"
+                                />
+                            </div>
+                            <div class="row form-fields-grid" id="pos-cust-contact-grid">
+                                <div class="field-wrapper col-md-6 mb-3" data-field="address1" data-label="Address 1" data-default-order="1">
                                     <label class="font-weight-600 small mb-1">Address 1</label>
                                     <input type="text" name="address1" id="posCust_address1" class="form-control form-control-sm" placeholder="Street / House address">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="field-wrapper col-md-6 mb-3" data-field="area_id" data-label="Area" data-default-order="2">
                                     <label class="font-weight-600 small mb-1">Area</label>
                                     <select name="area_id" id="posCust_area_id" class="form-control form-control-sm">
                                         <option value="">Select an area</option>
@@ -595,7 +613,7 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="state" data-label="State" data-default-order="3">
                                     <label class="font-weight-600 small mb-1">State</label>
                                     <select name="state" id="posCust_state" class="form-control form-control-sm">
                                         <option value="">-- Select State --</option>
@@ -613,49 +631,49 @@
                                         </optgroup>
                                     </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="city" data-label="City" data-default-order="4">
                                     <label class="font-weight-600 small mb-1">City</label>
                                     <select name="city" id="posCust_city" class="form-control form-control-sm">
                                         <option value="">-- Select City --</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="country" data-label="Country" data-default-order="5">
                                     <label class="font-weight-600 small mb-1">Country</label>
                                     <input type="text" name="country" id="posCust_country" class="form-control form-control-sm" value="India">
                                 </div>
 
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="postal_code" data-label="Postal Code" data-default-order="6">
                                     <label class="font-weight-600 small mb-1">Postal Code</label>
                                     <input type="text" name="postal_code" id="posCust_postal_code" class="form-control form-control-sm" placeholder="Pincode">
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="std_code" data-label="STD Code" data-default-order="7">
                                     <label class="font-weight-600 small mb-1">STD Code</label>
                                     <input type="text" name="std_code" id="posCust_std_code" class="form-control form-control-sm" placeholder="STD Code">
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="phone" data-label="Landline / Phone" data-default-order="8">
                                     <label class="font-weight-600 small mb-1">Landline / Phone</label>
                                     <input type="text" name="phone" id="posCust_phone" class="form-control form-control-sm" placeholder="Phone">
                                 </div>
 
-                                <div class="col-md-6 mb-3">
+                                <div class="field-wrapper col-md-6 mb-3" data-field="email" data-label="Email" data-default-order="9">
                                     <label class="font-weight-600 small mb-1">Email</label>
                                     <input type="email" name="email" id="posCust_email" class="form-control form-control-sm" placeholder="email@example.com">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="field-wrapper col-md-6 mb-3" data-field="gst_no" data-label="GSTIN" data-default-order="10">
                                     <label class="font-weight-600 small mb-1">GSTIN</label>
                                     <input type="text" name="gst_no" id="posCust_gst_no" class="form-control form-control-sm" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);">
                                 </div>
 
-                                <div class="col-md-6 mb-3">
+                                <div class="field-wrapper col-md-6 mb-3" data-field="aadhar_no" data-label="Aadhar No" data-default-order="11">
                                     <label class="font-weight-600 small mb-1">Aadhar No</label>
                                     <input type="text" name="aadhar_no" id="posCust_aadhar_no" class="form-control form-control-sm" placeholder="Aadhar number">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="field-wrapper col-md-6 mb-3" data-field="pan_no" data-label="PAN No" data-default-order="12">
                                     <label class="font-weight-600 small mb-1">PAN No</label>
                                     <input type="text" name="pan_no" id="posCust_pan_no" class="form-control form-control-sm" placeholder="PAN number">
                                 </div>
 
-                                <div class="col-md-12 mb-2">
+                                <div class="field-wrapper col-md-12 mb-2" data-field="remarks" data-label="Remarks" data-default-order="13">
                                     <label class="font-weight-600 small mb-1">Remarks</label>
                                     <textarea name="remarks" id="posCust_remarks" class="form-control form-control-sm" rows="2" placeholder="Additional customer notes..."></textarea>
                                 </div>
@@ -664,8 +682,17 @@
 
                         <!-- 3. Others Tab -->
                         <div class="tab-pane fade" id="pos-tab-others" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-sliders-h mr-1 text-info"></i> Other Details</h6>
+                                <x-form-layout-customizer
+                                    form-key="pos.customer.others"
+                                    container-id="pos-cust-others-grid"
+                                    button-class="btn btn-outline-secondary btn-xs font-weight-bold"
+                                    title="Customize Other Details Layout"
+                                />
+                            </div>
+                            <div class="row form-fields-grid" id="pos-cust-others-grid">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="gender" data-label="Gender" data-default-order="1">
                                     <label class="font-weight-600 small mb-1">Gender</label>
                                     <select name="gender" id="posCust_gender" class="form-control form-control-sm">
                                         <option value="">Select</option>
@@ -673,7 +700,7 @@
                                         <option value="Female">Female</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="customer_type" data-label="Customer Type" data-default-order="2" data-core="1">
                                     <label class="font-weight-600 small mb-1">Customer Type <span class="text-danger">*</span></label>
                                     <select name="customer_type" id="posCust_customer_type" class="form-control form-control-sm" required>
                                         <option value="RETAIL INVOICE" selected>RETAIL INVOICE</option>
@@ -682,7 +709,7 @@
                                         <option value="E-COMMERCE">E-COMMERCE</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="field-wrapper col-md-4 mb-3" data-field="exempted_reason" data-label="Exempted Reason" data-default-order="3">
                                     <label class="font-weight-600 small mb-1">Exempted Reason</label>
                                     <select name="exempted_reason" id="posCust_exempted_reason" class="form-control form-control-sm">
                                         <option value="">Select</option>
@@ -782,8 +809,9 @@
                 <input type="text" name="pets[__INDEX__][name]" class="form-control form-control-sm pos-pet-name" placeholder="Pet Name">
             </div>
             <div class="col-md-3 mb-2">
-                <label class="font-weight-600 small mb-1">Gender</label>
-                <select name="pets[__INDEX__][gender]" class="form-control form-control-sm pos-pet-gender">
+                <label class="font-weight-600 small mb-1">Gender <span class="text-danger">*</span></label>
+                <select name="pets[__INDEX__][gender]" class="form-control form-control-sm pos-pet-gender" required>
+                    <option value="">None</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                 </select>
@@ -1006,8 +1034,8 @@
                         <thead class="bg-dark text-white sticky-top" style="z-index: 2;">
                             <tr>
                                 <th class="text-center" style="width: 40px;">#</th>
-                                <th>Product Name</th>
                                 <th class="text-center" style="width: 140px;">Code / Barcode</th>
+                                <th>Product Name</th>
                                 <th class="text-right" style="width: 110px;">Qty (Stock)</th>
                                 <th class="text-right" style="width: 100px;">Sell Price</th>
                                 <th class="text-right" style="width: 100px;">MRP</th>
