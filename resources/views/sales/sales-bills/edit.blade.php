@@ -36,7 +36,7 @@
                         <i class="fas fa-times mr-1"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm" id="sb-main-save-btn">
-                        <i class="fas fa-check-circle mr-1"></i> Save Changes
+                        <i class="fas fa-check-circle mr-1"></i> Save Changes (F6)
                     </button>
                 </div>
             </div>

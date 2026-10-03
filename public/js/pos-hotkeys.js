@@ -113,6 +113,16 @@
 
         switch (actionKey) {
             case 'search_item': {
+                // If on Sales Bill screen with dedicated item search helper
+                if (typeof window.triggerSalesBillItemSearch === 'function') {
+                    window.triggerSalesBillItemSearch();
+                    return;
+                }
+                if ($('#sb-btn-f2-search').length) {
+                    $('#sb-btn-f2-search').trigger('click');
+                    return;
+                }
+
                 // 1. If POS item search modal exists on page (POS terminal)
                 if ($('#pos-item-search-modal').length) {
                     if (typeof window.openPosItemSearchModal === 'function') {
@@ -160,6 +170,13 @@
             }
 
             case 'new_entry': {
+                // If on a line-item billing screen (Sales Bill, Purchase Invoice, Stock Transfer), F3 adds a new row
+                let $addRowBtn = $('#sb-btn-f3-add, #sb-add-row, #pinv-add-row, #st-add-row, .btn-add-item-row:visible').first();
+                if ($addRowBtn.length) {
+                    $addRowBtn.trigger('click');
+                    return;
+                }
+
                 if (confirm('Data will not be saved. Create new record?')) {
                     let loc = window.location.pathname;
                     if (loc.includes('/edit')) {
@@ -233,13 +250,39 @@
             }
 
             case 'save_form': {
+                // 1. If Tender modal is open, trigger Save in modal
+                let $sbTenderModal = $('#sb-tender-modal');
+                if ($sbTenderModal.length && ($sbTenderModal.is(':visible') || $sbTenderModal.hasClass('show'))) {
+                    let $modalSaveBtn = $('#tender-save-btn');
+                    if ($modalSaveBtn.length) {
+                        $modalSaveBtn.trigger('click');
+                        return;
+                    }
+                }
+
+                // 2. If Sales Bill tender open helper is available, open tender
+                if (typeof window.openSalesBillTenderModal === 'function') {
+                    window.openSalesBillTenderModal();
+                    return;
+                }
+                if (typeof window.openSalesBillTender === 'function') {
+                    window.openSalesBillTender();
+                    return;
+                }
+
+                let $sbF6 = $('#sb-btn-f6-tender');
+                if ($sbF6.length) {
+                    $sbF6.trigger('click');
+                    return;
+                }
+
                 let $tenderBtn = $('#posPayBtn, #btn-tender-save, #btn-tender, #btn-quick-tender').filter(':visible');
                 if ($tenderBtn.length) {
                     $tenderBtn.trigger('click');
                     return;
                 }
 
-                let $submitBtn = $('button[type="submit"]:visible, .btn-save:visible, form .card-footer .btn-primary:visible').first();
+                let $submitBtn = $('button[type="submit"]:visible, .btn-save:visible, form .card-footer .btn-primary:visible, #sb-main-save-btn').first();
                 if ($submitBtn.length) {
                     $submitBtn.trigger('click');
                 }
@@ -421,6 +464,15 @@
         }
 
         if (isTenderModalOpen) {
+            if (keyCombo === 'F6' || keyCombo === 'ALT+S') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if ($) {
+                    $('#tender-save-btn, #btn-tender-save').trigger('click');
+                }
+                return;
+            }
+
             if (keyCombo === 'ALT+C') {
                 e.preventDefault();
                 e.stopImmediatePropagation();

@@ -1156,8 +1156,8 @@
                 <!-- Action Buttons: Save, Save & WhatsApp, Save & Print, Cancel (Task 5) -->
                 <div class="p-2 d-flex align-items-center bg-white justify-content-between" style="border-top: 1px solid #ced4da;">
                     <div class="d-flex align-items-center">
-                        <button type="button" id="tender-save-btn" data-action="save" class="btn btn-success font-weight-bold px-3 mr-2">
-                            <i class="fas fa-save mr-1"></i> Save
+                        <button type="button" id="tender-save-btn" data-action="save" class="btn btn-success font-weight-bold px-3 mr-2" title="Save (F6 or Enter)">
+                            <i class="fas fa-save mr-1"></i> Save (F6)
                         </button>
                         <button type="button" id="tender-whatsapp-btn" data-action="whatsapp" class="btn text-white font-weight-bold px-3 mr-2" style="background-color: #25D366; border-color: #25D366;">
                             <i class="fab fa-whatsapp mr-1"></i> Save & WhatsApp
@@ -1174,7 +1174,7 @@
 
                 <!-- Bottom Hotkey Bar -->
                 <div class="tender-hotkey-bar font-weight-bold text-center">
-                    Cash (Alt+C) &nbsp;|&nbsp; UPI (Alt+U) &nbsp;|&nbsp; Card (Alt+D) &nbsp;|&nbsp; Credit (Alt+E)
+                    Cash (Alt+C) &nbsp;|&nbsp; UPI (Alt+U) &nbsp;|&nbsp; Card (Alt+D) &nbsp;|&nbsp; Credit (Alt+E) &nbsp;|&nbsp; <span class="text-success font-weight-bold">Save (F6 / Enter)</span>
                 </div>
             </div>
         </div>
@@ -2650,10 +2650,10 @@
             updateSaveButtonState();
         }
 
-        // Update Save button status title and disabled state based on stock and items validity
+        // Update Save button status title and validation indicators
         function updateSaveButtonState() {
             let res = validateStockErrors();
-            let $saveBtns = $('button[type="submit"]');
+            let $saveBtns = $('button[type="submit"], #sb-main-save-btn');
             let isHeaderValid = validateSbHeader(false, false);
 
             if (res.hasStockError || res.validItemCount === 0 || !isHeaderValid) {
@@ -2662,9 +2662,11 @@
                     : (res.validItemCount === 0 
                         ? 'Please add at least 1 item with valid quantity.' 
                         : (res.errorMsg || 'Some item quantities exceed available stock or are invalid.'));
-                $saveBtns.prop('disabled', true).addClass('disabled').attr('title', reason);
+                $saveBtns.attr('title', reason);
+                $('#sb-btn-f6-tender').attr('title', 'F6 — ' + reason);
             } else {
-                $saveBtns.prop('disabled', false).removeClass('disabled').attr('title', '');
+                $saveBtns.attr('title', 'Save Bill');
+                $('#sb-btn-f6-tender').attr('title', 'F6 — Save & Tender');
             }
         }
 
@@ -3150,8 +3152,8 @@
             $newRow.find('.sb-item-code').focus();
         });
 
-        // Item Search F2 button click — focus the last empty code field or add a new row
-        $('#sb-add-row-f2').on('click', function () {
+        // Item Search helper (F2) — focus the last empty code field or add a new row
+        function triggerSalesBillItemSearch() {
             let $lastEmptyCode = null;
             $('#sb-items-body tr').each(function () {
                 let $code = $(this).find('.sb-item-code');
@@ -3170,6 +3172,30 @@
                     if ($code.length) openItemSearchModal($code);
                 }, 80);
             }
+        }
+        window.triggerSalesBillItemSearch = triggerSalesBillItemSearch;
+
+        // Item Search F2 button click
+        $(document).on('click', '#sb-add-row-f2, #sb-btn-f2-search', function (e) {
+            e.preventDefault();
+            triggerSalesBillItemSearch();
+        });
+
+        // Add Row F3 button click
+        $(document).on('click', '#sb-btn-f3-add', function (e) {
+            e.preventDefault();
+            $('#sb-add-row').trigger('click');
+        });
+
+        // F6 Tender button click
+        $(document).on('click', '#sb-btn-f6-tender', function (e) {
+            e.preventDefault();
+            let tenderOpen = $('#sb-tender-modal').is(':visible') || $('#sb-tender-modal').hasClass('show');
+            if (tenderOpen) {
+                $('#tender-save-btn').trigger('click');
+            } else {
+                openSalesBillTender();
+            }
         });
 
         // Bill Discount input — recalculate totals
@@ -3177,15 +3203,20 @@
             calculateTotals();
         });
 
-        // Global F-key handler: F3 = Add Row, F6 = Open/Save Tender
+        // Global F-key handler: F2 = Search Item, F3 = Add Row, F6 = Open/Save Tender
         $(document).on('keydown', function (e) {
-            // Skip if inside modals (except for F6 in tender)
             let tenderOpen = $('#sb-tender-modal').is(':visible') || $('#sb-tender-modal').hasClass('show');
             let anyModalOpen = $('.modal.show').length > 0 && !tenderOpen;
             if (anyModalOpen) return;
             if ($(e.target).is('input[type="text"], input[type="number"], input[type="datetime-local"], input[type="time"], textarea, select, .select2-search__field')) {
-                // Allow F-keys even in inputs (except F6 which is handled below)
-                if (e.key !== 'F3' && e.key !== 'F6') return;
+                // Allow F-keys even in inputs
+                if (e.key !== 'F2' && e.key !== 'F3' && e.key !== 'F6') return;
+            }
+
+            if (e.key === 'F2') {
+                e.preventDefault();
+                triggerSalesBillItemSearch();
+                return false;
             }
 
             if (e.key === 'F3') {
@@ -3200,15 +3231,8 @@
                     // F6 in tender modal = save
                     $('#tender-save-btn').trigger('click');
                 } else {
-                    // F6 outside tender = open tender (same as submit)
-                    let $saveBtn = $('#sb-main-save-btn');
-                    if (!$saveBtn.prop('disabled') && !$saveBtn.hasClass('disabled')) {
-                        $saveBtn.trigger('click');
-                    } else {
-                        // Show reason
-                        let reason = $saveBtn.attr('title') || 'Please complete the form first.';
-                        if (window.toastr) toastr.warning(reason, 'Cannot Open Tender');
-                    }
+                    // F6 outside tender = open tender
+                    openSalesBillTender();
                 }
                 return false;
             }
@@ -3417,19 +3441,10 @@
             updateSaveButtonState();
         });
 
-        // Open tender modal when Save button clicked
-        $(document).on('click', 'button[type="submit"]', function (e) {
-            let $btn = $(this);
-            if ($btn.prop('disabled') || $btn.hasClass('disabled')) {
-                e.preventDefault();
-                return false;
-            }
-            let $form = $btn.closest('form');
-            if (!$form.length) return;
-
+        // Open Tender Modal (Validates Header & Line Items first)
+        function openSalesBillTender() {
             // 1. Validate Header First (Task 11)
             if (!validateSbHeader(true, true)) {
-                e.preventDefault();
                 updateSaveButtonState();
                 return false;
             }
@@ -3443,7 +3458,6 @@
             // 2. Validate All Line Items (Task 11)
             let valResult = validateStockErrors();
             if (valResult.validItemCount === 0) {
-                e.preventDefault();
                 let msg = 'Please select at least one item and enter a valid quantity.';
                 if (window.toastr) toastr.warning(msg, 'No Items Added');
                 else alert(msg);
@@ -3452,7 +3466,6 @@
             }
 
             if (valResult.hasError) {
-                e.preventDefault();
                 let msg = 'Cannot proceed: ' + valResult.errorMsg;
                 if (window.toastr) toastr.error(msg, 'Stock / Validation Error');
                 else alert(msg);
@@ -3463,8 +3476,6 @@
                 updateSaveButtonState();
                 return false;
             }
-
-            e.preventDefault();
 
             // Read current bill total from display
             tenderBillTotal = parseFloat($('#display-sb-final-total').text()) || 0;
@@ -3529,6 +3540,18 @@
                     $('#tender-cash').focus().select();
                 }
             });
+            return true;
+        }
+        window.openSalesBillTender = openSalesBillTender;
+        window.openSalesBillTenderModal = openSalesBillTender;
+
+        // Open tender modal when Save button or F6 clicked
+        $(document).on('click', 'button[type="submit"], #sb-main-save-btn', function (e) {
+            // Do not intercept buttons inside tender modal itself
+            if ($(this).closest('#sb-tender-modal').length) return;
+            e.preventDefault();
+            openSalesBillTender();
+            return false;
         });
 
         function selectTenderMode(mode) {
@@ -3604,9 +3627,11 @@
                 }
             }
 
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' || e.key === 'F6') {
                 e.preventDefault();
+                e.stopPropagation();
                 $('#tender-save-btn').trigger('click');
+                return false;
             }
         });
 
