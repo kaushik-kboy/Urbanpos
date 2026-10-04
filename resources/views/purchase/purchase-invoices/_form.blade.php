@@ -1,3 +1,7 @@
+@push('css')
+    <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
 @php
     $inv = $purchaseInvoice ?? null;
     $sourceRn = $sourceReceiptNote ?? null;
@@ -50,7 +54,7 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid" id="pinv-header-fields-grid">
+<div class="row g-2 form-fields-grid tx-header-fields-grid" id="pinv-header-fields-grid">
     <div class="field-wrapper col-md-6" data-field="invoice_date" data-label="Invoice Date" data-default-order="1" data-core="1">
         <x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" required />
     </div>
@@ -202,7 +206,7 @@
     }
 </style>
 
-<div class="pinv-table-wrapper table-responsive">
+<div class="pinv-table-wrapper table-responsive tx-items-scroll-container">
     <table class="table table-sm table-bordered table-items-dense" id="pinv-items-table">
         <thead>
             <tr>
@@ -1560,6 +1564,11 @@
             let finalTotal = Math.round((totalNetAmt + freight + roundOff + tcsAmt) * 100) / 100;
 
             $('#display-final-total').text(finalTotal.toFixed(2));
+            $('#display-pinv-final-total').text(finalTotal.toFixed(2));
+            let pinvItemCount = $('#pinv-items-body tr').filter(function () {
+                return !!$(this).find('.pinv-item-select').val();
+            }).length;
+            $('#pinv-total-items-badge').text(pinvItemCount + (pinvItemCount === 1 ? ' Item' : ' Items'));
             checkAmountMatch(finalTotal);
         }
 
@@ -1622,6 +1631,7 @@
                 finalTotal = getLiveFinalTotal();
             }
             $('#display-final-total').text(finalTotal.toFixed(2));
+            $('#display-pinv-final-total').text(finalTotal.toFixed(2));
 
             let $invAmtInput = $('input[name="supplier_inv_amount"]');
             let invAmtVal = $invAmtInput.val();
@@ -2618,6 +2628,19 @@
 
         // Run on initial load to ensure exactly 1 empty row if no items
         ensureSingleEmptyPinvRow();
+    });
+</script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
+<script>
+    $(document).ready(function () {
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#pinv-items-table',
+                minHeight: 180
+            });
+        }
     });
 </script>
 @endpush

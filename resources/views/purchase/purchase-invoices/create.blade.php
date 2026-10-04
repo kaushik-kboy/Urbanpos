@@ -20,11 +20,14 @@
                 <x-error-summary />
                 @include('purchase.purchase-invoices._form')
             </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <button type="button" id="btn-reset-form" class="btn btn-warning btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset Form</button>
-                <a href="{{ route('purchase.purchase-invoices.index') }}" class="btn btn-default">Cancel</a>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-pinv-final-total"
+                items-badge-id="pinv-total-items-badge"
+                save-btn-id="pinv-main-save-btn"
+                save-btn-text="Save Invoice"
+                cancel-route="{{ route('purchase.purchase-invoices.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
         </form>
     </div>
 @stop
