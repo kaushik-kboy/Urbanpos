@@ -2,10 +2,14 @@
 
 @section('title', 'Create Goods Receipt Note (GRN)')
 
+@push('css')
+<link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1>Create Goods Receipt Note (GRN)</h1>
-        <a href="{{ route('purchase.purchase-receipt-notes.index') }}" class="btn btn-outline-secondary btn-sm">
+    <div class="d-flex justify-content-between align-items-center py-0">
+        <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-truck-loading text-primary mr-1"></i> Create Goods Receipt Note (GRN)</h1>
+        <a href="{{ route('purchase.purchase-receipt-notes.index') }}" class="btn btn-outline-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to List
         </a>
     </div>
@@ -44,7 +48,7 @@
                 />
             </div>
             <div class="card-body p-3">
-                <div class="row g-2 form-fields-grid" id="grn-header-fields-grid">
+                <div class="row g-2 form-fields-grid tx-header-fields-grid" id="grn-header-fields-grid">
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="receipt_date" data-label="Receipt Date" data-default-order="1" data-core="1">
                         <label class="font-weight-bold">Receipt Date <span class="text-danger">*</span></label>
                         <input type="date" name="receipt_date" class="form-control" value="{{ old('receipt_date', date('Y-m-d')) }}" required>
@@ -129,7 +133,7 @@
                     </button>
                 </div>
             </div>
-            <div class="card-body p-0 table-responsive">
+            <div class="card-body p-0 table-responsive tx-items-scroll-container">
                 <table class="table table-bordered table-sm mb-0 table-items-dense" id="grn-items-table">
                     <thead class="thead-light">
                         <tr class="text-center">
@@ -236,26 +240,21 @@
 
         <x-custom-fields-renderer :module="'PurchaseReceiptNote'" :model="null" :cardStyle="true" />
 
-        <div class="card card-default shadow-sm mb-3">
-            <div class="card-body p-3">
-                <div class="row">
-                    <div class="col-md-8">
-                        <label class="font-weight-bold">Inspection / Receiver Remarks</label>
-                        <textarea name="remarks" class="form-control" rows="2" placeholder="Notes on packaging condition, delivery discrepancies, or receiving notes...">{{ old('remarks') }}</textarea>
-                    </div>
-                    <div class="col-md-4 d-flex flex-column justify-content-end text-right">
-                        <div class="small text-muted mb-2">Inventory will be received into the selected branch upon saving.</div>
-                        <div>
-                            <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
-                                <i class="fas fa-undo mr-1"></i> Reset Form
-                            </button>
-                            <a href="{{ route('purchase.purchase-receipt-notes.index') }}" class="btn btn-secondary mr-2">Cancel</a>
-                            <button type="submit" class="btn btn-success px-4 font-weight-bold"><i class="fas fa-check-circle mr-1"></i> Save & Inward Goods</button>
-                        </div>
-                    </div>
-                </div>
+        <div class="card card-default mb-0 tx-additional-fields-grid py-1 px-3">
+            <div class="form-group mb-1">
+                <label class="font-weight-bold mb-1">Inspection / Receiver Remarks</label>
+                <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Notes on packaging condition, delivery discrepancies..." value="{{ old('remarks') }}">
             </div>
         </div>
+        <x-transaction-rich-footer
+            total-id="display-grn-final-total"
+            items-badge-id="grn-total-items-badge"
+            save-btn-id="grn-main-save-btn"
+            save-btn-text="Save & Inward Goods"
+            save-btn-icon="fas fa-check-circle"
+            cancel-route="{{ route('purchase.purchase-receipt-notes.index') }}"
+            reset-btn-id="btn-reset-form"
+        />
     </form>
 
     {{-- Template for dynamic rows --}}
@@ -440,6 +439,14 @@
             $('#summary-accepted').text(totAccepted.toFixed(2));
             $('#summary-rejected').text(totRejected.toFixed(2));
             $('#summary-amount').text('₹' + totAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+            // Universal rich footer total and items badge
+            $('#display-grn-final-total').text(totAmount.toFixed(2));
+            let validRows = 0;
+            $('#grn-items-body tr.grn-item-row').each(function () {
+                if ($(this).find('.prn-item-id').val()) validRows++;
+            });
+            $('#grn-total-items-badge').html('<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + validRows + ' Items</span>');
         }
 
         // On received change, if accepted is empty, default accepted = received
@@ -952,6 +959,17 @@
         });
 
         recalculate();
+
+        // Universal compact layout auto-fit engine
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#grn-items-table',
+                minHeight: 160
+            });
+        }
     });
 </script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 @endpush
