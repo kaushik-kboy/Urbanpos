@@ -5,6 +5,7 @@
 @endphp
 
 @push('css')
+<link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
 <style>
 .sr-exp-date[readonly] {
     pointer-events: none !important;
@@ -16,7 +17,7 @@
 </style>
 @endpush
 
-<div class="d-flex justify-content-between align-items-center mb-2">
+<div class="d-flex justify-content-between align-items-center mb-2 tx-compact-section-header">
     <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-undo text-primary mr-1"></i> Sales Return Header</h6>
     <x-form-layout-customizer
         form-key="sales_returns.header"
@@ -25,7 +26,7 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid mb-3" id="sr-header-fields-grid">
+<div class="row g-2 form-fields-grid mb-2 tx-header-fields-grid" id="sr-header-fields-grid">
     <div class="field-wrapper col-md-4 mb-3" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
         <div class="d-flex justify-content-between align-items-center mb-1">
             <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
@@ -151,8 +152,8 @@
     </div>
 </div>
 
-<div class="table-responsive">
-    <table class="table table-sm table-bordered table-hover table-items-dense" id="sr-items-table">
+<div class="table-responsive tx-items-scroll-container">
+    <table class="table table-sm table-bordered table-hover table-items-dense mb-0" id="sr-items-table">
         <thead class="bg-light">
             <tr>
                 <th style="width: 115px;" data-col-key="code">Code / Barcode</th>
@@ -1037,7 +1038,18 @@
             document.getElementById('display-sr-gst').innerText = '₹' + totalGst.toFixed(2);
             document.getElementById('display-sr-grand-total').innerText = '₹' + grandTotal.toFixed(2);
 
-            const submitBtn = document.querySelector('button[type="submit"]');
+            // Update universal rich footer
+            const displaySrFinal = document.getElementById('display-sr-final-total');
+            if (displaySrFinal) {
+                displaySrFinal.innerText = grandTotal.toFixed(2);
+            }
+            const itemsBadge = document.getElementById('sr-total-items-badge');
+            if (itemsBadge) {
+                const rowCount = document.querySelectorAll('#sr-items-body .sr-item-row').length;
+                itemsBadge.innerHTML = '<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + rowCount + ' Items</span>';
+            }
+
+            const submitBtn = document.querySelector('button[type="submit"], #sr-main-save-btn');
             if (submitBtn) {
                 const hasValidCust = !!$('#customer_id').val();
                 let hasInvalidQty = false;
@@ -2280,6 +2292,16 @@
         // Initialize calculations
         recalculateAll();
 
+        // Initialize universal compact transaction layout auto-fit engine
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#sr-items-table',
+                minHeight: 160
+            });
+        }
+
         // Form Reset Button Handler
         $(document).on('click', '.btn-reset-form', function (e) {
             e.preventDefault();
@@ -2290,4 +2312,5 @@
 
     })();
 </script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 @endpush

@@ -2,13 +2,16 @@
 
 @section('title', 'Create Sales Delivery Note')
 
+@push('css')
+<link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center py-0">
         <div>
-            <h1 class="m-0 text-dark font-weight-bold"><i class="fas fa-truck-loading text-primary mr-2"></i>Create Delivery Note (Challan)</h1>
-            <small class="text-muted">Outward goods dispatch from warehouse</small>
+            <h1 class="m-0 text-dark font-weight-bold h5"><i class="fas fa-truck-loading text-primary mr-1"></i> Create Delivery Note (Challan)</h1>
         </div>
-        <a href="{{ route('sales.delivery-notes.index') }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ route('sales.delivery-notes.index') }}" class="btn btn-outline-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to List
         </a>
     </div>
@@ -47,7 +50,7 @@
                 />
             </div>
             <div class="card-body p-3">
-                <div class="row g-2 form-fields-grid" id="sdn-header-fields-grid">
+                <div class="row g-2 form-fields-grid tx-header-fields-grid" id="sdn-header-fields-grid">
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="delivery_date" data-label="Dispatch Date" data-default-order="1" data-core="1">
                         <label class="font-weight-bold">Dispatch Date <span class="text-danger">*</span></label>
                         <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', date('Y-m-d')) }}" required>
@@ -138,7 +141,7 @@
                     </button>
                 </div>
             </div>
-            <div class="card-body p-0 table-responsive">
+            <div class="card-body p-0 table-responsive tx-items-scroll-container">
                 <table class="table table-bordered table-sm mb-0 table-items-dense" id="sdn-items-table">
                     <thead class="thead-light">
                         <tr class="text-center">
@@ -238,25 +241,21 @@
 
         <x-custom-fields-renderer :module="'SalesDeliveryNote'" :model="null" :cardStyle="true" />
 
-        <div class="card card-default shadow-sm mb-4">
-            <div class="card-body p-3">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <label class="font-weight-bold">Internal Remarks / Transport Notes</label>
-                        <input type="text" name="remarks" class="form-control" placeholder="Optional dispatch notes or special delivery instructions" value="{{ old('remarks') }}">
-                    </div>
-                    <div class="col-md-4 text-right pt-3">
-                        <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
-                            <i class="fas fa-undo mr-1"></i> Reset Form
-                        </button>
-                        <a href="{{ route('sales.delivery-notes.index') }}" class="btn btn-secondary mr-2">Cancel</a>
-                        <button type="submit" class="btn btn-primary px-4 shadow-sm" id="submit-btn">
-                            <i class="fas fa-check-circle mr-1"></i> Save & Dispatch Goods
-                        </button>
-                    </div>
-                </div>
+        <div class="card card-default mb-0 tx-additional-fields-grid py-1 px-3">
+            <div class="form-group mb-1">
+                <label class="font-weight-bold mb-1">Internal Remarks / Transport Notes</label>
+                <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional dispatch notes or special delivery instructions" value="{{ old('remarks') }}">
             </div>
         </div>
+        <x-transaction-rich-footer
+            total-id="display-sdn-final-total"
+            items-badge-id="sdn-total-items-badge"
+            save-btn-id="sdn-main-save-btn"
+            save-btn-text="Save & Dispatch"
+            save-btn-icon="fas fa-check-circle"
+            cancel-route="{{ route('sales.delivery-notes.index') }}"
+            reset-btn-id="btn-reset-form"
+        />
     </form>
 
     {{-- Template for new row --}}
@@ -427,6 +426,9 @@ $(function () {
         $('#summary-dispatched').text(totDispatched.toFixed(2));
         $('#summary-amount').text('₹' + totAmount.toFixed(2));
 
+        // Universal rich footer total
+        $('#display-sdn-final-total').text(totAmount.toFixed(2));
+
         updateSdnSaveButtonState();
     }
 
@@ -474,7 +476,9 @@ $(function () {
             reason = 'Pehle item add karein. Please add at least one item before saving.';
         }
 
-        let $btn = $('#submit-btn, button[type="submit"]');
+        $('#sdn-total-items-badge').html('<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + validRows + ' Items</span>');
+
+        let $btn = $('#submit-btn, #sdn-main-save-btn, button[type="submit"]');
         if (hasError) {
             $btn.prop('disabled', true).addClass('disabled').attr('title', reason);
         } else {
@@ -944,6 +948,17 @@ $(function () {
 
     // Initial calculation
     recalculate();
+
+    // Initialize universal compact transaction layout auto-fit engine
+    if (window.initTransactionCompactLayout) {
+        window.initTransactionCompactLayout({
+            containerSelector: '.tx-items-scroll-container',
+            footerSelector: '.tx-rich-footer',
+            tableSelector: '#sdn-items-table',
+            minHeight: 160
+        });
+    }
 });
 </script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 @stop

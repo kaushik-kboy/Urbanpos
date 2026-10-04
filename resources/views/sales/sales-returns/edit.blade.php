@@ -3,23 +3,33 @@
 @section('title', 'Edit Sales Return')
 
 @section('content_header')
-    <h1>Edit Sales Return "{{ $salesReturn->return_number }}"</h1>
+    <div class="d-flex justify-content-between align-items-center py-0">
+        <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-undo mr-1 text-primary"></i> Edit Sales Return: <span class="text-primary">{{ $salesReturn->return_number }}</span></h1>
+        <a href="{{ route('sales.sales-returns.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Returns
+        </a>
+    </div>
 @stop
 
 @section('content')
-    <div class="card card-primary card-outline">
+    <div class="card card-primary card-outline mb-0">
         <form action="{{ route('sales.sales-returns.update', $salesReturn) }}" method="POST" id="sr-form" novalidate>
             @csrf
             @method('PUT')
-            <div class="card-body">
+            <div class="card-body py-2 px-3">
                 <x-error-summary />
                 @include('sales.sales-returns._form')
             </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <button type="button" class="btn btn-warning btn-reset-form"><i class="fas fa-undo mr-1"></i> Reset</button>
-                <a href="{{ route('sales.sales-returns.index') }}" class="btn btn-default">Cancel</a>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-sr-final-total"
+                items-badge-id="sr-total-items-badge"
+                save-btn-id="sr-main-save-btn"
+                save-btn-text="Update Return"
+                save-btn-icon="fas fa-check-circle"
+                cancel-route="{{ route('sales.sales-returns.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
         </form>
     </div>
 @stop
+
