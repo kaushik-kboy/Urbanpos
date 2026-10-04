@@ -1,3 +1,7 @@
+@push('css')
+    <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
 @php
     $entry = $stockUpdate ?? null;
     $oldItems = old('items');
@@ -13,7 +17,7 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid mb-3" id="su-header-fields-grid">
+<div class="row g-2 form-fields-grid tx-header-fields-grid mb-3" id="su-header-fields-grid">
     <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Location" data-default-order="1" data-core="1">
         <x-select name="branch_id" label="Location" :options="$branches" :selected="old('branch_id', $entry->branch_id ?? '')" placeholder="Select a branch" required />
     </div>
@@ -57,7 +61,7 @@
     </div>
 </div>
 
-<div class="table-responsive">
+<div class="table-responsive tx-items-scroll-container">
     <table class="table table-sm table-bordered table-hover table-items-dense" id="items-table">
         <thead class="bg-light">
             <tr>
@@ -795,6 +799,40 @@
                 window.location.href = "{{ route('inventory.stock-updates.index') }}";
             }
         });
+
+        function recalcStockUpdateTotals() {
+            let totalQty = 0;
+            let totalItems = 0;
+            $('#items-body tr.su-item-row').each(function () {
+                let itemId = $(this).find('.su-item-id').val();
+                let qtyVal = parseFloat($(this).find('.su-physical-qty').val()) || 0;
+                if (itemId) {
+                    totalItems++;
+                    totalQty += qtyVal;
+                }
+            });
+            $('#display-su-total-qty').text(totalQty.toFixed(3));
+            $('#su-total-items-badge').text(totalItems + (totalItems === 1 ? ' Item' : ' Items'));
+        }
+
+        $(document).on('input change', '.su-physical-qty, .su-item-id', function () {
+            recalcStockUpdateTotals();
+        });
+
+        recalcStockUpdateTotals();
     })();
+</script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
+<script>
+    $(document).ready(function () {
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#items-table',
+                minHeight: 180
+            });
+        }
+    });
 </script>
 @endpush

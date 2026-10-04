@@ -15,10 +15,14 @@
                 <x-error-summary />
                 @include('inventory.stock-updates._form')
             </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <a href="{{ route('inventory.stock-updates.index') }}" class="btn btn-default">Cancel</a>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-su-total-qty"
+                total-label="Total Physical Qty:"
+                items-badge-id="su-total-items-badge"
+                save-btn-id="su-main-save-btn"
+                save-btn-text="Update Stock Update"
+                cancel-route="{{ route('inventory.stock-updates.index') }}"
+            />
         </form>
     </div>
 @stop
