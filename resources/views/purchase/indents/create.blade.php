@@ -2,13 +2,16 @@
 
 @section('title', 'Raise Purchase Indent')
 
+@push('css')
+<link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center py-0">
         <div>
-            <h1 class="m-0 text-dark"><i class="fas fa-clipboard-list mr-2 text-primary"></i> Raise Purchase Indent</h1>
-            <small class="text-muted">Internal store & departmental inventory requisition</small>
+            <h1 class="m-0 text-dark font-weight-bold h5"><i class="fas fa-clipboard-list mr-1 text-primary"></i> Raise Purchase Indent</h1>
         </div>
-        <a href="{{ route('purchase.purchase-indents.index') }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ route('purchase.purchase-indents.index') }}" class="btn btn-outline-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to Indents
         </a>
     </div>
@@ -29,7 +32,7 @@
                     />
                 </div>
 
-                <div class="row mb-3 form-fields-grid" id="indent-header-fields-grid">
+                <div class="row mb-2 form-fields-grid tx-header-fields-grid" id="indent-header-fields-grid">
                     @php
                         $activeBranchId = session('active_branch_id', auth()->user()?->branch_id);
                     @endphp
@@ -93,9 +96,8 @@
                             </button>
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered table-hover mb-0" id="indent-items-table">
+                    <div class="card-body p-0 table-responsive tx-items-scroll-container">
+                        <table class="table table-sm table-bordered table-hover mb-0 table-items-dense" id="indent-items-table">
                                 <thead class="thead-light">
                                     <tr>
                                         <th style="width: 40px;" class="text-center">#</th>
@@ -112,49 +114,24 @@
                                 <tbody id="indent-items-body">
                                     {{-- Dynamically populated --}}
                                 </tbody>
-                            </table>
-                        </div>
+                        </table>
                     </div>
                 </div>
 
                 <x-custom-fields-renderer :module="'PurchaseIndent'" :model="null" :cardStyle="true" />
 
-                {{-- Summary Footer --}}
-                <div class="row justify-content-end">
-                    <div class="col-md-5 col-lg-4">
-                        <div class="card bg-light border shadow-none mb-0">
-                            <div class="card-body p-3">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Total Items:</span>
-                                    <strong id="summary-total-items">0</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Total Requested Qty:</span>
-                                    <strong id="summary-total-qty">0.00</strong>
-                                </div>
-                                <div class="d-flex justify-content-between border-top pt-2">
-                                    <span class="font-weight-bold">Est. Total Amount:</span>
-                                    <strong class="text-primary font-weight-bold" style="font-size: 1.15rem;" id="summary-total-amount">₹0.00</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            <div class="card-footer bg-light py-3 d-flex justify-content-between align-items-center">
-                <a href="{{ route('purchase.purchase-indents.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-times mr-1"></i> Cancel
-                </a>
-                <div>
-                    <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
-                        <i class="fas fa-undo mr-1"></i> Reset Form
-                    </button>
-                    <button type="submit" class="btn btn-primary font-weight-bold px-4 shadow-sm">
-                        <i class="fas fa-paper-plane mr-1"></i> Submit Requisition for Approval
-                    </button>
-                </div>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-indent-final-total"
+                total-label="Est. Amount:"
+                items-badge-id="indent-total-items-badge"
+                save-btn-id="indent-main-save-btn"
+                save-btn-text="Submit Requisition"
+                save-btn-icon="fas fa-paper-plane"
+                cancel-route="{{ route('purchase.purchase-indents.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
         </form>
     </div>
 
@@ -374,7 +351,12 @@
 
                 $('#summary-total-items').text(totalItems);
                 $('#summary-total-qty').text(totalQty.toFixed(2));
-                $('#summary-total-amount').text('₹' + (Math.round(totalAmount * 100) / 100).toFixed(2));
+                let estAmt = (Math.round(totalAmount * 100) / 100).toFixed(2);
+                $('#summary-total-amount').text('₹' + estAmt);
+
+                // Universal rich footer total and items badge
+                $('#display-indent-final-total').text(estAmt);
+                $('#indent-total-items-badge').html('<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + totalItems + ' Items</span>');
             }
 
             /* ================================================================
@@ -781,7 +763,18 @@
                 let $branch = $('#branch_id');
                 if ($branch.length) $branch.focus();
             }, 150);
+
+            // Universal compact layout auto-fit engine
+            if (window.initTransactionCompactLayout) {
+                window.initTransactionCompactLayout({
+                    containerSelector: '.tx-items-scroll-container',
+                    footerSelector: '.tx-rich-footer',
+                    tableSelector: '#indent-items-table',
+                    minHeight: 160
+                });
+            }
         });
     </script>
+    <script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
     @endpush
 @stop
