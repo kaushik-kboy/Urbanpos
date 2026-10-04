@@ -4,15 +4,20 @@
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($ret?->items ?? collect());
 @endphp
 
-    <div class="d-flex justify-content-end mb-2">
-        <x-form-layout-customizer
-            form-key="purchase_returns.header"
-            container-id="purchase-return-header-grid"
-            title="Customize Purchase Return Header"
-        />
-    </div>
+@push('css')
+<link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
 
-    <div class="row form-fields-grid" id="purchase-return-header-grid">
+<div class="d-flex justify-content-between align-items-center mb-2 tx-compact-section-header">
+    <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-undo-alt text-warning mr-1"></i> Purchase Return Header</h6>
+    <x-form-layout-customizer
+        form-key="purchase_returns.header"
+        container-id="purchase-return-header-grid"
+        title="Customize Purchase Return Header"
+    />
+</div>
+
+<div class="row form-fields-grid tx-header-fields-grid" id="purchase-return-header-grid">
         <div class="field-wrapper col-md-4 mb-3" data-field="supplier_id" data-label="Supplier" data-default-order="1" data-core="1">
             <label for="supplier_id" class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
             <select name="supplier_id" id="supplier_id" class="form-control select2" required>
@@ -91,8 +96,8 @@
     </div>
 </div>
 
-<div class="table-responsive">
-    <table class="table table-sm table-bordered table-hover table-items-dense" id="pr-items-table">
+<div class="table-responsive tx-items-scroll-container">
+    <table class="table table-sm table-bordered table-hover table-items-dense mb-0" id="pr-items-table">
         <thead class="bg-light">
             <tr>
                 <th style="width: 150px;" data-col-key="code">Code / Barcode <span class="text-danger">*</span></th>
@@ -342,7 +347,18 @@
             document.getElementById('display-gst').innerText = '₹' + totalGst.toFixed(2);
             document.getElementById('display-grand-total').innerText = '₹' + grandTotal.toFixed(2);
 
-            const submitBtn = document.querySelector('button[type="submit"]');
+            // Universal rich footer total and items badge
+            const displayPrFinal = document.getElementById('display-pr-final-total');
+            if (displayPrFinal) {
+                displayPrFinal.innerText = grandTotal.toFixed(2);
+            }
+            const itemsBadge = document.getElementById('pr-total-items-badge');
+            if (itemsBadge) {
+                const rowCount = document.querySelectorAll('#pr-items-body .pr-item-row').length;
+                itemsBadge.innerHTML = '<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + rowCount + ' Items</span>';
+            }
+
+            const submitBtn = document.querySelector('button[type="submit"], #pr-main-save-btn');
             if (submitBtn) {
                 const hasValidItems = totalQty > 0 && document.querySelectorAll('#pr-items-body .pr-item-row').length > 0;
                 submitBtn.disabled = !hasValidItems || hasInvalidDisc;
@@ -1312,6 +1328,17 @@
 
         // Initialize calculations
         recalculateAll();
+
+        // Universal compact layout auto-fit engine
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#pr-items-table',
+                minHeight: 160
+            });
+        }
     })();
 </script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 @endpush

@@ -3,9 +3,9 @@
 @section('title', 'Edit Purchase Return')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-edit mr-2 text-primary"></i>Edit Purchase Return: {{ $purchaseReturn->return_number }}</h1>
-        <a href="{{ route('purchase.purchase-returns.index') }}" class="btn btn-secondary btn-sm">
+    <div class="d-flex justify-content-between align-items-center py-0">
+        <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-edit mr-2 text-primary"></i> Edit Purchase Return: {{ $purchaseReturn->return_number }}</h1>
+        <a href="{{ route('purchase.purchase-returns.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to List
         </a>
     </div>
@@ -24,19 +24,23 @@
         </div>
     @endif
 
-    <div class="card card-outline card-primary shadow-sm">
+    <div class="card card-outline card-primary shadow-sm mb-0">
         <form action="{{ route('purchase.purchase-returns.update', $purchaseReturn) }}" method="POST" id="pr-form" novalidate>
             @csrf
             @method('PUT')
-            <div class="card-body">
+            <div class="card-body py-2 px-3">
                 @include('purchase.purchase-returns._form')
             </div>
-            <div class="card-footer bg-light d-flex justify-content-between">
-                <a href="{{ route('purchase.purchase-returns.index') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-success px-4 font-weight-bold">
-                    <i class="fas fa-save mr-1"></i> Update Purchase Return
-                </button>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-pr-final-total"
+                items-badge-id="pr-total-items-badge"
+                save-btn-id="pr-main-save-btn"
+                save-btn-text="Update Purchase Return"
+                save-btn-icon="fas fa-check-circle"
+                cancel-route="{{ route('purchase.purchase-returns.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
         </form>
     </div>
 @stop
+
