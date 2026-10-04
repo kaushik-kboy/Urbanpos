@@ -1,3 +1,7 @@
+@push('css')
+    <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
 @php
     $entry = $openingStock ?? null;
     $oldItems = old('items');
@@ -19,7 +23,7 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid mb-3" id="os-header-fields-grid">
+<div class="row g-2 form-fields-grid tx-header-fields-grid mb-3" id="os-header-fields-grid">
     @php
         $selectedBranch = old('branch_id', $entry->branch_id ?? (session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?: 1))));
     @endphp
@@ -48,7 +52,7 @@
         </div>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
+        <div class="table-responsive tx-items-scroll-container" style="overflow-x: auto; overflow-y: auto;">
             <table class="table table-sm table-bordered table-hover mb-0" id="items-table" style="min-width: 1750px; font-size: 0.875rem;">
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
@@ -651,6 +655,11 @@
             $('#footer-total-scheme').text(totalScheme.toFixed(2));
             $('#footer-total-tax').text(totalTax.toFixed(2));
             $('#footer-grand-net').text(grandNet.toFixed(2));
+            $('#display-os-final-total').text(grandNet.toFixed(2));
+            let itemCount = $('#items-body tr.item-row').filter(function () {
+                return !!$(this).find('.item-select').val();
+            }).length;
+            $('#os-total-items-badge').text(itemCount + (itemCount === 1 ? ' Item' : ' Items'));
         }
 
         // Re-index S.No numbers
@@ -1051,5 +1060,18 @@
             }
         });
     })();
+</script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
+<script>
+    $(document).ready(function () {
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#items-table',
+                minHeight: 180
+            });
+        }
+    });
 </script>
 @endpush

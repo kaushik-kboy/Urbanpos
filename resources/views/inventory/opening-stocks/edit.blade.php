@@ -17,10 +17,13 @@
                 <x-error-summary />
                 @include('inventory.opening-stocks._form')
             </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <a href="{{ route('inventory.opening-stocks.index') }}" class="btn btn-default">Cancel</a>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-os-final-total"
+                items-badge-id="os-total-items-badge"
+                save-btn-id="os-main-save-btn"
+                save-btn-text="Update Opening Stock"
+                cancel-route="{{ route('inventory.opening-stocks.index') }}"
+            />
         </form>
     </div>
 @stop
