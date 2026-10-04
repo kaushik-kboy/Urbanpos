@@ -3,30 +3,35 @@
 @section('title', 'Edit Sales Quotation')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1 class="m-0 text-dark">
-            <i class="fas fa-edit mr-2 text-primary"></i>Edit Quotation: <span class="text-primary">{{ $salesQuotation->quotation_number }}</span>
+    <div class="d-flex justify-content-between align-items-center py-0">
+        <h1 class="m-0 font-weight-bold text-dark h5">
+            <i class="fas fa-edit mr-2 text-primary"></i> Edit Quotation: <span class="text-primary">{{ $salesQuotation->quotation_number }}</span>
         </h1>
-        <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-secondary btn-sm">
+        <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to Quotations
         </a>
     </div>
 @stop
 
 @section('content')
-    <form action="{{ route('sales.sales-quotations.update', $salesQuotation) }}" method="POST" id="sq-form" novalidate>
-        @csrf
-        @method('PUT')
-        <div class="card card-primary card-outline">
-            <div class="card-body">
+    <div class="card card-primary card-outline mb-0">
+        <form action="{{ route('sales.sales-quotations.update', $salesQuotation) }}" method="POST" id="sq-form" novalidate>
+            @csrf
+            @method('PUT')
+            <div class="card-body py-2 px-3">
+                <x-error-summary />
                 @include('sales.sales-quotations._form')
             </div>
-            <div class="card-footer text-right">
-                <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-default mr-2">Cancel</a>
-                <button type="submit" class="btn btn-primary px-4 font-weight-bold">
-                    <i class="fas fa-save mr-1"></i> Update Quotation
-                </button>
-            </div>
-        </div>
-    </form>
+            <x-transaction-rich-footer
+                total-id="display-sq-final-total"
+                items-badge-id="sq-total-items-badge"
+                save-btn-id="sq-main-save-btn"
+                save-btn-text="Update Quotation"
+                save-btn-icon="fas fa-check-circle"
+                cancel-route="{{ route('sales.sales-quotations.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
+        </form>
+    </div>
 @stop
+

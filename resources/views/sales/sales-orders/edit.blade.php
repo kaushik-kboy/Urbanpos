@@ -3,30 +3,35 @@
 @section('title', 'Edit Sales Order')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1 class="m-0 text-dark">
-            <i class="fas fa-edit mr-2 text-primary"></i>Edit Sales Order: <span class="text-primary">{{ $salesOrder->order_number }}</span>
+    <div class="d-flex justify-content-between align-items-center py-0">
+        <h1 class="m-0 font-weight-bold text-dark h5">
+            <i class="fas fa-edit mr-2 text-primary"></i> Edit Sales Order: <span class="text-primary">{{ $salesOrder->order_number }}</span>
         </h1>
-        <a href="{{ route('sales.sales-orders.index') }}" class="btn btn-secondary btn-sm">
+        <a href="{{ route('sales.sales-orders.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to Orders
         </a>
     </div>
 @stop
 
 @section('content')
-    <form action="{{ route('sales.sales-orders.update', $salesOrder) }}" method="POST" id="so-form" novalidate>
-        @csrf
-        @method('PUT')
-        <div class="card card-primary card-outline">
-            <div class="card-body">
+    <div class="card card-primary card-outline mb-0">
+        <form action="{{ route('sales.sales-orders.update', $salesOrder) }}" method="POST" id="so-form" novalidate>
+            @csrf
+            @method('PUT')
+            <div class="card-body py-2 px-3">
+                <x-error-summary />
                 @include('sales.sales-orders._form')
             </div>
-            <div class="card-footer text-right">
-                <a href="{{ route('sales.sales-orders.index') }}" class="btn btn-default mr-2">Cancel</a>
-                <button type="submit" class="btn btn-primary px-4 font-weight-bold">
-                    <i class="fas fa-save mr-1"></i> Update Order
-                </button>
-            </div>
-        </div>
-    </form>
+            <x-transaction-rich-footer
+                total-id="display-so-final-total"
+                items-badge-id="so-total-items-badge"
+                save-btn-id="so-main-save-btn"
+                save-btn-text="Update Order"
+                save-btn-icon="fas fa-check-circle"
+                cancel-route="{{ route('sales.sales-orders.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
+        </form>
+    </div>
 @stop
+

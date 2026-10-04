@@ -3,28 +3,32 @@
 @section('title', 'Create Sales Quotation')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1 class="m-0 text-dark"><i class="fas fa-file-signature mr-2 text-primary"></i>Create Sales Quotation</h1>
-        <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-secondary btn-sm">
+    <div class="d-flex justify-content-between align-items-center py-0">
+        <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-file-signature mr-2 text-primary"></i> Create Sales Quotation</h1>
+        <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to Quotations
         </a>
     </div>
 @stop
 
 @section('content')
-    <form action="{{ route('sales.sales-quotations.store') }}" method="POST" id="sq-form" novalidate>
-        @csrf
-        <div class="card card-primary card-outline">
-            <div class="card-body">
+    <div class="card card-primary card-outline mb-0">
+        <form action="{{ route('sales.sales-quotations.store') }}" method="POST" id="sq-form" novalidate>
+            @csrf
+            <div class="card-body py-2 px-3">
+                <x-error-summary />
                 @include('sales.sales-quotations._form')
             </div>
-            <div class="card-footer text-right">
-                <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields"><i class="fas fa-undo mr-1"></i> Reset Form</button>
-                <a href="{{ route('sales.sales-quotations.index') }}" class="btn btn-default mr-2">Cancel</a>
-                <button type="submit" class="btn btn-primary px-4 font-weight-bold">
-                    <i class="fas fa-save mr-1"></i> Save Quotation
-                </button>
-            </div>
-        </div>
-    </form>
+            <x-transaction-rich-footer
+                total-id="display-sq-final-total"
+                items-badge-id="sq-total-items-badge"
+                save-btn-id="sq-main-save-btn"
+                save-btn-text="Save Quotation"
+                save-btn-icon="fas fa-check-circle"
+                cancel-route="{{ route('sales.sales-quotations.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
+        </form>
+    </div>
 @stop
+

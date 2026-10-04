@@ -7,7 +7,11 @@
     $selectedSalesType = $quote->sales_type ?? old('sales_type', 'Local');
 @endphp
 
-<div class="d-flex justify-content-between align-items-center mb-2">
+@push('css')
+<link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
+<div class="d-flex justify-content-between align-items-center mb-2 tx-compact-section-header">
     <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-file-invoice text-primary mr-1"></i> Quotation Details</h6>
     <x-form-layout-customizer
         form-key="sales_quotations.header"
@@ -16,7 +20,7 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid mb-3" id="sq-header-fields-grid">
+<div class="row g-2 form-fields-grid mb-2 tx-header-fields-grid" id="sq-header-fields-grid">
     <div class="field-wrapper col-md-3 form-group" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
         <label>Customer <span class="text-danger">*</span></label>
         <select name="customer_id" class="form-control form-control-sm select2" required>
@@ -92,8 +96,8 @@
     </div>
 </div>
 
-<div class="table-responsive">
-    <table class="table table-sm table-bordered table-items-dense" id="sq-items-table">
+<div class="table-responsive tx-items-scroll-container">
+    <table class="table table-sm table-bordered table-items-dense mb-0" id="sq-items-table">
         <thead class="bg-light">
             <tr>
                 <th style="width: 35px;" class="text-center" data-col-key="seq">#</th>
@@ -831,6 +835,9 @@ $(function() {
         $('#sq-summary-gst').text('₹' + totGst.toFixed(2));
         $('#sq-summary-total').text('₹' + grandTotal.toFixed(2));
 
+        // Update universal rich footer total
+        $('#display-sq-final-total').text(grandTotal.toFixed(2));
+
         updateSqSaveButtonState();
     }
 
@@ -870,7 +877,9 @@ $(function() {
             reason = 'Pehle item add karein. Please add at least one item before saving.';
         }
 
-        let $btn = $('button[type="submit"]');
+        $('#sq-total-items-badge').html('<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + validRows + ' Items</span>');
+
+        let $btn = $('button[type="submit"], #sq-main-save-btn');
         if (hasError) {
             $btn.prop('disabled', true).addClass('disabled').attr('title', reason);
         } else {
@@ -988,6 +997,17 @@ $(function() {
     });
 
     recalcAll();
+
+    // Initialize universal compact transaction layout auto-fit engine
+    if (window.initTransactionCompactLayout) {
+        window.initTransactionCompactLayout({
+            containerSelector: '.tx-items-scroll-container',
+            footerSelector: '.tx-rich-footer',
+            tableSelector: '#sq-items-table',
+            minHeight: 160
+        });
+    }
 });
 </script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 @endpush
