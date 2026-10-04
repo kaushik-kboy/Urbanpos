@@ -17,13 +17,14 @@
                 <x-error-summary />
                 @include('inventory.stock-transfers._form')
             </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-primary">Dispatch</button>
-                <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
-                    <i class="fas fa-undo mr-1"></i> Reset Form
-                </button>
-                <a href="{{ route('inventory.stock-transfers.index') }}" class="btn btn-default">Cancel</a>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-st-total-cost"
+                items-badge-id="st-total-items-badge"
+                save-btn-id="st-main-save-btn"
+                save-btn-text="Dispatch Transfer"
+                cancel-route="{{ route('inventory.stock-transfers.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
         </form>
     </div>
 @stop

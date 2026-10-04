@@ -1,3 +1,7 @@
+@push('css')
+    <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
 @php
     $transfer = $stockTransfer ?? null;
     $oldItems = old('items');
@@ -17,7 +21,7 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid mb-3" id="st-header-fields-grid">
+<div class="row g-2 form-fields-grid tx-header-fields-grid mb-3" id="st-header-fields-grid">
     @php
         $selectedFromBranch = old('from_branch_id', $transfer->from_branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
@@ -86,7 +90,7 @@
         </div>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive" style="max-height: 520px; overflow-x: auto; overflow-y: auto;">
+        <div class="table-responsive tx-items-scroll-container" style="overflow-x: auto; overflow-y: auto;">
             <table class="table table-sm table-bordered table-hover mb-0 table-items-dense" id="items-table" style="min-width: 980px; font-size: 0.875rem;">
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
@@ -1289,6 +1293,11 @@
             });
             $('#footer-total-qty').text(totalQty.toFixed(3));
             $('#footer-total-amount').text(totalAmount.toFixed(2));
+            $('#display-st-total-cost').text(totalAmount.toFixed(2));
+            let itemCount = $('#items-body tr.item-row').filter(function () {
+                return !!$(this).find('.item-select, .item-id-input, select[name*="[item_id]"]').val();
+            }).length;
+            $('#st-total-items-badge').text(itemCount + (itemCount === 1 ? ' Item' : ' Items'));
         }
 
         $(document).on('input change', '.item-qty, .item-cost', function () {
@@ -1608,5 +1617,18 @@
             }
         });
     })();
+</script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
+<script>
+    $(document).ready(function () {
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#items-table',
+                minHeight: 180
+            });
+        }
+    });
 </script>
 @endpush
