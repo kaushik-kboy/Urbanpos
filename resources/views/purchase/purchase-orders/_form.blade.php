@@ -18,7 +18,11 @@
     </div>
 @endif
 
-<div class="d-flex justify-content-between align-items-center mb-2">
+@push('css')
+<link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+@endpush
+
+<div class="d-flex justify-content-between align-items-center mb-2 tx-compact-section-header">
     <h5 class="mb-0 text-muted font-weight-bold text-uppercase small"><i class="fas fa-file-invoice text-primary mr-1"></i> PO Header</h5>
     <x-form-layout-customizer
         form-key="purchase_orders.header"
@@ -27,7 +31,7 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid" id="po-header-fields-grid">
+<div class="row g-2 form-fields-grid tx-header-fields-grid" id="po-header-fields-grid">
     <div class="field-wrapper col-md-6" data-field="supplier_id" data-label="Supplier" data-default-order="1" data-core="1">
         <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$po->supplier_id ?? ''" placeholder="Select a supplier" required />
     </div>
@@ -98,8 +102,8 @@
     }
 </style>
 
-<div class="table-responsive">
-    <table class="table table-sm table-bordered table-items-dense" id="po-items-table">
+<div class="table-responsive tx-items-scroll-container">
+    <table class="table table-sm table-bordered table-items-dense mb-0" id="po-items-table">
         <thead class="bg-light">
             <tr>
                 <th style="width:30px" class="text-center" data-col-key="sr" data-can-hide="false">#</th>
@@ -1028,6 +1032,15 @@
             $('#po-summary-disc').text('₹' + totalAllDisc.toFixed(2));
             $('#po-summary-items').text('₹' + totalNetAmt.toFixed(2));
             $('#po-summary-grand').text('₹' + Math.max(0, grandTotal).toFixed(2));
+
+            // Universal rich footer total and items badge
+            let finalAmt = Math.max(0, grandTotal);
+            $('#display-po-final-total').text(finalAmt.toFixed(2));
+            let validRowCount = 0;
+            $('#po-items-body tr').each(function() {
+                if ($(this).find('.po-item-id').val()) validRowCount++;
+            });
+            $('#po-total-items-badge').html('<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + validRowCount + ' Items</span>');
         }
 
         $(document).on('input', '.po-qty, .po-free-qty, .po-cost, .po-sell, .po-mrp, .po-gst', function () {
@@ -1308,6 +1321,17 @@
                 window.location.reload();
             }
         });
+
+        // Universal compact layout auto-fit engine
+        if (window.initTransactionCompactLayout) {
+            window.initTransactionCompactLayout({
+                containerSelector: '.tx-items-scroll-container',
+                footerSelector: '.tx-rich-footer',
+                tableSelector: '#po-items-table',
+                minHeight: 160
+            });
+        }
     });
 </script>
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 @endpush
