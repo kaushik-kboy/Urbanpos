@@ -1,0 +1,343 @@
+/**
+ * UrbanPOS Universal Compact Transaction Layout Stylesheet
+ * 
+ * Provides POS-grade, single-screen zero-scroll layout for all transaction forms.
+ * Enables sticky table headers, dynamic scrollable items containers, 
+ * compact 26px inputs, and pinned rich action footers.
+ */
+
+/* =========================================================================
+   DESKTOP & LANDSCAPE DISPLAYS (min-width: 992px and min-height: 550px)
+   Single-screen fixed layout: ZERO window-level vertical scroller
+   ========================================================================= */
+@media (min-width: 992px) and (min-height: 550px) {
+    html.tx-viewport-fixed,
+    body.tx-viewport-fixed {
+        overflow: hidden !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+    body.tx-viewport-fixed {
+        padding-bottom: 38px !important;
+    }
+    body.tx-viewport-fixed .wrapper {
+        overflow: hidden !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+    body.tx-viewport-fixed .content-wrapper {
+        min-height: auto !important;
+        overflow: hidden !important;
+        max-height: calc(100vh - 38px) !important;
+    }
+    body.tx-viewport-fixed .content-header {
+        padding: 3px 0.5rem !important;
+    }
+    body.tx-viewport-fixed .content-wrapper > .content {
+        padding: 0 0.5rem 0 0.5rem !important;
+        overflow: hidden !important;
+    }
+    .tx-items-scroll-container,
+    .sb-items-scroll-container {
+        height: calc(100vh - 360px);
+        max-height: calc(100vh - 360px);
+        min-height: 200px;
+    }
+}
+
+/* =========================================================================
+   TABLETS, SMALL SCREENS & SHORT VIEWPORTS (< 992px or height < 550px)
+   Smooth page scroll enabled so all fields and tables remain accessible
+   ========================================================================= */
+@media (max-width: 991.98px), (max-height: 549.98px) {
+    html.tx-viewport-fixed,
+    body.tx-viewport-fixed {
+        overflow-y: auto !important;
+        height: auto !important;
+        max-height: none !important;
+        padding-bottom: 44px !important;
+    }
+    body.tx-viewport-fixed .wrapper,
+    body.tx-viewport-fixed .content-wrapper {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+    body.tx-viewport-fixed .content-wrapper > .content {
+        overflow: visible !important;
+        padding: 0 0.5rem 0.5rem 0.5rem !important;
+    }
+    .tx-items-scroll-container,
+    .sb-items-scroll-container {
+        min-height: 220px;
+        max-height: 50vh;
+    }
+    .tx-rich-footer,
+    .sb-rich-footer {
+        position: sticky;
+        bottom: 38px;
+        z-index: 1020;
+    }
+}
+
+/* =========================================================================
+   MOBILE SCREENS (< 576px)
+   Stack footer actions and optimize touch inputs
+   ========================================================================= */
+@media (max-width: 575.98px) {
+    .tx-rich-footer,
+    .sb-rich-footer {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px;
+        padding: 0.4rem 0.5rem !important;
+    }
+    .tx-rich-footer .d-flex,
+    .sb-rich-footer .d-flex {
+        justify-content: space-between;
+    }
+    body.tx-viewport-fixed .content-header h1 {
+        font-size: 1rem !important;
+    }
+    .tx-header-fields-grid label,
+    .tx-additional-fields-grid label,
+    #sb-header-fields-grid label,
+    #sb-additional-fields-grid label {
+        font-size: 0.75rem !important;
+    }
+}
+
+/* Hide default AdminLTE footer to maximize vertical table area */
+body.tx-viewport-fixed .main-footer,
+body.tx-viewport-fixed footer.main-footer {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    visibility: hidden !important;
+    overflow: hidden !important;
+}
+
+body.tx-viewport-fixed .card-body {
+    padding: 0.25rem 0.65rem 0.15rem 0.65rem !important;
+}
+
+/* Compact Section Headers */
+.tx-compact-section-header,
+.sb-compact-section-header {
+    margin-bottom: 0.1rem !important;
+}
+.tx-compact-section-header h5, 
+.tx-compact-section-header h6,
+.sb-compact-section-header h5, 
+.sb-compact-section-header h6 {
+    font-size: 0.85rem !important;
+    font-weight: 700;
+    margin-bottom: 0 !important;
+}
+
+/* Dense Form Groups & Labels */
+.tx-header-fields-grid .form-group,
+.tx-additional-fields-grid .form-group,
+#sb-header-fields-grid .form-group,
+#sb-additional-fields-grid .form-group {
+    margin-bottom: 0.12rem !important;
+}
+
+.tx-header-fields-grid .form-group > label,
+.tx-additional-fields-grid .form-group > label,
+#sb-header-fields-grid .form-group > label,
+#sb-additional-fields-grid .form-group > label {
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    line-height: 18px !important;
+    margin-bottom: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 3px !important;
+}
+
+.tx-header-fields-grid .form-group > .d-flex,
+.tx-additional-fields-grid .form-group > .d-flex,
+#sb-header-fields-grid .form-group > .d-flex,
+#sb-additional-fields-grid .form-group > .d-flex {
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    line-height: 18px !important;
+    margin-bottom: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.tx-header-fields-grid .form-group > .d-flex label,
+.tx-additional-fields-grid .form-group > .d-flex label,
+#sb-header-fields-grid .form-group > .d-flex label,
+#sb-additional-fields-grid .form-group > .d-flex label {
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    line-height: 18px !important;
+    margin-bottom: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 3px !important;
+}
+
+.tx-header-fields-grid label,
+.tx-additional-fields-grid label,
+#sb-header-fields-grid label,
+#sb-additional-fields-grid label {
+    font-size: 0.73rem !important;
+    margin-bottom: 0 !important;
+    font-weight: 600 !important;
+    color: #495057 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 18px !important;
+}
+
+.tx-header-fields-grid label i,
+.tx-additional-fields-grid label i,
+#sb-header-fields-grid label i,
+#sb-additional-fields-grid label i {
+    margin-right: 3px !important;
+}
+
+.tx-header-fields-grid label .text-danger,
+.tx-additional-fields-grid label .text-danger,
+#sb-header-fields-grid label .text-danger,
+#sb-additional-fields-grid label .text-danger {
+    margin-left: 2px !important;
+}
+
+/* 26px Dense Form Controls & Select2 Single */
+.tx-header-fields-grid .form-control,
+.tx-additional-fields-grid .form-control,
+.tx-header-fields-grid .select2-container .select2-selection--single,
+.tx-additional-fields-grid .select2-container .select2-selection--single,
+#sb-header-fields-grid .form-control,
+#sb-additional-fields-grid .form-control,
+#sb-header-fields-grid .select2-container .select2-selection--single,
+#sb-additional-fields-grid .select2-container .select2-selection--single {
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    font-size: 0.80rem !important;
+    line-height: 24px !important;
+    padding: 0 0.4rem !important;
+    box-sizing: border-box !important;
+    border-radius: 3px !important;
+}
+
+.tx-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered,
+.tx-additional-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered,
+#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered,
+#sb-additional-fields-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 24px !important;
+    padding-left: 0.35rem !important;
+    padding-right: 18px !important;
+    font-size: 0.80rem !important;
+}
+
+.tx-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow,
+.tx-additional-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow,
+#sb-header-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow,
+#sb-additional-fields-grid .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 24px !important;
+    top: 1px !important;
+    right: 2px !important;
+}
+
+.tx-header-fields-grid input[type="datetime-local"],
+.tx-header-fields-grid input[type="date"],
+.tx-header-fields-grid input[type="time"],
+#sb-header-fields-grid input[type="datetime-local"],
+#sb-header-fields-grid input[type="date"],
+#sb-header-fields-grid input[type="time"] {
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    line-height: 24px !important;
+    padding: 0 0.35rem !important;
+    font-size: 0.80rem !important;
+    box-sizing: border-box !important;
+}
+
+.tx-additional-fields-grid textarea.form-control,
+#sb-additional-fields-grid textarea.form-control {
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.80rem;
+    resize: none;
+}
+
+/* =========================================================================
+   SCROLLABLE ITEMS CONTAINER & STICKY TABLE HEADER / FOOTER
+   ========================================================================= */
+.tx-items-scroll-container,
+.sb-items-scroll-container {
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    position: relative;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.tx-items-scroll-container thead th,
+.sb-items-scroll-container thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f4f6f9 !important;
+    z-index: 5;
+    box-shadow: inset 0 -1px 0 #dee2e6, 0 1px 2px rgba(0, 0, 0, 0.06);
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.78rem;
+}
+
+.tx-items-scroll-container tfoot td,
+.sb-items-scroll-container tfoot td {
+    position: sticky;
+    bottom: 0;
+    background-color: #f8f9fa !important;
+    z-index: 4;
+    box-shadow: inset 0 1px 0 #dee2e6;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.80rem;
+}
+
+/* Dense table row padding */
+.table-items-dense td {
+    padding: 0.12rem 0.25rem !important;
+    vertical-align: middle !important;
+}
+.table-items-dense .form-control-sm {
+    height: 24px !important;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.80rem;
+}
+
+/* =========================================================================
+   RICH PINNED POS ACTION FOOTER
+   ========================================================================= */
+.tx-rich-footer,
+.sb-rich-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background-color: #f8f9fa !important;
+    border-top: 2px solid #dee2e6 !important;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+    padding: 0.25rem 0.65rem !important;
+}
