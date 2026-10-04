@@ -24,19 +24,14 @@
                 <x-error-summary />
                 @include('inventory.damage-stocks._form')
             </div>
-            <div class="card-footer bg-light py-2 d-flex justify-content-between">
-                <a href="{{ route('inventory.damage-stocks.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-times mr-1"></i> Cancel
-                </a>
-                <div>
-                    <button type="button" id="btn-reset-form" class="btn btn-warning mr-2 btn-reset-form" title="Reset all form fields">
-                        <i class="fas fa-undo mr-1"></i> Reset Form
-                    </button>
-                    <button type="submit" class="btn btn-danger font-weight-bold px-4 shadow-sm">
-                        <i class="fas fa-save mr-1"></i> Save Damage Stock (F6)
-                    </button>
-                </div>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-ds-final-total"
+                items-badge-id="ds-total-items-badge"
+                save-btn-id="ds-main-save-btn"
+                save-btn-text="Save Damage Stock"
+                cancel-route="{{ route('inventory.damage-stocks.index') }}"
+                reset-btn-id="btn-reset-form"
+            />
         </form>
     </div>
 @stop

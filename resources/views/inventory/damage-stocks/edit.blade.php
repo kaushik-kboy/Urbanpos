@@ -32,14 +32,13 @@
                 <x-error-summary />
                 @include('inventory.damage-stocks._form')
             </div>
-            <div class="card-footer bg-light py-2 d-flex justify-content-between">
-                <a href="{{ route('inventory.damage-stocks.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-times mr-1"></i> Cancel
-                </a>
-                <button type="submit" class="btn btn-warning font-weight-bold px-4 shadow-sm">
-                    <i class="fas fa-save mr-1"></i> Update Damage Stock
-                </button>
-            </div>
+            <x-transaction-rich-footer
+                total-id="display-ds-final-total"
+                items-badge-id="ds-total-items-badge"
+                save-btn-id="ds-main-save-btn"
+                save-btn-text="Update Damage Stock"
+                cancel-route="{{ route('inventory.damage-stocks.index') }}"
+            />
         </form>
     </div>
 @stop
