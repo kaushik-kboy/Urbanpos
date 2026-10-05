@@ -52,7 +52,7 @@
         </div>
     </td>
     <td style="width: 120px;" data-col-key="expiry">
-        <input type="text" name="items[{{ $idx }}][exp_date]" value="{{ $expDateFormatted }}" class="form-control form-control-sm su-exp-date bg-light text-center font-weight-bold" placeholder="DD/MM/YYYY" readonly tabindex="-1">
+        <input type="text" name="items[{{ $idx }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm su-exp-date bg-light text-center font-weight-bold" placeholder="YYYY-MM-DD" readonly tabindex="-1">
     </td>
     <td style="width: 95px;" data-col-key="cost_price">
         <input type="number" step="0.01" name="items[{{ $idx }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm text-right su-cost-price bg-light" placeholder="0.00" readonly tabindex="-1">
