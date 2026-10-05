@@ -46,7 +46,20 @@
                     container-id="grn-header-fields-grid"
                     title="Customize Receipt Note Header"
                 />
-            </div>
+            <style>
+                #grn-header-fields-grid .btn-open-datepicker,
+                #grn-header-fields-grid .btn-date-settings-modal {
+                    display: none !important;
+                }
+                #grn-header-fields-grid .input-group-append:empty,
+                #grn-header-fields-grid .urbanpos-date-group .input-group-append {
+                    display: none !important;
+                }
+                #grn-header-fields-grid .urbanpos-date-group input {
+                    border-top-right-radius: 0.25rem !important;
+                    border-bottom-right-radius: 0.25rem !important;
+                }
+            </style>
             <div class="card-body p-3">
                 <div class="row g-2 form-fields-grid tx-header-fields-grid" id="grn-header-fields-grid">
                     <div class="field-wrapper col-md-3 col-sm-6 mb-3" data-field="receipt_date" data-label="Receipt Date" data-default-order="1" data-core="1">
@@ -759,6 +772,7 @@
                 let $nextRow = $currentRow.next('tr.grn-item-row');
                 if (!$nextRow.length) {
                     e.preventDefault();
+                    if (!canAddGrnRow()) return;
                     $('#add-row-btn').trigger('click');
                     let $newRow = $('#grn-items-body tr.grn-item-row:last');
                     setTimeout(function () {
@@ -811,8 +825,34 @@
             }, 100);
         });
 
+        function canAddGrnRow() {
+            let $lastRow = $('#grn-items-body tr:last');
+            if ($lastRow.length) {
+                let itemId = $lastRow.find('.prn-item-id').val();
+                let qtyVal = parseFloat($lastRow.find('.row-accepted').val()) || 0;
+
+                if (!itemId) {
+                    let msg = 'Pehle current row me item select karein.';
+                    if (window.toastr) toastr.warning(msg, 'Incomplete Row');
+                    else alert(msg);
+                    $lastRow.find('.prn-item-code').focus();
+                    return false;
+                }
+
+                if (qtyVal <= 0) {
+                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    if (window.toastr) toastr.warning(msg, 'Quantity Required');
+                    else alert(msg);
+                    $lastRow.find('.row-accepted').focus().select();
+                    return false;
+                }
+            }
+            return true;
+        }
+
         // Add row
         $('#add-row-btn').on('click', function () {
+            if (!canAddGrnRow()) return;
             let template = $('#row-template').html();
             template = template.replace(/__INDEX__/g, rowIndex);
             template = template.replace(/__NUMBER__/g, $('#grn-items-body tr').length + 1);

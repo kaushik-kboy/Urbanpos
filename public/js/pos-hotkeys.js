@@ -280,7 +280,7 @@
                     return;
                 }
 
-                let $submitBtn = $('button[type="submit"]:visible, .btn-save:visible, form .card-footer .btn-primary:visible, #sb-main-save-btn').first();
+                let $submitBtn = $('#sr-main-save-btn, #sb-main-save-btn, button[type="submit"]:visible, .btn-save:visible, form .card-footer .btn-primary:visible, form .card-footer .btn-success:visible').filter(':visible').first();
                 if ($submitBtn.length) {
                     $submitBtn.trigger('click');
                 }

@@ -14,7 +14,7 @@
     'customRight' => null,
 ])
 
-<div class="card-footer tx-rich-footer py-2 px-3 d-flex justify-content-between align-items-center flex-wrap" style="border-top: 2px solid #dee2e6;">
+<div class="card-footer tx-rich-footer py-2 px-3 d-flex justify-content-between align-items-center flex-wrap" style="position: sticky; bottom: 0; z-index: 1030; background: #ffffff; border-top: 2px solid #dee2e6; box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.08);">
     {{-- Left: Live Items Badge, Total & Shortcuts --}}
     <div class="d-flex align-items-center flex-wrap">
         @if(!empty($itemsBadgeId))

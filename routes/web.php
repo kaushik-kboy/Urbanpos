@@ -197,6 +197,8 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::get('damage-stocks/search-items', [DamageStockController::class, 'searchItems'])->name('damage-stocks.search-items');
     Route::get('damage-stocks/item-by-code', [DamageStockController::class, 'getItemByCode'])->name('damage-stocks.item-by-code');
     $gatedResource('damage-stocks', DamageStockController::class, 'damage-stocks');
+    Route::get('stock-updates/search-items', [StockUpdateController::class, 'searchItems'])->name('stock-updates.search-items');
+    Route::get('stock-updates/item-by-code', [StockUpdateController::class, 'getItemByCode'])->name('stock-updates.item-by-code');
     $gatedResource('stock-updates', StockUpdateController::class, 'stock-updates');
 
     // Stock Update Approval

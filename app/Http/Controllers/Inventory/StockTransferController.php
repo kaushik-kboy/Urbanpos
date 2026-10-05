@@ -678,19 +678,32 @@ class StockTransferController extends Controller
 
         $batches = [];
         foreach ($resolvedBatches as $b) {
-            $bNo = !empty($b['batch_no']) ? trim($b['batch_no']) : '';
-            if ($b['remaining_qty'] > 0 && $bNo !== '') {
+            if ($b['remaining_qty'] > 0) {
+                $bNo = !empty($b['batch_no']) ? trim($b['batch_no']) : '';
                 $batches[] = [
                     'productname' => $item->name,
                     'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
                     'batch_no' => $bNo,
                     'exp_date' => $b['exp_date'],
                     'qty' => $b['remaining_qty'],
-                    'cost_price' => $b['cost_price'],
-                    'sell_price' => $b['sell_price'],
-                    'mrp' => $b['mrp'],
+                    'cost_price' => (float) ($b['cost_price'] > 0 ? $b['cost_price'] : ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0)))),
+                    'sell_price' => (float) ($b['sell_price'] ?: ($item->sell_price ?: 0)),
+                    'mrp' => (float) ($b['mrp'] ?: ($item->mrp ?: 0)),
                 ];
             }
+        }
+
+        if (empty($batches) && $avail > 0) {
+            $batches[] = [
+                'productname' => $item->name,
+                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'batch_no' => '',
+                'exp_date' => $this->resolveItemExpiry($item, $stock),
+                'qty' => $avail,
+                'cost_price' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
+                'sell_price' => (float) ($item->sell_price ?: 0),
+                'mrp' => (float) ($item->mrp ?: 0),
+            ];
         }
 
         $defaultBatch = !empty($batches) ? $batches[0] : null;

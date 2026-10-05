@@ -495,7 +495,7 @@ return [
                     'text' => 'Purchase Order',
                     'url' => 'purchase/purchase-orders/create',
                     'icon' => 'fas fa-fw fa-file-invoice',
-                    'active' => ['purchase/purchase-orders*'],
+                    'active' => ['purchase/purchase-orders/create*'],
                 ],
                 [
                     'text' => 'Receipt Note',
@@ -516,9 +516,10 @@ return [
                     'active' => ['purchase/purchase-returns*'],
                 ],
                 [
-                    'text' => 'PO Cancel',
+                    'text' => 'Purchase Orders',
                     'url' => 'purchase/purchase-orders',
-                    'icon' => 'fas fa-fw fa-ban',
+                    'icon' => 'fas fa-fw fa-list-alt',
+                    'active' => ['purchase/purchase-orders'],
                 ],
                 [
                     'text' => 'Transfer In',

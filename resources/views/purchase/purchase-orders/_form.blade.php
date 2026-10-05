@@ -31,8 +31,23 @@
     />
 </div>
 
+<style>
+    #po-header-fields-grid .btn-open-datepicker,
+    #po-header-fields-grid .btn-date-settings-modal {
+        display: none !important;
+    }
+    #po-header-fields-grid .input-group-append:empty,
+    #po-header-fields-grid .urbanpos-date-group .input-group-append {
+        display: none !important;
+    }
+    #po-header-fields-grid .urbanpos-date-group input {
+        border-top-right-radius: 0.25rem !important;
+        border-bottom-right-radius: 0.25rem !important;
+    }
+</style>
+
 <div class="row g-2 form-fields-grid tx-header-fields-grid" id="po-header-fields-grid">
-    <div class="field-wrapper col-md-6" data-field="supplier_id" data-label="Supplier" data-default-order="1" data-core="1">
+    <div class="field-wrapper col-custom-5" data-field="supplier_id" data-label="Supplier" data-default-order="1" data-core="1">
         <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$po->supplier_id ?? ''" placeholder="Select a supplier" required />
     </div>
 
@@ -41,19 +56,19 @@
     @endphp
     <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
 
-    <div class="field-wrapper col-md-6" data-field="po_date" data-label="PO Date" data-default-order="3" data-core="1">
+    <div class="field-wrapper col-custom-5" data-field="po_date" data-label="PO Date" data-default-order="2" data-core="1">
         <x-field name="po_date" label="PO Date" type="date" :value="optional($po->po_date ?? now())->format('Y-m-d')" required />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="purchase_type" data-label="Purchase Type" data-default-order="4" data-core="1">
+    <div class="field-wrapper col-custom-5" data-field="purchase_type" data-label="Purchase Type" data-default-order="3" data-core="1">
         <x-select name="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$po->purchase_type ?? 'Local'" required />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="c_form" data-label="C-Form" data-default-order="5">
+    <div class="field-wrapper col-custom-5" data-field="c_form" data-label="C-Form" data-default-order="4">
         <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$po->c_form ?? 'Against C-Form'" required />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="6" data-core="1">
+    <div class="field-wrapper col-custom-5" data-field="status" data-label="Status" data-default-order="5" data-core="1">
         <x-select name="status" label="Status" :options="['Open' => 'Open', 'Closed' => 'Closed']" :selected="$po->status ?? 'Open'" required />
     </div>
 </div>
@@ -79,7 +94,9 @@
             button-text="Columns"
             title="Show/Hide & Arrange Item Columns"
         />
-        <span class="badge badge-info px-3 py-2"><i class="fas fa-keyboard mr-1"></i> Press Enter on Code/Barcode to open Item Search</span>
+        <button type="button" id="po-add-row" class="btn btn-primary btn-xs font-weight-bold ml-1">
+            <i class="fas fa-plus mr-1"></i> Add Row
+        </button>
     </div>
 </div>
 
@@ -147,35 +164,8 @@
     </table>
 </div>
 
-<button type="button" id="po-add-row" class="btn btn-link btn-sm"><i class="fas fa-plus-circle"></i> Add Row</button>
-
-{{-- Live Total Summary --}}
-<div class="card card-outline card-primary shadow-sm mt-3 mb-3">
-    <div class="card-body py-2 px-3">
-        <div class="row text-center">
-            <div class="col-md-3 border-right">
-                <small class="text-muted d-block">Total Qty</small>
-                <strong class="h5 text-primary" id="po-summary-qty">0</strong>
-            </div>
-            <div class="col-md-3 border-right">
-                <small class="text-muted d-block">Total Discount (Line + Scheme + Other)</small>
-                <strong class="h5 text-danger" id="po-summary-disc">₹0.00</strong>
-            </div>
-            <div class="col-md-3 border-right">
-                <small class="text-muted d-block">Items Total (before freight)</small>
-                <strong class="h5 text-dark" id="po-summary-items">₹0.00</strong>
-            </div>
-            <div class="col-md-3">
-                <small class="text-muted d-block">Grand Total</small>
-                <strong class="h4 text-success" id="po-summary-grand">₹0.00</strong>
-            </div>
-        </div>
-    </div>
-</div>
-
-<hr>
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Charges</h5>
+<div class="d-flex justify-content-between align-items-center mt-2 mb-2 tx-compact-section-header">
+    <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Charges</h6>
     <x-form-layout-customizer
         form-key="purchase_orders.totals"
         container-id="po-totals-fields-grid"
@@ -184,32 +174,56 @@
 </div>
 
 <div class="row g-2 form-fields-grid" id="po-totals-fields-grid">
-    <div class="field-wrapper col-md-6" data-field="freight" data-label="Freight" data-default-order="1">
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="summary_qty" data-label="Total Qty" data-default-order="1">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted">Total Qty</label>
+            <div class="form-control form-control-sm text-right font-weight-bold text-primary bg-light" id="po-summary-qty">0</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="summary_disc" data-label="Total Discount" data-default-order="2">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" title="Line + Scheme + Other">Total Discount</label>
+            <div class="form-control form-control-sm text-right font-weight-bold text-danger bg-light" id="po-summary-disc">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="summary_items" data-label="Items Total" data-default-order="3">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted">Items Total</label>
+            <div class="form-control form-control-sm text-right font-weight-bold text-dark bg-light" id="po-summary-items">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="summary_grand" data-label="Grand Total" data-default-order="4">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-success">Grand Total</label>
+            <div class="form-control form-control-sm text-right font-weight-bold text-success bg-white border-success" id="po-summary-grand">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="freight" data-label="Freight" data-default-order="5">
         <x-field name="freight" label="Freight" type="number" step="0.01" :value="$po->freight ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="round_off" data-label="Round off Amount" data-default-order="2">
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="round_off" data-label="Round off Amount" data-default-order="6">
         <x-field name="round_off" label="Round off Amount" type="number" step="0.01" :value="$po->round_off ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="scheme_item_disc_amt" data-label="Scheme ItemDiscAmt" data-default-order="3">
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="scheme_item_disc_amt" data-label="Scheme ItemDiscAmt" data-default-order="7">
         <x-field name="scheme_item_disc_amt" label="Scheme ItemDiscAmt" type="number" step="0.01" :value="$po->scheme_item_disc_amt ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="scheme_item_disc_percent" data-label="Scheme ItemDisc%" data-default-order="4">
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="scheme_item_disc_percent" data-label="Scheme ItemDisc%" data-default-order="8">
         <x-field name="scheme_item_disc_percent" label="Scheme ItemDisc%" type="number" step="0.01" min="0" max="100" :value="$po->scheme_item_disc_percent ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="other_disc_amt" data-label="OtherDiscAmt" data-default-order="5">
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="other_disc_amt" data-label="OtherDiscAmt" data-default-order="9">
         <x-field name="other_disc_amt" label="OtherDiscAmt" type="number" step="0.01" :value="$po->other_disc_amt ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="6">
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="10">
         <x-field name="total_extra_cess" label="Total Extra Cess" type="number" step="0.01" :value="$po->total_extra_cess ?? 0" />
     </div>
-    <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="7">
+    <div class="field-wrapper col-md-3 col-sm-6" data-field="total_weight" data-label="Total Weight" data-default-order="11">
         <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="$po->total_weight ?? 0" />
     </div>
-    <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="8">
-        <x-textarea name="remarks" label="Remarks" :value="$po->remarks ?? ($indent ? 'Requisition from Indent #' . $indent->indent_number . ($indent->remarks ? ' - ' . $indent->remarks : '') : '')" />
+    <div class="field-wrapper col-md-6 col-sm-12" data-field="remarks" data-label="Remarks" data-default-order="12">
+        <x-field name="remarks" label="Remarks" :value="$po->remarks ?? ($indent ? 'Requisition from Indent #' . $indent->indent_number . ($indent->remarks ? ' - ' . $indent->remarks : '') : '')" placeholder="Optional remarks..." />
     </div>
-    <div class="field-wrapper col-md-12" data-field="message" data-label="Message" data-default-order="9">
-        <x-textarea name="message" label="Message" :value="$po->message ?? ''" />
+    <div class="field-wrapper col-md-6 col-sm-12" data-field="message" data-label="Message" data-default-order="13">
+        <x-field name="message" label="Message" :value="$po->message ?? ''" placeholder="Optional message..." />
     </div>
 </div>
 
@@ -1062,7 +1076,34 @@
         scheduleCalculatePoTotals();
 
 
+        function canAddPoRow() {
+            let $lastRow = $('#po-items-body tr:last');
+            if ($lastRow.length) {
+                let itemId = $lastRow.find('.po-item-select').val();
+                let itemCode = $.trim($lastRow.find('.po-item-code').val());
+                let qtyVal = parseFloat($lastRow.find('.po-qty').val()) || 0;
+
+                if (!itemId) {
+                    let msg = 'Pehle current row me item select karein.';
+                    if (window.toastr) toastr.warning(msg, 'Incomplete Row');
+                    else alert(msg);
+                    $lastRow.find('.po-item-code').focus();
+                    return false;
+                }
+
+                if (qtyVal <= 0) {
+                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    if (window.toastr) toastr.warning(msg, 'Quantity Required');
+                    else alert(msg);
+                    $lastRow.find('.po-qty').focus().select();
+                    return false;
+                }
+            }
+            return true;
+        }
+
         function addPoRowAndOpenSearchModal() {
+            if (!canAddPoRow()) return;
             let html = $('#po-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#po-items-body');
             let $newRow = $(html);
@@ -1107,6 +1148,7 @@
 
         // Add Row
         $('#po-add-row').on('click', function () {
+            if (!canAddPoRow()) return;
             let html = $('#po-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#po-items-body');
             let $newRow = $(html);

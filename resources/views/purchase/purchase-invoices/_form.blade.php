@@ -54,12 +54,31 @@
     />
 </div>
 
+<style>
+    #pinv-header-fields-grid .btn-open-datepicker,
+    #pinv-header-fields-grid .btn-date-settings-modal,
+    #pinv-items-table .btn-open-datepicker,
+    #pinv-items-table .btn-date-settings-modal {
+        display: none !important;
+    }
+    #pinv-header-fields-grid .input-group-append:empty,
+    #pinv-header-fields-grid .urbanpos-date-group .input-group-append,
+    #pinv-items-table .urbanpos-date-group .input-group-append {
+        display: none !important;
+    }
+    #pinv-header-fields-grid .urbanpos-date-group input,
+    #pinv-items-table .urbanpos-date-group input {
+        border-top-right-radius: 0.25rem !important;
+        border-bottom-right-radius: 0.25rem !important;
+    }
+</style>
+
 <div class="row g-2 form-fields-grid tx-header-fields-grid" id="pinv-header-fields-grid">
-    <div class="field-wrapper col-md-6" data-field="invoice_date" data-label="Invoice Date" data-default-order="1" data-core="1">
+    <div class="field-wrapper col-md-2" data-field="invoice_date" data-label="Invoice Date" data-default-order="1" data-core="1">
         <x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" required />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="supplier_id" data-label="Supplier" data-default-order="2" data-core="1">
+    <div class="field-wrapper col-md-2" data-field="supplier_id" data-label="Supplier" data-default-order="2" data-core="1">
         <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$selectedSupplier" placeholder="Select a Supplier" required />
         <div class="form-group row mt-n2 mb-2" id="supplier-prev-inv-wrapper">
             <div class="col-sm-3"></div>
@@ -72,27 +91,27 @@
         </div>
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="purchase_order_id" data-label="Purchase Order" data-default-order="4">
+    <div class="field-wrapper col-md-2" data-field="purchase_order_id" data-label="Purchase Order" data-default-order="4">
         <x-select name="purchase_order_id" label="Purchase Order" :options="$purchaseOrders" :selected="$selectedPo" placeholder="Select PO" />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="purchase_type" data-label="Purchase Type" data-default-order="5" data-core="1">
+    <div class="field-wrapper col-md-2" data-field="purchase_type" data-label="Purchase Type" data-default-order="5" data-core="1">
         <x-select name="purchase_type" id="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="c_form" data-label="C-Form" data-default-order="6">
+    <div class="field-wrapper col-md-2" data-field="c_form" data-label="C-Form" data-default-order="6">
         <x-select name="c_form" label="C-Form" :options="['Against C-Form' => 'Against C-Form', 'No Forms' => 'No Forms']" :selected="$inv->c_form ?? 'No Forms'" required />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="grn_number" data-label="GRN Number" data-default-order="7">
+    <div class="field-wrapper col-md-2" data-field="grn_number" data-label="GRN Number" data-default-order="7">
         <x-field name="grn_number" label="GRN Number" :value="$grnNumberVal" readonly />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="grn_date" data-label="GRN Date" data-default-order="8">
+    <div class="field-wrapper col-md-2" data-field="grn_date" data-label="GRN Date" data-default-order="8">
         <x-field name="grn_date" label="GRN Date" type="date" :value="$grnDateVal" max="{{ date('Y-m-d') }}" />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="supplier_inv_no" data-label="Inv No (Supplier)" data-default-order="9">
+    <div class="field-wrapper col-md-2" data-field="supplier_inv_no" data-label="Inv No (Supplier)" data-default-order="9">
         <x-field name="supplier_inv_no" label="Inv No (Supplier)" :value="$inv->supplier_inv_no ?? ''" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase();" placeholder="e.g. INV-2026-001" required data-check-url="{{ route('purchase.purchase-invoices.check-supplier-inv') }}" data-invoice-id="{{ $inv?->id ?? '' }}" />
         <div class="form-group row mt-n2 mb-2" id="supplier-inv-feedback-container" style="display: none;">
             <div class="col-sm-3"></div>
@@ -102,11 +121,11 @@
         </div>
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="supplier_inv_date" data-label="Inv Date (Supplier)" data-default-order="10">
+    <div class="field-wrapper col-md-2" data-field="supplier_inv_date" data-label="Inv Date (Supplier)" data-default-order="10">
         <x-field name="supplier_inv_date" label="Inv Date (Supplier)" type="date" :value="optional($inv->supplier_inv_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" />
     </div>
 
-    <div class="field-wrapper col-md-6" data-field="supplier_inv_amount" data-label="Inv Amount (Supplier)" data-default-order="11" data-core="1">
+    <div class="field-wrapper col-md-2" data-field="supplier_inv_amount" data-label="Inv Amount (Supplier)" data-default-order="11" data-core="1">
         <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
         <div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">
             <div class="col-sm-3"></div>
@@ -143,7 +162,8 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0">Items</h5>
     <div class="d-flex align-items-center">
-        <button type="button" id="pinv-btn-reset-table" class="btn btn-outline-danger btn-sm mr-2 btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
+        <button type="button" id="pinv-btn-reset-table" class="btn btn-outline-danger btn-xs font-weight-bold mr-2 btn-reset-table" title="Clear all table items and reset to 1 empty row"><i class="fas fa-trash-alt mr-1"></i> Reset Table</button>
+        <button type="button" id="pinv-add-row" class="btn btn-primary btn-xs font-weight-bold mr-2" title="Add a new row"><i class="fas fa-plus mr-1"></i> Add Row</button>
         <x-table-column-customizer
             table-key="purchase.purchase-invoices.items"
             table-id="pinv-items-table"
@@ -265,8 +285,6 @@
     </table>
 </div>
 
-<button type="button" id="pinv-add-row" class="btn btn-link btn-sm"><i class="fas fa-plus-circle"></i> Add Row</button>
-
 <hr>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Charges</h5>
@@ -296,11 +314,11 @@
     <div class="field-wrapper col-md-6" data-field="total_weight" data-label="Total Weight" data-default-order="6">
         <x-field name="total_weight" label="Total Weight" type="number" step="0.01" :value="isset($inv->total_weight) && $inv->total_weight != 0 ? $inv->total_weight : ''" />
     </div>
-    <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
-        <x-textarea name="remarks" label="Remarks" :value="$inv->remarks ?? ''" />
+    <div class="field-wrapper col-md-6 col-sm-12" data-field="remarks" data-label="Remarks" data-default-order="7">
+        <x-field name="remarks" label="Remarks" :value="$inv->remarks ?? ''" placeholder="Optional remarks..." />
     </div>
-    <div class="field-wrapper col-md-12" data-field="message" data-label="Message" data-default-order="8">
-        <x-textarea name="message" label="Message" :value="$inv->message ?? ''" />
+    <div class="field-wrapper col-md-6 col-sm-12" data-field="message" data-label="Message" data-default-order="8">
+        <x-field name="message" label="Message" :value="$inv->message ?? ''" placeholder="Optional message..." />
     </div>
     <div class="field-wrapper col-md-6" data-field="tcs_amount" data-label="TCS Amt" data-default-order="9">
         <x-field name="tcs_amount" label="TCS Amt" type="number" step="0.01" :value="isset($inv->tcs_amount) && $inv->tcs_amount != 0 ? $inv->tcs_amount : ''" />
@@ -2254,8 +2272,36 @@
             // Item description is now a clean readonly text input
         }
 
+        function canAddPinvRow() {
+            let $lastRow = $('#pinv-items-body tr:last');
+            if ($lastRow.length) {
+                let itemId = $lastRow.find('.pinv-item-select').val();
+                let qtyVal = parseFloat($lastRow.find('.pinv-qty').val()) || 0;
+
+                if (!itemId) {
+                    let msg = 'Pehle current row me item select karein.';
+                    if (window.toastr) toastr.warning(msg, 'Incomplete Row');
+                    else alert(msg);
+                    $lastRow.find('.pinv-item-code').focus();
+                    return false;
+                }
+
+                if (qtyVal <= 0) {
+                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    if (window.toastr) toastr.warning(msg, 'Quantity Required');
+                    else alert(msg);
+                    $lastRow.find('.pinv-qty').focus().select();
+                    return false;
+                }
+            }
+            return true;
+        }
+
         function addPinvRowAndOpenSearchModal() {
             if (!canProceedToItems()) {
+                return;
+            }
+            if (!canAddPinvRow()) {
                 return;
             }
             let html = $('#pinv-row-template').html().replaceAll('__INDEX__', rowIndex);
@@ -2300,6 +2346,11 @@
         // 5. Add Row
         $('#pinv-add-row').on('click', function (e) {
             if (!canProceedToItems()) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            if (!canAddPinvRow()) {
                 e.preventDefault();
                 e.stopPropagation();
                 return false;

@@ -26,7 +26,7 @@ class StoreSalesBillRequest extends FormRequest
 
     public function rules(): array
     {
-        $now = now()->addMinutes(2)->format('Y-m-d H:i:s');
+        $now = now()->addMinutes(10)->format('Y-m-d H:i:s');
 
         return [
             // ── Header ────────────────────────────────────────────────────

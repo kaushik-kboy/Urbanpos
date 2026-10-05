@@ -5,6 +5,17 @@
 (function ($) {
     'use strict';
 
+    // Global suppression for calendar and settings buttons across forms
+    if (!document.getElementById('urbanpos-date-btn-suppression-style')) {
+        var styleEl = document.createElement('style');
+        styleEl.id = 'urbanpos-date-btn-suppression-style';
+        styleEl.innerHTML =
+            '.btn-open-datepicker, .btn-date-settings-modal { display: none !important; }' +
+            '.urbanpos-date-group .input-group-append { display: none !important; }' +
+            '.urbanpos-date-group input { border-top-right-radius: 0.25rem !important; border-bottom-right-radius: 0.25rem !important; }';
+        document.head.appendChild(styleEl);
+    }
+
     /* ==========================================================================
        1. Global Date Preferences & Configuration (localStorage + API sync)
        ========================================================================== */

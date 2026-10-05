@@ -67,6 +67,7 @@ class UserController extends Controller
             'branch_id' => $data['branch_id'] ?? null,
         ]);
         $user->assignRole($data['role']);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         return redirect()->route('master.users.index')->with('status', 'User created successfully.');
     }
@@ -92,6 +93,7 @@ class UserController extends Controller
 
         $user->update($update);
         $user->syncRoles([$data['role']]);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         return redirect()->route('master.users.index')->with('status', 'User updated successfully.');
     }
@@ -108,6 +110,7 @@ class UserController extends Controller
 
         $user->roles()->detach();
         $user->delete();
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         return redirect()->route('master.users.index')->with('status', 'User deleted successfully.');
     }

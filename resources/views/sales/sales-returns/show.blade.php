@@ -13,6 +13,9 @@
             </div>
         </div>
         <div>
+            <a href="{{ route('sales.sales-returns.edit', $salesReturn) }}" class="btn btn-outline-secondary btn-sm mr-1">
+                <i class="fas fa-edit mr-1"></i> Edit Return
+            </a>
             <a href="{{ route('sales.sales-returns.print', $salesReturn) }}" target="_blank" class="btn btn-primary btn-sm mr-1">
                 <i class="fas fa-print mr-1"></i> Print Slip
             </a>

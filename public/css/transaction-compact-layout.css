@@ -18,7 +18,7 @@
         max-height: 100vh !important;
     }
     body.tx-viewport-fixed {
-        padding-bottom: 38px !important;
+        padding-bottom: 0 !important;
     }
     body.tx-viewport-fixed .wrapper {
         overflow: hidden !important;
@@ -27,21 +27,22 @@
     }
     body.tx-viewport-fixed .content-wrapper {
         min-height: auto !important;
-        overflow: hidden !important;
-        max-height: calc(100vh - 38px) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        max-height: calc(100vh - 57px) !important;
     }
     body.tx-viewport-fixed .content-header {
         padding: 3px 0.5rem !important;
     }
     body.tx-viewport-fixed .content-wrapper > .content {
-        padding: 0 0.5rem 0 0.5rem !important;
-        overflow: hidden !important;
+        padding: 0 0.5rem 0.5rem 0.5rem !important;
+        overflow: visible !important;
     }
     .tx-items-scroll-container,
     .sb-items-scroll-container {
         height: calc(100vh - 360px);
         max-height: calc(100vh - 360px);
-        min-height: 200px;
+        min-height: 160px;
     }
 }
 
@@ -281,6 +282,19 @@ body.tx-viewport-fixed .card-body {
 }
 
 /* =========================================================================
+   DATEPICKER & DATE SETTINGS BUTTONS SUPPRESSION
+   ========================================================================= */
+.btn-open-datepicker,
+.btn-date-settings-modal,
+.urbanpos-date-group .input-group-append {
+    display: none !important;
+}
+.urbanpos-date-group input {
+    border-top-right-radius: 0.25rem !important;
+    border-bottom-right-radius: 0.25rem !important;
+}
+
+/* =========================================================================
    SCROLLABLE ITEMS CONTAINER & STICKY TABLE HEADER / FOOTER
    ========================================================================= */
 .tx-items-scroll-container,
@@ -333,11 +347,11 @@ body.tx-viewport-fixed .card-body {
    ========================================================================= */
 .tx-rich-footer,
 .sb-rich-footer {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    background-color: #f8f9fa !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 1030 !important;
+    background-color: #ffffff !important;
     border-top: 2px solid #dee2e6 !important;
-    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.08) !important;
     padding: 0.25rem 0.65rem !important;
 }

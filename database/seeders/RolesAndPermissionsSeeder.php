@@ -29,7 +29,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'stock-update-approval' => ['approve', 'reject'],
         'stock-transfers' => ['create', 'receive', 'cancel'],
         'vouchers' => ['create', 'edit', 'cancel'],
-        'bill-settlements' => ['create', 'cancel'],
+        'bill-settlements' => ['create', 'edit', 'cancel'],
         'loyalty-programs' => ['create', 'edit', 'cancel'],
         // Widened from edit-only to full CRUD — same Owner-only tier as before, just
         // consistently gated instead of leaving create/delete open to anyone.
@@ -48,6 +48,8 @@ class RolesAndPermissionsSeeder extends Seeder
         'brands' => ['create', 'edit', 'cancel'],
         'uoms' => ['create', 'edit', 'cancel'],
         'customer-categories' => ['create', 'edit', 'cancel'],
+        'customer-types' => ['create', 'edit', 'cancel'],
+        'sales-types' => ['create', 'edit', 'cancel'],
         'customers' => ['create', 'edit', 'cancel'],
         'areas' => ['create', 'edit', 'cancel'],
         'pet-types' => ['create', 'edit', 'cancel'],
@@ -95,7 +97,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'purchase-invoices', 'purchase-returns', 'purchase-receipt-notes', 'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'sales-delivery-notes', 'damage-stocks',
         'opening-stocks', 'stock-updates', 'stock-transfers', 'bill-settlements', 'loyalty-programs',
         'item-categories', 'item-category-values', 'product-types', 'brands', 'uoms',
-        'customer-categories', 'customers', 'areas', 'pet-types', 'breeds', 'colors',
+        'customer-categories', 'customer-types', 'sales-types', 'customers', 'areas', 'pet-types', 'breeds', 'colors',
         'suppliers', 'registers', 'tender-types', 'tender-type-values', 'gst-types',
         'purchase-orders', 'purchase-indents', 'repack', 'kit-preparation', 'kit-unpack', 'till',
     ];
@@ -136,5 +138,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'till.close',
             'customers.create',
         ]);
+
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

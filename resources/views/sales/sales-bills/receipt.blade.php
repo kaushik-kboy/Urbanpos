@@ -208,17 +208,19 @@
                 background: none;
                 padding: 0;
                 margin: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
             .screen-toolbar {
                 display: none !important;
             }
             .receipt-container {
-                width: 100% !important;
-                max-width: 100% !important;
+                width: {{ in_array($paperSize, ['a4', 'a5']) ? '100%' : $containerWidth }} !important;
+                max-width: {{ $containerMaxWidth }} !important;
                 box-shadow: none !important;
                 border-radius: 0 !important;
-                padding: 0 !important;
-                margin: 0 !important;
+                padding: 4px 6px !important;
+                margin: 0 auto !important;
             }
             @page {
                 size: {{ $pageSizeRule }};
@@ -255,7 +257,7 @@
         {{-- Store Logo (Optional) --}}
         @if ($receiptSettings->show_logo && $receiptSettings->logo_path)
             <div class="text-center" style="margin-bottom: 6px;">
-                <img src="{{ asset($receiptSettings->logo_path) }}" alt="{{ $receiptSettings->store_name }}" style="max-width: {{ $receiptSettings->logo_width }}px; height: auto;">
+                <img src="{{ asset(ltrim($receiptSettings->logo_path, '/')) }}" alt="{{ $receiptSettings->store_name }}" style="max-width: {{ $receiptSettings->logo_width }}px; height: auto;">
             </div>
         @endif
 
@@ -265,7 +267,6 @@
             @if ($receiptSettings->tagline)
                 <div class="store-sub font-bold">{{ $receiptSettings->tagline }}</div>
             @endif
-            <div class="store-sub font-bold">{{ $salesBill->branch?->name ?? 'Main Branch' }}</div>
             @if ($receiptSettings->header_address)
                 <div class="store-sub">{!! nl2br(e($receiptSettings->header_address)) !!}</div>
             @elseif ($salesBill->branch?->address)

@@ -48,16 +48,37 @@
         </div>
     </td>
 
-    {{-- Exp Date --}}
-    <td style="width: 155px; min-width: 150px;" title="Expiry date (Read-only)">
-        <input type="date" name="items[{{ $idx }}][exp_date]" 
-               value="{{ $expDate }}" 
-               data-original-exp="{{ $expDate }}"
-               readonly
-               tabindex="-1"
-               style="pointer-events: none; min-width: 140px;"
-               class="form-control form-control-sm item-exp-date px-1 bg-light"
-               title="Expiry date (Read-only)">
+    {{-- Exp Date with Batch Selector --}}
+    @php
+        $expDateVal = '';
+        if (!empty($expDate)) {
+            try {
+                $expDateVal = \Carbon\Carbon::parse($expDate)->format('d/m/Y');
+            } catch (\Throwable) {
+                $expDateVal = (string) $expDate;
+            }
+        }
+        $batchNoVal = data_get($line, 'batch_no', '');
+    @endphp
+    <td style="width: 215px; min-width: 205px;" title="Expiry date (Auto-filled from Batch)">
+        <div class="input-group input-group-sm">
+            <input type="text" 
+                   name="items[{{ $idx }}][exp_date]" 
+                   value="{{ $expDateVal }}" 
+                   data-original-exp="{{ $expDateVal }}"
+                   readonly
+                   tabindex="-1"
+                   style="pointer-events: none;"
+                   class="form-control form-control-sm item-exp-date text-center font-weight-bold bg-light"
+                   placeholder="DD/MM/YYYY"
+                   autocomplete="off"
+                   title="Expiry date (Auto-filled from Batch)">
+            <div class="input-group-append ds-batch-btn-wrap {{ empty($batchNoVal) ? 'd-none' : '' }}" style="pointer-events: auto;">
+                <button type="button" tabindex="-1" class="btn btn-warning btn-xs ds-btn-choose-batch px-2 font-weight-bold" title="{{ $batchNoVal ? 'Batch: '.$batchNoVal.' (Click to choose/change batch)' : 'Click to choose batch' }}">
+                    <i class="fas fa-layer-group mr-1"></i><span class="ds-batch-badge-text item-batch-text">{{ $batchNoVal ?: 'Batch' }}</span>
+                </button>
+            </div>
+        </div>
     </td>
 
     {{-- Qty --}}

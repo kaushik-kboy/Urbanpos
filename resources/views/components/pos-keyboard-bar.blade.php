@@ -25,8 +25,12 @@
             <span class="badge badge-info mr-1" style="background-color: #6C3BE8 !important; color: #fff !important;">F7</span> View
         </button>
 
-        <button type="button" tabindex="-1" class="btn btn-outline-success font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('save_form');" title="Save Bill / Tender (F6)">
-            <span class="badge badge-success mr-1">F6</span> Save &amp; Tender
+        @php
+            $isTenderPage = request()->is('pos*') || request()->is('sales/sales-bills*');
+            $f6ActionName = $isTenderPage ? 'Save & Tender' : 'Save';
+        @endphp
+        <button type="button" tabindex="-1" class="btn btn-outline-success font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('save_form');" title="Save / Submit (F6)">
+            <span class="badge badge-success mr-1">F6</span> <span id="pos-bar-f6-label">{{ $f6ActionName }}</span>
         </button>
 
         <button type="button" tabindex="-1" class="btn font-weight-bold" onclick="if(window.posTriggerAction) window.posTriggerAction('print_form');" title="Print Slip (F8)">

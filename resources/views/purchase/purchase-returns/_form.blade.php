@@ -17,6 +17,25 @@
     />
 </div>
 
+<style>
+    #purchase-return-header-grid .btn-open-datepicker,
+    #purchase-return-header-grid .btn-date-settings-modal,
+    #pr-items-table .btn-open-datepicker,
+    #pr-items-table .btn-date-settings-modal {
+        display: none !important;
+    }
+    #purchase-return-header-grid .input-group-append:empty,
+    #purchase-return-header-grid .urbanpos-date-group .input-group-append,
+    #pr-items-table .urbanpos-date-group .input-group-append {
+        display: none !important;
+    }
+    #purchase-return-header-grid .urbanpos-date-group input,
+    #pr-items-table .urbanpos-date-group input {
+        border-top-right-radius: 0.25rem !important;
+        border-bottom-right-radius: 0.25rem !important;
+    }
+</style>
+
 <div class="row form-fields-grid tx-header-fields-grid" id="purchase-return-header-grid">
         <div class="field-wrapper col-md-4 mb-3" data-field="supplier_id" data-label="Supplier" data-default-order="1" data-core="1">
             <label for="supplier_id" class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
@@ -134,35 +153,44 @@
     </table>
 </div>
 
-<hr>
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label for="remarks" class="font-weight-bold">Remarks / Return Reason</label>
-            <textarea name="remarks" id="remarks" rows="4" class="form-control" placeholder="Reason for returning items to supplier (damage, expired, excess stock, etc.)">{{ old('remarks', $ret->remarks ?? '') }}</textarea>
+<div class="d-flex justify-content-between align-items-center mt-2 mb-2 tx-compact-section-header">
+    <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Notes</h6>
+    <x-form-layout-customizer
+        form-key="purchase_returns.additional"
+        container-id="pr-additional-fields-grid"
+        title="Customize Purchase Return Totals Layout"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid align-items-end mb-1" id="pr-additional-fields-grid">
+    <div class="field-wrapper col-lg-3 col-md-4 col-sm-6 col-12" data-field="remarks" data-label="Remarks / Return Reason" data-default-order="1">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="remarks">Remarks / Reason</label>
+            <input type="text" name="remarks" id="remarks" class="form-control" placeholder="Optional return reason..." value="{{ old('remarks', $ret->remarks ?? '') }}">
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card card-outline card-secondary shadow-none border bg-light">
-            <div class="card-body p-3">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Items Taxable Amount:</span>
-                    <strong id="display-taxable">₹0.00</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Total GST Tax:</span>
-                    <strong class="text-primary" id="display-gst">₹0.00</strong>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted">Round Off:</span>
-                    <input type="number" step="0.01" name="round_off" id="round_off" value="{{ old('round_off', $ret->round_off ?? 0) }}" class="form-control form-control-sm text-right" style="width: 110px;">
-                </div>
-                <hr class="my-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="h5 font-weight-bold mb-0">Total Return Value:</span>
-                    <span class="h4 font-weight-bold text-success mb-0" id="display-grand-total">₹0.00</span>
-                </div>
-            </div>
+    <div class="field-wrapper col-lg-2 col-md-2 col-sm-3 col-6" data-field="round_off" data-label="Round Off" data-default-order="2">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="round_off">Round Off</label>
+            <input type="number" step="0.01" name="round_off" id="round_off" value="{{ old('round_off', $ret->round_off ?? 0) }}" class="form-control text-right font-weight-bold">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4 col-6" data-field="taxable_amount" data-label="Items Taxable Amount" data-default-order="3">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" style="white-space: nowrap;">Items Taxable Amount:</label>
+            <div class="form-control text-right font-weight-bold bg-light" style="line-height: 24px;" id="display-taxable">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4 col-6" data-field="gst_tax" data-label="Total GST Tax" data-default-order="4">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" style="white-space: nowrap;">Total GST Tax:</label>
+            <div class="form-control text-right font-weight-bold text-primary bg-light" style="line-height: 24px;" id="display-gst">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-3 col-md-4 col-sm-5 col-12" data-field="grand_total" data-label="Total Return Value" data-default-order="5">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-success" style="white-space: nowrap;">Total Return Value:</label>
+            <div class="form-control text-right font-weight-bold text-success bg-white border-success" style="line-height: 24px; font-size: 0.95rem;" id="display-grand-total">₹0.00</div>
         </div>
     </div>
 </div>
@@ -391,7 +419,7 @@
             e.preventDefault();
             $('#supplier_id').val('').trigger('change.select2');
             $('#purchase_invoice_id').val('').trigger('change.select2');
-            $('textarea[name="remarks"]').val('');
+            $('input[name="remarks"]').val('');
             $('#pr-btn-reset-table').trigger('click');
             if (window.toastr) {
                 toastr.info('Purchase Return form has been reset.');
@@ -404,7 +432,40 @@
             }, 100);
         });
 
-        document.getElementById('pr-add-row')?.addEventListener('click', function () {
+        function canAddPrRow() {
+            let $lastRow = $('#pr-items-body tr.pr-item-row').last();
+            if ($lastRow.length) {
+                let itemId = $lastRow.find('.pr-item-id').val();
+                let qtyVal = parseFloat($lastRow.find('.pr-qty').val()) || 0;
+
+                if (!itemId) {
+                    let msg = 'Pehle current row me item select karein.';
+                    if (window.toastr) toastr.warning(msg, 'Incomplete Row');
+                    else alert(msg);
+                    $lastRow.find('.pr-item-code').focus();
+                    return false;
+                }
+
+                if (qtyVal <= 0) {
+                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    if (window.toastr) toastr.warning(msg, 'Quantity Required');
+                    else alert(msg);
+                    $lastRow.find('.pr-qty').focus().select();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        document.getElementById('pr-add-row')?.addEventListener('click', function (e) {
+            if (!assertSupplierSelected()) {
+                e?.preventDefault?.();
+                return;
+            }
+            if (!canAddPrRow()) {
+                e?.preventDefault?.();
+                return;
+            }
             const template = document.getElementById('pr-row-template').innerHTML;
             const html = template.replaceAll('__INDEX__', rowIndex);
             const tbody = document.getElementById('pr-items-body');
@@ -486,6 +547,7 @@
                 } else {
                     e.preventDefault();
                     if (!assertSupplierSelected()) return;
+                    if (!canAddPrRow()) return;
                     $('#pr-add-row').trigger('click');
                     let $newRow = $('#pr-items-body tr.pr-item-row').last();
                     setTimeout(function () {

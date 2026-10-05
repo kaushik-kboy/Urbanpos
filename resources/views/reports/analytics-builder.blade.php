@@ -2,6 +2,54 @@
 
 @section('title', 'Custom Report Studio & Analytics Builder')
 
+@push('css')
+<style>
+.preset-pill, .groupby-pill {
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.15s ease-in-out;
+}
+.preset-pill:hover, .groupby-pill:hover {
+    transform: translateY(-1px);
+}
+.preset-pill.active, .groupby-pill.active {
+    box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+}
+.quick-switch-date {
+    border-radius: 12px;
+}
+.metric-chip {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    background: #ffffff;
+    color: #495057;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    transition: all 0.15s ease-in-out;
+}
+.metric-chip:hover {
+    border-color: #007bff;
+    background: #f8f9fa;
+    transform: translateY(-1px);
+}
+.metric-chip.active {
+    background: #e7f1ff;
+    border-color: #007bff;
+    color: #0056b3;
+    box-shadow: 0 1px 3px rgba(0,123,255,0.2);
+}
+</style>
+@endpush
+
 @section('content_header')
     <div class="d-flex flex-wrap justify-content-between align-items-center">
         <div>
@@ -11,6 +59,9 @@
             <p class="text-muted small mb-0">Dynamic multi-dimensional reports: Group By any metric, trace Item-Supplier sourcing, inspect single-item monthly sales, and save custom reports.</p>
         </div>
         <div class="mt-2 mt-md-0">
+            <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm mr-1" data-toggle="modal" data-target="#guideHindiModal">
+                <i class="fas fa-book-reader mr-1"></i> 📖 Kaise Use Karein? (Guide)
+            </button>
             <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm mr-1">
                 <i class="fas fa-arrow-left mr-1"></i> Reports Center
             </a>
@@ -29,6 +80,9 @@
         <div class="card-body p-2 d-flex flex-wrap align-items-center justify-content-between">
             <div class="d-flex flex-wrap align-items-center mb-1 mb-md-0">
                 <span class="font-weight-bold text-dark mr-2 small"><i class="fas fa-bolt text-warning mr-1"></i> Smart Presets:</span>
+                <button type="button" class="btn btn-xs btn-outline-info font-weight-bold mr-2 mb-1 px-2" data-toggle="modal" data-target="#guideHindiModal" title="Click for step-by-step Hindi guide">
+                    <i class="fas fa-question-circle mr-1"></i> गाइड / उदाहरण
+                </button>
                 
                 {{-- User exact requirement 1: Item Supplier Sourcing --}}
                 <button type="button" class="btn btn-sm btn-info font-weight-bold mr-1 mb-1 preset-btn" data-preset="item_supplier">
@@ -103,88 +157,143 @@
                 @csrf
                 <div class="row">
                     {{-- 1. GROUP BY --}}
-                    <div class="col-md-3 mb-3">
-                        <label class="font-weight-bold small text-dark"><i class="fas fa-layer-group text-info mr-1"></i> 1. Group By (Summarize Data):</label>
-                        <select class="form-control form-control-sm font-weight-bold text-primary" id="group_by" name="group_by">
-                            <option value="item">📦 By Item / Product</option>
-                            <option value="item_supplier">🚚 By Item ⇄ Supplier Sourcing (Traceability)</option>
-                            <option value="supplier">🏭 By Supplier (Invoice Count & Purchases)</option>
-                            <option value="customer">👤 By Customer (Sales & Visits)</option>
-                            <option value="category">📂 By Category / Sub-category</option>
-                            <option value="brand">🏷️ By Brand / Manufacturer</option>
-                            <option value="cashier">🧑‍💼 By Cashier / Billing Staff</option>
-                            <option value="payment_mode">💳 By Payment Mode (Cash, UPI, Card)</option>
-                            <option value="date">📅 By Day / Date</option>
-                        </select>
-                        <small class="form-text text-muted" id="group-desc-text">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="font-weight-bold small text-dark mb-0">
+                                <i class="fas fa-layer-group text-info mr-1"></i> 1. Group By Dimension:
+                            </label>
+                            <span class="badge badge-primary px-2 py-0 small font-weight-bold" id="current-group-badge">By Item</span>
+                        </div>
+
+                        <!-- Dimension Dropdown with Categories -->
+                        <div class="input-group input-group-sm mb-2 shadow-xs">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white text-info font-weight-bold px-2"><i class="fas fa-sitemap"></i></span>
+                            </div>
+                            <select class="form-control form-control-sm font-weight-bold text-dark" id="group_by" name="group_by" style="font-size: 0.82rem;">
+                                <optgroup label="🛍️ Sales Dimensions">
+                                    <option value="item" selected>📦 By Item / Product</option>
+                                    <option value="category">📂 By Category / Sub-category</option>
+                                    <option value="brand">🏷️ By Brand / Manufacturer</option>
+                                    <option value="customer">👤 By Customer (Sales & Visits)</option>
+                                </optgroup>
+                                <optgroup label="🏭 Purchase & Sourcing Dimensions">
+                                    <option value="item_supplier">🚚 By Item ⇄ Supplier Sourcing</option>
+                                    <option value="supplier">🏭 By Supplier (Invoices & Purchases)</option>
+                                </optgroup>
+                                <optgroup label="💼 Operations & Billing">
+                                    <option value="payment_mode">💳 By Payment Mode (Cash, UPI, Card)</option>
+                                    <option value="cashier">🧑‍💼 By Cashier / Billing Staff</option>
+                                    <option value="date">📅 By Day / Transaction Date</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- 1-Click Dimension Quick Pills -->
+                        <div class="d-flex flex-wrap mb-1" id="quick-groupby-pills">
+                            <button type="button" class="btn btn-xs btn-primary font-weight-bold mr-1 mb-1 groupby-pill active" data-group="item">📦 Item</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="customer">👤 Customer</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="category">📂 Category</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="item_supplier">🚚 Sourcing</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="supplier">🏭 Supplier</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="payment_mode">💳 Pay Mode</button>
+                        </div>
+
+                        <small class="form-text text-muted small mt-1 mb-0" id="group-desc-text" style="line-height: 1.25; font-size: 0.74rem;">
                             Aggregates each item's sold quantity, total revenue, and profit.
                         </small>
                     </div>
 
                     {{-- 2. METRICS SELECTION --}}
-                    <div class="col-md-5 mb-3">
-                        <label class="font-weight-bold small text-dark"><i class="fas fa-check-square text-success mr-1"></i> 2. Choose Metrics & Calculations:</label>
-                        <div class="d-flex flex-wrap bg-light p-2 rounded border" id="metrics-container">
-                            <div class="custom-control custom-checkbox mr-3 mb-1">
-                                <input type="checkbox" class="custom-control-input metric-check" id="m_qty" name="metrics[]" value="qty" checked>
-                                <label class="custom-control-label small font-weight-bold" for="m_qty">Total Quantity</label>
-                            </div>
-                            <div class="custom-control custom-checkbox mr-3 mb-1">
-                                <input type="checkbox" class="custom-control-input metric-check" id="m_sales" name="metrics[]" value="sales_value" checked>
-                                <label class="custom-control-label small font-weight-bold" for="m_sales">Total Value (₹)</label>
-                            </div>
-                            <div class="custom-control custom-checkbox mr-3 mb-1">
-                                <input type="checkbox" class="custom-control-input metric-check" id="m_disc" name="metrics[]" value="discount">
-                                <label class="custom-control-label small font-weight-bold" for="m_disc">Discount (₹)</label>
-                            </div>
-                            <div class="custom-control custom-checkbox mr-3 mb-1">
-                                <input type="checkbox" class="custom-control-input metric-check" id="m_margin" name="metrics[]" value="margin" checked>
-                                <label class="custom-control-label small font-weight-bold" for="m_margin">Gross Profit / Margin</label>
-                            </div>
-                            <div class="custom-control custom-checkbox mr-3 mb-1">
-                                <input type="checkbox" class="custom-control-input metric-check" id="m_bills" name="metrics[]" value="bill_count" checked>
-                                <label class="custom-control-label small font-weight-bold" for="m_bills">Bill Count</label>
-                            </div>
-                            <div class="custom-control custom-checkbox mr-3 mb-1">
-                                <input type="checkbox" class="custom-control-input metric-check" id="m_aov" name="metrics[]" value="aov">
-                                <label class="custom-control-label small font-weight-bold" for="m_aov">Avg Order Value (AOV)</label>
-                            </div>
-                            <div class="custom-control custom-checkbox mb-1">
-                                <input type="checkbox" class="custom-control-input metric-check" id="m_last_date" name="metrics[]" value="last_date">
-                                <label class="custom-control-label small font-weight-bold" for="m_last_date">Last Transaction</label>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="font-weight-bold small text-dark mb-0">
+                                <i class="fas fa-calculator text-success mr-1"></i> 2. Choose Metrics:
+                            </label>
+                            <div class="d-inline-flex" id="metric-bundles">
+                                <button type="button" class="btn btn-xs btn-outline-secondary px-1 py-0 mr-1 metric-bundle-btn" data-bundle="standard" title="Select standard metrics (Qty, Value, Margin, Bills)">Standard</button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary px-1 py-0 mr-1 metric-bundle-btn" data-bundle="profit" title="Focus on Profitability (Sales, Margin, Discount)">Profit</button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary px-1 py-0 metric-bundle-btn" data-bundle="all" title="Select All Metrics">All</button>
                             </div>
                         </div>
+
+                        <!-- Interactive Metric Toggle Chips -->
+                        <div class="p-2 bg-light rounded border d-flex flex-wrap align-items-center" id="metrics-chips-container" style="min-height: 72px;">
+                            <label class="metric-chip active" data-val="qty" title="Toggle Quantity">
+                                <input type="checkbox" class="d-none metric-check" id="m_qty" name="metrics[]" value="qty" checked>
+                                <span><i class="fas fa-boxes text-info mr-1"></i> Qty</span>
+                            </label>
+                            <label class="metric-chip active" data-val="sales_value" title="Toggle Total Value / Revenue">
+                                <input type="checkbox" class="d-none metric-check" id="m_sales" name="metrics[]" value="sales_value" checked>
+                                <span><i class="fas fa-rupee-sign text-success mr-1"></i> Total ₹</span>
+                            </label>
+                            <label class="metric-chip active" data-val="margin" title="Toggle Gross Profit / Margin">
+                                <input type="checkbox" class="d-none metric-check" id="m_margin" name="metrics[]" value="margin" checked>
+                                <span><i class="fas fa-chart-line text-primary mr-1"></i> Margin / Profit</span>
+                            </label>
+                            <label class="metric-chip active" data-val="bill_count" title="Toggle Bill / Invoice Count">
+                                <input type="checkbox" class="d-none metric-check" id="m_bills" name="metrics[]" value="bill_count" checked>
+                                <span><i class="fas fa-receipt text-warning mr-1"></i> Bills</span>
+                            </label>
+                            <label class="metric-chip" data-val="discount" title="Toggle Total Discount">
+                                <input type="checkbox" class="d-none metric-check" id="m_disc" name="metrics[]" value="discount">
+                                <span><i class="fas fa-tag text-danger mr-1"></i> Discount</span>
+                            </label>
+                            <label class="metric-chip" data-val="aov" title="Toggle Average Order Value">
+                                <input type="checkbox" class="d-none metric-check" id="m_aov" name="metrics[]" value="aov">
+                                <span><i class="fas fa-balance-scale mr-1" style="color: #6f42c1;"></i> AOV</span>
+                            </label>
+                            <label class="metric-chip" data-val="last_date" title="Toggle Last Transaction Date">
+                                <input type="checkbox" class="d-none metric-check" id="m_last_date" name="metrics[]" value="last_date">
+                                <span><i class="fas fa-clock text-secondary mr-1"></i> Last Date</span>
+                            </label>
+                        </div>
+                        <small class="text-muted d-block small mt-1 mb-0" style="font-size: 0.74rem;">
+                            <i class="fas fa-mouse-pointer text-muted mr-1"></i> Click chips to add/remove columns • Auto-updates table.
+                        </small>
                     </div>
 
                     {{-- 3. DATE PRESETS & FILTERS --}}
                     <div class="col-md-4 mb-3">
-                        <label class="font-weight-bold small text-dark"><i class="fas fa-calendar-alt text-warning mr-1"></i> 3. Date Presets:</label>
-                        <div class="btn-group btn-group-sm btn-group-toggle d-flex mb-2" data-toggle="buttons" id="date-preset-group">
-                            <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="today" autocomplete="off"> Today
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="font-weight-bold small text-dark mb-0">
+                                <i class="fas fa-calendar-alt text-warning mr-1"></i> 3. Date Filter:
                             </label>
-                            <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="this_week" autocomplete="off"> Week
-                            </label>
-                            <label class="btn btn-outline-secondary flex-fill active">
-                                <input type="radio" name="date_preset" value="this_month" checked autocomplete="off"> This Month
-                            </label>
-                            <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="last_month" autocomplete="off"> Last Mo.
-                            </label>
-                            <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="all_time" autocomplete="off"> All Time
-                            </label>
-                            <label class="btn btn-outline-secondary flex-fill">
-                                <input type="radio" name="date_preset" value="custom" autocomplete="off"> Custom
-                            </label>
+                            <span class="badge badge-light border text-primary small font-weight-bold px-2 py-0" id="active-date-badge">
+                                <i class="fas fa-clock mr-1"></i> <span id="active-date-text">This Month</span>
+                            </span>
                         </div>
-                        <div class="row d-none" id="custom-date-row">
-                            <div class="col-6">
-                                <input type="date" class="form-control form-control-sm" id="date_from" name="date_from" value="{{ date('Y-m-01') }}">
+
+                        <!-- Hidden input storing current preset name -->
+                        <input type="hidden" name="date_preset" id="date_preset" value="this_month">
+
+                        <!-- Quick 1-Click Preset Pills -->
+                        <div class="d-flex flex-wrap mb-2" id="date-preset-pills">
+                            <button type="button" class="btn btn-xs btn-outline-secondary mr-1 mb-1 preset-pill" data-preset="today">Today</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary mr-1 mb-1 preset-pill" data-preset="yesterday">Yesterday</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary mr-1 mb-1 preset-pill" data-preset="this_week">This Week</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary mr-1 mb-1 preset-pill" data-preset="last_7_days">Last 7D</button>
+                            <button type="button" class="btn btn-xs btn-primary font-weight-bold mr-1 mb-1 preset-pill active" data-preset="this_month">This Month</button>
+                            <button type="button" class="btn btn-xs btn-outline-success font-weight-bold mr-1 mb-1 preset-pill" data-preset="last_month">Last Month</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary mr-1 mb-1 preset-pill" data-preset="last_30_days">Last 30D</button>
+                            <button type="button" class="btn btn-xs btn-outline-info font-weight-bold mr-1 mb-1 preset-pill" data-preset="this_fy">This FY</button>
+                            <button type="button" class="btn btn-xs btn-outline-dark font-weight-bold mr-1 mb-1 preset-pill" data-preset="all_time">All Time</button>
+                        </div>
+
+                        <!-- Connected From & To Date Pickers with 1-click Apply -->
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light text-muted px-2 py-0 font-weight-bold small">From</span>
                             </div>
-                            <div class="col-6">
-                                <input type="date" class="form-control form-control-sm" id="date_to" name="date_to" value="{{ date('Y-m-d') }}">
+                            <input type="date" class="form-control form-control-sm font-weight-bold text-dark px-1" id="date_from" name="date_from" value="{{ date('Y-m-01') }}" title="Start Date">
+                            <div class="input-group-prepend input-group-append">
+                                <span class="input-group-text bg-light text-muted px-2 py-0 font-weight-bold small">To</span>
+                            </div>
+                            <input type="date" class="form-control form-control-sm font-weight-bold text-dark px-1" id="date_to" name="date_to" value="{{ date('Y-m-d') }}" title="End Date">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-primary btn-sm px-2 font-weight-bold" id="btn-apply-dates" title="Apply Custom Date Range">
+                                    <i class="fas fa-check mr-1"></i> Apply
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -338,11 +447,29 @@
 
     {{-- 4. RESULTS VIEWPORT (TABLE VIEW) --}}
     <div class="card shadow-sm border-0 mb-4" id="results-card">
-        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
-            <h6 class="card-title font-weight-bold text-dark mb-0">
-                <i class="fas fa-list-alt text-primary mr-1"></i> <span id="report-title-display">Generated Report Results</span>
-            </h6>
-            <span class="badge badge-light border" id="result-count-badge">0 records</span>
+        <div class="card-header bg-white py-2 d-flex flex-wrap justify-content-between align-items-center">
+            <div class="d-flex align-items-center mb-1 mb-md-0">
+                <h6 class="card-title font-weight-bold text-dark mb-0 mr-2">
+                    <i class="fas fa-list-alt text-primary mr-1"></i> <span id="report-title-display">Generated Report Results</span>
+                </h6>
+                <span class="badge badge-info px-2 py-1 font-weight-bold shadow-xs" id="display-date-range-badge" title="Active Date Filter Period">
+                    <i class="fas fa-calendar-alt mr-1"></i> <span id="display-date-range-text">This Month</span>
+                </span>
+            </div>
+            <div class="d-flex align-items-center">
+                <span class="badge badge-light border mr-2 font-weight-bold" id="result-count-badge">0 records</span>
+                <div class="d-inline-flex" id="quick-date-helpers">
+                    <button type="button" class="btn btn-xs btn-outline-success font-weight-bold quick-switch-date mr-1" data-preset="last_month" title="Switch to Last Month (Sep 2026)">
+                        <i class="fas fa-history mr-1"></i> Last Month
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-info font-weight-bold quick-switch-date mr-1" data-preset="this_fy" title="Switch to Current Financial Year">
+                        <i class="fas fa-calendar mr-1"></i> This FY
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-dark font-weight-bold quick-switch-date" data-preset="all_time" title="Switch to All Time (Full History)">
+                        <i class="fas fa-globe mr-1"></i> All Time
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
@@ -459,6 +586,428 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL: USER GUIDE & BUSINESS EXAMPLES IN HINDI --}}
+<div class="modal fade" id="guideHindiModal" tabindex="-1" role="dialog" aria-labelledby="guideHindiModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-gradient-info text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="guideHindiModalTitle">
+                    <i class="fas fa-book-reader mr-2"></i> Custom Report Studio — आसान यूज़र गाइड (Hindi Guide & Examples)
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3 p-md-4" style="background-color: #f8fafc; max-height: 75vh; overflow-y: auto;">
+                
+                {{-- TOP ALERT BANNER --}}
+                <div class="alert alert-primary bg-white border-primary shadow-sm mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-lightbulb fa-2x text-warning mr-3"></i>
+                        <div>
+                            <h6 class="font-weight-bold mb-1 text-primary">यह टूल क्या है और इसका क्या फायदा है?</h6>
+                            <p class="mb-0 text-dark small" style="line-height: 1.6;">
+                                यह आपकी दुकान/बिज़नेस का <strong>"जादुई रिपोर्ट मेकर"</strong> है। इसमें आपको फिक्स रिपोर्ट देखने की कोई मजबूरी नहीं है। आप अपनी मर्जी से तय कर सकते हैं कि आपको <strong>किस चीज़ का हिसाब</strong> (जैसे आइटम, कस्टमर, सप्लायर, पेमेंट मोड) और <strong>क्या-क्या जानकारी</strong> (जैसे कुल बिक्री, क्वांटिटी, मुनाफा/प्रॉफ़िट) देखनी है।
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TABS FOR NAVIGATION --}}
+                <ul class="nav nav-pills nav-justified mb-3 shadow-sm bg-white p-1 rounded" id="guideTab" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active font-weight-bold" id="guide-concept-tab" data-toggle="pill" href="#guide-concept" role="tab">
+                            <i class="fas fa-magic mr-1 text-primary"></i> 1. सिर्फ 3-स्टेप फॉर्मूला
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold" id="guide-examples-tab" data-toggle="pill" href="#guide-examples" role="tab">
+                            <i class="fas fa-store mr-1 text-success"></i> 2. रोज़ाना काम आने वाले 5 उदाहरण
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold" id="guide-tips-tab" data-toggle="pill" href="#guide-tips" role="tab">
+                            <i class="fas fa-star mr-1 text-warning"></i> 3. ख़ास फीचर्स और टिप्स
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="guideTabContent">
+
+                    {{-- TAB 1: 3-STEP FORMULA --}}
+                    <div class="tab-pane fade show active" id="guide-concept" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-primary shadow-sm">
+                                    <div class="card-header bg-primary text-white py-2 font-weight-bold">
+                                        <i class="fas fa-database mr-1"></i> स्टेप 1: Data Source (किसकी रिपोर्ट?)
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <p class="small text-muted mb-2">पहले तय करें कि डेटा कहाँ से उठाना है:</p>
+                                        <ul class="small pl-3 mb-0" style="line-height: 1.8;">
+                                            <li><strong>Sales (Items):</strong> हर बिके हुए सामान की डिटेल, मुनाफा और मार्जिन।</li>
+                                            <li><strong>Sales (Bills):</strong> पूरे बिल की समरी, जैसे Cash या UPI और कस्टमर हिसाब।</li>
+                                            <li><strong>Purchases:</strong> सप्लायर से खरीदे गए माल और बिलों का ब्यौरा।</li>
+                                            <li><strong>Item ⇄ Supplier Sourcing:</strong> कौन सा आइटम किस सप्लायर से किस रेट पर आया।</li>
+                                            <li><strong>Item Monthly:</strong> किसी 1 खास आइटम की महीने-दर-महीने बिक्री।</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-info shadow-sm">
+                                    <div class="card-header bg-info text-white py-2 font-weight-bold">
+                                        <i class="fas fa-layer-group mr-1"></i> स्टेप 2: Group By (किसके हिसाब से जोड़ें?)
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <p class="small text-muted mb-2">डेटा को किस आधार पर इकट्ठा (Group) करना है:</p>
+                                        <ul class="small pl-3 mb-0" style="line-height: 1.8;">
+                                            <li><strong>Item / Product:</strong> हर प्रोडक्ट की एक लाइन बनेगी (जैसे साबुन की कुल बिक्री)।</li>
+                                            <li><strong>Customer:</strong> हर ग्राहक की एक लाइन बनेगी (किस ग्राहक ने कितना खरीदा)।</li>
+                                            <li><strong>Category:</strong> कैटेगरी-वाइज़ जोड़ (जैसे Grocery, Electronics)।</li>
+                                            <li><strong>Payment Mode:</strong> Cash, UPI, Card के हिसाब से कुल कलेक्शन।</li>
+                                            <li><strong>Supplier:</strong> किस सप्लायर से कितना माल खरीदा।</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-success shadow-sm">
+                                    <div class="card-header bg-success text-white py-2 font-weight-bold">
+                                        <i class="fas fa-calculator mr-1"></i> स्टेप 3: Metrics (क्या कैलकुलेट करना है?)
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <p class="small text-muted mb-2">रिपोर्ट में कौन-से कॉलम देखने हैं:</p>
+                                        <ul class="small pl-3 mb-2" style="line-height: 1.8;">
+                                            <li><span class="badge badge-light border">Qty</span> = कुल कितनी मात्रा बिकी।</li>
+                                            <li><span class="badge badge-light border">Total Amount</span> = कुल कितने रुपये बने।</li>
+                                            <li><span class="badge badge-light border">Gross Profit</span> = कुल कितने रुपये का मुनाफा हुआ।</li>
+                                            <li><span class="badge badge-light border">Margin %</span> = कितने प्रतिशत मार्जिन मिला।</li>
+                                        </ul>
+                                        <div class="alert alert-light border p-2 small mb-0">
+                                            <strong>⚡ शॉर्टकट:</strong> आपको एक-एक टिक करने की ज़रूरत नहीं है! ऊपर बने <strong>"Standard"</strong> या <strong>"Profit"</strong> बटन पर 1 क्लिक करें।
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-white border shadow-sm p-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-calendar-alt fa-2x text-info mr-3"></i>
+                                <div>
+                                    <h6 class="font-weight-bold mb-1 text-dark">📅 तारीख चुनना (Date Filter) और भी आसान:</h6>
+                                    <p class="small text-muted mb-0">
+                                        मैनुअल तारीख डालने के अलावा आप 1-क्लिक बटन दबा सकते हैं: 
+                                        <span class="badge badge-primary mr-1">आज (Today)</span>
+                                        <span class="badge badge-secondary mr-1">इस हफ्ते (This Week)</span>
+                                        <span class="badge badge-info mr-1">इस महीने (This Month)</span>
+                                        <span class="badge badge-dark mr-1">पिछले महीने (Last Month)</span>
+                                        <span class="badge badge-warning text-dark mr-1">इस वित्तीय वर्ष (FY)</span>
+                                        <span class="badge badge-success mr-1">All Time</span>
+                                        बटन दबाते ही रिपोर्ट तुरंत ताज़ा डेटा के साथ लोड हो जाएगी।
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- TAB 2: 5 REAL BUSINESS EXAMPLES --}}
+                    <div class="tab-pane fade" id="guide-examples" role="tabpanel">
+                        <p class="text-muted small mb-3">यहाँ 5 सबसे ज़्यादा इस्तेमाल होने वाले बिज़नेस उदाहरण दिए गए हैं। इन्हें देखने के लिए आप ऊपर दिए गए <strong>Smart Presets</strong> बटन भी दबा सकते हैं:</p>
+
+                        <div class="accordion" id="examplesAccordion">
+                            
+                            {{-- EXAMPLE 1 --}}
+                            <div class="card border mb-2 shadow-sm">
+                                <div class="card-header bg-white py-2" id="headingEx1">
+                                    <h6 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center" type="button" data-toggle="collapse" data-target="#collapseEx1">
+                                            <span><i class="fas fa-fire text-danger mr-2"></i> <strong>उदाहरण 1:</strong> सबसे ज्यादा बिकने वाले सामान और किसमें कितना मुनाफ़ा (Profit & Margin) हुआ?</span>
+                                            <span class="badge badge-danger">Top Selling</span>
+                                        </button>
+                                    </h6>
+                                </div>
+                                <div id="collapseEx1" class="collapse show" data-parent="#examplesAccordion">
+                                    <div class="card-body bg-light p-3 small">
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <strong>🎯 क्यों देखना है:</strong> यह जानने के लिए कि कौन सा आइटम सबसे ज्यादा डिमांड में है और दुकान को असली कमाई किस आइटम से हो रही है।<br>
+                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-fire text-danger"></i> Top Selling Items</strong> बटन पर क्लिक करें।<br>
+                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <ul class="mb-0 mt-1 pl-3">
+                                                    <li><strong>Data Source:</strong> Sales (Bill Items)</li>
+                                                    <li><strong>Group By:</strong> Item / Product</li>
+                                                    <li><strong>Metrics:</strong> Qty, Total Amount, Gross Profit, Margin % (या "Profit" बटन दबाएं)</li>
+                                                    <li><strong>Date:</strong> This Month (इस महीने) या All Time</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-5 border-left">
+                                                <strong>📊 आपको स्क्रीन पर क्या दिखेगा:</strong>
+                                                <div class="table-responsive mt-1">
+                                                    <table class="table table-xs table-bordered bg-white mb-0">
+                                                        <thead class="bg-secondary text-white">
+                                                            <tr><th>Item Name</th><th>Qty</th><th>Sales (₹)</th><th>Profit (₹)</th><th>Margin</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr><td>Tata Tea Gold 500g</td><td>45 Pcs</td><td>₹13,500</td><td>₹2,700</td><td>20%</td></tr>
+                                                            <tr><td>Fortune Oil 1L</td><td>30 Pcs</td><td>₹4,500</td><td>₹450</td><td>10%</td></tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- EXAMPLE 2 --}}
+                            <div class="card border mb-2 shadow-sm">
+                                <div class="card-header bg-white py-2" id="headingEx2">
+                                    <h6 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx2">
+                                            <span><i class="fas fa-crown text-warning mr-2"></i> <strong>उदाहरण 2:</strong> दुकान के सबसे बड़े VIP ग्राहक कौन-से हैं? (Top Customers)</span>
+                                            <span class="badge badge-warning text-dark">VIP Customers</span>
+                                        </button>
+                                    </h6>
+                                </div>
+                                <div id="collapseEx2" class="collapse" data-parent="#examplesAccordion">
+                                    <div class="card-body bg-light p-3 small">
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <strong>🎯 क्यों देखना है:</strong> किन ग्राहकों ने आपकी दुकान से सबसे ज्यादा खरीदारी की है, ताकि उन्हें फेस्टिव डिस्काउंट या लॉयल्टी ऑफर दे सकें।<br>
+                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-crown text-warning"></i> Top VIP Customers</strong> बटन पर क्लिक करें।<br>
+                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <ul class="mb-0 mt-1 pl-3">
+                                                    <li><strong>Data Source:</strong> Sales (Bill Level)</li>
+                                                    <li><strong>Group By:</strong> Customer</li>
+                                                    <li><strong>Metrics:</strong> Records/Count, Total Amount, Total Paid</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-5 border-left">
+                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <div class="table-responsive mt-1">
+                                                    <table class="table table-xs table-bordered bg-white mb-0">
+                                                        <thead class="bg-secondary text-white">
+                                                            <tr><th>Customer</th><th>Total Bills</th><th>Total Shopping</th><th>Action</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr><td>Ramesh Sharma</td><td>12 Bills</td><td>₹48,200</td><td><span class="badge badge-info">View Details</span></td></tr>
+                                                            <tr><td>Priya Patel</td><td>8 Bills</td><td>₹31,500</td><td><span class="badge badge-info">View Details</span></td></tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- EXAMPLE 3 --}}
+                            <div class="card border mb-2 shadow-sm">
+                                <div class="card-header bg-white py-2" id="headingEx3">
+                                    <h6 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx3">
+                                            <span><i class="fas fa-wallet text-primary mr-2"></i> <strong>उदाहरण 3:</strong> कैश कितना आया और ऑनलाइन/UPI में कितना पेमेंट हुआ?</span>
+                                            <span class="badge badge-primary">Cash vs UPI</span>
+                                        </button>
+                                    </h6>
+                                </div>
+                                <div id="collapseEx3" class="collapse" data-parent="#examplesAccordion">
+                                    <div class="card-body bg-light p-3 small">
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <strong>🎯 क्यों देखना है:</strong> शाम को गल्ला (Cash Counter) गिनने और बैंक खाते में आए ऑनलाइन पेमेंट को मिलाने के लिए।<br>
+                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-wallet"></i> Cash vs UPI vs Card</strong> बटन पर क्लिक करें।<br>
+                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <ul class="mb-0 mt-1 pl-3">
+                                                    <li><strong>Data Source:</strong> Sales (Bill Level)</li>
+                                                    <li><strong>Group By:</strong> Payment Mode</li>
+                                                    <li><strong>Metrics:</strong> Records/Count, Total Amount</li>
+                                                    <li><strong>Date:</strong> Today (आज) या This Month</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-5 border-left">
+                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <div class="table-responsive mt-1">
+                                                    <table class="table table-xs table-bordered bg-white mb-0">
+                                                        <thead class="bg-secondary text-white">
+                                                            <tr><th>Payment Mode</th><th>Transactions</th><th>Total Collected</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr><td><span class="badge badge-success">Cash</span></td><td>64 Bills</td><td>₹34,800</td></tr>
+                                                            <tr><td><span class="badge badge-primary">UPI / QR</span></td><td>52 Bills</td><td>₹41,200</td></tr>
+                                                            <tr><td><span class="badge badge-info">Card</span></td><td>14 Bills</td><td>₹12,500</td></tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- EXAMPLE 4 --}}
+                            <div class="card border mb-2 shadow-sm">
+                                <div class="card-header bg-white py-2" id="headingEx4">
+                                    <h6 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx4">
+                                            <span><i class="fas fa-file-invoice-dollar text-success mr-2"></i> <strong>उदाहरण 4:</strong> किस सप्लायर से कुल कितने का माल खरीदा और कितने इनवॉइस आए?</span>
+                                            <span class="badge badge-success">Supplier Purchases</span>
+                                        </button>
+                                    </h6>
+                                </div>
+                                <div id="collapseEx4" class="collapse" data-parent="#examplesAccordion">
+                                    <div class="card-body bg-light p-3 small">
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <strong>🎯 क्यों देखना है:</strong> सप्लायर का हिसाब चुकता करने और GST इनपुट टैक्स क्रेडिट (ITC) का मिलान करने के लिए।<br>
+                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-file-invoice-dollar"></i> Supplier Invoice Summary</strong> बटन पर क्लिक करें।<br>
+                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <ul class="mb-0 mt-1 pl-3">
+                                                    <li><strong>Data Source:</strong> Purchases</li>
+                                                    <li><strong>Group By:</strong> Supplier</li>
+                                                    <li><strong>Metrics:</strong> Records/Count, Total Amount, Total Tax</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-5 border-left">
+                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <div class="table-responsive mt-1">
+                                                    <table class="table table-xs table-bordered bg-white mb-0">
+                                                        <thead class="bg-secondary text-white">
+                                                            <tr><th>Supplier</th><th>Invoices</th><th>Total Purchases</th><th>Tax</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr><td>M/s Balaji Traders</td><td>4 Invoices</td><td>₹1,24,000</td><td>₹6,200</td></tr>
+                                                            <tr><td>City Wholesale Mart</td><td>2 Invoices</td><td>₹65,000</td><td>₹3,250</td></tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- EXAMPLE 5 --}}
+                            <div class="card border mb-2 shadow-sm">
+                                <div class="card-header bg-white py-2" id="headingEx5">
+                                    <h6 class="mb-0">
+                                        <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx5">
+                                            <span><i class="fas fa-truck-loading text-info mr-2"></i> <strong>उदाहरण 5:</strong> कौन सा आइटम किस-किस सप्लायर से किस रेट पर आया? (Item ⇄ Supplier Sourcing)</span>
+                                            <span class="badge badge-info">Sourcing Trace</span>
+                                        </button>
+                                    </h6>
+                                </div>
+                                <div id="collapseEx5" class="collapse" data-parent="#examplesAccordion">
+                                    <div class="card-body bg-light p-3 small">
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <strong>🎯 क्यों देखना है:</strong> अलग-अलग सप्लायर के रेट की तुलना करने के लिए कि कौन सा डिस्ट्रीब्यूटर सस्ता माल देता है और अभी दुकान में कितना स्टॉक बाकी है।<br>
+                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-truck-loading"></i> Item ⇄ Supplier Sourcing</strong> बटन पर क्लिक करें।<br>
+                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <ul class="mb-0 mt-1 pl-3">
+                                                    <li><strong>Data Source:</strong> Item-Supplier Sourcing Trace</li>
+                                                    <li><strong>Group By:</strong> Item + Supplier (Combined)</li>
+                                                    <li><strong>Metrics:</strong> Purchase Qty, Total Purchase Cost, Current Stock</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-5 border-left">
+                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <div class="table-responsive mt-1">
+                                                    <table class="table table-xs table-bordered bg-white mb-0">
+                                                        <thead class="bg-secondary text-white">
+                                                            <tr><th>Item Name</th><th>Supplier</th><th>Purchased</th><th>Current Stock</th></tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr><td>Aashirvaad Atta 10kg</td><td>Balaji Traders</td><td>50 Bags</td><td>12 Bags</td></tr>
+                                                            <tr><td>Aashirvaad Atta 10kg</td><td>National Foods</td><td>30 Bags</td><td>12 Bags</td></tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {{-- TAB 3: PRO TIPS --}}
+                    <div class="tab-pane fade" id="guide-tips" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 bg-white border shadow-sm">
+                                    <div class="card-body p-3">
+                                        <h6 class="font-weight-bold text-primary mb-2">
+                                            <i class="fas fa-eye text-info mr-1"></i> 1. "View / Details" बटन (अंदर के सारे बिल देखना)
+                                        </h6>
+                                        <p class="small text-muted mb-0">
+                                            टेबल में जब भी कोई रिपोर्ट दिखे, हर लाइन के दाईं तरफ एक नीला <strong>"View / Details"</strong> बटन होता है। उस पर क्लिक करते ही एक पॉपअप खुलेगा जिसमें उस आइटम या कस्टमर से जुड़े सभी असली बिल, इनवॉइस नंबर, तारीख और रेट दिख जाएंगे। आप सीधे <em>"View Bill ↗"</em> दबाकर पूरा बिल भी खोल सकते हैं।
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 bg-white border shadow-sm">
+                                    <div class="card-body p-3">
+                                        <h6 class="font-weight-bold text-success mb-2">
+                                            <i class="fas fa-chart-pie text-success mr-1"></i> 2. Chart View (ग्राफ में रिपोर्ट देखना)
+                                        </h6>
+                                        <p class="small text-muted mb-0">
+                                            अगर आपको नंबर और टेबल देखने के बजाय चार्ट देखना पसंद है, तो ऊपर दाईं तरफ <strong>"Chart View"</strong> बटन पर क्लिक करें। आपकी रिपोर्ट तुरंत बार चार्ट (Bar Chart) या पाई चार्ट (Pie Chart) में बदल जाएगी, जिससे आँखों को तुरंत समझ आ जाता है कि कौन सा आइटम आगे है।
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 bg-white border shadow-sm">
+                                    <div class="card-body p-3">
+                                        <h6 class="font-weight-bold text-warning mb-2">
+                                            <i class="fas fa-file-excel text-success mr-1"></i> 3. Excel और PDF डाउनलोड करना
+                                        </h6>
+                                        <p class="small text-muted mb-0">
+                                            रिपोर्ट जनरेट होने के बाद टेबल के ठीक ऊपर <strong>"Export Excel"</strong> और <strong>"Export PDF"</strong> बटन एक्टिव हो जाते हैं। 1 क्लिक करते ही पूरी रिपोर्ट आपकी एक्सेल शीट में डाउनलोड हो जाएगी, जिसे आप सीधे WhatsApp पर या अपने अकाउंटेंट/CA को भेज सकते हैं।
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 bg-white border shadow-sm">
+                                    <div class="card-body p-3">
+                                        <h6 class="font-weight-bold text-dark mb-2">
+                                            <i class="fas fa-bookmark text-primary mr-1"></i> 4. Save Report (अपनी मनपसंद रिपोर्ट सेव करना)
+                                        </h6>
+                                        <p class="small text-muted mb-0">
+                                            अगर कोई खास रिपोर्ट आपको हर हफ्ते देखनी पड़ती है, तो बार-बार सेटिंग बदलने की ज़रूरत नहीं है। ऊपर <strong>"Save Report"</strong> पर क्लिक करें और कोई भी नाम दे दें (जैसे: <em>"मेरी वीकली ग्रोसरी रिपोर्ट"</em>)। अगली बार वह रिपोर्ट आपके <strong>"My Saved Reports"</strong> में 1-क्लिक में मिल जाएगी!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+            <div class="modal-footer bg-light py-2 d-flex justify-content-between">
+                <span class="small text-muted font-italic">
+                    <i class="fas fa-check-circle text-success mr-1"></i> अगर कोई सवाल या परेशानी हो, तो आप कभी भी इस गाइड को दोबारा खोल सकते हैं।
+                </span>
+                <button type="button" class="btn btn-primary btn-sm font-weight-bold px-4" data-dismiss="modal">
+                    समझ आ गया (Got it!)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @stop
 
 @push('js')
@@ -529,24 +1078,125 @@ $(document).ready(function() {
         }
     });
 
-    // Robust Date Preset Radio click & change handling
-    $('#date-preset-group label').on('click', function(e) {
-        let $label = $(this);
-        let $radio = $label.find('input[name="date_preset"]');
-        $('#date-preset-group label').removeClass('active');
-        $label.addClass('active');
-        $radio.prop('checked', true).trigger('change');
+    // Calculate exact dates for all presets (Today, Yesterday, Week, Last 7D, Month, Last Month, 30D, FY, All Time)
+    function getPresetDates(preset) {
+        let now = new Date();
+        function fmt(d) {
+            let year = d.getFullYear();
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            let day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        if (preset === 'today') {
+            let s = fmt(now);
+            return { from: s, to: s, label: 'Today' };
+        }
+        if (preset === 'yesterday') {
+            let y = new Date(now);
+            y.setDate(y.getDate() - 1);
+            let s = fmt(y);
+            return { from: s, to: s, label: 'Yesterday' };
+        }
+        if (preset === 'this_week') {
+            let day = now.getDay() || 7;
+            let mon = new Date(now);
+            mon.setDate(now.getDate() - day + 1);
+            let sun = new Date(mon);
+            sun.setDate(mon.getDate() + 6);
+            return { from: fmt(mon), to: fmt(sun), label: 'This Week' };
+        }
+        if (preset === 'last_7_days') {
+            let past = new Date(now);
+            past.setDate(now.getDate() - 6);
+            return { from: fmt(past), to: fmt(now), label: 'Last 7 Days' };
+        }
+        if (preset === 'this_month') {
+            let first = new Date(now.getFullYear(), now.getMonth(), 1);
+            let last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            return { from: fmt(first), to: fmt(last), label: 'This Month' };
+        }
+        if (preset === 'last_month') {
+            let first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            let last = new Date(now.getFullYear(), now.getMonth(), 0);
+            return { from: fmt(first), to: fmt(last), label: 'Last Month' };
+        }
+        if (preset === 'last_30_days') {
+            let past = new Date(now);
+            past.setDate(now.getDate() - 29);
+            return { from: fmt(past), to: fmt(now), label: 'Last 30 Days' };
+        }
+        if (preset === 'this_fy') {
+            let year = now.getFullYear();
+            let m = now.getMonth() + 1;
+            let startYear = (m >= 4) ? year : (year - 1);
+            let endYear = startYear + 1;
+            return { from: `${startYear}-04-01`, to: `${endYear}-03-31`, label: `FY ${startYear}-${String(endYear).slice(-2)}` };
+        }
+        if (preset === 'all_time') {
+            return { from: '', to: '', label: 'All Time' };
+        }
+        return null;
+    }
+
+    // Apply Date Preset Function
+    function applyDatePreset(preset, autoRun = true) {
+        $('#date_preset').val(preset);
+        $('.preset-pill').removeClass('active btn-primary btn-success btn-info btn-dark').addClass('btn-outline-secondary');
+        let $activeBtn = $(`.preset-pill[data-preset="${preset}"]`);
+        if ($activeBtn.length) {
+            let btnClass = (preset === 'last_month') ? 'btn-success' : ((preset === 'all_time') ? 'btn-dark' : ((preset === 'this_fy') ? 'btn-info' : 'btn-primary'));
+            $activeBtn.removeClass('btn-outline-secondary').addClass('active ' + btnClass);
+        }
+
+        let dates = getPresetDates(preset);
+        if (dates) {
+            $('#date_from').val(dates.from);
+            $('#date_to').val(dates.to);
+            $('#active-date-text').text(dates.label);
+        } else if (preset === 'custom') {
+            $('#active-date-text').text('Custom Range');
+        }
+
+        if (autoRun) {
+            runLiveReport();
+        }
+    }
+
+    // Preset Pill Click Listener (1-click auto run)
+    $(document).on('click', '.preset-pill', function(e) {
+        e.preventDefault();
+        let preset = $(this).data('preset');
+        applyDatePreset(preset, true);
     });
 
-    $('input[name="date_preset"]').on('change', function() {
-        let val = $('input[name="date_preset"]:checked').val() || $(this).val();
-        let $parentLabel = $(this).closest('label');
-        $('#date-preset-group label').removeClass('active');
-        $parentLabel.addClass('active');
-        if (val === 'custom') {
-            $('#custom-date-row').removeClass('d-none');
-        } else {
-            $('#custom-date-row').addClass('d-none');
+    // Quick Switch Date Buttons (In Results Card and Empty Table State)
+    $(document).on('click', '.quick-switch-date', function(e) {
+        e.preventDefault();
+        let preset = $(this).data('preset');
+        applyDatePreset(preset, true);
+    });
+
+    // Custom Date inputs change: switch preset to custom
+    $('#date_from, #date_to').on('change', function() {
+        $('#date_preset').val('custom');
+        $('.preset-pill').removeClass('active btn-primary btn-success btn-info btn-dark').addClass('btn-outline-secondary');
+        $('#active-date-text').text('Custom Range');
+    });
+
+    // Apply Button click for custom date inputs
+    $('#btn-apply-dates').on('click', function(e) {
+        e.preventDefault();
+        $('#date_preset').val('custom');
+        runLiveReport();
+    });
+
+    // Enter key in date inputs to apply
+    $('#date_from, #date_to').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#date_preset').val('custom');
+            runLiveReport();
         }
     });
 
@@ -558,9 +1208,21 @@ $(document).ready(function() {
         });
     });
 
-    // Group By dropdown change: update help text & visibility
+    // Group By dropdown change: update help text, sync quick pills, update badge
     $('#group_by').on('change', function() {
         let val = $(this).val();
+
+        // Sync 1-click pills
+        $('.groupby-pill').removeClass('active btn-primary').addClass('btn-outline-secondary');
+        let $activePill = $(`.groupby-pill[data-group="${val}"]`);
+        if ($activePill.length) {
+            $activePill.removeClass('btn-outline-secondary').addClass('active btn-primary');
+        }
+
+        // Update badge text
+        let selectedText = $('#group_by option:selected').text().replace(/^[^\w\s]+/, '').trim();
+        $('#current-group-badge').text(selectedText || 'Dimension');
+
         let desc = 'Aggregates data by selected dimension.';
         if (val === 'item_supplier') {
             desc = '📦 Item ⇄ Supplier Traceability: Shows which suppliers supplied each item, inward quantity, last purchase rate, and invoices.';
@@ -572,11 +1234,67 @@ $(document).ready(function() {
             desc = 'Aggregates each item\'s sold quantity, total revenue, discount, and profit margin.';
         } else if (val === 'customer') {
             desc = 'Aggregates each customer\'s total purchase value, number of visits, and average order value.';
+        } else if (val === 'category') {
+            desc = 'Summarizes sales, revenue, and gross margins grouped by Product Category.';
+        } else if (val === 'brand') {
+            desc = 'Analyzes performance and brand-wise revenue across manufacturers.';
         } else if (val === 'payment_mode') {
             desc = 'Analyzes cash vs card vs UPI transactions breakdown.';
+        } else if (val === 'cashier') {
+            desc = 'Tracks bill count, sales total, and discount per billing staff / cashier.';
+        } else if (val === 'date') {
+            desc = 'Day-by-day revenue, transaction counts, and trend breakdown.';
         }
         $('#group-desc-text').text(desc);
+        syncMetricChips();
     });
+
+    // 1-Click Group By Pill Click
+    $(document).on('click', '.groupby-pill', function(e) {
+        e.preventDefault();
+        let group = $(this).data('group');
+        $('#group_by').val(group).trigger('change');
+        runLiveReport();
+    });
+
+    // Metric Chip Click Handler (Interactive Toggle)
+    $(document).on('click', '.metric-chip', function(e) {
+        e.preventDefault();
+        let $input = $(this).find('.metric-check');
+        let isChecked = !$input.prop('checked');
+        $input.prop('checked', isChecked).trigger('change');
+        $(this).toggleClass('active', isChecked);
+
+        // Auto-refresh report (debounced 350ms)
+        clearTimeout(window.metricDebounceTimer);
+        window.metricDebounceTimer = setTimeout(function() {
+            runLiveReport();
+        }, 350);
+    });
+
+    // Metric Bundles (Standard, Profit, All)
+    $(document).on('click', '.metric-bundle-btn', function(e) {
+        e.preventDefault();
+        let bundle = $(this).data('bundle');
+        if (bundle === 'standard') {
+            $('.metric-check').prop('checked', false);
+            $('#m_qty, #m_sales, #m_margin, #m_bills').prop('checked', true);
+        } else if (bundle === 'profit') {
+            $('.metric-check').prop('checked', false);
+            $('#m_sales, #m_margin, #m_disc').prop('checked', true);
+        } else if (bundle === 'all') {
+            $('.metric-check').prop('checked', true);
+        }
+        syncMetricChips();
+        runLiveReport();
+    });
+
+    function syncMetricChips() {
+        $('.metric-chip').each(function() {
+            let isChecked = $(this).find('.metric-check').prop('checked');
+            $(this).toggleClass('active', isChecked);
+        });
+    }
 
     // Run Report Action
     $('#builder-form').on('submit', function(e) {
@@ -627,6 +1345,11 @@ $(document).ready(function() {
         }
         $('#report-title-display').text(title);
 
+        // Update active date range display badge
+        if (resp.date_range_label) {
+            $('#display-date-range-text').text(resp.date_range_label);
+        }
+
         // 2. Build Header
         let headHtml = '<tr><th class="text-center" style="width: 45px;">#</th>';
         resp.columns.forEach(function(col) {
@@ -638,7 +1361,29 @@ $(document).ready(function() {
 
         // 3. Build Body Rows
         if (!resp.rows || resp.rows.length === 0) {
-            $body.html(`<tr><td colspan="${resp.columns.length + 2}" class="text-center py-4 text-muted">No records found for the chosen filters.</td></tr>`);
+            let activePeriodLabel = resp.date_range_label || 'the chosen period';
+            $body.html(`
+                <tr>
+                    <td colspan="${resp.columns.length + 2}" class="text-center py-5">
+                        <div class="py-2">
+                            <i class="fas fa-calendar-times fa-3x text-warning mb-3"></i>
+                            <h5 class="font-weight-bold text-dark mb-1">No transactions found for ${activePeriodLabel}</h5>
+                            <p class="text-muted small mb-3">Transactions may exist in another date range. Click a shortcut below to view:</p>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-success font-weight-bold mr-2 quick-switch-date shadow-xs" data-preset="last_month">
+                                    <i class="fas fa-history mr-1"></i> View Last Month (Sep 2026)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info font-weight-bold mr-2 quick-switch-date shadow-xs" data-preset="this_fy">
+                                    <i class="fas fa-calendar mr-1"></i> View This FY (2026-27)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-dark font-weight-bold quick-switch-date shadow-xs" data-preset="all_time">
+                                    <i class="fas fa-globe mr-1"></i> View All Time (Full History)
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
             return;
         }
 
@@ -799,37 +1544,37 @@ $(document).ready(function() {
     function applyPreset(preset) {
         if (preset === 'item_supplier') {
             $('#group_by').val('item_supplier').trigger('change');
-            $('input[name="date_preset"][value="all_time"]').prop('checked', true).trigger('change');
+            applyDatePreset('all_time', false);
             $('#limit').val('all');
             $('#sort_dir').val('desc');
         } else if (preset === 'single_item') {
             $('#group_by').val('item').trigger('change');
-            $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+            applyDatePreset('all_time', false);
             $('#limit').val('all');
             $('#sort_dir').val('desc');
         } else if (preset === 'supplier_invoices') {
             $('#group_by').val('supplier').trigger('change');
-            $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+            applyDatePreset('all_time', false);
             $('#limit').val('all');
             $('#sort_dir').val('desc');
         } else if (preset === 'top_selling') {
             $('#group_by').val('item').trigger('change');
-            $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+            applyDatePreset('all_time', false);
             $('#limit').val('20');
             $('#sort_dir').val('desc');
         } else if (preset === 'slow_moving') {
             $('#group_by').val('item').trigger('change');
-            $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+            applyDatePreset('all_time', false);
             $('#limit').val('20');
             $('#sort_dir').val('asc');
         } else if (preset === 'vip_customers') {
             $('#group_by').val('customer').trigger('change');
-            $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+            applyDatePreset('all_time', false);
             $('#limit').val('20');
             $('#sort_dir').val('desc');
         } else if (preset === 'payment_mode') {
             $('#group_by').val('payment_mode').trigger('change');
-            $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+            applyDatePreset('all_time', false);
             $('#limit').val('all');
         }
     }
@@ -933,11 +1678,12 @@ $(document).ready(function() {
             metrics.forEach(function(m) {
                 $(`.metric-check[value="${m}"]`).prop('checked', true);
             });
+            syncMetricChips();
         }
 
         if (filters) {
             if (filters.date_preset) {
-                $(`input[name="date_preset"][value="${filters.date_preset}"]`).prop('checked', true).trigger('change');
+                applyDatePreset(filters.date_preset, false);
             }
             if (filters.date_from) $('#date_from').val(filters.date_from);
             if (filters.date_to) $('#date_to').val(filters.date_to);
@@ -972,8 +1718,9 @@ $(document).ready(function() {
         $('#group_by').val('item').trigger('change');
         $('#item_id').val(null).trigger('change');
         $('#supplier_id').val(null).trigger('change');
-        $('input[name="date_preset"][value="this_month"]').prop('checked', true).trigger('change');
+        applyDatePreset('this_month', false);
         $('#m_qty, #m_sales, #m_margin, #m_bills').prop('checked', true);
+        syncMetricChips();
         runLiveReport();
     });
 
@@ -1210,7 +1957,11 @@ $(document).ready(function() {
     // Auto-run initial preset if passed in query string or load default
     @if($initialPreset)
         applyPreset('{{ $initialPreset }}');
+    @else
+        applyDatePreset('this_month', false);
     @endif
+
+    syncMetricChips();
 
     // Initial Execution
     runLiveReport();

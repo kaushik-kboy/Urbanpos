@@ -14,10 +14,23 @@
 .sr-exp-date[readonly]::-webkit-calendar-picker-indicator {
     display: none !important;
 }
+#sr-header-fields-grid .btn-open-datepicker,
+#sr-header-fields-grid .btn-date-settings-modal,
+#sr-header-fields-grid .urbanpos-date-group .input-group-append,
+#sr-items-table .btn-open-datepicker,
+#sr-items-table .btn-date-settings-modal,
+#sr-items-table .urbanpos-date-group .input-group-append {
+    display: none !important;
+}
+#sr-header-fields-grid .urbanpos-date-group input,
+#sr-items-table .urbanpos-date-group input {
+    border-top-right-radius: 0.25rem !important;
+    border-bottom-right-radius: 0.25rem !important;
+}
 </style>
 @endpush
 
-<div class="d-flex justify-content-between align-items-center mb-2 tx-compact-section-header">
+<div class="d-flex justify-content-between align-items-center mb-1 tx-compact-section-header">
     <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-undo text-primary mr-1"></i> Sales Return Header</h6>
     <x-form-layout-customizer
         form-key="sales_returns.header"
@@ -26,12 +39,12 @@
     />
 </div>
 
-<div class="row g-2 form-fields-grid mb-2 tx-header-fields-grid" id="sr-header-fields-grid">
-    <div class="field-wrapper col-md-4 mb-3" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
+<div class="row g-2 form-fields-grid mb-1 tx-header-fields-grid" id="sr-header-fields-grid">
+    <div class="field-wrapper col-lg-3 col-md-4 col-sm-6 col-12 mb-1" data-field="customer_id" data-label="Customer" data-default-order="1" data-core="1">
         <div class="d-flex justify-content-between align-items-center mb-1">
             <label for="customer_id" class="font-weight-bold mb-0">Customer <span class="text-danger">*</span></label>
             <button type="button" class="btn btn-xs btn-primary font-weight-bold" id="sr-btn-open-history" title="Pick items from customer's previous sales bills">
-                <i class="fas fa-history mr-1"></i> Pick from History
+                <i class="fas fa-history mr-1"></i> Pick History
             </button>
         </div>
         <select name="customer_id" id="customer_id" class="form-control select2" required>
@@ -49,29 +62,28 @@
         $selectedBranch = old('branch_id', $ret->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
     <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
-    <div class="field-wrapper col-md-3 mb-3" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
-        <label for="return_date" class="font-weight-bold">Return Date <span class="text-danger">*</span></label>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-6 col-6 mb-1" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
+        <label for="return_date" class="font-weight-bold mb-1">Return Date <span class="text-danger">*</span></label>
         <input type="date" name="return_date" id="return_date" class="form-control" value="{{ old('return_date', optional($ret->return_date ?? now())->format('Y-m-d')) }}" required>
     </div>
-    <div class="field-wrapper col-md-4 mb-3" data-field="sales_type" data-label="Sales Type" data-default-order="4" data-core="1">
-        <label for="sales_type" class="font-weight-bold">Sales Type <span class="text-danger">*</span></label>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-6 col-6 mb-1" data-field="sales_type" data-label="Sales Type" data-default-order="4" data-core="1">
+        <label for="sales_type" class="font-weight-bold mb-1">Sales Type <span class="text-danger">*</span></label>
         <select name="sales_type" id="sales_type" class="form-control" required>
             <option value="Local" @selected(old('sales_type', $ret->sales_type ?? 'Local') === 'Local')>Local (CGST + SGST)</option>
             <option value="Interstate" @selected(old('sales_type', $ret->sales_type ?? '') === 'Interstate')>Interstate (IGST)</option>
         </select>
     </div>
-    <div class="field-wrapper col-md-6 mb-3" data-field="sales_bill_id" data-label="Original Sales Bill" data-default-order="5">
-        <label for="sales_bill_id" class="font-weight-bold">Original Sales Bill</label>
+    <div class="field-wrapper col-lg-3 col-md-4 col-sm-6 col-6 mb-1" data-field="sales_bill_id" data-label="Original Sales Bill" data-default-order="5">
+        <label for="sales_bill_id" class="font-weight-bold mb-1">Original Sales Bill</label>
         <select name="sales_bill_id" id="sales_bill_id" class="form-control select2">
-            <option value="">-- No Original Bill / Direct Return --</option>
+            <option value="">-- No Bill / Direct Return --</option>
             @foreach ($salesBills as $id => $no)
                 <option value="{{ $id }}" @selected($selectedBillId == $id)>{{ $no }}</option>
             @endforeach
         </select>
-        <small class="text-muted">Bill select karte hi items automatically load ho jayenge.</small>
     </div>
-    <div class="field-wrapper col-md-6 mb-3" data-field="return_mode" data-label="Return Mode" data-default-order="6" data-core="1">
-        <label for="return_mode" class="font-weight-bold">Return Mode <span class="text-danger">*</span></label>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-6 col-6 mb-1" data-field="return_mode" data-label="Return Mode" data-default-order="6" data-core="1">
+        <label for="return_mode" class="font-weight-bold mb-1">Return Mode <span class="text-danger">*</span></label>
         <select name="return_mode" id="return_mode" class="form-control" required>
             @foreach (['Cash' => 'Cash', 'Credit Note' => 'Credit Note', 'Wallet' => 'Wallet', 'Card' => 'Card', 'RRN' => 'RRN'] as $val => $lbl)
                 <option value="{{ $val }}" @selected(old('return_mode', $ret->return_mode ?? 'Cash') === $val)>{{ $lbl }}</option>
@@ -130,15 +142,15 @@
         'actions'      => ['label' => 'Actions', 'default' => true],
     ];
 @endphp
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0 font-weight-bold text-dark">
+<div class="d-flex justify-content-between align-items-center mb-1 tx-compact-section-header">
+    <h6 class="mb-0 font-weight-bold text-dark">
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
-    </h5>
+    </h6>
     <div class="d-flex align-items-center">
-        <button type="button" class="btn btn-outline-info btn-sm font-weight-bold mr-2" id="sr-btn-open-history-header" title="Pick items from customer's previous bills across multiple dates">
+        <button type="button" class="btn btn-outline-info btn-xs font-weight-bold mr-2" id="sr-btn-open-history-header" title="Pick items from customer's previous bills across multiple dates">
             <i class="fas fa-history mr-1"></i> Pick from Purchase History
         </button>
-        <button type="button" class="btn btn-outline-danger btn-sm font-weight-bold mr-2 btn-reset-table" id="sr-btn-reset-table" title="Clear all table items and reset to 1 empty row">
+        <button type="button" class="btn btn-outline-danger btn-xs font-weight-bold mr-2 btn-reset-table" id="sr-btn-reset-table" title="Clear all table items and reset to 1 empty row">
             <i class="fas fa-undo mr-1"></i> Reset Table
         </button>
         <x-table-column-customizer
@@ -146,8 +158,8 @@
             table-id="sr-items-table"
             :columns="$srItemColumns"
         />
-        <button type="button" id="sr-add-row" class="btn btn-outline-primary btn-sm font-weight-bold ml-2">
-            <i class="fas fa-plus-circle mr-1"></i> Add Item Line
+        <button type="button" id="sr-add-row" class="btn btn-primary btn-xs font-weight-bold ml-2">
+            <i class="fas fa-plus mr-1"></i> Add Row
         </button>
     </div>
 </div>
@@ -190,43 +202,57 @@
     </table>
 </div>
 
-<hr>
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label for="remarks" class="font-weight-bold">Remarks / Return Reason</label>
-            <textarea name="remarks" id="remarks" rows="4" class="form-control" placeholder="Reason for customer return...">{{ old('remarks', $ret->remarks ?? '') }}</textarea>
+<hr class="tx-divider-compact my-1">
+<div class="d-flex justify-content-between align-items-center mb-1 tx-compact-section-header">
+    <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Notes</h6>
+    <x-form-layout-customizer 
+        form-key="sales_returns.additional" 
+        container-id="sr-additional-fields-grid" 
+        button-text="Customize Layout" 
+        button-class="btn btn-outline-primary btn-xs font-weight-bold shadow-sm" />
+</div>
+
+<div class="row g-2 form-fields-grid align-items-end mb-1" id="sr-additional-fields-grid">
+    <div class="field-wrapper col-lg-3 col-md-4 col-sm-6 col-12" data-field="remarks" data-label="Remarks / Return Reason" data-default-order="1">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="remarks">Remarks / Return Reason</label>
+            <input type="text" name="remarks" id="remarks" class="form-control" placeholder="Reason for customer return..." value="{{ old('remarks', $ret->remarks ?? '') }}">
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card card-outline card-secondary shadow-none border bg-light">
-            <div class="card-body p-3">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Items Taxable Amount:</span>
-                    <strong id="display-sr-taxable">₹0.00</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Total GST Tax:</span>
-                    <strong class="text-primary" id="display-sr-gst">₹0.00</strong>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted">Round Off:</span>
-                    <input type="number" step="0.01" name="round_off" id="round_off" value="{{ old('round_off', $ret->round_off ?? 0) }}" class="form-control form-control-sm text-right" style="width: 110px;">
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted">Total Extra Cess:</span>
-                    <input type="number" step="0.01" min="0" name="total_extra_cess" id="total_extra_cess" value="{{ old('total_extra_cess', $ret->total_extra_cess ?? 0) }}" class="form-control form-control-sm text-right" style="width: 110px;">
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted">GST Calamity Cess:</span>
-                    <input type="number" step="0.01" min="0" name="gst_calamity_cess" id="gst_calamity_cess" value="{{ old('gst_calamity_cess', $ret->gst_calamity_cess ?? 0) }}" class="form-control form-control-sm text-right" style="width: 110px;">
-                </div>
-                <hr class="my-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="h5 font-weight-bold mb-0">Net Return Amount:</span>
-                    <span class="h4 font-weight-bold text-success mb-0" id="display-sr-grand-total">₹0.00</span>
-                </div>
-            </div>
+    <div class="field-wrapper col-lg-1 col-md-2 col-sm-3 col-4" data-field="round_off" data-label="Round Off" data-default-order="2">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="round_off">Round Off</label>
+            <input type="number" step="0.01" name="round_off" id="round_off" value="{{ old('round_off', $ret->round_off ?? 0) }}" class="form-control text-right">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-1 col-md-2 col-sm-3 col-4" data-field="total_extra_cess" data-label="Total Extra Cess" data-default-order="3">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="total_extra_cess">Extra Cess</label>
+            <input type="number" step="0.01" min="0" name="total_extra_cess" id="total_extra_cess" value="{{ old('total_extra_cess', $ret->total_extra_cess ?? 0) }}" class="form-control text-right">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-1 col-md-2 col-sm-3 col-4" data-field="gst_calamity_cess" data-label="GST Calamity Cess" data-default-order="4">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="gst_calamity_cess">Calamity Cess</label>
+            <input type="number" step="0.01" min="0" name="gst_calamity_cess" id="gst_calamity_cess" value="{{ old('gst_calamity_cess', $ret->gst_calamity_cess ?? 0) }}" class="form-control text-right">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4 col-6" data-field="items_taxable_amount" data-label="Items Taxable Amount" data-default-order="5">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" style="white-space: nowrap;">Items Taxable Amount:</label>
+            <div class="form-control text-right font-weight-bold bg-light" style="line-height: 24px;" id="display-sr-taxable">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4 col-6" data-field="total_gst_tax" data-label="Total GST Tax" data-default-order="6">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" style="white-space: nowrap;">Total GST Tax:</label>
+            <div class="form-control text-right font-weight-bold text-primary bg-light" style="line-height: 24px;" id="display-sr-gst">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-4 col-12" data-field="net_return_amount" data-label="Net Return Amount" data-default-order="7">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-success" style="white-space: nowrap;">Net Return Amount:</label>
+            <div class="form-control text-right font-weight-bold text-success bg-white border-success" style="line-height: 24px; font-size: 0.95rem;" id="display-sr-grand-total">₹0.00</div>
         </div>
     </div>
 </div>
@@ -414,6 +440,7 @@
 </div>
 
 @push('js')
+<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 <script>
     (function () {
         let rowIndex = {{ max(count($existingItems), 1) }};
@@ -421,6 +448,8 @@
         let srIslDebounce = null;
         const SR_ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
         const SR_LOOKUP_URL = '{{ route("sales.sales-bills.lookup-item") }}';
+        const SR_CURRENT_RETURN_ID = '{{ $ret?->id ?? "" }}';
+        const IS_EDIT_MODE = {{ $ret ? 'true' : 'false' }};
 
         /* ----------------------------------------------------------------
            ITEM SEARCH MODAL — open on click of Code/Barcode field
@@ -1098,7 +1127,41 @@
             }, 50);
         });
 
-        document.getElementById('sr-add-row')?.addEventListener('click', function () {
+        function canAddSrRow() {
+            let $lastRow = $('#sr-items-body tr').last();
+            if ($lastRow.length) {
+                let itemId = $lastRow.find('.sr-item-id').val();
+                let qtyVal = parseFloat($lastRow.find('.sr-qty').val()) || 0;
+
+                if (!itemId) {
+                    let msg = 'Pehle current row me item select karein.';
+                    if (window.toastr) toastr.warning(msg, 'Incomplete Row');
+                    else alert(msg);
+                    $lastRow.find('.sr-item-code').focus();
+                    return false;
+                }
+
+                if (qtyVal <= 0) {
+                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    if (window.toastr) toastr.warning(msg, 'Quantity Required');
+                    else alert(msg);
+                    $lastRow.find('.sr-qty').focus().select();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        document.getElementById('sr-add-row')?.addEventListener('click', function (e) {
+            if (!$('#customer_id').val()) {
+                e?.preventDefault?.();
+                validateSrHeader(true, ['customer']);
+                return false;
+            }
+            if (!canAddSrRow()) {
+                e?.preventDefault?.();
+                return false;
+            }
             const template = document.getElementById('sr-row-template').innerHTML;
             const html = template.replaceAll('__INDEX__', rowIndex);
             const tbody = document.getElementById('sr-items-body');
@@ -1167,6 +1230,7 @@
                     $nextRow.find('.sr-item-code').focus();
                 } else if (!$('#sales_bill_id').val()) {
                     e.preventDefault();
+                    if (!canAddSrRow()) return;
                     $('#sr-add-row').trigger('click');
                 }
             }
@@ -1198,7 +1262,7 @@
             let rowKey = $row.index();
             clearTimeout(srQtyDebounce[rowKey]);
             srQtyDebounce[rowKey] = setTimeout(function () {
-                $.getJSON(SR_SOLD_QTY_URL, { item_id: itemId, customer_id: customerId }, function (res) {
+                $.getJSON(SR_SOLD_QTY_URL, { item_id: itemId, customer_id: customerId, ignore_return_id: SR_CURRENT_RETURN_ID }, function (res) {
                     if (res && res.available !== null) {
                         let avail = parseFloat(res.available);
                         $input.attr('data-max-no-bill', avail);
@@ -1270,7 +1334,12 @@
                 tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-primary"><i class="fas fa-spinner fa-spin fa-2x"></i><div class="mt-2 font-weight-bold">Loading items from sales bill...</div></td></tr>';
             }
 
-            fetch(`/sales/sales-returns/bill-items/${billId}`, {
+            let billUrl = `/sales/sales-returns/bill-items/${billId}`;
+            if (SR_CURRENT_RETURN_ID) {
+                billUrl += `?ignore_return_id=${SR_CURRENT_RETURN_ID}`;
+            }
+
+            fetch(billUrl, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => res.json())
@@ -1293,7 +1362,6 @@
                 }
 
                 cachedBillItems = data.items || [];
-                renderBillItemChecklist();
 
                 let hasActualItems = false;
                 $('#sr-items-body .sr-item-row').each(function () {
@@ -1326,15 +1394,19 @@
                     renderBillItemChecklist();
                     recalculateAll();
                 } else {
-                    // Critical Requirement (Task 2):
-                    // Do NOT auto-populate items from Sales Bill into Return Items table!
-                    // Return Items remains empty until the user explicitly checks an item in
-                    // "Select Item(s) from Sales Bill to Return".
-                    if (cachedBillItems.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-info mr-1"></i> Original Sales Bill loaded (0 items).</td></tr>';
-                    } else {
-                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-hand-pointer text-primary mr-1"></i> Check an item in "Select Item(s) from Sales Bill to Return" above to add it to Return Items.</td></tr>';
+                    tbody.innerHTML = '';
+                    let addedCount = 0;
+                    cachedBillItems.forEach((item, idx) => {
+                        let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
+                        if (remQty > 0) {
+                            appendBillItemRow(item, remQty);
+                            addedCount++;
+                        }
+                    });
+                    if (addedCount === 0) {
+                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-info mr-1"></i> Original Sales Bill loaded, but all items have already been fully returned (0 returnable items).</td></tr>';
                     }
+                    renderBillItemChecklist();
                     recalculateAll();
                 }
             })
@@ -1362,9 +1434,23 @@
             const hiddenId = row.querySelector('.sr-item-select');
             if (hiddenId) hiddenId.value = item.item_id;
 
+            const hiddenBillId = row.querySelector('.sr-item-bill-id');
+            if (hiddenBillId) hiddenBillId.value = $('#sales_bill_id').val() || item.sales_bill_id || '';
+
+            const hiddenBillItemId = row.querySelector('.sr-item-bill-item-id');
+            if (hiddenBillItemId) hiddenBillItemId.value = item.sales_bill_item_id || item.id || '';
+
+            const badgeWrapper = row.querySelector('.sr-bill-badge-wrapper');
+            const badgeText = row.querySelector('.sr-bill-badge-text');
+            const billNumber = $('#sr-bill-summary-num').text() || (item.bill_number ? item.bill_number : '');
+            if (badgeWrapper && badgeText && billNumber) {
+                badgeText.innerText = 'Bill #' + billNumber;
+                badgeWrapper.style.display = 'block';
+            }
+
             const codeInput = row.querySelector('.sr-item-code');
             if (codeInput) {
-                codeInput.value = item.item_id;
+                codeInput.value = item.item_code || item.item_id;
                 codeInput.readOnly = true;
                 codeInput.title = 'Item from Sales Bill (cannot be changed)';
             }
@@ -1443,16 +1529,18 @@
                 let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
                 let origQty = parseFloat(item.original_qty) || 0;
                 let retQty = parseFloat(item.already_returned_qty) || 0;
-                let isExhausted = remQty <= 0;
-                let remStr = isExhausted
-                    ? ' <span class="text-danger">[No returnable qty available]</span>'
-                    : ` <span class="text-success">[Remaining: ${remQty}/${origQty}]</span>`;
                 let isChecked = $(`#sr-items-body .sr-item-row .sr-item-select[value="${item.item_id}"]`).length > 0;
+                let isExhausted = remQty <= 0 && !isChecked;
+                let remStr = isExhausted
+                    ? ' <span class="text-danger font-weight-bold">[No returnable qty available]</span>'
+                    : (isChecked 
+                        ? ` <span class="badge badge-primary px-2 py-1 ml-1"><i class="fas fa-check mr-1"></i>In Return</span> <span class="text-muted small">(Available: ${remQty}/${origQty})</span>`
+                        : ` <span class="text-success font-weight-bold">[Available: ${remQty}/${origQty}]</span>`);
                 html += `
                     <div class="custom-control custom-checkbox py-1 border-bottom">
                         <input type="checkbox" class="custom-control-input sr-bill-item-checkbox" id="sr-bic-${idx}" data-idx="${idx}" data-item-id="${item.item_id}"${isExhausted ? ' disabled' : ''}${isChecked ? ' checked' : ''}>
                         <label class="custom-control-label w-100${isExhausted ? ' text-muted' : ''}" for="sr-bic-${idx}" style="cursor:pointer;">
-                            <strong>${item.item_name}</strong>${codeStr} &mdash; Sold: ${origQty} (Ret: ${retQty}) @ &#8377;${parseFloat(item.sell_price).toFixed(2)}${expStr}${remStr}
+                            <strong>${item.item_name}</strong>${codeStr} &mdash; Sold: ${origQty}${retQty > 0 ? ' (Other Returns: ' + retQty + ')' : ''} @ &#8377;${parseFloat(item.sell_price).toFixed(2)}${expStr}${remStr}
                         </label>
                     </div>`;
             });
@@ -1577,7 +1665,12 @@
             customerBillsLoading = true;
             $billSelect.prop('disabled', true);
 
-            $.getJSON('/sales/sales-returns/customer-bills/' + customerId, function (bills) {
+            let custBillsUrl = '/sales/sales-returns/customer-bills/' + customerId;
+            if (SR_CURRENT_RETURN_ID) {
+                custBillsUrl += '?ignore_return_id=' + SR_CURRENT_RETURN_ID;
+            }
+
+            $.getJSON(custBillsUrl, function (bills) {
                 let html = '<option value="">-- No Original Bill / Direct Return --</option>';
                 if (bills && bills.length > 0) {
                     bills.forEach(function (b) {
@@ -1601,10 +1694,11 @@
                 customerBillsLoading = false;
                 updateBillModeUI();
                 let activeBill = $billSelect.val();
-                if (activeBill && selectedBillId) {
+                if (onDone) {
+                    onDone(activeBill);
+                } else if (activeBill && selectedBillId) {
                     loadBillItems(activeBill, false);
                 }
-                if (onDone) onDone(activeBill);
             });
         }
 
@@ -1702,12 +1796,12 @@
             loadCustomerBills(initialCustId, initialBillId, function(resolvedBillId) {
                 // After customer bills are loaded, auto-trigger bill items if a bill is pre-selected
                 if (resolvedBillId) {
-                    loadBillItems(resolvedBillId, false);
+                    loadBillItems(resolvedBillId, IS_EDIT_MODE);
                 }
             });
         } else if (initialBillId) {
             updateBillModeUI();
-            loadBillItems(initialBillId, false);
+            loadBillItems(initialBillId, IS_EDIT_MODE);
         }
 
         // Form Submit Handler: validate header, check items and quantities properly
@@ -2302,6 +2396,25 @@
             });
         }
 
+        // Global F6 shortcut to save return form
+        $(document).on('keydown', function (e) {
+            if (e.key === 'F6') {
+                e.preventDefault();
+                e.stopPropagation();
+                var $saveBtn = $('#sr-main-save-btn');
+                if ($saveBtn.length && !$saveBtn.prop('disabled')) {
+                    $saveBtn.trigger('click');
+                } else if ($saveBtn.length && $saveBtn.prop('disabled')) {
+                    var title = $saveBtn.attr('title') || 'Please select a Customer and add at least one item before saving.';
+                    if (window.toastr) {
+                        toastr.warning(title);
+                    } else {
+                        alert(title);
+                    }
+                }
+            }
+        });
+
         // Form Reset Button Handler
         $(document).on('click', '.btn-reset-form', function (e) {
             e.preventDefault();
@@ -2312,5 +2425,4 @@
 
     })();
 </script>
-<script src="{{ asset('js/transaction-layout-engine.js') }}"></script>
 @endpush

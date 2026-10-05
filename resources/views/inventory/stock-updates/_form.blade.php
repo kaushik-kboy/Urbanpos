@@ -1,5 +1,20 @@
 @push('css')
     <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+    <style>
+        #su-header-fields-grid .btn-open-datepicker,
+        #su-header-fields-grid .btn-date-settings-modal,
+        #su-header-fields-grid .urbanpos-date-group .input-group-append,
+        #items-table .btn-open-datepicker,
+        #items-table .btn-date-settings-modal,
+        #items-table .urbanpos-date-group .input-group-append {
+            display: none !important;
+        }
+        #su-header-fields-grid .urbanpos-date-group input,
+        #items-table .urbanpos-date-group input {
+            border-top-right-radius: 0.25rem !important;
+            border-bottom-right-radius: 0.25rem !important;
+        }
+    </style>
 @endpush
 
 @php
@@ -178,17 +193,100 @@
     </div>
 </div>
 
+{{-- ================================================================ --}}
+{{-- BATCH SELECTION MODAL (For items with multiple batches)          --}}
+{{-- ================================================================ --}}
+<div class="modal fade" id="su-batch-modal" tabindex="-1" role="dialog" aria-labelledby="suBatchModalLabel" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title font-weight-bold" id="suBatchModalLabel">
+                    <i class="fas fa-layer-group mr-2"></i> Select Batch & Expiry Date
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                    <div>
+                        <strong class="text-primary h6 mb-0 font-weight-bold" id="su-batch-modal-item-title">Item Name</strong>
+                        <span class="badge badge-secondary ml-2 font-weight-bold" id="su-batch-modal-item-code"></span>
+                    </div>
+                    <small class="text-muted font-weight-bold" id="su-batch-modal-branch-info"></small>
+                </div>
+                <div class="table-responsive border rounded" style="max-height: 360px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="su-modal-batches-table">
+                        <thead class="thead-light sticky-top">
+                            <tr class="text-center">
+                                <th style="width: 45px;">#</th>
+                                <th>Batch No</th>
+                                <th style="width: 170px;">Expiry Date</th>
+                                <th style="width: 120px;" class="text-right">Current Stock</th>
+                                <th style="width: 110px;" class="text-right">Cost Price</th>
+                                <th style="width: 100px;" class="text-right">Sell Price</th>
+                                <th style="width: 95px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="su-modal-batches-body">
+                            {{-- Populated via JS --}}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                    <small class="text-muted"><kbd>↑</kbd> <kbd>↓</kbd> to navigate, <kbd>Enter</kbd> to select batch, <kbd>Esc</kbd> to close</small>
+                    <small class="text-muted">Selecting a batch auto-fills Expiry, Cost, Sell Price & MRP</small>
+                </div>
+            </div>
+            <div class="modal-footer py-2 bg-light d-flex justify-content-between">
+                <span class="text-muted small" id="su-batch-modal-count-label"></span>
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('js')
 <script>
     (function () {
         let rowIndex = {{ $existingItems->count() ?: 1 }};
-        const SU_ISL_URL = "{{ route('sales.sales-bills.item-list') }}";
-        const SU_LOOKUP_URL = "{{ route('sales.sales-bills.lookup-item') }}";
+        const SU_ISL_URL = "{{ route('inventory.stock-updates.search-items') }}";
+        const SU_LOOKUP_URL = "{{ route('inventory.stock-updates.item-by-code') }}";
+
+        function getActiveBranchId() {
+            return $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
+        }
 
         let suActiveSearchRow = null;
+        let suActiveBatchRow = null;
+        let suActiveBatchItem = null;
+        let suBatchSelectedIndex = 0;
         let suModalOpen = false;
         let suModalClosing = false;
         let suIslDebounce = null;
+
+        function formatToDisplayDate(dtStr) {
+            if (!dtStr) return '';
+            let str = dtStr.toString().substring(0, 10);
+            let parts = str.split('-');
+            if (parts.length === 3 && parts[0].length === 4) {
+                return parts[2] + '/' + parts[1] + '/' + parts[0];
+            }
+            return str;
+        }
+
+        function isExpiredDate(dtStr) {
+            if (!dtStr) return false;
+            let str = dtStr.toString().substring(0, 10);
+            let parts = str.split('-');
+            if (parts.length === 3 && parts[0].length === 4) {
+                let exp = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                let today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return exp < today;
+            }
+            return false;
+        }
 
         document.getElementById('add-row')?.addEventListener('click', function () {
             // Block add-row if first row has no item yet
@@ -401,7 +499,7 @@
         });
 
         function fetchSuItemList() {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = getActiveBranchId();
             let srch = $.trim($('#su-isl-filter-name').val());
             let code = $.trim($('#su-isl-filter-code').val());
             let showZero = $('#su-isl-show-zero').is(':checked');
@@ -519,61 +617,218 @@
             }
         });
 
+        function showSuBatchModal($row, item, batches) {
+            suActiveBatchRow = $row;
+            suActiveBatchItem = item;
+            $('#su-batch-modal-item-title').text(item.name || 'Selected Item');
+            $('#su-batch-modal-item-code').text(item.item_code || item.code || item.ean_upc_code || item.alias || '—');
+            let branchName = $('select[name="branch_id"] option:selected').text() || 'Branch';
+            $('#su-batch-modal-branch-info').text('Location: ' + branchName);
+
+            let $tbody = $('#su-modal-batches-body');
+            $tbody.empty();
+
+            if (!batches || batches.length === 0) {
+                $tbody.html('<tr><td colspan="7" class="text-center text-muted py-3">No batches recorded for this item.</td></tr>');
+                $('#su-batch-modal-count-label').text('0 batches available');
+                $('#su-batch-modal').modal('show');
+                return;
+            }
+
+            let currentBatchNo = $row.find('.su-batch-no').val() || '';
+            let html = '';
+            batches.forEach(function (b, idx) {
+                let isExpired = b.exp_date && isExpiredDate(b.exp_date);
+                let expBadge = b.exp_date
+                    ? (isExpired
+                        ? `<span class="badge badge-danger px-2 py-1"><i class="fas fa-exclamation-triangle mr-1"></i>EXPIRED (${formatToDisplayDate(b.exp_date)})</span>`
+                        : `<span class="badge badge-info px-2 py-1"><i class="far fa-calendar-alt mr-1"></i>${formatToDisplayDate(b.exp_date)}</span>`)
+                    : `<span class="text-muted">—</span>`;
+                let batchLabel = b.batch_no ? `<span class="badge badge-secondary px-2 py-1 font-weight-bold">${b.batch_no}</span>` : `<span class="badge badge-light border text-muted">No Batch</span>`;
+                let qtyAvail = parseFloat(b.qty !== undefined ? b.qty : (b.available_qty || 0));
+                let costVal = parseFloat(b.cost_price || item.cost_price || 0);
+                let sellVal = parseFloat(b.sell_price || item.sell_price || 0);
+                let isSelected = (currentBatchNo && b.batch_no === currentBatchNo);
+                let rowClass = 'su-batch-row ' + (isSelected ? 'table-success ' : '');
+                let rowStyle = 'cursor: pointer;';
+                let selectBtn = `<button type="button" class="btn btn-xs btn-success su-btn-pick-batch font-weight-bold px-2"><i class="fas fa-check mr-1"></i>Select</button>`;
+
+                html += `
+                    <tr class="${rowClass}" style="${rowStyle}" data-idx="${idx}">
+                        <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                        <td class="align-middle text-center">${batchLabel}</td>
+                        <td class="align-middle text-center">${expBadge}</td>
+                        <td class="align-middle text-right font-weight-bold text-primary">${qtyAvail.toFixed(3)}</td>
+                        <td class="align-middle text-right font-weight-bold text-dark">₹${costVal.toFixed(2)}</td>
+                        <td class="align-middle text-right font-weight-bold text-success">₹${sellVal.toFixed(2)}</td>
+                        <td class="align-middle text-center">${selectBtn}</td>
+                    </tr>`;
+            });
+
+            $tbody.html(html);
+
+            $tbody.find('tr.su-batch-row').each(function () {
+                let idx = $(this).data('idx');
+                $(this).data('batch', batches[idx]);
+            });
+
+            $('#su-batch-modal-count-label').text(batches.length + ' batch(es) available');
+            suBatchSelectedIndex = 0;
+            highlightSuBatchRow();
+            $('#su-batch-modal').modal('show');
+        }
+
+        function highlightSuBatchRow() {
+            let $rows = $('#su-modal-batches-body tr.su-batch-row');
+            $('#su-modal-batches-body tr').removeClass('table-primary');
+            if (suBatchSelectedIndex >= 0 && suBatchSelectedIndex < $rows.length) {
+                let $target = $rows.eq(suBatchSelectedIndex);
+                $target.addClass('table-primary');
+                if ($target[0]) {
+                    $target[0].scrollIntoView({ block: 'nearest' });
+                }
+            }
+        }
+
+        function applyBatchToSuRow($row, batch) {
+            if (!batch) return;
+            let batchNo = batch.batch_no || '';
+            $row.find('.su-batch-no').val(batchNo);
+
+            let $batchWrap = $row.find('.su-batch-btn-wrap');
+            $batchWrap.removeClass('d-none');
+            $row.find('.su-btn-choose-batch').attr('title', batchNo ? ('Batch: ' + batchNo + ' (Click to change)') : 'Click to choose batch');
+
+            if (batch.cost_price !== undefined && parseFloat(batch.cost_price) > 0) {
+                $row.find('.su-cost-price').val(parseFloat(batch.cost_price).toFixed(2));
+            }
+            if (batch.sell_price !== undefined && parseFloat(batch.sell_price) > 0) {
+                $row.find('.su-sell-price').val(parseFloat(batch.sell_price).toFixed(2));
+            }
+            if (batch.mrp !== undefined && parseFloat(batch.mrp) > 0) {
+                $row.find('.su-mrp').val(parseFloat(batch.mrp).toFixed(2));
+            }
+
+            if (batch.exp_date) {
+                let formatted = formatToDisplayDate(batch.exp_date);
+                $row.find('.su-exp-date').val(formatted);
+            } else {
+                $row.find('.su-exp-date').val('');
+            }
+
+            let qtyAvail = parseFloat(batch.qty !== undefined ? batch.qty : (batch.available_qty || 0));
+            $row.find('.su-current-stock').text(qtyAvail.toFixed(3));
+        }
+
+        $(document).on('click', '.su-batch-row, .su-btn-pick-batch', function (e) {
+            e.stopPropagation();
+            let $tr = $(this).hasClass('su-batch-row') ? $(this) : $(this).closest('tr');
+            let batch = $tr.data('batch');
+            if (!batch) return;
+
+            if (suActiveBatchRow && suActiveBatchRow.length) {
+                applyBatchToSuRow(suActiveBatchRow, batch);
+                let $targetRow = suActiveBatchRow;
+                $('#su-batch-modal').modal('hide');
+                setTimeout(function () {
+                    $targetRow.find('.su-physical-qty').focus().select();
+                }, 80);
+            }
+        });
+
+        $(document).on('keydown', function (e) {
+            if ($('#su-batch-modal').is(':visible')) {
+                let $rows = $('#su-modal-batches-body tr.su-batch-row');
+                if ($rows.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    suBatchSelectedIndex = Math.min(suBatchSelectedIndex + 1, $rows.length - 1);
+                    highlightSuBatchRow();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    suBatchSelectedIndex = Math.max(suBatchSelectedIndex - 1, 0);
+                    highlightSuBatchRow();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (suBatchSelectedIndex >= 0 && suBatchSelectedIndex < $rows.length) {
+                        $rows.eq(suBatchSelectedIndex).trigger('click');
+                    }
+                } else if (e.key === 'Escape') {
+                    $('#su-batch-modal').modal('hide');
+                }
+            }
+        });
+
+        $(document).on('click', '.su-btn-choose-batch', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let $row = $(this).closest('tr.su-item-row');
+            let itemId = $row.find('.su-item-id').val();
+            if (!itemId) {
+                if (window.toastr) toastr.warning('Please select an item first.', 'Item Required');
+                $row.find('.su-item-code').focus();
+                return;
+            }
+            let itemData = $row.data('item-data');
+            let batches = $row.data('batches');
+            if (itemData && batches && batches.length > 0) {
+                showSuBatchModal($row, itemData, batches);
+            } else {
+                let branchId = getActiveBranchId();
+                $.getJSON(SU_LOOKUP_URL, { item_id: itemId, branch_id: branchId }, function (res) {
+                    if (res && res.found && res.item) {
+                        $row.data('item-data', res.item);
+                        $row.data('batches', res.batches || []);
+                        showSuBatchModal($row, res.item, res.batches || []);
+                    } else {
+                        if (window.toastr) toastr.info('No batches found for this item.');
+                    }
+                });
+            }
+        });
+
         function applyItemToSuRow($row, item, batches) {
-            let itemCode = item.item_code || item.code || item.ean_upc_code || '';
+            let itemCode = item.item_code || item.code || item.ean_upc_code || item.alias || '';
             let itemName = item.name || '';
             let itemId = item.id;
 
-            if (batches && batches.length > 0) {
-                // Populate first batch on $row
+            $row.data('item-data', item);
+            $row.data('batches', batches || []);
+
+            $row.find('.su-item-code').val(itemCode);
+            $row.find('.su-item-desc').val(itemName);
+            $row.find('.su-item-id').val(itemId);
+
+            if (batches && batches.length > 1) {
+                // If multiple batches exist: open Batch Selection Popup modal (do NOT duplicate rows)
                 let b0 = batches[0];
-                $row.find('.su-item-code').val(itemCode);
-                $row.find('.su-item-desc').val(itemName);
-                $row.find('.su-item-id').val(itemId);
-                $row.find('.su-batch-no').val(b0.batch_no || '');
-                $row.find('.su-exp-date').val(b0.exp_date ? b0.exp_date.toString().substring(0, 10) : '');
-                $row.find('.su-cost-price').val(b0.cost_price ? parseFloat(b0.cost_price).toFixed(2) : '');
-                $row.find('.su-sell-price').val(b0.sell_price ? parseFloat(b0.sell_price).toFixed(2) : '');
-                $row.find('.su-mrp').val(b0.mrp ? parseFloat(b0.mrp).toFixed(2) : '');
-                $row.find('.su-current-stock').text(parseFloat(b0.qty || 0).toFixed(3));
-
-                // If multiple batches exist, create rows for subsequent batches
-                for (let i = 1; i < batches.length; i++) {
-                    let bi = batches[i];
-                    const html = document.getElementById('row-template').innerHTML.replaceAll('__INDEX__', rowIndex);
-                    const tbody = document.getElementById('items-body');
-                    const wrapper = document.createElement('tbody');
-                    wrapper.innerHTML = html;
-                    let newTr = wrapper.firstElementChild;
-                    tbody.appendChild(newTr);
-                    let $newRow = $(newTr);
-                    rowIndex++;
-
-                    $newRow.find('.su-item-code').val(itemCode);
-                    $newRow.find('.su-item-desc').val(itemName);
-                    $newRow.find('.su-item-id').val(itemId);
-                    $newRow.find('.su-batch-no').val(bi.batch_no || '');
-                    $newRow.find('.su-exp-date').val(bi.exp_date ? bi.exp_date.toString().substring(0, 10) : '');
-                    $newRow.find('.su-cost-price').val(bi.cost_price ? parseFloat(bi.cost_price).toFixed(2) : '');
-                    $newRow.find('.su-sell-price').val(bi.sell_price ? parseFloat(bi.sell_price).toFixed(2) : '');
-                    $newRow.find('.su-mrp').val(bi.mrp ? parseFloat(bi.mrp).toFixed(2) : '');
-                    $newRow.find('.su-current-stock').text(parseFloat(bi.qty || 0).toFixed(3));
-                }
+                applyBatchToSuRow($row, b0);
+                showSuBatchModal($row, item, batches);
+            } else if (batches && batches.length === 1) {
+                // Exactly 1 batch: apply it directly
+                let b0 = batches[0];
+                applyBatchToSuRow($row, b0);
+                setTimeout(function () {
+                    $row.find('.su-physical-qty').focus().select();
+                }, 100);
             } else {
-                $row.find('.su-item-code').val(itemCode);
-                $row.find('.su-item-desc').val(itemName);
-                $row.find('.su-item-id').val(itemId);
+                // No batches recorded
                 $row.find('.su-batch-no').val(item.batch_no || '');
-                $row.find('.su-exp-date').val(item.exp_date ? item.exp_date.toString().substring(0, 10) : '');
+                if (item.exp_date) {
+                    $row.find('.su-exp-date').val(formatToDisplayDate(item.exp_date));
+                } else {
+                    $row.find('.su-exp-date').val('');
+                }
                 $row.find('.su-cost-price').val(item.cost_price ? parseFloat(item.cost_price).toFixed(2) : '');
                 $row.find('.su-sell-price').val(item.sell_price ? parseFloat(item.sell_price).toFixed(2) : '');
                 $row.find('.su-mrp').val(item.mrp ? parseFloat(item.mrp).toFixed(2) : '');
                 $row.find('.su-current-stock').text(parseFloat(item.stock || item.qty || 0).toFixed(3));
+                $row.find('.su-batch-btn-wrap').addClass('d-none');
+                setTimeout(function () {
+                    $row.find('.su-physical-qty').focus().select();
+                }, 100);
             }
-
-            setTimeout(function () {
-                $row.find('.su-physical-qty').focus().select();
-            }, 100);
         }
 
         $(document).on('click', '.su-isl-item-row, .su-isl-btn-select', function (e) {
@@ -592,7 +847,11 @@
         });
 
         function processSuItemLookup($row, itemId, query, isDirectLookup = false) {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            if (!itemId && (suModalOpen || suModalClosing)) {
+                return; // Do not fire background lookup while search modal is open/active
+            }
+
+            let branchId = getActiveBranchId();
             let $code = $row.find('.su-item-code');
 
             if (query && window.PosScanGuard) {
@@ -615,8 +874,12 @@
             }
 
             $.getJSON(SU_LOOKUP_URL, params, function (res) {
+                if (!itemId && (suModalOpen || suModalClosing)) {
+                    return; // Search modal was opened in the meantime, suppress alert
+                }
+
                 if (res && res.found && res.item) {
-                    $row.data('last-processed-code', query || res.item.item_code || res.item.ean_upc_code || res.item.id);
+                    $row.data('last-processed-code', query || res.item.item_code || res.item.ean_upc_code || res.item.alias || res.item.id);
                     $code.removeClass('is-invalid border-danger');
                     applyItemToSuRow($row, res.item, res.batches || []);
                 } else {
@@ -678,6 +941,7 @@
                 }
             })
             .on('change', '.su-item-code', function () {
+                if (suModalOpen || suModalClosing) return; // Prevent spurious change event while modal is interacting
                 let $input = $(this);
                 let query = $.trim($input.val());
                 let $row = $input.closest('tr');

@@ -258,14 +258,22 @@ class DamageStockController extends Controller
 
     public function getItemByCode(Request $request)
     {
+        $itemId = $request->input('item_id');
         $code = trim($request->input('code', ''));
-        if ($code === '') {
+        if (! $itemId && $code === '') {
             return response()->json(['found' => false]);
         }
 
         $branchId = (int) ($request->input('branch_id') ?: 2);
 
-        $item = Item::with([
+        if ($itemId) {
+            $item = Item::with([
+                'gstTax',
+                'brand',
+                'stocks' => fn ($query) => $query->where('branch_id', $branchId),
+            ])->find($itemId);
+        } else {
+            $item = Item::with([
                 'gstTax',
                 'brand',
                 'stocks' => fn ($query) => $query->where('branch_id', $branchId),
@@ -274,14 +282,15 @@ class DamageStockController extends Controller
             ->orWhere('item_code', $code)
             ->first();
 
-        if (! $item) {
-            $item = Item::with([
+            if (! $item) {
+                $item = Item::with([
                     'gstTax',
                     'brand',
                     'stocks' => fn ($query) => $query->where('branch_id', $branchId),
                 ])
                 ->where('alias', $code)
                 ->first();
+            }
         }
 
         if (! $item) {
@@ -300,17 +309,33 @@ class DamageStockController extends Controller
                     'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
                     'batch_no' => $b['batch_no'] ?: '',
                     'exp_date' => $b['exp_date'],
-                    'qty' => $b['remaining_qty'],
-                    'cost_price' => $b['cost_price'],
-                    'sell_price' => $b['sell_price'],
-                    'mrp' => $b['mrp'],
+                    'qty' => (float) $b['remaining_qty'],
+                    'available_qty' => (float) $b['remaining_qty'],
+                    'cost_price' => (float) $b['cost_price'],
+                    'sell_price' => (float) $b['sell_price'],
+                    'mrp' => (float) $b['mrp'],
                 ];
             }
         }
 
+        // If no batches returned from ledger but item has stock or an expiry date in ItemStock
+        if (empty($batches) && $stock && ((float)$stock->quantity > 0 || !empty($stock->exp_date) || !empty($stock->batch_no))) {
+            $batches[] = [
+                'productname' => $item->name,
+                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'batch_no' => $stock->batch_no ?: '',
+                'exp_date' => $stock->exp_date,
+                'qty' => (float) ($stock->quantity ?? 0),
+                'available_qty' => (float) ($stock->quantity ?? 0),
+                'cost_price' => (float) ($stock->cost_price > 0 ? $stock->cost_price : ($item->cost_price ?? 0)),
+                'sell_price' => (float) ($stock->sell_price > 0 ? $stock->sell_price : ($item->sell_price ?? 0)),
+                'mrp' => (float) ($stock->mrp > 0 ? $stock->mrp : ($item->mrp ?? 0)),
+            ];
+        }
+
         $defaultBatch = !empty($batches) ? $batches[0] : null;
-        $batchNo = $defaultBatch ? $defaultBatch['batch_no'] : null;
-        $expDate = $defaultBatch ? $defaultBatch['exp_date'] : null;
+        $batchNo = $defaultBatch ? $defaultBatch['batch_no'] : ($stock?->batch_no ?? null);
+        $expDate = $defaultBatch ? $defaultBatch['exp_date'] : ($stock?->exp_date ?? null);
         $costPrice = ($defaultBatch && $defaultBatch['cost_price'] > 0) ? (float) $defaultBatch['cost_price'] : (($stock && $stock->cost_price > 0) ? (float) $stock->cost_price : (float) ($item->cost_price ?? 0));
         $sellPrice = ($defaultBatch && $defaultBatch['sell_price'] > 0) ? (float) $defaultBatch['sell_price'] : (($stock && $stock->sell_price > 0) ? (float) $stock->sell_price : (float) ($item->sell_price ?? 0));
         $mrp = ($defaultBatch && $defaultBatch['mrp'] > 0) ? (float) $defaultBatch['mrp'] : (($stock && $stock->mrp > 0) ? (float) $stock->mrp : (float) ($item->mrp ?? 0));

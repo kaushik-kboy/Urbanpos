@@ -63,7 +63,7 @@ class AnalyticsBuilderController extends Controller
             $metrics = ['qty', 'sales_value', 'margin', 'bill_count'];
         }
 
-        [$from, $to] = $this->resolveDateRange($request);
+        [$from, $to, $dateRangeLabel] = $this->resolveDateRange($request);
         $branchId = $request->input('branch_id');
         $itemId = $request->input('item_id');
         $supplierId = $request->input('supplier_id');
@@ -82,8 +82,12 @@ class AnalyticsBuilderController extends Controller
             'success' => true,
             'group_by' => $groupBy,
             'metrics' => $metrics,
-            'date_from' => $from,
-            'date_to' => $to,
+            'date_preset' => $request->input('date_preset', 'this_month'),
+            'date_from' => $from ? $from->format('Y-m-d') : null,
+            'date_to' => $to ? $to->format('Y-m-d') : null,
+            'date_from_formatted' => $from ? $from->format('d-M-Y') : null,
+            'date_to_formatted' => $to ? $to->format('d-M-Y') : null,
+            'date_range_label' => $dateRangeLabel,
         ], $result));
     }
 
@@ -665,30 +669,111 @@ class AnalyticsBuilderController extends Controller
 
     /**
      * Resolve date range from preset or custom inputs.
+     *
+     * @return array [Carbon|null $from, Carbon|null $to, string $presetLabel]
      */
     protected function resolveDateRange(Request $request): array
     {
         $preset = $request->input('date_preset', 'this_month');
+        $dateFromInput = $request->input('date_from');
+        $dateToInput = $request->input('date_to');
+
+        $now = Carbon::now();
+        $year = $now->year;
+
+        // If explicitly custom, or if date_from/date_to provided without custom preset name
+        if ($preset === 'custom' || (empty($preset) && ($dateFromInput || $dateToInput))) {
+            $from = !empty($dateFromInput) ? Carbon::parse($dateFromInput)->startOfDay() : null;
+            $to = !empty($dateToInput) ? Carbon::parse($dateToInput)->endOfDay() : Carbon::now()->endOfDay();
+            $label = 'Custom (' . ($from ? $from->format('d-M-Y') : 'Start') . ' to ' . $to->format('d-M-Y') . ')';
+            return [$from, $to, $label];
+        }
 
         switch ($preset) {
             case 'today':
-                return [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()];
+                $from = Carbon::today()->startOfDay();
+                $to = Carbon::today()->endOfDay();
+                $label = 'Today (' . $from->format('d-M-Y') . ')';
+                break;
+
             case 'yesterday':
-                return [Carbon::yesterday()->startOfDay(), Carbon::yesterday()->endOfDay()];
+                $from = Carbon::yesterday()->startOfDay();
+                $to = Carbon::yesterday()->endOfDay();
+                $label = 'Yesterday (' . $from->format('d-M-Y') . ')';
+                break;
+
             case 'this_week':
-                return [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()];
+                $from = Carbon::now()->startOfWeek();
+                $to = Carbon::now()->endOfWeek();
+                $label = 'This Week (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
+
+            case 'last_7_days':
+                $from = Carbon::now()->subDays(6)->startOfDay();
+                $to = Carbon::now()->endOfDay();
+                $label = 'Last 7 Days (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
+
             case 'last_month':
-                return [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()];
+                $from = Carbon::now()->subMonth()->startOfMonth();
+                $to = Carbon::now()->subMonth()->endOfMonth();
+                $label = 'Last Month (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
+
+            case 'last_30_days':
+                $from = Carbon::now()->subDays(29)->startOfDay();
+                $to = Carbon::now()->endOfDay();
+                $label = 'Last 30 Days (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
+
+            case 'this_quarter':
+                $from = Carbon::now()->startOfQuarter();
+                $to = Carbon::now()->endOfQuarter();
+                $label = 'This Quarter (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
+
+            case 'this_fy':
+                // Standard Indian Financial Year: Apr 1 to Mar 31
+                if ($now->month < 4) {
+                    $from = Carbon::create($year - 1, 4, 1)->startOfDay();
+                    $to = Carbon::create($year, 3, 31)->endOfDay();
+                    $fyTitle = ($year - 1) . '-' . substr((string) $year, -2);
+                } else {
+                    $from = Carbon::create($year, 4, 1)->startOfDay();
+                    $to = Carbon::create($year + 1, 3, 31)->endOfDay();
+                    $fyTitle = $year . '-' . substr((string) ($year + 1), -2);
+                }
+                $label = "This FY {$fyTitle} (" . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
+
+            case 'last_fy':
+                if ($now->month < 4) {
+                    $from = Carbon::create($year - 2, 4, 1)->startOfDay();
+                    $to = Carbon::create($year - 1, 3, 31)->endOfDay();
+                    $fyTitle = ($year - 2) . '-' . substr((string) ($year - 1), -2);
+                } else {
+                    $from = Carbon::create($year - 1, 4, 1)->startOfDay();
+                    $to = Carbon::create($year, 3, 31)->endOfDay();
+                    $fyTitle = ($year - 1) . '-' . substr((string) $year, -2);
+                }
+                $label = "Last FY {$fyTitle} (" . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
+
             case 'all_time':
-                return [null, null];
-            case 'custom':
-                $from = $request->input('date_from') ? Carbon::parse($request->input('date_from'))->startOfDay() : Carbon::now()->startOfMonth();
-                $to = $request->input('date_to') ? Carbon::parse($request->input('date_to'))->endOfDay() : Carbon::now()->endOfDay();
-                return [$from, $to];
+                $from = null;
+                $to = null;
+                $label = 'All Time (Full Transaction History)';
+                break;
+
             case 'this_month':
             default:
-                return [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()];
+                $from = Carbon::now()->startOfMonth();
+                $to = Carbon::now()->endOfMonth();
+                $label = 'This Month (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                break;
         }
+
+        return [$from, $to, $label];
     }
 
     /**

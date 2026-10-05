@@ -4,6 +4,21 @@
 
 @push('css')
 <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+<style>
+    #sdn-header-fields-grid .btn-open-datepicker,
+    #sdn-header-fields-grid .btn-date-settings-modal,
+    #sdn-header-fields-grid .urbanpos-date-group .input-group-append,
+    #sdn-items-table .btn-open-datepicker,
+    #sdn-items-table .btn-date-settings-modal,
+    #sdn-items-table .urbanpos-date-group .input-group-append {
+        display: none !important;
+    }
+    #sdn-header-fields-grid .urbanpos-date-group input,
+    #sdn-items-table .urbanpos-date-group input {
+        border-top-right-radius: 0.25rem !important;
+        border-bottom-right-radius: 0.25rem !important;
+    }
+</style>
 @endpush
 
 @section('content_header')

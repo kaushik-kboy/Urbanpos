@@ -1196,7 +1196,8 @@ class SalesBillController extends Controller
             $item = Item::where('status', true)
                 ->where(function ($q) use ($query) {
                     $q->where('item_code', $query)
-                      ->orWhere('ean_upc_code', $query);
+                      ->orWhere('ean_upc_code', $query)
+                      ->orWhere('alias', $query);
                 })
                 ->with('gstTax:id,percentage')
                 ->first();

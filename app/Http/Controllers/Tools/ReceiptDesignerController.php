@@ -170,17 +170,40 @@ class ReceiptDesignerController extends Controller
             $data['show_logo'] = true;
         }
 
+        // 1. Update or create the selected branch settings
         $settings->update($data);
 
-        // Also sync base template if branch-specific so printing never falls back to unconfigured state
-        if ($branchId !== null) {
-            $baseSettings = ReceiptSetting::where('document_type', $docType)->whereNull('branch_id')->first();
-            if ($baseSettings) {
-                $baseData = $data;
-                $baseData['branch_id'] = null;
-                $baseSettings->update($baseData);
-            }
-        }
+        // 2. ALWAYS update or create the global default template (branch_id = null)
+        $globalData = $data;
+        $globalData['branch_id'] = null;
+        ReceiptSetting::updateOrCreate(
+            ['document_type' => $docType, 'branch_id' => null],
+            $globalData
+        );
+
+        // 3. Sync common print design tokens (paper size, font, toggles, logo, upi, footer) across all existing branch records
+        ReceiptSetting::where('document_type', $docType)
+            ->whereNotNull('branch_id')
+            ->update([
+                'store_name'             => $data['store_name'],
+                'tagline'                => $data['tagline'],
+                'show_logo'              => $data['show_logo'],
+                'logo_width'             => $data['logo_width'],
+                'logo_path'              => $data['logo_path'] ?? $settings->logo_path,
+                'show_customer_pet_name' => $data['show_customer_pet_name'],
+                'show_hsn_code'          => $data['show_hsn_code'],
+                'show_tax_breakup'       => $data['show_tax_breakup'],
+                'show_discount'          => $data['show_discount'],
+                'show_upi_qr'            => $data['show_upi_qr'],
+                'upi_id'                 => $data['upi_id'],
+                'upi_payee_name'         => $data['upi_payee_name'],
+                'show_barcode'           => $data['show_barcode'],
+                'paper_size'             => $data['paper_size'],
+                'font_size'              => $data['font_size'],
+                'footer_policy'          => $data['footer_policy'],
+                'footer_note'            => $data['footer_note'],
+                'custom_css'             => $data['custom_css'],
+            ]);
 
         $typeLabel = $supportedTypes[$docType]['label'] ?? $docType;
         $branchName = $branchId ? (\App\Models\Branch::find($branchId)?->name ?? "Branch #{$branchId}") : 'All Branches';

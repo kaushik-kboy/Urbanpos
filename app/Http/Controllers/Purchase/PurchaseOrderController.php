@@ -479,6 +479,7 @@ class PurchaseOrderController extends Controller
 
         $header['po_date'] = $this->normalizeDate($header['po_date']);
 
+
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],

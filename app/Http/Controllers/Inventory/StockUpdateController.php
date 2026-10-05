@@ -361,9 +361,147 @@ class StockUpdateController extends Controller
             'items.*.physical_qty' => ['required', 'numeric', 'min:0'],
             'items.*.cost_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.sell_price' => ['nullable', 'numeric', 'min:0'],
-            'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         return ['header' => $header, 'items' => $validated['items']];
+    }
+
+    public function searchItems(Request $request)
+    {
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+        $search = trim((string) $request->input('search', ''));
+        $code = trim((string) $request->input('code', ''));
+        $showAll = $request->boolean('show_all');
+
+        $query = Item::query()
+            ->with(['stocks' => fn ($q) => $q->where('branch_id', $branchId)]);
+
+        if ($code !== '') {
+            $query->where(function ($q) use ($code) {
+                $q->where('item_code', 'like', "%{$code}%")
+                  ->orWhere('ean_upc_code', 'like', "%{$code}%")
+                  ->orWhere('alias', 'like', "%{$code}%");
+            });
+        }
+
+        if ($search !== '') {
+            $tokens = array_values(array_filter(preg_split('/\s+/', $search), fn ($t) => $t !== ''));
+            foreach ($tokens as $token) {
+                $query->where(function ($q) use ($token) {
+                    $q->where('name', 'like', "%{$token}%")
+                      ->orWhere('item_code', 'like', "%{$token}%")
+                      ->orWhere('ean_upc_code', 'like', "%{$token}%")
+                      ->orWhere('alias', 'like', "%{$token}%");
+                });
+            }
+        }
+
+        if (! $showAll) {
+            $query->whereHas('stocks', function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->where('quantity', '>', 0);
+            });
+        }
+
+        $items = $query->orderBy('name')->limit(50)->get();
+
+        $result = $items->map(function ($it) {
+            $stock = $it->stocks->first();
+            return [
+                'id' => $it->id,
+                'name' => $it->name,
+                'code' => $it->item_code ?: ($it->ean_upc_code ?: ($it->alias ?: '')),
+                'item_code' => $it->item_code ?: '',
+                'ean_upc_code' => $it->ean_upc_code ?: '',
+                'alias' => $it->alias ?: '',
+                'qty' => (float) ($stock?->quantity ?? 0),
+                'stock' => (float) ($stock?->quantity ?? 0),
+                'cost_price' => (float) ($stock?->cost_price ?: ($it->cost_price ?? 0)),
+                'sell_price' => (float) ($stock?->sell_price ?: ($it->sell_price ?? 0)),
+                'mrp' => (float) ($stock?->mrp ?: ($it->mrp ?? 0)),
+            ];
+        });
+
+        return response()->json(['items' => $result]);
+    }
+
+    public function getItemByCode(Request $request)
+    {
+        $itemId = $request->input('item_id');
+        $code = trim((string) ($request->input('code') ?: $request->input('query', '')));
+        if (! $itemId && $code === '') {
+            return response()->json(['found' => false]);
+        }
+
+        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+
+        $item = null;
+        if ($itemId) {
+            $item = Item::with(['gstTax', 'stocks' => fn ($q) => $q->where('branch_id', $branchId)])->find($itemId);
+        } else {
+            $item = Item::with(['gstTax', 'stocks' => fn ($q) => $q->where('branch_id', $branchId)])
+                ->where(function ($q) use ($code) {
+                    $q->where('item_code', $code)
+                      ->orWhere('ean_upc_code', $code)
+                      ->orWhere('alias', $code);
+                })
+                ->first();
+
+            if (! $item && is_numeric($code)) {
+                $item = Item::with(['gstTax', 'stocks' => fn ($q) => $q->where('branch_id', $branchId)])->find($code);
+            }
+
+            if (! $item && ! $request->boolean('exact_match_only')) {
+                $item = Item::with(['gstTax', 'stocks' => fn ($q) => $q->where('branch_id', $branchId)])
+                    ->where('name', 'like', "%{$code}%")
+                    ->first();
+            }
+        }
+
+        if (! $item) {
+            return response()->json(['found' => false]);
+        }
+
+        $stock = $item->stocks->first();
+        $stockQty = (float) ($stock?->quantity ?? 0);
+
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
+        $resolvedBatches = $batchService->getItemBatches($item->id, $branchId);
+
+        $batches = [];
+        foreach ($resolvedBatches as $b) {
+            $batches[] = [
+                'productname' => $item->name,
+                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'batch_no' => $b['batch_no'] ?: '',
+                'exp_date' => $b['exp_date'],
+                'qty' => (float) $b['remaining_qty'],
+                'available_qty' => (float) $b['remaining_qty'],
+                'cost_price' => (float) $b['cost_price'],
+                'sell_price' => (float) $b['sell_price'],
+                'mrp' => (float) $b['mrp'],
+            ];
+        }
+
+        $defaultBatch = !empty($batches) ? $batches[0] : null;
+
+        return response()->json([
+            'found' => true,
+            'item' => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'item_code' => $item->item_code ?: '',
+                'ean_upc_code' => $item->ean_upc_code ?: '',
+                'alias' => $item->alias ?: '',
+                'batch_no' => $defaultBatch['batch_no'] ?? '',
+                'exp_date' => $defaultBatch['exp_date'] ?? null,
+                'stock' => $stockQty,
+                'cost_price' => ($defaultBatch && $defaultBatch['cost_price'] > 0) ? (float) $defaultBatch['cost_price'] : (float) ($stock?->cost_price ?: ($item->cost_price ?? 0)),
+                'sell_price' => ($defaultBatch && $defaultBatch['sell_price'] > 0) ? (float) $defaultBatch['sell_price'] : (float) ($stock?->sell_price ?: ($item->sell_price ?? 0)),
+                'mrp' => ($defaultBatch && $defaultBatch['mrp'] > 0) ? (float) $defaultBatch['mrp'] : (float) ($stock?->mrp ?: ($item->mrp ?? 0)),
+                'batches' => $batches,
+            ],
+            'batches' => $batches,
+        ]);
     }
 }

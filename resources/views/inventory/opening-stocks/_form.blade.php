@@ -1,5 +1,20 @@
 @push('css')
     <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+    <style>
+        #os-header-fields-grid .btn-open-datepicker,
+        #os-header-fields-grid .btn-date-settings-modal,
+        #os-header-fields-grid .urbanpos-date-group .input-group-append,
+        #items-table .btn-open-datepicker,
+        #items-table .btn-date-settings-modal,
+        #items-table .urbanpos-date-group .input-group-append {
+            display: none !important;
+        }
+        #os-header-fields-grid .urbanpos-date-group input,
+        #items-table .urbanpos-date-group input {
+            border-top-right-radius: 0.25rem !important;
+            border-bottom-right-radius: 0.25rem !important;
+        }
+    </style>
 @endpush
 
 @php
@@ -107,11 +122,11 @@
 <div class="row">
     <div class="col-md-6">
         <label for="remarks" class="font-weight-bold text-muted small">Remarks</label>
-        <textarea name="remarks" id="remarks" rows="2" class="form-control form-control-sm" placeholder="Optional remarks...">{{ $entry->remarks ?? '' }}</textarea>
+        <input type="text" name="remarks" id="remarks" class="form-control form-control-sm" placeholder="Optional remarks..." value="{{ $entry->remarks ?? '' }}">
     </div>
     <div class="col-md-6">
         <label for="message" class="font-weight-bold text-muted small">Message / Note</label>
-        <textarea name="message" id="message" rows="2" class="form-control form-control-sm" placeholder="Optional message...">{{ $entry->message ?? '' }}</textarea>
+        <input type="text" name="message" id="message" class="form-control form-control-sm" placeholder="Optional message..." value="{{ $entry->message ?? '' }}">
     </div>
 </div>
 

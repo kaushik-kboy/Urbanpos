@@ -31,11 +31,28 @@
     <td style="min-width: 180px;" data-col-key="item">
         <input type="text" class="form-control form-control-sm su-item-desc bg-light font-weight-bold text-truncate" value="{{ $itemName }}" placeholder="Product Description (auto-filled)" readonly tabindex="-1">
     </td>
-    <td style="width: 110px;" data-col-key="batch_no">
-        <input type="text" name="items[{{ $idx }}][batch_no]" value="{{ $batchNo }}" class="form-control form-control-sm su-batch-no font-weight-bold bg-light" placeholder="Batch" readonly tabindex="-1">
+    @php
+        $expDateFormatted = '';
+        if (!empty($expDate)) {
+            try {
+                $expDateFormatted = \Carbon\Carbon::parse($expDate)->format('d/m/Y');
+            } catch (\Throwable) {
+                $expDateFormatted = (string) $expDate;
+            }
+        }
+    @endphp
+    <td style="width: 140px; min-width: 130px;" data-col-key="batch_no">
+        <div class="input-group input-group-sm">
+            <input type="text" name="items[{{ $idx }}][batch_no]" value="{{ $batchNo }}" class="form-control form-control-sm su-batch-no font-weight-bold bg-light" placeholder="Batch" readonly tabindex="-1">
+            <div class="input-group-append su-batch-btn-wrap {{ empty($batchNo) ? 'd-none' : '' }}">
+                <button type="button" tabindex="-1" class="btn btn-warning btn-xs su-btn-choose-batch px-2 font-weight-bold" title="Click to choose/change batch">
+                    <i class="fas fa-layer-group"></i>
+                </button>
+            </div>
+        </div>
     </td>
     <td style="width: 120px;" data-col-key="expiry">
-        <input type="date" name="items[{{ $idx }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm su-exp-date bg-light" readonly tabindex="-1">
+        <input type="text" name="items[{{ $idx }}][exp_date]" value="{{ $expDateFormatted }}" class="form-control form-control-sm su-exp-date bg-light text-center font-weight-bold" placeholder="DD/MM/YYYY" readonly tabindex="-1">
     </td>
     <td style="width: 95px;" data-col-key="cost_price">
         <input type="number" step="0.01" name="items[{{ $idx }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm text-right su-cost-price bg-light" placeholder="0.00" readonly tabindex="-1">

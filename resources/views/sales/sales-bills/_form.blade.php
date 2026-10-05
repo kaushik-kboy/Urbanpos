@@ -724,13 +724,13 @@
     <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="remarks" data-label="Remarks" data-default-order="6">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="remarks">Remarks</label>
-            <textarea name="remarks" id="remarks" rows="1" class="form-control" placeholder="Remarks...">{{ old('remarks', $bill->remarks ?? '') }}</textarea>
+            <input type="text" name="remarks" id="remarks" class="form-control" placeholder="Remarks..." value="{{ old('remarks', $bill->remarks ?? '') }}">
         </div>
     </div>
     <div class="field-wrapper col-lg-2 col-md-4 col-sm-6 col-6" data-field="message" data-label="Message" data-default-order="7">
         <div class="form-group mb-1">
             <label class="font-weight-bold mb-1" for="message">Footer Message</label>
-            <textarea name="message" id="message" rows="1" class="form-control" placeholder="Footer msg...">{{ old('message', $bill->message ?? '') }}</textarea>
+            <input type="text" name="message" id="message" class="form-control" placeholder="Footer msg..." value="{{ old('message', $bill->message ?? '') }}">
         </div>
     </div>
 </div>
@@ -2242,6 +2242,63 @@
             return (n % 1 === 0) ? n.toFixed(0) : n.toString();
         }
 
+        function getRowBatchKey($row) {
+            let itemId = $row.find('.sb-item-select').val();
+            if (!itemId) return null;
+            let batchNo = ($row.find('.sb-item-batch-no').val() || '').trim();
+            let exp = ($row.find('.sb-exp-date').val() || '').trim();
+            if (exp) exp = exp.substring(0, 10);
+            if (!batchNo && !exp) {
+                return itemId + '___DEFAULT';
+            }
+            return itemId + '___' + (batchNo ? ('B:' + batchNo) : '') + (exp ? ('_E:' + exp) : '');
+        }
+
+        function getRowBatchLabel($row) {
+            let batchNo = ($row.find('.sb-item-batch-no').val() || '').trim();
+            let exp = ($row.find('.sb-exp-date').val() || '').trim();
+            if (exp) exp = exp.substring(0, 10);
+            if (batchNo && exp) return 'Batch ' + batchNo + ' (Exp: ' + exp + ')';
+            if (batchNo) return 'Batch ' + batchNo;
+            if (exp) return 'Batch (Exp: ' + exp + ')';
+            return 'Stock';
+        }
+
+        function getRowBatchStock($row) {
+            let bVal = $row.find('.sb-item-batch-stock').val();
+            if (bVal === undefined || bVal === '') bVal = $row.data('batch-stock');
+            if (bVal !== undefined && bVal !== '' && bVal !== null && !isNaN(parseFloat(bVal))) {
+                return parseFloat(bVal);
+            }
+            let batches = $row.data('batches') || [];
+            let bNo = ($row.find('.sb-item-batch-no').val() || '').trim();
+            let exp = ($row.find('.sb-exp-date').val() || '').trim();
+            if (exp) exp = exp.substring(0, 10);
+            let matched = batches.find(b => {
+                let bExp = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
+                let bNum = (b.batch_no || '').trim();
+                if (bNo && bNum) return bNo.toLowerCase() === bNum.toLowerCase();
+                if (exp && bExp) return exp === bExp;
+                if (!bNo && !exp && !bNum && !bExp) return true;
+                return false;
+            });
+            if (matched && matched.qty !== undefined && matched.qty !== null) {
+                let q = parseFloat(matched.qty);
+                if (!isNaN(q)) {
+                    $row.find('.sb-item-batch-stock').val(q);
+                    $row.data('batch-stock', q).attr('data-batch-stock', q);
+                    return q;
+                }
+            }
+            // Fallback to row stock
+            let stockVal = $row.find('.sb-item-stock-val').val();
+            if (stockVal === undefined || stockVal === '') stockVal = $row.data('stock');
+            if (stockVal !== undefined && stockVal !== '' && stockVal !== null && !isNaN(parseFloat(stockVal))) {
+                return parseFloat(stockVal);
+            }
+            return null;
+        }
+
         function calculateRow($row, source) {
             let qty = parseFloat($row.find('.sb-qty').val()) || 0;
             let sellPrice = parseFloat($row.find('.sb-sell-price').val()) || 0;
@@ -2301,33 +2358,71 @@
                 $row.find('.sb-row-net').text('');
             }
 
-            // Strict stock validation: check TOTAL qty across ALL rows for the same item
+            // Strict stock validation: check TOTAL qty across ALL rows for the same item and batch
             let $qtyInput = $row.find('.sb-qty');
             let itemId = $row.find('.sb-item-select').val();
             let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
                                   ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
 
-            if (!isAllowNegative && stock >= 0 && itemId && qty > 0) {
-                let totalForItem = 0;
-                $('#sb-items-body tr').each(function () {
-                    if ($(this).find('.sb-item-select').val() === itemId) {
-                        totalForItem += parseFloat($(this).find('.sb-qty').val()) || 0;
-                    }
-                });
-                $('#sb-items-body tr').each(function () {
-                    if ($(this).find('.sb-item-select').val() === itemId) {
-                        let $q = $(this).find('.sb-qty');
-                        let $r = $(this);
-                        if (totalForItem > stock) {
-                            let errMsg = 'Maximum available quantity is ' + formatDigits(stock) + '.';
-                            $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
-                            $r.find('.sb-qty-error-msg').text(errMsg).show();
-                        } else {
-                            $q.removeClass('border-danger text-danger is-invalid').attr('title', '');
-                            $r.find('.sb-qty-error-msg').text('').hide();
+            let rowHasBatchError = false;
+            let rowHasStockError = false;
+
+            if (!isAllowNegative && itemId && qty > 0) {
+                let bKey = getRowBatchKey($row);
+                let bStock = getRowBatchStock($row);
+                let bLabel = getRowBatchLabel($row);
+
+                // 1. Strict Batch Stock Check across ALL rows
+                if (bKey && bStock !== null && !isNaN(bStock) && bStock >= 0) {
+                    let totalForBatch = 0;
+                    $('#sb-items-body tr').each(function () {
+                        if (getRowBatchKey($(this)) === bKey) {
+                            totalForBatch += parseFloat($(this).find('.sb-qty').val()) || 0;
                         }
-                    }
-                });
+                    });
+
+                    $('#sb-items-body tr').each(function () {
+                        if (getRowBatchKey($(this)) === bKey) {
+                            let $q = $(this).find('.sb-qty');
+                            let $r = $(this);
+                            if (totalForBatch > bStock + 0.0001) {
+                                let errMsg = bLabel + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(totalForBatch) + ' across rows)!';
+                                $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
+                                $r.find('.sb-qty-error-msg').text(errMsg).show();
+                                if ($(this)[0] === $row[0]) rowHasBatchError = true;
+                            } else {
+                                $q.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                                $r.find('.sb-qty-error-msg').text('').hide();
+                            }
+                        }
+                    });
+                }
+
+                // 2. Strict Product Stock Check across ALL rows
+                if (stock >= 0) {
+                    let totalForItem = 0;
+                    $('#sb-items-body tr').each(function () {
+                        if ($(this).find('.sb-item-select').val() === itemId) {
+                            totalForItem += parseFloat($(this).find('.sb-qty').val()) || 0;
+                        }
+                    });
+
+                    $('#sb-items-body tr').each(function () {
+                        if ($(this).find('.sb-item-select').val() === itemId) {
+                            let $q = $(this).find('.sb-qty');
+                            let $r = $(this);
+                            if (totalForItem > stock + 0.0001) {
+                                let errMsg = 'Maximum available quantity is ' + formatDigits(stock) + '.';
+                                $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
+                                $r.find('.sb-qty-error-msg').text(errMsg).show();
+                                if ($(this)[0] === $row[0]) rowHasStockError = true;
+                            } else if (!rowHasBatchError) {
+                                $q.removeClass('border-danger text-danger is-invalid').attr('title', '');
+                                $r.find('.sb-qty-error-msg').text('').hide();
+                            }
+                        }
+                    });
+                }
             } else if (itemId && qty > 0) {
                 $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                 $row.find('.sb-qty-error-msg').text('').hide();
@@ -2336,7 +2431,6 @@
             // Real-time inline field validation (Task 11)
             if (itemId) {
                 if (qty <= 0) {
-                    // Only show inline warning if input is not currently focused and empty
                     if ($qtyInput.val() !== '' || document.activeElement !== $qtyInput[0]) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Quantity must be greater than 0');
@@ -2345,8 +2439,8 @@
                         $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                         $row.find('.sb-qty-error-msg').text('').hide();
                     }
-                } else if (!isAllowNegative && stock >= 0) {
-                    // Handled above in strict totalForItem check
+                } else if (!isAllowNegative && (rowHasBatchError || rowHasStockError)) {
+                    // Handled above in strict batch/item stock check
                 } else {
                     $qtyInput.removeClass('border-danger text-danger is-invalid').attr('title', '');
                     $row.find('.sb-qty-error-msg').text('').hide();
@@ -2427,25 +2521,27 @@
                 isValid = false;
             }
 
-            function getIndianDateTimeIso() {
+            function getIndianDateTimeIso(bufferMinutes = 0) {
                 try {
-                    return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).replace(' ', 'T').slice(0, 16);
+                    const d = new Date(Date.now() + (bufferMinutes * 60000));
+                    return d.toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).replace(' ', 'T').slice(0, 16);
                 } catch(e) {
-                    const d = new Date();
+                    const d = new Date(Date.now() + (bufferMinutes * 60000));
                     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
                 }
             }
 
             let $date = $('input[name="bill_date"]');
             const dateVal = $date.val();
-            const localIso = getIndianDateTimeIso();
+            const localIso = getIndianDateTimeIso(0);
+            const maxAllowedIso = getIndianDateTimeIso(10);
             const yearMatch = dateVal ? dateVal.match(/^(\d{4})/) : null;
             const parsedYear = yearMatch ? parseInt(yearMatch[1], 10) : 0;
 
-            if (!dateVal || parsedYear < 2020 || parsedYear > 2035 || dateVal > localIso) {
+            if (!dateVal || parsedYear < 2020 || parsedYear > 2035 || dateVal > maxAllowedIso) {
                 if (markFields) $date.addClass('is-invalid border-danger');
                 if (showAlert && isValid) {
-                    let msg = !dateVal ? 'Please select a Bill Date.' : (dateVal > localIso ? 'Future Bill Date & Time is not allowed.' : 'Please enter a valid Bill Date (Year between 2020 and 2035).');
+                    let msg = !dateVal ? 'Please select a Bill Date.' : (dateVal > maxAllowedIso ? 'Future Bill Date & Time is not allowed.' : 'Please enter a valid Bill Date (Year between 2020 and 2035).');
                     if (window.toastr) toastr.warning(msg, 'Invalid Date');
                     else alert(msg);
                     $date.focus();
@@ -2473,10 +2569,8 @@
                 if (stockVal === undefined || stockVal === '') stockVal = $(this).data('stock');
                 let stock = parseFloat(stockVal);
 
-                let batchNo = $(this).find('.sb-item-batch-no').val() || '';
-                let batchStockVal = $(this).find('.sb-item-batch-stock').val();
-                if (batchStockVal === undefined || batchStockVal === '') batchStockVal = $(this).data('batch-stock');
-                let batchStock = (batchStockVal !== undefined && batchStockVal !== '') ? parseFloat(batchStockVal) : null;
+                let bKey = getRowBatchKey($(this));
+                let bStock = getRowBatchStock($(this));
 
                 if (itemId) {
                     itemTotals[itemId] = (itemTotals[itemId] || 0) + qty;
@@ -2484,11 +2578,10 @@
                         itemStocks[itemId] = stock;
                     }
 
-                    if (batchNo) {
-                        let bKey = itemId + '___' + batchNo;
+                    if (bKey) {
                         batchTotals[bKey] = (batchTotals[bKey] || 0) + qty;
-                        if (batchStock !== null && !isNaN(batchStock)) {
-                            batchStocks[bKey] = batchStock;
+                        if (bStock !== null && !isNaN(bStock)) {
+                            batchStocks[bKey] = bStock;
                         }
                     }
                 }
@@ -2514,10 +2607,10 @@
                     let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
                                           ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
 
-                    let batchNo = $row.find('.sb-item-batch-no').val() || '';
-                    let bKey = batchNo ? (itemId + '___' + batchNo) : null;
+                    let bKey = getRowBatchKey($row);
                     let bTotal = bKey ? (batchTotals[bKey] || 0) : 0;
-                    let bStock = (bKey && batchStocks[bKey] !== undefined) ? batchStocks[bKey] : null;
+                    let bStock = (bKey && batchStocks[bKey] !== undefined) ? batchStocks[bKey] : getRowBatchStock($row);
+                    let bLabel = getRowBatchLabel($row);
 
                     if (qty <= 0) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
@@ -2528,13 +2621,13 @@
                             firstErrorEl = $qtyInput;
                         }
                     } else if (!isAllowNegative && bStock !== null && bStock >= 0 && (bTotal > bStock + 0.0001)) {
-                        $qtyInput.addClass('border-danger text-danger is-invalid')
-                                 .attr('title', 'Batch ' + batchNo + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(bTotal) + ' across rows)!');
-                        $row.find('.sb-qty-error-msg').text('Batch ' + batchNo + ' has only ' + formatDigits(bStock) + ' available.').show();
+                        let errMsg = bLabel + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(bTotal) + ' across rows)!';
+                        $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
+                        $row.find('.sb-qty-error-msg').text(errMsg).show();
                         hasError = true;
                         if (!firstErrorMsg) {
                             let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
-                            firstErrorMsg = `${itemName} [Batch: ${batchNo}]: Quantity (${formatDigits(bTotal)}) exceeds available batch stock (${formatDigits(bStock)}).`;
+                            firstErrorMsg = `${itemName} [${bLabel}]: Quantity (${formatDigits(bTotal)}) exceeds available batch stock (${formatDigits(bStock)}).`;
                             firstErrorEl = $qtyInput;
                         }
                     } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock + 0.0001) {
@@ -2731,7 +2824,8 @@
                             data-batch="${b.batch_no || ''}"
                             data-exp="${b.exp_date || ''}" 
                             data-sell="${b.sell_price || ''}" 
-                            data-mrp="${b.mrp || ''}">
+                            data-mrp="${b.mrp || ''}"
+                            data-qty="${qtyNum}">
                             <i class="fas fa-check mr-1"></i> Select
                            </button>`);
 
@@ -2871,12 +2965,13 @@
         // When user selects a batch from modal button or row
         $(document).on('click', '.btn-apply-batch', function (e) {
             e.stopPropagation();
-            if ($(this).closest('tr').hasClass('batch-disabled')) return false;
-            let exp = $(this).data('exp') || '';
-            let sell = $(this).data('sell') || '';
-            let mrp = $(this).data('mrp') || '';
-            let batch = $(this).data('batch') || '';
-            let batchQty = $(this).data('qty');
+            let $tr = $(this).closest('tr');
+            if ($tr.hasClass('batch-disabled')) return false;
+            let exp = $(this).data('exp') || $tr.data('exp') || '';
+            let sell = $(this).data('sell') || $tr.data('sell') || '';
+            let mrp = $(this).data('mrp') || $tr.data('mrp') || '';
+            let batch = $(this).data('batch') || $tr.data('batch') || '';
+            let batchQty = $(this).data('qty') !== undefined ? $(this).data('qty') : $tr.data('qty');
             applyBatchToRow(exp, sell, mrp, batch, batchQty);
         });
 
@@ -2997,14 +3092,17 @@
 
                     if (batches.length >= 1) {
                         let singleBatch = batches[0];
-                        if (singleBatch && singleBatch.batch_no) {
-                            $row.find('.sb-item-batch-no').val(singleBatch.batch_no);
-                        }
+                        $row.find('.sb-item-batch-no').val(singleBatch && singleBatch.batch_no ? singleBatch.batch_no : '');
                         if (singleBatch && singleBatch.qty !== undefined && singleBatch.qty !== null) {
                             let bQty = parseFloat(singleBatch.qty) || 0;
                             $row.find('.sb-item-batch-stock').val(bQty);
                             $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
                         }
+                    } else {
+                        $row.find('.sb-item-batch-no').val('');
+                        let bQty = parseFloat(item.stock) || 0;
+                        $row.find('.sb-item-batch-stock').val(bQty);
+                        $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
                     }
 
                     if (batches.length === 1) {
@@ -3163,8 +3261,42 @@
             calculateTotals();
         });
 
+        function canAddSbRow() {
+            let $lastRow = $('#sb-items-body tr:last');
+            if ($lastRow.length) {
+                let itemId = $lastRow.find('.sb-item-select').val();
+                let qtyVal = parseFloat($lastRow.find('.sb-qty').val()) || 0;
+
+                if (!itemId) {
+                    let msg = 'Pehle current row me item select karein.';
+                    if (window.toastr) toastr.warning(msg, 'Incomplete Row');
+                    else alert(msg);
+                    $lastRow.find('.sb-item-code').focus();
+                    return false;
+                }
+
+                if (qtyVal <= 0) {
+                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    if (window.toastr) toastr.warning(msg, 'Quantity Required');
+                    else alert(msg);
+                    $lastRow.find('.sb-qty').focus().select();
+                    return false;
+                }
+
+                if (!validateSbQty($lastRow.find('.sb-qty'))) {
+                    let msg = $lastRow.find('.sb-qty-error-msg').text() || 'Pehle current row ki quantity validation solve karein.';
+                    if (window.toastr) toastr.warning(msg, 'Stock Exceeded');
+                    else alert(msg);
+                    $lastRow.find('.sb-qty').focus().select();
+                    return false;
+                }
+            }
+            return true;
+        }
+
         // 4. Add Row (also triggered by F3)
         $('#sb-add-row').on('click', function () {
+            if (!canAddSbRow()) return false;
             let html = $('#sb-row-template').html().replaceAll('__INDEX__', rowIndex);
             let $tbody = $('#sb-items-body');
             let $newRow = $(html);
@@ -3190,6 +3322,7 @@
                 $lastEmptyCode.focus();
                 openItemSearchModal($lastEmptyCode);
             } else {
+                if (!canAddSbRow()) return false;
                 // Add a new row then open search
                 $('#sb-add-row').trigger('click');
                 setTimeout(function() {
@@ -3269,57 +3402,19 @@
             let itemId = $row.find('.sb-item-select').val();
             if (!itemId) return true;
 
+            // Trigger calculateRow to do the comprehensive multi-row batch & stock check
+            calculateRow($row, 'base');
+
             let qty = parseFloat($qtyInput.val()) || 0;
-            let stockVal = $row.find('.sb-item-stock-val').val();
-            if (stockVal === undefined || stockVal === '') stockVal = $row.data('stock');
-            let stock = parseFloat(stockVal) || 0;
-
-            let isAllowNegative = $row.data('allow-negative-stock') == 1 ||
-                                  ($row.data('item-data') && $row.data('item-data').allow_negative_stock);
-
-            let batchNo = $row.find('.sb-item-batch-no').val() || '';
-            let batchStockVal = $row.find('.sb-item-batch-stock').val();
-            if (batchStockVal === undefined || batchStockVal === '') batchStockVal = $row.data('batch-stock');
-            let batchStock = (batchStockVal !== undefined && batchStockVal !== '' && batchStockVal !== null) ? parseFloat(batchStockVal) : null;
-
-            if (!isAllowNegative && batchNo && batchStock !== null && !isNaN(batchStock) && batchStock >= 0) {
-                let totalForBatch = 0;
-                $('#sb-items-body tr').each(function () {
-                    if ($(this).find('.sb-item-select').val() === itemId && ($(this).find('.sb-item-batch-no').val() || '') === batchNo) {
-                        totalForBatch += parseFloat($(this).find('.sb-qty').val()) || 0;
-                    }
-                });
-
-                if (totalForBatch > batchStock + 0.0001) {
-                    let errMsg = 'Selected batch ' + batchNo + ' has only ' + formatDigits(batchStock) + ' available.';
-                    $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
-                    $row.find('.sb-qty-error-msg').text(errMsg).show();
-                    updateSaveButtonState();
-                    return false;
-                }
-            }
-
-            if (!isAllowNegative && stock >= 0) {
-                let totalForItem = 0;
-                $('#sb-items-body tr').each(function () {
-                    if ($(this).find('.sb-item-select').val() === itemId) {
-                        totalForItem += parseFloat($(this).find('.sb-qty').val()) || 0;
-                    }
-                });
-
-                if (totalForItem > stock) {
-                    let errMsg = 'Maximum available quantity is ' + formatDigits(stock) + '.';
-                    $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
-                    $row.find('.sb-qty-error-msg').text(errMsg).show();
-                    updateSaveButtonState();
-                    return false;
-                }
-            }
-
             if (qty <= 0) {
                 let errMsg = 'Quantity must be greater than 0.';
                 $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
                 $row.find('.sb-qty-error-msg').text(errMsg).show();
+                updateSaveButtonState();
+                return false;
+            }
+
+            if ($qtyInput.hasClass('is-invalid') || $row.find('.sb-qty-error-msg').is(':visible')) {
                 updateSaveButtonState();
                 return false;
             }
@@ -3394,6 +3489,9 @@
             if (rows.length <= 1) return;
             $(this).closest('tr').remove();
             updateRowNumbers();
+            $('#sb-items-body tr').each(function () {
+                calculateRow($(this), 'base');
+            });
             calculateTotals();
         });
 
@@ -3929,7 +4027,8 @@
         @endif
 
         $('#bill_date').on('change blur', function () {
-            const localIso = getIndianDateTimeIso();
+            const localIso = getIndianDateTimeIso(0);
+            const maxAllowedIso = getIndianDateTimeIso(10);
             let $dateFeedback = $('#bill_date_future_error');
             if (!$dateFeedback.length) {
                 $dateFeedback = $('<div id="bill_date_future_error" class="invalid-feedback text-danger font-weight-bold d-block mt-1"></div>');
@@ -3946,7 +4045,7 @@
                 this.value = localIso;
                 $dateFeedback.text('Invalid year (' + (yearMatch ? yearMatch[1] : 'invalid') + '). Date must be between 2020 and 2035. Reset to current time.').show();
                 setTimeout(() => $dateFeedback.fadeOut(), 4000);
-            } else if (this.value > localIso) {
+            } else if (this.value > maxAllowedIso) {
                 this.value = localIso;
                 $dateFeedback.text('Future date & time is not allowed. Reset to current time.').show();
                 setTimeout(() => $dateFeedback.fadeOut(), 3000);

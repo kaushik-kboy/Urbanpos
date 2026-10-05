@@ -117,6 +117,7 @@ class RoleController extends Controller
 
         $roleName = $role->name;
         $role->delete();
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         return redirect()->route('master.roles.index')->with('status', "Role '{$roleName}' deleted successfully.");
     }
@@ -132,6 +133,7 @@ class RoleController extends Controller
         }
 
         $role->syncPermissions($permissionModels);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     /**
@@ -191,7 +193,7 @@ class RoleController extends Controller
                 'icon' => 'fas fa-file-invoice-dollar text-info',
                 'modules' => [
                     'vouchers' => ['label' => 'Financial Vouchers (Payment/Receipt/Journal)', 'actions' => ['create' => 'Create Voucher', 'edit' => 'Edit Voucher', 'cancel' => 'Cancel/Delete']],
-                    'bill-settlements' => ['label' => 'Bill Settlements', 'actions' => ['create' => 'Record Settlement', 'cancel' => 'Cancel Settlement']],
+                    'bill-settlements' => ['label' => 'Bill Settlements', 'actions' => ['create' => 'Record Settlement', 'edit' => 'Edit Settlement', 'cancel' => 'Cancel Settlement']],
                     'ledgers' => ['label' => 'Ledger Accounts Master', 'actions' => ['create' => 'Create Account', 'edit' => 'Edit Account', 'cancel' => 'Delete Account']],
                     'financial-years' => ['label' => 'Financial Period Locking', 'actions' => ['create' => 'Create Period', 'edit' => 'Edit Period', 'lock' => 'Lock Period', 'reopen' => 'Reopen Locked Period']],
                 ]
@@ -209,6 +211,8 @@ class RoleController extends Controller
                 'modules' => [
                     'customers' => ['label' => 'Customer Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'customer-categories' => ['label' => 'Customer Categories', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'customer-types' => ['label' => 'Customer Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'sales-types' => ['label' => 'Sales Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'suppliers' => ['label' => 'Supplier / Vendor Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'item-categories' => ['label' => 'Item Categories', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'item-category-values' => ['label' => 'Category Sub-Values', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],

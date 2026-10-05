@@ -199,7 +199,7 @@ class DynamicValidationService
                 $futureDateRules = ['before_or_equal:today', 'before_or_equal:now'];
                 if ($config->block_future_date) {
                     $dateConstraint = $config->field_type === 'datetime'
-                        ? 'before_or_equal:' . now()->addMinutes(2)->format('Y-m-d H:i:s')
+                        ? 'before_or_equal:' . now()->addMinutes(10)->format('Y-m-d H:i:s')
                         : 'before_or_equal:' . date('Y-m-d');
 
                     // Filter out existing before_or_equal rules

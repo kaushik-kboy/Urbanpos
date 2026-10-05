@@ -259,10 +259,15 @@ class SalesReturnController extends Controller
     {
         $ignoreReturnId = $request->integer('ignore_return_id');
 
-        // Calculate already returned quantities for each item in this sales bill
+        // Calculate already returned quantities for each item in this sales bill (excluding the return being edited)
         $alreadyReturnedByItem = DB::table('sales_return_items as sri')
             ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
-            ->where('sr.sales_bill_id', $salesBill->id)
+            ->where(function ($q) use ($salesBill) {
+                $q->where('sri.sales_bill_id', $salesBill->id)
+                  ->orWhere(function ($q2) use ($salesBill) {
+                      $q2->whereNull('sri.sales_bill_id')->where('sr.sales_bill_id', $salesBill->id);
+                  });
+            })
             ->when($ignoreReturnId, fn ($q) => $q->where('sr.id', '!=', $ignoreReturnId))
             ->groupBy('sri.item_id')
             ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
@@ -319,22 +324,59 @@ class SalesReturnController extends Controller
     /**
      * AJAX endpoint: return all non-cancelled sales bills for a specific customer.
      */
-    public function customerBills(Customer $customer)
+    public function customerBills(Customer $customer, Request $request)
     {
+        $ignoreReturnId = $request->integer('ignore_return_id');
+
+        $returnedRows = DB::table('sales_return_items as sri')
+            ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
+            ->where('sr.customer_id', $customer->id)
+            ->when($ignoreReturnId, fn ($q) => $q->where('sr.id', '!=', $ignoreReturnId))
+            ->select(
+                DB::raw('COALESCE(sri.sales_bill_id, sr.sales_bill_id) as bill_id'),
+                'sri.item_id',
+                DB::raw('SUM(sri.qty) as returned_qty')
+            )
+            ->groupBy('bill_id', 'sri.item_id')
+            ->get();
+
+        $returnedByBillAndItem = [];
+        foreach ($returnedRows as $row) {
+            if ($row->bill_id) {
+                $returnedByBillAndItem[$row->bill_id][$row->item_id] = (float) $row->returned_qty;
+            }
+        }
+
         $bills = SalesBill::where('customer_id', $customer->id)
             ->where(function ($q) {
                 $q->whereNull('status')->orWhere('status', '!=', 'Cancelled');
             })
+            ->with('items')
             ->latest('bill_date')
             ->get(['id', 'bill_number', 'bill_date', 'total'])
-            ->map(function ($b) {
+            ->map(function ($b) use ($returnedByBillAndItem) {
                 $dateStr = $b->bill_date ? $b->bill_date->format('d-m-Y') : '';
+
+                $hasReturnable = false;
+                $billReturns = $returnedByBillAndItem[$b->id] ?? [];
+                foreach ($b->items as $line) {
+                    $orig = (float) $line->qty;
+                    $ret = (float) ($billReturns[$line->item_id] ?? 0);
+                    if ($orig - $ret > 0.0001) {
+                        $hasReturnable = true;
+                        break;
+                    }
+                }
+
+                $suffix = (!$hasReturnable && $b->items->isNotEmpty()) ? ' — [Fully Returned]' : '';
+
                 return [
                     'id' => $b->id,
                     'bill_number' => $b->bill_number,
                     'bill_date' => $dateStr,
                     'total' => (float) $b->total,
-                    'label' => "{$b->bill_number} (" . ($dateStr ? $dateStr . ' - ' : '') . "₹" . number_format($b->total, 2) . ")",
+                    'is_fully_returned' => !$hasReturnable && $b->items->isNotEmpty(),
+                    'label' => "{$b->bill_number} (" . ($dateStr ? $dateStr . ' - ' : '') . "₹" . number_format($b->total, 2) . "){$suffix}",
                 ];
             });
 

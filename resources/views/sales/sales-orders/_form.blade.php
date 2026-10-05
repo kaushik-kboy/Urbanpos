@@ -9,6 +9,17 @@
 
 @push('css')
 <link rel="stylesheet" href="{{ asset('css/transaction-compact-layout.css') }}">
+<style>
+    #so-header-fields-grid .btn-open-datepicker,
+    #so-header-fields-grid .btn-date-settings-modal,
+    #so-header-fields-grid .urbanpos-date-group .input-group-append {
+        display: none !important;
+    }
+    #so-header-fields-grid .urbanpos-date-group input {
+        border-top-right-radius: 0.25rem !important;
+        border-bottom-right-radius: 0.25rem !important;
+    }
+</style>
 @endpush
 
 @if(isset($sourceQuotation))
@@ -67,10 +78,6 @@
                 <option value="{{ $order->status }}" selected>{{ $order->status }}</option>
             @endif
         </select>
-    </div>
-    <div class="field-wrapper col-md-8 form-group" data-field="remarks" data-label="Remarks" data-default-order="8">
-        <label>Remarks</label>
-        <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional delivery notes or customer remarks..." value="{{ $order->remarks ?? old('remarks') }}">
     </div>
 </div>
 
@@ -147,32 +154,50 @@
 
 <x-custom-fields-renderer :module="'SalesOrder'" :model="$order ?? null" :cardStyle="true" />
 
-<div class="row justify-content-end mt-3">
-    <div class="col-md-4">
-        <div class="card card-outline card-secondary shadow-sm">
-            <div class="card-body p-3">
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-muted">Sub Total:</span>
-                    <span class="font-weight-bold" id="so-summary-subtotal">₹0.00</span>
-                </div>
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-muted">Total Discount:</span>
-                    <span class="text-danger font-weight-bold" id="so-summary-disc">₹0.00</span>
-                </div>
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-muted">GST Amount:</span>
-                    <span class="text-info font-weight-bold" id="so-summary-gst">₹0.00</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-muted">Round Off:</span>
-                    <input type="number" step="0.01" name="round_off" id="so-round-off" class="form-control form-control-sm text-right font-weight-bold" style="width: 100px;" value="{{ $order->round_off ?? old('round_off', '0.00') }}">
-                </div>
-                <hr class="my-2">
-                <div class="d-flex justify-content-between text-lg font-weight-bold">
-                    <span>Grand Total:</span>
-                    <span class="text-success" id="so-summary-total">₹0.00</span>
-                </div>
-            </div>
+<div class="d-flex justify-content-between align-items-center mb-1 tx-compact-section-header">
+    <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-calculator mr-1 text-primary"></i> Totals & Notes</h6>
+    <x-form-layout-customizer
+        form-key="sales_orders.additional"
+        container-id="so-additional-fields-grid"
+        title="Customize Totals & Notes Layout"
+    />
+</div>
+
+<div class="row g-2 form-fields-grid align-items-end mb-1" id="so-additional-fields-grid">
+    <div class="field-wrapper col-lg-3 col-md-4 col-sm-6 col-12" data-field="remarks" data-label="Remarks" data-default-order="1">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="remarks">Remarks</label>
+            <input type="text" name="remarks" id="remarks" class="form-control" placeholder="Optional delivery notes or customer remarks..." value="{{ $order->remarks ?? old('remarks') }}">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-1 col-md-2 col-sm-3 col-6" data-field="round_off" data-label="Round Off" data-default-order="2">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1" for="so-round-off">Round Off</label>
+            <input type="number" step="0.01" name="round_off" id="so-round-off" value="{{ $order->round_off ?? old('round_off', '0.00') }}" class="form-control text-right font-weight-bold">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4 col-6" data-field="subtotal" data-label="Sub Total" data-default-order="3">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" style="white-space: nowrap;">Sub Total:</label>
+            <div class="form-control text-right font-weight-bold bg-light" style="line-height: 24px;" id="so-summary-subtotal">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4 col-6" data-field="total_discount" data-label="Total Discount" data-default-order="4">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" style="white-space: nowrap;">Total Discount:</label>
+            <div class="form-control text-right font-weight-bold text-danger bg-light" style="line-height: 24px;" id="so-summary-disc">-₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-3 col-sm-4 col-6" data-field="gst_amount" data-label="GST Amount" data-default-order="5">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-muted" style="white-space: nowrap;">GST Amount:</label>
+            <div class="form-control text-right font-weight-bold text-info bg-light" style="line-height: 24px;" id="so-summary-gst">₹0.00</div>
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-2 col-md-4 col-sm-5 col-12" data-field="grand_total" data-label="Grand Total" data-default-order="6">
+        <div class="form-group mb-1">
+            <label class="font-weight-bold mb-1 text-success" style="white-space: nowrap;">Grand Total:</label>
+            <div class="form-control text-right font-weight-bold text-success bg-white border-success" style="line-height: 24px; font-size: 0.95rem;" id="so-summary-total">₹0.00</div>
         </div>
     </div>
 </div>
@@ -267,7 +292,33 @@ $(function() {
     let soIslSelectedIdx = -1;
     const SO_ISL_URL = '{{ route("sales.sales-bills.item-list") }}';
 
+    function canAddSoRow() {
+        let $lastRow = $('#so-items-body tr:last');
+        if ($lastRow.length) {
+            let itemId = $lastRow.find('.so-item-id').val();
+            let qtyVal = parseFloat($lastRow.find('.so-qty').val()) || 0;
+
+            if (!itemId) {
+                let msg = 'Pehle current row me item select karein.';
+                if (window.toastr) toastr.warning(msg, 'Incomplete Row');
+                else alert(msg);
+                $lastRow.find('.so-item-code').focus();
+                return false;
+            }
+
+            if (qtyVal <= 0) {
+                let msg = 'Pehle item ki valid quantity enter karein.';
+                if (window.toastr) toastr.warning(msg, 'Quantity Required');
+                else alert(msg);
+                $lastRow.find('.so-qty').focus().select();
+                return false;
+            }
+        }
+        return true;
+    }
+
     $('#so-add-row-btn').on('click', function() {
+        if (!canAddSoRow()) return;
         let html = $('#so-row-template').html().replace(/__INDEX__/g, nextIndex++);
         let $newRow = $(html);
         $('#so-items-body').append($newRow);
@@ -297,6 +348,7 @@ $(function() {
                 }
             } else {
                 e.preventDefault();
+                if (!canAddSoRow()) return;
                 $('#so-add-row-btn').trigger('click');
                 let $newRow = $('#so-items-body tr:last');
                 setTimeout(function () {

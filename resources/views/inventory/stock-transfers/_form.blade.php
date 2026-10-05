@@ -129,7 +129,7 @@
 <div class="row">
     <div class="col-md-12">
         <label for="remarks" class="font-weight-bold text-muted small">Remarks</label>
-        <textarea name="remarks" id="remarks" rows="2" class="form-control form-control-sm" placeholder="Optional remarks...">{{ old('remarks', $transfer->remarks ?? '') }}</textarea>
+        <input type="text" name="remarks" id="remarks" class="form-control form-control-sm" placeholder="Optional remarks..." value="{{ old('remarks', $transfer->remarks ?? '') }}">
     </div>
 </div>
 
@@ -431,17 +431,15 @@
             let hasBatches = false;
             if (item.batch_no && String(item.batch_no).trim() !== '' && String(item.batch_no).trim() !== '—') {
                 hasBatches = true;
-            } else if (item.batches && Array.isArray(item.batches)) {
-                hasBatches = item.batches.some(function(b) {
-                    return b && b.batch_no && String(b.batch_no).trim() !== '' && String(b.batch_no).trim() !== '—';
-                });
+            } else if (item.batches && Array.isArray(item.batches) && item.batches.length > 0) {
+                hasBatches = true;
             }
 
-            let batchNo = hasBatches ? (item.batch_no || '') : '';
+            let batchNo = item.batch_no || '';
             $row.find('.item-batch-no').val(batchNo);
 
             let $batchWrap = $row.find('.st-batch-btn-wrap');
-            if (hasBatches) {
+            if (hasBatches || (item.batches && item.batches.length > 0)) {
                 $batchWrap.removeClass('d-none');
                 $row.find('.st-batch-badge-text, .item-batch-text').text(batchNo || 'Batch');
                 $row.find('.st-btn-choose-batch').attr('title', batchNo ? ('Batch: ' + batchNo + ' (Click to change)') : 'Multiple batches available! Click to choose batch');
@@ -717,7 +715,7 @@
                         if (applyItemToRow($targetRow, fullItem, true) === false) {
                             return;
                         }
-                        let realBatches = (fullItem.batches || []).filter(b => b && b.batch_no && String(b.batch_no).trim() !== '' && String(b.batch_no).trim() !== '—');
+                        let realBatches = (fullItem.batches || []).filter(b => b && (parseFloat(b.qty || b.available_qty || 0) > 0 || (b.batch_no && String(b.batch_no).trim() !== '')));
                         if (realBatches.length > 1) {
                             showStBatchModal($targetRow, fullItem, realBatches);
                         } else {
@@ -869,14 +867,9 @@
             $row.find('.item-batch-no').val(batchNo);
 
             let $batchWrap = $row.find('.st-batch-btn-wrap');
-            if (batchNo) {
-                $batchWrap.removeClass('d-none');
-                $row.find('.st-batch-badge-text, .item-batch-text').text(batchNo);
-                $row.find('.st-btn-choose-batch').attr('title', 'Batch: ' + batchNo + ' (Click to change)');
-            } else {
-                $batchWrap.addClass('d-none');
-                $row.find('.st-batch-badge-text, .item-batch-text').text('');
-            }
+            $batchWrap.removeClass('d-none');
+            $row.find('.st-batch-badge-text, .item-batch-text').text(batchNo || 'Batch');
+            $row.find('.st-btn-choose-batch').attr('title', batchNo ? ('Batch: ' + batchNo + ' (Click to change)') : 'Click to choose batch');
 
             if (batch.cost_price !== undefined && parseFloat(batch.cost_price) > 0) {
                 $row.find('.item-cost').val(parseFloat(batch.cost_price).toFixed(2));
@@ -1104,7 +1097,7 @@
                     if (applyItemToRow($row, res.item, true) === false) {
                         return;
                     }
-                    let realBatches = (res.item.batches || []).filter(b => b && b.batch_no && String(b.batch_no).trim() !== '' && String(b.batch_no).trim() !== '—');
+                    let realBatches = (res.item.batches || []).filter(b => b && (parseFloat(b.qty || b.available_qty || 0) > 0 || (b.batch_no && String(b.batch_no).trim() !== '')));
                     if (realBatches.length > 1) {
                         showStBatchModal($row, res.item, realBatches);
                     } else {

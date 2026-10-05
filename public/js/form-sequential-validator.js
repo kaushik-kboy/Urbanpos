@@ -267,7 +267,16 @@
         if (blockFuture && val && String(val).trim() !== '') {
             const dateCustomMsg = $field.data('custom-error-message');
             if ($field.is('[type="datetime-local"]')) {
-                if (maxAttr && val > maxAttr) {
+                var dtMax = maxAttr;
+                if (dtMax && /^\d{4}-\d{2}-\d{2}$/.test(dtMax)) {
+                    dtMax = dtMax + 'T23:59';
+                }
+                var dBuf = new Date(Date.now() + 10 * 60000);
+                var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+                var nowWithBuffer = dBuf.getFullYear() + '-' + pad(dBuf.getMonth() + 1) + '-' + pad(dBuf.getDate()) + 'T' + pad(dBuf.getHours()) + ':' + pad(dBuf.getMinutes());
+                var ceiling = dtMax ? (dtMax > nowWithBuffer ? dtMax : nowWithBuffer) : nowWithBuffer;
+
+                if (val > ceiling) {
                     return { valid: false, message: dateCustomMsg || 'Future date & time is not allowed for this field.' };
                 }
             } else if (!$field.is('[type="time"]')) {
@@ -529,8 +538,20 @@
 
                 // 3. Block future date
                 if (cfg.block_future_date && (cfg.field_type === 'date' || cfg.field_type === 'datetime')) {
-                    const today = new Date().toISOString().substring(0, 10);
-                    $el.attr('max', today);
+                    if ($el.is('[type="datetime-local"]') || cfg.field_type === 'datetime') {
+                        var existingMax = $el.attr('max');
+                        if (!existingMax || !existingMax.includes('T')) {
+                            var d = new Date(Date.now() + 10 * 60000);
+                            var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+                            var dtMax = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+                            $el.attr('max', dtMax);
+                        }
+                    } else {
+                        var d = new Date();
+                        var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+                        var today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+                        $el.attr('max', today);
+                    }
                     $el.data('block-future-date', true);
                 }
 

@@ -21,15 +21,18 @@
             <button type="button" class="btn btn-info btn-sm mr-1 shadow-sm font-weight-bold" data-toggle="modal" data-target="#ewayModal" title="Update E-Way Bill Number and Transport Details">
                 <i class="fas fa-truck mr-1"></i> {{ $salesBill->hasEwayBill() ? 'E-Way #' . $salesBill->eway_bill_no : 'Update E-Way' }}
             </button>
-            <a href="{{ route('sales.sales-bills.receipt', $salesBill) }}" target="_blank" class="btn btn-success btn-sm mr-1 shadow-sm">
-                <i class="fas fa-receipt mr-1"></i> Thermal Receipt (80mm)
+            @php
+                $showReceiptSettings = \App\Models\ReceiptSetting::forDocument('sales_bill', $salesBill->branch_id);
+            @endphp
+            <a href="{{ route('sales.sales-bills.receipt', $salesBill) }}" target="_blank" class="btn btn-success btn-sm mr-1 shadow-sm font-weight-bold">
+                <i class="fas fa-receipt mr-1"></i> Print Receipt ({{ strtoupper($showReceiptSettings->paper_size ?? '80mm') }})
             </a>
             <button type="button" id="btn-show-send-whatsapp" class="btn btn-success btn-sm mr-1 shadow-sm font-weight-bold" onclick="sendWhatsAppInvoiceShow()" style="background-color: #25d366; border-color: #25d366;" title="Send Digital Bill via WhatsApp">
                 <i class="fab fa-whatsapp mr-1"></i> Send WhatsApp
             </button>
-            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm mr-1">
-                <i class="fas fa-print mr-1"></i> Print (A4)
-            </button>
+            <a href="{{ route('sales.sales-bills.receipt', ['salesBill' => $salesBill, 'autoprint' => 1]) }}" target="_blank" class="btn btn-outline-secondary btn-sm mr-1 font-weight-bold">
+                <i class="fas fa-print mr-1"></i> Direct Print Slip
+            </a>
             @if ($salesBill->status !== 'Cancelled')
                 <a href="{{ route('sales.sales-returns.create', ['customer_id' => $salesBill->customer_id, 'sales_bill_id' => $salesBill->id]) }}" class="btn btn-warning btn-sm mr-1 shadow-sm font-weight-bold" title="Create Sales Return for this Bill">
                     <i class="fas fa-undo mr-1"></i> Sales Return

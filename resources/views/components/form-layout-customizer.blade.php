@@ -45,7 +45,7 @@
                 <div class="modal-body p-3">
                     <div class="alert alert-info py-2 px-3 small mb-3">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Arrange field priority (up/down sequence) and width (25%, 33%, 50%, 100%). You can also hide optional fields. System-critical core fields (<i class="fas fa-lock text-secondary"></i>) cannot be hidden.
+                        Arrange field priority (up/down sequence) and width (16.6%, 20%, 25%, 33%, 50%, 100%). You can also hide optional fields. System-critical core fields (<i class="fas fa-lock text-secondary"></i>) cannot be hidden.
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -90,6 +90,12 @@
     .field-wrapper {
         transition: order 0.2s ease, width 0.2s ease;
         margin-bottom: 0.5rem;
+    }
+    @media (min-width: 768px) {
+        .col-custom-5 {
+            flex: 0 0 20% !important;
+            max-width: 20% !important;
+        }
     }
     /* Ensure all form-fields-grid elements render uniformly stacked and clean */
     .form-fields-grid .field-wrapper .form-group {
@@ -170,7 +176,9 @@
 
             // Determine current Bootstrap col class
             let colClass = 'col-md-4';
-            if ($el.hasClass('col-md-3')) colClass = 'col-md-3';
+            if ($el.hasClass('col-md-2')) colClass = 'col-md-2';
+            else if ($el.hasClass('col-custom-5')) colClass = 'col-custom-5';
+            else if ($el.hasClass('col-md-3')) colClass = 'col-md-3';
             else if ($el.hasClass('col-md-4')) colClass = 'col-md-4';
             else if ($el.hasClass('col-md-6')) colClass = 'col-md-6';
             else if ($el.hasClass('col-md-12')) colClass = 'col-md-12';
@@ -228,7 +236,7 @@
                 $container.append($el);
 
                 // Update col width classes
-                $el.removeClass('col-md-2 col-md-3 col-md-4 col-md-6 col-md-12')
+                $el.removeClass('col-md-2 col-custom-5 col-md-3 col-md-4 col-md-6 col-md-12')
                    .addClass(f.currentCol);
 
                 // Visibility
@@ -309,6 +317,8 @@
                             <div class="mr-3">
                                 <label class="small text-muted mb-0 mr-1 d-none d-sm-inline">Width:</label>
                                 <select class="form-control form-control-sm d-inline-block f-col-select" style="width: 140px;">
+                                    <option value="col-md-2" ${f.currentCol === 'col-md-2' ? 'selected' : ''}>16.6% (6/row)</option>
+                                    <option value="col-custom-5" ${f.currentCol === 'col-custom-5' ? 'selected' : ''}>20% (5/row)</option>
                                     <option value="col-md-3" ${f.currentCol === 'col-md-3' ? 'selected' : ''}>25% (4/row)</option>
                                     <option value="col-md-4" ${f.currentCol === 'col-md-4' ? 'selected' : ''}>33% (3/row)</option>
                                     <option value="col-md-6" ${f.currentCol === 'col-md-6' ? 'selected' : ''}>50% (2/row)</option>

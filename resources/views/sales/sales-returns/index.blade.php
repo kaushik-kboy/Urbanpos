@@ -105,6 +105,7 @@
                             <td>{{ number_format($return->total, 2) }}</td>
                             <td class="text-right text-nowrap">
                                 <a href="{{ route('sales.sales-returns.show', $return) }}" class="btn btn-xs btn-outline-info mr-1" title="View"><i class="fas fa-eye"></i> View</a>
+                                <a href="{{ route('sales.sales-returns.edit', $return) }}" class="btn btn-xs btn-outline-secondary mr-1" title="Edit"><i class="fas fa-edit"></i> Edit</a>
                                 <a href="{{ route('sales.sales-returns.print', $return) }}" target="_blank" class="btn btn-xs btn-outline-primary" title="Print"><i class="fas fa-print"></i> Print</a>
                             </td>
                         </tr>
