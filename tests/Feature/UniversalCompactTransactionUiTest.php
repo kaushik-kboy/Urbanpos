@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\DamageStock;
+use App\Models\JournalEntry;
+use App\Models\Ledger;
 use App\Models\OpeningStock;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
@@ -521,4 +523,69 @@ class UniversalCompactTransactionUiTest extends TestCase
         $response = $this->actingAs($this->user)->post(route('inventory.stock-updates.store'), []);
         $response->assertSessionHasErrors(['branch_id']);
     }
+
+    // ==========================================
+    // PHASE 5: FINANCE VOUCHERS MODULE
+    // ==========================================
+
+    public function test_finance_vouchers_create_and_edit_renders_compact_ui(): void
+    {
+        // Create
+        $response = $this->actingAs($this->user)->get(route('finance.vouchers.create'));
+        $response->assertOk();
+        $this->assertCompactUiContract(
+            $response->getContent(),
+            'display-voucher-total',
+            'voucher-total-lines-badge',
+            'voucher-main-save-btn',
+            'lines-table'
+        );
+
+        // Edit
+        $debitLedger = Ledger::create([
+            'name' => 'Rent Expense',
+            'ledger_group' => 'Indirect Expense',
+            'opening_balance' => 0,
+            'opening_balance_type' => 'Debit',
+            'status' => true,
+        ]);
+        $creditLedger = Ledger::create([
+            'name' => 'Main Cash',
+            'ledger_group' => 'Cash in Hand',
+            'opening_balance' => 0,
+            'opening_balance_type' => 'Debit',
+            'status' => true,
+        ]);
+
+        $voucher = JournalEntry::create([
+            'voucher_number' => 'PMT-000001',
+            'voucher_type' => 'Payment',
+            'voucher_date' => now()->toDateString(),
+            'branch_id' => $this->branch->id,
+            'total_debit' => 500,
+            'total_credit' => 500,
+            'narration' => 'Test payment voucher',
+        ]);
+        $voucher->lines()->createMany([
+            ['ledger_id' => $debitLedger->id, 'debit' => 500, 'credit' => 0],
+            ['ledger_id' => $creditLedger->id, 'debit' => 0, 'credit' => 500],
+        ]);
+
+        $editResponse = $this->actingAs($this->user)->get(route('finance.vouchers.edit', $voucher));
+        $editResponse->assertOk();
+        $this->assertCompactUiContract(
+            $editResponse->getContent(),
+            'display-voucher-total',
+            'voucher-total-lines-badge',
+            'voucher-main-save-btn',
+            'lines-table'
+        );
+    }
+
+    public function test_finance_vouchers_validates_compulsory_fields(): void
+    {
+        $response = $this->actingAs($this->user)->post(route('finance.vouchers.store'), []);
+        $response->assertSessionHasErrors(['voucher_type', 'voucher_date']);
+    }
 }
+
