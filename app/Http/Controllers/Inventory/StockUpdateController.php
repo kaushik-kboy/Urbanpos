@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class StockUpdateController extends Controller
 {
+    use HasSorting;
+
     public function __construct(
         private StockLedgerService $stockLedger,
         private FinancialYearGuard $financialYearGuard,
@@ -87,12 +90,25 @@ class StockUpdateController extends Controller
             $perPage = 50;
         }
 
+        $allowedSorts = [
+            'code' => fn ($q, $dir) => $q->orderBy(Item::select('item_code')->whereColumn('items.id', 'stock_update_items.item_id'), $dir),
+            'name' => fn ($q, $dir) => $q->orderBy(Item::select('name')->whereColumn('items.id', 'stock_update_items.item_id'), $dir),
+            'physical_qty' => 'stock_update_items.physical_qty',
+            'system_qty' => 'stock_update_items.system_qty_at_entry',
+            'delta_qty' => 'stock_update_items.delta_qty',
+            'update_number' => 'stock_updates.update_number',
+            'entry_date' => 'stock_updates.entry_date',
+            'id' => 'stock_update_items.id',
+        ];
+        $this->applySorting($query, $allowedSorts, [
+            'stock_updates.entry_date' => 'desc',
+            'stock_update_items.id' => 'desc',
+        ]);
+
         $stockUpdateItems = $query->select(
                 'stock_update_items.*',
                 'item_stocks.quantity as live_current_stock'
             )
-            ->orderByDesc('stock_updates.entry_date')
-            ->orderByDesc('stock_update_items.id')
             ->paginate($perPage)
             ->withQueryString();
 

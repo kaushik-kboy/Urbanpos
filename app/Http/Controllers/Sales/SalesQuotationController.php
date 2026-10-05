@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -15,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class SalesQuotationController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private TaxEngine $taxEngine,
         private AuditLogger $auditLogger,
@@ -23,9 +25,7 @@ class SalesQuotationController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesQuotation::with(['customer', 'branch'])
-            ->orderByDesc('quotation_date')
-            ->orderByDesc('id');
+        $query = SalesQuotation::with(['customer', 'branch']);
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -61,6 +61,19 @@ class SalesQuotationController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
+
+        $allowedSorts = [
+            'quotation_number' => 'quotation_number',
+            'quotation_date' => 'quotation_date',
+            'customer' => fn ($q, $dir) => $q->orderBy(
+                Customer::select('name')->whereColumn('customers.id', 'sales_quotations.customer_id'),
+                $dir
+            ),
+            'final_total' => 'final_total',
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['quotation_date' => 'desc', 'id' => 'desc']);
 
         $quotations = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');

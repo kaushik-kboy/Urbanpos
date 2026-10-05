@@ -92,6 +92,12 @@
         </div>
         <div class="card-body py-3">
             <form action="{{ route('inventory.stock-updates.index') }}" method="GET" id="stock-update-filter-form">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="row">
                     <div class="col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold text-muted mb-1">Search Item / Update No:</label>
@@ -182,17 +188,17 @@
                     <thead class="thead-dark text-nowrap">
                         <tr class="text-center align-middle" style="font-size: 0.88rem;">
                             <th style="width: 50px;">S.No</th>
-                            <th style="width: 95px;" class="text-center">Code</th>
-                            <th class="text-left" style="min-width: 250px;">Description</th>
+                            <x-sortable-th column="code" label="Code" align="center" style="width: 95px;" />
+                            <x-sortable-th column="name" label="Description" style="min-width: 250px;" />
                             <th style="width: 105px;" class="text-center">Exp Dt</th>
-                            <th style="width: 100px;" class="text-right">Qty (Counted)</th>
-                            <th style="width: 135px;" class="text-right">System Stock (At Entry)</th>
-                            <th style="width: 95px;" class="text-right">Diff Qty</th>
+                            <x-sortable-th column="physical_qty" label="Qty (Counted)" align="right" style="width: 100px;" />
+                            <x-sortable-th column="system_qty" label="System Stock (At Entry)" align="right" style="width: 135px;" />
+                            <x-sortable-th column="delta_qty" label="Diff Qty" align="right" style="width: 95px;" />
                             <th style="width: 125px;" class="text-right bg-info text-white">Live Current Stock</th>
                             <th style="width: 105px;" class="text-right">Sell Price</th>
                             <th style="width: 105px;" class="text-right">MRP</th>
-                            <th style="width: 110px;" class="text-center">Update No</th>
-                            <th style="width: 100px;" class="text-center">Date</th>
+                            <x-sortable-th column="update_number" label="Update No" align="center" style="width: 110px;" />
+                            <x-sortable-th column="entry_date" label="Date" align="center" style="width: 100px;" />
                             <th style="min-width: 150px;" class="text-left">Location</th>
                             <th style="width: 95px;" class="text-center">Status</th>
                             <th style="width: 65px;" class="text-center">Actions</th>

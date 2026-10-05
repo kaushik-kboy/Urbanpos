@@ -67,6 +67,12 @@
     <div class="card card-outline card-secondary shadow-sm mb-3">
         <div class="card-body py-3">
             <form action="{{ route('inventory.damage-stocks.index') }}" method="GET" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Damage No or Remarks...">
@@ -132,15 +138,15 @@
                 <table class="table table-sm table-striped table-hover mb-0" id="damage-table">
                     <thead class="thead-light">
                         <tr class="text-nowrap">
-                            <th style="width: 55px;" class="text-center">S.No</th>
-                            <th style="width: 130px;">Damage No</th>
-                            <th style="width: 110px;">Date</th>
-                            <th>Location / Branch</th>
-                            <th style="width: 110px;" class="text-right">Total Qty</th>
-                            <th style="width: 140px;" class="text-right">Total Cost [₹]</th>
-                            <th style="width: 120px;" class="text-center">Wastage Type</th>
-                            <th>Remarks</th>
-                            <th style="width: 140px;" class="text-center">Actions</th>
+                            <th style="width: 55px;" class="text-center" data-col-key="sno">S.No</th>
+                            <x-sortable-th column="damage_number" label="Damage No" style="width: 130px;" data-col-key="damage_number" />
+                            <x-sortable-th column="entry_date" label="Date" style="width: 110px;" data-col-key="date" />
+                            <th data-col-key="branch">Location / Branch</th>
+                            <x-sortable-th column="total_qty" label="Total Qty" align="right" style="width: 110px;" data-col-key="total_qty" />
+                            <x-sortable-th column="total_cost" label="Total Cost [₹]" align="right" style="width: 140px;" data-col-key="total_cost" />
+                            <x-sortable-th column="wastage_type" label="Wastage Type" align="center" style="width: 120px;" data-col-key="wastage_type" />
+                            <th data-col-key="remarks">Remarks</th>
+                            <th style="width: 140px;" class="text-center" data-col-key="actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class OpeningStockController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private StockLedgerService $stockLedger,
         private TaxEngine $taxEngine,
@@ -42,10 +44,16 @@ class OpeningStockController extends Controller
             $query->where('branch_id', $request->branch_id);
         }
 
-        $openingStocks = $query->orderByDesc('entry_date')
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
+        $allowedSorts = [
+            'entry_number' => 'entry_number',
+            'entry_date' => 'entry_date',
+            'total_cost' => 'total_cost',
+            'total_qty' => 'total_qty',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['entry_date' => 'desc', 'id' => 'desc']);
+
+        $openingStocks = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->get();
 
         return view('inventory.opening-stocks.index', compact('openingStocks', 'branches'));

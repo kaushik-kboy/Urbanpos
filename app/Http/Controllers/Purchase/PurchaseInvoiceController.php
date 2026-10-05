@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Validator;
 
 class PurchaseInvoiceController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private LedgerPostingService $ledgerPosting,
         private StockLedgerService $stockLedger,
@@ -34,9 +36,7 @@ class PurchaseInvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder'])
-            ->orderByDesc('invoice_date')
-            ->orderByDesc('id');
+        $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder']);
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -70,6 +70,20 @@ class PurchaseInvoiceController extends Controller
         if ($request->filled('purchase_type')) {
             $query->where('purchase_type', $request->input('purchase_type'));
         }
+
+        $allowedSorts = [
+            'invoice_number' => 'invoice_number',
+            'invoice_date' => 'invoice_date',
+            'supplier_inv_no' => 'supplier_inv_no',
+            'supplier' => fn ($q, $dir) => $q->orderBy(
+                Supplier::select('name')->whereColumn('suppliers.id', 'purchase_invoices.supplier_id'),
+                $dir
+            ),
+            'final_amount' => 'final_amount',
+            'purchase_type' => 'purchase_type',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['invoice_date' => 'desc', 'id' => 'desc']);
 
         $purchaseInvoices = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');

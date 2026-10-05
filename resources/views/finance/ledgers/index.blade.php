@@ -14,6 +14,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('finance.ledgers.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-4 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Ledger Name..." value="{{ request('search') }}">
@@ -57,10 +63,10 @@
             <table class="table table-sm table-striped mb-0" id="ledgersTable">
                 <thead>
                     <tr>
-                        <th>Ledger Name</th>
-                        <th>Ledger Group</th>
+                        <x-sortable-th column="name" label="Ledger Name" />
+                        <x-sortable-th column="ledger_group" label="Ledger Group" />
                         <th class="text-right">Current Balance</th>
-                        <th>Status</th>
+                        <x-sortable-th column="status" label="Status" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

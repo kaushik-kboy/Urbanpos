@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
@@ -12,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 class BrandController extends Controller
 {
-    use HasPerPage, Importable;
+    use HasPerPage, HasSorting, Importable;
 
 
     public function index(Request $request)
@@ -32,7 +33,18 @@ class BrandController extends Controller
             $query->where('status', (bool) $request->input('status'));
         }
 
-        $brands = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $allowedSorts = [
+            'id' => 'id',
+            'name' => 'name',
+            'prefix' => 'prefix',
+            'alias_code' => 'alias_code',
+            'status' => 'status',
+            'updated_at' => 'updated_at',
+            'created_at' => 'created_at',
+        ];
+        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
+
+        $brands = $query->paginate($this->perPage())->withQueryString();
 
         return view('master.brands.index', compact('brands'));
     }

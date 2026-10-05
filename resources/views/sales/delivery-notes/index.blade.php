@@ -28,6 +28,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('sales.delivery-notes.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Challan / Customer / SO / Vehicle / LR..." value="{{ request('search') }}">
@@ -89,15 +95,15 @@
             <table class="table table-hover table-striped mb-0" id="deliveryNotesTable">
                 <thead class="thead-light">
                     <tr>
-                        <th>Challan No</th>
-                        <th>Dispatch Date</th>
-                        <th>Customer</th>
+                        <x-sortable-th column="delivery_number" label="Challan No" />
+                        <x-sortable-th column="delivery_date" label="Dispatch Date" />
+                        <x-sortable-th column="customer" label="Customer" />
                         <th>Branch</th>
-                        <th>Ref Order</th>
+                        <x-sortable-th column="reference_no" label="Ref Order" />
                         <th>Vehicle / Transporter</th>
                         <th class="text-right">Dispatched Qty</th>
                         <th class="text-right">Total (₹)</th>
-                        <th>Status</th>
+                        <x-sortable-th column="status" label="Status" />
                         <th class="text-right" style="min-width: 180px;">Actions</th>
                     </tr>
                 </thead>

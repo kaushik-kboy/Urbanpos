@@ -26,6 +26,12 @@
         </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.items.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="name" value="{{ request('name') }}" class="form-control form-control-sm" placeholder="Search name, code, barcode...">
@@ -79,13 +85,13 @@
             <table id="items-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th data-col-key="id">Id</th>
-                        <th data-col-key="item_code">Item Code</th>
-                        <th data-col-key="name">Name</th>
-                        <th data-col-key="alias">Alias</th>
-                        <th data-col-key="sell_price">Sell Price</th>
-                        <th data-col-key="supplier">Supplier</th>
-                        <th data-col-key="updated_at">Updated Time</th>
+                        <x-sortable-th column="id" label="Id" data-col-key="id" />
+                        <x-sortable-th column="item_code" label="Item Code" data-col-key="item_code" />
+                        <x-sortable-th column="name" label="Name" data-col-key="name" />
+                        <x-sortable-th column="alias" label="Alias" data-col-key="alias" />
+                        <x-sortable-th column="sell_price" label="Sell Price" data-col-key="sell_price" />
+                        <x-sortable-th column="supplier" label="Supplier" data-col-key="supplier" />
+                        <x-sortable-th column="updated_at" label="Updated Time" data-col-key="updated_at" />
                         <th class="text-right" data-col-key="actions">Actions</th>
                     </tr>
                 </thead>

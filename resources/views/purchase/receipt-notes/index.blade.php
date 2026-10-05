@@ -17,6 +17,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('purchase.purchase-receipt-notes.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="GRN No / Challan / Supplier / PO..." value="{{ request('search') }}">
@@ -78,15 +84,15 @@
             <table class="table table-hover table-striped mb-0" id="receiptNotesTable">
                 <thead class="thead-light">
                     <tr>
-                        <th>GRN No</th>
-                        <th>Date</th>
-                        <th>Supplier</th>
+                        <x-sortable-th column="receipt_number" label="GRN No" />
+                        <x-sortable-th column="receipt_date" label="Date" />
+                        <x-sortable-th column="supplier" label="Supplier" />
                         <th>Branch</th>
                         <th>Ref PO</th>
-                        <th>Challan No</th>
+                        <x-sortable-th column="supplier_challan_no" label="Challan No" />
                         <th class="text-right">Accepted Qty</th>
                         <th class="text-right">Total (₹)</th>
-                        <th>Status</th>
+                        <x-sortable-th column="status" label="Status" />
                         <th class="text-right" style="min-width: 180px;">Actions</th>
                     </tr>
                 </thead>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -19,6 +20,7 @@ use Illuminate\Validation\ValidationException;
 
 class SalesDeliveryNoteController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private StockLedgerService $stockLedger,
         private AuditLogger $auditLogger,
@@ -78,7 +80,20 @@ class SalesDeliveryNoteController extends Controller
             $query->where('status', $request->status);
         }
 
-        $deliveryNotes = $query->latest('delivery_date')->latest('id')->paginate(20)->withQueryString();
+        $allowedSorts = [
+            'delivery_number' => 'delivery_number',
+            'delivery_date' => 'delivery_date',
+            'reference_no' => 'reference_no',
+            'customer' => fn ($q, $dir) => $q->orderBy(
+                Customer::select('name')->whereColumn('customers.id', 'sales_delivery_notes.customer_id'),
+                $dir
+            ),
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['delivery_date' => 'desc', 'id' => 'desc']);
+
+        $deliveryNotes = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
         $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
             ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);

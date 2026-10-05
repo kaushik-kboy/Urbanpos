@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Finance;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Ledger;
 use Illuminate\Http\Request;
 
 class LedgerController extends Controller
 {
+    use HasSorting;
+
     private const GROUPS = [
         'Sundry Debtors', 'Sundry Creditors', 'Cash in Hand', 'Bank Account',
         'Sales Account', 'Purchase Account', 'Duties & Taxes', 'Indirect Income',
@@ -30,7 +33,20 @@ class LedgerController extends Controller
             $query->where('status', (bool)$request->status);
         }
 
-        $ledgers = $query->orderBy('ledger_group')->orderBy('name')->paginate(30)->withQueryString();
+        $allowedSorts = [
+            'name' => 'name',
+            'ledger_group' => 'ledger_group',
+            'code' => 'code',
+            'opening_balance' => 'opening_balance',
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, [
+            'ledger_group' => 'asc',
+            'name' => 'asc',
+        ]);
+
+        $ledgers = $query->paginate(30)->withQueryString();
         $ledgers->getCollection()->transform(function (Ledger $ledger) {
             $ledger->current_balance = $ledger->balance();
 

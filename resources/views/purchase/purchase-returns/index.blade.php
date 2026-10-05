@@ -17,6 +17,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('purchase.purchase-returns.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Return No / Invoice No / Debit Note / Supplier" value="{{ request('search') }}">
@@ -72,14 +78,14 @@
             <table class="table table-sm table-striped table-hover mb-0" id="purchaseReturnsTable">
                 <thead class="bg-light">
                     <tr>
-                        <th>Return No</th>
-                        <th>Return Date</th>
-                        <th>Supplier</th>
-                        <th>Ref Invoice</th>
-                        <th>Debit Note No</th>
+                        <x-sortable-th column="return_number" label="Return No" />
+                        <x-sortable-th column="return_date" label="Return Date" />
+                        <x-sortable-th column="supplier" label="Supplier" />
+                        <x-sortable-th column="invoice_number" label="Ref Invoice" />
+                        <x-sortable-th column="supplier_debit_note_no" label="Debit Note No" />
                         <th>Branch</th>
                         <th class="text-right">Tax (₹)</th>
-                        <th class="text-right">Total (₹)</th>
+                        <x-sortable-th column="total_amount" label="Total (₹)" align="right" />
                         <th>Status</th>
                         <th class="text-right">Actions</th>
                     </tr>

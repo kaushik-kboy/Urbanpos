@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -21,6 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 class PurchaseReturnController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private LedgerPostingService $ledgerPosting,
         private StockLedgerService $stockLedger,
@@ -32,9 +34,7 @@ class PurchaseReturnController extends Controller
 
     public function index(Request $request)
     {
-        $query = PurchaseReturn::with(['supplier', 'branch', 'purchaseInvoice'])
-            ->orderByDesc('return_date')
-            ->orderByDesc('id');
+        $query = PurchaseReturn::with(['supplier', 'branch', 'purchaseInvoice']);
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -64,6 +64,23 @@ class PurchaseReturnController extends Controller
         if ($request->filled('supplier_id')) {
             $query->where('supplier_id', $request->input('supplier_id'));
         }
+
+        $allowedSorts = [
+            'return_number' => 'return_number',
+            'return_date' => 'return_date',
+            'supplier_debit_note_no' => 'supplier_debit_note_no',
+            'supplier' => fn ($q, $dir) => $q->orderBy(
+                Supplier::select('name')->whereColumn('suppliers.id', 'purchase_returns.supplier_id'),
+                $dir
+            ),
+            'invoice_number' => fn ($q, $dir) => $q->orderBy(
+                PurchaseInvoice::select('invoice_number')->whereColumn('purchase_invoices.id', 'purchase_returns.purchase_invoice_id'),
+                $dir
+            ),
+            'total_amount' => 'total_amount',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['return_date' => 'desc', 'id' => 'desc']);
 
         $purchaseReturns = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');

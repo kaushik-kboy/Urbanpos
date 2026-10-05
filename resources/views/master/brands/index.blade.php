@@ -25,6 +25,12 @@
             </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.brands.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-4 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Search brand name, prefix, alias...">
@@ -51,11 +57,11 @@
             <table id="brands-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th data-col-key="name">Name</th>
-                        <th data-col-key="prefix">Prefix</th>
-                        <th data-col-key="alias_code">Alias Code</th>
-                        <th data-col-key="status">Status</th>
-                        <th data-col-key="updated_at">Updated Time</th>
+                        <x-sortable-th column="name" label="Name" data-col-key="name" />
+                        <x-sortable-th column="prefix" label="Prefix" data-col-key="prefix" />
+                        <x-sortable-th column="alias_code" label="Alias Code" data-col-key="alias_code" />
+                        <x-sortable-th column="status" label="Status" data-col-key="status" />
+                        <x-sortable-th column="updated_at" label="Updated Time" data-col-key="updated_at" />
                         <th class="text-right" data-col-key="actions">Actions</th>
                     </tr>
                 </thead>

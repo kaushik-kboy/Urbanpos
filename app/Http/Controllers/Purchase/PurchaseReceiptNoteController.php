@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -18,6 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 class PurchaseReceiptNoteController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private StockLedgerService $stockLedger,
         private AuditLogger $auditLogger,
@@ -64,7 +66,20 @@ class PurchaseReceiptNoteController extends Controller
             $query->where('status', $request->status);
         }
 
-        $receiptNotes = $query->latest('receipt_date')->latest('id')->paginate(20)->withQueryString();
+        $allowedSorts = [
+            'receipt_number' => 'receipt_number',
+            'receipt_date' => 'receipt_date',
+            'supplier' => fn ($q, $dir) => $q->orderBy(
+                Supplier::select('name')->whereColumn('suppliers.id', 'purchase_receipt_notes.supplier_id'),
+                $dir
+            ),
+            'supplier_challan_no' => 'supplier_challan_no',
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['receipt_date' => 'desc', 'id' => 'desc']);
+
+        $receiptNotes = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
         $suppliers = Supplier::where('status', true)->orderBy('name')->pluck('name', 'id');
         $statuses = ['Received', 'Invoiced', 'Cancelled'];

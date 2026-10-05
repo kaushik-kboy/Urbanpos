@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -17,6 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class StockTransferController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private StockLedgerService $stockLedger,
         private TaxEngine $taxEngine,
@@ -53,10 +55,15 @@ class StockTransferController extends Controller
             $query->where('status', $request->status);
         }
 
-        $stockTransfers = $query->orderByDesc('transfer_date')
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
+        $allowedSorts = [
+            'transfer_number' => 'transfer_number',
+            'transfer_date' => 'transfer_date',
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['transfer_date' => 'desc', 'id' => 'desc']);
+
+        $stockTransfers = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->get();
         $statuses = StockTransfer::select('status')->distinct()->whereNotNull('status')->pluck('status');
 

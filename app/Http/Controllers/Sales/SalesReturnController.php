@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 
 class SalesReturnController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private LedgerPostingService $ledgerPosting,
         private StockLedgerService $stockLedger,
@@ -30,9 +32,7 @@ class SalesReturnController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesReturn::with(['customer', 'branch', 'salesBill'])
-            ->orderByDesc('return_date')
-            ->orderByDesc('id');
+        $query = SalesReturn::with(['customer', 'branch', 'salesBill']);
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -70,6 +70,23 @@ class SalesReturnController extends Controller
         if ($request->filled('return_mode')) {
             $query->where('return_mode', $request->input('return_mode'));
         }
+
+        $allowedSorts = [
+            'return_number' => 'return_number',
+            'return_date' => 'return_date',
+            'customer' => fn ($q, $dir) => $q->orderBy(
+                Customer::select('name')->whereColumn('customers.id', 'sales_returns.customer_id'),
+                $dir
+            ),
+            'bill_number' => fn ($q, $dir) => $q->orderBy(
+                SalesBill::select('bill_number')->whereColumn('sales_bills.id', 'sales_returns.sales_bill_id'),
+                $dir
+            ),
+            'total_amount' => 'total_amount',
+            'return_mode' => 'return_mode',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['return_date' => 'desc', 'id' => 'desc']);
 
         $salesReturns = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->pluck('name', 'id');

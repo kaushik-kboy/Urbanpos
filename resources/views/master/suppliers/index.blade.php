@@ -26,6 +26,12 @@
         </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.suppliers.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Name, GSTIN...">
@@ -70,12 +76,12 @@
             <table id="suppliers-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th style="width: 80px;">ID</th>
-                        <th>Name</th>
-                        <th>Purchase Type</th>
-                        <th>Purchase Mode</th>
-                        <th>Status</th>
-                        <th class="text-right">Actions</th>
+                        <x-sortable-th column="id" label="ID" style="width: 80px;" data-col-key="id" />
+                        <x-sortable-th column="name" label="Name" data-col-key="name" />
+                        <x-sortable-th column="purchase_type" label="Purchase Type" data-col-key="purchase_type" />
+                        <x-sortable-th column="purchase_mode" label="Purchase Mode" data-col-key="purchase_mode" />
+                        <x-sortable-th column="status" label="Status" data-col-key="status" />
+                        <th class="text-right" data-col-key="actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

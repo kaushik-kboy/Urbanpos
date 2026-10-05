@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -14,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderController extends Controller
 {
+    use HasSorting;
     public function __construct(private AuditLogger $auditLogger)
     {
     }
@@ -61,10 +63,20 @@ class PurchaseOrderController extends Controller
             $query->where('status', $request->status);
         }
 
-        $purchaseOrders = $query->orderByDesc('po_date')
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
+        $allowedSorts = [
+            'po_number' => 'po_number',
+            'po_date' => 'po_date',
+            'supplier' => fn ($q, $dir) => $q->orderBy(
+                Supplier::select('name')->whereColumn('suppliers.id', 'purchase_orders.supplier_id'),
+                $dir
+            ),
+            'total_amount' => 'total_amount',
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['po_date' => 'desc', 'id' => 'desc']);
+
+        $purchaseOrders = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
         $statuses = PurchaseOrder::select('status')->distinct()->whereNotNull('status')->pluck('status');

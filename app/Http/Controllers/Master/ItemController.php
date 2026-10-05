@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
@@ -15,7 +16,7 @@ use Illuminate\Http\Request;
 
 class ItemController extends Controller
 {
-    use HasPerPage, Importable;
+    use HasPerPage, HasSorting, Importable;
 
 
     public function index(Request $request)
@@ -48,7 +49,23 @@ class ItemController extends Controller
             $query->where('status', (bool)$request->input('status'));
         }
 
-        $items = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $allowedSorts = [
+            'id' => 'id',
+            'item_code' => 'item_code',
+            'name' => 'name',
+            'alias' => 'alias',
+            'sell_price' => 'sell_price',
+            'cost_price' => 'cost_price',
+            'mrp' => 'mrp',
+            'supplier' => fn ($q, $dir) => $q->orderBy(Supplier::select('name')->whereColumn('suppliers.id', 'items.supplier_id'), $dir),
+            'brand' => fn ($q, $dir) => $q->orderBy(Brand::select('name')->whereColumn('brands.id', 'items.brand_id'), $dir),
+            'updated_at' => 'updated_at',
+            'created_at' => 'created_at',
+            'status' => 'status',
+        ];
+        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
+
+        $items = $query->paginate($this->perPage())->withQueryString();
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $brands = Brand::orderBy('name')->pluck('name', 'id');
         $categories = $this->categoryValues(['CATEGORY', 'Category', 'category', 'Categories', 'CAT'], 'CATEGORY')['values'];

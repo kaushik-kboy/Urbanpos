@@ -33,6 +33,12 @@
                     @endif
                 @endif
                 <input type="hidden" name="search_column" value="all">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 @if(request('is_iframe'))
                     <div class="col-md-5 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Search</label>
@@ -141,14 +147,14 @@
             <table class="table table-striped mb-0" id="salesBillsTable">
                 <thead>
                     <tr class="text-nowrap">
-                        <th>Bill No</th>
-                        <th>Bill Date</th>
-                        <th>Customer</th>
+                        <x-sortable-th column="bill_number" label="Bill No" />
+                        <x-sortable-th column="bill_date" label="Bill Date" />
+                        <x-sortable-th column="customer" label="Customer" />
                         <th>Mobile</th>
                         <th>Branch</th>
-                        <th>Invoice Type</th>
-                        <th>Payment Mode</th>
-                        <th>Total</th>
+                        <x-sortable-th column="invoice_type" label="Invoice Type" />
+                        <x-sortable-th column="payment_mode" label="Payment Mode" />
+                        <x-sortable-th column="total" label="Total" align="right" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

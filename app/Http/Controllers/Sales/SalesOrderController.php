@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -16,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class SalesOrderController extends Controller
 {
+    use HasSorting;
     public function __construct(
         private TaxEngine $taxEngine,
         private AuditLogger $auditLogger,
@@ -24,9 +26,7 @@ class SalesOrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesOrder::with(['customer', 'branch'])
-            ->orderByDesc('order_date')
-            ->orderByDesc('id');
+        $query = SalesOrder::with(['customer', 'branch']);
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -67,6 +67,19 @@ class SalesOrderController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
+
+        $allowedSorts = [
+            'order_number' => 'order_number',
+            'order_date' => 'order_date',
+            'customer' => fn ($q, $dir) => $q->orderBy(
+                Customer::select('name')->whereColumn('customers.id', 'sales_orders.customer_id'),
+                $dir
+            ),
+            'final_total' => 'final_total',
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['order_date' => 'desc', 'id' => 'desc']);
 
         $orders = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');

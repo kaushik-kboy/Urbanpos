@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Concerns\PaginatesDeep;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -28,7 +29,7 @@ use Illuminate\Validation\ValidationException;
 
 class SalesBillController extends Controller
 {
-    use PaginatesDeep;
+    use PaginatesDeep, HasSorting;
 
     public function __construct(
         private LedgerPostingService $ledgerPosting,
@@ -44,8 +45,7 @@ class SalesBillController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesBill::with(['customer', 'branch', 'payments.tenderType'])
-            ->orderByDesc('id');
+        $query = SalesBill::with(['customer', 'branch', 'payments.tenderType']);
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -124,6 +124,21 @@ class SalesBillController extends Controller
                 }
             }
         }
+
+        $allowedSorts = [
+            'bill_number' => 'bill_number',
+            'bill_date' => 'bill_date',
+            'customer' => fn ($q, $dir) => $q->orderBy(
+                Customer::select('name')->whereColumn('customers.id', 'sales_bills.customer_id'),
+                $dir
+            ),
+            'total' => 'total',
+            'invoice_type' => 'invoice_type',
+            'payment_mode' => 'payment_type',
+            'id' => 'id',
+            'created_at' => 'created_at',
+        ];
+        $this->applySorting($query, $allowedSorts, ['id' => 'desc']);
 
         $salesBills = $this->paginateDeep($query, 20);
         $branches = Branch::orderBy('name')->pluck('name', 'id');

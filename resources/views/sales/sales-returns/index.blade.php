@@ -14,6 +14,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('sales.sales-returns.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Return / Bill / Customer" value="{{ request('search') }}">
@@ -79,12 +85,12 @@
             <table class="table table-striped mb-0" id="salesReturnsTable">
                 <thead>
                     <tr>
-                        <th>Return No</th>
-                        <th>Return Date</th>
-                        <th>Customer</th>
-                        <th>Bill No</th>
-                        <th>Return Mode</th>
-                        <th>Total</th>
+                        <x-sortable-th column="return_number" label="Return No" />
+                        <x-sortable-th column="return_date" label="Return Date" />
+                        <x-sortable-th column="customer" label="Customer" />
+                        <x-sortable-th column="bill_number" label="Bill No" />
+                        <x-sortable-th column="return_mode" label="Return Mode" />
+                        <x-sortable-th column="total_amount" label="Total" align="right" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

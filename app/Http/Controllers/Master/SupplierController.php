@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
@@ -11,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
-    use HasPerPage, Importable;
+    use HasPerPage, HasSorting, Importable;
 
 
     public function index(Request $request)
@@ -40,7 +41,20 @@ class SupplierController extends Controller
             $query->where('status', (bool)$request->status);
         }
 
-        $suppliers = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $allowedSorts = [
+            'id' => 'id',
+            'name' => 'name',
+            'supplier_code' => 'supplier_code',
+            'mobile' => 'mobile',
+            'gst_no' => 'gst_no',
+            'purchase_type' => 'purchase_type',
+            'purchase_mode' => 'purchase_mode',
+            'status' => 'status',
+            'created_at' => 'created_at',
+        ];
+        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
+
+        $suppliers = $query->paginate($this->perPage())->withQueryString();
         $purchaseTypes = Supplier::select('purchase_type')->distinct()->whereNotNull('purchase_type')->pluck('purchase_type');
         $purchaseModes = Supplier::select('purchase_mode')->distinct()->whereNotNull('purchase_mode')->pluck('purchase_mode');
 

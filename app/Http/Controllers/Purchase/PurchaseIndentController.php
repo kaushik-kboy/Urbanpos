@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
@@ -15,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class PurchaseIndentController extends Controller
 {
+    use HasSorting;
     public function __construct(private AuditLogger $auditLogger)
     {
     }
@@ -52,7 +54,17 @@ class PurchaseIndentController extends Controller
             $query->whereDate('indent_date', '<=', $request->date_to);
         }
 
-        $indents = $query->latest('indent_date')->latest('id')->paginate(20)->withQueryString();
+        $allowedSorts = [
+            'indent_number' => 'indent_number',
+            'indent_date' => 'indent_date',
+            'department' => 'department',
+            'priority' => 'priority',
+            'status' => 'status',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['indent_date' => 'desc', 'id' => 'desc']);
+
+        $indents = $query->paginate(20)->withQueryString();
         $branches = Branch::where('status', true)->orderBy('name')->get();
         $priorities = ['Low', 'Medium', 'High', 'Urgent'];
         $statuses = ['Pending', 'Approved', 'Rejected', 'Converted', 'Cancelled'];

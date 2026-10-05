@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Finance;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\JournalEntry;
@@ -14,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 class VoucherController extends Controller
 {
+    use HasSorting;
+
     private const MANUAL_TYPES = ['Payment', 'Receipt', 'Journal', 'Contra'];
 
     public function __construct(
@@ -51,7 +54,20 @@ class VoucherController extends Controller
             $query->where('branch_id', $request->branch_id);
         }
 
-        $vouchers = $query->latest('voucher_date')->paginate(20)->withQueryString();
+        $allowedSorts = [
+            'voucher_number' => 'voucher_number',
+            'voucher_type' => 'voucher_type',
+            'voucher_date' => 'voucher_date',
+            'branch' => fn ($q, $dir) => $q->orderBy(Branch::select('name')->whereColumn('branches.id', 'journal_entries.branch_id'), $dir),
+            'amount' => 'total_debit',
+            'total_debit' => 'total_debit',
+            'total_credit' => 'total_credit',
+            'narration' => 'narration',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['voucher_date' => 'desc', 'id' => 'desc']);
+
+        $vouchers = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->get();
         $manualTypes = self::MANUAL_TYPES;
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -10,7 +11,7 @@ use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
-    use HasPerPage, Importable;
+    use HasPerPage, HasSorting, Importable;
 
 
     public function index(Request $request)
@@ -35,7 +36,18 @@ class BranchController extends Controller
             $query->where('status', (bool)$request->status);
         }
 
-        $branches = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $allowedSorts = [
+            'id' => 'id',
+            'name' => 'name',
+            'code' => 'code',
+            'city' => 'city',
+            'business_type' => 'business_type',
+            'status' => 'status',
+            'created_at' => 'created_at',
+        ];
+        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
+
+        $branches = $query->paginate($this->perPage())->withQueryString();
         $businessTypes = Branch::select('business_type')->distinct()->whereNotNull('business_type')->pluck('business_type');
 
         return view('master.branches.index', compact('branches', 'businessTypes'));

@@ -14,6 +14,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('finance.vouchers.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Voucher No / Narration..." value="{{ request('search') }}">
@@ -68,12 +74,12 @@
             <table class="table table-sm table-striped mb-0" id="vouchersTable">
                 <thead>
                     <tr>
-                        <th>Voucher No</th>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th>Branch</th>
+                        <x-sortable-th column="voucher_number" label="Voucher No" />
+                        <x-sortable-th column="voucher_type" label="Type" />
+                        <x-sortable-th column="voucher_date" label="Date" />
+                        <x-sortable-th column="branch" label="Branch" />
                         <th>Narration</th>
-                        <th class="text-right">Amount</th>
+                        <x-sortable-th column="amount" label="Amount" align="right" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

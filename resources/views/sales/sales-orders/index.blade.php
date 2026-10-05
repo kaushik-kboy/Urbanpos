@@ -17,6 +17,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('sales.sales-orders.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Order No / Customer..." value="{{ request('search') }}">
@@ -78,14 +84,14 @@
             <table class="table table-striped table-hover mb-0" id="salesOrdersTable">
                 <thead>
                     <tr>
-                        <th>Order No</th>
-                        <th>Order Date</th>
+                        <x-sortable-th column="order_number" label="Order No" />
+                        <x-sortable-th column="order_date" label="Order Date" />
                         <th>Delivery Date</th>
-                        <th>Customer</th>
+                        <x-sortable-th column="customer" label="Customer" />
                         <th>Branch</th>
-                        <th>Status</th>
+                        <x-sortable-th column="status" label="Status" />
                         <th class="text-right">Advance</th>
-                        <th class="text-right">Total</th>
+                        <x-sortable-th column="final_total" label="Total" align="right" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

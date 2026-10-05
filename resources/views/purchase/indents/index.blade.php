@@ -23,6 +23,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('purchase.purchase-indents.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Indent #, Dept, Remarks..." value="{{ request('search') }}">
@@ -86,14 +92,14 @@
             <table class="table table-hover table-striped mb-0" id="indentsTable">
                 <thead class="thead-light">
                     <tr>
-                        <th>Indent #</th>
-                        <th>Date / Required</th>
-                        <th>Branch & Dept</th>
-                        <th>Priority</th>
+                        <x-sortable-th column="indent_number" label="Indent #" />
+                        <x-sortable-th column="indent_date" label="Date / Required" />
+                        <x-sortable-th column="department" label="Branch & Dept" />
+                        <x-sortable-th column="priority" label="Priority" />
                         <th>Requested Qty</th>
                         <th>Approved Qty</th>
                         <th>Est. Amount</th>
-                        <th>Status</th>
+                        <x-sortable-th column="status" label="Status" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

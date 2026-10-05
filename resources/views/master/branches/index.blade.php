@@ -26,6 +26,12 @@
         </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.branches.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-4 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Name, City, Phone...">
@@ -61,11 +67,11 @@
             <table id="branches-table" class="table table-striped mb-0">
                 <thead>
                     <tr>
-                        <th>Name</th>
+                        <x-sortable-th column="name" label="Name" />
                         <th>Address Line1</th>
-                        <th>City</th>
-                        <th>Business Type</th>
-                        <th>Status</th>
+                        <x-sortable-th column="city" label="City" />
+                        <x-sortable-th column="business_type" label="Business Type" />
+                        <x-sortable-th column="status" label="Status" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

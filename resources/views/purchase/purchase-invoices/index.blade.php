@@ -14,6 +14,12 @@
     <div class="card card-default mb-3 shadow-none border">
         <div class="card-body p-3">
             <form method="GET" action="{{ route('purchase.purchase-invoices.index') }}" class="row align-items-end">
+                @if(request('sort'))
+                    <input type="hidden" name="sort" value="{{ request('sort') }}">
+                @endif
+                @if(request('direction'))
+                    <input type="hidden" name="direction" value="{{ request('direction') }}">
+                @endif
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Inv / PO / GRN / Supplier..." value="{{ request('search') }}">
@@ -81,13 +87,13 @@
             <table class="table table-striped mb-0" id="purchaseInvoicesTable">
                 <thead>
                     <tr>
-                        <th>Supplier Inv No.</th>
+                        <x-sortable-th column="supplier_inv_no" label="Supplier Inv No." />
                         <th>GRN No</th>
-                        <th>Invoice Date</th>
-                        <th>Supplier</th>
+                        <x-sortable-th column="invoice_date" label="Invoice Date" />
+                        <x-sortable-th column="supplier" label="Supplier" />
                         <th>Branch</th>
                         <th>PO No</th>
-                        <th>Total</th>
+                        <x-sortable-th column="final_amount" label="Total" align="right" />
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>

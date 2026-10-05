@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Concerns\HasPerPage;
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Area;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
-    use HasPerPage, Importable;
+    use HasPerPage, HasSorting, Importable;
 
 
     public function index(Request $request)
@@ -45,7 +46,18 @@ class CustomerController extends Controller
             $query->where('status', (bool)$request->status);
         }
 
-        $customers = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
+        $allowedSorts = [
+            'id' => 'id',
+            'name' => 'name',
+            'customer_code' => 'customer_code',
+            'category' => fn ($q, $dir) => $q->orderBy(CustomerCategory::select('name')->whereColumn('customer_categories.id', 'customers.customer_category_id'), $dir),
+            'status' => 'status',
+            'mobile' => 'mobile',
+            'created_at' => 'created_at',
+        ];
+        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
+
+        $customers = $query->paginate($this->perPage())->withQueryString();
         $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
 
         return view('master.customers.index', compact('customers', 'categories'));

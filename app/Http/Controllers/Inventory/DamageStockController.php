@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\DamageStock;
@@ -17,6 +18,8 @@ use Illuminate\Validation\ValidationException;
 
 class DamageStockController extends Controller
 {
+    use HasSorting;
+
     public function __construct(
         private StockLedgerService $stockLedger,
         private TaxEngine $taxEngine,
@@ -26,9 +29,7 @@ class DamageStockController extends Controller
 
     public function index(Request $request)
     {
-        $query = DamageStock::with(['branch', 'items.item'])
-            ->orderByDesc('entry_date')
-            ->orderByDesc('id');
+        $query = DamageStock::with(['branch', 'items.item']);
 
         // Location / Branch filter
         if ($request->filled('branch_id')) {
@@ -63,6 +64,16 @@ class DamageStockController extends Controller
         $totalEntries = $totalsQuery->count();
         $totalQty = (float) $totalsQuery->sum('total_qty');
         $totalCost = (float) $totalsQuery->sum('total_cost');
+
+        $allowedSorts = [
+            'damage_number' => 'damage_number',
+            'entry_date' => 'entry_date',
+            'total_qty' => 'total_qty',
+            'total_cost' => 'total_cost',
+            'wastage_type' => 'wastage_type',
+            'id' => 'id',
+        ];
+        $this->applySorting($query, $allowedSorts, ['entry_date' => 'desc', 'id' => 'desc']);
 
         $damageStocks = $query->paginate(15)->withQueryString();
 
