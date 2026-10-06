@@ -65,6 +65,7 @@
                     <div class="col-12 text-right">
                         <button type="submit" class="btn btn-sm btn-info"><i class="fas fa-search mr-1"></i> Apply</button>
                         <a href="{{ route('reports.quotation-order-summary') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                        <button type="submit" name="export" value="excel" class="btn btn-sm btn-success font-weight-bold shadow-sm ml-2"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
                         <button type="button" id="csvExport" class="btn btn-sm btn-outline-secondary ml-2"><i class="fas fa-file-csv mr-1"></i> CSV</button>
                     </div>
                 </div>
@@ -106,6 +107,7 @@
             <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-list mr-1"></i> Quotations & Orders</h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success mr-2 font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
                 <button type="button" onclick="exportTableToCSV('qoTable', 'quotation-order-summary-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
                 <x-table-column-customizer table-key="reports.quotation-order-summary" table-id="qoTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>

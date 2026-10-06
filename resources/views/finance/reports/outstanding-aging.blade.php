@@ -7,9 +7,14 @@
         <h1 class="m-0 text-dark">
             <i class="fas fa-hourglass-half mr-2 text-warning"></i>Billwise Outstanding Aging Report
         </h1>
-        <a href="{{ route('finance.reports.index') }}" class="btn btn-secondary btn-sm">
-            <i class="fas fa-arrow-left mr-1"></i> Reports Center
-        </a>
+        <div>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-success btn-sm font-weight-bold shadow-sm mr-2">
+                <i class="fas fa-file-excel mr-1"></i> Export Excel
+            </a>
+            <a href="{{ route('finance.reports.index') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left mr-1"></i> Reports Center
+            </a>
+        </div>
     </div>
 @stop
 
@@ -41,8 +46,9 @@
                     </select>
                 </div>
                 <div class="col-md-3 form-group mb-2 text-right">
-                    <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fas fa-search mr-1"></i> Generate Report</button>
-                    <button type="button" class="btn btn-outline-dark btn-sm ml-1" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-2 mr-1"><i class="fas fa-search mr-1"></i> Generate</button>
+                    <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm mr-1"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
+                    <button type="button" class="btn btn-outline-dark btn-sm" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print</button>
                 </div>
             </form>
         </div>
@@ -94,7 +100,10 @@
                 <i class="fas fa-table mr-1"></i>
                 {{ $partyType === 'Customer' ? 'Customer Outstanding Debtors' : 'Supplier Outstanding Creditors' }} (As of {{ \Carbon\Carbon::parse($asOfDate)->format('d-M-Y') }})
             </h5>
-            <div class="card-tools ml-auto">
+            <div class="card-tools d-flex align-items-center ml-auto">
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success mr-2 font-weight-bold shadow-sm">
+                    <i class="fas fa-file-excel mr-1"></i> Export Excel
+                </a>
                 <x-table-column-customizer table-key="finance.reports.outstanding-aging" table-id="outstandingAgingTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

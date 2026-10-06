@@ -84,9 +84,12 @@
                     </div>
                 </div>
 
-                <div class="col-md-2 col-sm-6 d-flex">
+                <div class="col-md-3 col-sm-6 d-flex">
                     <button type="submit" class="btn btn-primary btn-sm flex-fill mr-1 shadow-sm">
                         <i class="fas fa-filter mr-1"></i> Filter
+                    </button>
+                    <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm mr-1">
+                        <i class="fas fa-file-excel mr-1"></i> Export Excel
                     </button>
                     <a href="{{ url()->current() }}" class="btn btn-outline-secondary btn-sm shadow-sm" title="Reset Filters">
                         <i class="fas fa-redo"></i>
@@ -109,9 +112,6 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary mr-2 shadow-sm" onclick="window.print()">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-success mr-2 shadow-sm d-none" onclick="exportTableToCSV('reportDataTable', '{{ $module ?? 'report' }}')">
-                    <i class="fas fa-file-csv mr-1"></i> Export CSV
-                </button>
                 @if(($module ?? null) === 'gst-sales-taxwise')
                     {{-- Real server-side .xlsx export: one bill = one row, full
                          GST rate breakup as columns, all matching bills (not just
@@ -120,7 +120,15 @@
                        class="btn btn-sm btn-success mr-2 shadow-sm font-weight-bold">
                         <i class="fas fa-file-excel mr-1"></i> Export Excel (GST Taxwise)
                     </a>
+                @else
+                    <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}"
+                       class="btn btn-sm btn-success mr-2 shadow-sm font-weight-bold">
+                        <i class="fas fa-file-excel mr-1"></i> Export Excel
+                    </a>
                 @endif
+                <button type="button" class="btn btn-sm btn-outline-success mr-2 shadow-sm" onclick="exportTableToCSV('reportDataTable', '{{ $module ?? 'report' }}')">
+                    <i class="fas fa-file-csv mr-1"></i> Export CSV
+                </button>
                 <x-table-column-customizer :table-key="'reports.generic.' . ($module ?? $slug ?? 'default')" table-id="reportDataTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

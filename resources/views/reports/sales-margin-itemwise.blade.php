@@ -75,10 +75,10 @@
                         <input type="text" name="search" class="form-control form-control-sm" placeholder="Search item name / code…" value="{{ $search }}">
                     </div>
                     <div class="col-md-8 text-right">
-                        <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-search mr-1"></i> Apply</button>
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search mr-1"></i> Apply</button>
                         <a href="{{ route('reports.sales-margin-itemwise') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
-                        <button type="button" id="csvExport" class="btn btn-sm btn-outline-info ml-2">
-                            <i class="fas fa-file-csv mr-1"></i> Export CSV
+                        <button type="submit" name="export" value="excel" class="btn btn-sm btn-success ml-2 font-weight-bold shadow-sm">
+                            <i class="fas fa-file-excel mr-1"></i> Export Excel
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-primary ml-2 font-weight-bold" onclick="window.print()">
                             <i class="fas fa-print mr-1"></i> Print Report
@@ -128,6 +128,7 @@
             </h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success mr-2 font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
                 <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV (all)</a>
                 <x-table-column-customizer table-key="reports.sales-margin-itemwise" table-id="marginTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>

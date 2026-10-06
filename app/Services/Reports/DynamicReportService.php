@@ -33,8 +33,10 @@ use Illuminate\Support\Facades\DB;
 
 class DynamicReportService
 {
+    protected int $perPage = 50;
     public function generate(Request $request, string $module): array
     {
+        $this->perPage = (int) $request->input('per_page', 50);
         $from = $request->input('from', now()->subDays(60)->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
         $branchId = $request->input('branch_id');
@@ -158,7 +160,7 @@ class DynamicReportService
                 $query = Brand::query()
                     ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('prefix', 'like', "%{$search}%"))
                     ->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         e($item->name),
@@ -186,7 +188,7 @@ class DynamicReportService
                 $query = GstTax::query()
                     ->when($search, fn ($q) => $q->where('description', 'like', "%{$search}%")->orWhere('percentage', 'like', "%{$search}%"))
                     ->orderBy('percentage');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         e($item->description),
@@ -214,7 +216,7 @@ class DynamicReportService
                 $query = Area::with('branch')
                     ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
                     ->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         e($item->name),
@@ -240,7 +242,7 @@ class DynamicReportService
 
             case 'branch-master':
                 $query = Branch::withCount(['stocks', 'salesBills'])->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->name) . '</strong>',
@@ -270,7 +272,7 @@ class DynamicReportService
                 $query = Item::with(['brand', 'categoryValue', 'supplier'])
                     ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")->orWhere('ean_upc_code', 'like', "%{$search}%"))
                     ->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<code>' . e($item->item_code ?: $item->id) . '</code>',
@@ -303,7 +305,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%")))
                     ->orderBy('supplier_id')
                     ->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->supplier?->name ?: '-') . '</strong>',
@@ -333,7 +335,7 @@ class DynamicReportService
                 $query = User::with(['branch', 'roles'])
                     ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
                     ->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->name) . '</strong>',
@@ -363,7 +365,7 @@ class DynamicReportService
                 $query = Item::with(['brand', 'categoryValue'])
                     ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"))
                     ->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<code>' . e($item->item_code ?: $item->id) . '</code>',
@@ -402,7 +404,7 @@ class DynamicReportService
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where(fn ($g) => $g->where('invoice_number', 'like', "%{$search}%")->orWhere('supplier_inv_no', 'like', "%{$search}%")->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))))
                     ->orderBy('invoice_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->invoice_number) . '</strong>',
@@ -449,7 +451,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->where('purchase_orders.po_number', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%"))
                     ->selectRaw("purchase_orders.id as po_id, purchase_orders.po_number, purchase_orders.po_date, suppliers.name as supplier_name, branches.name as branch_name, items.item_code, items.name as item_name, purchase_order_items.qty, purchase_order_items.cost_price, purchase_order_items.gst_tax_amount, purchase_order_items.net_amount")
                     ->orderBy('purchase_orders.po_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->po_number) . '</strong>',
@@ -488,7 +490,7 @@ class DynamicReportService
                     ->groupBy('suppliers.id', 'suppliers.name')
                     ->selectRaw("suppliers.name as supplier_name, COUNT(purchase_invoices.id) as invoice_count, SUM(purchase_invoices.total_qty) as total_qty, SUM(purchase_invoices.total - purchase_invoices.total_gst) as taxable_amount, SUM(purchase_invoices.total_gst) as total_tax, SUM(purchase_invoices.total) as total_amount")
                     ->orderBy('total_amount', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->supplier_name) . '</strong>',
@@ -518,7 +520,7 @@ class DynamicReportService
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where('po_number', 'like', "%{$search}%")->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%")))
                     ->orderBy('po_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->po_number) . '</strong>',
@@ -550,7 +552,7 @@ class DynamicReportService
                     ->whereBetween('invoice_date', [$from, $to])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->orderBy('invoice_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->invoice_number) . '</strong>',
@@ -587,7 +589,7 @@ class DynamicReportService
                 $query = User::with(['branch', 'roles'])
                     ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
                     ->orderBy('name');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->name) . '</strong>',
@@ -619,7 +621,7 @@ class DynamicReportService
                           ->orWhere('reason', 'like', '%tax%');
                     })
                     ->latest();
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         $item->created_at ? $item->created_at->format('d M Y H:i:s') : '-',
@@ -647,7 +649,7 @@ class DynamicReportService
                 $query = AuditLog::with('user')
                     ->when($search, fn ($q) => $q->where('reason', 'like', "%{$search}%")->orWhere('action', 'like', "%{$search}%")->orWhere('auditable_type', 'like', "%{$search}%"))
                     ->latest();
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         $item->created_at ? $item->created_at->format('d M Y H:i:s') : '-',
@@ -686,7 +688,7 @@ class DynamicReportService
                     ->groupBy(DB::raw("DATE_FORMAT(sales_bills.bill_date, '%Y-%m')"), 'branches.name')
                     ->selectRaw("DATE_FORMAT(sales_bills.bill_date, '%Y-%m') as sales_month, branches.name as branch_name, COUNT(sales_bills.id) as bill_count, SUM(sales_bills.total_qty) as total_qty, SUM(sales_bills.disc_amount) as total_disc, SUM(sales_bills.total_gst) as total_gst, SUM(sales_bills.total) as total_sales")
                     ->orderBy('sales_month', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . date('F Y', strtotime($item->sales_month . '-01')) . '</strong>',
@@ -720,7 +722,7 @@ class DynamicReportService
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where(fn ($g) => $g->where('bill_number', 'like', "%{$search}%")->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('mobile', 'like', "%{$search}%"))))
                     ->orderBy('bill_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->bill_number) . '</strong>',
@@ -766,7 +768,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->where('customers.name', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%")->orWhere('sales_bills.bill_number', 'like', "%{$search}%"))
                     ->selectRaw("customers.name as customer_name, customers.mobile as customer_mobile, sales_bills.bill_number, sales_bills.bill_date, items.item_code, items.name as item_name, sales_bill_items.qty, sales_bill_items.sell_price, sales_bill_items.net_amount")
                     ->orderBy('sales_bills.bill_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->customer_name ?: 'Walk-in Customer') . '</strong>',
@@ -798,7 +800,7 @@ class DynamicReportService
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where('order_number', 'like', "%{$search}%")->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")))
                     ->orderBy('order_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->order_number) . '</strong>',
@@ -830,7 +832,7 @@ class DynamicReportService
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where('delivery_number', 'like', "%{$search}%")->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")))
                     ->orderBy('delivery_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->delivery_number) . '</strong>',
@@ -864,7 +866,7 @@ class DynamicReportService
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where('return_number', 'like', "%{$search}%")->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")))
                     ->orderBy('return_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->return_number) . '</strong>',
@@ -896,7 +898,7 @@ class DynamicReportService
                     ->whereBetween('bill_date', [$from, $to])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->orderBy('bill_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->bill_number) . '</strong>',
@@ -958,7 +960,7 @@ class DynamicReportService
                     ->orderBy('store_name')
                     ->orderByDesc('closing_stock');
 
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
 
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
@@ -1063,7 +1065,7 @@ class DynamicReportService
                     ->orderBy('branch_id')
                     ->orderBy('quantity', 'desc');
 
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
 
                 // Compute Inward and Outward per item in period [$from, $to]
                 $itemIds = $paginator->pluck('item_id')->unique()->filter()->values()->all();
@@ -1165,7 +1167,7 @@ class DynamicReportService
                         }))
                         ->orderBy('expiry_date');
 
-                    $paginator = $query->paginate(50)->withQueryString();
+                    $paginator = $query->paginate($this->perPage)->withQueryString();
 
                     $rows = $paginator->through(function ($item) use ($todayTs) {
                         $expTs = strtotime($item->expiry_date);
@@ -1211,7 +1213,7 @@ class DynamicReportService
                         ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
                         ->orderBy('quantity', 'desc');
 
-                    $paginator = $query->paginate(50)->withQueryString();
+                    $paginator = $query->paginate($this->perPage)->withQueryString();
 
                     $rows = $paginator->through(function ($stock) use ($todayTs) {
                         $shelfDays = (int) ($stock->item?->shelf_life_days ?: 180);
@@ -1276,7 +1278,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
                     ->orderBy('quantity', 'asc');
 
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
 
                 $rows = $paginator->through(function ($stock) {
                     $currStock = (float) $stock->quantity;
@@ -1341,7 +1343,7 @@ class DynamicReportService
                     ->selectRaw('items.id, items.item_code, items.name as item_name, brands.name as brand_name, items.sell_price, SUM(sales_bill_items.qty) as total_sold_qty, SUM(sales_bill_items.net_amount) as total_revenue')
                     ->orderBy('total_sold_qty', 'desc');
 
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<code>' . e($item->item_code) . '</code>',
@@ -1374,7 +1376,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
                     ->orderBy('quantity', 'desc');
 
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $itemIds = $paginator->pluck('item_id')->unique()->all();
 
                 $salesCount = DB::table('sales_bill_items')
@@ -1435,7 +1437,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->where('stock_updates.update_number', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%")->orWhere('items.item_code', 'like', "%{$search}%"))
                     ->selectRaw("stock_updates.update_number, stock_updates.entry_date, branches.name as branch_name, items.item_code, items.name as item_name, stock_update_items.system_qty_at_entry as sys_qty, stock_update_items.physical_qty as phys_qty, stock_update_items.delta_qty, stock_updates.remarks, stock_updates.status")
                     ->orderBy('stock_updates.entry_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->update_number) . '</strong>',
@@ -1473,7 +1475,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->where('damage_stocks.damage_number', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%"))
                     ->selectRaw("damage_stocks.damage_number, damage_stocks.entry_date, branches.name as branch_name, items.item_code, items.name as item_name, damage_stock_items.qty, damage_stock_items.cost_price, (damage_stock_items.qty * damage_stock_items.cost_price) as loss_amount, damage_stocks.remarks, damage_stocks.status")
                     ->orderBy('damage_stocks.entry_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->damage_number) . '</strong>',
@@ -1512,7 +1514,7 @@ class DynamicReportService
                     ->when($search, fn ($q) => $q->where('opening_stocks.entry_number', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%"))
                     ->selectRaw("opening_stocks.entry_number, opening_stocks.entry_date, branches.name as branch_name, items.item_code, items.name as item_name, opening_stock_items.qty, opening_stock_items.cost_price, opening_stock_items.sell_price, (opening_stock_items.qty * opening_stock_items.cost_price) as total_val")
                     ->orderBy('opening_stocks.entry_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->entry_number) . '</strong>',
@@ -1545,7 +1547,7 @@ class DynamicReportService
                 $query = StockTransfer::with(['fromBranch', 'toBranch'])
                     ->when($search, fn ($q) => $q->where('transfer_number', 'like', "%{$search}%"))
                     ->orderBy('transfer_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->transfer_number) . '</strong>',
@@ -1581,7 +1583,7 @@ class DynamicReportService
                     ->selectRaw("branches.name as branch_name, COALESCE(item_category_values.name, 'General Goods') as category_name, COUNT(item_stocks.id) as sku_count, SUM(item_stocks.quantity) as total_qty, SUM(item_stocks.quantity * items.cost_price) as cost_val, SUM(item_stocks.quantity * items.sell_price) as sell_val")
                     ->orderBy('branches.name')
                     ->orderBy('cost_val', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->branch_name) . '</strong>',
@@ -1611,7 +1613,7 @@ class DynamicReportService
                     ->where('quantity', '>', 0)
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->orderBy('quantity', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<code>' . e($item->item?->item_code ?: $item->item_id) . '</code>',
@@ -1648,7 +1650,7 @@ class DynamicReportService
                 $query = SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->selectRaw("DATE_FORMAT(bill_date, '%Y-%m') as trans_month, COUNT(*) as sales_count, SUM(total) as sales_amount")
                     ->groupBy('trans_month')
                     ->orderBy('trans_month', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . date('F Y', strtotime($item->trans_month . '-01')) . '</strong>',
@@ -1678,7 +1680,7 @@ class DynamicReportService
                     ->whereBetween('bill_date', [$from, $to])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->orderBy('bill_date', 'desc');
-                $paginator = $query->paginate(50)->withQueryString();
+                $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
                         '<strong>' . e($item->bill_number) . '</strong>',

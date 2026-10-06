@@ -3,7 +3,18 @@
 @section('title', 'Trading and Profit & Loss Statement')
 
 @section('content_header')
-    <h1>Trading and Profit & Loss Statement</h1>
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="mb-0">Trading and Profit & Loss Statement</h1>
+        <div>
+            <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success font-weight-bold shadow-sm mr-2">
+                <i class="fas fa-file-excel mr-1"></i> Export Excel
+            </a>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success">
+                <i class="fas fa-file-csv mr-1"></i> Export CSV
+            </a>
+        </div>
+    </div>
 @stop
 
 @section('content')
@@ -29,7 +40,8 @@
                 </div>
                 <div class="col-md-3 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                    <a href="{{ route('finance.reports.profit-loss') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('finance.reports.profit-loss') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
+                    <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
                 </div>
             </form>
         </div>

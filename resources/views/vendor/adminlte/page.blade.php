@@ -179,10 +179,13 @@
             return url.replace(/\/+$/, '');
         })();
         window.exportTableToCSV = function(tableId, filename) {
-            // If the table is paginated, download the full dataset from server preserving active filters
-            if (document.querySelector('.pagination, .pagination-sm')) {
+            // If on a report route or paginated table, download full dataset from server preserving active filters
+            var path = window.location.pathname;
+            var isReportPage = path.indexOf('/reports') !== -1 || path.indexOf('/finance/reports') !== -1 || document.querySelector('.pagination, .pagination-sm');
+            if (isReportPage) {
                 var currentUrl = new URL(window.location.href);
                 currentUrl.searchParams.set('export', 'csv');
+                currentUrl.searchParams.delete('page');
                 window.location.href = currentUrl.toString();
                 return;
             }
@@ -216,6 +219,53 @@
             var link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             var cleanName = (filename || 'report').replace(/\.csv$/i, '') + '.csv';
+            link.download = cleanName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        window.exportTableToExcel = function(tableId, filename) {
+            // If on a report route or paginated table, download full dataset from server preserving active filters
+            var path = window.location.pathname;
+            var isReportPage = path.indexOf('/reports') !== -1 || path.indexOf('/finance/reports') !== -1 || document.querySelector('.pagination, .pagination-sm');
+            if (isReportPage) {
+                var currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('export', 'excel');
+                currentUrl.searchParams.delete('page');
+                window.location.href = currentUrl.toString();
+                return;
+            }
+
+            var table = document.getElementById(tableId);
+            if (!table) {
+                table = document.querySelector('.card-body table') || document.querySelector('table');
+            }
+            if (!table) {
+                alert('No table data found to export.');
+                return;
+            }
+
+            var cleanName = (filename || 'report').replace(/\.(xlsx|xls|csv)$/i, '') + '.xls';
+            var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            html += '<head><meta charset="utf-8"></head><body>';
+
+            var clone = table.cloneNode(true);
+            var rows = clone.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].querySelectorAll('th, td');
+                if (cells.length > 0) {
+                    var last = cells[cells.length - 1];
+                    var text = (last.innerText || '').trim().toLowerCase();
+                    if (text === 'action' || text === 'actions' || last.querySelector('.btn-group, .btn-xs, .btn-sm, a.btn, button')) {
+                        last.remove();
+                    }
+                }
+            }
+            html += clone.outerHTML + '</body></html>';
+            var blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
             link.download = cleanName;
             document.body.appendChild(link);
             link.click();

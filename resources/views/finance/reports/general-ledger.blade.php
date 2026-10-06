@@ -21,13 +21,18 @@
                 <input type="date" name="from" value="{{ $from }}" class="form-control form-control-sm mr-3">
                 <label class="mr-2">To</label>
                 <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm mr-3">
-                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter mr-1"></i> Apply</button>
+                <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm mr-1"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
             </form>
 
             @if ($ledger)
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="mb-0 font-weight-bold text-muted">Statement Records</h5>
-                    <x-table-column-customizer table-key="finance.reports.general-ledger" table-id="generalLedgerTable" button-class="btn btn-sm btn-light border text-secondary" />
+                    <h5 class="mb-0 font-weight-bold text-muted">Statement Records: {{ $ledger->name }}</h5>
+                    <div class="d-flex align-items-center ml-auto">
+                        <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                        <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success mr-2 font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
+                        <x-table-column-customizer table-key="finance.reports.general-ledger" table-id="generalLedgerTable" button-class="btn btn-sm btn-light border text-secondary" />
+                    </div>
                 </div>
                 <table class="table table-sm table-striped" id="generalLedgerTable">
                     <thead>

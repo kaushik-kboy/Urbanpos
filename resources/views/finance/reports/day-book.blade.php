@@ -3,7 +3,17 @@
 @section('title', 'Day Book')
 
 @section('content_header')
-    <h1>Day Book</h1>
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="mb-0">Day Book</h1>
+        <div>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success font-weight-bold shadow-sm mr-2">
+                <i class="fas fa-file-excel mr-1"></i> Export Excel
+            </a>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success">
+                <i class="fas fa-file-csv mr-1"></i> Export CSV
+            </a>
+        </div>
+    </div>
 @stop
 
 @section('content')
@@ -70,9 +80,10 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4 col-sm-12 mb-2">
+                <div class="col-md-5 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                    <a href="{{ route('finance.reports.day-book') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('finance.reports.day-book') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
+                    <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
                 </div>
             </form>
 

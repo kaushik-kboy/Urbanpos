@@ -29,6 +29,8 @@ use App\Models\TillSession;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Exports\GenericReportExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
@@ -51,6 +53,23 @@ class ReportController extends Controller
             ->groupBy(DB::raw('DATE(bill_date)'), 'branch_id')
             ->orderBy('bill_date')
             ->get();
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $rows,
+                [
+                    'Date' => fn($r) => \Carbon\Carbon::parse($r->bill_date)->format('d-m-Y'),
+                    'Branch' => fn($r) => $r->branch?->name ?? 'All Branches',
+                    'Total Bills' => 'bill_count',
+                    'Total Discount' => fn($r) => number_format((float) $r->total_disc, 2),
+                    'Total GST' => fn($r) => number_format((float) $r->total_gst, 2),
+                    'Net Sales Amount' => fn($r) => number_format((float) $r->total_amount, 2),
+                ],
+                'sales-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
@@ -85,12 +104,12 @@ class ReportController extends Controller
         $query->orderBy('bill_date')->orderBy('id');
 
         // Full-dataset export is server-side and streamed; the on-page table only holds one page of bills.
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv($query, [
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData($query, [
                 'Bill Date' => '', 'Bill No' => '', 'Customer' => '', 'Item' => '', 'Qty' => '', 'MRP' => '', 'Net Amount' => '', 'Branch' => '',
-            ], 'billwise-sales-report.csv', function ($bill) {
+            ], 'billwise-sales_' . $from . '_to_' . $to . '.xlsx', function ($bill) {
                 return $bill->items->map(fn ($line) => [
-                    $bill->bill_date->format('d-m-Y'),
+                    $bill->bill_date ? \Carbon\Carbon::parse($bill->bill_date)->format('d-m-Y') : '',
                     $bill->bill_number,
                     $bill->customer?->name,
                     $line->item?->name,
@@ -99,7 +118,7 @@ class ReportController extends Controller
                     number_format((float) $line->net_amount, 2, '.', ''),
                     $bill->branch?->name,
                 ])->all();
-            });
+            }, $request->query('export') === 'csv' ? 'csv' : 'excel');
         }
 
         // Paginated: bills + their lines are hydrated per page, never for the whole date range.
@@ -136,6 +155,22 @@ class ReportController extends Controller
             ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), sbi.gst_percent")
             ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, sbi.gst_percent, SUM(sbi.net_amount - sbi.gst_tax_amount) as taxable_amount, SUM(sbi.gst_tax_amount) as gst_amount")
             ->get();
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $rows,
+                [
+                    'HSN Code' => 'hsn_code',
+                    'GST Rate (%)' => fn($r) => $r->gst_percent . '%',
+                    'Taxable Amount' => fn($r) => number_format((float) $r->taxable_amount, 2),
+                    'GST Tax Amount' => fn($r) => number_format((float) $r->gst_amount, 2),
+                    'Total Amount' => fn($r) => number_format((float) ($r->taxable_amount + $r->gst_amount), 2),
+                ],
+                'gst-sales-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
@@ -259,6 +294,27 @@ class ReportController extends Controller
             $query->whereHas('item', fn ($q) => $q->where('category_value_id', $categoryValueId));
         }
 
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $query->orderBy('branch_id')->orderBy('item_stocks.id'),
+                [
+                    'Item Code' => fn($r) => $r->item?->item_code ?? '',
+                    'Item Name' => fn($r) => $r->item?->name ?? '',
+                    'Brand' => fn($r) => $r->item?->brand?->name ?? '',
+                    'Category' => fn($r) => $r->item?->categoryValue?->name ?? '',
+                    'Branch / Location' => fn($r) => $r->branch?->name ?? '',
+                    'Stock Qty' => fn($r) => (float) $r->quantity,
+                    'Cost Price' => fn($r) => number_format((float) ($r->item?->cost_price ?? 0), 2),
+                    'Cost Value' => fn($r) => number_format((float) ($r->quantity * ($r->item?->cost_price ?? 0)), 2),
+                    'Selling Price' => fn($r) => number_format((float) ($r->item?->sell_price ?? 0), 2),
+                    'Selling Value' => fn($r) => number_format((float) ($r->quantity * ($r->item?->sell_price ?? 0)), 2),
+                ],
+                'current-stock-report_' . date('Y-m-d') . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
+
         // Totals for the whole filtered set come from SQL; only one page of rows is loaded/rendered.
         $totals = (clone $query)->join('items as ti', 'ti.id', '=', 'item_stocks.item_id')
             ->selectRaw('COALESCE(SUM(item_stocks.quantity * COALESCE(ti.cost_price,0)),0) as cost_value, COALESCE(SUM(item_stocks.quantity * COALESCE(ti.sell_price,0)),0) as sell_value, COALESCE(SUM(item_stocks.quantity),0) as qty')->first();
@@ -294,6 +350,24 @@ class ReportController extends Controller
         }
 
         $returns = $query->orderBy('return_date')->get();
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $returns,
+                [
+                    'Return Date' => fn($r) => \Carbon\Carbon::parse($r->return_date)->format('d-m-Y'),
+                    'Return No' => 'return_number',
+                    'Original Bill No' => fn($r) => $r->salesBill?->bill_number ?? '',
+                    'Customer' => fn($r) => $r->customer?->name ?? 'Walk-in',
+                    'Return Mode' => 'return_mode',
+                    'Total Amount' => fn($r) => number_format((float) $r->total, 2),
+                    'Branch' => fn($r) => $r->branch?->name ?? '',
+                ],
+                'sales-return-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $customerId = $request->input('customer_id');
@@ -334,8 +408,8 @@ class ReportController extends Controller
             $query->where('status', (bool) $request->status);
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderBy('name'),
                 [
                     'Code' => fn($c) => $c->customer_code,
@@ -348,7 +422,9 @@ class ReportController extends Controller
                     'Credit Balance' => fn($c) => number_format((float) $c->credit_balance, 2),
                     'Status' => fn($c) => $c->status ? 'Active' : 'Inactive',
                 ],
-                'customer-master-report.csv'
+                'customer-master-report.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -382,8 +458,8 @@ class ReportController extends Controller
             $query->whereHas('pets', fn ($pq) => $pq->where('breed_id', $request->breed_id));
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderBy('name'),
                 [
                     'Customer Code',
@@ -395,7 +471,7 @@ class ReportController extends Controller
                     'Age',
                     'Birth Date',
                 ],
-                'customer-pet-details-report.csv',
+                'customer-pet-details-report.xlsx',
                 function ($customer) {
                     $lines = [];
                     foreach ($customer->pets as $pet) {
@@ -411,7 +487,8 @@ class ReportController extends Controller
                         ];
                     }
                     return $lines;
-                }
+                },
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -476,6 +553,27 @@ class ReportController extends Controller
             'till_variance_total' => (float) $tillSessions->whereNotNull('variance')->sum('variance'),
         ];
 
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $tillSessions,
+                [
+                    'Session ID' => 'id',
+                    'Branch' => fn($s) => $s->branch?->name ?? 'Default',
+                    'Cashier' => fn($s) => $s->user?->name ?? 'User #' . $s->user_id,
+                    'Opened At' => fn($s) => $s->opened_at ? \Carbon\Carbon::parse($s->opened_at)->format('d-m-Y H:i') : '-',
+                    'Closed At' => fn($s) => $s->closed_at ? \Carbon\Carbon::parse($s->closed_at)->format('d-m-Y H:i') : 'Open',
+                    'Opening Cash' => fn($s) => number_format((float) $s->opening_cash, 2),
+                    'Expected Cash' => fn($s) => number_format((float) $s->expected_cash, 2),
+                    'Closing Cash' => fn($s) => number_format((float) $s->closing_cash, 2),
+                    'Variance' => fn($s) => number_format((float) $s->variance, 2),
+                    'Status' => 'status',
+                ],
+                'eod-settlement-report_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
+
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
         return view('reports.eod', compact('summary', 'tillSessions', 'from', 'to', 'branchId', 'tillSessionId', 'branches'));
@@ -507,8 +605,8 @@ class ReportController extends Controller
             $query->where('status', (bool) $request->status);
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderBy('name'),
                 [
                     'Code' => fn($i) => $i->item_code,
@@ -524,7 +622,9 @@ class ReportController extends Controller
                     'MRP' => fn($i) => number_format((float) $i->mrp, 2),
                     'Status' => fn($i) => $i->status ? 'Active' : 'Inactive',
                 ],
-                'item-master-report.csv'
+                'item-master-report.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -559,8 +659,8 @@ class ReportController extends Controller
             $query->where('status', (bool) $request->status);
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderBy('name'),
                 [
                     'Supplier Name' => fn($s) => $s->name,
@@ -574,7 +674,9 @@ class ReportController extends Controller
                     'Credit Balance' => fn($s) => number_format((float) $s->credit_balance, 2),
                     'Status' => fn($s) => $s->status ? 'Active' : 'Inactive',
                 ],
-                'supplier-master-report.csv'
+                'supplier-master-report.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -600,6 +702,25 @@ class ReportController extends Controller
             ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
             ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, COALESCE(pii.gst_percent, 0) as gst_percent, SUM(pii.net_amount - pii.gst_tax_amount) as taxable_amount, SUM(COALESCE(pii.cgst_amount,0)) as cgst_amount, SUM(COALESCE(pii.sgst_amount,0)) as sgst_amount, SUM(COALESCE(pii.igst_amount,0)) as igst_amount, SUM(COALESCE(pii.gst_tax_amount,0)) as gst_amount")
             ->get();
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $rows,
+                [
+                    'HSN Code' => 'hsn_code',
+                    'GST Rate (%)' => fn($r) => $r->gst_percent . '%',
+                    'Taxable Amount' => fn($r) => number_format((float) $r->taxable_amount, 2),
+                    'CGST' => fn($r) => number_format((float) $r->cgst_amount, 2),
+                    'SGST' => fn($r) => number_format((float) $r->sgst_amount, 2),
+                    'IGST' => fn($r) => number_format((float) $r->igst_amount, 2),
+                    'Total GST' => fn($r) => number_format((float) $r->gst_amount, 2),
+                    'Total Amount' => fn($r) => number_format((float) ($r->taxable_amount + $r->gst_amount), 2),
+                ],
+                'gst-purchase-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
 
@@ -627,8 +748,8 @@ class ReportController extends Controller
             });
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderByDesc('po_date'),
                 [
                     'PO Number' => fn($po) => $po->po_number,
@@ -641,7 +762,9 @@ class ReportController extends Controller
                     'Total Amount' => fn($po) => number_format((float) $po->total, 2),
                     'Status' => fn($po) => $po->status,
                 ],
-                'purchase-order-summary-report.csv'
+                'purchase-order-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -671,8 +794,8 @@ class ReportController extends Controller
             $query->where('transfer_number', 'like', "%{$search}%");
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderByDesc('transfer_date'),
                 [
                     'Transfer Number' => fn($t) => $t->transfer_number,
@@ -684,7 +807,9 @@ class ReportController extends Controller
                     'Received At' => fn($t) => $t->received_at ? $t->received_at->format('d-m-Y H:i') : '-',
                     'Status' => fn($t) => $t->status,
                 ],
-                'stock-transfer-summary-report.csv'
+                'stock-transfer-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -709,8 +834,8 @@ class ReportController extends Controller
             $query->where('damage_number', 'like', "%{$search}%");
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderByDesc('entry_date'),
                 [
                     'Entry Number' => fn($ds) => $ds->damage_number,
@@ -722,7 +847,9 @@ class ReportController extends Controller
                     'Remarks' => fn($ds) => $ds->remarks ?: '-',
                     'Status' => fn($ds) => $ds->status,
                 ],
-                'damage-stock-summary-report.csv'
+                'damage-stock-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -759,6 +886,21 @@ class ReportController extends Controller
             })
             ->values();
 
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $rows,
+                [
+                    'Payment Mode / Tender' => 'tender_name',
+                    'Category' => 'type',
+                    'Transaction Count' => 'count',
+                    'Total Amount' => fn($r) => number_format((float) $r->total_amount, 2),
+                ],
+                'tender-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
+
         $totalCollected = (float) $rows->sum('total_amount');
         $branches = Branch::orderBy('name')->pluck('name', 'id');
         $tenderTypes = TenderType::orderBy('name')->pluck('name', 'id');
@@ -788,8 +930,8 @@ class ReportController extends Controller
             });
         }
 
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv(
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
                 $query->orderByDesc('created_at'),
                 [
                     'Date & Time' => fn($log) => $log->created_at->format('d-m-Y H:i:s'),
@@ -800,7 +942,9 @@ class ReportController extends Controller
                     'Reason / Description' => fn($log) => $log->reason ?: '-',
                     'IP Address' => fn($log) => $log->ip_address ?: '-',
                 ],
-                'audit-logs-report.csv'
+                'audit-logs-report_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
@@ -881,11 +1025,11 @@ class ReportController extends Controller
         };
 
         // Full-dataset export is server-side and streamed; the on-page table only holds one page.
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv($query, [
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData($query, [
                 'Date' => '', 'Bill No' => '', 'Customer' => '', 'Branch' => '', 'Item Code' => '', 'Item' => '', 'Brand' => '', 'Category' => '',
                 'Qty' => '', 'Sell/unit' => '', 'Cost/unit' => '', 'Sell Total' => '', 'COGS' => '', 'Gross Profit' => '', 'Margin %' => '',
-            ], 'sales-margin-itemwise-report.csv', function ($line) use ($mapLine) {
+            ], 'sales-margin-itemwise_' . $from . '_to_' . $to . '.xlsx', function ($line) use ($mapLine) {
                 $l = $mapLine($line);
 
                 return [
@@ -899,7 +1043,7 @@ class ReportController extends Controller
                     number_format($l->gross_margin, 2, '.', ''),
                     number_format($l->margin_pct, 1, '.', ''),
                 ];
-            });
+            }, $request->query('export') === 'csv' ? 'csv' : 'excel');
         }
 
         $lines = $query->paginate(100)->withQueryString()->through($mapLine);
@@ -957,6 +1101,23 @@ class ReportController extends Controller
             })
             ->sortBy([['gross_margin', 'desc'], ['category_name', 'asc']])
             ->values();
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $grouped,
+                [
+                    'Category' => 'category_name',
+                    'Total Qty' => 'qty',
+                    'Sell Total' => fn($r) => number_format((float) $r->sell_total, 2),
+                    'Cost of Goods (COGS)' => fn($r) => number_format((float) $r->cog_total, 2),
+                    'Gross Margin' => fn($r) => number_format((float) $r->gross_margin, 2),
+                    'Margin %' => fn($r) => number_format((float) $r->margin_pct, 1) . '%',
+                ],
+                'sales-margin-categorywise_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         $totals = [
             'sell_total'   => $grouped->sum('sell_total'),
@@ -1043,6 +1204,26 @@ class ReportController extends Controller
         // toBase(): an empty Eloquent collection would otherwise try to merge plain objects by model key and crash.
         $rows = $quotations->toBase()->merge($orders->toBase())->sortByDesc('date')->values();
 
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData(
+                $rows,
+                [
+                    'Type' => 'type',
+                    'Doc Number' => 'number',
+                    'Date' => fn($r) => $r->date ? \Carbon\Carbon::parse($r->date)->format('d-m-Y') : '',
+                    'Valid Until / Delivery' => fn($r) => $r->valid_until ? \Carbon\Carbon::parse($r->valid_until)->format('d-m-Y') : '',
+                    'Customer' => 'customer',
+                    'Branch' => 'branch',
+                    'Items Count' => 'items_count',
+                    'Total Amount' => fn($r) => number_format((float) $r->total, 2),
+                    'Status' => 'status',
+                ],
+                'quotation-order-summary_' . $from . '_to_' . $to . '.xlsx',
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
+
         $summary = [
             'total_quotations' => $quotations->count(),
             'total_orders'     => $orders->count(),
@@ -1103,8 +1284,8 @@ class ReportController extends Controller
         $query->orderBy('item_stocks.quantity')->orderBy('item_stocks.id');
 
         // Full-dataset export is server-side (the on-page table only holds one page).
-        if ($request->query('export') === 'csv') {
-            return $this->exportQueryToCsv($query, [
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            return $this->exportQueryOrData($query, [
                 'Item Code'   => fn ($s) => $s->item?->item_code,
                 'Item Name'   => fn ($s) => $s->item?->name,
                 'Brand'       => fn ($s) => $s->item?->brand?->name,
@@ -1115,7 +1296,7 @@ class ReportController extends Controller
                 'MRP'         => fn ($s) => number_format((float) $s->mrp, 2, '.', ''),
                 'Supplier'    => fn ($s) => $s->item?->supplier?->name,
                 'Status'      => fn ($s) => $s->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
-            ], 'reorder-stock-report.csv');
+            ], 'reorder-stock-report.xlsx', null, $request->query('export') === 'csv' ? 'csv' : 'excel');
         }
 
         $rows = $query->paginate(100)->withQueryString()->through(function ($stock) {
@@ -1151,7 +1332,41 @@ class ReportController extends Controller
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
         $search = $request->input('search');
 
+        $isExport = in_array($request->query('export'), ['excel', 'xlsx', 'csv']);
+        if ($isExport) {
+            $request->merge(['per_page' => 100000]);
+        }
+
         $reportData = $reportService->generate($request, $module);
+
+        if ($isExport) {
+            $title = $reportData['title'] ?? ucfirst(str_replace('-', ' ', $module));
+            $filename = \Illuminate\Support\Str::slug($title) . '_' . ($from ?: now()->format('Y-m-d')) . '.xlsx';
+            $columns = $reportData['columns'] ?? [];
+            $exportColumns = array_values(array_filter($columns, fn($c) => $c !== '#' && !empty($c)));
+            $rows = $reportData['rows'] ?? [];
+
+            $exportRows = [];
+            foreach ($rows as $r) {
+                $cells = is_array($r) ? ($r['cells'] ?? []) : (is_object($r) ? ($r->cells ?? []) : []);
+                $rowClean = [];
+                foreach ($columns as $cIdx => $colName) {
+                    if ($colName === '#') continue;
+                    $val = $cells[$cIdx] ?? '';
+                    $valClean = html_entity_decode(strip_tags((string) $val), ENT_QUOTES, 'UTF-8');
+                    $rowClean[] = trim($valClean);
+                }
+                $exportRows[] = $rowClean;
+            }
+
+            return $this->exportQueryOrData(
+                $exportRows,
+                array_combine($exportColumns, array_keys($exportColumns)),
+                $filename,
+                null,
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         return view('reports.generic-report', array_merge($reportData, [
             'module' => $module,
@@ -1281,5 +1496,104 @@ class ReportController extends Controller
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    /**
+     * Export query results to Excel (.xlsx) or CSV based on format requested.
+     */
+    protected function exportQueryOrData($source, array $columns, string $filename, ?callable $rowMapper = null, string $format = 'excel')
+    {
+        $headerLabels = array_map(function ($val, $key) {
+            return is_string($key) ? $key : $val;
+        }, array_values($columns), array_keys($columns));
+
+        if ($format === 'csv') {
+            $csvFilename = str_ends_with($filename, '.csv') ? $filename : (preg_replace('/\.(xlsx|xls)$/i', '', $filename) . '.csv');
+            if (is_array($source) || $source instanceof \Illuminate\Support\Collection) {
+                return response()->stream(function () use ($source, $columns, $headerLabels, $rowMapper) {
+                    $handle = fopen('php://output', 'w');
+                    fwrite($handle, "\xEF\xBB\xBF");
+                    fputcsv($handle, $headerLabels);
+                    foreach ($source as $item) {
+                        if ($rowMapper !== null) {
+                            $mapped = $rowMapper($item);
+                            if (is_array($mapped) && isset($mapped[0]) && is_array($mapped[0])) {
+                                foreach ($mapped as $subRow) {
+                                    fputcsv($handle, $subRow);
+                                }
+                            } elseif (is_array($mapped)) {
+                                fputcsv($handle, $mapped);
+                            }
+                        } else {
+                            $line = [];
+                            foreach ($columns as $header => $extractor) {
+                                $line[] = is_callable($extractor) ? $extractor($item) : data_get($item, $extractor, '');
+                            }
+                            fputcsv($handle, $line);
+                        }
+                    }
+                    fclose($handle);
+                }, 200, [
+                    'Content-Type' => 'text/csv; charset=UTF-8',
+                    'Content-Disposition' => "attachment; filename=\"{$csvFilename}\"",
+                    'Pragma' => 'no-cache',
+                    'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+                    'Expires' => '0',
+                ]);
+            }
+            return $this->exportQueryToCsv($source, $columns, $csvFilename, $rowMapper);
+        }
+
+        // Export as real Excel (.xlsx)
+        $xlsxFilename = str_ends_with($filename, '.xlsx') ? $filename : (preg_replace('/\.(csv|xls)$/i', '', $filename) . '.xlsx');
+        $rows = [];
+
+        if (is_array($source) || $source instanceof \Illuminate\Support\Collection) {
+            foreach ($source as $item) {
+                if ($rowMapper !== null) {
+                    $mapped = $rowMapper($item);
+                    if (is_array($mapped) && isset($mapped[0]) && is_array($mapped[0])) {
+                        foreach ($mapped as $subRow) {
+                            $rows[] = $subRow;
+                        }
+                    } elseif (is_array($mapped)) {
+                        $rows[] = $mapped;
+                    }
+                } else {
+                    $line = [];
+                    foreach ($columns as $header => $extractor) {
+                        $line[] = is_callable($extractor) ? $extractor($item) : data_get($item, $extractor, '');
+                    }
+                    $rows[] = $line;
+                }
+            }
+        } else {
+            // Eloquent / Query Builder: chunk for memory efficiency
+            $source->chunk(500, function ($chunk) use (&$rows, $columns, $rowMapper) {
+                foreach ($chunk as $item) {
+                    if ($rowMapper !== null) {
+                        $mapped = $rowMapper($item);
+                        if (is_array($mapped) && isset($mapped[0]) && is_array($mapped[0])) {
+                            foreach ($mapped as $subRow) {
+                                $rows[] = $subRow;
+                            }
+                        } elseif (is_array($mapped)) {
+                            $rows[] = $mapped;
+                        }
+                    } else {
+                        $line = [];
+                        foreach ($columns as $header => $extractor) {
+                            $line[] = is_callable($extractor) ? $extractor($item) : data_get($item, $extractor, '');
+                        }
+                        $rows[] = $line;
+                    }
+                }
+            });
+        }
+
+        return Excel::download(
+            new GenericReportExport($rows, $headerLabels),
+            $xlsxFilename
+        );
     }
 }

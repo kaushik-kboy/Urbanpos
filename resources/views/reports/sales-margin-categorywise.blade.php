@@ -23,7 +23,7 @@
                 </select>
                 <button type="submit" class="btn btn-sm btn-primary mr-2"><i class="fas fa-search mr-1"></i> Apply</button>
                 <a href="{{ route('reports.sales-margin-category') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
-                <button type="button" id="csvExport" class="btn btn-sm btn-outline-info ml-2"><i class="fas fa-file-csv mr-1"></i> CSV</button>
+                <button type="submit" name="export" value="excel" class="btn btn-sm btn-success font-weight-bold shadow-sm ml-2"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
                 <button type="button" class="btn btn-sm btn-outline-primary ml-2 font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
             </form>
         </div>
@@ -75,6 +75,7 @@
                     <h3 class="card-title mb-0">Category Breakdown</h3>
                     <div class="card-tools d-flex align-items-center ml-auto">
                         <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                        <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success mr-2 font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
                         <button type="button" onclick="exportTableToCSV('catTable', 'sales-margin-categorywise-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
                         <x-table-column-customizer table-key="reports.sales-margin-categorywise" table-id="catTable" button-class="btn btn-sm btn-light border text-secondary" />
                     </div>

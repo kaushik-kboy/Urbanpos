@@ -15,9 +15,12 @@
             <a href="{{ route('master.loyalty-points.index') }}" class="btn btn-outline-secondary mr-2">
                 <i class="fas fa-coins mr-1"></i>Adjust Points
             </a>
-            <button type="button" class="btn btn-success" onclick="exportTableToCSV('customer-loyalty-report.csv')">
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-success mr-2 font-weight-bold shadow-sm">
+                <i class="fas fa-file-excel mr-1"></i>Export Excel
+            </a>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-outline-success">
                 <i class="fas fa-file-csv mr-1"></i>Export CSV
-            </button>
+            </a>
         </div>
     </div>
 @stop
@@ -83,9 +86,12 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-5">
                     <button type="submit" class="btn btn-sm btn-primary mr-1">
                         <i class="fas fa-filter mr-1"></i>Filter
+                    </button>
+                    <button type="submit" name="export" value="excel" class="btn btn-sm btn-success font-weight-bold shadow-sm mr-1">
+                        <i class="fas fa-file-excel mr-1"></i>Export Excel
                     </button>
                     <a href="{{ route('finance.reports.customer-loyalty') }}" class="btn btn-sm btn-default">
                         <i class="fas fa-times mr-1"></i>Reset

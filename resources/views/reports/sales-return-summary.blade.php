@@ -51,7 +51,8 @@
                 </div>
                 <div class="col-md-4 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                    <a href="{{ route('reports.sales-return-summary') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('reports.sales-return-summary') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
+                    <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
                 </div>
             </form>
         </div>
@@ -62,6 +63,7 @@
             <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-undo mr-1"></i> Returns</h3>
             <div class="card-tools d-flex align-items-center ml-auto">
                 <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success mr-2 font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
                 <button type="button" onclick="exportTableToCSV('sales-return-table', 'sales-return-summary-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
                 <x-table-column-customizer table-key="reports.sales-return-summary" table-id="sales-return-table" button-class="btn btn-sm btn-light border text-secondary" />
             </div>

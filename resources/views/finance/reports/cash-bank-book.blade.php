@@ -5,10 +5,16 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <h1><i class="fas fa-money-check-alt mr-2 text-primary"></i>Cash & Bank Book</h1>
-        <div>
-            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm mr-1">
+        <div class="d-flex align-items-center">
+            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm mr-2">
                 <i class="fas fa-print mr-1"></i> Print
             </button>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-success btn-sm font-weight-bold shadow-sm mr-2">
+                <i class="fas fa-file-excel mr-1"></i> Export Excel
+            </a>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-outline-success btn-sm mr-2">
+                <i class="fas fa-file-csv mr-1"></i> Export CSV
+            </a>
             <a href="{{ route('finance.reports.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left mr-1"></i> Reports Index
             </a>
@@ -45,7 +51,7 @@
                     <label class="small font-weight-bold mb-1">To Date</label>
                     <input type="date" name="to" class="form-control form-control-sm" value="{{ $to }}">
                 </div>
-                <div class="col-md-2 col-sm-6 mb-2">
+                <div class="col-md-1 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>
                     <select name="branch_id" class="form-control form-control-sm">
                         <option value="">All Branches</option>
@@ -54,9 +60,12 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-1 col-sm-12 mb-2">
-                    <button type="submit" class="btn btn-primary btn-sm btn-block">
-                        <i class="fas fa-filter"></i>
+                <div class="col-md-2 col-sm-12 mb-2 d-flex">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill mr-1">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                    <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm">
+                        <i class="fas fa-file-excel mr-1"></i> Excel
                     </button>
                 </div>
             </form>

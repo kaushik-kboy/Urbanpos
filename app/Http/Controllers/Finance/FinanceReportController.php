@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Finance;
 
+use App\Exports\GenericReportExport;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -9,12 +10,38 @@ use App\Models\JournalEntry;
 use App\Models\Ledger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class FinanceReportController extends Controller
 {
     public function index()
     {
         return view('finance.reports.index');
+    }
+
+    protected function exportData(array $rows, array $headers, string $filename, string $format = 'excel')
+    {
+        if ($format === 'csv') {
+            $csvFilename = preg_replace('/\.(xlsx|xls)$/i', '', $filename) . '.csv';
+            return response()->stream(function () use ($rows, $headers) {
+                $handle = fopen('php://output', 'w');
+                fwrite($handle, "\xEF\xBB\xBF");
+                fputcsv($handle, array_values($headers));
+                foreach ($rows as $row) {
+                    fputcsv($handle, $row);
+                }
+                fclose($handle);
+            }, 200, [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$csvFilename}\"",
+            ]);
+        }
+
+        $xlsxFilename = preg_replace('/\.(csv|xls)$/i', '', $filename) . '.xlsx';
+        return Excel::download(
+            new GenericReportExport($rows, array_values($headers)),
+            $xlsxFilename
+        );
     }
 
     public function generalLedger(Request $request)
@@ -42,6 +69,42 @@ class FinanceReportController extends Controller
                 ->get()
                 ->sortBy(fn ($line) => $line->journalEntry->voucher_date)
                 ->values();
+        }
+
+        if ($ledger && in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            $exportRows = [];
+            $running = $openingBalance;
+            $exportRows[] = [
+                'Opening Balance',
+                '-',
+                '-',
+                '-',
+                '-',
+                '-',
+                number_format($openingBalance, 2),
+            ];
+
+            foreach ($lines as $line) {
+                $deb = (float) $line->debit;
+                $cred = (float) $line->credit;
+                $running += ($deb - $cred);
+                $exportRows[] = [
+                    $line->journalEntry?->voucher_date ? \Carbon\Carbon::parse($line->journalEntry->voucher_date)->format('d-m-Y') : '',
+                    $line->journalEntry?->voucher_number ?? '',
+                    $line->journalEntry?->voucher_type ?? '',
+                    $line->narration ?: ($line->journalEntry?->narration ?: ''),
+                    $deb > 0 ? number_format($deb, 2) : '0.00',
+                    $cred > 0 ? number_format($cred, 2) : '0.00',
+                    number_format($running, 2),
+                ];
+            }
+
+            return $this->exportData(
+                $exportRows,
+                ['Date', 'Voucher Number', 'Type', 'Narration', 'Debit', 'Credit', 'Balance'],
+                'general-ledger-' . \Illuminate\Support\Str::slug($ledger->name) . '_' . $from . '_to_' . $to . '.xlsx',
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
         }
 
         return view('finance.reports.general-ledger', compact('ledgers', 'ledger', 'ledgerId', 'from', 'to', 'lines', 'openingBalance'));
@@ -84,6 +147,35 @@ class FinanceReportController extends Controller
         $totalDebit = (float) $sums->d;
         $totalCredit = (float) $sums->c;
 
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            $exportRows = [];
+            $query->chunk(500, function ($entriesChunk) use (&$exportRows) {
+                foreach ($entriesChunk as $entry) {
+                    $date = $entry->voucher_date ? \Carbon\Carbon::parse($entry->voucher_date)->format('d-m-Y') : '';
+                    $branchName = $entry->branch?->name ?? 'All';
+                    foreach ($entry->lines as $line) {
+                        $exportRows[] = [
+                            $date,
+                            $entry->voucher_number,
+                            $entry->voucher_type,
+                            $branchName,
+                            $line->ledger?->name ?? '',
+                            $line->narration ?: ($entry->narration ?: ''),
+                            (float) $line->debit > 0 ? number_format((float) $line->debit, 2) : '0.00',
+                            (float) $line->credit > 0 ? number_format((float) $line->credit, 2) : '0.00',
+                        ];
+                    }
+                }
+            });
+
+            return $this->exportData(
+                $exportRows,
+                ['Date', 'Voucher Number', 'Type', 'Branch', 'Ledger / Account', 'Narration', 'Debit', 'Credit'],
+                'day-book_' . $from . '_to_' . $to . '.xlsx',
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
+
         $entries = $query->orderBy('voucher_date')
             ->orderBy('id')
             ->paginate(100)->withQueryString();
@@ -108,6 +200,35 @@ class FinanceReportController extends Controller
                 'credit' => $balance < 0 ? abs($balance) : 0,
             ];
         })->filter(fn ($row) => $row->debit != 0 || $row->credit != 0)->values();
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            $exportRows = [];
+            $totalD = 0;
+            $totalC = 0;
+            foreach ($ledgers as $l) {
+                $totalD += $l->debit;
+                $totalC += $l->credit;
+                $exportRows[] = [
+                    $l->name,
+                    $l->ledger_group,
+                    $l->debit > 0 ? number_format((float) $l->debit, 2) : '0.00',
+                    $l->credit > 0 ? number_format((float) $l->credit, 2) : '0.00',
+                ];
+            }
+            $exportRows[] = [
+                'TOTAL',
+                '',
+                number_format($totalD, 2),
+                number_format($totalC, 2),
+            ];
+
+            return $this->exportData(
+                $exportRows,
+                ['Ledger Name', 'Group', 'Debit', 'Credit'],
+                'trial-balance_as_of_' . $asOf . '.xlsx',
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         return view('finance.reports.trial-balance', compact('ledgers', 'asOf'));
     }
@@ -164,6 +285,32 @@ class FinanceReportController extends Controller
         // Trading Gross Profit: Net Sales - Gross Purchases
         $grossProfit = $netSales - $grossPurchase;
         $netProfit = $grossProfit + $totalIndirectIncomes - $totalExpenses;
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            $exportRows = [
+                ['Gross Sales', 'Revenue', number_format($grossSales, 2)],
+                ['Less: Sales Return', 'Revenue', number_format($salesReturn, 2)],
+                ['Net Sales', 'Revenue', number_format($netSales, 2)],
+                ['Gross Purchases', 'Direct Cost', number_format($grossPurchase, 2)],
+                ['Gross Profit / (Loss)', 'Gross Profit', number_format($grossProfit, 2)],
+            ];
+            foreach ($incomeLedgers as $inc) {
+                $exportRows[] = [$inc->name, $inc->group, number_format((float) $inc->amount, 2)];
+            }
+            $exportRows[] = ['Total Indirect Income', 'Income', number_format($totalIndirectIncomes, 2)];
+            foreach ($expenseLedgers as $exp) {
+                $exportRows[] = [$exp->name, $exp->group, number_format((float) $exp->amount, 2)];
+            }
+            $exportRows[] = ['Total Indirect Expenses', 'Expense', number_format($totalExpenses, 2)];
+            $exportRows[] = ['NET PROFIT / (LOSS)', 'Bottom Line', number_format($netProfit, 2)];
+
+            return $this->exportData(
+                $exportRows,
+                ['Particulars', 'Classification', 'Amount'],
+                'profit-loss_' . $from . '_to_' . $to . '.xlsx',
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         $branches = \App\Models\Branch::orderBy('name')->pluck('name', 'id');
 
@@ -231,6 +378,36 @@ class FinanceReportController extends Controller
         $totalCredit = (float) $lines->sum('credit');
         $closingBalance = $openingBalance + $totalDebit - $totalCredit;
 
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            $exportRows = [];
+            $running = $openingBalance;
+            $exportRows[] = ['Opening Balance', '-', '-', '-', '-', '-', '-', number_format($openingBalance, 2)];
+            foreach ($lines as $line) {
+                $deb = (float) $line->debit;
+                $cred = (float) $line->credit;
+                $running += ($deb - $cred);
+                $exportRows[] = [
+                    $line->journalEntry?->voucher_date ? \Carbon\Carbon::parse($line->journalEntry->voucher_date)->format('d-m-Y') : '',
+                    $line->journalEntry?->voucher_number ?? '',
+                    $line->journalEntry?->voucher_type ?? '',
+                    $line->journalEntry?->branch?->name ?? '',
+                    $line->ledger?->name ?? '',
+                    $line->narration ?: ($line->journalEntry?->narration ?: ''),
+                    $deb > 0 ? number_format($deb, 2) : '0.00',
+                    $cred > 0 ? number_format($cred, 2) : '0.00',
+                    number_format($running, 2),
+                ];
+            }
+            $exportRows[] = ['Closing Balance', '-', '-', '-', '-', '-', '-', number_format($closingBalance, 2)];
+
+            return $this->exportData(
+                $exportRows,
+                ['Date', 'Voucher Number', 'Type', 'Branch', 'Ledger', 'Narration', 'Debit', 'Credit', 'Balance'],
+                'cash-bank-book_' . $from . '_to_' . $to . '.xlsx',
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
+
         $branches = \App\Models\Branch::orderBy('name')->pluck('name', 'id');
 
         return view('finance.reports.cash-bank-book', compact(
@@ -263,6 +440,39 @@ class FinanceReportController extends Controller
             'b61_90' => collect($rows)->sum('bucket_61_90'),
             'b90_plus' => collect($rows)->sum('bucket_90_plus'),
         ];
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            $exportRows = [];
+            foreach ($rows as $r) {
+                $exportRows[] = [
+                    $r['party_name'],
+                    $r['phone'],
+                    $r['bill_count'],
+                    number_format((float) $r['total_due'], 2),
+                    number_format((float) $r['bucket_0_30'], 2),
+                    number_format((float) $r['bucket_31_60'], 2),
+                    number_format((float) $r['bucket_61_90'], 2),
+                    number_format((float) $r['bucket_90_plus'], 2),
+                ];
+            }
+            $exportRows[] = [
+                'TOTAL',
+                '',
+                '',
+                number_format((float) $totals['total'], 2),
+                number_format((float) $totals['b0_30'], 2),
+                number_format((float) $totals['b31_60'], 2),
+                number_format((float) $totals['b61_90'], 2),
+                number_format((float) $totals['b90_plus'], 2),
+            ];
+
+            return $this->exportData(
+                $exportRows,
+                ['Party Name', 'Phone', 'Bills Count', 'Total Due', '0-30 Days', '31-60 Days', '61-90 Days', '90+ Days'],
+                'outstanding-aging-' . strtolower($partyType) . '_as_of_' . $asOfDate . '.xlsx',
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         return view('finance.reports.outstanding-aging', compact(
             'partyType', 'branchId', 'asOfDate', 'branches', 'rows', 'totals'
@@ -437,6 +647,29 @@ class FinanceReportController extends Controller
         ];
 
         $branches = Branch::orderBy('name')->pluck('name', 'id');
+
+        if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
+            $exportRows = [];
+            foreach ($customers as $c) {
+                $exportRows[] = [
+                    $c['name'],
+                    $c['phone'] ?: '-',
+                    $c['category'],
+                    $c['enable_loyalty'] ? 'Yes' : 'No',
+                    number_format((float) $c['earned'], 2),
+                    number_format((float) $c['redeemed'], 2),
+                    number_format((float) $c['balance'], 2),
+                    $c['last_activity'],
+                ];
+            }
+
+            return $this->exportData(
+                $exportRows,
+                ['Customer Name', 'Phone', 'Category', 'Loyalty Active', 'Points Earned', 'Points Redeemed', 'Current Balance', 'Last Activity'],
+                'customer-loyalty-report.xlsx',
+                $request->query('export') === 'csv' ? 'csv' : 'excel'
+            );
+        }
 
         return view('finance.reports.customer-loyalty', compact('customers', 'totals', 'branches', 'branchId', 'search'));
     }
