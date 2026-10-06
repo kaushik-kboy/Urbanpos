@@ -291,7 +291,7 @@
                     @if($customerMobile)
                         <tr><td style="color: #64748b;">Mobile</td><td>: {{ $customerMobile }}</td></tr>
                     @endif
-                    @if($petName)
+                    @if($receiptSettings->show_customer_pet_name && $petName)
                         <tr><td style="color: #64748b;">Pet Name</td><td>: <strong>{{ $petName }}</strong></td></tr>
                     @endif
                     <tr><td style="color: #64748b; vertical-align: top;">Address</td><td>: {{ $customerAddress }}</td></tr>
@@ -302,8 +302,25 @@
             </div>
         </div>
 
+        @if($receiptSettings->show_ship_to)
+            {{-- Details of Consignee | Ship To: --}}
+            <div style="flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; overflow: hidden; background: #fff;">
+                <div style="background: color-mix(in srgb, var(--accent) 10%, #f8fafc); border-bottom: 1px solid #cbd5e1; padding: 4px 8px; font-weight: bold; font-size: 10px; color: var(--accent); text-transform: uppercase;">
+                    Details of Consignee | Ship To:
+                </div>
+                <div style="padding: 6px 8px; font-size: 10px; line-height: 1.45;">
+                    <table style="width: 100%;">
+                        <tr><td style="width: 60px; color: #64748b;">Details</td><td>: <em>Same as Billing Address</em></td></tr>
+                        <tr><td style="color: #64748b;">Delivery</td><td>: Store Pickup / Local Delivery</td></tr>
+                        <tr><td style="color: #64748b;">Contact</td><td>: {{ $customerMobile }}</td></tr>
+                        <tr><td style="color: #64748b;">Place</td><td>: {{ $salesBill->branch?->state ?: 'Gujarat' }}</td></tr>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         @if($headerLayout !== 'logo_left_address_below')
-            {{-- In Logo Left + Address Right (Image 3 Style): Consignee / Ship To is replaced by Invoice Details card --}}
+            {{-- In Split / Centered layouts: Invoice Details card beside parties --}}
             <div style="flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; overflow: hidden; background: #fff;">
                 <div style="background: color-mix(in srgb, var(--accent) 10%, #f8fafc); border-bottom: 1px solid #cbd5e1; padding: 4px 8px; font-weight: bold; font-size: 10px; color: var(--accent); text-transform: uppercase;">
                     Invoice Details:
@@ -317,21 +334,6 @@
                         @if($salesBill->posting_key || $salesBill->sales_delivery_note_id)
                             <tr><td style="color: #64748b;">Order Ref:</td><td>{{ $salesBill->sales_delivery_note_id ? 'DN-' . $salesBill->sales_delivery_note_id : $salesBill->posting_key }}</td></tr>
                         @endif
-                    </table>
-                </div>
-            </div>
-        @elseif($receiptSettings->show_ship_to)
-            {{-- For logo_left_address_below (Image 1 Style), metadata is in the top-right header, so right card is Ship To if enabled --}}
-            <div style="flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; overflow: hidden; background: #fff;">
-                <div style="background: color-mix(in srgb, var(--accent) 10%, #f8fafc); border-bottom: 1px solid #cbd5e1; padding: 4px 8px; font-weight: bold; font-size: 10px; color: var(--accent); text-transform: uppercase;">
-                    Details of Consignee | Ship To:
-                </div>
-                <div style="padding: 6px 8px; font-size: 10px; line-height: 1.45;">
-                    <table style="width: 100%;">
-                        <tr><td style="width: 60px; color: #64748b;">Details</td><td>: <em>Same as Billing Address</em></td></tr>
-                        <tr><td style="color: #64748b;">Delivery</td><td>: Store Pickup / Local Delivery</td></tr>
-                        <tr><td style="color: #64748b;">Contact</td><td>: {{ $customerMobile }}</td></tr>
-                        <tr><td style="color: #64748b;">Place</td><td>: {{ $salesBill->branch?->state ?: 'Gujarat' }}</td></tr>
                     </table>
                 </div>
             </div>
@@ -542,13 +544,15 @@
         @if($receiptSettings->show_payment_details)
             <div style="flex: 1.1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 8px; font-size: 9.5px; background: #fff;">
                 <div style="font-weight: bold; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
-                    PAYMENT &amp; UPI DETAILS
+                    PAYMENT {!! $receiptSettings->show_upi_qr ? '&amp; UPI ' : '' !!}DETAILS
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="line-height: 1.5;">
                         <div><strong style="color: #64748b;">Mode:</strong> {{ $paymentModeStr ?: 'Cash / UPI' }}</div>
                         <div><strong style="color: #64748b;">Ref:</strong> {{ $paymentRefStr ?: ($salesBill->bill_number ?: 'IN01/2627/001002') }}</div>
-                        <div><strong style="color: #64748b;">UPI:</strong> {{ $receiptSettings->upi_id ?: '7383056626@okbizaxis' }}</div>
+                        @if($receiptSettings->show_upi_qr && $receiptSettings->upi_id)
+                            <div><strong style="color: #64748b;">UPI:</strong> {{ $receiptSettings->upi_id }}</div>
+                        @endif
                         <div style="color: #16a34a; font-weight: bold; margin-top: 2px;">
                             <i class="fas fa-check-circle"></i> Payment Settled (₹ {{ number_format($salesBill->total, 2) }})
                         </div>
@@ -607,15 +611,25 @@
         @endif
     </div>
 
+    {{-- Barcode at bottom (if enabled) --}}
+    @if($receiptSettings->show_barcode)
+        <div style="text-align: center; margin-top: 6px; margin-bottom: 4px;">
+            <div style="display: inline-block; height: 26px; width: 160px; background: repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 4px, #000 4px, #000 5px, #fff 5px, #fff 8px);"></div>
+            <div style="font-size: 8.5px; font-weight: bold; letter-spacing: 1.5px; color: #334155; margin-top: 1px;">
+                * {{ $salesBill->bill_number }} *
+            </div>
+        </div>
+    @endif
+
     {{-- ── 7. TERMS & CONDITIONS FOOTER ───────────────────────────────────────── --}}
     <div style="border-top: 1px solid #cbd5e1; padding-top: 8px; font-size: 8.5px; color: #64748b; line-height: 1.35;">
         <div style="display: flex; justify-content: space-between; align-items: flex-end;">
             <div style="width: 70%;">
-                <div style="font-weight: bold; color: #334155; margin-bottom: 2px;">Terms & Conditions:</div>
+                <div style="font-weight: bold; color: #334155; margin-bottom: 2px;">Terms &amp; Conditions / Return Policy:</div>
                 <div>{!! nl2br(e($receiptSettings->terms_conditions ?: ($receiptSettings->footer_policy ?: "1. Please check goods at the time of purchase/delivery for any damage or defect.\n2. Returns or exchanges accepted only with original bill within 7 days.\n3. Subject to local jurisdiction."))) !!}</div>
             </div>
             <div style="width: 28%; text-align: right; color: var(--accent); font-weight: bold; font-size: 9.5px;">
-                <div>Thank You for Shopping! 🐾</div>
+                <div>{{ $receiptSettings->footer_note ?: 'Thank You for Shopping! 🐾' }}</div>
                 <div style="font-size: 8px; color: #94a3b8; font-weight: normal; margin-top: 2px;">{{ $email }}</div>
             </div>
         </div>

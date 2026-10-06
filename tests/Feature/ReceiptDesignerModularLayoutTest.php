@@ -227,8 +227,9 @@ class ReceiptDesignerModularLayoutTest extends TestCase
             'header_address'         => "Shop 1-4, Rivera Complex, Ahmedabad - 380005",
             'phone'                  => '7383056626',
             'gstin'                  => '24ABCDE1234F1Z5',
-            'show_ship_to'           => true, // Even if true, logo_left_address_right uses Invoice Details card in that slot
+            'show_ship_to'           => false,
             'show_tax_summary_table' => true,
+            'show_upi_qr'            => true,
         ]);
 
         $customer = Customer::create([
@@ -313,6 +314,11 @@ class ReceiptDesignerModularLayoutTest extends TestCase
 
     public function test_a4_gst_renders_pet_name_and_omits_unregistered_gstin(): void
     {
+        $settings = ReceiptSetting::current($this->branch->id);
+        $settings->update([
+            'show_customer_pet_name' => true,
+        ]);
+
         $customer = Customer::create([
             'name'      => 'Aakash Dave',
             'phone'     => '9879011223',
