@@ -94,12 +94,19 @@ class RolesAndPermissionsSeeder extends Seeder
      * for Owner — this is the real distinction between the two roles, not a cosmetic one.
      */
     private const MANAGER_MODULES = [
-        'purchase-invoices', 'purchase-returns', 'purchase-receipt-notes', 'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'sales-delivery-notes', 'damage-stocks',
-        'opening-stocks', 'stock-updates', 'stock-transfers', 'bill-settlements', 'loyalty-programs',
-        'item-categories', 'item-category-values', 'product-types', 'brands', 'uoms',
-        'customer-categories', 'customer-types', 'sales-types', 'customers', 'areas', 'pet-types', 'breeds', 'colors',
-        'suppliers', 'registers', 'tender-types', 'tender-type-values', 'gst-types',
-        'purchase-orders', 'purchase-indents', 'repack', 'kit-preparation', 'kit-unpack', 'till',
+        'purchase-invoices', 'purchase-returns', 'purchase-receipt-notes', 'purchase-orders', 'purchase-indents',
+        'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'sales-delivery-notes',
+        'damage-stocks', 'opening-stocks', 'stock-updates', 'stock-transfers', 'repack', 'kit-preparation', 'kit-unpack', 'kit-recipes', 'barcode-printing',
+        'bill-settlements', 'loyalty-programs',
+        'item-categories', 'item-category-values', 'product-types', 'brands', 'uoms', 'kit-mapping',
+        'customer-categories', 'customer-types', 'sales-types', 'customers', 'customer-pets', 'loyalty-points', 'areas', 'pet-types', 'breeds', 'colors',
+        'suppliers', 'registers', 'tender-types', 'tender-type-values', 'gst-types', 'till',
+        // Reports & Analytics
+        'reports-dashboard', 'reports-sales', 'reports-purchase', 'reports-inventory', 'reports-finance', 'reports-audit', 'reports-smart-analytics',
+        // Compliance
+        'eway-bills', 'einvoices', 'gst-returns',
+        // Tools & Templates
+        'whatsapp-settings', 'document-sequences', 'receipt-designer',
     ];
 
     /**
@@ -109,14 +116,21 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     private const MANAGER_EXTRA_PERMISSIONS = [
         'items.create',
+        'reports-analytics-builder.view',
     ];
 
     public function run(): void
     {
+        $groups = \App\Http\Controllers\Master\RoleController::getPermissionGroups();
         $permissions = [];
-        foreach (self::MODULE_ACTIONS as $module => $actions) {
-            foreach ($actions as $action) {
-                $permissions[] = Permission::firstOrCreate(['name' => "{$module}.{$action}", 'guard_name' => 'web']);
+        foreach ($groups as $groupKey => $group) {
+            foreach ($group['modules'] as $moduleKey => $mod) {
+                foreach (array_keys($mod['actions']) as $action) {
+                    $permissions[] = Permission::firstOrCreate([
+                        'name' => "{$moduleKey}.{$action}",
+                        'guard_name' => 'web',
+                    ]);
+                }
             }
         }
 

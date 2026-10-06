@@ -176,6 +176,8 @@ class RoleController extends Controller
                     'repack' => ['label' => 'Repack Operations', 'actions' => ['create' => 'Create Repack']],
                     'kit-preparation' => ['label' => 'Kit Preparation', 'actions' => ['create' => 'Prepare Kit']],
                     'kit-unpack' => ['label' => 'Kit Unpack', 'actions' => ['create' => 'Unpack Kit']],
+                    'kit-recipes' => ['label' => 'Kit Recipes & Assembly (BOM)', 'actions' => ['create' => 'Create Recipe', 'edit' => 'Edit Recipe', 'cancel' => 'Delete Recipe']],
+                    'barcode-printing' => ['label' => 'Barcode Label Studio', 'actions' => ['print' => 'Print Barcode Labels']],
                 ]
             ],
             'pricing' => [
@@ -205,6 +207,50 @@ class RoleController extends Controller
                     'till' => ['label' => 'Cash Drawer Shift Management', 'actions' => ['open' => 'Open Shift Float', 'close' => 'Close Shift Cash Count']],
                 ]
             ],
+            'reports' => [
+                'label' => 'Reports & Business Intelligence',
+                'icon' => 'fas fa-chart-line text-primary',
+                'modules' => [
+                    'reports-dashboard' => ['label' => 'Executive Reports Dashboard', 'actions' => ['view' => 'View Dashboard']],
+                    'reports-sales' => ['label' => 'Sales, Invoices & Margin Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
+                    'reports-purchase' => ['label' => 'Purchase, Vendor & Inward Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
+                    'reports-inventory' => ['label' => 'Stock, Transit & Movement Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
+                    'reports-finance' => ['label' => 'Finance, Day Book & General Ledger Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
+                    'reports-audit' => ['label' => 'Audit Trail & Login History Reports', 'actions' => ['view' => 'View Audit Reports']],
+                    'reports-analytics-builder' => ['label' => 'Custom Report Studio (Dynamic Builder)', 'actions' => ['view' => 'View Studio', 'create' => 'Generate & Save', 'cancel' => 'Delete Custom Reports']],
+                    'reports-smart-analytics' => ['label' => 'Smart Item & Customer 360° Analytics', 'actions' => ['view' => 'View Analytics', 'export' => 'Export Analytics']],
+                ]
+            ],
+            'compliance' => [
+                'label' => 'GST, E-Way Bill & E-Invoice Compliance',
+                'icon' => 'fas fa-file-invoice text-success',
+                'modules' => [
+                    'eway-bills' => ['label' => 'E-Way Bill Operations', 'actions' => ['create' => 'Generate E-Way Bill', 'edit' => 'Update Part-B / Vehicle', 'cancel' => 'Cancel E-Way Bill']],
+                    'einvoices' => ['label' => 'E-Invoice IRN Hub', 'actions' => ['view' => 'View Register', 'create' => 'Generate IRN', 'cancel' => 'Cancel IRN']],
+                    'gst-returns' => ['label' => 'GSTR-1, GSTR-3B & GSTR-2 Preparation', 'actions' => ['view' => 'View Returns', 'export' => 'Export JSON/CSV']],
+                ]
+            ],
+            'tools' => [
+                'label' => 'Tools & Configuration Settings',
+                'icon' => 'fas fa-cogs text-secondary',
+                'modules' => [
+                    'whatsapp-settings' => ['label' => 'WhatsApp Integration & Automated Alerts', 'actions' => ['edit' => 'Configure Gateway', 'send' => 'Send Test Message']],
+                    'document-sequences' => ['label' => 'Document Sequences & Numbering Rules', 'actions' => ['edit' => 'Configure Sequences']],
+                    'custom-fields' => ['label' => 'No-Code Custom Fields Builder', 'actions' => ['create' => 'Create Fields', 'edit' => 'Modify Fields', 'cancel' => 'Delete Fields']],
+                    'form-validations' => ['label' => 'Form Field Validation Manager', 'actions' => ['edit' => 'Configure Validation Rules']],
+                    'receipt-designer' => ['label' => 'Thermal Receipt & Invoice Print Designer', 'actions' => ['edit' => 'Customize Print Layout']],
+                    'bulk-updater' => ['label' => 'Universal Bulk Field Updater', 'actions' => ['apply' => 'Execute Bulk Updates']],
+                ]
+            ],
+            'system' => [
+                'label' => 'System Maintenance & Diagnostic Logs',
+                'icon' => 'fas fa-server text-danger',
+                'modules' => [
+                    'database-backups' => ['label' => 'Database Backup Console', 'actions' => ['create' => 'Create Database Backup', 'download' => 'Download Backup File', 'cancel' => 'Delete Backup File']],
+                    'system-health' => ['label' => 'System Health & Resource Monitor', 'actions' => ['view' => 'View Health & Diagnostics']],
+                    'system-error-logs' => ['label' => 'System Error & Exception Log Hub', 'actions' => ['view' => 'View Error Logs', 'cancel' => 'Clear / Resolve Logs']],
+                ]
+            ],
             'masters' => [
                 'label' => 'Master Reference Data',
                 'icon' => 'fas fa-th-large text-secondary',
@@ -213,12 +259,15 @@ class RoleController extends Controller
                     'customer-categories' => ['label' => 'Customer Categories', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'customer-types' => ['label' => 'Customer Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'sales-types' => ['label' => 'Sales Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'customer-pets' => ['label' => 'Customer Pets Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'loyalty-points' => ['label' => 'Customer Loyalty Points Adjustment', 'actions' => ['edit' => 'Adjust Points']],
                     'suppliers' => ['label' => 'Supplier / Vendor Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'item-categories' => ['label' => 'Item Categories', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'item-category-values' => ['label' => 'Category Sub-Values', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'product-types' => ['label' => 'Product Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'brands' => ['label' => 'Brands', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'uoms' => ['label' => 'Units of Measure (UOM)', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'kit-mapping' => ['label' => 'Kit Recipe & Assembly Mapping', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'areas' => ['label' => 'Areas / Geographies', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'pet-types' => ['label' => 'Pet Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'breeds' => ['label' => 'Breeds Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
@@ -233,10 +282,10 @@ class RoleController extends Controller
                 ]
             ],
             'security' => [
-                'label' => 'System Administration & Security',
+                'label' => 'Staff Accounts & System Administration',
                 'icon' => 'fas fa-shield-alt text-dark',
                 'modules' => [
-                    'users' => ['label' => 'Staff Accounts & Roles Assignment', 'actions' => ['create' => 'Create User', 'edit' => 'Edit User', 'cancel' => 'Delete User']],
+                    'users' => ['label' => 'Staff Accounts & Roles Assignment', 'actions' => ['create' => 'Create Staff', 'edit' => 'Edit Staff', 'cancel' => 'Delete Staff']],
                 ]
             ]
         ];

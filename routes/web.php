@@ -249,7 +249,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
 
     // Kit Recipe Master (GoFrugal / TruePOS Recipe Definition Engine)
     Route::get('kit-recipes/by-kit-item/{item}', [KitRecipeController::class, 'byKitItem'])->name('kit-recipes.by-kit-item');
-    Route::resource('kit-recipes', KitRecipeController::class);
+    $gatedResource('kit-recipes', KitRecipeController::class, 'kit-recipes');
 
     Route::get('price-drop', [InventoryMoreController::class, 'priceDrop'])->name('price-drop.index');
     Route::get('shelf-talker', [InventoryMoreController::class, 'shelfTalker'])->name('shelf-talker.index');

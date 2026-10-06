@@ -599,7 +599,7 @@ return [
         [
             'text' => 'Inventory',
             'icon' => 'fas fa-fw fa-warehouse',
-            'can' => ['opening-stocks.create', 'damage-stocks.create', 'stock-updates.create', 'stock-update-approval.approve', 'price-fixing.apply', 'change-selling.edit', 'repack.create', 'kit-preparation.create', 'kit-unpack.create', 'items.create'],
+            'can' => ['opening-stocks.create', 'damage-stocks.create', 'stock-updates.create', 'stock-update-approval.approve', 'price-fixing.apply', 'change-selling.edit', 'repack.create', 'kit-preparation.create', 'kit-unpack.create', 'items.create', 'barcode-printing.print', 'kit-recipes.create'],
             'submenu' => [
                 [
                     'text' => 'Opening Stock Entry',
@@ -634,7 +634,7 @@ return [
                     'url' => 'inventory/barcode',
                     'icon' => 'fas fa-fw fa-barcode',
                     'active' => ['inventory/barcode*'],
-                    'can' => 'items.create',
+                    'can' => ['barcode-printing.print', 'items.create'],
                 ],
                 [
                     'text' => 'Price Fixing',
@@ -671,13 +671,14 @@ return [
                 [
                     'text' => 'More Operations',
                     'icon' => 'fas fa-fw fa-cubes',
-                    'can' => ['repack.create', 'kit-preparation.create', 'kit-unpack.create', 'items.create', 'price-fixing.apply'],
+                    'can' => ['repack.create', 'kit-preparation.create', 'kit-unpack.create', 'items.create', 'price-fixing.apply', 'kit-recipes.create'],
                     'submenu' => [
                         ['text' => 'Repack', 'url' => 'inventory/repack', 'icon' => 'fas fa-fw fa-boxes', 'can' => 'repack.create'],
                         ['text' => 'Change Serial No', 'url' => 'inventory/change-serial-no', 'icon' => 'fas fa-fw fa-barcode', 'can' => 'items.create'],
                         ['text' => 'Price Drop', 'url' => 'inventory/price-drop', 'icon' => 'fas fa-fw fa-level-down-alt', 'can' => 'price-fixing.apply'],
                         ['text' => 'Kit Preparation', 'url' => 'inventory/kit-preparation', 'icon' => 'fas fa-fw fa-tools', 'can' => 'kit-preparation.create'],
                         ['text' => 'Kit Unpack', 'url' => 'inventory/kit-unpack', 'icon' => 'fas fa-fw fa-box-open', 'can' => 'kit-unpack.create'],
+                        ['text' => 'Kit Recipes (BOM)', 'url' => 'inventory/kit-recipes', 'icon' => 'fas fa-fw fa-layer-group', 'can' => 'kit-recipes.create'],
                         ['text' => 'Shelf Talker', 'url' => 'inventory/shelf-talker', 'icon' => 'fas fa-fw fa-sticky-note', 'can' => 'items.create'],
                     ],
                 ],
@@ -686,32 +687,33 @@ return [
         [
             'text' => 'Reports',
             'icon' => 'fas fa-fw fa-chart-bar',
-            'can' => ['users.create', 'items.create', 'sales-bills.edit', 'purchase-orders.create', 'ledgers.create'],
+            'can' => ['reports-dashboard.view', 'reports-sales.view', 'reports-purchase.view', 'reports-inventory.view', 'reports-finance.view', 'reports-audit.view', 'reports-analytics-builder.view', 'reports-smart-analytics.view'],
             'submenu' => [
                 [
                     'text' => 'Reports Dashboard',
                     'url' => 'reports',
                     'icon' => 'fas fa-fw fa-th-large',
                     'active' => ['reports'],
+                    'can' => 'reports-dashboard.view',
                 ],
                 [
                     'text' => 'Custom Report Studio (Builder)',
                     'url' => 'reports/analytics-builder',
                     'icon' => 'fas fa-fw fa-magic text-info',
                     'active' => ['reports/analytics-builder*'],
-                    'can' => 'users.create',
+                    'can' => 'reports-analytics-builder.view',
                 ],
                 [
                     'text' => 'Smart Item & Customer 360°',
                     'url' => 'reports/smart-analytics',
                     'icon' => 'fas fa-fw fa-chart-line text-warning',
                     'active' => ['reports/smart-analytics*'],
-                    'can' => ['users.create', 'items.create'],
+                    'can' => 'reports-smart-analytics.view',
                 ],
                 [
                     'text' => 'Masters',
                     'icon' => 'fas fa-fw fa-database',
-                    'can' => ['items.create', 'users.create'],
+                    'can' => ['reports-dashboard.view', 'reports-sales.view', 'reports-purchase.view', 'reports-inventory.view'],
                     'submenu' => [
                         ['text' => 'Customer Master', 'url' => 'reports/customer-master', 'icon' => 'fas fa-fw fa-users'],
                         ['text' => 'UOM Vs Item Mapping', 'url' => 'reports/view/uom-vs-item-mapping', 'icon' => 'fas fa-fw fa-balance-scale'],
@@ -734,7 +736,7 @@ return [
                 [
                     'text' => 'Purchase',
                     'icon' => 'fas fa-fw fa-truck',
-                    'can' => ['purchase-orders.create', 'purchase-invoices.create'],
+                    'can' => 'reports-purchase.view',
                     'submenu' => [
                         [
                             'text' => 'Transactions',
@@ -773,7 +775,7 @@ return [
                 [
                     'text' => 'Audit',
                     'icon' => 'fas fa-fw fa-shield-alt',
-                    'can' => 'users.create',
+                    'can' => 'reports-audit.view',
                     'submenu' => [
                         ['text' => 'Foot Fall Details', 'url' => 'reports/view/foot-fall-details', 'icon' => 'fas fa-fw fa-shoe-prints'],
                         ['text' => 'Reprint Count Details', 'url' => 'reports/view/reprint-count-details', 'icon' => 'fas fa-fw fa-print'],
@@ -790,7 +792,7 @@ return [
                 [
                     'text' => 'Sales',
                     'icon' => 'fas fa-fw fa-shopping-cart',
-                    'can' => ['sales-bills.edit', 'users.create'],
+                    'can' => 'reports-sales.view',
                     'submenu' => [
                         [
                             'text' => 'Sales',
@@ -888,7 +890,7 @@ return [
                 [
                     'text' => 'Inventory',
                     'icon' => 'fas fa-fw fa-boxes',
-                    'can' => ['opening-stocks.create', 'stock-updates.create'],
+                    'can' => 'reports-inventory.view',
                     'submenu' => [
                         [
                             'text' => 'Stock Ledger',
@@ -967,7 +969,7 @@ return [
                 [
                     'text' => 'My Reports',
                     'icon' => 'fas fa-fw fa-folder-open',
-                    'can' => ['sales-bills.edit', 'users.create'],
+                    'can' => 'reports-sales.view',
                     'submenu' => [
                         ['text' => 'Counterwise Sales Summary', 'url' => 'reports/view/my-counterwise-sales-summary', 'icon' => 'fas fa-fw fa-store'],
                         ['text' => 'Sales MIS report', 'url' => 'reports/view/my-sales-mis-report', 'icon' => 'fas fa-fw fa-file-invoice-dollar'],
@@ -977,7 +979,7 @@ return [
                 [
                     'text' => 'Production',
                     'icon' => 'fas fa-fw fa-industry',
-                    'can' => ['items.create', 'users.create'],
+                    'can' => 'reports-inventory.view',
                     'submenu' => [
                         ['text' => 'Production Plan', 'url' => 'reports/view/production-plan', 'icon' => 'fas fa-fw fa-tasks'],
                         ['text' => 'BOM Report', 'url' => 'reports/view/bom-report', 'icon' => 'fas fa-fw fa-sitemap'],
@@ -989,7 +991,7 @@ return [
                 [
                     'text' => 'More',
                     'icon' => 'fas fa-fw fa-ellipsis-h',
-                    'can' => ['items.create', 'users.create'],
+                    'can' => 'reports-dashboard.view',
                     'submenu' => [
                         [
                             'text' => 'Serialized Reports',
@@ -1009,7 +1011,7 @@ return [
         [
             'text' => 'Tools',
             'icon' => 'fas fa-fw fa-tools',
-            'can' => ['users.create', 'financial-years.create'],
+            'can' => ['users.create', 'whatsapp-settings.edit', 'whatsapp-settings.send', 'receipt-designer.edit', 'document-sequences.edit', 'custom-fields.create', 'form-validations.edit', 'system-error-logs.view', 'system-health.view', 'database-backups.create', 'bulk-updater.apply', 'einvoices.view', 'gst-returns.view', 'financial-years.create'],
             'submenu' => [
                 [
                     'text' => 'Configuration',
@@ -1026,17 +1028,17 @@ return [
                         ['text' => 'Asset LedgerMap', 'url' => 'tools/asset-ledger', 'icon' => 'fas fa-fw fa-landmark', 'can' => 'users.create'],
                         ['text' => 'Mail Server Configuration', 'url' => 'tools/mail-server', 'icon' => 'fas fa-fw fa-envelope', 'can' => 'users.create'],
                         ['text' => 'Category Wise Sequence', 'url' => 'tools/category-sequence', 'icon' => 'fas fa-fw fa-sort-numeric-down', 'can' => 'users.create'],
-                        ['text' => 'Form Field Validations', 'url' => 'tools/form-validations', 'icon' => 'fas fa-fw fa-check-double', 'can' => 'users.create'],
+                        ['text' => 'Form Field Validations', 'url' => 'tools/form-validations', 'icon' => 'fas fa-fw fa-check-double', 'can' => 'form-validations.edit'],
                     ],
                 ],
                 [
                     'text' => 'Integrations',
                     'icon' => 'fas fa-fw fa-plug',
-                    'can' => 'users.create',
+                    'can' => ['whatsapp-settings.edit', 'einvoices.view', 'gst-returns.view', 'users.create'],
                     'submenu' => [
-                        ['text' => 'WhatsApp Integration', 'url' => 'tools/whatsapp-settings', 'icon' => 'fab fa-fw fa-whatsapp text-success', 'active' => ['tools/whatsapp-settings*'], 'can' => 'users.create'],
+                        ['text' => 'WhatsApp Integration', 'url' => 'tools/whatsapp-settings', 'icon' => 'fab fa-fw fa-whatsapp text-success', 'active' => ['tools/whatsapp-settings*'], 'can' => ['whatsapp-settings.edit', 'whatsapp-settings.send']],
                         ['text' => 'GoFrugal Alert', 'url' => 'tools/integrations-alert', 'icon' => 'fas fa-fw fa-bell', 'can' => 'users.create'],
-                        ['text' => 'GST Efiling', 'url' => 'tools/integrations-gst', 'icon' => 'fas fa-fw fa-cloud-upload-alt', 'can' => 'users.create'],
+                        ['text' => 'GST Efiling', 'url' => 'tools/integrations-gst', 'icon' => 'fas fa-fw fa-cloud-upload-alt', 'can' => ['einvoices.view', 'gst-returns.view']],
                         ['text' => 'GOFRUGAL Gosure', 'url' => 'tools/integrations-gosure', 'icon' => 'fas fa-fw fa-shield-alt', 'can' => 'users.create'],
                     ],
                 ],
@@ -1045,35 +1047,35 @@ return [
                     'url' => 'tools/whatsapp-settings',
                     'icon' => 'fab fa-fw fa-whatsapp text-success',
                     'active' => ['tools/whatsapp-settings*'],
-                    'can' => 'users.create',
+                    'can' => ['whatsapp-settings.edit', 'whatsapp-settings.send'],
                 ],
                 [
                     'text' => 'Receipt Designer',
                     'url' => 'tools/receipt-designer',
                     'icon' => 'fas fa-fw fa-receipt text-warning',
                     'active' => ['tools/receipt-designer*'],
-                    'can' => 'users.create',
+                    'can' => 'receipt-designer.edit',
                 ],
                 [
                     'text' => 'Document Sequences',
                     'url' => 'tools/document-sequences',
                     'icon' => 'fas fa-fw fa-sort-numeric-up-alt text-primary',
                     'active' => ['tools/document-sequences*'],
-                    'can' => 'users.create',
+                    'can' => 'document-sequences.edit',
                 ],
                 [
                     'text' => 'Custom Fields Builder',
                     'url' => 'tools/custom-fields',
                     'icon' => 'fas fa-fw fa-sliders-h text-info',
                     'active' => ['tools/custom-fields*'],
-                    'can' => 'users.create',
+                    'can' => 'custom-fields.create',
                 ],
                 [
                     'text' => 'Form Validations',
                     'url' => 'tools/form-validations',
                     'icon' => 'fas fa-fw fa-check-double text-success',
                     'active' => ['tools/form-validations*'],
-                    'can' => 'users.create',
+                    'can' => 'form-validations.edit',
                 ],
                 [
                     'text' => 'Master Migration',
@@ -1086,28 +1088,28 @@ return [
                     'url' => 'tools/system-error-logs',
                     'icon' => 'fas fa-fw fa-bug text-danger',
                     'active' => ['tools/system-error-logs*'],
-                    'can' => 'users.create',
+                    'can' => 'system-error-logs.view',
                 ],
                 [
                     'text' => 'System Health & Monitor',
                     'url' => 'tools/system-health',
                     'icon' => 'fas fa-fw fa-heartbeat text-success',
                     'active' => ['tools/system-health*'],
-                    'can' => 'users.create',
+                    'can' => 'system-health.view',
                 ],
                 [
                     'text' => 'Database Backups',
                     'url' => 'tools/backups',
                     'icon' => 'fas fa-fw fa-database text-primary',
                     'active' => ['tools/backups*'],
-                    'can' => 'users.create',
+                    'can' => 'database-backups.create',
                 ],
                 [
                     'text' => 'Universal Bulk Modifier',
                     'url' => 'tools/bulk-updater',
                     'icon' => 'fas fa-fw fa-layer-group text-primary',
                     'active' => ['tools/bulk-updater*'],
-                    'can' => 'users.create',
+                    'can' => 'bulk-updater.apply',
                 ],
                 [
                     'text' => 'Manage Subscription',
@@ -1125,7 +1127,7 @@ return [
                         ['text' => 'Reprint', 'url' => 'tools/reprint', 'icon' => 'fas fa-fw fa-print', 'can' => 'users.create'],
                         ['text' => 'Multiple Dispatch', 'url' => 'tools/multiple-dispatch', 'icon' => 'fas fa-fw fa-paper-plane', 'can' => 'users.create'],
                         ['text' => 'Report Scheduler', 'url' => 'tools/report-scheduler', 'icon' => 'fas fa-fw fa-clock', 'can' => 'users.create'],
-                        ['text' => 'E-way Update', 'url' => 'tools/eway-update', 'icon' => 'fas fa-fw fa-route', 'can' => 'users.create'],
+                        ['text' => 'E-way Update', 'url' => 'tools/eway-update', 'icon' => 'fas fa-fw fa-route', 'can' => 'eway-bills.create'],
                         ['text' => 'Barcode Config', 'url' => 'tools/barcode-config', 'icon' => 'fas fa-fw fa-barcode', 'can' => 'users.create'],
                         ['text' => 'Service User Consent', 'url' => 'tools/service-consent', 'icon' => 'fas fa-fw fa-file-contract', 'can' => 'users.create'],
                     ],
@@ -1135,7 +1137,7 @@ return [
         [
             'text' => 'Finance & Accounts',
             'icon' => 'fas fa-fw fa-file-invoice-dollar',
-            'can' => ['ledgers.create', 'vouchers.create', 'bill-settlements.create'],
+            'can' => ['ledgers.create', 'vouchers.create', 'bill-settlements.create', 'reports-finance.view'],
             'submenu' => [
                 [
                     'text' => 'Ledger Master',
@@ -1162,14 +1164,14 @@ return [
                     'text' => 'Finance Reports',
                     'url' => 'finance/reports',
                     'icon' => 'fas fa-fw fa-chart-pie',
-                    'can' => ['ledgers.create', 'vouchers.create'],
+                    'can' => 'reports-finance.view',
                     'submenu' => [
-                        ['text' => 'General Ledger', 'url' => 'finance/reports/general-ledger', 'icon' => 'fas fa-fw fa-book', 'can' => 'ledgers.create'],
-                        ['text' => 'Day Book', 'url' => 'finance/reports/day-book', 'icon' => 'fas fa-fw fa-calendar-day', 'can' => 'ledgers.create'],
-                        ['text' => 'Cash & Bank Book', 'url' => 'finance/reports/cash-bank-book', 'icon' => 'fas fa-fw fa-money-check-alt', 'can' => 'ledgers.create'],
-                        ['text' => 'Billwise Outstanding Aging', 'url' => 'finance/reports/outstanding-aging', 'icon' => 'fas fa-fw fa-hourglass-half', 'can' => 'ledgers.create'],
-                        ['text' => 'Trial Balance', 'url' => 'finance/reports/trial-balance', 'icon' => 'fas fa-fw fa-balance-scale', 'can' => 'ledgers.create'],
-                        ['text' => 'Profit & Loss', 'url' => 'finance/reports/profit-loss', 'icon' => 'fas fa-fw fa-chart-pie', 'can' => 'ledgers.create'],
+                        ['text' => 'General Ledger', 'url' => 'finance/reports/general-ledger', 'icon' => 'fas fa-fw fa-book', 'can' => 'reports-finance.view'],
+                        ['text' => 'Day Book', 'url' => 'finance/reports/day-book', 'icon' => 'fas fa-fw fa-calendar-day', 'can' => 'reports-finance.view'],
+                        ['text' => 'Cash & Bank Book', 'url' => 'finance/reports/cash-bank-book', 'icon' => 'fas fa-fw fa-money-check-alt', 'can' => 'reports-finance.view'],
+                        ['text' => 'Billwise Outstanding Aging', 'url' => 'finance/reports/outstanding-aging', 'icon' => 'fas fa-fw fa-hourglass-half', 'can' => 'reports-finance.view'],
+                        ['text' => 'Trial Balance', 'url' => 'finance/reports/trial-balance', 'icon' => 'fas fa-fw fa-balance-scale', 'can' => 'reports-finance.view'],
+                        ['text' => 'Profit & Loss', 'url' => 'finance/reports/profit-loss', 'icon' => 'fas fa-fw fa-chart-pie', 'can' => 'reports-finance.view'],
                     ],
                 ],
             ],

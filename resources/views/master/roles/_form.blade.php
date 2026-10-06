@@ -129,6 +129,16 @@
                                                                 <span class="badge badge-warning px-1 py-0 mr-1"><i class="fas fa-lock"></i></span>
                                                             @elseif($actionKey === 'open' || $actionKey === 'reopen')
                                                                 <span class="badge badge-success px-1 py-0 mr-1"><i class="fas fa-unlock"></i></span>
+                                                            @elseif($actionKey === 'view')
+                                                                <span class="badge badge-info px-1 py-0 mr-1"><i class="fas fa-eye"></i></span>
+                                                            @elseif($actionKey === 'export' || $actionKey === 'download')
+                                                                <span class="badge badge-secondary px-1 py-0 mr-1"><i class="fas fa-download"></i></span>
+                                                            @elseif($actionKey === 'send')
+                                                                <span class="badge badge-success px-1 py-0 mr-1"><i class="fas fa-paper-plane"></i></span>
+                                                            @elseif($actionKey === 'print')
+                                                                <span class="badge badge-dark px-1 py-0 mr-1"><i class="fas fa-print"></i></span>
+                                                            @else
+                                                                <span class="badge badge-secondary px-1 py-0 mr-1"><i class="fas fa-check-circle"></i></span>
                                                             @endif
                                                             {{ $actionLabel }}
                                                         </label>
