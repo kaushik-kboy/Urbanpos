@@ -47,6 +47,27 @@ class LoginController extends Controller
      */
     protected function authenticated(Request $request, $user)
     {
+        if (! $user->is_active) {
+            \Illuminate\Support\Facades\Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                $this->username() => ['Your account has been deactivated. Please contact your system administrator.'],
+            ]);
+        }
+
+        if (! $user->isWithinShift()) {
+            $shiftDetails = substr($user->time_in, 0, 5) . ' - ' . substr($user->time_out, 0, 5);
+            \Illuminate\Support\Facades\Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                $this->username() => ["Login is restricted outside scheduled shift hours (Allowed Shift: {$shiftDetails})."],
+            ]);
+        }
+
         $request->session()->put('active_branch_id', $user->branch_id);
     }
 }

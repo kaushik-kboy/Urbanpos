@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(at: '*');
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureUserIsActiveAndWithinShift::class,
             \App\Http\Middleware\EnsureActiveBranch::class,
             \App\Http\Middleware\NormalizeDateInputs::class,
         ]);

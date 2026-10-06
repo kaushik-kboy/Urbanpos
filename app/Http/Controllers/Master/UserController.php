@@ -37,6 +37,11 @@ class UserController extends Controller
             $query->where('branch_id', $request->branch_id);
         }
 
+        if ($request->filled('status')) {
+            $isActive = in_array($request->status, ['active', '1', 1], true);
+            $query->where('is_active', $isActive);
+        }
+
         $users = $query->orderBy('name')->paginate($this->perPage())->withQueryString();
         $roles = Role::orderBy('name')->pluck('name');
         $branches = Branch::orderBy('name')->get();
@@ -65,6 +70,9 @@ class UserController extends Controller
             'email' => $data['email'],
             'password' => $data['password'], // 'hashed' cast on the model hashes this automatically
             'branch_id' => $data['branch_id'] ?? null,
+            'is_active' => isset($data['is_active']) ? (bool) $data['is_active'] : true,
+            'time_in' => $data['time_in'] ?? null,
+            'time_out' => $data['time_out'] ?? null,
         ]);
         $user->assignRole($data['role']);
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
@@ -81,10 +89,23 @@ class UserController extends Controller
     {
         $data = $this->validateData($request, $user);
 
+        $isActive = isset($data['is_active']) ? (bool) $data['is_active'] : true;
+
+        if ($request->user() && $request->user()->id === $user->id && ! $isActive) {
+            throw ValidationException::withMessages(['is_active' => 'You cannot deactivate your own account.']);
+        }
+
+        if ($user->hasRole('Owner') && ! $isActive && User::role('Owner')->where('is_active', true)->count() <= 1) {
+            throw ValidationException::withMessages(['is_active' => 'Cannot deactivate the only active Owner.']);
+        }
+
         $update = [
             'name' => $data['name'],
             'email' => $data['email'],
             'branch_id' => $data['branch_id'] ?? null,
+            'is_active' => $isActive,
+            'time_in' => $data['time_in'] ?? null,
+            'time_out' => $data['time_out'] ?? null,
         ];
         // Blank password on edit means "keep current" — never overwrite with an empty hash.
         if (! empty($data['password'])) {
@@ -131,6 +152,9 @@ class UserController extends Controller
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:8', 'confirmed'],
             'branch_id' => ['nullable', 'exists:branches,id'],
             'role' => ['required', 'string', Rule::exists('roles', 'name')],
+            'is_active' => ['nullable', 'boolean'],
+            'time_in' => ['nullable', 'date_format:H:i'],
+            'time_out' => ['nullable', 'date_format:H:i'],
         ]);
     }
 }

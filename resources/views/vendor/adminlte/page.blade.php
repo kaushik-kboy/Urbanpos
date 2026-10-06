@@ -250,5 +250,23 @@
     <script src="{{ asset('js/pos-telemetry.js') }}?v={{ file_exists(public_path('js/pos-telemetry.js')) ? filemtime(public_path('js/pos-telemetry.js')) : '1.0' }}"></script>
     <script src="{{ asset('js/form-sequential-validator.js') }}?v={{ file_exists(public_path('js/form-sequential-validator.js')) ? filemtime(public_path('js/form-sequential-validator.js')) : '1.0' }}"></script>
     <script src="{{ asset('js/urbanpos-theme-density.js') }}?v={{ file_exists(public_path('js/urbanpos-theme-density.js')) ? filemtime(public_path('js/urbanpos-theme-density.js')) : '1.0' }}"></script>
+    @if(auth()->user()->time_out && !auth()->user()->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']))
+    <script>
+        (function() {
+            var timeOutStr = "{{ substr(auth()->user()->time_out, 0, 5) }}";
+            function checkShiftTimeout() {
+                var now = new Date();
+                var hours = String(now.getHours()).padStart(2, '0');
+                var minutes = String(now.getMinutes()).padStart(2, '0');
+                var currentTimeStr = hours + ':' + minutes;
+                if (currentTimeStr >= timeOutStr && timeOutStr !== "00:00") {
+                    alert('Your shift has ended (' + timeOutStr + '). You are being logged out automatically.');
+                    window.location.href = "{{ route('home') }}";
+                }
+            }
+            setInterval(checkShiftTimeout, 20000);
+        })();
+    </script>
+    @endif
     @endauth
 @stop

@@ -25,11 +25,11 @@
         </div>
         <div class="card-header bg-light border-bottom">
             <form method="GET" action="{{ route('master.users.index') }}" class="row align-items-end">
-                <div class="col-md-4 col-sm-6 mb-2">
+                <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Search</label>
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Name or Email...">
                 </div>
-                <div class="col-md-3 col-sm-6 mb-2">
+                <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Role</label>
                     <select name="role" class="form-control form-control-sm">
                         <option value="">All Roles</option>
@@ -47,6 +47,14 @@
                                 {{ $branch->name }}
                             </option>
                         @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Status</label>
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All Status</option>
+                        <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+                        <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
                     </select>
                 </div>
                 <div class="col-md-2 col-sm-12 mb-2">
@@ -67,13 +75,15 @@
                         <th>Email</th>
                         <th>Role</th>
                         <th>Branch</th>
+                        <th>Shift Hours</th>
+                        <th>Status</th>
                         <th class="text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($users as $user)
                         <tr>
-                            <td>{{ $user->name }}</td>
+                            <td class="font-weight-bold">{{ $user->name }}</td>
                             <td>{{ $user->email }}</td>
                             <td>
                                 @foreach ($user->roles as $role)
@@ -81,12 +91,29 @@
                                 @endforeach
                             </td>
                             <td>{{ $user->branch?->name ?? 'All Branches' }}</td>
+                            <td>
+                                @if($user->time_in && $user->time_out)
+                                    <span class="badge badge-light border text-dark font-weight-bold">
+                                        <i class="fas fa-clock text-primary mr-1"></i>
+                                        {{ substr($user->time_in, 0, 5) }} - {{ substr($user->time_out, 0, 5) }}
+                                    </span>
+                                @else
+                                    <span class="text-muted small"><i class="fas fa-infinity text-muted mr-1"></i> 24/7 (No limit)</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($user->is_active)
+                                    <span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i> Active</span>
+                                @else
+                                    <span class="badge badge-danger px-2 py-1"><i class="fas fa-ban mr-1"></i> Inactive</span>
+                                @endif
+                            </td>
                             <td class="text-right">
                                 <a href="{{ route('master.users.edit', $user) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted py-3">No users yet.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-3">No users yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

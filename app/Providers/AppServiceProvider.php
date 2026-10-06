@@ -33,7 +33,7 @@ class AppServiceProvider extends ServiceProvider
         // Owner-only actions (users, financial years, item price edits) stay blocked.
         // Never match on name/email substrings - any user could otherwise self-elevate.
         Gate::before(function ($user, string $ability) {
-            if ((int) $user->id === 1 || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator'])) {
+            if ($user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator'])) {
                 return true;
             }
             return null;
@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Gate for management tools (backups, health, validations)
         Gate::define('manage-tools', function ($user) {
-            return (int) $user->id === 1 || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']);
+            return $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']);
         });
 
         // Ensure URLs, assets and routes use HTTPS when served over HTTPS or behind an SSL reverse proxy
