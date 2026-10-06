@@ -122,4 +122,45 @@ class ReportExcelExportTest extends TestCase
         $response->assertOk();
         $this->assertTrue(str_contains((string) $response->headers->get('content-disposition'), '.xlsx'));
     }
+
+    public function test_daily_sales_billwise_excel_export_and_fields(): void
+    {
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $customer = Customer::create(['name' => 'John PetLover', 'mobile' => '9988776655']);
+        \App\Models\SalesBill::create([
+            'bill_number' => 'BILL-XYZ-101',
+            'bill_date' => now(),
+            'branch_id' => $branch->id,
+            'customer_id' => $customer->id,
+            'payment_type' => 'UPI',
+            'remarks' => 'Urgent pet meds',
+            'message' => 'Thank you for visiting',
+            'total_qty' => 3,
+            'total' => 1500,
+            'status' => 'Completed',
+        ]);
+
+        // 1. Web view test
+        $webResponse = $this->actingAs($this->owner)->get(route('reports.view', [
+            'module' => 'daily-sales-billwise',
+            'search' => 'BILL-XYZ-101',
+        ]));
+        $webResponse->assertOk();
+        $webResponse->assertSee('Payment Mode');
+        $webResponse->assertSee('Remarks');
+        $webResponse->assertSee('Message');
+        $webResponse->assertSee('UPI');
+        $webResponse->assertSee('Urgent pet meds');
+        $webResponse->assertSee('Thank you for visiting');
+
+        // 2. Excel export test
+        $exportResponse = $this->actingAs($this->owner)->get(route('reports.view', [
+            'module' => 'daily-sales-billwise',
+            'search' => 'BILL-XYZ-101',
+            'export' => 'excel',
+        ]));
+        $exportResponse->assertOk();
+        $this->assertTrue(str_contains((string) $exportResponse->headers->get('content-disposition'), '.xlsx'));
+    }
 }
+

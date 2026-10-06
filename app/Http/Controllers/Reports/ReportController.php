@@ -1343,7 +1343,8 @@ class ReportController extends Controller
             $title = $reportData['title'] ?? ucfirst(str_replace('-', ' ', $module));
             $filename = \Illuminate\Support\Str::slug($title) . '_' . ($from ?: now()->format('Y-m-d')) . '.xlsx';
             $columns = $reportData['columns'] ?? [];
-            $exportColumns = array_values(array_filter($columns, fn($c) => $c !== '#' && !empty($c)));
+            $hasHash = ($columns[0] ?? null) === '#';
+            $exportColumns = array_values(array_filter($columns, fn($c) => $c !== '#' && $c !== 'Action' && !empty($c)));
             $rows = $reportData['rows'] ?? [];
 
             $exportRows = [];
@@ -1351,8 +1352,9 @@ class ReportController extends Controller
                 $cells = is_array($r) ? ($r['cells'] ?? []) : (is_object($r) ? ($r->cells ?? []) : []);
                 $rowClean = [];
                 foreach ($columns as $cIdx => $colName) {
-                    if ($colName === '#') continue;
-                    $val = $cells[$cIdx] ?? '';
+                    if ($colName === '#' || $colName === 'Action') continue;
+                    $cellIdx = $hasHash ? ($cIdx - 1) : $cIdx;
+                    $val = $cells[$cellIdx] ?? '';
                     $valClean = html_entity_decode(strip_tags((string) $val), ENT_QUOTES, 'UTF-8');
                     $rowClean[] = trim($valClean);
                 }

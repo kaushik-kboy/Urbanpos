@@ -717,36 +717,55 @@ class DynamicReportService
             case 'daily-sales-billwise':
             case 'daily-sales-timefilter':
             case 'offline-sales-bill-details':
-                $query = SalesBill::with(['customer', 'branch'])
-                    ->whereBetween('bill_date', [$from, $to])
+                $fromDt = strlen($from) === 10 ? $from . ' 00:00:00' : $from;
+                $toDt = strlen($to) === 10 ? $to . ' 23:59:59' : $to;
+                $query = SalesBill::with(['customer', 'branch', 'payments.tenderType'])
+                    ->whereBetween('bill_date', [$fromDt, $toDt])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                    ->when($search, fn ($q) => $q->where(fn ($g) => $g->where('bill_number', 'like', "%{$search}%")->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('mobile', 'like', "%{$search}%"))))
+                    ->when($search, fn ($q) => $q->where(fn ($g) => $g->where('bill_number', 'like', "%{$search}%")
+                        ->orWhere('remarks', 'like', "%{$search}%")
+                        ->orWhere('message', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('mobile', 'like', "%{$search}%"))
+                        ->orWhereHas('payments.tenderType', fn ($tq) => $tq->where('name', 'like', "%{$search}%"))
+                    ))
                     ->orderBy('bill_date', 'desc');
                 $paginator = $query->paginate($this->perPage)->withQueryString();
-                $rows = $paginator->through(fn ($item) => [
-                    'cells' => [
-                        '<strong>' . e($item->bill_number) . '</strong>',
-                        $item->bill_date ? date('d M Y H:i', strtotime($item->bill_date)) : '-',
-                        e($item->customer?->name ?: 'Walk-in Customer'),
-                        e($item->customer?->mobile ?: '-'),
-                        e($item->branch?->name ?: '-'),
-                        number_format($item->total_qty),
-                        '₹ ' . number_format($item->disc_amount, 2),
-                        '₹ ' . number_format($item->total_gst, 2),
-                        '<strong>₹ ' . number_format($item->total, 2) . '</strong>',
-                        '<span class="badge badge-success">' . e($item->status ?: 'Completed') . '</span>',
-                        '<div class="text-nowrap text-center">
-                            <a href="' . route('sales.sales-bills.show', $item->id) . '" class="btn btn-xs btn-info" title="View Bill" target="_blank"><i class="fas fa-eye"></i> View</a>
-                            <a href="' . route('sales.sales-bills.receipt', $item->id) . '" class="btn btn-xs btn-secondary ml-1" title="Print Receipt" target="_blank"><i class="fas fa-print"></i> Print</a>
-                        </div>'
-                    ]
-                ]);
-                $totalSum = SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->whereBetween('bill_date', [$from, $to])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total');
+                $rows = $paginator->through(function ($item) {
+                    $paymentMode = $item->payments && $item->payments->isNotEmpty()
+                        ? $item->payments->map(fn ($p) => $p->tenderType?->name ?: 'Payment')->filter()->unique()->implode(', ')
+                        : ($item->payment_type && $item->payment_type !== 'None' ? $item->payment_type : '-');
+                    if (empty($paymentMode)) {
+                        $paymentMode = '-';
+                    }
+
+                    return [
+                        'cells' => [
+                            '<strong>' . e($item->bill_number) . '</strong>',
+                            $item->bill_date ? date('d M Y H:i', strtotime($item->bill_date)) : '-',
+                            e($item->customer?->name ?: 'Walk-in Customer'),
+                            e($item->customer?->mobile ?: '-'),
+                            e($item->branch?->name ?: '-'),
+                            '<span class="badge badge-light border">' . e($paymentMode) . '</span>',
+                            number_format($item->total_qty),
+                            '₹ ' . number_format($item->disc_amount, 2),
+                            '₹ ' . number_format($item->total_gst, 2),
+                            '<strong>₹ ' . number_format($item->total, 2) . '</strong>',
+                            e($item->remarks ?: '-'),
+                            e($item->message ?: '-'),
+                            '<span class="badge badge-success">' . e($item->status ?: 'Completed') . '</span>',
+                            '<div class="text-nowrap text-center">
+                                <a href="' . route('sales.sales-bills.show', $item->id) . '" class="btn btn-xs btn-info" title="View Bill" target="_blank"><i class="fas fa-eye"></i> View</a>
+                                <a href="' . route('sales.sales-bills.receipt', $item->id) . '" class="btn btn-xs btn-secondary ml-1" title="Print Receipt" target="_blank"><i class="fas fa-print"></i> Print</a>
+                            </div>'
+                        ]
+                    ];
+                });
+                $totalSum = SalesBill::whereNotIn('status', ['Cancelled', 'Draft'])->whereBetween('bill_date', [$fromDt, $toDt])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total');
                 return [
                     'title' => 'Daily Sales [Bill No Wise] Report',
-                    'subtitle' => 'Detailed bill-level sales register including customer particulars, taxes, and amounts',
-                    'columns' => ['#', 'Bill Number', 'Bill Date & Time', 'Customer Name', 'Mobile', 'Branch', 'Items Qty', 'Discount', 'GST Tax', 'Net Total', 'Status', 'Action'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center', 'text-center'],
+                    'subtitle' => 'Detailed bill-level sales register including customer particulars, payment mode, remarks, taxes, and amounts',
+                    'columns' => ['#', 'Bill Number', 'Bill Date & Time', 'Customer Name', 'Mobile', 'Branch', 'Payment Mode', 'Items Qty', 'Discount', 'GST Tax', 'Net Total', 'Remarks', 'Message', 'Status', 'Action'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-center', 'text-right', 'text-right', 'text-right', 'text-right', 'text-left', 'text-left', 'text-center', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
                         ['label' => 'Period Sales Total', 'value' => '₹ ' . number_format($totalSum, 2), 'icon' => 'fas fa-rupee-sign', 'color' => 'success'],

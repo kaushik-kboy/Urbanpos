@@ -393,7 +393,7 @@ class ReportsDynamicTest extends TestCase
         $rows = $this->texts($this->rpt('offline-sales-bill-details', $q + ['search' => '98765']));
         $this->assertCount(1, $rows);
         $this->assertStringContainsString('D-1 | 10 Sep 2026', $rows[0]);
-        $this->assertStringContainsString('Ramesh Kumar | 9876500001 | Main Store | 2 | ₹ 5.00 | ₹ 100.00 | ₹ 1,000.00', $rows[0]);
+        $this->assertStringContainsString('Ramesh Kumar | 9876500001 | Main Store | - | 2 | ₹ 5.00 | ₹ 100.00 | ₹ 1,000.00 | - | - | Posted', $rows[0]);
     }
 
     public function test_customerwise_itemwise_sales_lines(): void
