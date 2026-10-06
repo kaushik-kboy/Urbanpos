@@ -392,22 +392,33 @@ class SalesBillController extends Controller
 
         $einvoiceNotice = '';
         try {
-            $gstSetting = \App\Models\GstSetting::current();
-            if ($gstSetting->auto_upload_enabled) {
-                $threshold = (float) ($gstSetting->auto_upload_threshold ?: 50000);
-                $isB2b = !empty($salesBill->customer?->gst_no);
-                if ((float) $salesBill->total >= $threshold || $isB2b) {
-                    $einvResult = app(\App\Services\GST\EInvoiceService::class)->uploadToGovernment($salesBill);
-                    if ($einvResult['success']) {
-                        $einvoiceNotice = ' | Govt E-Invoice IRN generated automatically!';
-                    } else {
-                        $einvoiceNotice = ' | Govt E-Invoice flagged in Failed tab: ' . ($einvResult['error'] ?? 'Check details');
-                    }
+            $einvService = app(\App\Services\GST\EInvoiceService::class);
+            if ($einvService->isEligibleForAutoUpload($salesBill)) {
+                $einvResult = $einvService->uploadToGovernment($salesBill);
+                if ($einvResult['success']) {
+                    $einvoiceNotice = ' | Govt E-Invoice IRN generated automatically!';
+                } else {
+                    $einvoiceNotice = ' | Govt E-Invoice flagged in Failed tab: ' . ($einvResult['error'] ?? 'Check details');
                 }
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Auto E-Invoice exception for bill {$salesBill->bill_number}: " . $e->getMessage());
         }
+
+        // Auto E-Way Bill generation (same pattern as E-Invoice above)
+        $ewayNotice = '';
+        try {
+            if ($salesBill->requiresEwayBill() && !$salesBill->hasEwayBill()) {
+                $ewayService = app(\App\Services\GST\EWayBillService::class);
+                $ewayResult  = $ewayService->generateEwb($salesBill);
+                if ($ewayResult['success']) {
+                    $ewayNotice = ' | E-Way Bill ' . ($ewayResult['ewb_no'] ?? '') . ' generated!';
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Auto EWB exception for bill {$salesBill->bill_number}: " . $e->getMessage());
+        }
+
 
         $saveAction = $request->input('save_action', 'save');
         $whatsappNotice = '';
@@ -432,12 +443,17 @@ class SalesBillController extends Controller
                 'bill_number' => $salesBill->bill_number,
                 'total' => $salesBill->total,
                 'customer' => $salesBill->customer,
-                'message' => "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$whatsappNotice}",
+                'irn' => $salesBill->irn,
+                'ack_no' => $salesBill->ack_no,
+                'ack_date' => $salesBill->ack_date ? $salesBill->ack_date->format('d/m/Y h:i A') : null,
+                'einvoice_status' => $salesBill->einvoice_status,
+                'einvoice_qr_url' => $salesBill->hasIrn() ? $salesBill->getEinvoiceQrUrl() : null,
+                'message' => "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$ewayNotice}{$whatsappNotice}",
             ]);
         }
 
         $redirect = redirect()->route('sales.sales-bills.index')
-            ->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$whatsappNotice}");
+            ->with('status', "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$ewayNotice}{$whatsappNotice}");
 
         if ($saveAction === 'print') {
             $redirect->with('auto_print_url', route('sales.sales-bills.receipt', $salesBill));
@@ -478,7 +494,7 @@ class SalesBillController extends Controller
 
     public function receipt(SalesBill $salesBill)
     {
-        $salesBill->load(['customer', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
+        $salesBill->load(['customer.pets', 'pet.breed', 'pet.petType', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
 
         return view('sales.sales-bills.receipt', [
             'salesBill' => $salesBill,
@@ -495,7 +511,7 @@ class SalesBillController extends Controller
             abort(403, 'Invalid or expired receipt security link.');
         }
 
-        $salesBill->load(['customer', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
+        $salesBill->load(['customer.pets', 'pet.breed', 'pet.petType', 'branch', 'items.item.gstTax', 'payments.tenderType', 'payments.tenderTypeValue']);
 
         return view('sales.sales-bills.receipt', [
             'salesBill' => $salesBill,
@@ -1526,6 +1542,7 @@ class SalesBillController extends Controller
             'bill_number' => ['nullable', 'string', 'max:100'],
             'bill_date' => ['required', 'date', 'after_or_equal:2020-01-01 00:00:00', "before_or_equal:{$now}"],
             'customer_id' => ['required', 'exists:customers,id'],
+            'customer_pet_id' => ['nullable', 'exists:customer_pets,id'],
             'branch_id' => ['required', 'exists:branches,id'],
             'user_id' => ['nullable', 'exists:users,id'],
             'sales_delivery_note_id' => ['nullable', 'exists:sales_delivery_notes,id'],

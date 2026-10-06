@@ -309,9 +309,13 @@
                         @if ($salesBill->customer->phone)
                             ({{ $salesBill->customer->phone }})
                         @endif
-                        {{-- Customer Pet Name (Dynamic Toggle) --}}
-                        @if ($receiptSettings->show_customer_pet_name && $salesBill->customer->pets && $salesBill->customer->pets->count() > 0)
-                            <div style="font-size: 10.5px; font-weight: bold; color: #2c3e50;">
+                        {{-- Customer Pet Name (Tagged Pet or All Pets) --}}
+                        @if ($salesBill->pet)
+                            <div style="font-size: 10.5px; font-weight: bold; color: #2c3e50; margin-top: 2px;">
+                                🐾 Pet: {{ $salesBill->pet->name }}{{ $salesBill->pet->breed ? ' ('.$salesBill->pet->breed->name.')' : ($salesBill->pet->petType ? ' ('.$salesBill->pet->petType->name.')' : '') }}
+                            </div>
+                        @elseif ($receiptSettings->show_customer_pet_name && $salesBill->customer->pets && $salesBill->customer->pets->count() > 0)
+                            <div style="font-size: 10.5px; font-weight: bold; color: #2c3e50; margin-top: 2px;">
                                 🐾 Pet: {{ $salesBill->customer->pets->pluck('name')->filter()->join(', ') }}
                             </div>
                         @endif
@@ -473,21 +477,29 @@
 
         {{-- Government E-Invoice (IRN) Section if available --}}
         @if ($salesBill->hasIrn())
-            <div class="eway-receipt-box" style="word-break: break-all;">
-                <div class="title">*** GOVERNMENT E-INVOICE (IRN) ***</div>
-                <div style="font-size: 9px; line-height: 1.2; margin-bottom: 2px;">
+            <div class="eway-receipt-box" style="word-break: break-all; border: 1.5px solid #28a745; background-color: #f8fff9; padding: 6px; border-radius: 4px; margin: 6px 0;">
+                <div class="title" style="color: #155724; font-weight: bold; font-size: 10px; text-align: center; margin-bottom: 4px;">
+                    *** GOVERNMENT OF INDIA - E-INVOICE ***
+                </div>
+                <div style="font-size: 8.5px; line-height: 1.25; margin-bottom: 3px; font-family: monospace;">
                     <strong>IRN:</strong> {{ $salesBill->irn }}
                 </div>
                 @if ($salesBill->ack_no)
-                    <div><strong>ACK NO:</strong> {{ $salesBill->ack_no }}</div>
+                    <div style="font-size: 9px;"><strong>ACK NO:</strong> {{ $salesBill->ack_no }}</div>
                 @endif
                 @if ($salesBill->ack_date)
-                    <div><strong>ACK DATE:</strong> {{ $salesBill->ack_date->format('d/m/Y h:i A') }}</div>
+                    <div style="font-size: 9px;"><strong>ACK DATE:</strong> {{ $salesBill->ack_date->format('d/m/Y h:i A') }}</div>
                 @endif
-                <div style="text-align: center; margin-top: 4px;">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data={{ urlencode($salesBill->irn) }}" alt="Govt QR" style="width: 80px; height: 80px;" />
-                    <div style="font-size: 8px; color: #555;">(Govt Signed Digital IRN)</div>
-                </div>
+                @if ($salesBill->isEinvoiceCancelled())
+                    <div style="color: #dc3545; font-weight: bold; font-size: 9.5px; text-align: center; margin-top: 3px;">
+                        [IRN CANCELLED ON GOVERNMENT PORTAL]
+                    </div>
+                @else
+                    <div style="text-align: center; margin-top: 5px;">
+                        <img src="{{ $salesBill->getEinvoiceQrUrl() }}" alt="Govt Signed QR" style="width: 90px; height: 90px; border: 1px solid #ccc; padding: 2px; background: #fff;" />
+                        <div style="font-size: 7.5px; color: #555; margin-top: 2px;">(GST Portal Digitally Signed QR Code)</div>
+                    </div>
+                @endif
             </div>
             <div class="divider"></div>
         @endif

@@ -10,6 +10,7 @@ class GstSetting extends Model
     use HasFactory;
 
     protected $fillable = [
+        'company_name',
         'gstin',
         'username',
         'password',
@@ -18,6 +19,7 @@ class GstSetting extends Model
         'gsp_provider',
         'auto_upload_threshold',
         'auto_upload_enabled',
+        'auto_upload_scope',
         'is_sandbox',
     ];
 
@@ -33,11 +35,13 @@ class GstSetting extends Model
     public static function current(): self
     {
         return static::firstOrCreate([], [
-            'gstin' => '24AAECU3183G1ZN',
-            'username' => 'admin1',
+            'company_name' => 'URBANPETS SERVICES PRIVATE LIMITED',
+            'gstin' => '24AAECU0338G1ZN',
+            'username' => 'API_Urbanpets1',
             'gsp_provider' => 'mock',
             'auto_upload_threshold' => 50000.00,
             'auto_upload_enabled' => true,
+            'auto_upload_scope' => 'both',
             'is_sandbox' => true,
         ]);
     }

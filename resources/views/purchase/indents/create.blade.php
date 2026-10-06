@@ -94,6 +94,9 @@
                             <button type="button" id="btn-add-row" class="btn btn-primary btn-xs px-2">
                                 <i class="fas fa-plus mr-1"></i> Add Item Line
                             </button>
+                            <button type="button" id="btn-auto-replenish-mbq" class="btn btn-warning btn-xs px-2 font-weight-bold ml-2 shadow-sm text-dark" title="Auto-fill items below safety MBQ stock level">
+                                <i class="fas fa-magic mr-1"></i> Auto-Replenish from MBQ Deficits
+                            </button>
                         </div>
                     </div>
                     <div class="card-body p-0 table-responsive tx-items-scroll-container">
@@ -674,6 +677,70 @@
                 setTimeout(function () {
                     $newRow.find('.indent-item-code').focus();
                 }, 80);
+            });
+
+            // Auto-Replenish from MBQ Deficits (GoFrugal Replenishment Parity)
+            $('#btn-auto-replenish-mbq').on('click', function () {
+                const branchId = $('#branch_id').val();
+                if (!branchId) {
+                    alert('Please select a Target Branch first to calculate MBQ deficits.');
+                    $('#branch_id').focus();
+                    return;
+                }
+
+                const $btn = $(this);
+                const origHtml = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Scanning Deficits...');
+
+                $.getJSON('{{ route("purchase.purchase-indents.mbq-deficits") }}', { branch_id: branchId })
+                    .done(function (res) {
+                        $btn.prop('disabled', false).html(origHtml);
+                        if (!res.items || res.items.length === 0) {
+                            alert('All monitored items for this branch are currently at or above MBQ safety levels. No deficit found!');
+                            return;
+                        }
+
+                        if (!confirm(`Found ${res.items.length} items below MBQ safety level (Target: ${res.mbq_target} units). Auto-populate into requisition table?`)) {
+                            return;
+                        }
+
+                        // Remove empty rows if any
+                        $('#indent-items-body tr.indent-row').each(function () {
+                            const val = $(this).find('.indent-item-select').val();
+                            if (!val) $(this).remove();
+                        });
+
+                        let addedCount = 0;
+                        res.items.forEach(function (itm) {
+                            let exists = false;
+                            $('#indent-items-body .indent-item-select').each(function () {
+                                if ($(this).val() == itm.item_id) exists = true;
+                            });
+                            if (exists) return;
+
+                            const $row = addRow({
+                                id: itm.item_id,
+                                name: itm.name,
+                                item_code: itm.item_code,
+                                cost_price: itm.estimated_cost
+                            });
+                            $row.find('.qty-input').val(itm.deficit_qty);
+                            $row.find('input[name*="[remarks]"]').val(`MBQ Deficit (Stock: ${itm.current_stock} / MBQ: ${itm.mbq_target})`);
+                            calculateRowTotal($row);
+                            addedCount++;
+                        });
+
+                        calculateTotals();
+                        if (window.toastr) {
+                            toastr.success(`Auto-populated ${addedCount} replenishment items from MBQ deficits!`);
+                        } else {
+                            alert(`Auto-populated ${addedCount} replenishment items from MBQ deficits!`);
+                        }
+                    })
+                    .fail(function () {
+                        $btn.prop('disabled', false).html(origHtml);
+                        alert('Failed to scan MBQ deficits. Please try again.');
+                    });
             });
 
             // Branch change refreshes all stocks

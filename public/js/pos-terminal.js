@@ -9,6 +9,7 @@
     const state = {
         cart: [],
         customer_id: null,
+        customer_pet_id: null,
         branch_id: null,
         invoice_type: 'Retail Invoice',
         sales_type: 'Local',
@@ -100,12 +101,17 @@
         state.branch_id = document.getElementById('posBranchSelect')?.value || 1;
         if (window.INITIAL_CUSTOMER && window.INITIAL_CUSTOMER.id) {
             state.customer_id = window.INITIAL_CUSTOMER.id;
+            const initPetId = $('#posTaggedPetId').val();
+            state.customer_pet_id = initPetId ? parseInt(initPetId, 10) : null;
         } else {
             state.customer_id = null;
+            state.customer_pet_id = null;
         }
 
         if (window.EDIT_BILL) {
             state.edit_id = window.EDIT_BILL.id;
+            state.customer_pet_id = window.EDIT_BILL.customer_pet_id || null;
+            if (state.customer_pet_id) $('#posTaggedPetId').val(state.customer_pet_id);
             state.invoice_type = window.EDIT_BILL.invoice_type || 'Retail Invoice';
             state.sales_type = window.EDIT_BILL.sales_type || 'B2C';
             state.delivery_type = window.EDIT_BILL.delivery_type || 'Direct';
@@ -978,6 +984,7 @@
 
         // 2. Clear customer
         state.customer_id = null;
+        state.customer_pet_id = null;
         const $custSelect = $('#posCustomerSelect');
         if ($custSelect.length) {
             $custSelect.val(null).trigger('change.select2');
@@ -986,8 +993,10 @@
         $('#posCustomerInvoicesSection').hide();
         $('#posCustomerSearchWrapper').show();
         $('#posSelectedCustPets').hide();
-        $('#posSelectedCustPetsText').text('');
-        $('#posSelectedCustPetsTbody').empty();
+        $('#posTaggedPetId').val('');
+        $('#posActiveTaggedPetName').text('None');
+        $('#posCustPetChips').empty();
+        $('#posPetSelectDropdown').empty();
         $('#posLoyaltyContainer').hide();
         $('#posCustomerInvoicesTable tbody').empty();
 
@@ -1550,29 +1559,62 @@
         $('#posSelectedCustMobile span').text(customer.mobile || 'No mobile');
         $('#posEditCustomerBtn').attr('data-id', customer.id);
 
-        // Update Pet Name(s) & Breed Type
-        const petSummary = customer.pets_summary || (customer.pets && customer.pets.length ? customer.pets.map(p => p.display || p.name).filter(Boolean).join(', ') : '');
-        if (petSummary) {
-            $('#posSelectedCustPetsText').text(petSummary);
+        // Update Pet Tagging & Selection Chips (F1 Shortcut)
+        const pets = customer.pets || [];
+        if (pets.length > 0) {
             $('#posSelectedCustPets').show();
+            let chipsHtml = '';
+            let dropdownHtml = '<option value="">-- Select Pet to Tag (or None) --</option>';
 
-            if (customer.pets && customer.pets.length) {
-                let tbodyHtml = '';
-                customer.pets.forEach(function (p) {
-                    tbodyHtml += `<tr>
-                        <td class="py-1 px-2 font-weight-bold">${escapeHtml(p.name || '—')}</td>
-                        <td class="py-1 px-2 text-primary font-weight-bold">${escapeHtml(p.breed || '—')}</td>
-                        <td class="py-1 px-2 text-muted">${escapeHtml(p.type || 'Pet')}</td>
-                    </tr>`;
-                });
-                $('#posCustPetsTableBody').html(tbodyHtml);
-                $('#posSelectedCustPetsTableContainer').show();
+            // If only 1 pet exists and no pet currently tagged, auto-tag it!
+            if (pets.length === 1 && !state.customer_pet_id) {
+                state.customer_pet_id = pets[0].id;
+                $('#posTaggedPetId').val(pets[0].id);
+            }
+
+            let taggedPetFound = false;
+
+            pets.forEach(function (p) {
+                const isTagged = (state.customer_pet_id && (parseInt(state.customer_pet_id, 10) === parseInt(p.id, 10)));
+                if (isTagged) taggedPetFound = true;
+                const petName = p.name || 'Pet';
+                const breed = p.breed ? `(${p.breed})` : (p.type ? `(${p.type})` : '');
+                const activeClass = isTagged ? 'active btn-success text-white' : 'btn-outline-primary';
+
+                chipsHtml += `<button type="button" 
+                    class="btn btn-xs ${activeClass} pos-pet-chip mr-1 mb-1 font-weight-bold" 
+                    data-id="${p.id}" 
+                    data-name="${escapeHtml(petName)}" 
+                    data-breed="${escapeHtml(breed)}"
+                    style="border-radius: 12px; font-size: 0.75rem;">
+                    🐾 ${escapeHtml(petName)} ${escapeHtml(breed)}
+                </button>`;
+
+                dropdownHtml += `<option value="${p.id}" ${isTagged ? 'selected' : ''}>
+                    ${escapeHtml(petName)} ${escapeHtml(breed)}
+                </option>`;
+            });
+
+            $('#posCustPetChips').html(chipsHtml);
+            $('#posPetSelectDropdown').html(dropdownHtml);
+
+            if (state.customer_pet_id && taggedPetFound) {
+                const curPet = pets.find(p => parseInt(p.id, 10) === parseInt(state.customer_pet_id, 10));
+                const petDesc = curPet ? `${curPet.name || 'Pet'} ${curPet.breed ? '('+curPet.breed+')' : ''}` : 'Tagged';
+                $('#posActiveTaggedPetName').text(petDesc);
+                $('#posActiveTaggedPetBox').show();
             } else {
-                $('#posSelectedCustPetsTableContainer').hide();
+                state.customer_pet_id = null;
+                $('#posTaggedPetId').val('');
+                $('#posActiveTaggedPetName').text('None');
+                $('#posActiveTaggedPetBox').hide();
             }
         } else {
+            state.customer_pet_id = null;
+            $('#posTaggedPetId').val('');
             $('#posSelectedCustPets').hide();
-            $('#posSelectedCustPetsTableContainer').hide();
+            $('#posCustPetChips').empty();
+            $('#posPetSelectDropdown').empty();
         }
 
         // Load Customer Favorites
@@ -1580,6 +1622,88 @@
             loadCustomerFavorites(customer.id);
         }
     }
+
+    // POS Pet Tagging Engine (F1 Shortcut)
+    window.posTagPet = function(petId = null) {
+        if (!state.customer_id) {
+            showNotification('Please select a customer first before tagging a pet.', 'warning');
+            const $custSelect = $('#posCustomerSelect');
+            if ($custSelect.length) $custSelect.select2('open');
+            return;
+        }
+        const chips = document.querySelectorAll('.pos-pet-chip');
+        if (!chips || chips.length === 0) {
+            showNotification('This customer does not have any registered pets.', 'info');
+            return;
+        }
+
+        if (petId) {
+            state.customer_pet_id = parseInt(petId, 10);
+        } else {
+            const petIds = Array.from(chips).map(c => parseInt(c.getAttribute('data-id'), 10));
+            if (!state.customer_pet_id) {
+                state.customer_pet_id = petIds[0];
+            } else {
+                const curIdx = petIds.indexOf(parseInt(state.customer_pet_id, 10));
+                if (curIdx >= 0 && curIdx < petIds.length - 1) {
+                    state.customer_pet_id = petIds[curIdx + 1];
+                } else {
+                    state.customer_pet_id = petIds[0];
+                }
+            }
+        }
+
+        $('#posTaggedPetId').val(state.customer_pet_id || '');
+
+        chips.forEach(chip => {
+            const cid = parseInt(chip.getAttribute('data-id'), 10);
+            if (cid === state.customer_pet_id) {
+                chip.className = 'btn btn-xs active btn-success text-white pos-pet-chip mr-1 mb-1 font-weight-bold';
+                const pName = chip.getAttribute('data-name');
+                const pBreed = chip.getAttribute('data-breed');
+                $('#posActiveTaggedPetName').text(`${pName} ${pBreed}`);
+                $('#posActiveTaggedPetBox').show();
+                showNotification(`🐾 Tagged Pet: ${pName} ${pBreed}`, 'success');
+            } else {
+                chip.className = 'btn btn-xs btn-outline-primary pos-pet-chip mr-1 mb-1 font-weight-bold';
+            }
+        });
+        $('#posPetSelectDropdown').val(state.customer_pet_id || '');
+    };
+
+    $(document).on('click', '.pos-pet-chip', function (e) {
+        e.preventDefault();
+        const pId = $(this).attr('data-id');
+        if (state.customer_pet_id && parseInt(state.customer_pet_id, 10) === parseInt(pId, 10)) {
+            state.customer_pet_id = null;
+            $('#posTaggedPetId').val('');
+            $('.pos-pet-chip').removeClass('active btn-success text-white').addClass('btn-outline-primary');
+            $('#posActiveTaggedPetBox').hide();
+            $('#posPetSelectDropdown').val('');
+            showNotification('Pet untagged from sale.', 'info');
+        } else {
+            window.posTagPet(pId);
+        }
+    });
+
+    $(document).on('click', '#posClearTaggedPetBtn', function (e) {
+        e.preventDefault();
+        state.customer_pet_id = null;
+        $('#posTaggedPetId').val('');
+        $('.pos-pet-chip').removeClass('active btn-success text-white').addClass('btn-outline-primary');
+        $('#posActiveTaggedPetBox').hide();
+        $('#posPetSelectDropdown').val('');
+        showNotification('Pet untagged from sale.', 'info');
+    });
+
+    $(document).on('change', '#posPetSelectDropdown', function () {
+        const val = $(this).val();
+        if (val) {
+            window.posTagPet(val);
+        } else {
+            $('#posClearTaggedPetBtn').trigger('click');
+        }
+    });
 
     function openAddCustomerModalWithTerm(term) {
         const form = document.getElementById('posQuickCustomerForm');
@@ -2265,6 +2389,7 @@
             bill_number: (window.NEXT_BILL_NUMBER || null),
             bill_date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
             customer_id: state.customer_id,
+            customer_pet_id: state.customer_pet_id || null,
             branch_id: state.branch_id,
             user_id: document.getElementById('posBillerSelect')?.value || null,
             invoice_type: state.invoice_type,

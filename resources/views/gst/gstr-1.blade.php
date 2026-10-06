@@ -13,11 +13,17 @@
         </small>
     </div>
     <div class="d-flex align-items-center mt-2 mt-md-0">
-        <a href="{{ route('tools.integrations-gst', ['view' => 'returns']) }}" class="btn btn-outline-secondary btn-sm mr-2 shadow-sm font-weight-bold">
-            <i class="fas fa-arrow-left mr-1"></i> GST Dashboard
+        <a href="{{ route('tools.gst.gstr-1.export-json', request()->all()) }}" class="btn btn-success btn-sm shadow-sm font-weight-bold mr-2" title="Direct JSON upload for GST Portal services.gst.gov.in">
+            <i class="fas fa-file-code mr-1"></i> Export Official GSTR-1 JSON (Govt Portal) ★
         </a>
-        <a href="{{ route('reports.gst-sales-summary') }}" class="btn btn-outline-success btn-sm shadow-sm font-weight-bold">
-            <i class="fas fa-file-excel mr-1"></i> Full GST Register
+        <a href="{{ route('tools.gst.gstr-3b.page') }}" class="btn btn-primary btn-sm mr-2 shadow-sm font-weight-bold">
+            <i class="fas fa-balance-scale mr-1"></i> View GSTR-3B
+        </a>
+        <a href="{{ route('tools.gst.gstr-2.page') }}" class="btn btn-info btn-sm mr-2 shadow-sm font-weight-bold">
+            <i class="fas fa-shopping-cart mr-1"></i> View GSTR-2 (Inward)
+        </a>
+        <a href="{{ route('tools.integrations-gst', ['view' => 'returns']) }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
+            <i class="fas fa-arrow-left mr-1"></i> Back
         </a>
     </div>
 </div>

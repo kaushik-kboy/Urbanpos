@@ -340,7 +340,22 @@
                 <button type="button" class="btn btn-primary btn-xs ml-2 shadow-sm" data-toggle="modal" data-target="#ewayModal">
                     <i class="fas fa-edit mr-1"></i> Edit Transport Info
                 </button>
+                @if ($salesBill->hasEwayBill())
+                    <button type="button" class="btn btn-success btn-xs ml-1 shadow-sm"
+                        data-toggle="modal" data-target="#showPartBModal">
+                        <i class="fas fa-truck mr-1"></i> Update Part-B
+                    </button>
+                    <button type="button" class="btn btn-info btn-xs ml-1 shadow-sm"
+                        data-toggle="modal" data-target="#showExtendModal">
+                        <i class="fas fa-clock mr-1"></i> Extend
+                    </button>
+                    <button type="button" class="btn btn-danger btn-xs ml-1 shadow-sm"
+                        data-toggle="modal" data-target="#showCancelModal">
+                        <i class="fas fa-times-circle mr-1"></i> Cancel EWB
+                    </button>
+                @endif
             </div>
+
         </div>
         <div class="card-body py-3">
             <div class="row">
@@ -501,6 +516,110 @@
             </div>
         </div>
     </div>
+
+    @if ($salesBill->hasEwayBill())
+    {{-- Show Page: Cancel EWB Modal --}}
+    <div class="modal fade" id="showCancelModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="{{ route('sales.sales-bills.eway-cancel', $salesBill) }}" method="POST">
+                    @csrf
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-times-circle mr-2"></i> Cancel E-Way Bill #{{ $salesBill->eway_bill_no }}</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="alert alert-warning py-2 small"><i class="fas fa-exclamation-triangle mr-1"></i> This will permanently cancel EWB <strong>{{ $salesBill->eway_bill_no }}</strong> on the government portal.</div>
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small">Cancellation Reason</label>
+                            <select name="reason_code" class="form-control" required>
+                                <option value="1">1 — Duplicate</option>
+                                <option value="2" selected>2 — Order Changed</option>
+                                <option value="3">3 — Data Entry Mistake</option>
+                                <option value="4">4 — Others</option>
+                            </select>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold small">Remarks</label>
+                            <input type="text" name="remarks" class="form-control" placeholder="Optional remarks" maxlength="100">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger btn-sm font-weight-bold px-3"><i class="fas fa-times-circle mr-1"></i> Confirm Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Show Page: Extend EWB Modal --}}
+    <div class="modal fade" id="showExtendModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="{{ route('sales.sales-bills.eway-extend', $salesBill) }}" method="POST">
+                    @csrf
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-clock mr-2"></i> Extend EWB Validity</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small">New Vehicle Number <span class="text-danger">*</span></label>
+                            <input type="text" name="vehicle_no" class="form-control text-uppercase" placeholder="e.g. MH12AB1234" required maxlength="20" value="{{ $salesBill->vehicle_no }}">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small">Current Location (From Place)</label>
+                            <input type="text" name="from_place" class="form-control" placeholder="e.g. Pune" maxlength="50">
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold small">Remaining Distance (km)</label>
+                            <input type="number" name="remaining_distance" class="form-control" value="{{ $salesBill->transport_distance ?? 20 }}" min="1" max="4000">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info btn-sm font-weight-bold px-3"><i class="fas fa-clock mr-1"></i> Extend Validity</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Show Page: Update Part-B Modal --}}
+    <div class="modal fade" id="showPartBModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="{{ route('sales.sales-bills.eway-partb', $salesBill) }}" method="POST">
+                    @csrf
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-truck mr-2"></i> Update Part-B — Change Vehicle</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small">New Vehicle Number <span class="text-danger">*</span></label>
+                            <input type="text" name="vehicle_no" class="form-control text-uppercase" placeholder="e.g. MH12AB1234" required maxlength="20" value="{{ $salesBill->vehicle_no }}">
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold small">Transport Mode</label>
+                            <select name="trans_mode" class="form-control">
+                                <option value="1" {{ ($salesBill->transport_mode ?? '1') == '1' ? 'selected' : '' }}>Road</option>
+                                <option value="2" {{ ($salesBill->transport_mode ?? '1') == '2' ? 'selected' : '' }}>Rail</option>
+                                <option value="3" {{ ($salesBill->transport_mode ?? '1') == '3' ? 'selected' : '' }}>Air</option>
+                                <option value="4" {{ ($salesBill->transport_mode ?? '1') == '4' ? 'selected' : '' }}>Ship</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm font-weight-bold px-3"><i class="fas fa-save mr-1"></i> Update Part-B</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
 @stop
 
 @section('js')

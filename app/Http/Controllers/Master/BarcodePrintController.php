@@ -13,14 +13,18 @@ class BarcodePrintController extends Controller
     /**
      * Render the barcode labels print view.
      */
+    /**
+     * Render the barcode labels print view.
+     */
     public function printLabels(Request $request): View
     {
-        [$labels, $storeName, $format] = $this->resolveLabelsAndStore($request);
+        [$labels, $storeName, $format, $options] = $this->resolveLabelsAndStore($request);
 
         return view('master.barcodes.print-labels', [
             'labels'    => $labels,
             'format'    => $format,
             'storeName' => $storeName,
+            'options'   => $options,
         ]);
     }
 
@@ -106,14 +110,23 @@ class BarcodePrintController extends Controller
     }
 
     /**
-     * Resolve labels and store branding from request.
+     * Resolve labels, store branding, and format options from request.
      */
     private function resolveLabelsAndStore(Request $request): array
     {
-        $format = $request->query('format', $request->input('format', '50x38_2up'));
+        $format = $request->query('format', $request->input('format', 'a4_24'));
         $storeName = config('app.name', 'UrbanPOS');
         $labels = [];
-        $branchId = null;
+        $branchId = $request->input('branch_id');
+
+        $isPost = $request->isMethod('post');
+        $options = [
+            'show_store' => $isPost ? $request->boolean('show_store') : filter_var($request->input('show_store', true), FILTER_VALIDATE_BOOLEAN),
+            'show_mrp'   => $isPost ? $request->boolean('show_mrp') : filter_var($request->input('show_mrp', true), FILTER_VALIDATE_BOOLEAN),
+            'show_sell'  => $isPost ? $request->boolean('show_sell') : filter_var($request->input('show_sell', true), FILTER_VALIDATE_BOOLEAN),
+            'show_exp'   => $isPost ? $request->boolean('show_exp') : filter_var($request->input('show_exp', true), FILTER_VALIDATE_BOOLEAN),
+            'show_code'  => $isPost ? $request->boolean('show_code') : filter_var($request->input('show_code', true), FILTER_VALIDATE_BOOLEAN),
+        ];
 
         // Scenario 1: Print from Purchase Invoice
         if ($request->filled('purchase_invoice_id')) {
@@ -141,11 +154,35 @@ class BarcodePrintController extends Controller
                         'mrp'        => (float) ($piItem->mrp > 0 ? $piItem->mrp : $item->mrp),
                         'sell_price' => (float) ($piItem->sell_price > 0 ? $piItem->sell_price : $item->sell_price),
                         'exp_date'   => $piItem->exp_date ? substr($piItem->exp_date, 0, 10) : null,
+                        'batch_no'   => $piItem->batch_no ?? null,
                     ];
                 }
             }
         }
-        // Scenario 2: Print single Item with quantity
+        // Scenario 2: Print from Print Queue Array (POST or GET)
+        elseif ($request->has('items') && is_array($request->input('items'))) {
+            $itemsList = $request->input('items');
+            // If items is a map with { id: { ... } } or list of items
+            foreach ($itemsList as $raw) {
+                if (empty($raw) || !is_array($raw)) continue;
+                $qty = max(1, (int) ($raw['qty'] ?? 1));
+                $barcode = !empty($raw['barcode']) ? $raw['barcode'] : ($raw['code'] ?? '00000000');
+                
+                for ($i = 0; $i < $qty; $i++) {
+                    $labels[] = [
+                        'item_id'    => $raw['id'] ?? null,
+                        'name'       => $raw['name'] ?? ($raw['item_name'] ?? 'Item'),
+                        'code'       => $raw['code'] ?? ($raw['item_code'] ?? ''),
+                        'barcode'    => $barcode,
+                        'mrp'        => (float) ($raw['mrp'] ?? 0),
+                        'sell_price' => (float) ($raw['sell_price'] ?? 0),
+                        'exp_date'   => !empty($raw['exp_date']) ? substr($raw['exp_date'], 0, 10) : null,
+                        'batch_no'   => $raw['batch_no'] ?? null,
+                    ];
+                }
+            }
+        }
+        // Scenario 3: Print single Item with quantity
         elseif ($request->filled('item_id')) {
             $item = Item::findOrFail($request->input('item_id'));
             $barcode = $item->ean_upc_code ?: $item->item_code ?: (string) $item->id;
@@ -160,10 +197,11 @@ class BarcodePrintController extends Controller
                     'mrp'        => (float) $item->mrp,
                     'sell_price' => (float) $item->sell_price,
                     'exp_date'   => null,
+                    'batch_no'   => null,
                 ];
             }
         }
 
-        return [$labels, $storeName, $format];
+        return [$labels, $storeName, $format, $options];
     }
 }

@@ -2,8 +2,11 @@
 
 namespace App\Services\GST;
 
+use App\Models\GstSetting;
 use App\Models\SalesBill;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class EWayBillService
 {
@@ -268,5 +271,246 @@ class EWayBillService
             'version' => '1.0.0621',
             'billLists' => $billLists,
         ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GSP API METHODS — Auto Push, Cancel, Part-B Update, Extend Validity
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Auto-generate E-Way Bill via GSP API (or mock in sandbox mode).
+     * Called automatically on bill save when total >= ₹50,000.
+     */
+    public function generateEwb(SalesBill $bill): array
+    {
+        try {
+            if ($bill->hasEwayBill()) {
+                return ['success' => false, 'error' => 'E-Way Bill already generated for this bill.'];
+            }
+
+            $settings = GstSetting::current();
+            $payload = $this->buildBillEntry($bill);
+
+            // Mock / Sandbox Mode — skip real GSP call
+            if ($settings->gsp_provider === 'mock' || $settings->is_sandbox) {
+                $fakeEwbNo = '34' . str_pad(random_int(1000000000, 9999999999), 10, '0');
+                $validUntil = now()->addDays(
+                    in_array($bill->transport_mode, ['2', '3', '4']) ? 15 : 1
+                );
+                $bill->update([
+                    'eway_bill_no'    => $fakeEwbNo,
+                    'eway_bill_date'  => now(),
+                    'eway_valid_until' => $validUntil,
+                    'eway_status'     => 'Generated',
+                ]);
+                Log::info("Mock EWB generated for Bill #{$bill->bill_number}: {$fakeEwbNo}");
+                return ['success' => true, 'ewb_no' => $fakeEwbNo, 'valid_until' => $validUntil, 'mode' => 'mock'];
+            }
+
+            // Live GSP Call
+            $result = $this->callEwbGspApi($settings, 'ewbgenerate', $payload);
+            if (!$result['success']) {
+                throw new \Exception($result['error'] ?? 'GSP EWB generation failed.');
+            }
+
+            $bill->update([
+                'eway_bill_no'    => $result['ewb_no'],
+                'eway_bill_date'  => $result['ewb_date'] ?? now(),
+                'eway_valid_until' => $result['valid_until'] ?? now()->addDays(1),
+                'eway_status'     => 'Generated',
+            ]);
+
+            Log::info("Live EWB generated for Bill #{$bill->bill_number}: {$result['ewb_no']}");
+            return $result;
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            Log::error("EWB generation failed for Bill #{$bill->bill_number}: {$msg}");
+            return ['success' => false, 'error' => $msg];
+        }
+    }
+
+    /**
+     * Cancel an E-Way Bill via GSP.
+     * Reason codes: 1=Duplicate, 2=Order changed, 3=Data entry mistake, 4=Others
+     */
+    public function cancelEwb(SalesBill $bill, string $reasonCode = '2', string $remarks = 'Cancelled'): array
+    {
+        try {
+            if (!$bill->hasEwayBill()) {
+                throw new \Exception('No E-Way Bill found for this invoice.');
+            }
+
+            $settings = GstSetting::current();
+
+            if ($settings->gsp_provider !== 'mock' && !$settings->is_sandbox) {
+                $result = $this->callEwbGspApi($settings, 'ewaycancel', [
+                    'ewbNo'     => $bill->eway_bill_no,
+                    'cancelRsnCode' => (int) $reasonCode,
+                    'cancelRmrk'   => mb_substr($remarks, 0, 100),
+                ]);
+                if (!$result['success']) {
+                    throw new \Exception($result['error'] ?? 'GSP EWB cancellation failed.');
+                }
+            }
+
+            $reasonNames = ['1' => 'Duplicate', '2' => 'Order changed', '3' => 'Data entry mistake', '4' => 'Others'];
+            $bill->update([
+                'eway_status'    => 'Cancelled',
+                'eway_bill_no'   => null,
+                'eway_valid_until' => null,
+            ]);
+
+            Log::info("EWB cancelled for Bill #{$bill->bill_number} — Reason: " . ($reasonNames[$reasonCode] ?? 'Unknown'));
+            return ['success' => true, 'message' => 'E-Way Bill cancelled successfully.'];
+        } catch (\Throwable $e) {
+            Log::error("EWB cancel failed for Bill #{$bill->bill_number}: " . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Update Part-B (Vehicle Number / Transporter) of an existing EWB via GSP.
+     * Allowed multiple times before validity expires.
+     */
+    public function updatePartB(SalesBill $bill, string $vehicleNo, string $transMode = '1'): array
+    {
+        try {
+            if (!$bill->hasEwayBill()) {
+                throw new \Exception('No active E-Way Bill to update Part-B.');
+            }
+
+            $settings = GstSetting::current();
+            $cleanVehicle = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $vehicleNo));
+
+            if ($settings->gsp_provider !== 'mock' && !$settings->is_sandbox) {
+                $result = $this->callEwbGspApi($settings, 'vehewb', [
+                    'ewbNo'     => $bill->eway_bill_no,
+                    'vehicleNo' => $cleanVehicle,
+                    'fromPlace' => $bill->branch?->city ?? 'City',
+                    'fromState' => $this->resolveStateCode($bill->branch?->gst_no, $bill->branch?->state),
+                    'transDocNo'   => $bill->transport_doc_no ?? '',
+                    'transDocDate' => $bill->transport_doc_date?->format('d/m/Y') ?? '',
+                    'transMode' => $transMode,
+                    'vehicleType' => $bill->vehicle_type ?? 'R',
+                ]);
+                if (!$result['success']) {
+                    throw new \Exception($result['error'] ?? 'Part-B update failed.');
+                }
+            }
+
+            $bill->update([
+                'vehicle_no'     => $cleanVehicle,
+                'transport_mode' => $transMode,
+            ]);
+
+            Log::info("EWB Part-B updated for Bill #{$bill->bill_number}: Vehicle {$cleanVehicle}");
+            return ['success' => true, 'message' => "Vehicle updated to {$cleanVehicle} successfully."];
+        } catch (\Throwable $e) {
+            Log::error("EWB Part-B update failed for Bill #{$bill->bill_number}: " . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Extend E-Way Bill validity (when goods not delivered within validity).
+     * GoFrugal allows extending from the current location with a new vehicle.
+     */
+    public function extendValidity(SalesBill $bill, string $vehicleNo, string $fromPlace, int $remainingDistance = 20): array
+    {
+        try {
+            if (!$bill->hasEwayBill()) {
+                throw new \Exception('No active E-Way Bill to extend.');
+            }
+
+            $settings = GstSetting::current();
+            $cleanVehicle = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $vehicleNo));
+            $fromStateCode = $this->resolveStateCode($bill->branch?->gst_no, $bill->branch?->state);
+
+            if ($settings->gsp_provider !== 'mock' && !$settings->is_sandbox) {
+                $result = $this->callEwbGspApi($settings, 'extendvalidity', [
+                    'ewbNo'          => $bill->eway_bill_no,
+                    'vehicleNo'      => $cleanVehicle,
+                    'fromPlace'      => mb_substr($fromPlace, 0, 50),
+                    'fromState'      => $fromStateCode,
+                    'remainingDistance' => $remainingDistance,
+                    'transDocNo'     => $bill->transport_doc_no ?? '',
+                    'transDocDate'   => $bill->transport_doc_date?->format('d/m/Y') ?? '',
+                    'transMode'      => $bill->transport_mode ?? '1',
+                    'vehicleType'    => $bill->vehicle_type ?? 'R',
+                    'extnRsnCode'    => 5, // Others
+                    'extnRemarks'    => 'Extended due to transit delay',
+                    'consignmentStatus' => 'M', // In Movement
+                    'transitType'    => 'R', // Road
+                ]);
+                if (!$result['success']) {
+                    throw new \Exception($result['error'] ?? 'EWB validity extension failed.');
+                }
+                $newValidity = $result['valid_until'] ?? now()->addDays(1);
+            } else {
+                // Mock: just add 1 day
+                $newValidity = ($bill->eway_valid_until ?? now())->addDays(1);
+            }
+
+            $bill->update([
+                'vehicle_no'       => $cleanVehicle,
+                'eway_valid_until'  => $newValidity,
+            ]);
+
+            Log::info("EWB extended for Bill #{$bill->bill_number} till {$newValidity}, Vehicle: {$cleanVehicle}");
+            return ['success' => true, 'message' => "E-Way Bill extended. New validity: " . \Carbon\Carbon::parse($newValidity)->format('d-m-Y h:i A')];
+        } catch (\Throwable $e) {
+            Log::error("EWB extend failed for Bill #{$bill->bill_number}: " . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Shared HTTP helper for all EWB GSP API calls.
+     * Endpoint action: 'ewbgenerate' | 'ewaycancel' | 'vehewb' | 'extendvalidity'
+     */
+    protected function callEwbGspApi(GstSetting $settings, string $action, array $data): array
+    {
+        $baseUrl = $settings->is_sandbox
+            ? 'https://einvoice1-uat.nic.in/EWB/apicall/'
+            : 'https://ewaybillgst.gov.in/apicall/';
+
+        // Provider-specific base URL overrides
+        if ($settings->gsp_provider === 'cleartax') {
+            $baseUrl = $settings->is_sandbox
+                ? 'https://api-sandbox.cleartax.in/gsp/eway/'
+                : 'https://api.cleartax.in/gsp/eway/';
+        } elseif ($settings->gsp_provider === 'masters_india') {
+            $baseUrl = $settings->is_sandbox
+                ? 'https://sandbox.mastersindia.net/gsp/eway/'
+                : 'https://api.mastersindia.net/gsp/eway/';
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'client_id'     => $settings->client_id,
+                'client_secret' => $settings->client_secret,
+                'gstin'         => $settings->gstin,
+                'username'      => $settings->username,
+                'Content-Type'  => 'application/json',
+            ])->timeout(15)->post($baseUrl . $action, $data);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                return [
+                    'success'     => true,
+                    'ewb_no'      => (string) ($body['ewbNo'] ?? $body['EwbNo'] ?? ''),
+                    'ewb_date'    => isset($body['ewbDt']) ? \Carbon\Carbon::parse($body['ewbDt']) : now(),
+                    'valid_until' => isset($body['validUpto']) ? \Carbon\Carbon::parse($body['validUpto']) : now()->addDays(1),
+                    'raw'         => $body,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error'   => $response->json('message') ?? $response->json('error') ?? $response->body(),
+            ];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => 'GSP Timeout: ' . $e->getMessage()];
+        }
     }
 }

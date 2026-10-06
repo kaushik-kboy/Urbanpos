@@ -11,6 +11,8 @@ use App\Models\SalesBill;
 use App\Services\GST\EInvoiceService;
 use App\Services\GST\EWayBillService;
 use App\Services\GST\Gstr1ReportService;
+use App\Services\GST\Gstr2ReportService;
+use App\Services\GST\Gstr3bReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -25,7 +27,7 @@ class EInvoiceDashboardController extends Controller
         $settings = GstSetting::current();
         
         // Active view: 'returns' (GST Returns: GSTR-1, GSTR-3B, GSTR-2, 2A, 2B, 9) or 'einvoice' (E-Invoice Hub)
-        $viewMode = $request->input('view', 'returns');
+        $viewMode = $request->input('view', $request->is('*einvoice*') ? 'einvoice' : 'returns');
         $tab = $request->input('tab', 'pending'); // 'pending', 'failed', 'completed'
 
         // Date range filters (default: current month)
@@ -88,6 +90,7 @@ class EInvoiceDashboardController extends Controller
                     ->orWhereNotNull('irn')
                     ->orWhereNotNull('einvoice_error')
                     ->orWhere('einvoice_status', 'Failed')
+                    ->orWhereNotNull('customer_gstin')
                     ->orWhereHas('customer', function ($cq) {
                         $cq->whereNotNull('gst_no')->where('gst_no', '!=', '');
                     });
@@ -250,6 +253,28 @@ class EInvoiceDashboardController extends Controller
             'docIssuedTotal' => $summary['docs']['total_issued'],
             'cancelledCount' => $summary['docs']['total_cancelled'],
         ]);
+    }
+
+    /**
+     * Download official Government GST Portal Offline Tool JSON for GSTR-1.
+     * Uploadable directly to services.gst.gov.in
+     */
+    public function exportGstr1Json(Request $request)
+    {
+        $settings = GstSetting::current();
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $gstin = $settings->gstin ?: '24AAECU0338G1ZN';
+
+        $service = new Gstr1ReportService($fromDate, $toDate);
+        $jsonData = $service->generateGovtJson($gstin);
+
+        $fp = date('mY', strtotime($fromDate));
+        $filename = "GSTR1_{$gstin}_{$fp}.json";
+
+        return response()->json($jsonData, 200, [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 
     /**
@@ -474,6 +499,161 @@ class EInvoiceDashboardController extends Controller
                 'itc_utilized' => min($salesGst, $purGst),
                 'cash_paid' => $payable,
             ],
+        ]);
+    }
+
+    /**
+     * Dedicated statutory GSTR-3B monthly return page.
+     */
+    public function gstr3bView(Request $request)
+    {
+        $settings = GstSetting::current();
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $branch = Branch::first();
+        $companyName = $branch?->name ?? 'URBANPETS SERVICES PRIVATE LIMITED';
+        $gstin = $settings->gstin ?: '24AAECU0338G1ZN';
+
+        $service = new Gstr3bReportService($fromDate, $toDate);
+        $data = $service->compute();
+
+        return view('gst.gstr-3b', array_merge($data, [
+            'companyName' => $companyName,
+            'gstin'       => $gstin,
+            'fromDate'    => $fromDate,
+            'toDate'      => $toDate,
+            'period'      => date('M Y', strtotime($fromDate)),
+        ]));
+    }
+
+    /**
+     * Export GSTR-3B calculation report as CSV.
+     */
+    public function exportGstr3b(Request $request)
+    {
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $service = new Gstr3bReportService($fromDate, $toDate);
+        $data = $service->compute();
+
+        $filename = "GSTR3B_" . date('Ymd', strtotime($fromDate)) . "_" . date('Ymd', strtotime($toDate)) . ".csv";
+
+        return response()->stream(function () use ($data) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['GSTR-3B STATUTORY SUMMARY REPORT', "Period: {$data['from_date']} to {$data['to_date']}"]);
+            fputcsv($handle, []);
+
+            // 3.1
+            fputcsv($handle, ['TABLE 3.1: DETAILS OF OUTWARD SUPPLIES']);
+            fputcsv($handle, ['Nature of Supplies', 'Taxable Value', 'Integrated Tax', 'Central Tax', 'State/UT Tax', 'Total Tax']);
+            foreach ($data['table_3_1'] as $row) {
+                fputcsv($handle, [$row['desc'], $row['taxable'], $row['igst'], $row['cgst'], $row['sgst'], $row['total_tax']]);
+            }
+            fputcsv($handle, []);
+
+            // 4
+            fputcsv($handle, ['TABLE 4: ELIGIBLE INPUT TAX CREDIT (ITC)']);
+            fputcsv($handle, ['Details', 'Integrated Tax', 'Central Tax', 'State/UT Tax', 'Total ITC']);
+            $allOther = $data['table_4']['available']['all_other'];
+            fputcsv($handle, [$allOther['desc'], $allOther['igst'], $allOther['cgst'], $allOther['sgst'], $allOther['total_itc']]);
+            $rev = $data['table_4']['reversed']['others'];
+            fputcsv($handle, ['Less: ' . $rev['desc'], $rev['igst'], $rev['cgst'], $rev['sgst'], $rev['total']]);
+            $net = $data['table_4']['net_itc'];
+            fputcsv($handle, [$net['desc'], $net['igst'], $net['cgst'], $net['sgst'], $net['total']]);
+            fputcsv($handle, []);
+
+            // 6.1
+            fputcsv($handle, ['TABLE 6.1: PAYMENT OF TAX & OFFSET']);
+            fputcsv($handle, ['Description', 'Integrated Tax', 'Central Tax', 'State/UT Tax', 'Total']);
+            fputcsv($handle, ['Total Output Tax', $data['table_6_1']['igst']['payable'], $data['table_6_1']['cgst']['payable'], $data['table_6_1']['sgst']['payable'], $data['table_6_1']['total']['output_tax']]);
+            fputcsv($handle, ['Paid through ITC', $data['table_6_1']['igst']['paid_itc'], $data['table_6_1']['cgst']['paid_itc'], $data['table_6_1']['sgst']['paid_itc'], $data['table_6_1']['total']['itc_utilized']]);
+            fputcsv($handle, ['Tax Payable in Cash', $data['table_6_1']['igst']['paid_cash'], $data['table_6_1']['cgst']['paid_cash'], $data['table_6_1']['sgst']['paid_cash'], $data['table_6_1']['total']['net_cash_payable']]);
+            fputcsv($handle, ['ITC Credit Balance Carry Forward', '', '', '', $data['table_6_1']['total']['itc_carry_forward']]);
+
+            fclose($handle);
+        }, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    /**
+     * Dedicated statutory GSTR-2 Inward Purchase Register page.
+     */
+    public function gstr2View(Request $request)
+    {
+        $settings = GstSetting::current();
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $branch = Branch::first();
+        $companyName = $branch?->name ?? 'URBANPETS SERVICES PRIVATE LIMITED';
+        $gstin = $settings->gstin ?: '24AAECU0338G1ZN';
+
+        $service = new Gstr2ReportService($fromDate, $toDate);
+        $data = $service->summary();
+
+        return view('gst.gstr-2', array_merge($data, [
+            'companyName' => $companyName,
+            'gstin'       => $gstin,
+            'fromDate'    => $fromDate,
+            'toDate'      => $toDate,
+            'period'      => date('M Y', strtotime($fromDate)),
+        ]));
+    }
+
+    /**
+     * Export GSTR-2 Inward Purchase Register as CSV.
+     */
+    public function exportGstr2(Request $request)
+    {
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $service = new Gstr2ReportService($fromDate, $toDate);
+        $summary = $service->summary();
+
+        $filename = "GSTR2_Inward_Register_" . date('Ymd', strtotime($fromDate)) . "_" . date('Ymd', strtotime($toDate)) . ".csv";
+
+        return response()->stream(function () use ($summary) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['GSTR-2 INWARD SUPPLIES (PURCHASE REGISTER)', "Period: {$summary['from_date']} to {$summary['to_date']}"]);
+            fputcsv($handle, []);
+            fputcsv($handle, ['Supplier Name', 'Supplier GSTIN', 'Invoice No', 'Invoice Date', 'Invoice Value', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Total GST', 'ITC Eligibility', 'RCM']);
+
+            foreach ($summary['purchases'] as $inv) {
+                fputcsv($handle, [
+                    $inv['supplier_name'],
+                    $inv['supplier_gstin'],
+                    $inv['invoice_number'],
+                    $inv['invoice_date'],
+                    $inv['invoice_value'],
+                    $inv['taxable_value'],
+                    $inv['igst'],
+                    $inv['cgst'],
+                    $inv['sgst'],
+                    $inv['total_gst'],
+                    $inv['itc_eligibility'],
+                    $inv['rcm'],
+                ]);
+            }
+
+            fputcsv($handle, []);
+            fputcsv($handle, ['PURCHASE DEBIT NOTES (RETURNS)']);
+            fputcsv($handle, ['Supplier Name', 'Supplier GSTIN', 'Return No', 'Return Date', 'Return Value', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Total GST']);
+            foreach ($summary['debit_notes'] as $dn) {
+                fputcsv($handle, [
+                    $dn['supplier_name'],
+                    $dn['supplier_gstin'],
+                    $dn['return_number'],
+                    $dn['return_date'],
+                    $dn['return_value'],
+                    $dn['taxable_value'],
+                    $dn['igst'],
+                    $dn['cgst'],
+                    $dn['sgst'],
+                    $dn['total_gst'],
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
 
@@ -728,18 +908,39 @@ class EInvoiceDashboardController extends Controller
     }
 
     /**
+     * Cancel an IRN on Government IRP within the 24h cancellation window.
+     */
+    public function cancelIrn(Request $request, SalesBill $salesBill, EInvoiceService $service)
+    {
+        $validated = $request->validate([
+            'cancel_reason' => 'required|in:1,2,3,4',
+            'cancel_remarks' => 'required|string|max:100',
+        ]);
+
+        $result = $service->cancelIrn($salesBill, $validated['cancel_reason'], $validated['cancel_remarks']);
+
+        if ($result['success']) {
+            return redirect()->back()->with('status', "Government IRN for Bill #{$salesBill->bill_number} has been cancelled successfully.");
+        }
+
+        return redirect()->back()->with('error', "IRN Cancellation failed: " . ($result['error'] ?? 'Unknown error'));
+    }
+
+    /**
      * Update GST & Auto-upload settings.
      */
     public function updateSettings(Request $request)
     {
         $validated = $request->validate([
+            'company_name' => 'nullable|string|max:150',
             'gstin' => 'required|string|max:15',
             'username' => 'nullable|string|max:100',
             'password' => 'nullable|string|max:255',
             'client_id' => 'nullable|string|max:100',
             'client_secret' => 'nullable|string|max:255',
-            'gsp_provider' => 'required|string|in:mock,sandbox,cleartax,masters_india,nic_direct',
+            'gsp_provider' => 'required|string|in:mock,sandbox,cleartax,masters_india,nic_direct,zoho',
             'auto_upload_threshold' => 'required|numeric|min:0',
+            'auto_upload_scope' => 'required|string|in:both,b2b_only,threshold_only,all',
             'auto_upload_enabled' => 'nullable|boolean',
             'is_sandbox' => 'nullable|boolean',
         ]);

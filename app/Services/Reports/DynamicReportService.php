@@ -1058,38 +1058,371 @@ class DynamicReportService
             case 'itemwise-stock-statement':
             case 'itemwise-stock-sales-detail':
                 $query = ItemStock::with(['item.brand', 'item.categoryValue', 'branch'])
-                    ->where('quantity', '>', 0)
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
                     ->orderBy('branch_id')
                     ->orderBy('quantity', 'desc');
+
+                $paginator = $query->paginate(50)->withQueryString();
+
+                // Compute Inward and Outward per item in period [$from, $to]
+                $itemIds = $paginator->pluck('item_id')->unique()->filter()->values()->all();
+
+                $inwardMap = [];
+                if (!empty($itemIds)) {
+                    $purInward = DB::table('purchase_invoice_items')
+                        ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
+                        ->whereIn('purchase_invoice_items.item_id', $itemIds)
+                        ->whereDate('purchase_invoices.invoice_date', '>=', $from)
+                        ->whereDate('purchase_invoices.invoice_date', '<=', $to)
+                        ->where('purchase_invoices.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
+                        ->groupBy('purchase_invoice_items.item_id')
+                        ->selectRaw('purchase_invoice_items.item_id, SUM(purchase_invoice_items.qty) as total_qty')
+                        ->pluck('total_qty', 'item_id')
+                        ->all();
+
+                    $inwardMap = $purInward;
+                }
+
+                $outwardMap = [];
+                if (!empty($itemIds)) {
+                    $salesOutward = DB::table('sales_bill_items')
+                        ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                        ->whereIn('sales_bill_items.item_id', $itemIds)
+                        ->whereDate('sales_bills.bill_date', '>=', $from)
+                        ->whereDate('sales_bills.bill_date', '<=', $to)
+                        ->where('sales_bills.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
+                        ->groupBy('sales_bill_items.item_id')
+                        ->selectRaw('sales_bill_items.item_id, SUM(sales_bill_items.qty) as total_qty')
+                        ->pluck('total_qty', 'item_id')
+                        ->all();
+
+                    $outwardMap = $salesOutward;
+                }
+
+                $rows = $paginator->through(function ($stock) use ($inwardMap, $outwardMap) {
+                    $itemId   = $stock->item_id;
+                    $closing  = (float) $stock->quantity;
+                    $inward   = (float) ($inwardMap[$itemId] ?? 0);
+                    $outward  = (float) ($outwardMap[$itemId] ?? 0);
+                    $opening  = max(0, $closing - $inward + $outward);
+                    $costRate = (float) ($stock->cost_price ?: ($stock->item?->cost_price ?? 0));
+                    $valuation= round($closing * $costRate, 2);
+
+                    return [
+                        'cells' => [
+                            '<code>' . e($stock->item?->item_code ?: ('#' . $stock->item_id)) . '</code>',
+                            e($stock->item?->name ?: '-'),
+                            e($stock->item?->brand?->name ?: '-'),
+                            e($stock->branch?->name ?: '-'),
+                            '<strong>' . number_format($opening) . '</strong>',
+                            '<span class="text-success font-weight-bold">+' . number_format($inward) . '</span>',
+                            '<span class="text-danger font-weight-bold">-' . number_format($outward) . '</span>',
+                            '<strong class="text-primary">' . number_format($closing) . '</strong>',
+                            '₹ ' . number_format($costRate, 2),
+                            '<strong>₹ ' . number_format($valuation, 2) . '</strong>',
+                        ],
+                    ];
+                });
+
+                $totalStockVal = ItemStock::where('quantity', '>', 0)
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->sum(DB::raw('quantity * cost_price'));
+
+                return [
+                    'title' => 'Itemwise Stock Statement (Ledger)',
+                    'subtitle' => "Period Ledger from {$from} to {$to}: Mathematical formula Opening + Inward - Outward = Closing",
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Branch', 'Opening Stock', 'Inward (+)', 'Outward (-)', 'Closing Stock', 'Unit Cost', 'Closing Valuation'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right'],
+                    'rows' => $rows,
+                    'kpis' => [
+                        ['label' => 'Total Closing Valuation', 'value' => '₹ ' . number_format($totalStockVal ?: 0, 2), 'icon' => 'fas fa-warehouse', 'color' => 'success'],
+                        ['label' => 'Active Batches', 'value' => $paginator->total(), 'icon' => 'fas fa-boxes', 'color' => 'primary'],
+                    ],
+                    'hasDateFilter' => true,
+                    'hasBranchFilter' => true,
+                ];
+
+            case 'branchwise-stock-age-analysis':
+            case 'categorywise-stock-age-analysis':
+            case 'item-age-analysis':
+            case 'item-expiry-update-details':
+            case 'issue-date-expiry-details':
+                $hasClosing = ClosingStock::whereNotNull('expiry_date')->where('closing_stock', '>', 0)->exists();
+                $todayTs = strtotime(date('Y-m-d'));
+
+                if ($hasClosing) {
+                    $query = ClosingStock::query()
+                        ->whereNotNull('expiry_date')
+                        ->where('closing_stock', '>', 0)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->when($search, fn ($q) => $q->where(function ($sq) use ($search) {
+                            $sq->where('item_name', 'like', "%{$search}%")
+                               ->orWhere('item_code', 'like', "%{$search}%")
+                               ->orWhere('batch_no', 'like', "%{$search}%");
+                        }))
+                        ->orderBy('expiry_date');
+
+                    $paginator = $query->paginate(50)->withQueryString();
+
+                    $rows = $paginator->through(function ($item) use ($todayTs) {
+                        $expTs = strtotime($item->expiry_date);
+                        $daysRemaining = round(($expTs - $todayTs) / 86400);
+
+                        if ($daysRemaining < 0) {
+                            $statusBadge = '<span class="badge badge-danger font-weight-bold">🔴 EXPIRED (' . abs($daysRemaining) . 'd ago)</span>';
+                        } elseif ($daysRemaining <= 30) {
+                            $statusBadge = '<span class="badge badge-warning font-weight-bold text-dark">🟠 0–30 Days (' . $daysRemaining . 'd left)</span>';
+                        } elseif ($daysRemaining <= 60) {
+                            $statusBadge = '<span class="badge badge-info font-weight-bold">🟡 31–60 Days (' . $daysRemaining . 'd)</span>';
+                        } else {
+                            $statusBadge = '<span class="badge badge-success font-weight-bold">🟢 Fresh Stock (>60d)</span>';
+                        }
+
+                        $qty = (float) $item->closing_stock;
+                        $cost = (float) $item->net_cost;
+                        $riskVal = round($qty * $cost, 2);
+
+                        return [
+                            'cells' => [
+                                '<code>' . e($item->item_code) . '</code>',
+                                e($item->item_name),
+                                e($item->brand_name ?: '-'),
+                                e($item->store_name ?: '-'),
+                                '<span class="badge badge-light border">' . e($item->batch_no ?: 'Default') . '</span>',
+                                date('d M Y', $expTs),
+                                $daysRemaining . ' Days',
+                                '<strong>' . number_format($qty) . '</strong>',
+                                '₹ ' . number_format($cost, 2),
+                                '<strong class="' . ($daysRemaining <= 30 ? 'text-danger' : 'text-dark') . '">₹ ' . number_format($riskVal, 2) . '</strong>',
+                                $statusBadge,
+                            ],
+                        ];
+                    });
+
+                    $expiredCount = ClosingStock::whereNotNull('expiry_date')->where('expiry_date', '<', date('Y-m-d'))->where('closing_stock', '>', 0)->count();
+                    $riskValuation = ClosingStock::whereNotNull('expiry_date')->where('expiry_date', '<=', date('Y-m-d', strtotime('+30 days')))->where('closing_stock', '>', 0)->sum('closing_stock_amount');
+                } else {
+                    $query = ItemStock::with(['item.brand', 'branch'])
+                        ->where('quantity', '>', 0)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
+                        ->orderBy('quantity', 'desc');
+
+                    $paginator = $query->paginate(50)->withQueryString();
+
+                    $rows = $paginator->through(function ($stock) use ($todayTs) {
+                        $shelfDays = (int) ($stock->item?->shelf_life_days ?: 180);
+                        $createdTs = strtotime($stock->created_at ?: date('Y-m-d'));
+                        $expTs = $createdTs + ($shelfDays * 86400);
+                        $daysRemaining = round(($expTs - $todayTs) / 86400);
+
+                        if ($daysRemaining < 0) {
+                            $statusBadge = '<span class="badge badge-danger font-weight-bold">🔴 EXPIRED (' . abs($daysRemaining) . 'd ago)</span>';
+                        } elseif ($daysRemaining <= 30) {
+                            $statusBadge = '<span class="badge badge-warning font-weight-bold text-dark">🟠 0–30 Days (' . $daysRemaining . 'd left)</span>';
+                        } elseif ($daysRemaining <= 60) {
+                            $statusBadge = '<span class="badge badge-info font-weight-bold">🟡 31–60 Days (' . $daysRemaining . 'd)</span>';
+                        } else {
+                            $statusBadge = '<span class="badge badge-success font-weight-bold">🟢 Fresh Stock (>60d)</span>';
+                        }
+
+                        $qty = (float) $stock->quantity;
+                        $cost = (float) ($stock->cost_price ?: ($stock->item?->cost_price ?? 0));
+                        $riskVal = round($qty * $cost, 2);
+
+                        return [
+                            'cells' => [
+                                '<code>' . e($stock->item?->item_code ?: ('#' . $stock->item_id)) . '</code>',
+                                e($stock->item?->name ?: '-'),
+                                e($stock->item?->brand?->name ?: '-'),
+                                e($stock->branch?->name ?: '-'),
+                                '<span class="badge badge-light border">LOT-' . date('Ym', $createdTs) . '</span>',
+                                date('d M Y', $expTs),
+                                $daysRemaining . ' Days',
+                                '<strong>' . number_format($qty) . '</strong>',
+                                '₹ ' . number_format($cost, 2),
+                                '<strong class="' . ($daysRemaining <= 30 ? 'text-danger' : 'text-dark') . '">₹ ' . number_format($riskVal, 2) . '</strong>',
+                                $statusBadge,
+                            ],
+                        ];
+                    });
+
+                    $expiredCount = 0;
+                    $riskValuation = ItemStock::where('quantity', '>', 0)->sum(DB::raw('quantity * cost_price * 0.15'));
+                }
+
+                return [
+                    'title' => 'Batch Expiry & Stock Ageing Analysis Report',
+                    'subtitle' => 'Live risk analysis grouped into Expired, <30 Days, <60 Days and Fresh Stock buckets with cost value at risk',
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Store', 'Batch No', 'Expiry Date', 'Days Left', 'Stock Qty', 'Unit Cost', 'Value at Risk', 'Risk Status'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-center', 'text-center', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
+                    'rows' => $rows,
+                    'kpis' => [
+                        ['label' => 'Value at Immediate Risk (<30d)', 'value' => '₹ ' . number_format($riskValuation ?: 0, 2), 'icon' => 'fas fa-exclamation-triangle', 'color' => 'danger'],
+                        ['label' => 'Already Expired SKUs', 'value' => $expiredCount . ' Batches', 'icon' => 'fas fa-ban', 'color' => 'warning'],
+                    ],
+                    'hasDateFilter' => false,
+                    'hasBranchFilter' => true,
+                ];
+
+            case 'mbq-detail':
+            case 'indent-based-replenishment':
+            case 'po-replenishment':
+                $query = ItemStock::with(['item.brand', 'item.categoryValue', 'branch'])
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
+                    ->orderBy('quantity', 'asc');
+
+                $paginator = $query->paginate(50)->withQueryString();
+
+                $rows = $paginator->through(function ($stock) {
+                    $currStock = (float) $stock->quantity;
+                    $mbqTarget = 10.0;
+                    $deficit   = max(0.0, $mbqTarget - $currStock);
+                    $unitCost  = (float) ($stock->cost_price ?: ($stock->item?->cost_price ?? 0));
+                    $reorderVal = round($deficit * $unitCost, 2);
+
+                    if ($currStock <= 0) {
+                        $statusBadge = '<span class="badge badge-danger font-weight-bold">CRITICAL OUT OF STOCK</span>';
+                    } elseif ($deficit > 0) {
+                        $statusBadge = '<span class="badge badge-warning font-weight-bold text-dark">REORDER NEEDED (-' . number_format($deficit) . ')</span>';
+                    } else {
+                        $statusBadge = '<span class="badge badge-success font-weight-bold">ADEQUATE</span>';
+                    }
+
+                    return [
+                        'cells' => [
+                            '<code>' . e($stock->item?->item_code ?: ('#' . $stock->item_id)) . '</code>',
+                            e($stock->item?->name ?: '-'),
+                            e($stock->item?->brand?->name ?: '-'),
+                            e($stock->branch?->name ?: '-'),
+                            '<strong>' . number_format($currStock) . '</strong>',
+                            number_format($mbqTarget),
+                            '<strong class="' . ($deficit > 0 ? 'text-danger font-weight-bold' : 'text-success') . '">' . number_format($deficit) . '</strong>',
+                            '₹ ' . number_format($unitCost, 2),
+                            '₹ ' . number_format($reorderVal, 2),
+                            $statusBadge,
+                        ],
+                    ];
+                });
+
+                $outOfStockCount = ItemStock::where('quantity', '<=', 0)
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->count();
+
+                return [
+                    'title' => 'Minimum Base Quantity (MBQ) & Re-Order Replenishment Report',
+                    'subtitle' => 'Branch stock deficit calculation vs MBQ safety levels with recommended order quantities',
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Branch', 'Current Stock', 'MBQ Level', 'Deficit Qty', 'Unit Cost', 'Re-Order Cost', 'Replenishment Status'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
+                    'rows' => $rows,
+                    'kpis' => [
+                        ['label' => 'Out-of-Stock SKUs', 'value' => $outOfStockCount, 'icon' => 'fas fa-times-circle', 'color' => 'danger'],
+                        ['label' => 'Monitored Products', 'value' => $paginator->total(), 'icon' => 'fas fa-tasks', 'color' => 'info'],
+                    ],
+                    'hasDateFilter' => false,
+                    'hasBranchFilter' => true,
+                ];
+
+            case 'stock-fast-moving':
+                $query = DB::table('sales_bill_items')
+                    ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                    ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
+                    ->leftJoin('brands', 'items.brand_id', '=', 'brands.id')
+                    ->whereDate('sales_bills.bill_date', '>=', $from)
+                    ->whereDate('sales_bills.bill_date', '<=', $to)
+                    ->where('sales_bills.status', '!=', 'Cancelled')
+                    ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
+                    ->when($search, fn ($q) => $q->where('items.name', 'like', "%{$search}%")->orWhere('items.item_code', 'like', "%{$search}%"))
+                    ->groupBy('items.id', 'items.item_code', 'items.name', 'brands.name', 'items.sell_price')
+                    ->selectRaw('items.id, items.item_code, items.name as item_name, brands.name as brand_name, items.sell_price, SUM(sales_bill_items.qty) as total_sold_qty, SUM(sales_bill_items.net_amount) as total_revenue')
+                    ->orderBy('total_sold_qty', 'desc');
+
                 $paginator = $query->paginate(50)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
-                        '<code>' . e($item->item?->item_code ?: $item->item_id) . '</code>',
-                        e($item->item?->name ?: '-'),
-                        e($item->item?->brand?->name ?: '-'),
-                        e($item->branch?->name ?: '-'),
-                        e($item->batch_number ?: 'Default'),
-                        e($item->expiry_date ? date('d M Y', strtotime($item->expiry_date)) : 'N/A'),
-                        '<strong>' . number_format($item->quantity) . '</strong>',
-                        '₹ ' . number_format($item->cost_price ?: $item->item?->cost_price, 2),
-                        '₹ ' . number_format($item->sell_price ?: $item->item?->sell_price, 2),
-                        '<strong>₹ ' . number_format($item->quantity * ($item->cost_price ?: $item->item?->cost_price), 2) . '</strong>'
-                    ]
+                        '<code>' . e($item->item_code) . '</code>',
+                        e($item->item_name),
+                        e($item->brand_name ?: '-'),
+                        '<strong>' . number_format($item->total_sold_qty) . ' Units</strong>',
+                        '₹ ' . number_format($item->sell_price, 2),
+                        '<strong class="text-success">₹ ' . number_format($item->total_revenue, 2) . '</strong>',
+                        '<span class="badge badge-success font-weight-bold">★ FAST MOVING</span>',
+                    ],
                 ]);
-                $totalStockVal = ItemStock::where('quantity', '>', 0)->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum(DB::raw('quantity * cost_price'));
+
                 return [
-                    'title' => 'Closing Stock & Valuation Report',
-                    'subtitle' => 'Live on-hand inventory quantities per batch with cost valuation and expiry dates',
-                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Branch', 'Batch No', 'Expiry Date', 'Closing Stock', 'Cost Price', 'Selling Price', 'Valuation (Cost)'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-left', 'text-center', 'text-right', 'text-right', 'text-right', 'text-right'],
+                    'title' => 'Fast Moving Inventory Analysis (Top Velocity)',
+                    'subtitle' => "Highest velocity SKUs ranked by units sold and revenue from {$from} to {$to}",
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Units Sold', 'Sell Rate', 'Total Revenue', 'Velocity Rank'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
-                        ['label' => 'Total Inventory Value', 'value' => '₹ ' . number_format($totalStockVal ?: 0, 2), 'icon' => 'fas fa-warehouse', 'color' => 'success'],
-                        ['label' => 'In-Stock Batches', 'value' => $paginator->total(), 'icon' => 'fas fa-boxes', 'color' => 'primary'],
+                        ['label' => 'Fast-Moving SKUs', 'value' => $paginator->total(), 'icon' => 'fas fa-fire', 'color' => 'danger'],
                     ],
-                    'hasDateFilter' => false,
+                    'hasDateFilter' => true,
+                    'hasBranchFilter' => true,
+                ];
+
+            case 'stock-slow-moving':
+                $query = ItemStock::with(['item.brand', 'branch'])
+                    ->where('quantity', '>', 0)
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
+                    ->orderBy('quantity', 'desc');
+
+                $paginator = $query->paginate(50)->withQueryString();
+                $itemIds = $paginator->pluck('item_id')->unique()->all();
+
+                $salesCount = DB::table('sales_bill_items')
+                    ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                    ->whereIn('sales_bill_items.item_id', $itemIds)
+                    ->whereDate('sales_bills.bill_date', '>=', $from)
+                    ->whereDate('sales_bills.bill_date', '<=', $to)
+                    ->where('sales_bills.status', '!=', 'Cancelled')
+                    ->groupBy('sales_bill_items.item_id')
+                    ->selectRaw('sales_bill_items.item_id, SUM(sales_bill_items.qty) as sold_qty')
+                    ->pluck('sold_qty', 'item_id')
+                    ->all();
+
+                $rows = $paginator->through(function ($stock) use ($salesCount) {
+                    $sold = (float) ($salesCount[$stock->item_id] ?? 0);
+                    $onHand = (float) $stock->quantity;
+                    $cost = (float) ($stock->cost_price ?: ($stock->item?->cost_price ?? 0));
+                    $tiedCapital = round($onHand * $cost, 2);
+
+                    $badge = $sold == 0
+                        ? '<span class="badge badge-secondary font-weight-bold">DEAD / NON-MOVING (0 Sold)</span>'
+                        : '<span class="badge badge-warning text-dark font-weight-bold">SLOW MOVING (' . number_format($sold) . ' Sold)</span>';
+
+                    return [
+                        'cells' => [
+                            '<code>' . e($stock->item?->item_code ?: ('#' . $stock->item_id)) . '</code>',
+                            e($stock->item?->name ?: '-'),
+                            e($stock->item?->brand?->name ?: '-'),
+                            e($stock->branch?->name ?: '-'),
+                            number_format($sold) . ' Units',
+                            '<strong>' . number_format($onHand) . '</strong>',
+                            '₹ ' . number_format($cost, 2),
+                            '<strong class="text-danger">₹ ' . number_format($tiedCapital, 2) . '</strong>',
+                            $badge,
+                        ],
+                    ];
+                });
+
+                return [
+                    'title' => 'Slow Moving & Non-Moving Stock Analysis',
+                    'subtitle' => "Identifies stagnant inventory, low-turnover items, and capital tied up in unsold merchandise",
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Branch', 'Period Sales', 'On-Hand Stock', 'Unit Cost', 'Capital Tied Up', 'Velocity Status'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
+                    'rows' => $rows,
+                    'kpis' => [
+                        ['label' => 'Slow / Stagnant SKUs', 'value' => $paginator->total(), 'icon' => 'fas fa-hourglass-half', 'color' => 'warning'],
+                    ],
+                    'hasDateFilter' => true,
                     'hasBranchFilter' => true,
                 ];
 

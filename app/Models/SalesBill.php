@@ -13,7 +13,7 @@ class SalesBill extends Model
     use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
 
     protected $fillable = [
-        'bill_number', 'bill_date', 'customer_id', 'customer_gstin', 'branch_id', 'user_id', 'sales_delivery_note_id', 'till_session_id', 'invoice_type', 'delivery_type',
+        'bill_number', 'bill_date', 'customer_id', 'customer_pet_id', 'customer_gstin', 'branch_id', 'user_id', 'sales_delivery_note_id', 'till_session_id', 'invoice_type', 'delivery_type',
         'delivery_time', 'sales_type', 'payment_type', 'item_disc_amount', 'disc_percent',
         'disc_amount', 'round_off', 'total_gst', 'total_cgst', 'total_sgst', 'total_igst',
         'total_extra_cess', 'gst_calamity_cess',
@@ -67,6 +67,11 @@ class SalesBill extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function pet(): BelongsTo
+    {
+        return $this->belongsTo(CustomerPet::class, 'customer_pet_id');
     }
 
     public function branch(): BelongsTo
@@ -148,6 +153,22 @@ class SalesBill extends Model
     public function requiresEinvoice(): bool
     {
         // Eligible if total >= ₹50,000 or Customer is registered (B2B with GSTIN)
-        return (float) $this->total >= 50000 || !empty($this->customer?->gst_no);
+        return (float) $this->total >= 50000 || !empty($this->customer_gstin) || !empty($this->customer?->gst_no);
+    }
+
+    public function isEinvoiceCancelled(): bool
+    {
+        return $this->einvoice_status === 'Cancelled';
+    }
+
+    public function getEinvoiceQrUrl(): string
+    {
+        $payload = $this->signed_qr_code ?: $this->irn;
+        if (empty($payload)) {
+            $payload = $this->bill_number;
+        } elseif (strlen($payload) > 800) {
+            $payload = $this->irn ?: $payload;
+        }
+        return 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=' . urlencode($payload);
     }
 }

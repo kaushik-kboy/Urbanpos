@@ -18,6 +18,28 @@ class EInvoiceService
     }
 
     /**
+     * Check if a sales bill is eligible for automatic background e-invoice upload.
+     */
+    public function isEligibleForAutoUpload(SalesBill $bill, ?GstSetting $settings = null): bool
+    {
+        $settings = $settings ?: GstSetting::current();
+        if (!$settings->auto_upload_enabled) {
+            return false;
+        }
+
+        $isB2B = !empty($bill->customer_gstin) || !empty($bill->customer?->gst_no);
+        $threshold = (float) ($settings->auto_upload_threshold ?: 50000.00);
+        $scope = $settings->auto_upload_scope ?: 'both';
+
+        return match ($scope) {
+            'b2b_only' => $isB2B,
+            'threshold_only' => (float) $bill->total >= $threshold,
+            'all' => true,
+            default => $isB2B || ((float) $bill->total >= $threshold), // 'both'
+        };
+    }
+
+    /**
      * Build the standard NIC E-Invoice JSON payload (Schema 1.1).
      */
     public function buildPayload(SalesBill $bill): array
@@ -28,11 +50,11 @@ class EInvoiceService
         $customer = $bill->customer;
         $settings = GstSetting::current();
 
-        $sellerGstin = strtoupper(trim($branch?->gst_no ?: ($settings->gstin ?: '24AAECU3183G1ZN')));
+        $sellerGstin = strtoupper(trim($branch?->gst_no ?: ($settings->gstin ?: '24AAECU0338G1ZN')));
         $fromStateCode = str_pad((string) $this->ewayService->resolveStateCode($sellerGstin, $branch?->state ?? 'Gujarat'), 2, '0', STR_PAD_LEFT);
 
-        $isB2B = !empty($customer?->gst_no);
-        $buyerGstin = $isB2B ? strtoupper(trim($customer->gst_no)) : 'URP';
+        $isB2B = !empty($bill->customer_gstin) || !empty($customer?->gst_no);
+        $buyerGstin = $isB2B ? strtoupper(trim($bill->customer_gstin ?: $customer->gst_no)) : 'URP';
         $toStateCode = str_pad((string) $this->ewayService->resolveStateCode($isB2B ? $buyerGstin : null, $customer?->state ?? $branch?->state ?? 'Gujarat'), 2, '0', STR_PAD_LEFT);
 
         $isInterstate = ($fromStateCode !== $toStateCode) || ((float) $bill->total_igst > 0);
@@ -133,7 +155,7 @@ class EInvoiceService
             ],
             'SellerDtls' => [
                 'Gstin' => $sellerGstin,
-                'LglNm' => mb_substr($branch?->name ?? 'URBANPETS SERVICES PRIVATE LIMITED', 0, 100),
+                'LglNm' => mb_substr($settings->company_name ?: ($branch?->name ?? 'URBANPETS SERVICES PRIVATE LIMITED'), 0, 100),
                 'TrdNm' => mb_substr($branch?->name ?? 'Urban Pets', 0, 100),
                 'Addr1' => mb_substr($branch?->address_line1 ?? 'Main Market Road', 0, 100),
                 'Loc' => mb_substr($branch?->city ?? 'Ahmedabad', 0, 50),
@@ -283,15 +305,94 @@ class EInvoiceService
     }
 
     /**
-     * Call Live GSP Endpoint (ClearTax / Sandbox / Masters India).
+     * Cancel Government E-Invoice IRN (allowed within 24 hours of generation on Government IRP).
+     * Reason codes:
+     * 1 - Duplicate
+     * 2 - Data entry error
+     * 3 - Order cancelled
+     * 4 - Others
+     */
+    public function cancelIrn(SalesBill $bill, string $reasonCode = '1', string $remarks = 'Cancelled by Cashier'): array
+    {
+        try {
+            if (empty($bill->irn)) {
+                throw new \Exception('This invoice does not have an active IRN to cancel.');
+            }
+
+            $settings = GstSetting::current();
+
+            // If Live GSP API is configured
+            if ($settings->gsp_provider !== 'mock' && !empty($settings->client_id) && !empty($settings->client_secret)) {
+                $endpoint = $settings->is_sandbox 
+                    ? 'https://api-sandbox.co.in/gsp/v1.1/invoice/cancel'
+                    : 'https://api.einvoice.gst.gov.in/gsp/v1.1/invoice/cancel';
+
+                $response = Http::withHeaders([
+                    'client_id' => $settings->client_id,
+                    'client_secret' => $settings->client_secret,
+                    'gstin' => $settings->gstin,
+                    'Content-Type' => 'application/json',
+                ])->timeout(15)->post($endpoint, [
+                    'Irn' => $bill->irn,
+                    'CnlRsn' => $reasonCode,
+                    'CnlRem' => $remarks,
+                ]);
+
+                if (!$response->successful()) {
+                    throw new \Exception($response->json('message') ?? 'Government IRP rejected IRN cancellation.');
+                }
+            }
+
+            $reasonNames = [
+                '1' => 'Duplicate',
+                '2' => 'Data entry error',
+                '3' => 'Order cancelled',
+                '4' => 'Others',
+            ];
+            $reasonText = $reasonNames[$reasonCode] ?? 'Cancelled';
+
+            $bill->update([
+                'einvoice_status' => 'Cancelled',
+                'einvoice_error' => "IRN Cancelled on Portal: [Code {$reasonCode} - {$reasonText}] {$remarks}",
+                'einvoice_synced_at' => now(),
+            ]);
+
+            Log::info("E-Invoice IRN cancelled for Bill #{$bill->bill_number}, Reason: {$reasonText}");
+
+            return [
+                'success' => true,
+                'message' => 'Government E-Invoice IRN cancelled successfully!',
+            ];
+        } catch (\Throwable $e) {
+            $errorMsg = $e->getMessage();
+            Log::error("IRN cancellation failed for Bill #{$bill->bill_number}: {$errorMsg}");
+            return [
+                'success' => false,
+                'error' => $errorMsg,
+            ];
+        }
+    }
+
+    /**
+     * Call Live GSP Endpoint (Zoho Corporation / ClearTax / Sandbox / Masters India / NIC Direct).
      */
     protected function callLiveGspApi(GstSetting $settings, array $payload): array
     {
-        // Production GSP integration driver template
-        // By default Sandbox API gateway
-        $endpoint = $settings->is_sandbox 
-            ? 'https://api-sandbox.co.in/gsp/v1.1/invoice'
-            : 'https://api.einvoice.gst.gov.in/gsp/v1.1/invoice';
+        // Provider-tailored endpoints
+        $endpoint = match ($settings->gsp_provider) {
+            'zoho' => $settings->is_sandbox
+                ? 'https://books.zoho.com/api/v3/gst/sandbox/einvoice'
+                : 'https://books.zoho.com/api/v3/gst/einvoice',
+            'cleartax' => $settings->is_sandbox
+                ? 'https://api-sandbox.cleartax.in/gsp/v1.1/invoice'
+                : 'https://api.cleartax.in/gsp/v1.1/invoice',
+            'masters_india' => $settings->is_sandbox
+                ? 'https://sandbox.mastersindia.net/gsp/v1.1/invoice'
+                : 'https://api.mastersindia.net/gsp/v1.1/invoice',
+            default => $settings->is_sandbox
+                ? 'https://api-sandbox.co.in/gsp/v1.1/invoice'
+                : 'https://api.einvoice.gst.gov.in/gsp/v1.1/invoice',
+        };
 
         try {
             $response = Http::withHeaders([

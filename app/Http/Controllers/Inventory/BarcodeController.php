@@ -62,10 +62,66 @@ class BarcodeController extends Controller
         $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))
                         ->orderBy('name')->pluck('name', 'id');
 
+        $activeBranchId = $branchId ?: session('active_branch_id');
+        $recentInvoices = \App\Models\PurchaseInvoice::with('supplier')
+            ->when($activeBranchId && $activeBranchId !== 'all', fn ($q) => $q->where('branch_id', $activeBranchId))
+            ->latest('invoice_date')
+            ->limit(35)
+            ->get();
+
+        $selectedInvoiceId = $request->input('purchase_invoice_id');
+        $initialInvoiceItems = [];
+        if ($selectedInvoiceId) {
+            $selInv = \App\Models\PurchaseInvoice::with('items.item')->find($selectedInvoiceId);
+            if ($selInv) {
+                $initialInvoiceItems = $selInv->items->map(function ($piItem) {
+                    $item = $piItem->item;
+                    return [
+                        'id'         => $item?->id,
+                        'item_code'  => $item?->item_code ?? '',
+                        'name'       => $item?->name ?? 'Unknown',
+                        'barcode'    => $item?->ean_upc_code ?: $item?->item_code ?: (string) $item?->id,
+                        'sell_price' => (float) ($piItem->sell_price > 0 ? $piItem->sell_price : ($item?->sell_price ?? 0)),
+                        'mrp'        => (float) ($piItem->mrp > 0 ? $piItem->mrp : ($item?->mrp ?? 0)),
+                        'qty'        => max(1, (int) round($piItem->qty ?? $piItem->quantity ?? 1)),
+                        'exp_date'   => $piItem->exp_date ? substr($piItem->exp_date, 0, 10) : '',
+                        'batch_no'   => $piItem->batch_no ?? '',
+                    ];
+                })->values()->toArray();
+            }
+        }
+
         return view('inventory.barcode.index', compact(
             'items', 'search', 'branchId', 'brandId', 'categoryValueId',
-            'branches', 'brands', 'categories'
+            'branches', 'brands', 'categories', 'recentInvoices', 'selectedInvoiceId', 'initialInvoiceItems'
         ));
+    }
+
+    /**
+     * AJAX fetch items from a Purchase Invoice.
+     */
+    public function invoiceItems(\App\Models\PurchaseInvoice $purchaseInvoice)
+    {
+        $items = $purchaseInvoice->items()->with('item')->get()->map(function ($piItem) {
+            $item = $piItem->item;
+            return [
+                'id'         => $item?->id,
+                'item_code'  => $item?->item_code ?? '',
+                'name'       => $item?->name ?? 'Unknown',
+                'barcode'    => $item?->ean_upc_code ?: $item?->item_code ?: (string) $item?->id,
+                'sell_price' => (float) ($piItem->sell_price > 0 ? $piItem->sell_price : ($item?->sell_price ?? 0)),
+                'mrp'        => (float) ($piItem->mrp > 0 ? $piItem->mrp : ($item?->mrp ?? 0)),
+                'qty'        => max(1, (int) round($piItem->qty ?? $piItem->quantity ?? 1)),
+                'exp_date'   => $piItem->exp_date ? substr($piItem->exp_date, 0, 10) : '',
+                'batch_no'   => $piItem->batch_no ?? '',
+            ];
+        });
+
+        return response()->json([
+            'invoice_number' => $purchaseInvoice->invoice_number,
+            'invoice_date'   => optional($purchaseInvoice->invoice_date)->format('d-m-Y'),
+            'items'          => $items,
+        ]);
     }
 
     /**
@@ -73,7 +129,7 @@ class BarcodeController extends Controller
      */
     public function search(Request $request)
     {
-        $q      = $request->input('q', '');
+        $q               = $request->input('q', '');
         $brandId         = $request->input('brand_id');
         $categoryValueId = $request->input('category_value_id');
 
@@ -100,47 +156,18 @@ class BarcodeController extends Controller
                 'barcode'   => $item->ean_upc_code ?: $item->item_code,
                 'name'      => $item->name,
                 'brand'     => $item->brand?->name,
-                'sell_price'=> $item->sell_price,
-                'mrp'       => $item->mrp,
+                'sell_price'=> (float) $item->sell_price,
+                'mrp'       => (float) $item->mrp,
             ]);
 
         return response()->json($items);
     }
 
     /**
-     * Render a print-ready barcode label sheet.
-     * Accepts: items[] = [ { id, qty } ]
+     * Render print-ready barcode label sheet via unified BarcodePrintController engine.
      */
     public function print(Request $request)
     {
-        $itemIds = collect($request->input('items', []))->keyBy('id');
-
-        if ($itemIds->isEmpty()) {
-            return redirect()->route('inventory.barcode.index')->with('error', 'No items selected for printing.');
-        }
-
-        $items = Item::whereIn('id', $itemIds->keys())
-            ->orderBy('name')
-            ->get()
-            ->map(function ($item) use ($itemIds) {
-                $entry = $itemIds->get($item->id);
-                $qty = max(1, (int) ($entry['qty'] ?? 1));
-                return (object) [
-                    'id'           => $item->id,
-                    'item_code'    => $item->item_code,
-                    'name'         => $item->name,
-                    'sell_price'   => $item->sell_price,
-                    'mrp'          => $item->mrp,
-                    'barcode'      => $item->ean_upc_code ?: $item->item_code,
-                    'qty'          => $qty,
-                ];
-            });
-
-        // Expand: repeat each item entry $qty times
-        $labels = $items->flatMap(function ($item) {
-            return collect(range(1, $item->qty))->map(fn () => $item);
-        });
-
-        return view('inventory.barcode.print', compact('labels'));
+        return app(\App\Http\Controllers\Master\BarcodePrintController::class)->printLabels($request);
     }
 }

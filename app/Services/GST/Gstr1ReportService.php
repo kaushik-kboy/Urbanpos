@@ -515,4 +515,160 @@ class Gstr1ReportService
 
         return compact('b2b', 'b2cl', 'b2cs', 'hsnB2b', 'hsnB2c', 'cdnr', 'cdnur', 'nil', 'export', 'advRec', 'advAdj', 'docs');
     }
+
+    /**
+     * Generate official Government GST Portal Offline Tool JSON schema.
+     * Ready for direct upload to services.gst.gov.in
+     */
+    public function generateGovtJson(string $gstin): array
+    {
+        $fp = date('mY', strtotime($this->fromDate));
+        $defaultPos = substr($gstin, 0, 2) ?: '24';
+
+        // 1. Table 4 B2B
+        $b2bData = [];
+        $groupedB2b = [];
+        foreach ($this->b2b()['rows'] as $r) {
+            $ctin = $r['gstin'] ?: $gstin;
+            $groupedB2b[$ctin][] = $r;
+        }
+        foreach ($groupedB2b as $ctin => $invs) {
+            $invList = [];
+            foreach ($invs as $inv) {
+                $pos = substr($ctin, 0, 2) ?: $defaultPos;
+                $invTaxable = (float) $inv['taxable'];
+                $invGst = (float) $inv['igst'] + (float) $inv['cgst'] + (float) $inv['sgst'];
+                $rt = $invTaxable > 0 ? round(($invGst / $invTaxable) * 100, 1) : 18.0;
+
+                $invList[] = [
+                    'inum'    => (string) $inv['ref'],
+                    'idt'     => date('d-m-Y', strtotime($inv['date'])),
+                    'val'     => (float) $inv['total'],
+                    'pos'     => (string) $pos,
+                    'rchrg'   => 'N',
+                    'inv_typ' => 'R',
+                    'itms'    => [
+                        [
+                            'num'     => 1,
+                            'itm_det' => [
+                                'txval' => $invTaxable,
+                                'rt'    => $rt,
+                                'iamt'  => (float) $inv['igst'],
+                                'camt'  => (float) $inv['cgst'],
+                                'samt'  => (float) $inv['sgst'],
+                                'csamt' => 0.0,
+                            ],
+                        ],
+                    ],
+                ];
+            }
+            $b2bData[] = [
+                'ctin' => $ctin,
+                'cfs'  => 'Y',
+                'inv'  => $invList,
+            ];
+        }
+
+        // 2. Table 7 B2CS
+        $b2csData = [];
+        foreach ($this->b2cs()['rows'] as $r) {
+            $b2csData[] = [
+                'sply_ty' => ($r['igst'] > 0) ? 'INTER' : 'INTRA',
+                'pos'     => $defaultPos,
+                'typ'     => 'OE',
+                'rt'      => (float) $r['rate'],
+                'txval'   => (float) $r['taxable'],
+                'iamt'    => (float) $r['igst'],
+                'camt'    => (float) $r['cgst'],
+                'samt'    => (float) $r['sgst'],
+                'csamt'   => 0.0,
+            ];
+        }
+
+        // 3. Table 9B CDNR
+        $cdnrData = [];
+        foreach ($this->cdnr()['rows'] as $r) {
+            $ctin = $r['gstin'] ?: $gstin;
+            $pos = substr($ctin, 0, 2) ?: $defaultPos;
+            $cdnrData[] = [
+                'ctin' => $ctin,
+                'cfs'  => 'Y',
+                'nt'   => [
+                    [
+                        'nt_num' => (string) $r['ref'],
+                        'nt_dt'  => date('d-m-Y', strtotime($r['date'])),
+                        'ntty'   => 'C',
+                        'val'    => (float) $r['total'],
+                        'pos'    => (string) $pos,
+                        'rchrg'  => 'N',
+                        'itms'   => [
+                            [
+                                'num'     => 1,
+                                'itm_det' => [
+                                    'txval' => (float) $r['taxable'],
+                                    'rt'    => 18.0,
+                                    'iamt'  => (float) $r['igst'],
+                                    'camt'  => (float) $r['cgst'],
+                                    'samt'  => (float) $r['sgst'],
+                                    'csamt' => 0.0,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+        }
+
+        // 4. Table 12 HSN Summary
+        $hsnList = [];
+        $hsnNum = 1;
+        $allHsn = array_merge($this->hsnB2b()['rows'], $this->hsnB2c()['rows']);
+        foreach ($allHsn as $h) {
+            $hsnList[] = [
+                'num'    => $hsnNum++,
+                'hsn_sc' => (string) ($h['hsn'] ?: '9999'),
+                'desc'   => substr($h['name'] ?: 'Pet Supplies Retail', 0, 30),
+                'uqc'    => 'UNT',
+                'qty'    => (float) $h['qty'],
+                'val'    => (float) $h['total'],
+                'txval'  => (float) $h['taxable'],
+                'iamt'   => (float) $h['igst'],
+                'camt'   => (float) $h['cgst'],
+                'samt'   => (float) $h['sgst'],
+                'csamt'  => 0.0,
+            ];
+        }
+
+        // 5. Table 13 Documents Issued
+        $docsData = [];
+        $docNum = 1;
+        foreach ($this->documentsIssued()['rows'] as $d) {
+            $docsData[] = [
+                'doc_num' => $docNum++,
+                'doc_typ' => $d['label'],
+                'docs'    => [
+                    [
+                        'num'       => 1,
+                        'from'      => (string) $d['first'],
+                        'to'        => (string) $d['last'],
+                        'totnum'    => (int) $d['total'],
+                        'canc'      => (int) $d['cancelled'],
+                        'net_issue' => (int) $d['net_issued'],
+                    ],
+                ],
+            ];
+        }
+
+        return [
+            'gstin'     => $gstin,
+            'fp'        => $fp,
+            'version'   => 'GSTR1_V2.0',
+            'hash'      => 'hash',
+            'b2b'       => $b2bData,
+            'b2cs'      => $b2csData,
+            'cdnr'      => $cdnrData,
+            'hsn'       => ['data' => $hsnList],
+            'doc_issue' => ['doc_det' => $docsData],
+        ];
+    }
 }

@@ -218,6 +218,32 @@
                                         title="Update EWB No. & Transport">
                                         <i class="fas fa-pen"></i>
                                     </button>
+                                    @if ($bill->hasEwayBill())
+                                        <button type="button" class="btn btn-outline-success btn-open-partb"
+                                            data-id="{{ $bill->id }}"
+                                            data-billno="{{ $bill->bill_number }}"
+                                            data-vehicleno="{{ $bill->vehicle_no }}"
+                                            data-partburl="{{ route('sales.sales-bills.eway-partb', $bill) }}"
+                                            title="Update Part-B (Change Vehicle)">
+                                            <i class="fas fa-truck"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info btn-open-extend"
+                                            data-id="{{ $bill->id }}"
+                                            data-billno="{{ $bill->bill_number }}"
+                                            data-ewayno="{{ $bill->eway_bill_no }}"
+                                            data-extendurl="{{ route('sales.sales-bills.eway-extend', $bill) }}"
+                                            title="Extend Validity">
+                                            <i class="fas fa-clock"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger btn-open-cancel"
+                                            data-id="{{ $bill->id }}"
+                                            data-billno="{{ $bill->bill_number }}"
+                                            data-ewayno="{{ $bill->eway_bill_no }}"
+                                            data-cancelurl="{{ route('sales.sales-bills.eway-cancel', $bill) }}"
+                                            title="Cancel E-Way Bill">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    @endif
                                     <a href="{{ route('sales.sales-bills.show', $bill) }}" class="btn btn-outline-secondary" title="View Bill">
                                         <i class="fas fa-eye"></i>
                                     </a>
@@ -296,6 +322,123 @@
             </div>
         </div>
     </div>
+
+    {{-- Cancel EWB Modal --}}
+    <div class="modal fade" id="cancelEwbModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="cancelEwbForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title font-weight-bold">
+                            <i class="fas fa-times-circle mr-2"></i> Cancel E-Way Bill: <span id="cancelDocNo"></span>
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="alert alert-warning py-2 small">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            EWB <strong id="cancelEwbNo"></strong> will be permanently cancelled on the government portal. This action cannot be undone.
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small text-dark">Cancellation Reason</label>
+                            <select name="reason_code" class="form-control" required>
+                                <option value="1">1 — Duplicate</option>
+                                <option value="2" selected>2 — Order Changed</option>
+                                <option value="3">3 — Data Entry Mistake</option>
+                                <option value="4">4 — Others</option>
+                            </select>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold small text-dark">Remarks (optional)</label>
+                            <input type="text" name="remarks" class="form-control" placeholder="Reason details..." maxlength="100">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger btn-sm font-weight-bold px-3">
+                            <i class="fas fa-times-circle mr-1"></i> Confirm Cancel EWB
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Extend Validity Modal --}}
+    <div class="modal fade" id="extendEwbModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="extendEwbForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title font-weight-bold">
+                            <i class="fas fa-clock mr-2"></i> Extend EWB Validity: <span id="extendDocNo"></span>
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small text-dark">New Vehicle Number <span class="text-danger">*</span></label>
+                            <input type="text" name="vehicle_no" id="extendVehicleNo" class="form-control text-uppercase" placeholder="e.g. MH12AB1234" required maxlength="20">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small text-dark">Current Location (From Place)</label>
+                            <input type="text" name="from_place" class="form-control" placeholder="e.g. Pune" maxlength="50">
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold small text-dark">Remaining Distance (km)</label>
+                            <input type="number" name="remaining_distance" class="form-control" placeholder="e.g. 50" min="1" max="4000" value="20">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info btn-sm font-weight-bold px-3">
+                            <i class="fas fa-clock mr-1"></i> Extend Validity
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Update Part-B Modal --}}
+    <div class="modal fade" id="partBEwbModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="partBEwbForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title font-weight-bold">
+                            <i class="fas fa-truck mr-2"></i> Update Part-B — Vehicle: <span id="partBDocNo"></span>
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small text-dark">New Vehicle Number <span class="text-danger">*</span></label>
+                            <input type="text" name="vehicle_no" id="partBVehicleNo" class="form-control text-uppercase" placeholder="e.g. MH12AB1234" required maxlength="20">
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold small text-dark">Transport Mode</label>
+                            <select name="trans_mode" class="form-control">
+                                <option value="1">Road</option>
+                                <option value="2">Rail</option>
+                                <option value="3">Air</option>
+                                <option value="4">Ship</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm font-weight-bold px-3">
+                            <i class="fas fa-save mr-1"></i> Update Part-B
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('js')
@@ -341,5 +484,36 @@
             $('#quickEwayModal').modal('show');
         });
     });
+
+    // Cancel EWB Modal handler
+    document.querySelectorAll('.btn-open-cancel').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('cancelEwbForm').action = this.dataset.cancelurl;
+            document.getElementById('cancelDocNo').innerText = this.dataset.billno;
+            document.getElementById('cancelEwbNo').innerText = this.dataset.ewayno || '';
+            $('#cancelEwbModal').modal('show');
+        });
+    });
+
+    // Extend EWB Validity Modal handler
+    document.querySelectorAll('.btn-open-extend').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('extendEwbForm').action = this.dataset.extendurl;
+            document.getElementById('extendDocNo').innerText = this.dataset.billno;
+            document.getElementById('extendVehicleNo').value = '';
+            $('#extendEwbModal').modal('show');
+        });
+    });
+
+    // Update Part-B Modal handler
+    document.querySelectorAll('.btn-open-partb').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('partBEwbForm').action = this.dataset.partburl;
+            document.getElementById('partBDocNo').innerText = this.dataset.billno;
+            document.getElementById('partBVehicleNo').value = this.dataset.vehicleno || '';
+            $('#partBEwbModal').modal('show');
+        });
+    });
 </script>
 @stop
+

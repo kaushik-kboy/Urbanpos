@@ -157,4 +157,84 @@ class EWayBillController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
+
+    /**
+     * Cancel an active E-Way Bill via GSP.
+     */
+    public function cancelEwb(Request $request, SalesBill $salesBill, EWayBillService $service)
+    {
+        $validated = $request->validate([
+            'reason_code' => 'required|string|in:1,2,3,4',
+            'remarks'     => 'nullable|string|max:100',
+        ]);
+
+        $result = $service->cancelEwb(
+            $salesBill,
+            $validated['reason_code'],
+            $validated['remarks'] ?? 'Cancelled by user'
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json($result, $result['success'] ? 200 : 422);
+        }
+
+        if ($result['success']) {
+            return redirect()->back()->with('success', $result['message']);
+        }
+        return redirect()->back()->with('error', $result['error']);
+    }
+
+    /**
+     * Extend E-Way Bill validity with a new vehicle number.
+     */
+    public function extendValidity(Request $request, SalesBill $salesBill, EWayBillService $service)
+    {
+        $validated = $request->validate([
+            'vehicle_no'         => 'required|string|max:20',
+            'from_place'         => 'nullable|string|max:50',
+            'remaining_distance' => 'nullable|integer|min:1|max:4000',
+        ]);
+
+        $result = $service->extendValidity(
+            $salesBill,
+            $validated['vehicle_no'],
+            $validated['from_place'] ?? ($salesBill->branch?->city ?? 'City'),
+            (int) ($validated['remaining_distance'] ?? 20)
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json($result, $result['success'] ? 200 : 422);
+        }
+
+        if ($result['success']) {
+            return redirect()->back()->with('success', $result['message']);
+        }
+        return redirect()->back()->with('error', $result['error']);
+    }
+
+    /**
+     * Update Part-B (vehicle/transporter) of an existing EWB via GSP.
+     */
+    public function updatePartB(Request $request, SalesBill $salesBill, EWayBillService $service)
+    {
+        $validated = $request->validate([
+            'vehicle_no'   => 'required|string|max:20',
+            'trans_mode'   => 'nullable|string|in:1,2,3,4',
+        ]);
+
+        $result = $service->updatePartB(
+            $salesBill,
+            $validated['vehicle_no'],
+            $validated['trans_mode'] ?? '1'
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json($result, $result['success'] ? 200 : 422);
+        }
+
+        if ($result['success']) {
+            return redirect()->back()->with('success', $result['message']);
+        }
+        return redirect()->back()->with('error', $result['error']);
+    }
 }

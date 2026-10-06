@@ -129,4 +129,9 @@ class Item extends Model
     {
         return $this->hasMany(ItemStock::class);
     }
+
+    public function kitRecipe(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(KitRecipe::class, 'kit_item_id');
+    }
 }

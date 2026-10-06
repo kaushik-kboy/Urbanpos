@@ -385,6 +385,7 @@
                                 @if ($tab === 'completed')
                                     <th>Govt IRN (64-char Hash)</th>
                                     <th>Ack Details</th>
+                                    <th class="text-center" style="width: 140px;">Actions</th>
                                 @elseif ($tab === 'failed')
                                     <th class="text-danger">Error Reason (Rejection)</th>
                                     <th class="text-center" style="width: 120px;">Retry Action</th>
@@ -407,8 +408,8 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if ($bill->customer?->gst_no)
-                                            <span class="badge badge-info px-2 py-1"><i class="fas fa-id-card mr-1"></i>{{ $bill->customer->gst_no }}</span>
+                                        @if ($bill->customer_gstin || $bill->customer?->gst_no)
+                                            <span class="badge badge-info px-2 py-1"><i class="fas fa-id-card mr-1"></i>{{ $bill->customer_gstin ?: $bill->customer->gst_no }}</span>
                                         @else
                                             <span class="text-muted small">URP (B2C)</span>
                                         @endif
@@ -440,6 +441,16 @@
                                         <td>
                                             <div class="small font-weight-bold">Ack: {{ $bill->ack_no }}</div>
                                             <div class="small text-muted">{{ $bill->ack_date ? $bill->ack_date->format('d/m/Y h:i A') : '' }}</div>
+                                        </td>
+                                        <td class="text-center" onclick="event.stopPropagation();">
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-outline-info btn-xs mr-1" title="Print Slip">
+                                                    <i class="fas fa-print"></i> Slip
+                                                </a>
+                                                <button type="button" class="btn btn-outline-danger btn-xs" title="Cancel IRN within 24 hours" onclick="openCancelIrnModal({{ $bill->id }}, '{{ $bill->bill_number }}', '{{ $bill->irn }}')">
+                                                    <i class="fas fa-ban"></i> Cancel
+                                                </button>
+                                            </div>
                                         </td>
                                     @elseif ($tab === 'failed')
                                         <td class="text-danger small">
@@ -874,26 +885,53 @@
                         </div>
 
                         <div class="card card-outline card-warning p-3 mb-3">
-                            <h6 class="font-weight-bold text-dark mb-2">Automation Rules</h6>
+                            <h6 class="font-weight-bold text-dark mb-2">Automation Rules (GoFrugal / TFA E-Invoice Parity)</h6>
                             <div class="form-group custom-control custom-switch mb-2">
                                 <input type="checkbox" class="custom-control-input" id="autoUploadSwitch" name="auto_upload_enabled" value="1" {{ $settings->auto_upload_enabled ? 'checked' : '' }}>
-                                <label class="custom-control-label font-weight-bold" for="autoUploadSwitch">
-                                    Enable Automatic Background Upload to Govt Portal
+                                <label class="custom-control-label font-weight-bold text-success" for="autoUploadSwitch">
+                                    Enable Automatic Real-Time Push to Government Portal (https://einvoice1.gst.gov.in/)
                                 </label>
                             </div>
-                            <div class="form-group mb-0">
-                                <label class="small font-weight-bold">Automatic Upload Threshold (INR)</label>
-                                <div class="input-group input-group-sm" style="max-width: 250px;">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">₹</span>
-                                    </div>
-                                    <input type="number" step="100" min="0" name="auto_upload_threshold" value="{{ $settings->auto_upload_threshold }}" class="form-control font-weight-bold">
+                            <div class="row">
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="small font-weight-bold">Auto-Upload Scope / Rule</label>
+                                    <select name="auto_upload_scope" class="form-control form-control-sm font-weight-bold">
+                                        <option value="both" {{ ($settings->auto_upload_scope ?? 'both') === 'both' ? 'selected' : '' }}>All B2B (with GSTIN) + B2C &ge; Threshold (Recommended)</option>
+                                        <option value="b2b_only" {{ ($settings->auto_upload_scope ?? '') === 'b2b_only' ? 'selected' : '' }}>All B2B Invoices Only (with Buyer GSTIN)</option>
+                                        <option value="threshold_only" {{ ($settings->auto_upload_scope ?? '') === 'threshold_only' ? 'selected' : '' }}>Only Invoices Exceeding Threshold Amount</option>
+                                        <option value="all" {{ ($settings->auto_upload_scope ?? '') === 'all' ? 'selected' : '' }}>All Invoices (Taxable Bills)</option>
+                                    </select>
+                                    <small class="text-muted">Determines which sales bills trigger automatic background IRP generation.</small>
                                 </div>
-                                <small class="text-muted">Bills with total equal or greater than this will upload automatically upon billing.</small>
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="small font-weight-bold">Automatic Upload Threshold (INR)</label>
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">₹</span>
+                                        </div>
+                                        <input type="number" step="100" min="0" name="auto_upload_threshold" value="{{ $settings->auto_upload_threshold }}" class="form-control font-weight-bold">
+                                    </div>
+                                    <small class="text-muted">Bills with total equal or greater than this will upload automatically upon billing.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Registered Company Profile (GoFrugal TFA Register card) --}}
+                        <div class="p-2 mb-3 bg-light rounded border d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-primary px-2 py-1 mr-2">Registered Entity</span>
+                                <strong class="text-dark">{{ $settings->company_name ?: 'URBANPETS SERVICES PRIVATE LIMITED' }}</strong>
+                            </div>
+                            <div class="small text-muted font-weight-bold">
+                                GSTIN: <code class="text-dark">{{ $settings->gstin }}</code> | User: <code>{{ $settings->username ?: 'API_Urbanpets1' }}</code>
                             </div>
                         </div>
 
                         <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="small font-weight-bold">Company Legal Name</label>
+                                <input type="text" name="company_name" value="{{ $settings->company_name ?: 'URBANPETS SERVICES PRIVATE LIMITED' }}" class="form-control form-control-sm font-weight-bold" required>
+                            </div>
                             <div class="col-md-6 form-group">
                                 <label class="small font-weight-bold">Company GSTIN</label>
                                 <input type="text" name="gstin" value="{{ $settings->gstin }}" class="form-control form-control-sm font-weight-bold text-uppercase" required>
@@ -901,8 +939,9 @@
                             <div class="col-md-6 form-group">
                                 <label class="small font-weight-bold">GSP Provider Integration</label>
                                 <select name="gsp_provider" class="form-control form-control-sm font-weight-bold">
-                                    <option value="mock" {{ $settings->gsp_provider === 'mock' ? 'selected' : '' }}>Built-in Sandbox / Mock Generator (Pre-production)</option>
-                                    <option value="sandbox" {{ $settings->gsp_provider === 'sandbox' ? 'selected' : '' }}>Sandbox GSP (Official NIC Sandbox)</option>
+                                    <option value="mock" {{ $settings->gsp_provider === 'mock' ? 'selected' : '' }}>Built-in Sandbox / Mock Generator (Pre-production SHA-256)</option>
+                                    <option value="zoho" {{ $settings->gsp_provider === 'zoho' ? 'selected' : '' }}>Zoho Corporation GSP (As used in GoFrugal TFA)</option>
+                                    <option value="sandbox" {{ $settings->gsp_provider === 'sandbox' ? 'selected' : '' }}>Official NIC Sandbox GSP Gateway</option>
                                     <option value="cleartax" {{ $settings->gsp_provider === 'cleartax' ? 'selected' : '' }}>ClearTax GSP API</option>
                                     <option value="masters_india" {{ $settings->gsp_provider === 'masters_india' ? 'selected' : '' }}>Masters India GSP API</option>
                                     <option value="nic_direct" {{ $settings->gsp_provider === 'nic_direct' ? 'selected' : '' }}>NIC Direct Government IRP</option>
@@ -937,6 +976,53 @@
                         <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary btn-sm font-weight-bold px-3">
                             <i class="fas fa-save mr-1"></i> Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL 7: Cancel Government IRN Modal --}}
+    <div class="modal fade" id="cancelIrnModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content shadow-lg border-0">
+                <form id="cancelIrnForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-header bg-danger text-white py-3">
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-ban mr-2"></i>Cancel Government E-Invoice IRN</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-4 bg-light">
+                        <div class="alert alert-warning py-2 small mb-3">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            <strong>Government GST Mandate:</strong> E-Invoice IRN can only be cancelled within <strong>24 hours</strong> of generation. Once cancelled on the Government portal, this invoice number cannot be reused for a new IRN.
+                        </div>
+
+                        <div class="p-3 bg-white rounded border mb-3">
+                            <div class="small text-muted font-weight-bold mb-1">INVOICE: <span id="cancelBillNumberText" class="text-dark">--</span></div>
+                            <div class="small text-muted font-weight-bold">IRN: <code id="cancelIrnHashText" class="text-danger small d-block text-truncate">--</code></div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="small font-weight-bold">Cancellation Reason <span class="text-danger">*</span></label>
+                            <select name="cancel_reason" class="form-control form-control-sm font-weight-bold" required>
+                                <option value="1">1 - Duplicate Invoice</option>
+                                <option value="2">2 - Data Entry Error</option>
+                                <option value="3" selected>3 - Order Cancelled</option>
+                                <option value="4">4 - Others</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold">Cancellation Remarks <span class="text-danger">*</span></label>
+                            <input type="text" name="cancel_remarks" class="form-control form-control-sm" placeholder="e.g. Order cancelled by customer" maxlength="100" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-white">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger btn-sm font-weight-bold px-3">
+                            <i class="fas fa-times-circle mr-1"></i> Confirm IRN Cancellation
                         </button>
                     </div>
                 </form>
@@ -1174,6 +1260,14 @@ function openUploadModal(type) {
     $('#uploadGstrTitle').html('<i class="fas fa-upload mr-2"></i>Upload GSTR-' + upper);
     $('#uploadGstrHelpText').text('Upload the official GSTR-' + upper + ' JSON file from the Government GST portal to reconcile against purchase invoices.');
     $('#uploadGstrModal').modal('show');
+}
+
+// 8. Open Cancel IRN Modal
+function openCancelIrnModal(billId, billNumber, irn) {
+    $('#cancelBillNumberText').text(billNumber);
+    $('#cancelIrnHashText').text(irn);
+    $('#cancelIrnForm').attr('action', '{{ url("tools/einvoice/cancel-irn") }}/' + billId);
+    $('#cancelIrnModal').modal('show');
 }
 </script>
 @stop

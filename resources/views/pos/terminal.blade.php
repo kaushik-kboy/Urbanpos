@@ -127,6 +127,9 @@
             <!-- Bottom Quick Action Bar -->
             <footer class="pos-action-bar">
                 <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-warning btn-sm mr-2 font-weight-bold shadow-sm text-dark" onclick="if(window.posTriggerAction) window.posTriggerAction('tag_pet');" title="Tag Pet to Sale (F1)">
+                        <i class="fas fa-paw mr-1 text-warning"></i> Pet (F1)
+                    </button>
                     <button type="button" class="btn btn-outline-primary btn-sm mr-2 font-weight-bold shadow-sm" onclick="if(window.posTriggerAction) window.posTriggerAction('new_entry');" title="Create New Record (F3)">
                         <i class="fas fa-plus mr-1"></i> New (F3)
                     </button>
@@ -205,35 +208,61 @@
                     @php
                         $defaultPetSummary = $defaultCustomer && $defaultCustomer->pets ? $defaultCustomer->pets->map(fn($p) => $p->name ? ($p->breed?->name ? "{$p->name} ({$p->breed->name})" : ($p->petType?->name ? "{$p->name} ({$p->petType->name})" : $p->name)) : ($p->breed?->name ?? ($p->petType?->name ?? 'Pet')))->filter()->implode(', ') : '';
                     @endphp
-                    <div id="posSelectedCustPets" class="pos-selected-cust-pets mt-2 pt-2 border-top" style="{{ $defaultPetSummary ? '' : 'display: none;' }}">
-                        <div class="d-flex align-items-center text-dark small mb-1">
-                            <i class="fas fa-paw text-warning mr-2" style="font-size: 0.95rem;"></i>
-                            <span class="font-weight-600 text-muted mr-1">Pet & Breed:</span>
-                            <span class="font-weight-bold text-dark text-truncate" id="posSelectedCustPetsText">
-                                {{ $defaultPetSummary }}
+                    <!-- Customer Pet Tagging & Details (F1 Shortcut) -->
+                    @php
+                        $defaultPetSummary = $defaultCustomer && $defaultCustomer->pets ? $defaultCustomer->pets->map(fn($p) => $p->name ? ($p->breed?->name ? "{$p->name} ({$p->breed->name})" : ($p->petType?->name ? "{$p->name} ({$p->petType->name})" : $p->name)) : ($p->breed?->name ?? ($p->petType?->name ?? 'Pet')))->filter()->implode(', ') : '';
+                        $activePetId = isset($editBill) ? $editBill->customer_pet_id : ($defaultCustomer && $defaultCustomer->pets && $defaultCustomer->pets->count() === 1 ? $defaultCustomer->pets->first()->id : null);
+                    @endphp
+                    <div id="posSelectedCustPets" class="pos-selected-cust-pets mt-2 pt-2 border-top" style="{{ $defaultCustomer && $defaultCustomer->pets && $defaultCustomer->pets->count() > 0 ? '' : 'display: none;' }}">
+                        <input type="hidden" id="posTaggedPetId" value="{{ $activePetId ?? '' }}">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center text-dark small font-weight-bold">
+                                <i class="fas fa-paw text-warning mr-1" style="font-size: 0.95rem;"></i>
+                                <span>Tag Pet for Sale:</span>
+                            </div>
+                            <span class="badge badge-warning text-dark font-weight-bold" style="font-size: 0.72rem; cursor: pointer;" onclick="if(window.posTagPet) window.posTagPet();" title="Press F1 to switch/tag pet">
+                                Press F1
                             </span>
                         </div>
-                        <div id="posSelectedCustPetsTableContainer" class="mt-1" style="{{ $defaultCustomer && $defaultCustomer->pets && $defaultCustomer->pets->count() > 0 ? '' : 'display: none;' }}">
-                            <table class="table table-xs table-bordered table-striped mb-0 text-dark small" id="posCustPetsMiniTable" style="font-size: 0.78rem;">
-                                <thead class="bg-light">
-                                    <tr>
-                                        <th class="py-1 px-2">Pet Name</th>
-                                        <th class="py-1 px-2">Breed Type</th>
-                                        <th class="py-1 px-2">Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="posCustPetsTableBody">
-                                    @if($defaultCustomer && $defaultCustomer->pets)
-                                        @foreach($defaultCustomer->pets as $pet)
-                                            <tr>
-                                                <td class="py-1 px-2 font-weight-bold">{{ $pet->name ?: '—' }}</td>
-                                                <td class="py-1 px-2 text-primary">{{ $pet->breed?->name ?: '—' }}</td>
-                                                <td class="py-1 px-2 text-muted">{{ $pet->petType?->name ?: 'Pet' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    @endif
-                                </tbody>
-                            </table>
+
+                        <!-- Active Tagged Pet Indicator -->
+                        <div id="posActiveTaggedPetBox" class="p-1 mb-1 rounded bg-light border d-flex justify-content-between align-items-center" style="font-size: 0.8rem;">
+                            <div class="text-truncate">
+                                <span class="badge badge-success mr-1"><i class="fas fa-check"></i> Tagged</span>
+                                <strong id="posActiveTaggedPetName" class="text-dark">None</strong>
+                            </div>
+                            <button type="button" class="btn btn-xs btn-link text-danger p-0 ml-1 font-weight-bold" id="posClearTaggedPetBtn" title="Untag Pet" style="text-decoration: none;">
+                                &times; Untag
+                            </button>
+                        </div>
+
+                        <!-- Quick Pet Selection Chips -->
+                        <div id="posCustPetChips" class="d-flex flex-wrap gap-1 mb-1">
+                            @if($defaultCustomer && $defaultCustomer->pets)
+                                @foreach($defaultCustomer->pets as $pet)
+                                    <button type="button" 
+                                            class="btn btn-xs btn-outline-primary pos-pet-chip mr-1 mb-1 font-weight-bold {{ $activePetId == $pet->id ? 'active' : '' }}" 
+                                            data-id="{{ $pet->id }}" 
+                                            data-name="{{ $pet->name ?: 'Pet' }}" 
+                                            data-breed="{{ $pet->breed?->name ?: ($pet->petType?->name ?: '') }}"
+                                            style="border-radius: 12px; font-size: 0.75rem;">
+                                        🐾 {{ $pet->name ?: 'Pet' }} {{ $pet->breed ? '('.$pet->breed->name.')' : '' }}
+                                    </button>
+                                @endforeach
+                            @endif
+                        </div>
+
+                        <div id="posPetSelectDropdownWrapper" class="mt-1" style="display: none;">
+                            <select id="posPetSelectDropdown" class="form-control form-control-sm" style="font-size: 0.8rem;">
+                                <option value="">-- Select Pet to Tag (or None) --</option>
+                                @if($defaultCustomer && $defaultCustomer->pets)
+                                    @foreach($defaultCustomer->pets as $pet)
+                                        <option value="{{ $pet->id }}" @selected($activePetId == $pet->id)>
+                                            {{ $pet->name ?: 'Pet' }} {{ $pet->breed ? '('.$pet->breed->name.')' : '' }} [{{ $pet->petType?->name ?: 'Pet' }}]
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
                         </div>
                     </div>
                 </div>

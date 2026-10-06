@@ -326,31 +326,169 @@
             padding-top: 0.5mm;
         }
 
-        /* ── A4 Sheet Matrix (4 Columns x 10 Rows) ─────────────────────────── */
-        .format-a4 .labels-container {
+        /* ── A4 Sheet Page Container (One 210mm x 297mm physical sheet per page) ── */
+        .a4-sheet-page {
             width: 210mm;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 2mm;
-            padding: 5mm;
-            background: white;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            height: 297mm;
+            max-height: 297mm;
+            margin: 15px auto;
+            background: #ffffff;
+            box-sizing: border-box;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+            page-break-after: always;
+            break-after: page;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            overflow: hidden;
         }
+
+        /* ── Format A4 - 24 Labels (3 Columns x 8 Rows - Standard Indian Desmat/Avery) ── */
+        .format-a4_24 .a4-sheet-page,
+        .format-a4 .a4-sheet-page {
+            padding: 9.5mm 6mm;
+            display: grid;
+            grid-template-columns: repeat(3, 64mm);
+            grid-template-rows: repeat(8, 34mm);
+            column-gap: 3mm;
+            row-gap: 0.8mm;
+        }
+        .format-a4_24 .barcode-label-card,
         .format-a4 .barcode-label-card {
-            height: 27mm;
-            padding: 1.5mm;
-            border: 1px dashed #e2e8f0;
+            width: 64mm;
+            height: 34mm;
+            max-height: 34mm;
+            padding: 1.5mm 2.5mm;
+            box-sizing: border-box;
+            border: 1px dashed #cbd5e1;
+            background: #ffffff;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            overflow: hidden;
             text-align: center;
+            border-radius: 2px;
+        }
+        .format-a4_24 .label-store-name,
+        .format-a4 .label-store-name {
+            font-size: 8pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #000;
+        }
+        .format-a4_24 .label-item-name,
+        .format-a4 .label-item-name {
+            font-size: 8.5pt;
+            font-weight: 800;
+            line-height: 1.15;
+            max-height: 2.3em;
+            overflow: hidden;
+            color: #000;
+            text-transform: uppercase;
+        }
+        .format-a4_24 .label-barcode-svg,
+        .format-a4 .label-barcode-svg {
+            max-width: 98%;
+            max-height: 13.5mm;
+            display: block;
+            margin: 0 auto;
+        }
+        .format-a4_24 .label-prices,
+        .format-a4 .label-prices {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 7.5pt;
+            font-weight: 700;
+            border-top: 0.8px solid #000;
+            padding-top: 0.5mm;
+        }
+        .format-a4_24 .label-sell,
+        .format-a4 .label-sell {
+            font-size: 11pt;
+            font-weight: 900;
+            color: #000;
+        }
+        .format-a4_24 .label-mrp,
+        .format-a4 .label-mrp {
+            font-size: 7pt;
+            text-decoration: line-through;
+            color: #334155;
+        }
+        .format-a4_24 .label-exp,
+        .format-a4 .label-exp {
+            font-size: 6.5pt;
+            font-weight: bold;
+            color: #475569;
+        }
+
+        /* ── Format A4 - 40 Labels (4 Columns x 10 Rows) ─────────────── */
+        .format-a4_40 .a4-sheet-page {
+            padding: 10mm 5mm;
+            display: grid;
+            grid-template-columns: repeat(4, 48mm);
+            grid-template-rows: repeat(10, 26mm);
+            column-gap: 2.5mm;
+            row-gap: 1.5mm;
+        }
+        .format-a4_40 .barcode-label-card {
+            width: 48mm;
+            height: 26mm;
+            max-height: 26mm;
+            padding: 1mm 1.5mm;
+            box-sizing: border-box;
+            border: 1px dashed #cbd5e1;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            text-align: center;
+            border-radius: 2px;
+        }
+        .format-a4_40 .label-store-name {
+            font-size: 6.5pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            line-height: 1.1;
+        }
+        .format-a4_40 .label-item-name {
+            font-size: 7pt;
+            font-weight: 800;
+            line-height: 1.1;
+            max-height: 2.1em;
             overflow: hidden;
         }
-        .format-a4 .label-store-name { font-size: 7.5pt; font-weight: 700; }
-        .format-a4 .label-item-name { font-size: 7.5pt; font-weight: 600; line-height: 1.1; }
-        .format-a4 .label-barcode-svg { max-width: 98%; height: 9mm; }
-        .format-a4 .label-prices { display: flex; justify-content: space-around; font-size: 7pt; font-weight: 700; }
+        .format-a4_40 .label-barcode-svg {
+            max-width: 98%;
+            max-height: 10mm;
+            display: block;
+            margin: 0 auto;
+        }
+        .format-a4_40 .label-prices {
+            display: flex;
+            justify-content: space-between;
+            font-size: 6.5pt;
+            font-weight: 700;
+            border-top: 0.5px solid #000;
+            padding-top: 0.3mm;
+        }
+        .format-a4_40 .label-sell {
+            font-size: 9pt;
+            font-weight: 900;
+        }
+        .format-a4_40 .label-mrp {
+            font-size: 6pt;
+            text-decoration: line-through;
+            color: #475569;
+        }
+        .format-a4_40 .label-exp {
+            font-size: 6pt;
+            color: #64748b;
+        }
 
         .barcode-label-empty {
             visibility: hidden;
@@ -546,7 +684,14 @@
     </style>
 
     {{-- @page Dimensions Setup --}}
-    @if($format === '50x25_2up')
+    @if(in_array($format, ['a4', 'a4_24', 'a4_40']))
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0mm !important;
+        }
+    </style>
+    @elseif($format === '50x25_2up')
     <style>
         @page {
             size: 102mm 25mm;
@@ -581,13 +726,6 @@
             margin: 0mm !important;
         }
     </style>
-    @elseif($format === 'a4')
-    <style>
-        @page {
-            size: A4;
-            margin: 5mm !important;
-        }
-    </style>
     @endif
 </head>
 <body class="format-{{ $format }}">
@@ -617,23 +755,20 @@
 
         <div class="d-flex align-items-center my-1 flex-wrap">
             <div class="btn-group btn-group-sm mr-2 my-1">
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x25_2up']) }}" class="btn {{ $format === '50x25_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="TSC TE244: 2 Stickers Per Row (50x25 mm each)">
-                    <i class="fas fa-th-large mr-1"></i> 50x25 mm (2-Up Roll)
+                <a href="{{ request()->fullUrlWithQuery(['format' => 'a4_24']) }}" class="btn {{ in_array($format, ['a4_24', 'a4']) ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-success' }}" title="A4 Sticker Sheet: 24 Labels Per Sheet (3x8 Grid) - Standard Office Laser/Inkjet">
+                    <i class="fas fa-file-alt mr-1"></i> A4 (24-Up Laser) ★
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x38_2up']) }}" class="btn {{ $format === '50x38_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="TSC TE244: 2 Stickers Per Row (50x38 mm each)">
-                    <i class="fas fa-th-large mr-1"></i> 50x38 mm (2-Up Roll)
+                <a href="{{ request()->fullUrlWithQuery(['format' => 'a4_40']) }}" class="btn {{ $format === 'a4_40' ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-success' }}" title="A4 Sticker Sheet: 40 Labels Per Sheet (4x10 Grid) - Compact Office Laser/Inkjet">
+                    <i class="fas fa-th mr-1"></i> A4 (40-Up Laser)
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x50_2up']) }}" class="btn {{ $format === '50x50_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="TSC TE244: 2 Stickers Per Row (50x50 mm each)">
-                    <i class="fas fa-th-large mr-1"></i> 50x50 mm (2-Up Roll)
+                <a href="{{ request()->fullUrlWithQuery(['format' => '50x25_2up']) }}" class="btn {{ $format === '50x25_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 2 Labels Per Row (50x25 mm each)">
+                    <i class="fas fa-th-large mr-1"></i> 50x25 (2-Up Thermal)
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '102x64']) }}" class="btn {{ $format === '102x64' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="TSC TE244: 1 Single Big Label (102x63.5 mm)">
-                    102x63.5 mm (1-Up Single)
+                <a href="{{ request()->fullUrlWithQuery(['format' => '50x38_2up']) }}" class="btn {{ $format === '50x38_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 2 Labels Per Row (50x38 mm each)">
+                    <i class="fas fa-th-large mr-1"></i> 50x38 (2-Up Thermal)
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x25']) }}" class="btn {{ $format === '50x25' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}">
-                    50x25 mm (1-Up)
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => 'a4']) }}" class="btn {{ $format === 'a4' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}">
-                    A4 Sheet (40-Up)
+                <a href="{{ request()->fullUrlWithQuery(['format' => '102x64']) }}" class="btn {{ $format === '102x64' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 1 Single Big Label (102x63.5 mm)">
+                    102x64 (1-Up)
                 </a>
             </div>
 
@@ -711,20 +846,33 @@
             </div>
         @else
             @php
+                $isA4  = in_array($format, ['a4', 'a4_24', 'a4_40']);
                 $is2Up = str_ends_with($format, '_2up');
+                $opts  = $options ?? [
+                    'show_store' => true,
+                    'show_mrp'   => true,
+                    'show_sell'  => true,
+                    'show_exp'   => true,
+                    'show_code'  => true,
+                ];
             @endphp
 
-            @if($is2Up)
-                {{-- 2-Up Layout: 2 stickers paired side-by-side per row across the 102mm roll --}}
+            @if($isA4)
+                {{-- A4 Laser/Inkjet Sheet: Chunk into exact pages (24-Up: 3x8 or 40-Up: 4x10) --}}
+                @php
+                    $pageSize = ($format === 'a4_40') ? 40 : 24;
+                @endphp
                 <div class="labels-container">
-                    @foreach(array_chunk($labels, 2) as $pair)
-                        <div class="barcode-label-pair">
-                            @foreach($pair as $lbl)
+                    @foreach(array_chunk($labels, $pageSize) as $pageIndex => $sheetLabels)
+                        <div class="a4-sheet-page">
+                            @foreach($sheetLabels as $lbl)
                                 <div class="barcode-label-card">
-                                    <div class="label-store-name">{{ $storeName }}</div>
+                                    @if($opts['show_store'])
+                                        <div class="label-store-name">{{ $storeName }}</div>
+                                    @endif
                                     <div class="label-item-name" title="{{ $lbl['name'] }}">
                                         {{ $lbl['name'] }}
-                                        @if(!empty($lbl['code']))
+                                        @if($opts['show_code'] && !empty($lbl['code']))
                                             <span style="font-size: 6pt; font-weight: 800; color: #475569; margin-left: 1mm;">#{{ $lbl['code'] }}</span>
                                         @endif
                                     </div>
@@ -732,13 +880,61 @@
                                         <svg class="label-barcode-svg" data-barcode="{{ $lbl['barcode'] }}"></svg>
                                     </div>
                                     <div class="label-prices">
-                                        @if($lbl['mrp'] > $lbl['sell_price'])
-                                            <span class="label-mrp">MRP: ₹{{ number_format($lbl['mrp'], 2) }}</span>
-                                        @else
-                                            <span class="small font-weight-bold text-muted" style="font-size: 5pt;">INCL. TAX</span>
+                                        @if($opts['show_mrp'])
+                                            @if($lbl['mrp'] > $lbl['sell_price'])
+                                                <span class="label-mrp">MRP: ₹{{ number_format($lbl['mrp'], 2) }}</span>
+                                            @else
+                                                <span class="small font-weight-bold text-muted" style="font-size: 5pt;">INCL. TAX</span>
+                                            @endif
                                         @endif
-                                        <span class="label-sell">₹{{ number_format($lbl['sell_price'], 2) }}</span>
-                                        @if(!empty($lbl['exp_date']))
+                                        @if($opts['show_sell'])
+                                            <span class="label-sell">₹{{ number_format($lbl['sell_price'], 2) }}</span>
+                                        @endif
+                                        @if($opts['show_exp'] && !empty($lbl['exp_date']))
+                                            <span class="label-exp">{{ substr($lbl['exp_date'], 5) }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                            {{-- Pad remainder of page with empty placeholder cards so Desmat sheet alignment is preserved --}}
+                            @for($i = count($sheetLabels); $i < $pageSize; $i++)
+                                <div class="barcode-label-card barcode-label-empty"></div>
+                            @endfor
+                        </div>
+                    @endforeach
+                </div>
+
+            @elseif($is2Up)
+                {{-- 2-Up Layout: 2 stickers paired side-by-side per row across thermal roll --}}
+                <div class="labels-container">
+                    @foreach(array_chunk($labels, 2) as $pair)
+                        <div class="barcode-label-pair">
+                            @foreach($pair as $lbl)
+                                <div class="barcode-label-card">
+                                    @if($opts['show_store'])
+                                        <div class="label-store-name">{{ $storeName }}</div>
+                                    @endif
+                                    <div class="label-item-name" title="{{ $lbl['name'] }}">
+                                        {{ $lbl['name'] }}
+                                        @if($opts['show_code'] && !empty($lbl['code']))
+                                            <span style="font-size: 6pt; font-weight: 800; color: #475569; margin-left: 1mm;">#{{ $lbl['code'] }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="label-barcode-wrap">
+                                        <svg class="label-barcode-svg" data-barcode="{{ $lbl['barcode'] }}"></svg>
+                                    </div>
+                                    <div class="label-prices">
+                                        @if($opts['show_mrp'])
+                                            @if($lbl['mrp'] > $lbl['sell_price'])
+                                                <span class="label-mrp">MRP: ₹{{ number_format($lbl['mrp'], 2) }}</span>
+                                            @else
+                                                <span class="small font-weight-bold text-muted" style="font-size: 5pt;">INCL. TAX</span>
+                                            @endif
+                                        @endif
+                                        @if($opts['show_sell'])
+                                            <span class="label-sell">₹{{ number_format($lbl['sell_price'], 2) }}</span>
+                                        @endif
+                                        @if($opts['show_exp'] && !empty($lbl['exp_date']))
                                             <span class="label-exp">{{ substr($lbl['exp_date'], 5) }}</span>
                                         @endif
                                     </div>
@@ -752,16 +948,18 @@
                     @endforeach
                 </div>
             @else
-                {{-- 1-Up Single Roll or A4 Grid --}}
+                {{-- 1-Up Single Roll --}}
                 <div class="labels-container">
                     @foreach ($labels as $lbl)
                         <div class="barcode-label-card">
-                            <div class="label-store-name">{{ $storeName }}</div>
+                            @if($opts['show_store'])
+                                <div class="label-store-name">{{ $storeName }}</div>
+                            @endif
                             <div class="label-item-name" title="{{ $lbl['name'] }}">{{ $lbl['name'] }}</div>
-                            @if($format === '102x64' && !empty($lbl['code']))
+                            @if($format === '102x64' && $opts['show_code'] && !empty($lbl['code']))
                                 <div class="label-item-meta" style="font-size: 8pt; font-weight: 600; color: #334155; margin-bottom: 0.5mm;">
                                     <span>Code: <strong>{{ $lbl['code'] }}</strong></span>
-                                    @if(!empty($lbl['exp_date']))
+                                    @if($opts['show_exp'] && !empty($lbl['exp_date']))
                                         <span class="ml-2">| &nbsp;Exp: <strong>{{ $lbl['exp_date'] }}</strong></span>
                                     @endif
                                 </div>
@@ -770,13 +968,17 @@
                                 <svg class="label-barcode-svg" data-barcode="{{ $lbl['barcode'] }}"></svg>
                             </div>
                             <div class="label-prices">
-                                @if($lbl['mrp'] > $lbl['sell_price'])
-                                    <span class="label-mrp">MRP: ₹{{ number_format($lbl['mrp'], 2) }}</span>
-                                @else
-                                    <span class="small font-weight-bold text-muted">M.R.P. Incl. of Taxes</span>
+                                @if($opts['show_mrp'])
+                                    @if($lbl['mrp'] > $lbl['sell_price'])
+                                        <span class="label-mrp">MRP: ₹{{ number_format($lbl['mrp'], 2) }}</span>
+                                    @else
+                                        <span class="small font-weight-bold text-muted">M.R.P. Incl. of Taxes</span>
+                                    @endif
                                 @endif
-                                <span class="label-sell">Price: ₹{{ number_format($lbl['sell_price'], 2) }}</span>
-                                @if($format !== '102x64' && !empty($lbl['exp_date']))
+                                @if($opts['show_sell'])
+                                    <span class="label-sell">Price: ₹{{ number_format($lbl['sell_price'], 2) }}</span>
+                                @endif
+                                @if($format !== '102x64' && $opts['show_exp'] && !empty($lbl['exp_date']))
                                     <span class="small text-muted font-weight-bold">EXP: {{ $lbl['exp_date'] }}</span>
                                 @endif
                             </div>
@@ -926,6 +1128,8 @@
             const is102x64 = document.body.classList.contains('format-102x64');
             const is50x38 = document.body.classList.contains('format-50x38_2up');
             const is50x50 = document.body.classList.contains('format-50x50_2up');
+            const isA4_24 = document.body.classList.contains('format-a4_24') || document.body.classList.contains('format-a4');
+            const isA4_40 = document.body.classList.contains('format-a4_40');
             const isScaleLarge = document.body.classList.contains('scale-large');
             const isScaleXl = document.body.classList.contains('scale-xl');
 
@@ -945,6 +1149,14 @@
                 barWidth = isScaleXl ? 1.65 : 1.45;
                 barHeight = isScaleXl ? 54 : 46;
                 fontSize = 12;
+            } else if (isA4_40) {
+                barWidth = isScaleXl ? 1.25 : (isScaleLarge ? 1.15 : 1.0);
+                barHeight = isScaleXl ? 22 : (isScaleLarge ? 19 : 16);
+                fontSize = isScaleXl ? 8.5 : (isScaleLarge ? 7.5 : 7.0);
+            } else if (isA4_24) {
+                barWidth = isScaleXl ? 1.5 : (isScaleLarge ? 1.35 : 1.2);
+                barHeight = isScaleXl ? 32 : (isScaleLarge ? 28 : 24);
+                fontSize = isScaleXl ? 10.0 : (isScaleLarge ? 9.0 : 8.0);
             } else {
                 // 50x25_2up or 1-Up
                 barWidth = isScaleXl ? 1.5 : (isScaleLarge ? 1.35 : 1.15);

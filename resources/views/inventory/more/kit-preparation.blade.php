@@ -3,7 +3,12 @@
 @section('title', 'Kit Preparation')
 
 @section('content_header')
-    <h1><i class="fas fa-tools text-primary mr-2"></i>Kit Preparation</h1>
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="h4 mb-0"><i class="fas fa-tools text-primary mr-2"></i>Kit Preparation</h1>
+        <a href="{{ route('inventory.kit-recipes.index') }}" class="btn btn-outline-primary btn-sm font-weight-bold">
+            <i class="fas fa-layer-group mr-1"></i> Kit Recipe Master
+        </a>
+    </div>
 @stop
 
 @section('content')
@@ -148,6 +153,48 @@
         if ($('#kit-body tr').length > 1) {
             $(this).closest('tr').remove();
         }
+    });
+
+    // Auto-load components from Kit Recipe Master (GoFrugal / TruePOS Parity)
+    $('select[name="kit_item_id"]').on('change', function () {
+        const kitItemId = $(this).val();
+        if (!kitItemId) return;
+
+        const checkUrl = '{{ url("inventory/kit-recipes/by-kit-item") }}/' + kitItemId;
+        $.getJSON(checkUrl, function (res) {
+            if (res.found && res.components && res.components.length > 0) {
+                $('#kit-body').empty();
+                compIdx = 0;
+                res.components.forEach(function (c) {
+                    const row = `
+                        <tr>
+                            <td>
+                                <select name="components[${compIdx}][item_id]" class="form-control form-control-sm item-search-select2" required style="width:100%">
+                                    <option value="${c.item_id}" selected>${c.name} ${c.item_code ? '[' + c.item_code + ']' : ''}</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0.01" name="components[${compIdx}][qty_per_kit]" class="form-control form-control-sm font-weight-bold" value="${c.qty_per_kit}" required>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-xs btn-outline-danger btn-remove-comp"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    const $row = $(row);
+                    $('#kit-body').append($row);
+                    initItemSelect2($row.find('.item-search-select2'));
+                    compIdx++;
+                });
+
+                $('#recipe-loaded-alert').remove();
+                $('#kit-table').before(`
+                    <div class="alert alert-info py-2 px-3 small font-weight-bold shadow-sm mb-2" id="recipe-loaded-alert">
+                        <i class="fas fa-magic mr-1 text-warning"></i> Auto-loaded ${res.components.length} components from saved recipe: <u>${res.recipe_name}</u>
+                    </div>
+                `);
+            }
+        });
     });
 </script>
 @stop

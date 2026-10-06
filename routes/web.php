@@ -40,6 +40,7 @@ use App\Http\Controllers\Inventory\BarcodePrintingController;
 use App\Http\Controllers\Inventory\PriceFixingController;
 use App\Http\Controllers\Inventory\ChangeSellingController;
 use App\Http\Controllers\Inventory\InventoryMoreController;
+use App\Http\Controllers\Inventory\KitRecipeController;
 use App\Http\Controllers\Inventory\StockTransferController;
 use App\Http\Controllers\Sales\SalesBillController;
 use App\Http\Controllers\Sales\SalesOrderController;
@@ -167,6 +168,7 @@ Route::middleware('auth')->prefix('purchase')->name('purchase.')->group(function
     Route::get('purchase-invoices/lookup-item', [PurchaseInvoiceController::class, 'lookupItem'])->name('purchase-invoices.lookup-item');
     Route::get('purchase-invoices/item-details/{item}', [PurchaseInvoiceController::class, 'itemDetails'])->name('purchase-invoices.item-details');
     Route::get('purchase-indents/item-stock', [PurchaseIndentController::class, 'itemStock'])->name('purchase-indents.item-stock');
+    Route::get('purchase-indents/mbq-deficits', [PurchaseIndentController::class, 'mbqDeficits'])->name('purchase-indents.mbq-deficits');
     Route::get('purchase-indents/{purchase_indent}/print', [PurchaseIndentController::class, 'print'])->name('purchase-indents.print');
     Route::middleware(['permission:purchase-indents.approve', 'branch.access'])
         ->post('purchase-indents/{purchase_indent}/approve', [PurchaseIndentController::class, 'approve'])->name('purchase-indents.approve');
@@ -213,10 +215,11 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::get('barcode-printing', [BarcodePrintingController::class, 'index'])->name('barcode-printing.index');
     Route::get('barcode-printing/search-items', [BarcodePrintingController::class, 'searchItems'])->name('barcode-printing.search-items');
     Route::post('barcode-printing/print', [BarcodePrintingController::class, 'print'])->name('barcode-printing.print');
-    // Barcode Printing (Phase 5 — item search + label queue)
+    // Barcode Printing (Unified Enterprise Studio)
     Route::get('barcode', [BarcodeController::class, 'index'])->name('barcode.index');
     Route::get('barcode/search', [BarcodeController::class, 'search'])->name('barcode.search');
-    Route::get('barcode/print', [BarcodeController::class, 'print'])->name('barcode.print');
+    Route::get('barcode/invoice-items/{purchaseInvoice}', [BarcodeController::class, 'invoiceItems'])->name('barcode.invoice-items');
+    Route::match(['get', 'post'], 'barcode/print', [BarcodeController::class, 'print'])->name('barcode.print');
 
     // Price Fixing
     Route::get('price-fixing', [PriceFixingController::class, 'index'])->name('price-fixing.index');
@@ -243,6 +246,10 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::get('kit-unpack', [InventoryMoreController::class, 'kitUnpack'])->name('kit-unpack.index');
     Route::middleware(['permission:kit-unpack.create', 'branch.access'])
         ->post('kit-unpack', [InventoryMoreController::class, 'processKitUnpack'])->name('kit-unpack.process');
+
+    // Kit Recipe Master (GoFrugal / TruePOS Recipe Definition Engine)
+    Route::get('kit-recipes/by-kit-item/{item}', [KitRecipeController::class, 'byKitItem'])->name('kit-recipes.by-kit-item');
+    Route::resource('kit-recipes', KitRecipeController::class);
 
     Route::get('price-drop', [InventoryMoreController::class, 'priceDrop'])->name('price-drop.index');
     Route::get('shelf-talker', [InventoryMoreController::class, 'shelfTalker'])->name('shelf-talker.index');
@@ -276,6 +283,10 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::post('sales-bills/{salesBill}/send-whatsapp', [SalesBillController::class, 'sendWhatsApp'])->name('sales-bills.send-whatsapp');
     Route::get('sales-bills/{salesBill}/eway-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadJson'])->name('sales-bills.eway-json');
     Route::post('sales-bills/{salesBill}/eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'updateDetails'])->name('sales-bills.eway-update');
+    Route::post('sales-bills/{salesBill}/eway-cancel', [\App\Http\Controllers\Sales\EWayBillController::class, 'cancelEwb'])->name('sales-bills.eway-cancel');
+    Route::post('sales-bills/{salesBill}/eway-extend', [\App\Http\Controllers\Sales\EWayBillController::class, 'extendValidity'])->name('sales-bills.eway-extend');
+    Route::post('sales-bills/{salesBill}/eway-partb', [\App\Http\Controllers\Sales\EWayBillController::class, 'updatePartB'])->name('sales-bills.eway-partb');
+
     $gatedResource('sales-quotations', SalesQuotationController::class, 'sales-quotations');
     $gatedResource('sales-orders', SalesOrderController::class, 'sales-orders');
     Route::get('delivery-notes/{deliveryNote}/print', [SalesDeliveryNoteController::class, 'print'])->name('delivery-notes.print');
@@ -303,6 +314,9 @@ Route::middleware('auth')->get('pos-ping', function () {
         'server_time' => microtime(true),
     ]);
 })->name('pos.ping');
+
+Route::middleware('auth')->get('einvoice/dashboard', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('einvoice.dashboard');
+Route::middleware('auth')->get('tfa/einvoice/dashboard', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('tfa.einvoice.dashboard');
 
 Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('form-validations', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'index'])->name('form-validations.index');
@@ -352,19 +366,26 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'toolsIndex'])->name('eway-update');
     Route::post('eway-bulk-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadBulkJson'])->name('eway-bulk-json');
     
-    // GST E-Filing & E-Invoice Integration Hub (from video 6.mp4)
+    // GST E-Filing & E-Invoice Integration Hub (from video 6.mp4 / GoFrugal TFA Parity)
     Route::get('integrations-gst', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('integrations-gst');
+    Route::get('einvoice/hub', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('einvoice.hub');
     Route::get('einvoice/details/{salesBill}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'billDetails'])->name('einvoice.details');
     Route::post('einvoice/generate-irn', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'generateIrn'])->name('einvoice.generate-irn');
+    Route::post('einvoice/cancel-irn/{salesBill}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'cancelIrn'])->name('einvoice.cancel-irn');
     Route::post('einvoice/export-json', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportJson'])->name('einvoice.export-json');
     Route::get('einvoice/download-errors', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'downloadErrors'])->name('einvoice.download-errors');
     Route::post('einvoice/settings', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'updateSettings'])->name('einvoice.settings');
 
-    // GSTR Returns Specific Actions (GSTR-1, GSTR-3B, GSTR-9, GSTR-2A, GSTR-2B)
+    // GSTR Returns Specific Actions (GSTR-1, GSTR-3B, GSTR-2, GSTR-9, GSTR-2A, GSTR-2B)
+    Route::get('gst/gstr-1/export-json', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr1Json'])->name('gst.gstr-1.export-json');
     Route::get('gst/gstr-1', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1View'])->name('gst.gstr-1.page');
     Route::get('gst/gstr-1/{section}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1SectionView'])->name('gst.gstr-1.section');
     Route::get('gst/gstr-1-details', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1Details'])->name('gst.gstr-1');
+    Route::get('gst/gstr-3b', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr3bView'])->name('gst.gstr-3b.page');
+    Route::get('gst/gstr-3b-export', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr3b'])->name('gst.gstr-3b.export');
     Route::get('gst/gstr-3b-details', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr3bDetails'])->name('gst.gstr-3b');
+    Route::get('gst/gstr-2', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr2View'])->name('gst.gstr-2.page');
+    Route::get('gst/gstr-2-export', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr2'])->name('gst.gstr-2.export');
     Route::post('gst/gstr-9-sync', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr9Sync'])->name('gst.gstr-9-sync');
     Route::post('gst/gstr-2-upload', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'uploadGstr2'])->name('gst.gstr-2-upload');
     Route::get('gst/gstr-2-download', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'downloadGstr2'])->name('gst.gstr-2-download');

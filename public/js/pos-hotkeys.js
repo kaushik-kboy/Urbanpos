@@ -64,6 +64,7 @@
         'CTRL+SHIFT+S': { action_key: 'open_sales_bill', target_url: 'sales/sales-bills/create' },
         'CTRL+SHIFT+P': { action_key: 'open_purchase_invoice', target_url: 'purchase/purchase-invoices/create' },
         'CTRL+SHIFT+T': { action_key: 'open_stock_transfer', target_url: 'inventory/stock-transfers/create' },
+        'F1': { action_key: 'tag_pet' },
         'F2': { action_key: 'search_item' },
         'F3': { action_key: 'new_entry' },
         'F4': { action_key: 'edit_entry' },
@@ -112,6 +113,18 @@
         if (!$) return;
 
         switch (actionKey) {
+            case 'tag_pet': {
+                if (typeof window.posTagPet === 'function') {
+                    window.posTagPet();
+                    return;
+                }
+                if ($('#posPetSelectDropdown').length) {
+                    $('#posPetSelectDropdown').focus();
+                    return;
+                }
+                break;
+            }
+
             case 'search_item': {
                 // If on Sales Bill screen with dedicated item search helper
                 if (typeof window.triggerSalesBillItemSearch === 'function') {

@@ -322,6 +322,50 @@ class PurchaseIndentController extends Controller
         ]);
     }
 
+    public function mbqDeficits(Request $request)
+    {
+        $branchId = $request->input('branch_id');
+        if (!$branchId) {
+            $branchId = session('active_branch_id', auth()->user()?->branch_id);
+        }
+        if (!$branchId) {
+            $branchId = Branch::where('status', true)->where('name', '!=', 'GLOBAL')->first()?->id ?? 2;
+        }
+
+        $mbqTarget = (float) $request->input('mbq_target', 10.0);
+
+        // Find items in this branch where quantity is below safety/MBQ target
+        $stocks = ItemStock::with(['item'])
+            ->where('branch_id', $branchId)
+            ->where('quantity', '<', $mbqTarget)
+            ->orderBy('quantity', 'asc')
+            ->limit(50)
+            ->get();
+
+        $deficits = $stocks->map(function ($st) use ($mbqTarget) {
+            $curr = (float) $st->quantity;
+            $deficit = max(1.0, round($mbqTarget - $curr, 2));
+            $cost = (float) ($st->cost_price ?: ($st->item?->cost_price ?? 0));
+            return [
+                'item_id' => $st->item_id,
+                'item_code' => $st->item?->item_code ?? ('ITEM-' . $st->item_id),
+                'name' => $st->item?->name ?? 'Item #' . $st->item_id,
+                'current_stock' => $curr,
+                'mbq_target' => $mbqTarget,
+                'deficit_qty' => $deficit,
+                'estimated_cost' => $cost,
+                'estimated_amount' => round($deficit * $cost, 2),
+            ];
+        });
+
+        return response()->json([
+            'branch_id' => (int) $branchId,
+            'mbq_target' => $mbqTarget,
+            'count' => $deficits->count(),
+            'items' => $deficits,
+        ]);
+    }
+
     private function nextNumber(): string
     {
         // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
