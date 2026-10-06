@@ -1,6 +1,12 @@
 @php
     $receiptSettings = \App\Models\ReceiptSetting::forDocument('sales_bill', $salesBill->branch_id ?? null);
-    $paperSize = $receiptSettings->paper_size ?? '80mm';
+    $formatParam = request('format');
+    $isA4 = ($formatParam === 'a4') || ($formatParam !== 'thermal' && $receiptSettings->isA4GstInvoice());
+
+    $paperSize = $isA4 ? ($receiptSettings->paper_size === 'a5' ? 'a5' : 'a4') : ($receiptSettings->paper_size ?? '80mm');
+    if ($isA4 && !in_array($paperSize, ['a4', 'a5'])) {
+        $paperSize = 'a4';
+    }
     $fontSize = $receiptSettings->font_size ?? 'normal';
     $containerWidth = match($paperSize) {
         '58mm'  => '58mm',
@@ -12,8 +18,8 @@
     $containerMaxWidth = match($paperSize) {
         '58mm'  => '240px',
         '102mm' => '410px',
-        'a4'    => '700px',
-        'a5'    => '500px',
+        'a4'    => '860px',
+        'a5'    => '640px',
         default => '320px',
     };
     $baseFontSize = match($fontSize) {
@@ -245,14 +251,33 @@
                 <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Verified Digital Bill
             </span>
         @endif
+
+        @if($isA4)
+            <a href="{{ request()->fullUrlWithQuery(['format' => 'thermal']) }}" class="btn btn-secondary" style="background: #374151;" title="Switch to Thermal Slip format">
+                <i class="fas fa-receipt" style="margin-right: 5px;"></i> Thermal Slip
+            </a>
+        @else
+            <a href="{{ request()->fullUrlWithQuery(['format' => 'a4']) }}" class="btn btn-secondary" style="background: #374151;" title="Switch to A4 GST Invoice format">
+                <i class="fas fa-file-invoice" style="margin-right: 5px;"></i> A4 GST Invoice
+            </a>
+        @endif
+
         <button id="btn-download-pdf" type="button" onclick="downloadReceiptPdf()" class="btn btn-primary" style="background: #17a2b8; border-color: #17a2b8;" title="Save as PDF directly to phone">
             <i class="fas fa-download" style="margin-right: 5px;"></i> Download PDF
         </button>
         <button onclick="window.print()" class="btn btn-primary">
-            <i class="fas fa-print" style="margin-right: 5px;"></i> Print Slip
+            <i class="fas fa-print" style="margin-right: 5px;"></i> {{ $isA4 ? 'Print Invoice' : 'Print Slip' }}
         </button>
     </div>
 
+    @if ($isA4)
+        <div class="receipt-container" style="background: transparent; box-shadow: none; padding: 0; max-width: {{ $containerMaxWidth }};">
+            @include('sales.sales-bills.partials.a4-gst-invoice', [
+                'salesBill' => $salesBill,
+                'receiptSettings' => $receiptSettings,
+            ])
+        </div>
+    @else
     <div class="receipt-container">
         {{-- Store Logo (Optional) --}}
         @if ($receiptSettings->show_logo && $receiptSettings->logo_path)
@@ -537,6 +562,7 @@
             @endif
         </div>
     </div>
+    @endif
 
     <script>
         function downloadReceiptPdf() {
@@ -546,10 +572,10 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 5px;"></i> Generating...';
             }
 
-            const el = document.querySelector('.receipt-container');
-            const pdfFormat = {!! $paperSize === 'a4' ? "'a4'" : ($paperSize === 'a5' ? "'a5'" : json_encode([$paperSize === '58mm' ? 58 : 80, 297])) !!};
+            const el = document.querySelector('{{ $isA4 ? ".a4-gst-invoice-root" : ".receipt-container" }}') || document.querySelector('.receipt-container');
+            const pdfFormat = {!! $isA4 ? ($paperSize === 'a5' ? "'a5'" : "'a4'") : ($paperSize === 'a4' ? "'a4'" : ($paperSize === 'a5' ? "'a5'" : json_encode([$paperSize === '58mm' ? 58 : 80, 297]))) !!};
             const opt = {
-                margin:       [4, 4, 4, 4],
+                margin:       {!! $isA4 ? '[6, 6, 6, 6]' : '[4, 4, 4, 4]' !!},
                 filename:     '{{ $salesBill->bill_number }}.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },

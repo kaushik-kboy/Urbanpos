@@ -90,7 +90,210 @@
         <div class="row">
             {{-- Left Column: Settings Customizer --}}
             <div class="col-lg-7 col-md-12 mb-4">
-                
+
+                {{-- 0. Primary Print Mode & Format Engine --}}
+                <div class="card card-outline card-primary shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title font-weight-bold text-dark mb-0">
+                                <i class="fas fa-print text-primary mr-2"></i> Print Format & Engine (प्रिंट फॉर्मेट)
+                            </h3>
+                            <span class="badge badge-primary px-2 py-1 font-weight-bold">Dual Format Engine</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <label class="font-weight-bold text-secondary small text-uppercase mb-2">Select Default Print Format (डिफ़ॉल्ट प्रिंट मोड चुनें)</label>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <div class="border rounded p-3 h-100 bg-light" style="cursor: pointer;" onclick="document.getElementById('format_thermal').checked = true; document.getElementById('format_thermal').dispatchEvent(new Event('change'));">
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" id="format_thermal" name="invoice_format" value="thermal" class="custom-control-input" {{ old('invoice_format', $settings->invoice_format ?? 'thermal') === 'thermal' ? 'checked' : '' }}>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="format_thermal">
+                                            🧾 Thermal Roll Slip
+                                        </label>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        Compact 80mm / 58mm / 102mm roll slips for counter thermal POS receipt printers.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <div class="border rounded p-3 h-100 bg-light" style="cursor: pointer;" onclick="document.getElementById('format_a4_gst').checked = true; document.getElementById('format_a4_gst').dispatchEvent(new Event('change'));">
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" id="format_a4_gst" name="invoice_format" value="a4_gst" class="custom-control-input" {{ old('invoice_format', $settings->invoice_format ?? 'thermal') === 'a4_gst' ? 'checked' : '' }}>
+                                        <label class="custom-control-label font-weight-bold text-primary" for="format_a4_gst">
+                                            📄 A4 / A5 GST Tax Invoice
+                                        </label>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        Full-sheet professional GST Tax Invoice with modular header positioning and compliance.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Modular A4 GST Header & Layout Styling Engine --}}
+                <div id="card_a4_gst_styling" class="card card-outline card-indigo shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title font-weight-bold text-dark mb-0">
+                                <i class="fas fa-th-large text-indigo mr-2"></i> A4 GST Header Positioning & Brand Styling (हेडर लेआउट)
+                            </h3>
+                            <span class="badge badge-info px-2 py-1">4 Flexible Header Styles</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <label class="font-weight-bold text-secondary small text-uppercase mb-2">Header Layout Style (कंपनी हेडर और लोगो की स्थिति चुनें)</label>
+                        <div class="row">
+                            {{-- Layout 1: logo_left_address_below --}}
+                            <div class="col-md-6 mb-3">
+                                <div id="card_layout_logo_left_address_below" class="border rounded p-3 h-100 header-layout-choice {{ old('header_layout', $settings->header_layout) === 'logo_left_address_below' ? 'border-primary bg-light shadow-sm' : '' }}" style="cursor: pointer;" onclick="chooseHeaderLayout('logo_left_address_below')">
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" id="layout_logo_left_address_below" name="header_layout" value="logo_left_address_below" class="custom-control-input" {{ old('header_layout', $settings->header_layout) === 'logo_left_address_below' ? 'checked' : '' }}>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="layout_logo_left_address_below">
+                                            🏢 Logo Left + Address Below
+                                        </label>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <strong>Image 1 Style (Corporate GST):</strong> Logo top-left, address below logo on left. Invoice metadata grid neatly aligned on the right.
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Layout 2: centered --}}
+                            <div class="col-md-6 mb-3">
+                                <div id="card_layout_centered" class="border rounded p-3 h-100 header-layout-choice {{ old('header_layout', $settings->header_layout) === 'centered' ? 'border-primary bg-light shadow-sm' : '' }}" style="cursor: pointer;" onclick="chooseHeaderLayout('centered')">
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" id="layout_centered" name="header_layout" value="centered" class="custom-control-input" {{ old('header_layout', $settings->header_layout) === 'centered' ? 'checked' : '' }}>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="layout_centered">
+                                            🎯 All Centered Minimalist
+                                        </label>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <strong>Image 2 Style (Clean B&W):</strong> Store logo and address centered, Support QR code top-right, clean centered Tax Invoice pill.
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Layout 3: logo_left_address_right --}}
+                            <div class="col-md-6 mb-3">
+                                <div id="card_layout_logo_left_address_right" class="border rounded p-3 h-100 header-layout-choice {{ old('header_layout', $settings->header_layout) === 'logo_left_address_right' ? 'border-primary bg-light shadow-sm' : '' }}" style="cursor: pointer;" onclick="chooseHeaderLayout('logo_left_address_right')">
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" id="layout_logo_left_address_right" name="header_layout" value="logo_left_address_right" class="custom-control-input" {{ old('header_layout', $settings->header_layout) === 'logo_left_address_right' ? 'checked' : '' }}>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="layout_logo_left_address_right">
+                                            ↔️ Logo Left + Address Right
+                                        </label>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <strong>Image 3 Style (Split Accent):</strong> Logo on left, Registered office & contacts on right, full-width colored Tax Invoice banner.
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Layout 4: logo_right_address_left --}}
+                            <div class="col-md-6 mb-3">
+                                <div id="card_layout_logo_right_address_left" class="border rounded p-3 h-100 header-layout-choice {{ old('header_layout', $settings->header_layout) === 'logo_right_address_left' ? 'border-primary bg-light shadow-sm' : '' }}" style="cursor: pointer;" onclick="chooseHeaderLayout('logo_right_address_left')">
+                                    <div class="custom-control custom-radio">
+                                        <input type="radio" id="layout_logo_right_address_left" name="header_layout" value="logo_right_address_left" class="custom-control-input" {{ old('header_layout', $settings->header_layout) === 'logo_right_address_left' ? 'checked' : '' }}>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="layout_logo_right_address_left">
+                                            🔄 Address Left + Logo Right
+                                        </label>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <strong>Inverted Split:</strong> Company details on left, Logo on right, invoice metadata cleanly separated below.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Accent Color Selector --}}
+                        <div class="mb-3 pt-2 border-top">
+                            <label class="font-weight-bold text-secondary small text-uppercase">Brand Accent Color (थीम व हाइलाइट रंग)</label>
+                            <div class="d-flex align-items-center flex-wrap">
+                                <input type="color" id="input_accent_color_picker" class="form-control mr-2" style="width: 48px; height: 38px; padding: 2px; cursor: pointer;" value="{{ old('accent_color', $settings->getAccentColor()) }}">
+                                <input type="text" name="accent_color" id="input_accent_color" class="form-control mr-3" style="width: 110px;" value="{{ old('accent_color', $settings->getAccentColor()) }}" placeholder="#1e40af">
+                                <div class="d-flex align-items-center flex-wrap mt-2 mt-sm-0">
+                                    <span class="small text-muted mr-2">Presets:</span>
+                                    <button type="button" class="btn btn-sm mr-1 mb-1 shadow-sm" style="background:#1e40af; color:#fff; width:26px; height:26px; border-radius:50%; padding:0;" title="Navy Blue (#1e40af)" onclick="pickAccentColor('#1e40af')"></button>
+                                    <button type="button" class="btn btn-sm mr-1 mb-1 shadow-sm" style="background:#1f2937; color:#fff; width:26px; height:26px; border-radius:50%; padding:0;" title="Slate (#1f2937)" onclick="pickAccentColor('#1f2937')"></button>
+                                    <button type="button" class="btn btn-sm mr-1 mb-1 shadow-sm" style="background:#047857; color:#fff; width:26px; height:26px; border-radius:50%; padding:0;" title="Emerald (#047857)" onclick="pickAccentColor('#047857')"></button>
+                                    <button type="button" class="btn btn-sm mr-1 mb-1 shadow-sm" style="background:#ea580c; color:#fff; width:26px; height:26px; border-radius:50%; padding:0;" title="Warm Amber (#ea580c)" onclick="pickAccentColor('#ea580c')"></button>
+                                    <button type="button" class="btn btn-sm mr-1 mb-1 shadow-sm" style="background:#7c3aed; color:#fff; width:26px; height:26px; border-radius:50%; padding:0;" title="Royal Violet (#7c3aed)" onclick="pickAccentColor('#7c3aed')"></button>
+                                    <button type="button" class="btn btn-sm mr-1 mb-1 shadow-sm" style="background:#dc2626; color:#fff; width:26px; height:26px; border-radius:50%; padding:0;" title="Crimson (#dc2626)" onclick="pickAccentColor('#dc2626')"></button>
+                                </div>
+                            </div>
+                            <small class="text-muted">Highlights table headers, invoice title badges, and border accents.</small>
+                        </div>
+
+                        {{-- Modular Block Toggles --}}
+                        <div class="row pt-2 border-top">
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_ship_to" name="show_ship_to" value="1" {{ old('show_ship_to', $settings->show_ship_to) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_ship_to">
+                                        🚚 Show "Ship To / Consignee" Card
+                                    </label>
+                                    <div class="small text-muted pl-4">Displays delivery address alongside Bill To customer card.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_tax_summary_table" name="show_tax_summary_table" value="1" {{ old('show_tax_summary_table', $settings->show_tax_summary_table) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_tax_summary_table">
+                                        📊 GST Rate-wise Breakup Table
+                                    </label>
+                                    <div class="small text-muted pl-4">Separate table for 0%, 5%, 12%, 18% CGST/SGST amounts.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_payment_details" name="show_payment_details" value="1" {{ old('show_payment_details', $settings->show_payment_details) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_payment_details">
+                                        💳 Payment Card & UPI QR Code
+                                    </label>
+                                    <div class="small text-muted pl-4">Shows payment mode, txn reference, and UPI scan-to-pay QR.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_signature_box" name="show_signature_box" value="1" {{ old('show_signature_box', $settings->show_signature_box) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_signature_box">
+                                        ✍️ Authorised Signatory Box
+                                    </label>
+                                    <div class="small text-muted pl-4">Official stamp and signature declaration box at bottom-right.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_support_qr" name="show_support_qr" value="1" {{ old('show_support_qr', $settings->show_support_qr) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_support_qr">
+                                        📱 Support & Help QR Code
+                                    </label>
+                                    <div class="small text-muted pl-4">Prints quick support QR in invoice header (Image 2 style).</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="font-weight-bold text-secondary small text-uppercase">Support QR URL / WhatsApp Link</label>
+                                <input type="text" name="support_qr_payload" id="input_support_qr_payload" class="form-control form-control-sm" value="{{ old('support_qr_payload', $settings->support_qr_payload) }}" placeholder="e.g. https://wa.me/917383056626">
+                            </div>
+                        </div>
+
+                        {{-- Statutory Compliance & Terms --}}
+                        <div class="row pt-2 border-top">
+                            <div class="col-md-6 mb-3">
+                                <label class="font-weight-bold text-secondary small text-uppercase">A4 Statutory & Compliance Notes</label>
+                                <textarea name="compliance_notes" id="input_compliance_notes" class="form-control" rows="2" placeholder="e.g. Whether tax is payable on reverse charge: NO | Certified that the particulars given above are true and correct.">{{ old('compliance_notes', $settings->compliance_notes) }}</textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="font-weight-bold text-secondary small text-uppercase">Terms & Conditions (नियम और शर्तें)</label>
+                                <textarea name="terms_conditions" id="input_terms_conditions" class="form-control" rows="2" placeholder="1. Goods once sold will not be taken back without original bill.&#10;2. Subject to Ahmedabad jurisdiction only.">{{ old('terms_conditions', $settings->terms_conditions) }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- 1. Store Header & Branding --}}
                 <div class="card card-outline card-warning shadow-sm mb-4">
                     <div class="card-header bg-white py-3">
@@ -144,18 +347,22 @@
                             <small class="text-muted">Leave blank to automatically use the active branch address.</small>
                         </div>
                         <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="font-weight-bold text-secondary small text-uppercase">Primary Phone / Helpline</label>
+                            <div class="col-md-3 mb-3">
+                                <label class="font-weight-bold text-secondary small text-uppercase">Primary Phone</label>
                                 <input type="text" name="phone" id="input_phone" class="form-control" value="{{ old('phone', $settings->phone) }}" placeholder="7383056626">
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="font-weight-bold text-secondary small text-uppercase">Alternate Phone</label>
-                                <input type="text" name="phone_alt" id="input_phone_alt" class="form-control" value="{{ old('phone_alt', $settings->phone_alt) }}" placeholder="Optional second number">
+                                <input type="text" name="phone_alt" id="input_phone_alt" class="form-control" value="{{ old('phone_alt', $settings->phone_alt) }}" placeholder="Optional">
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
+                                <label class="font-weight-bold text-secondary small text-uppercase">Email Address</label>
+                                <input type="email" name="email" id="input_email" class="form-control" value="{{ old('email', $settings->email) }}" placeholder="support@urbanpets.in">
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <label class="font-weight-bold text-secondary small text-uppercase">GSTIN / Tax ID</label>
                                 <input type="text" name="gstin" id="input_gstin" class="form-control text-uppercase" value="{{ old('gstin', $settings->gstin) }}" placeholder="24AAAAA0000A1Z5">
-                                <small class="text-muted">Leave blank to use branch GST.</small>
+                                <small class="text-muted">Leave blank for branch GST.</small>
                             </div>
                         </div>
                     </div>
@@ -321,22 +528,28 @@
 
             </div>
 
-            {{-- Right Column: Live Interactive Thermal Receipt Preview --}}
+            {{-- Right Column: Live Interactive Thermal / A4 GST Preview --}}
             <div class="col-lg-5 col-md-12 mb-4">
                 <div style="position: sticky; top: 15px;">
                     <div class="card shadow-sm border-0 mb-2">
                         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 px-3">
-                            <span class="font-weight-bold small">
-                                <i class="fas fa-receipt mr-1 text-warning"></i> LIVE RECEIPT PREVIEW
-                            </span>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" id="btn_toggle_thermal_preview" class="btn {{ $settings->isA4GstInvoice() ? 'btn-outline-light' : 'btn-warning' }} font-weight-bold" onclick="switchPreviewMode('thermal')">
+                                    <i class="fas fa-receipt mr-1"></i> Thermal Slip
+                                </button>
+                                <button type="button" id="btn_toggle_a4_preview" class="btn {{ $settings->isA4GstInvoice() ? 'btn-warning' : 'btn-outline-light' }} font-weight-bold" onclick="switchPreviewMode('a4')">
+                                    <i class="fas fa-file-invoice mr-1"></i> A4 GST Invoice
+                                </button>
+                            </div>
                             <span id="preview-size-badge" class="badge badge-warning text-uppercase font-weight-bold">
-                                80mm Roll
+                                {{ $settings->isA4GstInvoice() ? 'A4 Sheet' : ($settings->paper_size ?: '80mm Roll') }}
                             </span>
                         </div>
                     </div>
 
                     {{-- Live Receipt Preview Container --}}
                     <div class="preview-scroll-wrapper" style="max-height: 85vh; overflow-y: auto; background: #525659; padding: 20px 10px; border-radius: 8px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);">
+                        <div id="thermal-preview-container" style="{{ $settings->isA4GstInvoice() ? 'display: none;' : '' }}">
                         <div id="receipt-preview-box" class="receipt-paper" style="margin: 0 auto; background: #fff; padding: 12px 10px; border-radius: 2px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); font-family: 'Courier New', Courier, monospace; color: #000; transition: width 0.3s ease;">
                             
                             {{-- Store Logo (Preview) --}}
@@ -953,6 +1166,333 @@
                             </div>
 
                         </div>
+                        </div>{{-- End thermal-preview-container --}}
+
+                        {{-- A4 GST Invoice Preview Container --}}
+                        <div id="a4-preview-container" style="{{ $settings->isA4GstInvoice() ? '' : 'display: none;' }}">
+                            <div id="a4-receipt-preview-box" class="a4-gst-invoice-root" style="--accent: {{ $settings->getAccentColor() }}; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #1e293b; line-height: 1.35; font-size: 11px; background: #fff; max-width: 680px; margin: 0 auto; padding: 14px 18px; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.35);">
+                                
+                                {{-- ── 1. MODULAR HEADER PREVIEW ──────────────────────────────── --}}
+                                
+                                {{-- LAYOUT 1: logo_left_address_below (Image 1 Style) --}}
+                                <div id="prev_a4_hdr_logo_left_address_below" class="prev-a4-header" style="{{ $settings->getHeaderLayout() === 'logo_left_address_below' ? '' : 'display: none;' }}; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid var(--accent);">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+                                        <div style="flex: 1 1 58%;">
+                                            <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 6px;">
+                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                            </div>
+                                            <div class="prev_a4_store_name" style="font-size: 16px; font-weight: 800; color: #0f172a; text-transform: uppercase;">{{ $settings->store_name ?: 'URBAN PETS' }}</div>
+                                            <div class="prev_a4_tagline" style="font-size: 10.5px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
+                                            <div class="prev_a4_address" style="font-size: 10.5px; color: #334155; margin-top: 2px;">{!! nl2br(e($settings->header_address ?: 'Shop 4 & 5, Rivera Arcade, Motera, Ahmedabad - 380005')) !!}</div>
+                                            <div style="font-size: 10.5px; color: #334155;">
+                                                <span class="prev_a4_phone">Tel: {{ $settings->phone ?: '7383056626' }}</span>
+                                                <span class="prev_a4_phone_alt" style="{{ $settings->phone_alt ? '' : 'display: none;' }}"> / {{ $settings->phone_alt }}</span>
+                                                <span class="prev_a4_email_wrap" style="{{ $settings->email ? '' : 'display: none;' }}"> | <span class="prev_a4_email">{{ $settings->email }}</span></span>
+                                            </div>
+                                            <div class="prev_a4_gstin" style="font-size: 11px; font-weight: 700; color: var(--accent); margin-top: 2px;">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
+                                        </div>
+                                        <div style="flex: 0 0 40%; text-align: right;">
+                                            <div style="display: inline-block; background: var(--accent); color: #fff; padding: 4px 14px; font-weight: 800; font-size: 13px; letter-spacing: 1px; border-radius: 3px; text-transform: uppercase; margin-bottom: 6px;">
+                                                TAX INVOICE
+                                            </div>
+                                            <table style="width: 100%; font-size: 10.5px; border-collapse: collapse; text-align: left; border: 1px solid #cbd5e1;">
+                                                <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                                    <td style="padding: 2px 6px; font-weight: bold; width: 45%;">Invoice No:</td>
+                                                    <td style="padding: 2px 6px; font-weight: bold; color: var(--accent);">{{ $sampleBill?->bill_number ?: 'SB-2026-0009' }}</td>
+                                                </tr>
+                                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                    <td style="padding: 2px 6px; font-weight: bold;">Date:</td>
+                                                    <td style="padding: 2px 6px;">{{ now()->format('d/m/Y') }}</td>
+                                                </tr>
+                                                <tr style="background: #f8fafc;">
+                                                    <td style="padding: 2px 6px; font-weight: bold;">Place of Supply:</td>
+                                                    <td style="padding: 2px 6px;">24 - Gujarat</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- LAYOUT 2: centered (Image 2 Style) --}}
+                                <div id="prev_a4_hdr_centered" class="prev-a4-header" style="{{ $settings->getHeaderLayout() === 'centered' ? '' : 'display: none;' }}; position: relative; text-align: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #0f172a;">
+                                    <div class="prev_a4_support_qr" style="position: absolute; right: 0; top: 0; text-align: center; {{ $settings->show_support_qr ? '' : 'display: none;' }};">
+                                        <img class="prev_a4_support_qr_img" src="{{ $settings->getSupportQrUrl() }}" alt="Support QR" style="width: 50px; height: 50px; border: 1px solid #cbd5e1; border-radius: 3px;">
+                                        <div style="font-size: 8px; font-weight: bold; color: #475569;">Help / QR</div>
+                                    </div>
+                                    <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 4px;">
+                                        <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                    </div>
+                                    <div class="prev_a4_store_name" style="font-size: 18px; font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $settings->store_name ?: 'URBAN PETS' }}</div>
+                                    <div class="prev_a4_tagline" style="font-size: 10.5px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
+                                    <div class="prev_a4_address" style="font-size: 10.5px; color: #334155; margin-top: 1px;">{!! nl2br(e($settings->header_address ?: 'Shop 4 & 5, Rivera Arcade, Motera, Ahmedabad - 380005')) !!}</div>
+                                    <div style="font-size: 10.5px; color: #334155;">
+                                        <span class="prev_a4_phone">Tel: {{ $settings->phone ?: '7383056626' }}</span>
+                                        <span class="prev_a4_phone_alt" style="{{ $settings->phone_alt ? '' : 'display: none;' }}"> / {{ $settings->phone_alt }}</span>
+                                        <span class="prev_a4_email_wrap" style="{{ $settings->email ? '' : 'display: none;' }}"> | <span class="prev_a4_email">{{ $settings->email }}</span></span>
+                                    </div>
+                                    <div class="prev_a4_gstin" style="font-size: 11px; font-weight: 700; color: var(--accent); margin-top: 2px;">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
+                                    <div style="margin-top: 6px;">
+                                        <span style="display: inline-block; background: #0f172a; color: #fff; padding: 2px 14px; font-weight: 700; font-size: 11.5px; letter-spacing: 1px; border-radius: 12px; text-transform: uppercase;">
+                                            TAX INVOICE
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {{-- LAYOUT 3: logo_left_address_right (Image 3 Style) --}}
+                                <div id="prev_a4_hdr_logo_left_address_right" class="prev-a4-header" style="{{ $settings->getHeaderLayout() === 'logo_left_address_right' ? '' : 'display: none;' }}; margin-bottom: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="flex: 1;">
+                                            <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 4px;">
+                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                            </div>
+                                            <div class="prev_a4_store_name" style="font-size: 16px; font-weight: 800; color: var(--accent); text-transform: uppercase;">{{ $settings->store_name ?: 'URBAN PETS' }}</div>
+                                            <div class="prev_a4_tagline" style="font-size: 10px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
+                                        </div>
+                                        <div style="flex: 1; text-align: right; font-size: 10px; color: #334155; line-height: 1.3;">
+                                            <div style="font-weight: 700; color: #0f172a; text-transform: uppercase;">Registered Office</div>
+                                            <div class="prev_a4_address">{!! nl2br(e($settings->header_address ?: 'Shop 4 & 5, Rivera Arcade, Motera, Ahmedabad - 380005')) !!}</div>
+                                            <div>
+                                                <span class="prev_a4_phone">Phone: {{ $settings->phone ?: '7383056626' }}</span>
+                                                <span class="prev_a4_phone_alt" style="{{ $settings->phone_alt ? '' : 'display: none;' }}"> / {{ $settings->phone_alt }}</span>
+                                            </div>
+                                            <div class="prev_a4_gstin" style="font-weight: 700; color: var(--accent);">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
+                                        </div>
+                                    </div>
+                                    <div style="background: var(--accent); color: #fff; text-align: center; padding: 4px 0; font-weight: 800; font-size: 12px; letter-spacing: 1.5px; border-radius: 2px; text-transform: uppercase;">
+                                        TAX INVOICE
+                                    </div>
+                                </div>
+
+                                {{-- LAYOUT 4: logo_right_address_left --}}
+                                <div id="prev_a4_hdr_logo_right_address_left" class="prev-a4-header" style="{{ $settings->getHeaderLayout() === 'logo_right_address_left' ? '' : 'display: none;' }}; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--accent);">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div style="flex: 1; font-size: 10.5px; color: #334155;">
+                                            <div class="prev_a4_store_name" style="font-size: 16px; font-weight: 800; color: #0f172a; text-transform: uppercase;">{{ $settings->store_name ?: 'URBAN PETS' }}</div>
+                                            <div class="prev_a4_tagline" style="font-size: 10px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
+                                            <div class="prev_a4_address" style="margin-top: 2px;">{!! nl2br(e($settings->header_address ?: 'Shop 4 & 5, Rivera Arcade, Motera, Ahmedabad - 380005')) !!}</div>
+                                            <div>
+                                                <span class="prev_a4_phone">Tel: {{ $settings->phone ?: '7383056626' }}</span>
+                                                <span class="prev_a4_phone_alt" style="{{ $settings->phone_alt ? '' : 'display: none;' }}"> / {{ $settings->phone_alt }}</span>
+                                            </div>
+                                            <div class="prev_a4_gstin" style="font-weight: 700; color: var(--accent);">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
+                                        </div>
+                                        <div style="flex: 0 0 160px; text-align: right;">
+                                            <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 4px;">
+                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                            </div>
+                                            <div style="display: inline-block; background: var(--accent); color: #fff; padding: 3px 10px; font-weight: 800; font-size: 11px; letter-spacing: 1px; border-radius: 3px; text-transform: uppercase;">
+                                                TAX INVOICE
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- ── 2. BILL TO, SHIP TO & INVOICE DETAILS CARDS ──────────────── --}}
+                                <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: stretch;">
+                                    {{-- Bill To Card --}}
+                                    <div style="flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 10px; background: #f8fafc;">
+                                        <div style="font-weight: 700; font-size: 10.5px; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px; text-transform: uppercase;">
+                                            Details of Receiver | Bill To:
+                                        </div>
+                                        <div style="font-size: 10.5px; line-height: 1.45;">
+                                            <div>Name: <strong>{{ $sampleBill?->customer?->name ?: 'Ankit Sharma' }}</strong></div>
+                                            <div>Mobile: {{ $sampleBill?->customer?->phone ?: '9898012345' }}</div>
+                                            <div>Address: Satellite, Ahmedabad, Gujarat - 380015</div>
+                                            <div>GSTIN: <span style="font-weight: bold; color: #475569;">Unregistered</span></div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Ship To Card (Only for logo_left_address_below if enabled) --}}
+                                    <div id="prev_a4_ship_to_card" style="{{ ($settings->show_ship_to && $settings->getHeaderLayout() === 'logo_left_address_below') ? '' : 'display: none;' }}; flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 10px; background: #f8fafc;">
+                                        <div style="font-weight: 700; font-size: 10.5px; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px; text-transform: uppercase;">
+                                            Details of Consignee | Ship To:
+                                        </div>
+                                        <div style="font-size: 10.5px; line-height: 1.45;">
+                                            <div>Name: <strong>{{ $sampleBill?->customer?->name ?: 'Ankit Sharma' }}</strong></div>
+                                            <div>Mobile: {{ $sampleBill?->customer?->phone ?: '9898012345' }}</div>
+                                            <div>Address: Satellite, Ahmedabad, Gujarat - 380015</div>
+                                            <div>State: 24 - Gujarat</div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Invoice Details Card (Visible when header is logo_left_address_right, centered, or logo_right_address_left) --}}
+                                    <div id="prev_a4_invoice_meta_card" class="prev-a4-meta-box" style="{{ $settings->getHeaderLayout() !== 'logo_left_address_below' ? '' : 'display: none;' }}; flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 10px; background: #f8fafc;">
+                                        <div style="font-weight: 700; font-size: 10.5px; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px; text-transform: uppercase;">
+                                            Invoice Details:
+                                        </div>
+                                        <div style="font-size: 10.5px; line-height: 1.45;">
+                                            <table style="width: 100%;">
+                                                <tr><td style="width: 95px; color: #64748b;">Invoice No:</td><td><strong>{{ $sampleBill?->bill_number ?: 'EINV-TEST-1791271882' }}</strong></td></tr>
+                                                <tr><td style="color: #64748b;">Date:</td><td>{{ now()->format('d/m/Y') }}</td></tr>
+                                                <tr><td style="color: #64748b;">Place of Supply:</td><td>24 - Gujarat</td></tr>
+                                                <tr><td style="color: #64748b;">Reverse Charge:</td><td>No</td></tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- ── 3. ITEMS TABLE ─────────────────────────────────────────────── --}}
+                                <table style="width: 100%; border-collapse: collapse; font-size: 10.5px; border: 1px solid #cbd5e1; margin-bottom: 10px;">
+                                    <thead>
+                                        <tr style="background: var(--accent); color: #fff;">
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 28px; text-align: center;">#</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; text-align: left;">Item Description</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: center;">HSN</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 45px; text-align: right;">Qty</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: right;">Rate</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 45px; text-align: right;">Disc</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: right;">Taxable</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 40px; text-align: center;">GST%</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 65px; text-align: right;">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">1</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Royal Canin Maxi Puppy 4kg</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; color: #64748b;">23091000</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">1.00</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹2,450.00</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; color: #dc2626;">₹150.00</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹1,949.15</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">18%</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹2,300.00</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">2</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Gnawlers Calcium Milk Bones</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; color: #64748b;">23099090</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">2.00</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹180.00</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹0.00</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹321.43</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">12%</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹360.00</td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="background: #f1f5f9; font-weight: 700;">
+                                            <td colspan="3" style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">Total:</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">3.00</td>
+                                            <td colspan="2" style="padding: 4px; border: 1px solid #cbd5e1;"></td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹2,270.58</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1;"></td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹2,660.00</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+
+                                {{-- ── 4. TAX SUMMARY & TOTALS SECTION ────────────────────────────── --}}
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start;">
+                                    <div id="prev_a4_tax_summary_box" style="{{ $settings->show_tax_summary_table ? '' : 'display: none;' }}; flex: 1; border: 1px solid #cbd5e1; border-radius: 3px;">
+                                        <div style="background: #f1f5f9; font-weight: 700; font-size: 10px; padding: 3px 6px; border-bottom: 1px solid #cbd5e1; text-transform: uppercase;">
+                                            Rate-wise GST Summary (कर विवरण)
+                                        </div>
+                                        <table style="width: 100%; font-size: 9.5px; border-collapse: collapse; text-align: right;">
+                                            <tr style="background: #f8fafc; font-weight: 600; border-bottom: 1px solid #e2e8f0;">
+                                                <th style="padding: 2px 4px; text-align: left;">Rate</th>
+                                                <th style="padding: 2px 4px;">Taxable</th>
+                                                <th style="padding: 2px 4px;">CGST</th>
+                                                <th style="padding: 2px 4px;">SGST</th>
+                                                <th style="padding: 2px 4px;">Total Tax</th>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                <td style="padding: 2px 4px; text-align: left; font-weight: bold;">12%</td>
+                                                <td style="padding: 2px 4px;">₹321.43</td>
+                                                <td style="padding: 2px 4px;">₹19.29</td>
+                                                <td style="padding: 2px 4px;">₹19.29</td>
+                                                <td style="padding: 2px 4px; font-weight: bold;">₹38.57</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                <td style="padding: 2px 4px; text-align: left; font-weight: bold;">18%</td>
+                                                <td style="padding: 2px 4px;">₹1,949.15</td>
+                                                <td style="padding: 2px 4px;">₹175.42</td>
+                                                <td style="padding: 2px 4px;">₹175.42</td>
+                                                <td style="padding: 2px 4px; font-weight: bold;">₹350.85</td>
+                                            </tr>
+                                            <tr style="background: #f1f5f9; font-weight: bold;">
+                                                <td style="padding: 2px 4px; text-align: left;">Total</td>
+                                                <td style="padding: 2px 4px;">₹2,270.58</td>
+                                                <td style="padding: 2px 4px;">₹194.71</td>
+                                                <td style="padding: 2px 4px;">₹194.71</td>
+                                                <td style="padding: 2px 4px;">₹389.42</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+
+                                    <div style="flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 10.5px;">
+                                        <table style="width: 100%; border-collapse: collapse;">
+                                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                <td style="padding: 3px 6px;">Taxable Amount:</td>
+                                                <td style="padding: 3px 6px; text-align: right; font-weight: 600;">₹2,270.58</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                <td style="padding: 3px 6px;">Total GST (CGST+SGST):</td>
+                                                <td style="padding: 3px 6px; text-align: right; font-weight: 600;">₹389.42</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                <td style="padding: 3px 6px;">Discount:</td>
+                                                <td style="padding: 3px 6px; text-align: right; color: #dc2626;">-₹150.00</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                <td style="padding: 3px 6px;">Round Off:</td>
+                                                <td style="padding: 3px 6px; text-align: right;">₹0.00</td>
+                                            </tr>
+                                            <tr style="background: var(--accent); color: #fff; font-size: 12px; font-weight: 900;">
+                                                <td style="padding: 4px 6px;">GRAND TOTAL:</td>
+                                                <td style="padding: 4px 6px; text-align: right;">₹2,660.00</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {{-- Amount in words --}}
+                                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px 8px; font-size: 10px; margin-bottom: 10px;">
+                                    <strong>Amount in Words:</strong> Rupees Two Thousand Six Hundred Sixty Only
+                                </div>
+
+                                {{-- ── 5. PAYMENT & SIGNATURE SECTION ─────────────────────────────── --}}
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                    <div id="prev_a4_payment_box" style="{{ $settings->show_payment_details ? '' : 'display: none;' }}; flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 8px; font-size: 10px; background: #fafafa;">
+                                        <div style="font-weight: 700; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 4px;">
+                                            💳 PAYMENT & UPI DETAILS
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div>Mode: <strong>Cash / UPI</strong></div>
+                                                <div style="color: #64748b;">Ref: {{ $sampleBill?->bill_number ?: 'SB-2026-0009' }}</div>
+                                                <div class="prev_a4_upi_vpa_text" style="font-weight: 600; color: #0f172a; margin-top: 2px;">
+                                                    UPI: {{ $settings->upi_id ?: '7383056626@okbizaxis' }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <img class="prev_a4_upi_qr_img" src="{{ $settings->getUpiQrUrl(2660.00, $sampleBill?->bill_number ?: 'SB-2026-0009') }}" alt="UPI QR" style="width: 58px; height: 58px; border: 1px solid #cbd5e1; border-radius: 3px; background: #fff;">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="prev_a4_sign_box" style="{{ $settings->show_signature_box ? '' : 'display: none;' }}; flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 8px; text-align: right; display: flex; flex-direction: column; justify-content: space-between; min-height: 80px; background: #fafafa;">
+                                        <div style="font-size: 10px; font-weight: 700; color: #334155;">
+                                            For, <span class="prev_a4_store_name">{{ $settings->store_name ?: 'URBAN PETS' }}</span>
+                                        </div>
+                                        <div style="font-size: 9.5px; color: #64748b; border-top: 1px dashed #94a3b8; padding-top: 2px; margin-top: 30px;">
+                                            Authorised Signatory
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- ── 6. COMPLIANCE NOTES & TERMS ────────────────────────────────── --}}
+                                <div id="prev_a4_compliance_box" style="font-size: 9px; color: #475569; margin-bottom: 4px; line-height: 1.3; border-top: 1px solid #e2e8f0; padding-top: 4px;">
+                                    <div id="prev_a4_compliance_text">{!! nl2br(e($settings->compliance_notes ?: 'Whether tax is payable on reverse charge basis: NO | Certified that the particulars given above are true and correct.')) !!}</div>
+                                </div>
+
+                                <div id="prev_a4_terms_box" style="font-size: 9px; color: #64748b; line-height: 1.3; border-top: 1px dashed #cbd5e1; padding-top: 4px;">
+                                    <div style="font-weight: 700; color: #334155; margin-bottom: 2px;">Terms & Conditions:</div>
+                                    <div id="prev_a4_terms_text">{!! nl2br(e($settings->terms_conditions ?: "1. Goods once sold will not be taken back without original bill.\n2. Subject to local jurisdiction only.")) !!}</div>
+                                </div>
+
+                            </div>
+                        </div>{{-- End a4-preview-container --}}
                     </div>
                 </div>
             </div>
@@ -1008,9 +1548,37 @@
 @section('js')
 <script>
     const previewBox = document.getElementById('receipt-preview-box');
+    const a4PreviewBox = document.getElementById('a4-receipt-preview-box');
     const previewSizeBadge = document.getElementById('preview-size-badge');
+    let currentPreviewMode = '{{ $settings->isA4GstInvoice() ? "a4" : "thermal" }}';
+
+    function switchPreviewMode(mode) {
+        currentPreviewMode = mode;
+        const thermalContainer = document.getElementById('thermal-preview-container');
+        const a4Container = document.getElementById('a4-preview-container');
+        const btnThermal = document.getElementById('btn_toggle_thermal_preview');
+        const btnA4 = document.getElementById('btn_toggle_a4_preview');
+
+        if (mode === 'a4') {
+            if (thermalContainer) thermalContainer.style.display = 'none';
+            if (a4Container) a4Container.style.display = 'block';
+            if (btnThermal) { btnThermal.className = 'btn btn-outline-light font-weight-bold'; }
+            if (btnA4) { btnA4.className = 'btn btn-warning font-weight-bold'; }
+            if (previewSizeBadge) previewSizeBadge.textContent = 'A4 Sheet';
+        } else {
+            if (thermalContainer) thermalContainer.style.display = 'block';
+            if (a4Container) a4Container.style.display = 'none';
+            if (btnThermal) { btnThermal.className = 'btn btn-warning font-weight-bold'; }
+            if (btnA4) { btnA4.className = 'btn btn-outline-light font-weight-bold'; }
+            updatePreviewLayout();
+        }
+    }
 
     function updatePreviewLayout() {
+        if (currentPreviewMode === 'a4') {
+            if (previewSizeBadge) previewSizeBadge.textContent = 'A4 Sheet';
+            return;
+        }
         const paperSize = document.getElementById('input_paper_size').value;
         const fontSize = document.getElementById('input_font_size').value;
 
@@ -1043,62 +1611,222 @@
         }
     }
 
-    // Attach real-time input event listeners for live dynamic preview
+    // Header layout selection
+    function chooseHeaderLayout(layout) {
+        const radio = document.getElementById('layout_' + layout);
+        if (radio) {
+            radio.checked = true;
+        }
+        document.querySelectorAll('.header-layout-choice').forEach(card => {
+            card.classList.remove('border-primary', 'bg-light', 'shadow-sm');
+        });
+        const activeCard = document.getElementById('card_layout_' + layout);
+        if (activeCard) {
+            activeCard.classList.add('border-primary', 'bg-light', 'shadow-sm');
+        }
+
+        // Toggle A4 headers
+        document.querySelectorAll('.prev-a4-header').forEach(hdr => {
+            hdr.style.display = 'none';
+        });
+        const activeA4Hdr = document.getElementById('prev_a4_hdr_' + layout);
+        if (activeA4Hdr) {
+            activeA4Hdr.style.display = 'block';
+        }
+
+        // Toggle invoice meta card & ship to card beside Bill To
+        const metaCard = document.getElementById('prev_a4_invoice_meta_card');
+        const shipToCard = document.getElementById('prev_a4_ship_to_card');
+        const showShipTo = document.getElementById('input_show_ship_to')?.checked;
+        if (layout === 'logo_left_address_below') {
+            if (metaCard) metaCard.style.display = 'none';
+            if (shipToCard) shipToCard.style.display = showShipTo ? 'block' : 'none';
+        } else {
+            // For logo_left_address_right (Image 3 Style), Invoice Details replaces Ship To / Consignee card
+            if (metaCard) metaCard.style.display = 'block';
+            if (shipToCard) shipToCard.style.display = 'none';
+        }
+
+        // Auto switch to A4 preview to show layout
+        switchPreviewMode('a4');
+    }
+
+    // Accent color picker
+    function pickAccentColor(hex) {
+        document.getElementById('input_accent_color').value = hex;
+        document.getElementById('input_accent_color_picker').value = hex;
+        applyAccentColor(hex);
+    }
+
+    function applyAccentColor(hex) {
+        if (!hex) return;
+        if (a4PreviewBox) {
+            a4PreviewBox.style.setProperty('--accent', hex);
+        }
+    }
+
+    document.getElementById('input_accent_color')?.addEventListener('input', function() {
+        applyAccentColor(this.value);
+        const picker = document.getElementById('input_accent_color_picker');
+        if (picker && /^#[0-9A-F]{6}$/i.test(this.value)) {
+            picker.value = this.value;
+        }
+    });
+
+    document.getElementById('input_accent_color_picker')?.addEventListener('input', function() {
+        document.getElementById('input_accent_color').value = this.value;
+        applyAccentColor(this.value);
+    });
+
+    // Invoice format radio change
+    document.querySelectorAll('input[name="invoice_format"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                if (this.value === 'a4_gst') {
+                    switchPreviewMode('a4');
+                } else {
+                    switchPreviewMode('thermal');
+                }
+            }
+        });
+    });
+
+    // Header layout radio change directly
+    document.querySelectorAll('input[name="header_layout"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                chooseHeaderLayout(this.value);
+            }
+        });
+    });
+
+    // Synchronized real-time updates across Thermal and A4 previews
     document.getElementById('input_store_name').addEventListener('input', function() {
-        document.getElementById('prev_store_name').textContent = this.value || 'URBAN PETS';
+        const val = this.value || 'URBAN PETS';
+        document.getElementById('prev_store_name').textContent = val;
+        document.querySelectorAll('.prev_a4_store_name').forEach(el => el.textContent = val);
     });
 
     document.getElementById('input_tagline').addEventListener('input', function() {
         const el = document.getElementById('prev_tagline');
         el.textContent = this.value;
         el.style.display = this.value.trim() ? 'block' : 'none';
+        document.querySelectorAll('.prev_a4_tagline').forEach(a4El => {
+            a4El.textContent = this.value;
+            a4El.style.display = this.value.trim() ? 'block' : 'none';
+        });
     });
 
     document.getElementById('input_header_address').addEventListener('input', function() {
-        document.getElementById('prev_address').innerText = this.value || 'Rivera Arcade, Motera, Ahmedabad';
+        const val = this.value || 'Rivera Arcade, Motera, Ahmedabad';
+        document.getElementById('prev_address').innerText = val;
+        document.querySelectorAll('.prev_a4_address').forEach(a4El => a4El.innerText = val);
     });
 
     document.getElementById('input_phone').addEventListener('input', function() {
-        document.getElementById('prev_phone').innerHTML = 'Tel: ' + (this.value || '7383056626');
+        const val = this.value || '7383056626';
+        document.getElementById('prev_phone').innerHTML = 'Tel: ' + val;
+        document.querySelectorAll('.prev_a4_phone').forEach(a4El => a4El.textContent = 'Tel: ' + val);
     });
 
     document.getElementById('input_phone_alt').addEventListener('input', function() {
         const el = document.getElementById('prev_phone_alt');
-        if (this.value.trim()) {
+        const show = !!this.value.trim();
+        if (show) {
             el.textContent = ' / ' + this.value.trim();
             el.style.display = 'inline';
         } else {
             el.style.display = 'none';
         }
+        document.querySelectorAll('.prev_a4_phone_alt').forEach(a4El => {
+            a4El.textContent = ' / ' + this.value.trim();
+            a4El.style.display = show ? 'inline' : 'none';
+        });
+    });
+
+    document.getElementById('input_email')?.addEventListener('input', function() {
+        const show = !!this.value.trim();
+        document.querySelectorAll('.prev_a4_email').forEach(a4El => a4El.textContent = this.value.trim());
+        document.querySelectorAll('.prev_a4_email_wrap').forEach(wrap => wrap.style.display = show ? 'inline' : 'none');
     });
 
     document.getElementById('input_gstin').addEventListener('input', function() {
-        document.getElementById('prev_gstin').textContent = 'GSTIN: ' + (this.value || '24AABCU1234F1Z5').toUpperCase();
+        const val = (this.value || '24AABCU1234F1Z5').toUpperCase();
+        document.getElementById('prev_gstin').textContent = 'GSTIN: ' + val;
+        document.querySelectorAll('.prev_a4_gstin').forEach(a4El => a4El.textContent = 'GSTIN: ' + val);
     });
 
-    // Toggles
+    // Logo toggles & sizing
     document.getElementById('input_show_logo').addEventListener('change', function() {
         document.getElementById('prev_logo_container').style.display = this.checked ? 'block' : 'none';
+        document.querySelectorAll('.prev_a4_logo_box').forEach(box => box.style.display = this.checked ? 'block' : 'none');
     });
 
     document.getElementById('input_logo_width').addEventListener('input', function() {
         document.getElementById('logo_width_val').textContent = this.value;
         document.getElementById('prev_logo_img').style.maxWidth = this.value + 'px';
+        document.querySelectorAll('.prev_a4_logo_img').forEach(img => img.style.maxWidth = this.value + 'px');
     });
 
-    // File preview for logo
     document.getElementById('input_logo_file').addEventListener('change', function(e) {
         if (e.target.files && e.target.files[0]) {
             const reader = new FileReader();
             reader.onload = function(ev) {
                 document.getElementById('prev_logo_img').src = ev.target.result;
+                document.querySelectorAll('.prev_a4_logo_img').forEach(img => img.src = ev.target.result);
                 document.getElementById('input_show_logo').checked = true;
                 document.getElementById('prev_logo_container').style.display = 'block';
+                document.querySelectorAll('.prev_a4_logo_box').forEach(box => box.style.display = 'block');
             };
             reader.readAsDataURL(e.target.files[0]);
         }
     });
 
+    // Modular A4 toggles
+    document.getElementById('input_show_ship_to')?.addEventListener('change', function() {
+        const layout = document.querySelector('input[name="header_layout"]:checked')?.value || 'logo_left_address_below';
+        const card = document.getElementById('prev_a4_ship_to_card');
+        if (card) {
+            card.style.display = (this.checked && layout === 'logo_left_address_below') ? 'block' : 'none';
+        }
+    });
+
+    document.getElementById('input_show_tax_summary_table')?.addEventListener('change', function() {
+        const box = document.getElementById('prev_a4_tax_summary_box');
+        if (box) box.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('input_show_payment_details')?.addEventListener('change', function() {
+        const box = document.getElementById('prev_a4_payment_box');
+        if (box) box.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('input_show_signature_box')?.addEventListener('change', function() {
+        const box = document.getElementById('prev_a4_sign_box');
+        if (box) box.style.display = this.checked ? 'flex' : 'none';
+    });
+
+    document.getElementById('input_show_support_qr')?.addEventListener('change', function() {
+        document.querySelectorAll('.prev_a4_support_qr').forEach(el => el.style.display = this.checked ? 'block' : 'none');
+    });
+
+    document.getElementById('input_support_qr_payload')?.addEventListener('input', function() {
+        const payload = encodeURIComponent(this.value.trim() || 'https://wa.me/917383056626');
+        const url = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=${payload}`;
+        document.querySelectorAll('.prev_a4_support_qr_img').forEach(img => img.src = url);
+    });
+
+    document.getElementById('input_compliance_notes')?.addEventListener('input', function() {
+        const textEl = document.getElementById('prev_a4_compliance_text');
+        if (textEl) textEl.innerText = this.value || 'Whether tax is payable on reverse charge basis: NO | Certified that the particulars given above are true and correct.';
+    });
+
+    document.getElementById('input_terms_conditions')?.addEventListener('input', function() {
+        const textEl = document.getElementById('prev_a4_terms_text');
+        if (textEl) textEl.innerText = this.value || '1. Goods once sold will not be taken back without original bill.\n2. Subject to local jurisdiction only.';
+    });
+
+    // Thermal features
     document.getElementById('input_show_customer_pet_name')?.addEventListener('change', function() {
         const petRow = document.getElementById('prev_pet_row');
         if (petRow) petRow.style.display = this.checked ? 'block' : 'none';
@@ -1138,14 +1866,17 @@
         const upiBox = document.getElementById('prev_upi_container');
         const prevUpiVpa = document.getElementById('prev_upi_vpa_text');
         const prevUpiImg = document.getElementById('prev_upi_qr_img');
-        if (!prevUpiVpa || !prevUpiImg) return;
-
         const upiId = document.getElementById('input_upi_id')?.value.trim() || '7383056626@okbizaxis';
         const payeeName = document.getElementById('input_upi_payee_name')?.value.trim() || document.getElementById('input_store_name')?.value.trim() || 'Urban Pets';
-        prevUpiVpa.textContent = 'UPI: ' + upiId;
-        
+
+        if (prevUpiVpa) prevUpiVpa.textContent = 'UPI: ' + upiId;
         const upiString = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=2660.00&tr=SB-2026-0009&tn=Bill%20SB-2026-0009&cu=INR`;
-        prevUpiImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=${encodeURIComponent(upiString)}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=${encodeURIComponent(upiString)}`;
+        if (prevUpiImg) prevUpiImg.src = qrUrl;
+
+        // Also update A4 UPI QR and VPA
+        document.querySelectorAll('.prev_a4_upi_vpa_text').forEach(el => el.textContent = 'UPI: ' + upiId);
+        document.querySelectorAll('.prev_a4_upi_qr_img').forEach(img => img.src = qrUrl);
     }
 
     document.getElementById('input_upi_id')?.addEventListener('input', updateUpiQr);
@@ -1174,6 +1905,7 @@
         setVal('input_header_address', '');
         setVal('input_phone', '7383056626');
         setVal('input_phone_alt', '');
+        setVal('input_email', '');
         setVal('input_gstin', '');
         setCheck('input_show_customer_pet_name', true);
         setCheck('input_show_hsn_code', true);
@@ -1188,11 +1920,21 @@
         setVal('input_footer_policy', "{{ $docType === 'stock_transfer' ? 'Goods dispatched in sound condition.\nPlease inspect all items upon receipt.' : 'Exchange valid within 7 days with original bill.\nNo return on opened treats, medicines or frozen food.' }}");
         setVal('input_footer_note', "{{ $docType === 'stock_transfer' ? 'Internal Transfer Note — Not For Commercial Sale' : 'Thank you for shopping at Urban Pets!\n*** Have an Awesome Day! ***' }}");
 
+        // A4 Defaults
+        chooseHeaderLayout('logo_left_address_below');
+        pickAccentColor('#1e40af');
+        setCheck('input_show_ship_to', true);
+        setCheck('input_show_tax_summary_table', true);
+        setCheck('input_show_payment_details', true);
+        setCheck('input_show_signature_box', true);
+        setCheck('input_show_support_qr', true);
+
         // Trigger updates
         trigger('input_store_name');
         trigger('input_tagline');
         trigger('input_phone');
         trigger('input_phone_alt');
+        trigger('input_email');
         trigger('input_show_customer_pet_name', 'change');
         trigger('input_show_hsn_code', 'change');
         trigger('input_show_tax_breakup', 'change');

@@ -14,6 +14,9 @@ class ReceiptSetting extends Model
     protected $fillable = [
         'document_type',
         'branch_id',
+        'invoice_format',
+        'header_layout',
+        'accent_color',
         'store_name',
         'tagline',
         'logo_path',
@@ -25,15 +28,23 @@ class ReceiptSetting extends Model
         'email',
         'gstin',
         'show_customer_pet_name',
+        'show_ship_to',
         'show_hsn_code',
         'show_tax_breakup',
+        'show_tax_summary_table',
         'show_discount',
+        'show_payment_details',
         'show_upi_qr',
         'upi_id',
         'upi_payee_name',
         'show_barcode',
+        'show_signature_box',
+        'show_support_qr',
+        'support_qr_payload',
         'paper_size',
         'font_size',
+        'terms_conditions',
+        'compliance_notes',
         'footer_policy',
         'footer_note',
         'custom_css',
@@ -43,11 +54,16 @@ class ReceiptSetting extends Model
         'show_logo'              => 'boolean',
         'logo_width'             => 'integer',
         'show_customer_pet_name' => 'boolean',
+        'show_ship_to'           => 'boolean',
         'show_hsn_code'          => 'boolean',
         'show_tax_breakup'       => 'boolean',
+        'show_tax_summary_table' => 'boolean',
         'show_discount'          => 'boolean',
+        'show_payment_details'   => 'boolean',
         'show_upi_qr'            => 'boolean',
         'show_barcode'           => 'boolean',
+        'show_signature_box'     => 'boolean',
+        'show_support_qr'        => 'boolean',
     ];
 
     public function branch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -183,5 +199,39 @@ class ReceiptSetting extends Model
             . "&cu=INR";
 
         return "https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=" . urlencode($upiString);
+    }
+
+    /**
+     * Determine if A4/A5 GST full-page invoice template is active.
+     */
+    public function isA4GstInvoice(): bool
+    {
+        return ($this->invoice_format === 'a4_gst') || in_array($this->paper_size, ['a4', 'a5']);
+    }
+
+    /**
+     * Get validated header layout identifier.
+     */
+    public function getHeaderLayout(): string
+    {
+        $valid = ['logo_left_address_below', 'centered', 'logo_left_address_right', 'logo_right_address_left'];
+        return in_array($this->header_layout, $valid) ? $this->header_layout : 'logo_left_address_below';
+    }
+
+    /**
+     * Get theme accent color hex code.
+     */
+    public function getAccentColor(): string
+    {
+        return $this->accent_color ?: '#1e40af';
+    }
+
+    /**
+     * Generate Support QR code image URL.
+     */
+    public function getSupportQrUrl(): string
+    {
+        $payload = $this->support_qr_payload ?: ($this->phone ? 'https://wa.me/' . preg_replace('/[^0-9]/', '', $this->phone) : 'https://urbanpets.in');
+        return "https://api.qrserver.com/v1/create-qr-code/?size=100x100&margin=2&data=" . urlencode($payload);
     }
 }
