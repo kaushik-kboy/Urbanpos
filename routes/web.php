@@ -69,16 +69,16 @@ use Illuminate\Support\Facades\Route;
 $gatedResource = function (string $uri, string $controller, string $module, array $skip = []) {
     $only = fn (array $actions) => array_values(array_diff($actions, $skip));
 
-    Route::resource($uri, $controller)->only($only(['index', 'create', 'edit', 'show']));
-
     Route::middleware(['permission:'.$module.'.create', 'branch.access'])
-        ->group(fn () => Route::resource($uri, $controller)->only($only(['store'])));
+        ->group(fn () => Route::resource($uri, $controller)->only($only(['create', 'store'])));
 
     Route::middleware(['permission:'.$module.'.edit', 'branch.access'])
-        ->group(fn () => Route::resource($uri, $controller)->only($only(['update'])));
+        ->group(fn () => Route::resource($uri, $controller)->only($only(['edit', 'update'])));
 
     Route::middleware(['permission:'.$module.'.cancel', 'branch.access'])
         ->group(fn () => Route::resource($uri, $controller)->only($only(['destroy'])));
+
+    Route::resource($uri, $controller)->only($only(['index', 'show']));
 };
 
 Route::get('/', function () {
