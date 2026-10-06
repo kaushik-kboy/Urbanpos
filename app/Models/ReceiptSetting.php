@@ -18,6 +18,7 @@ class ReceiptSetting extends Model
         'header_layout',
         'accent_color',
         'store_name',
+        'header_office_title',
         'tagline',
         'logo_path',
         'logo_width',
@@ -216,6 +217,14 @@ class ReceiptSetting extends Model
     {
         $valid = ['logo_left_address_below', 'centered', 'logo_left_address_right', 'logo_right_address_left'];
         return in_array($this->header_layout, $valid) ? $this->header_layout : 'logo_left_address_below';
+    }
+
+    /**
+     * Get registered office / header title.
+     */
+    public function getHeaderOfficeTitle(): string
+    {
+        return $this->header_office_title ?: 'REGISTERED OFFICE';
     }
 
     /**

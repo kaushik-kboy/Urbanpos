@@ -259,14 +259,18 @@ class ReceiptDesignerModularLayoutTest extends TestCase
 
         // Section 1 Header & Banner
         $response->assertSee('URBAN PETS SUPERSTORE');
+        $response->assertSee('REGISTERED OFFICE');
         $response->assertSee('TAX INVOICE');
 
         // Section 2 Party & Invoice Details
-        $response->assertSee('Details of Receiver | Bill To:');
+        $response->assertSee('BILL TO:');
         $response->assertSee('Vikram Mehta');
         $response->assertSee('Invoice Details:');
         $response->assertSee('EINV-TEST-1791271882');
         $response->assertSee('Place of Supply:');
+        $response->assertSee('GST Type:');
+        $response->assertDontSee('Reverse Charge:');
+        $response->assertSee('PAYMENT &amp; UPI DETAILS', false);
 
         // Consignee / Ship To must NOT appear in this layout
         $response->assertDontSee('Details of Consignee | Ship To:');
@@ -305,5 +309,50 @@ class ReceiptDesignerModularLayoutTest extends TestCase
         $responseThermal = $this->actingAs($this->user)->get(route('sales.sales-bills.receipt', ['salesBill' => $salesBill, 'format' => 'thermal']));
         $responseThermal->assertStatus(200);
         $responseThermal->assertDontSee('a4-gst-invoice-root');
+    }
+
+    public function test_a4_gst_renders_pet_name_and_omits_unregistered_gstin(): void
+    {
+        $customer = Customer::create([
+            'name'      => 'Aakash Dave',
+            'phone'     => '9879011223',
+            'branch_id' => $this->branch->id,
+            'status'    => 1,
+            'gst_no'    => null,
+        ]);
+
+        $pet = \App\Models\CustomerPet::create([
+            'customer_id' => $customer->id,
+            'name'        => 'Bruno',
+            'species'     => 'Dog',
+            'breed'       => 'Golden Retriever',
+        ]);
+
+        $salesBill = SalesBill::create([
+            'bill_number'     => 'SB-PET-001',
+            'bill_date'       => now(),
+            'branch_id'       => $this->branch->id,
+            'customer_id'     => $customer->id,
+            'customer_pet_id' => $pet->id,
+            'user_id'         => $this->user->id,
+            'sales_type'      => 'Local',
+            'payment_type'    => 'Cash',
+            'sub_total'       => 850.00,
+            'total_gst'       => 0,
+            'total'           => 850.00,
+            'paid_amount'     => 850.00,
+            'status'          => 'Posted',
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('sales.sales-bills.receipt', ['salesBill' => $salesBill, 'format' => 'a4']));
+        $response->assertStatus(200);
+
+        // Pet Name should be displayed
+        $response->assertSee('Pet Name');
+        $response->assertSee('Bruno');
+
+        // GSTIN: Unregistered must NOT be displayed
+        $response->assertDontSee('GSTIN/UIN: Unregistered');
+        $response->assertDontSee('GSTIN: Unregistered');
     }
 }

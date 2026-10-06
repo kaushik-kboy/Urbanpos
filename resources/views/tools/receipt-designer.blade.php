@@ -303,12 +303,17 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-7 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label class="font-weight-bold text-secondary small text-uppercase">Store Name / Header Title <span class="text-danger">*</span></label>
                                 <input type="text" name="store_name" id="input_store_name" class="form-control" value="{{ old('store_name', $settings->store_name) }}" required placeholder="e.g. URBAN PETS">
                                 <small class="text-muted">Displays in bold capital letters at the top of every receipt.</small>
                             </div>
-                            <div class="col-md-5 mb-3">
+                            <div class="col-md-3 mb-3">
+                                <label class="font-weight-bold text-secondary small text-uppercase">Office Title (हेडर टाइटल)</label>
+                                <input type="text" name="header_office_title" id="input_header_office_title" class="form-control" value="{{ old('header_office_title', $settings->header_office_title ?? 'REGISTERED OFFICE') }}" placeholder="e.g. REGISTERED OFFICE">
+                                <small class="text-muted">Title above address in A4 split layout.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <label class="font-weight-bold text-secondary small text-uppercase">Tagline / Sub-heading</label>
                                 <input type="text" name="tagline" id="input_tagline" class="form-control" value="{{ old('tagline', $settings->tagline) }}" placeholder="e.g. Complete Pet Care & Supplies">
                             </div>
@@ -1249,7 +1254,7 @@
                                             <div class="prev_a4_tagline" style="font-size: 10px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
                                         </div>
                                         <div style="flex: 1; text-align: right; font-size: 10px; color: #334155; line-height: 1.3;">
-                                            <div style="font-weight: 700; color: #0f172a; text-transform: uppercase;">Registered Office</div>
+                                            <div class="prev_a4_office_title" style="font-weight: 700; color: #0f172a; text-transform: uppercase;">{{ $settings->getHeaderOfficeTitle() }}</div>
                                             <div class="prev_a4_address">{!! nl2br(e($settings->header_address ?: 'Shop 4 & 5, Rivera Arcade, Motera, Ahmedabad - 380005')) !!}</div>
                                             <div>
                                                 <span class="prev_a4_phone">Phone: {{ $settings->phone ?: '7383056626' }}</span>
@@ -1292,13 +1297,14 @@
                                     {{-- Bill To Card --}}
                                     <div style="flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 10px; background: #f8fafc;">
                                         <div style="font-weight: 700; font-size: 10.5px; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px; text-transform: uppercase;">
-                                            Details of Receiver | Bill To:
+                                            BILL TO:
                                         </div>
                                         <div style="font-size: 10.5px; line-height: 1.45;">
                                             <div>Name: <strong>{{ $sampleBill?->customer?->name ?: 'Ankit Sharma' }}</strong></div>
                                             <div>Mobile: {{ $sampleBill?->customer?->phone ?: '9898012345' }}</div>
+                                            <div id="prev_a4_pet_row">Pet: <strong>Bruno (Dog)</strong></div>
                                             <div>Address: Satellite, Ahmedabad, Gujarat - 380015</div>
-                                            <div>GSTIN: <span style="font-weight: bold; color: #475569;">Unregistered</span></div>
+                                            <div id="prev_a4_gstin_row" style="display: none;">GSTIN: <span class="prev_a4_cust_gstin"></span></div>
                                         </div>
                                     </div>
 
@@ -1322,62 +1328,69 @@
                                         </div>
                                         <div style="font-size: 10.5px; line-height: 1.45;">
                                             <table style="width: 100%;">
-                                                <tr><td style="width: 95px; color: #64748b;">Invoice No:</td><td><strong>{{ $sampleBill?->bill_number ?: 'EINV-TEST-1791271882' }}</strong></td></tr>
+                                                <tr><td style="width: 105px; color: #64748b;">Invoice No:</td><td><strong>{{ $sampleBill?->bill_number ?: 'EINV-TEST-1791271882' }}</strong></td></tr>
                                                 <tr><td style="color: #64748b;">Date:</td><td>{{ now()->format('d/m/Y') }}</td></tr>
                                                 <tr><td style="color: #64748b;">Place of Supply:</td><td>24 - Gujarat</td></tr>
-                                                <tr><td style="color: #64748b;">Reverse Charge:</td><td>No</td></tr>
+                                                <tr><td style="color: #64748b;">GST Type:</td><td><strong>Consumer (B2C)</strong></td></tr>
                                             </table>
                                         </div>
                                     </div>
                                 </div>
 
                                 {{-- ── 3. ITEMS TABLE ─────────────────────────────────────────────── --}}
-                                <table style="width: 100%; border-collapse: collapse; font-size: 10.5px; border: 1px solid #cbd5e1; margin-bottom: 10px;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 10px; border: 1px solid #cbd5e1; margin-bottom: 10px;">
                                     <thead>
                                         <tr style="background: var(--accent); color: #fff;">
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 28px; text-align: center;">#</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; text-align: left;">Item Description</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 25px; text-align: center;">Sr.</th>
                                             <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: center;">HSN</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 45px; text-align: right;">Qty</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: right;">Rate</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 45px; text-align: right;">Disc</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: right;">Taxable</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 40px; text-align: center;">GST%</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 65px; text-align: right;">Total</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 65px; text-align: center;">Item Code</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; text-align: left;">Item Name</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 35px; text-align: right;">Qty</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: right;">MRP</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 45px; text-align: right;">Disc%</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">SGST</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">CGST</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">IGST</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 65px; text-align: right;">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr style="border-bottom: 1px solid #e2e8f0;">
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">1</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Royal Canin Maxi Puppy 4kg</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; color: #64748b;">23091000</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 8.5px;">RC-MAXI-4K</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Royal Canin Maxi Puppy 4kg</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">1.00</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹2,450.00</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; color: #dc2626;">₹150.00</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹1,949.15</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">18%</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; color: #dc2626;">6.1%</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹175.42</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹175.42</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">-</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹2,300.00</td>
                                         </tr>
                                         <tr style="border-bottom: 1px solid #e2e8f0;">
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">2</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Gnawlers Calcium Milk Bones</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; color: #64748b;">23099090</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 8.5px;">GNW-BONE-12</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Gnawlers Calcium Milk Bones</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">2.00</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹180.00</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹0.00</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹321.43</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">12%</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">-</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹19.29</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹19.29</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">-</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹360.00</td>
                                         </tr>
                                     </tbody>
                                     <tfoot>
                                         <tr style="background: #f1f5f9; font-weight: 700;">
-                                            <td colspan="3" style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">Total:</td>
+                                            <td colspan="4" style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">Total:</td>
                                             <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">3.00</td>
                                             <td colspan="2" style="padding: 4px; border: 1px solid #cbd5e1;"></td>
-                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹2,270.58</td>
-                                            <td style="padding: 4px; border: 1px solid #cbd5e1;"></td>
-                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹2,660.00</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹194.71</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹194.71</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">-</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; font-weight: 800; color: var(--accent);">₹2,660.00</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -1386,7 +1399,7 @@
                                 <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start;">
                                     <div id="prev_a4_tax_summary_box" style="{{ $settings->show_tax_summary_table ? '' : 'display: none;' }}; flex: 1; border: 1px solid #cbd5e1; border-radius: 3px;">
                                         <div style="background: #f1f5f9; font-weight: 700; font-size: 10px; padding: 3px 6px; border-bottom: 1px solid #cbd5e1; text-transform: uppercase;">
-                                            Rate-wise GST Summary (कर विवरण)
+                                            Rate-wise GST Summary
                                         </div>
                                         <table style="width: 100%; font-size: 9.5px; border-collapse: collapse; text-align: right;">
                                             <tr style="background: #f8fafc; font-weight: 600; border-bottom: 1px solid #e2e8f0;">
@@ -1707,6 +1720,11 @@
         document.querySelectorAll('.prev_a4_store_name').forEach(el => el.textContent = val);
     });
 
+    document.getElementById('input_header_office_title')?.addEventListener('input', function() {
+        const val = (this.value || 'REGISTERED OFFICE').toUpperCase();
+        document.querySelectorAll('.prev_a4_office_title').forEach(el => el.textContent = val);
+    });
+
     document.getElementById('input_tagline').addEventListener('input', function() {
         const el = document.getElementById('prev_tagline');
         el.textContent = this.value;
@@ -1900,6 +1918,7 @@
         const trigger = (id, ev = 'input') => { document.getElementById(id)?.dispatchEvent(new Event(ev)); };
 
         setVal('input_store_name', 'URBAN PETS');
+        setVal('input_header_office_title', 'REGISTERED OFFICE');
         setVal('input_tagline', 'Complete Pet Care & Supplies');
         setCheck('input_show_logo', false);
         setVal('input_header_address', '');
@@ -1931,6 +1950,7 @@
 
         // Trigger updates
         trigger('input_store_name');
+        trigger('input_header_office_title');
         trigger('input_tagline');
         trigger('input_phone');
         trigger('input_phone_alt');
