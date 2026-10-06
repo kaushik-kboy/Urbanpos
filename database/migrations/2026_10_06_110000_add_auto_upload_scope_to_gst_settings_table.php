@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('gst_settings', function (Blueprint $table) {
-            $table->string('auto_upload_scope', 30)->default('both')->after('auto_upload_threshold');
-            $table->string('company_name', 150)->nullable()->default('URBANPETS SERVICES PRIVATE LIMITED')->after('gstin');
+            if (!Schema::hasColumn('gst_settings', 'auto_upload_scope')) {
+                $table->string('auto_upload_scope', 30)->default('both')->after('auto_upload_threshold');
+            }
+            if (!Schema::hasColumn('gst_settings', 'company_name')) {
+                $table->string('company_name', 150)->nullable()->default('URBANPETS SERVICES PRIVATE LIMITED')->after('gstin');
+            }
         });
     }
 

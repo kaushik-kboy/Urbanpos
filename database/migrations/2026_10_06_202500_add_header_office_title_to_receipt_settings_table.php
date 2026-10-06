@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('receipt_settings', function (Blueprint $table) {
-            $table->string('header_office_title')->default('REGISTERED OFFICE')->nullable()->after('store_name');
+            if (!Schema::hasColumn('receipt_settings', 'header_office_title')) {
+                $table->string('header_office_title')->default('REGISTERED OFFICE')->nullable()->after('store_name');
+            }
         });
     }
 
