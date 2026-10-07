@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\SalesBill;
 use App\Models\SalesOrder;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -22,6 +23,8 @@ class GlobalActiveBranchEnforcementTest extends TestCase
     {
         parent::setUp();
 
+        Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
+
         $this->branch1 = Branch::create(['name' => 'Branch Alpha', 'code' => 'BA', 'status' => true]);
         $this->branch2 = Branch::create(['name' => 'Branch Beta', 'code' => 'BB', 'status' => true]);
 
@@ -30,6 +33,7 @@ class GlobalActiveBranchEnforcementTest extends TestCase
             'branch_id' => null,
             'email' => 'admin@urbanpos.com',
         ]);
+        $this->user->assignRole('Owner');
     }
 
     public function test_can_set_active_branch_via_post(): void
