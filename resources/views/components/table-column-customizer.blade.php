@@ -13,24 +13,72 @@
     $modalId = 'table-col-modal-' . $safeKey;
     $userId = auth()->id();
     $savedPrefs = $userId ? (\App\Models\UserTablePreference::getForUser($userId, $tableKey) ?? []) : [];
+    $isModalTable = str_starts_with($tableKey, 'modal.');
 @endphp
 
-<div class="d-inline-block table-customizer-wrapper" 
+<div class="d-inline-block table-customizer-wrapper position-relative" 
      id="customizer-wrapper-{{ $safeKey }}"
      data-table-key="{{ $tableKey }}"
      data-table-id="{{ $tableId }}"
+     data-is-modal-table="{{ $isModalTable ? '1' : '0' }}"
      data-saved-prefs='@json($savedPrefs)'>
 
     <button type="button" 
-            class="{{ $buttonClass }}" 
+            class="{{ $buttonClass }} btn-table-customizer-trigger" 
+            @if(!$isModalTable)
             data-toggle="modal" 
             data-target="#{{ $modalId }}" 
+            @endif
             tabindex="-1"
             title="{{ $title }}">
         @if($showIcon) <i class="{{ $icon }}"></i> @endif
         @if(!empty($buttonText)) <span class="ml-1">{{ $buttonText }}</span> @endif
     </button>
 
+    @if($isModalTable)
+    <div class="table-customizer-popover card shadow-lg border" 
+         id="{{ $modalId }}" 
+         style="display: none; position: fixed; width: 380px; max-width: 95vw; z-index: 2050; border-radius: 8px;">
+        <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center border-bottom">
+            <span class="font-weight-bold text-dark" style="font-size: 13px;">
+                <i class="fas fa-sliders-h text-primary mr-1"></i> Customize Columns & Order
+            </span>
+            <button type="button" class="close btn-close-customizer" aria-label="Close" style="font-size: 18px; line-height: 1;">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="card-body p-3">
+            <div class="alert alert-info py-1 px-2 small mb-2" style="font-size: 11px;">
+                <i class="fas fa-info-circle mr-1"></i> 
+                Tick columns to show/hide. Change <strong>Order</strong> numbers (or use arrows) to arrange left-to-right. Settings persist across all devices.
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small font-weight-bold text-muted text-uppercase" style="font-size: 11px;">Available Columns</span>
+                <div>
+                    <button type="button" class="btn btn-xs btn-link p-0 mr-2 text-decoration-none btn-select-all" style="font-size: 11px;">Select All</button>
+                    <button type="button" class="btn btn-xs btn-link p-0 text-decoration-none btn-deselect-all text-muted" style="font-size: 11px;">Deselect All</button>
+                </div>
+            </div>
+
+            <div class="list-group list-group-flush border rounded col-customizer-list mb-3" style="max-height: 260px; overflow-y: auto;">
+                {{-- Items populated dynamically via JavaScript based on table <th> --}}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                <button type="button" class="btn btn-outline-danger btn-xs btn-reset-customizer" title="Restore default columns">
+                    <i class="fas fa-undo mr-1"></i> Reset
+                </button>
+                <div>
+                    <button type="button" class="btn btn-secondary btn-xs mr-1 btn-close-customizer">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-xs btn-save-customizer font-weight-bold">
+                        <i class="fas fa-save mr-1"></i> Save View
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @else
     <div class="modal fade table-customizer-modal" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-labelledby="{{ $modalId }}Label" aria-hidden="true" style="z-index: 1065;">
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered" role="document">
             <div class="modal-content shadow border-0">
@@ -74,6 +122,7 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
 
 @once
@@ -91,8 +140,8 @@
     .table-customizer-modal {
         z-index: 1065 !important;
     }
-    .modal-backdrop.table-customizer-backdrop {
-        z-index: 1060 !important;
+    .table-customizer-popover {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.25) !important;
     }
 </style>
 @endpush
@@ -113,6 +162,7 @@
     function initTableCustomizer(wrapper) {
         const tableKey = wrapper.getAttribute('data-table-key');
         const tableId = wrapper.getAttribute('data-table-id');
+        const isPopover = wrapper.getAttribute('data-is-modal-table') === '1' || !!wrapper.closest('.modal');
         let savedPrefs = [];
         try {
             savedPrefs = JSON.parse(wrapper.getAttribute('data-saved-prefs') || '[]');
@@ -286,11 +336,13 @@
             rowObserver.observe(tBody, { childList: true });
         }
 
-        // 4. Populate Modal List when Modal is opened
+        // 4. Populate List when Customizer is opened
         const modal = wrapper.querySelector('.modal');
+        const popover = wrapper.querySelector('.table-customizer-popover');
         const listContainer = wrapper.querySelector('.col-customizer-list');
 
         function buildModalList() {
+            if (!listContainer) return;
             listContainer.innerHTML = '';
             const currentPrefsMap = new Map();
             if (savedPrefs && savedPrefs.length > 0) {
@@ -313,9 +365,9 @@
 
                 item.innerHTML = `
                     <div class="custom-control custom-checkbox mr-2">
-                        <input type="checkbox" class="custom-control-input col-toggle" id="chk-${tableKey}-${col.key}" 
+                        <input type="checkbox" class="custom-control-input col-toggle" id="chk-${safeKeyForId(tableKey)}-${col.key}" 
                                ${isVisible ? 'checked' : ''} ${!col.canHide ? 'disabled checked' : ''}>
-                        <label class="custom-control-label font-weight-normal text-dark" for="chk-${tableKey}-${col.key}">
+                        <label class="custom-control-label font-weight-normal text-dark" for="chk-${safeKeyForId(tableKey)}-${col.key}">
                             ${col.label} ${!col.canHide ? '<span class="badge badge-light ml-1">Fixed</span>' : ''}
                         </label>
                     </div>
@@ -335,7 +387,12 @@
             attachItemEvents();
         }
 
+        function safeKeyForId(str) {
+            return String(str || '').replace(/[^a-zA-Z0-9_-]/g, '-');
+        }
+
         function attachItemEvents() {
+            if (!listContainer) return;
             const items = Array.from(listContainer.querySelectorAll('.list-group-item'));
             items.forEach(item => {
                 const upBtn = item.querySelector('.btn-order-up');
@@ -360,6 +417,7 @@
         }
 
         function recalculateOrderInputs() {
+            if (!listContainer) return;
             const items = listContainer.querySelectorAll('.list-group-item');
             items.forEach((item, i) => {
                 const input = item.querySelector('.col-order');
@@ -367,10 +425,70 @@
             });
         }
 
-        // On Modal Show, rebuild list
-        $(modal).on('show.bs.modal', function() {
-            buildModalList();
-        });
+        function closeCustomizer() {
+            if (popover) {
+                popover.style.display = 'none';
+            }
+            if (modal) {
+                $(modal).modal('hide');
+            }
+        }
+
+        // Popover positioning & toggle logic
+        if (isPopover && popover) {
+            const triggerBtn = wrapper.querySelector('.btn-table-customizer-trigger');
+            if (triggerBtn) {
+                triggerBtn.removeAttribute('data-toggle');
+                triggerBtn.removeAttribute('data-target');
+
+                triggerBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const isCurrentlyOpen = popover.style.display !== 'none';
+                    // Hide any other open popovers
+                    document.querySelectorAll('.table-customizer-popover').forEach(p => p.style.display = 'none');
+
+                    if (!isCurrentlyOpen) {
+                        buildModalList();
+                        popover.style.display = 'block';
+
+                        // Calculate fixed positioning relative to trigger button
+                        const rect = triggerBtn.getBoundingClientRect();
+                        const popWidth = 380;
+                        let left = rect.right - popWidth;
+                        if (left < 10) left = 10;
+                        if (left + popWidth > window.innerWidth - 10) {
+                            left = window.innerWidth - popWidth - 10;
+                        }
+
+                        let top = rect.bottom + 6;
+                        const popHeight = popover.offsetHeight || 380;
+                        if (top + popHeight > window.innerHeight - 10) {
+                            top = Math.max(10, rect.top - popHeight - 6);
+                        }
+
+                        popover.style.top = top + 'px';
+                        popover.style.left = left + 'px';
+                        popover.style.right = 'auto';
+                    }
+                });
+            }
+
+            // Close buttons inside popover
+            popover.querySelectorAll('.btn-close-customizer').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    popover.style.display = 'none';
+                });
+            });
+        } else if (modal) {
+            // On Regular Modal Show, rebuild list
+            $(modal).on('show.bs.modal', function() {
+                buildModalList();
+            });
+        }
 
         // Select All / Deselect All
         const btnSelectAll = wrapper.querySelector('.btn-select-all');
@@ -403,7 +521,7 @@
                 // Apply immediately to current DOM
                 savedPrefs = newPrefs;
                 applyPreferences(newPrefs);
-                $(modal).modal('hide');
+                closeCustomizer();
 
                 // Save to database asynchronously
                 btnSave.disabled = true;
@@ -448,7 +566,7 @@
 
                 savedPrefs = [];
                 applyPreferences([]);
-                $(modal).modal('hide');
+                closeCustomizer();
 
                 fetch('{{ route('tools.table-preferences.reset') }}', {
                     method: 'POST',
@@ -470,6 +588,7 @@
                 .catch(err => console.error('Error resetting table preferences:', err));
             };
         }
+
         window.TableCustomizers = window.TableCustomizers || {};
         window.TableCustomizers[tableId] = {
             apply: function() {
@@ -484,37 +603,18 @@
         };
     }
 
+    // Dismiss popovers on click outside
+    document.addEventListener('mousedown', function(e) {
+        if (!e.target.closest('.table-customizer-popover') && !e.target.closest('.btn-table-customizer-trigger')) {
+            document.querySelectorAll('.table-customizer-popover').forEach(p => p.style.display = 'none');
+        }
+    });
+
     window.applyTablePreferences = function(tableId) {
         if (window.TableCustomizers && window.TableCustomizers[tableId]) {
             window.TableCustomizers[tableId].apply();
         }
     };
-
-    let $activeParentModal = null;
-
-    $(document).on('show.bs.modal', '.table-customizer-modal', function() {
-        const $modal = $(this);
-        const $otherModals = $('.modal.show').not($modal);
-        if ($otherModals.length > 0) {
-            $activeParentModal = $otherModals;
-            // Temporarily hide the parent modal dialog to avoid double-window clutter
-            $activeParentModal.addClass('d-none');
-            $modal.css('z-index', 1065);
-            setTimeout(function() {
-                $('.modal-backdrop').not('.table-customizer-backdrop').last().addClass('table-customizer-backdrop').css('z-index', 1060);
-            }, 10);
-        }
-    });
-
-    $(document).on('hidden.bs.modal', '.table-customizer-modal', function() {
-        if ($activeParentModal) {
-            $activeParentModal.removeClass('d-none');
-            $activeParentModal = null;
-        }
-        if ($('.modal.show').length > 0) {
-            $('body').addClass('modal-open');
-        }
-    });
 
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.table-customizer-wrapper').forEach(wrapper => {
