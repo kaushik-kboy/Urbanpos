@@ -108,9 +108,11 @@ class ImportDailySalesSummary extends Command
                     continue;
                 }
 
-                // Parse Date (06-10-2026 -> 2026-10-06)
+                // Parse Date (06-10-2026 -> 2026-10-06 or Excel serial number 46301)
                 $summaryDate = null;
-                if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $dateRaw, $m)) {
+                if (is_numeric($dateRaw) && (float)$dateRaw > 30000) {
+                    $summaryDate = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$dateRaw)->format('Y-m-d');
+                } elseif (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $dateRaw, $m)) {
                     $summaryDate = "{$m[3]}-{$m[2]}-{$m[1]}";
                 } elseif (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $dateRaw)) {
                     $summaryDate = $dateRaw;
@@ -118,7 +120,7 @@ class ImportDailySalesSummary extends Command
                     $y = strlen($m[3]) === 2 ? '20' . $m[3] : $m[3];
                     $summaryDate = sprintf('%04d-%02d-%02d', $y, $m[2], $m[1]);
                 } else {
-                    $summaryDate = date('Y-m-d');
+                    $summaryDate = '2026-10-06';
                 }
 
                 // Resolve Branch

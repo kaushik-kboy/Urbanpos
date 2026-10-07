@@ -276,25 +276,20 @@ class ImportClosingStock extends Command
                         'landing_cost' => round($dat['cost'], 2),
                         'sell_price' => round($sellPrice, 2),
                         'mrp' => round($dat['mrp'], 2),
+                        'created_at' => now(),
                         'updated_at' => now(),
                     ];
 
-                    if (isset($existingMap[$bId][$itmId])) {
-                        $record['id'] = $existingMap[$bId][$itmId];
-                    } else {
-                        $record['created_at'] = now();
-                    }
-
                     $upsertData[] = $record;
                     if (count($upsertData) >= 500) {
-                        ItemStock::upsert($upsertData, ['id'], ['quantity', 'cost_price', 'landing_cost', 'sell_price', 'mrp', 'updated_at']);
+                        ItemStock::upsert($upsertData, ['item_id', 'branch_id'], ['quantity', 'cost_price', 'landing_cost', 'sell_price', 'mrp', 'updated_at']);
                         $upsertData = [];
                     }
                 }
             }
 
             if (! empty($upsertData)) {
-                ItemStock::upsert($upsertData, ['id'], ['quantity', 'cost_price', 'landing_cost', 'sell_price', 'mrp', 'updated_at']);
+                ItemStock::upsert($upsertData, ['item_id', 'branch_id'], ['quantity', 'cost_price', 'landing_cost', 'sell_price', 'mrp', 'updated_at']);
             }
             $this->info("item_stocks table successfully synchronized with Closing Stock!");
         }
