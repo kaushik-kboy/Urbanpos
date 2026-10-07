@@ -54,6 +54,17 @@ class ReportController extends Controller
             ->orderBy('bill_date')
             ->get();
 
+        if ($rows->isEmpty() && \Illuminate\Support\Facades\Schema::hasTable('daily_sales_summaries')) {
+            $summaryRows = \App\Models\DailySalesSummary::whereBetween('summary_date', [$from, $to])
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->selectRaw('summary_date as bill_date, branch_id, total_bills as bill_count, bill_amount as total_amount, disc_amount as total_disc, gst_tax_amt as total_gst')
+                ->orderBy('summary_date')
+                ->get();
+            if ($summaryRows->isNotEmpty()) {
+                $rows = $summaryRows;
+            }
+        }
+
         if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
             return $this->exportQueryOrData(
                 $rows,

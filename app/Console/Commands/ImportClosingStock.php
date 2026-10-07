@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class ImportClosingStock extends Command
 {
-    protected $signature = 'import:closing-stock {file? : Specific CSV file or directory} {--force : Bypass stock ledger} {--truncate : Truncate closing_stocks before import}';
+    protected $signature = 'import:closing-stock {file? : Specific CSV file or directory} {--force : Bypass stock ledger} {--truncate : Truncate closing_stocks before import} {--reset-stocks : Reset branch item_stocks to 0 before applying closing stock}';
     protected $description = 'Import TruePOS 110204 Closing Stock files into closing_stocks and update item_stocks';
 
     public function handle()
@@ -69,8 +69,8 @@ class ImportClosingStock extends Command
         }
 
         $storeIdMap = [
-            '225' => $branches->firstWhere('name', 'URBANPETS SERVICES PRIVATE LIMITED') ?? $branches->first(),
-            '32772' => $branches->firstWhere('name', 'URBAN PETS / MOTERA') ?? $branches->skip(1)->first(),
+            '225' => $branches->first(fn($b) => str_contains(strtoupper($b->name), 'SERVICES') || str_contains(strtoupper($b->name), 'SATELLITE')) ?? $branches->first(),
+            '32772' => $branches->first(fn($b) => str_contains(strtoupper($b->name), 'MOTERA')) ?? $branches->skip(1)->first(),
         ];
 
         $itemsByCode = Item::whereNotNull('item_code')->where('item_code', '!=', '')->pluck('id', 'item_code')->toArray();
@@ -93,7 +93,7 @@ class ImportClosingStock extends Command
             }
 
             // Extract As On Date and Location from header preamble if present
-            $asOnDate = '2026-09-02';
+            $asOnDate = date('Y-m-d');
             $fileHeader = null;
             $colIndex = [];
             $lineCount = 0;
@@ -156,10 +156,7 @@ class ImportClosingStock extends Command
                 $mrp = $cleanNum($get('MRP'));
                 $isbn = $get('ISBN');
                 $batchNo = $get('Batch no');
-                $expiryDate = $get('Expiry date');
-                if ($expiryDate === '' || $expiryDate === '0000-00-00' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiryDate)) {
-                    $expiryDate = null;
-                }
+                $expiryDate = $this->parseExpiryDate($get('Expiry date'));
 
                 // Resolve Branch
                 $branch = $storeIdMap[$storeId] ?? ($branchNameMap[strtoupper($storeName)] ?? null);
@@ -193,6 +190,9 @@ class ImportClosingStock extends Command
                     'closing_stock' => $qty,
                     'closing_stock_amount' => $stockAmt,
                     'mrp' => $mrp,
+                    'old_batch_no' => $get('Old Batch No') ?: null,
+                    'old_expiry_date' => $this->parseExpiryDate($get('Old Expiry Date')),
+                    'old_mfr_date' => $this->parseExpiryDate($get('Old MFR Date')),
                     'as_on_date' => $asOnDate,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -251,6 +251,11 @@ class ImportClosingStock extends Command
         // Sync ItemStock table for POS operations
         if (! empty($stockAgg)) {
             $this->info("\nSyncing branch-wise item_stocks table...");
+
+            // Reset previous quantities for branches being updated so purana data is cleared
+            $branchIdsToUpdate = array_keys($stockAgg);
+            ItemStock::whereIn('branch_id', $branchIdsToUpdate)->update(['quantity' => 0]);
+
             $existingStocks = ItemStock::select('id', 'item_id', 'branch_id')->get();
             $existingMap = [];
             foreach ($existingStocks as $es) {
@@ -296,5 +301,26 @@ class ImportClosingStock extends Command
 
         $this->info("\nImport completed successfully!");
         return 0;
+    }
+
+    private function parseExpiryDate(?string $dateStr): ?string
+    {
+        $dateStr = trim((string)$dateStr);
+        if ($dateStr === '' || $dateStr === '0000-00-00' || $dateStr === '12/12/99' || $dateStr === '12/12/1999') {
+            return null;
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateStr)) {
+            return $dateStr;
+        }
+        if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $dateStr, $m)) {
+            return "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $dateStr, $m)) {
+            $year = strlen($m[3]) === 2 ? '20' . $m[3] : $m[3];
+            $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+            $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            return "{$year}-{$month}-{$day}";
+        }
+        return null;
     }
 }

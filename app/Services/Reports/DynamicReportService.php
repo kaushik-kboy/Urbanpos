@@ -714,6 +714,44 @@ class DynamicReportService
                     'hasBranchFilter' => true,
                 ];
 
+            case 'daily-sales-summary-storewise':
+            case 'daily-sales-summary-tillwise':
+                $query = \App\Models\DailySalesSummary::with('branch')
+                    ->whereBetween('summary_date', [$from, $to])
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->orderBy('summary_date', 'desc');
+                $paginator = $query->paginate($this->perPage)->withQueryString();
+                $rows = $paginator->through(fn ($item) => [
+                    'cells' => [
+                        '<strong>' . date('d M Y', strtotime($item->summary_date)) . '</strong>',
+                        e($item->store_name ?: ($item->branch?->name ?: 'Branch')),
+                        number_format($item->total_bills),
+                        '₹ ' . number_format($item->bill_amount, 2),
+                        '₹ ' . number_format($item->cash, 2),
+                        '₹ ' . number_format($item->card, 2),
+                        '₹ ' . number_format($item->wallet_amt, 2),
+                        '₹ ' . number_format($item->credit, 2),
+                        '₹ ' . number_format($item->disc_amount, 2),
+                        '₹ ' . number_format($item->gst_tax_amt, 2),
+                        '<strong>₹ ' . number_format($item->profit, 2) . '</strong>'
+                    ]
+                ]);
+                $totalAmt = \App\Models\DailySalesSummary::whereBetween('summary_date', [$from, $to])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('bill_amount');
+                $totalBills = \App\Models\DailySalesSummary::whereBetween('summary_date', [$from, $to])->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->sum('total_bills');
+                return [
+                    'title' => 'Daily Sales Summary (110158)',
+                    'subtitle' => 'Store-wise Day-End Sales Turnover, Tender Breakdown (Cash/Card/Credit/Wallet), and Taxes',
+                    'columns' => ['#', 'Date', 'Store / Branch', 'Total Bills', 'Bill Amount', 'Cash', 'Card', 'Wallet', 'Credit', 'Discount', 'GST Tax', 'Profit'],
+                    'column_alignments' => ['text-center', 'text-center', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right'],
+                    'rows' => $rows,
+                    'kpis' => [
+                        ['label' => 'Total Turnover', 'value' => '₹ ' . number_format($totalAmt, 2), 'icon' => 'fas fa-rupee-sign', 'color' => 'success'],
+                        ['label' => 'Total Bills', 'value' => number_format($totalBills), 'icon' => 'fas fa-receipt', 'color' => 'primary'],
+                    ],
+                    'hasDateFilter' => true,
+                    'hasBranchFilter' => true,
+                ];
+
             case 'daily-sales-billwise':
             case 'daily-sales-timefilter':
             case 'offline-sales-bill-details':
