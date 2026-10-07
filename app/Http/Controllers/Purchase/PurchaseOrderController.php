@@ -491,6 +491,11 @@ class PurchaseOrderController extends Controller
         app(\App\Services\DynamicValidationService::class)->applyTo('purchase_orders', $headerRules, $headerMessages);
         $header = $request->validate($headerRules, $headerMessages);
 
+        $supplier = Supplier::find($header['supplier_id'] ?? null);
+        if ($supplier && $supplier->isInterstate()) {
+            $header['purchase_type'] = 'Interstate';
+        }
+
         $header['po_date'] = $this->normalizeDate($header['po_date']);
 
 

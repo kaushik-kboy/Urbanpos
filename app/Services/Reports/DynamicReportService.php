@@ -36,9 +36,18 @@ class DynamicReportService
     protected int $perPage = 50;
     public function generate(Request $request, string $module): array
     {
-        $this->perPage = (int) $request->input('per_page', 50);
-        $from = $request->input('from', now()->subDays(60)->format('Y-m-d'));
-        $to = $request->input('to', now()->format('Y-m-d'));
+        $rawFrom = $request->input('from');
+        $rawTo = $request->input('to');
+        try {
+            $from = $rawFrom ? \Carbon\Carbon::parse($rawFrom)->format('Y-m-d') : now()->subDays(60)->format('Y-m-d');
+        } catch (\Exception $e) {
+            $from = now()->subDays(60)->format('Y-m-d');
+        }
+        try {
+            $to = $rawTo ? \Carbon\Carbon::parse($rawTo)->format('Y-m-d') : now()->format('Y-m-d');
+        } catch (\Exception $e) {
+            $to = now()->format('Y-m-d');
+        }
         $branchId = $request->input('branch_id');
         $search = trim($request->input('search', ''));
 
@@ -820,7 +829,8 @@ class DynamicReportService
                     ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
                     ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
                     ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
-                    ->whereBetween('sales_bills.bill_date', [$from, $to])
+                    ->whereDate('sales_bills.bill_date', '>=', $from)
+                    ->whereDate('sales_bills.bill_date', '<=', $to)
                     ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
                     ->when($search, fn ($q) => $q->where('customers.name', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%")->orWhere('sales_bills.bill_number', 'like', "%{$search}%"))
                     ->selectRaw("customers.name as customer_name, customers.mobile as customer_mobile, sales_bills.bill_number, sales_bills.bill_date, items.item_code, items.name as item_name, sales_bill_items.qty, sales_bill_items.sell_price, sales_bill_items.net_amount")
@@ -952,7 +962,8 @@ class DynamicReportService
             default:
                 // General fallback for remaining sales reports
                 $query = SalesBill::with(['customer', 'branch'])
-                    ->whereBetween('bill_date', [$from, $to])
+                    ->whereDate('bill_date', '>=', $from)
+                    ->whereDate('bill_date', '<=', $to)
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                     ->orderBy('bill_date', 'desc');
                 $paginator = $query->paginate($this->perPage)->withQueryString();

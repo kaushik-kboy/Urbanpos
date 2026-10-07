@@ -1450,8 +1450,18 @@ class ReportController extends Controller
 
     private function dateAndBranchFilter(Request $request): array
     {
-        $from = $request->input('from', now()->startOfMonth()->format('Y-m-d'));
-        $to = $request->input('to', now()->format('Y-m-d'));
+        $rawFrom = $request->input('from');
+        $rawTo = $request->input('to');
+        try {
+            $from = $rawFrom ? \Carbon\Carbon::parse($rawFrom)->format('Y-m-d') : now()->startOfMonth()->format('Y-m-d');
+        } catch (\Exception $e) {
+            $from = now()->startOfMonth()->format('Y-m-d');
+        }
+        try {
+            $to = $rawTo ? \Carbon\Carbon::parse($rawTo)->format('Y-m-d') : now()->format('Y-m-d');
+        } catch (\Exception $e) {
+            $to = now()->format('Y-m-d');
+        }
         $branchId = $this->resolveBranchId($request);
 
         return [$from, $to, $branchId];

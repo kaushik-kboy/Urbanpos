@@ -640,7 +640,8 @@ class PurchaseReturnController extends Controller
     private function computeLines(array $items, array $header): array
     {
         $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
-        $isInterstate = ($header['purchase_type'] ?? null) === 'Interstate';
+        $supplier = isset($header['supplier_id']) ? Supplier::find($header['supplier_id']) : null;
+        $isInterstate = (($header['purchase_type'] ?? null) === 'Interstate') || ($supplier && $supplier->isInterstate());
 
         return collect($items)->map(function ($line) use ($itemsById, $isInterstate) {
             $qty = (float) $line['qty'];

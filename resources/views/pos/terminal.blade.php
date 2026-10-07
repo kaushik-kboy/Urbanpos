@@ -32,11 +32,16 @@
             <div class="pos-brand mr-4">
                 <i class="fas fa-cash-register mr-2"></i>UrbanPOS <span class="badge badge-success ml-2 font-weight-normal small">Terminal</span>
             </div>
-            <div class="pos-meta-item d-none d-md-inline-flex">
+            @php
+                $activeBrId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? 1));
+                $activeBrName = $branches[$activeBrId] ?? ($branches->first() ?? 'Branch');
+            @endphp
+            <div class="pos-meta-item d-none d-md-inline-flex" title="Store Branch">
                 <i class="fas fa-store text-info mr-1"></i>
-                <select id="posBranchSelect" class="bg-transparent border-0 text-white font-weight-bold ml-1" style="outline:none; cursor:pointer;">
+                <span class="text-white font-weight-bold ml-1">{{ $activeBrName }}</span>
+                <select id="posBranchSelect" class="d-none" style="display: none !important;">
                     @foreach ($branches as $bId => $bName)
-                        <option value="{{ $bId }}" class="text-dark">{{ $bName }}</option>
+                        <option value="{{ $bId }}" @selected($bId == $activeBrId) class="text-dark">{{ $bName }}</option>
                     @endforeach
                 </select>
             </div>
@@ -105,8 +110,8 @@
                             <th class="text-center" style="width: 75px;">Qty</th>
                             <th class="text-right" style="width: 80px;">Sell</th>
                             <th class="text-right" style="width: 80px;">MRP</th>
-                            <th class="text-center" style="width: 75px;">Dis %</th>
-                            <th class="text-center" style="width: 83px;">Dis Amt</th>
+                            <th class="text-center" style="width: 80px; min-width: 80px;">Dis %</th>
+                            <th class="text-center" style="width: 90px; min-width: 90px;">Dis Amt</th>
                             <th class="text-right" style="width: 95px;">Net Amount</th>
                             <th class="text-center" style="width: 35px;"></th>
                         </tr>

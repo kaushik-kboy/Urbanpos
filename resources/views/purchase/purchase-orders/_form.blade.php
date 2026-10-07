@@ -4,6 +4,7 @@
     $oldItems = old('items');
     $existingItems = !empty($oldItems) ? collect($oldItems) : ($initialItems ?? ($po?->items ?? collect()));
     $supplierPurchaseTypes = \App\Models\Supplier::pluck('purchase_type', 'id')->filter();
+    $suppliersInterstateMap = \App\Models\Supplier::all()->mapWithKeys(fn($s) => [$s->id => $s->isInterstate()]);
 @endphp
 
 @if ($indent)
@@ -335,6 +336,21 @@
         let islSelectedIdx = -1;
         const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
         const LOOKUP_URL = '{{ route("purchase.purchase-invoices.lookup-item") }}';
+
+        const suppliersInterstateMap = @json($suppliersInterstateMap);
+        function applyPoSupplierPurchaseType() {
+            let supplierId = $('#supplier_id').val();
+            let $pt = $('select[name="purchase_type"]');
+            if (supplierId && suppliersInterstateMap[supplierId] === true) {
+                if ($pt.val() !== 'Interstate') {
+                    $pt.val('Interstate').trigger('change');
+                }
+            }
+        }
+        $('#supplier_id').on('change', function () {
+            applyPoSupplierPurchaseType();
+        });
+        setTimeout(applyPoSupplierPurchaseType, 100);
 
         $('[name="branch_id"]').on('change', function () {
             islCache = {};

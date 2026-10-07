@@ -263,13 +263,23 @@ input[type="number"],
 
 .pos-row-input {
     height: 28px;
-    padding: 2px 6px;
+    padding: 2px 4px;
     font-size: 0.85rem;
     border: 1px solid var(--pos-border);
     border-radius: 4px;
     background: #FFFFFF;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
     width: 100%;
+}
+
+.pos-row-input::-webkit-outer-spin-button,
+.pos-row-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.pos-row-input[type=number] {
+    -moz-appearance: textfield;
 }
 
 .pos-row-input:focus {

@@ -790,7 +790,8 @@ class PurchaseInvoiceController extends Controller
     private function computeLines(array $items, array $header, ?PurchaseInvoice $existingInvoice = null): array
     {
         $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
-        $isInterstate = ($header['purchase_type'] ?? null) === 'Interstate';
+        $supplier = isset($header['supplier_id']) ? Supplier::find($header['supplier_id']) : null;
+        $isInterstate = (($header['purchase_type'] ?? null) === 'Interstate') || ($supplier && $supplier->isInterstate());
 
         $totalHeaderDiscount = (float) ($header['scheme_item_disc_amt'] ?? 0) + (float) ($header['other_disc_amt'] ?? 0);
 
@@ -1087,6 +1088,11 @@ class PurchaseInvoiceController extends Controller
         }
 
         $header = $request->validate($headerRules, $headerMessages);
+
+        $supplier = Supplier::find($header['supplier_id'] ?? null);
+        if ($supplier && $supplier->isInterstate()) {
+            $header['purchase_type'] = 'Interstate';
+        }
 
         if (!empty($header['supplier_inv_no'])) {
             $header['supplier_inv_no'] = strtoupper(trim($header['supplier_inv_no']));

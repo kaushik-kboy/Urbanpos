@@ -178,9 +178,18 @@ class SupplierController extends Controller
             $request->merge(['gst_no' => $rawGst === '' ? null : $rawGst]);
         }
 
+        $st = trim(strtolower((string) $request->input('state')));
+        $gstNo = trim((string) $request->input('gst_no'));
+        $detectedPType = $request->input('purchase_type') ?: 'Local';
+        if ($detectedPType === 'Local') {
+            if (($st !== '' && !in_array($st, ['gujarat', 'gj', 'guj'])) || (strlen($gstNo) >= 2 && ctype_digit(substr($gstNo, 0, 2)) && substr($gstNo, 0, 2) !== '24')) {
+                $detectedPType = 'Interstate';
+            }
+        }
+
         $request->merge([
             'currency' => $request->input('currency') ?: 'INR',
-            'purchase_type' => $request->input('purchase_type') ?: 'Local',
+            'purchase_type' => $detectedPType,
             'purchase_mode' => $request->input('purchase_mode') ?: 'Credit',
             'credit_limit' => ($request->input('credit_limit') !== null && $request->input('credit_limit') !== '') ? $request->input('credit_limit') : 0,
             'credit_balance' => ($request->input('credit_balance') !== null && $request->input('credit_balance') !== '') ? $request->input('credit_balance') : 0,

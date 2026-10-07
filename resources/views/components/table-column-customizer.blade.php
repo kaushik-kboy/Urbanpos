@@ -490,9 +490,15 @@
         }
     };
 
+    let $activeParentModal = null;
+
     $(document).on('show.bs.modal', '.table-customizer-modal', function() {
         const $modal = $(this);
-        if ($('.modal:visible').not($modal).length > 0) {
+        const $otherModals = $('.modal.show').not($modal);
+        if ($otherModals.length > 0) {
+            $activeParentModal = $otherModals;
+            // Temporarily hide the parent modal dialog to avoid double-window clutter
+            $activeParentModal.addClass('d-none');
             $modal.css('z-index', 1065);
             setTimeout(function() {
                 $('.modal-backdrop').not('.table-customizer-backdrop').last().addClass('table-customizer-backdrop').css('z-index', 1060);
@@ -501,7 +507,11 @@
     });
 
     $(document).on('hidden.bs.modal', '.table-customizer-modal', function() {
-        if ($('.modal:visible').length > 0) {
+        if ($activeParentModal) {
+            $activeParentModal.removeClass('d-none');
+            $activeParentModal = null;
+        }
+        if ($('.modal.show').length > 0) {
             $('body').addClass('modal-open');
         }
     });

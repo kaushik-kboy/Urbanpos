@@ -38,6 +38,33 @@ class Supplier extends Model
         return $this->hasOne(Ledger::class);
     }
 
+    /**
+     * Determine if supplier is outside Gujarat / interstate (subject to IGST).
+     */
+    public function isInterstate(?string $destinationState = 'Gujarat'): bool
+    {
+        if (in_array(strtolower((string) $this->purchase_type), ['interstate', 'import'])) {
+            return true;
+        }
+
+        // Check GSTIN 2-digit state prefix (Gujarat state code is 24)
+        $gstNo = trim((string) $this->gst_no);
+        if (strlen($gstNo) >= 2 && ctype_digit(substr($gstNo, 0, 2))) {
+            $stateCode = substr($gstNo, 0, 2);
+            if ($stateCode !== '24') {
+                return true;
+            }
+        }
+
+        // Check state name (outside Gujarat)
+        $state = trim(strtolower((string) $this->state));
+        if ($state !== '' && !in_array($state, ['gujarat', 'gj', 'guj'])) {
+            return true;
+        }
+
+        return false;
+    }
+
     protected static function booted(): void
     {
         static::created(function (Supplier $supplier) {

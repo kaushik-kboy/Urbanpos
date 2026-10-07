@@ -15,6 +15,7 @@
     $grnNumberVal = old('grn_number', $inv->grn_number ?? ($sourceRn->receipt_number ?? ($nextGrnNumber ?? '')));
     $grnDateVal = old('grn_date', optional($inv->grn_date ?? ($sourceRn->receipt_date ?? now()))->format('Y-m-d'));
     $rnIdVal = old('purchase_receipt_note_id', $inv->purchase_receipt_note_id ?? ($sourceRn->id ?? ''));
+    $supplierMetas = \App\Models\Supplier::all(['id', 'state', 'gst_no', 'purchase_type'])->keyBy('id');
 @endphp
 
 <style>
@@ -506,19 +507,33 @@
         let islModalOpen = false;
         const ISL_URL = '{{ route("purchase.purchase-invoices.item-list") }}';
 
-        const supplierPurchaseTypes = @json(\App\Models\Supplier::pluck('purchase_type', 'id'));
+        const supplierMetas = @json($supplierMetas);
 
-        // Auto-set purchase_type based on supplier's purchase_type (supplier master drives this)
+        // Auto-set purchase_type based on supplier master (State outside Gujarat or GSTIN != 24 => Interstate / IGST)
         function applySupplierPurchaseType(sId) {
-            if (sId && supplierPurchaseTypes[sId]) {
-                let pType = String(supplierPurchaseTypes[sId]).trim();
-                let normalized = pType.charAt(0).toUpperCase() + pType.slice(1).toLowerCase();
-                if (normalized === 'Local' || normalized === 'Interstate') {
-                    $('#purchase_type').val(normalized).trigger('change');
-                    $('#purchase_type').prop('disabled', true).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'none','background':'#e9ecef','opacity':'0.85'});
-                    if (!$('#purchase_type_locked_note').length) {
-                        $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted"><i class="fas fa-lock mr-1"></i>Auto-set from Supplier Master</small>');
+            if (sId && supplierMetas[sId]) {
+                let sup = supplierMetas[sId];
+                let pType = String(sup.purchase_type || '').trim().toLowerCase();
+                let isInterstate = false;
+                if (pType === 'interstate' || pType === 'import') {
+                    isInterstate = true;
+                } else {
+                    let gstNo = String(sup.gst_no || '').trim();
+                    let st = String(sup.state || '').trim().toLowerCase();
+                    if (gstNo.length >= 2 && /^\d{2}/.test(gstNo) && !gstNo.startsWith('24')) {
+                        isInterstate = true;
+                    } else if (st && st !== 'gujarat' && st !== 'gj' && st !== 'guj') {
+                        isInterstate = true;
                     }
+                }
+
+                let targetType = isInterstate ? 'Interstate' : 'Local';
+                $('#purchase_type').val(targetType).trigger('change');
+                $('#purchase_type').prop('disabled', true).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'none','background':'#e9ecef','opacity':'0.85'});
+                if (!$('#purchase_type_locked_note').length) {
+                    $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted"><i class="fas fa-lock mr-1"></i>Auto-set (' + (isInterstate ? 'IGST Interstate' : 'CGST+SGST Local') + ')</small>');
+                } else {
+                    $('#purchase_type_locked_note').html('<i class="fas fa-lock mr-1"></i>Auto-set (' + (isInterstate ? 'IGST Interstate' : 'CGST+SGST Local') + ')');
                 }
             } else {
                 $('#purchase_type').prop('disabled', false).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'','background':'','opacity':''});
@@ -1143,6 +1158,16 @@
 
             $targetRow.find('.pinv-item-select').val(itemId);
             $targetRow.find('.pinv-item-code').val(itemCode || itemId);
+            $targetRow.data('last-processed-code', itemCode || String(itemId));
+
+            // Clear any premature quantity error on target row and flag as just selected
+            let $qtyInput = $targetRow.find('.pinv-qty');
+            $qtyInput.removeClass('is-invalid border-danger');
+            $targetRow.find('.pinv-qty-error-msg').css('display', 'none').text('');
+            $qtyInput.data('just-selected', true);
+            setTimeout(function() {
+                $qtyInput.removeData('just-selected');
+            }, 600);
 
             processPurchaseItemLookup($targetRow, itemId);
             $('#pinv-item-search-modal').modal('hide');
@@ -1784,8 +1809,10 @@
                     // Update expiry rules
                     updateExpiryRequirement($row, data.batch_expiry_details, data.shelf_life_days);
 
-                    // Do not auto-populate default expiry date on item select as requested
-                    $row.find('.pinv-exp-date').val('');
+                    // Do not auto-populate default expiry date on item select as requested; preserve if already filled
+                    if (!$row.find('.pinv-exp-date').val()) {
+                        $row.find('.pinv-exp-date').val('');
+                    }
 
                     calculateRow($row, 'base');
 
@@ -1815,6 +1842,20 @@
             });
         }
 
+        // Helper to move focus forward from item-code field
+        function advanceFromItemCode($row) {
+            let isExpMandatory = $row.find('.pinv-exp-date').prop('required');
+            let $batch = $row.find('.pinv-batch-no');
+            let $exp = $row.find('.pinv-exp-date');
+            if ($batch.length && $batch.is(':visible') && !$batch.closest('td').hasClass('table-col-hidden') && !$batch.val()) {
+                $batch.focus().select();
+            } else if (isExpMandatory && $exp.length && $exp.is(':visible') && !$exp.closest('td').hasClass('table-col-hidden') && !$exp.val()) {
+                $exp.focus();
+            } else {
+                $row.find('.pinv-qty').focus().select();
+            }
+        }
+
         // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation
         $(document).off('keydown change input', '.pinv-item-code')
             .on('keydown', '.pinv-item-code', function (e) {
@@ -1822,7 +1863,11 @@
                     e.preventDefault();
                     let val = $.trim($(this).val());
                     let $row = $(this).closest('tr');
-                    if (val) {
+                    let currentItemId = $row.find('.pinv-item-select').val();
+                    let lastCode = $row.data('last-processed-code');
+                    if (val && currentItemId && (String(lastCode) === String(val) || $row.find('.pinv-item-code').val() === val)) {
+                        advanceFromItemCode($row);
+                    } else if (val) {
                         // Direct exact lookup without opening popup modal
                         processPurchaseItemLookup($row, null, val, true);
                     } else {
@@ -1832,7 +1877,12 @@
                 } else if (e.key === 'Tab' && !e.shiftKey) {
                     let val = $.trim($(this).val());
                     let $row = $(this).closest('tr');
-                    if (val) {
+                    let currentItemId = $row.find('.pinv-item-select').val();
+                    let lastCode = $row.data('last-processed-code');
+                    if (val && currentItemId && (String(lastCode) === String(val) || $row.find('.pinv-item-code').val() === val)) {
+                        e.preventDefault();
+                        advanceFromItemCode($row);
+                    } else if (val) {
                         e.preventDefault();
                         processPurchaseItemLookup($row, null, val, true);
                     } else {
@@ -2041,6 +2091,12 @@
 
         // Qty Tab & Enter navigation and validation (PHASE 12)
         $(document).on('keydown', '.pinv-qty', function (e) {
+            if (islModalOpen || islModalClosing || $(this).data('just-selected')) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+                return;
+            }
             if (e.key === 'Tab' || e.key === 'Enter') {
                 let qty = parseFloat($(this).val()) || 0;
                 let $row = $(this).closest('tr');
@@ -2057,15 +2113,18 @@
                     $feedback.text('Quantity is required and must be greater than 0.').css('display', 'block');
                     $(this).focus().select();
                     return false;
+                } else {
+                    $(this).removeClass('is-invalid border-danger');
+                    $(this).siblings('.pinv-qty-error-msg').css('display', 'none').text('');
                 }
             }
         });
 
-        $(document).on('input', '.pinv-qty', function () {
+        $(document).on('input change', '.pinv-qty', function () {
             let qty = parseFloat($(this).val()) || 0;
             if (qty > 0) {
                 $(this).removeClass('is-invalid border-danger');
-                $(this).siblings('.pinv-qty-error-msg').css('display', 'none');
+                $(this).siblings('.pinv-qty-error-msg').css('display', 'none').text('');
             }
         });
 

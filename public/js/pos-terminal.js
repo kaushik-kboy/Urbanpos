@@ -1122,10 +1122,10 @@
                     <td class="text-right text-muted small" style="width: 80px;">
                         ₹ ${item.mrp.toFixed(2)}
                     </td>
-                    <td class="text-center" style="width: 75px;">
+                    <td class="text-center" style="width: 80px;">
                         <input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" placeholder="0" value="${discPctVal}" data-idx="${idx}" data-field="disc_percent">
                     </td>
-                    <td class="text-center" style="width: 83px;">
+                    <td class="text-center" style="width: 90px;">
                         <input type="number" step="0.01" min="0" class="pos-row-input pos-disc-amount text-right" placeholder="0.00" value="${discAmtVal}" data-idx="${idx}" data-field="disc_amount">
                     </td>
                     <td class="text-right font-weight-bold text-success pos-row-net" data-idx="${idx}" style="width: 95px; font-size: 0.95rem;">
@@ -1176,8 +1176,19 @@
         if (!changeDueEl) return;
         const total = computeTotals().grandTotal;
         const rec = state.cash_received;
-        const change = Math.max(0, rec - total);
-        changeDueEl.textContent = '₹ ' + change.toFixed(2);
+        if (rec > 0 && rec < total - 0.05) {
+            const shortAmt = (total - rec).toFixed(2);
+            changeDueEl.innerHTML = `<span class="text-danger font-weight-bold">Due: -₹ ${shortAmt}</span>`;
+            if (cashReceivedInput) {
+                cashReceivedInput.classList.add('border-danger');
+            }
+        } else {
+            const change = Math.max(0, rec - total);
+            changeDueEl.textContent = '₹ ' + change.toFixed(2);
+            if (cashReceivedInput) {
+                cashReceivedInput.classList.remove('border-danger', 'is-invalid');
+            }
+        }
     }
 
     // Dynamic UPI QR Code
@@ -2375,7 +2386,32 @@
             if (walletValueId) p.tender_type_value_id = walletValueId;
             payments.push(p);
         } else if (state.tender_mode === 'Cash') {
-            // Cash
+            // Cash validation (Task 3: Bill cannot be saved if Cash Received is less than Total Payable)
+            const enteredCashStr = cashReceivedInput ? $.trim(cashReceivedInput.value) : '';
+            if (enteredCashStr !== '') {
+                const cashVal = parseFloat(enteredCashStr);
+                if (isNaN(cashVal) || cashVal < (totals.grandTotal - 0.05)) {
+                    const validCash = isNaN(cashVal) ? 0 : cashVal;
+                    const shortAmt = (totals.grandTotal - validCash).toFixed(2);
+                    const errMsg = `Cash Received (₹${validCash.toFixed(2)}) bill amount (₹${totals.grandTotal.toFixed(2)}) se kam hai! Shortage: ₹${shortAmt}. Pura payment collect karein ya Credit mode select karein.`;
+                    showNotification(errMsg, 'danger');
+                    if (typeof toastr !== 'undefined') toastr.error(errMsg, 'Underpayment Error');
+                    alert(errMsg);
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    if (cashReceivedInput) {
+                        cashReceivedInput.classList.add('is-invalid', 'border-danger');
+                        cashReceivedInput.focus();
+                        cashReceivedInput.select();
+                    }
+                    if (payBtn) {
+                        payBtn.disabled = false;
+                        payBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Pay & Print (F6)';
+                    }
+                    if (btnSaveOnly) btnSaveOnly.disabled = false;
+                    if (btnSaveWhatsApp) btnSaveWhatsApp.disabled = false;
+                    return;
+                }
+            }
             payments.push({ tender_type_id: cashTender.id, amount: totals.grandTotal });
         } else {
             alert('Please select a Payment Mode first!');
