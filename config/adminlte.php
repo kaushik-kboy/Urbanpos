@@ -1098,6 +1098,12 @@ return [
                     'can' => 'system-health.view',
                 ],
                 [
+                    'text' => 'GoFrugal TruePOS Sync',
+                    'url' => 'tools/gofrugal-sync',
+                    'icon' => 'fas fa-fw fa-sync-alt text-success',
+                    'active' => ['tools/gofrugal-sync*'],
+                ],
+                [
                     'text' => 'Database Backups',
                     'url' => 'tools/backups',
                     'icon' => 'fas fa-fw fa-database text-primary',

@@ -42,9 +42,9 @@ class GofrugalSyncController extends Controller
             'daily_sales_total' => DailySalesSummary::whereDate('summary_date', $selectedDate)->sum('bill_amount'),
             'detailed_bills_count' => SalesBill::whereDate('bill_date', $selectedDate)->count(),
             'purchases_count' => PurchaseInvoice::whereDate('invoice_date', $selectedDate)->count(),
-            'purchases_amount' => PurchaseInvoice::whereDate('invoice_date', $selectedDate)->sum('total_amount'),
+            'purchases_amount' => PurchaseInvoice::whereDate('invoice_date', $selectedDate)->sum('total'),
             'transfers_count' => StockTransfer::whereDate('transfer_date', $selectedDate)->count(),
-            'transfers_val' => StockTransfer::whereDate('transfer_date', $selectedDate)->sum('total_cost_value'),
+            'transfers_val' => StockTransfer::whereDate('transfer_date', $selectedDate)->sum('total_value'),
         ];
 
         return view('tools.gofrugal-sync', compact('selectedDate', 'availableFiles', 'stats'));
