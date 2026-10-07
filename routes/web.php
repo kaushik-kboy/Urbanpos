@@ -507,3 +507,9 @@ Route::middleware('auth')->prefix('user/dashboard-preferences')->name('user.dash
 Route::get('receipt/v/{salesBill}/{hash}', [\App\Http\Controllers\Sales\SalesBillController::class, 'publicReceipt'])
     ->name('sales-bills.public-receipt');
 
+// GoFrugal TruePOS Automated Sync Manager
+Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
+    Route::get('gofrugal-sync', [\App\Http\Controllers\Tools\GofrugalSyncController::class, 'index'])->name('gofrugal-sync');
+    Route::post('gofrugal-sync/trigger', [\App\Http\Controllers\Tools\GofrugalSyncController::class, 'triggerSync'])->name('gofrugal-sync.trigger');
+});
+

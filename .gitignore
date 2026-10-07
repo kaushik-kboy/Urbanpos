@@ -36,6 +36,9 @@ data_files/
 __pycache__/
 *.pyc
 scripts/*.py
+!scripts/gofrugal_sync_engine.py
 scripts/*.txt
-scripts/check_pw.php
+scripts/*.json
+scripts/*.html
+scripts/*.php
 test-results/
