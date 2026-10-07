@@ -106,12 +106,11 @@ class ImportOctoberTransactions extends Command
                 }
             }
 
-            // Check if already exists
+            // Check if already exists by GRN number
             $existing = PurchaseInvoice::where('grn_number', "GRN{$grnNo}")
                 ->orWhere('grn_number', "GRN000{$grnNo}")
-                ->orWhere(function ($q) use ($grnDate, $supplierId) {
-                    $q->whereDate('invoice_date', $grnDate)->where('supplier_id', $supplierId);
-                })->first();
+                ->orWhere('grn_number', 'LIKE', "%{$grnNo}%")
+                ->first();
 
             if ($existing) {
                 $this->warn("Purchase Invoice for GRN {$grnNo} already exists (ID: {$existing->id}, Invoice: {$existing->invoice_number}). Skipping.");
