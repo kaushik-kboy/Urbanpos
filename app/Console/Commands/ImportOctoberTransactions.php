@@ -142,7 +142,34 @@ class ImportOctoberTransactions extends Command
                 $expDate = !empty($itemRow['Expiry date']) ? $itemRow['Expiry date'] : null;
 
                 $itemCode = trim($itemRow['Item code']);
+                $itemName = trim($itemRow['Item name'] ?? '');
                 $itemId = $itemCodeMap[$itemCode] ?? null;
+
+                if (!$itemId && $itemCode !== '') {
+                    $existingItem = Item::where('item_code', $itemCode)->first();
+                    if ($existingItem) {
+                        $itemId = $existingItem->id;
+                    } elseif (!$isDryRun) {
+                        $newItem = Item::create([
+                            'item_code' => $itemCode,
+                            'name' => $itemName ?: "Item {$itemCode}",
+                            'cost_price' => $rate,
+                            'landing_cost' => $rate,
+                            'sell_price' => $sell ?: ($mrp ?: $rate),
+                            'mrp' => $mrp ?: ($sell ?: $rate),
+                            'hsn_code' => trim($itemRow['HSN Code'] ?? '') ?: null,
+                            'status' => true,
+                            'product_type' => 'Standard',
+                        ]);
+                        $itemId = $newItem->id;
+                        $this->info("  -> Auto-created missing SKU {$itemCode}: {$newItem->name} (ID: {$itemId})");
+                    } else {
+                        $itemId = 999999;
+                    }
+                    if ($itemId) {
+                        $itemCodeMap[$itemCode] = $itemId;
+                    }
+                }
 
                 $totQty += $qty;
                 $totAmount += $amt;
@@ -309,7 +336,33 @@ class ImportOctoberTransactions extends Command
                 $expDate = !empty($itemRow['Expiry date']) ? $itemRow['Expiry date'] : null;
 
                 $itemCode = trim($itemRow['Item code']);
+                $itemName = trim($itemRow['Item name'] ?? '');
                 $itemId = $itemCodeMap[$itemCode] ?? null;
+
+                if (!$itemId && $itemCode !== '') {
+                    $existingItem = Item::where('item_code', $itemCode)->first();
+                    if ($existingItem) {
+                        $itemId = $existingItem->id;
+                    } elseif (!$isDryRun) {
+                        $newItem = Item::create([
+                            'item_code' => $itemCode,
+                            'name' => $itemName ?: "Item {$itemCode}",
+                            'cost_price' => $unitCost,
+                            'landing_cost' => $unitCost,
+                            'sell_price' => $unitCost,
+                            'mrp' => $unitCost,
+                            'status' => true,
+                            'product_type' => 'Standard',
+                        ]);
+                        $itemId = $newItem->id;
+                        $this->info("  -> Auto-created missing transfer SKU {$itemCode}: {$newItem->name} (ID: {$itemId})");
+                    } else {
+                        $itemId = 999999;
+                    }
+                    if ($itemId) {
+                        $itemCodeMap[$itemCode] = $itemId;
+                    }
+                }
 
                 $totQty += $qty;
                 $totValue += $amt;
