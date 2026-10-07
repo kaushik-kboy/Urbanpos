@@ -782,7 +782,8 @@
                             </label>
                         </div>
                     </div>
-                    <div class="col-md-2 text-right">
+                    <div class="col-md-2 text-right d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.sales-bills.item-search" table-id="isl-items-table" button-class="btn btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
                         <button type="button" id="isl-btn-clear" class="btn btn-outline-secondary" style="font-size: 0.92rem; height: 36px;">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
@@ -804,13 +805,13 @@
                     <table class="table table-bordered table-hover mb-0" id="isl-items-table" style="font-size: 0.97rem;">
                         <thead class="bg-dark text-white">
                             <tr>
-                                <th class="text-center" style="width: 44px; font-size: 0.9rem; padding: 0.5rem;">#</th>
-                                <th style="font-size: 0.9rem; padding: 0.5rem;">Product Name</th>
-                                <th class="text-center" style="width: 150px; font-size: 0.9rem; padding: 0.5rem;">Code</th>
-                                <th class="text-right" style="width: 110px; font-size: 0.9rem; padding: 0.5rem;">Qty (Stock)</th>
-                                <th class="text-right" style="width: 115px; font-size: 0.9rem; padding: 0.5rem;">Sell Price</th>
-                                <th class="text-right" style="width: 115px; font-size: 0.9rem; padding: 0.5rem;">MRP</th>
-                                <th class="text-center" style="width: 90px; font-size: 0.9rem; padding: 0.5rem;">Select</th>
+                                <th class="text-center" style="width: 44px; font-size: 0.9rem; padding: 0.5rem;" data-col-key="seq">#</th>
+                                <th style="font-size: 0.9rem; padding: 0.5rem;" data-col-key="name">Product Name</th>
+                                <th class="text-center" style="width: 150px; font-size: 0.9rem; padding: 0.5rem;" data-col-key="code">Code</th>
+                                <th class="text-right" style="width: 110px; font-size: 0.9rem; padding: 0.5rem;" data-col-key="qty">Qty (Stock)</th>
+                                <th class="text-right" style="width: 115px; font-size: 0.9rem; padding: 0.5rem;" data-col-key="sell_price">Sell Price</th>
+                                <th class="text-right" style="width: 115px; font-size: 0.9rem; padding: 0.5rem;" data-col-key="mrp">MRP</th>
+                                <th class="text-center" style="width: 90px; font-size: 0.9rem; padding: 0.5rem;" data-col-key="action">Select</th>
                             </tr>
                         </thead>
                         <tbody id="isl-items-body">
@@ -2096,18 +2097,21 @@
                         data-qty="${it.qty}"
                         data-allow-negative="${isAllowNeg ? '1' : '0'}"
                         data-exp="${it.exp_date || ''}">
-                        <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name} ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}</td>
-                        <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}</td>
-                        <td class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '\u20b9' + parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
-                        <td class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9' + parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
-                        <td class="align-middle text-center">
+                        <td data-col-key="seq" class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
+                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">${it.name} ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}</td>
+                        <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
+                        <td data-col-key="qty" class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}</td>
+                        <td data-col-key="sell_price" class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '\u20b9' + parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
+                        <td data-col-key="mrp" class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9' + parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
+                        <td data-col-key="action" class="align-middle text-center">
                             ${actionBtn}
                         </td>
                     </tr>`;
             });
             $tbody.html(html);
+            if (window.applyTablePreferences) {
+                window.applyTablePreferences('isl-items-table');
+            }
             $('#isl-table-wrap').removeClass('d-none');
             $('#isl-count-label').text(items.length + (items.length === 100 ? '+ (showing top 100)' : '') + ' item(s) found');
             // Auto-highlight top selectable row

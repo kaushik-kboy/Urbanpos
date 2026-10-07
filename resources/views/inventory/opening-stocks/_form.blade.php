@@ -145,15 +145,20 @@
                 </button>
             </div>
             <div class="modal-body p-3">
-                <div class="input-group mb-2">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text bg-white"><i class="fas fa-search text-primary"></i></span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="input-group mr-2">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-primary"></i></span>
+                        </div>
+                        <input type="text" id="modal-search-input" class="form-control form-control-lg font-weight-bold" placeholder="Type item name, description, barcode, or code to search..." autocomplete="off">
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-outline-secondary" id="modal-search-clear">
+                                <i class="fas fa-times mr-1"></i> Clear
+                            </button>
+                        </div>
                     </div>
-                    <input type="text" id="modal-search-input" class="form-control form-control-lg font-weight-bold" placeholder="Type item name, description, barcode, or code to search..." autocomplete="off">
-                    <div class="input-group-append">
-                        <button type="button" class="btn btn-outline-secondary" id="modal-search-clear">
-                            <i class="fas fa-times mr-1"></i> Clear
-                        </button>
+                    <div class="text-nowrap">
+                        <x-table-column-customizer table-key="modal.opening-stocks.item-search" table-id="modal-items-table" button-class="btn btn-outline-secondary" button-text="Columns" title="Customize Columns & Order" />
                     </div>
                 </div>
 
@@ -166,14 +171,14 @@
                     <table class="table table-sm table-hover table-striped mb-0" id="modal-items-table">
                         <thead class="thead-light sticky-top" style="z-index: 5;">
                             <tr class="text-center text-nowrap">
-                                <th style="width: 140px;">Code / Barcode</th>
-                                <th class="text-left">Item Description</th>
-                                <th style="width: 130px;">Brand</th>
-                                <th style="width: 110px;">Cost Price</th>
-                                <th style="width: 110px;">Sell Price</th>
-                                <th style="width: 110px;">MRP</th>
-                                <th style="width: 75px;">GST%</th>
-                                <th style="width: 90px;">Action</th>
+                                <th style="width: 140px;" data-col-key="code">Code / Barcode</th>
+                                <th class="text-left" data-col-key="name">Item Description</th>
+                                <th style="width: 130px;" data-col-key="brand">Brand</th>
+                                <th style="width: 110px;" data-col-key="cost_price">Cost Price</th>
+                                <th style="width: 110px;" data-col-key="sell_price">Sell Price</th>
+                                <th style="width: 110px;" data-col-key="mrp">MRP</th>
+                                <th style="width: 75px;" data-col-key="gst">GST%</th>
+                                <th style="width: 90px;" data-col-key="action">Action</th>
                             </tr>
                         </thead>
                         <tbody id="modal-items-body">
@@ -405,18 +410,18 @@
                         const codeDisplay = item.code || item.barcode || item.item_code || '-';
                         rowsHtml += `
                             <tr class="modal-item-result-row ${idx === 0 ? 'table-active' : ''}" style="cursor: pointer;">
-                                <td class="text-nowrap font-weight-bold align-middle">
+                                <td class="text-nowrap font-weight-bold align-middle" data-col-key="code">
                                     <span class="badge badge-light border py-1 px-2 font-weight-normal">${escapeHtml(codeDisplay)}</span>
                                 </td>
-                                <td class="align-middle text-left">
+                                <td class="align-middle text-left" data-col-key="name">
                                     <span class="font-weight-bold text-dark">${escapeHtml(item.name)}</span>
                                 </td>
-                                <td class="text-muted small align-middle">${escapeHtml(item.brand || '-')}</td>
-                                <td class="text-right font-weight-bold text-dark align-middle">₹${parseFloat(item.cost_price || 0).toFixed(2)}</td>
-                                <td class="text-right text-muted align-middle">₹${parseFloat(item.sell_price || 0).toFixed(2)}</td>
-                                <td class="text-right font-weight-bold text-primary align-middle">₹${parseFloat(item.mrp || 0).toFixed(2)}</td>
-                                <td class="text-center align-middle"><span class="badge badge-info">${parseFloat(item.gst_percent || 0).toFixed(0)}%</span></td>
-                                <td class="text-center align-middle">
+                                <td class="text-muted small align-middle" data-col-key="brand">${escapeHtml(item.brand || '-')}</td>
+                                <td class="text-right font-weight-bold text-dark align-middle" data-col-key="cost_price">₹${parseFloat(item.cost_price || 0).toFixed(2)}</td>
+                                <td class="text-right text-muted align-middle" data-col-key="sell_price">₹${parseFloat(item.sell_price || 0).toFixed(2)}</td>
+                                <td class="text-right font-weight-bold text-primary align-middle" data-col-key="mrp">₹${parseFloat(item.mrp || 0).toFixed(2)}</td>
+                                <td class="text-center align-middle" data-col-key="gst"><span class="badge badge-info">${parseFloat(item.gst_percent || 0).toFixed(0)}%</span></td>
+                                <td class="text-center align-middle" data-col-key="action">
                                     <button type="button" class="btn btn-primary btn-xs px-2 btn-choose-modal-item">
                                         <i class="fas fa-check mr-1"></i> Select
                                     </button>
@@ -426,6 +431,9 @@
                     });
 
                     $('#modal-items-body').html(rowsHtml);
+                    if (window.applyTablePreferences) {
+                        window.applyTablePreferences('modal-items-table');
+                    }
 
                     // Attach item data
                     $('#modal-items-body tr.modal-item-result-row').each(function (i) {

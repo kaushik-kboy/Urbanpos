@@ -219,7 +219,8 @@
                             <input type="text" id="sq-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-2 text-right">
+                    <div class="col-md-4 text-right d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.sales-quotations.item-search" table-id="sq-isl-items-table" button-class="btn btn-sm btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
                         <button type="button" id="sq-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
@@ -239,14 +240,14 @@
                     <table class="table table-sm table-bordered table-hover mb-0" id="sq-isl-items-table">
                         <thead class="bg-dark text-white sticky-top">
                             <tr>
-                                <th class="text-center" style="width: 40px;">#</th>
-                                <th>Product Name</th>
-                                <th class="text-center" style="width: 120px;">Code</th>
-                                <th class="text-center" style="width: 110px;">Stock</th>
-                                <th class="text-right" style="width: 90px;">Sell Price</th>
-                                <th class="text-right" style="width: 90px;">MRP</th>
-                                <th class="text-right" style="width: 80px;">GST %</th>
-                                <th class="text-center" style="width: 80px;">Select</th>
+                                <th class="text-center" style="width: 40px;" data-col-key="seq">#</th>
+                                <th data-col-key="name">Product Name</th>
+                                <th class="text-center" style="width: 120px;" data-col-key="code">Code</th>
+                                <th class="text-center" style="width: 110px;" data-col-key="qty">Stock</th>
+                                <th class="text-right" style="width: 90px;" data-col-key="sell_price">Sell Price</th>
+                                <th class="text-right" style="width: 90px;" data-col-key="mrp">MRP</th>
+                                <th class="text-right" style="width: 80px;" data-col-key="gst">GST %</th>
+                                <th class="text-center" style="width: 80px;" data-col-key="action">Select</th>
                             </tr>
                         </thead>
                         <tbody id="sq-isl-items-body"></tbody>
@@ -634,14 +635,14 @@ $(function() {
                         data-sell="${it.sell_price || 0}"
                         data-mrp="${it.mrp || 0}"
                         data-gst="${it.gst_percent || 0}">
-                        <td class="align-middle text-center text-muted">${idx + 1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
-                        <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(2)}</td>
-                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
-                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
-                        <td class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
-                        <td class="align-middle text-center">
+                        <td data-col-key="seq" class="align-middle text-center text-muted">${idx + 1}</td>
+                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
+                        <td data-col-key="qty" class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(2)}</td>
+                        <td data-col-key="sell_price" class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td data-col-key="mrp" class="align-middle text-right text-muted">${mrpDisplay}</td>
+                        <td data-col-key="gst" class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
+                        <td data-col-key="action" class="align-middle text-center">
                             <button type="button" class="btn btn-success btn-xs px-2 sq-isl-btn-select">
                                 <i class="fas fa-check mr-1"></i>Select
                             </button>
@@ -650,6 +651,9 @@ $(function() {
             });
 
             $tbody.html(html);
+            if (window.applyTablePreferences) {
+                window.applyTablePreferences('sq-isl-items-table');
+            }
             $('#sq-isl-table-wrap').removeClass('d-none');
             $('#sq-isl-count-label').text(items.length + ' item(s) found');
             sqIslSelectedIdx = items.length > 0 ? 0 : -1;

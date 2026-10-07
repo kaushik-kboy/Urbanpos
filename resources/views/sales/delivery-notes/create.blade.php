@@ -353,8 +353,9 @@
                                 <input type="text" id="sdn-isl-filter-code" class="form-control font-weight-bold" placeholder="Filter by Code / Barcode..." autocomplete="off">
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <button type="button" id="sdn-isl-btn-clear" class="btn btn-outline-secondary btn-block">
+                        <div class="col-md-3 d-flex justify-content-end align-items-center">
+                            <x-table-column-customizer table-key="modal.delivery-notes.item-search" table-id="sdn-isl-items-table" button-class="btn btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
+                            <button type="button" id="sdn-isl-btn-clear" class="btn btn-outline-secondary">
                                 <i class="fas fa-times mr-1"></i> Clear
                             </button>
                         </div>
@@ -376,16 +377,16 @@
                     </div>
 
                     <div id="sdn-isl-table-wrap" class="table-responsive d-none" style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-hover table-sm table-striped mb-0">
+                        <table class="table table-hover table-sm table-striped mb-0" id="sdn-isl-items-table">
                             <thead class="thead-dark sticky-top">
                                 <tr>
-                                    <th style="width: 45px;" class="text-center">#</th>
-                                    <th>Item Name</th>
-                                    <th style="width: 140px;" class="text-center">Code / Barcode</th>
-                                    <th style="width: 90px;" class="text-center">Current Stock</th>
-                                    <th style="width: 100px;" class="text-right">Sell Price</th>
-                                    <th style="width: 100px;" class="text-right">MRP</th>
-                                    <th style="width: 90px;" class="text-center">Action</th>
+                                    <th style="width: 45px;" class="text-center" data-col-key="seq">#</th>
+                                    <th data-col-key="name">Item Name</th>
+                                    <th style="width: 140px;" class="text-center" data-col-key="code">Code / Barcode</th>
+                                    <th style="width: 90px;" class="text-center" data-col-key="qty">Current Stock</th>
+                                    <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
+                                    <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
+                                    <th style="width: 90px;" class="text-center" data-col-key="action">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="sdn-isl-items-body"></tbody>
@@ -697,13 +698,13 @@ $(function () {
                         data-qty="${it.qty || 0}"
                         data-sell="${it.sell_price || 0}"
                         data-mrp="${it.mrp || 0}">
-                        <td class="align-middle text-center text-muted">${idx + 1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
-                        <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(3)}</td>
-                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
-                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
-                        <td class="align-middle text-center">
+                        <td data-col-key="seq" class="align-middle text-center text-muted">${idx + 1}</td>
+                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
+                        <td data-col-key="qty" class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(3)}</td>
+                        <td data-col-key="sell_price" class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td data-col-key="mrp" class="align-middle text-right text-muted">${mrpDisplay}</td>
+                        <td data-col-key="action" class="align-middle text-center">
                             <button type="button" class="btn btn-success btn-xs px-2 sdn-isl-btn-select">
                                 <i class="fas fa-check mr-1"></i>Select
                             </button>
@@ -712,6 +713,9 @@ $(function () {
             });
 
             $tbody.html(html);
+            if (window.applyTablePreferences) {
+                window.applyTablePreferences('sdn-isl-items-table');
+            }
             $('#sdn-isl-table-wrap').removeClass('d-none');
             $('#sdn-isl-count-label').text(items.length + ' item(s) found');
             $tbody.find('tr.sdn-isl-item-row').first().addClass('table-primary');

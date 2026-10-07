@@ -127,7 +127,7 @@
             </div>
             <div class="modal-body p-3">
                 <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <div class="input-group">
                             <div class="input-group-prepend">
                                 <span class="input-group-text bg-light"><i class="fas fa-font text-muted"></i></span>
@@ -151,8 +151,9 @@
                             </label>
                         </div>
                     </div>
-                    <div class="col-md-1">
-                        <button type="button" id="su-isl-btn-clear" class="btn btn-outline-secondary btn-block" title="Clear filter">
+                    <div class="col-md-2 text-right d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.stock-updates.item-search" table-id="su-isl-items-table" button-class="btn btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
+                        <button type="button" id="su-isl-btn-clear" class="btn btn-outline-secondary" title="Clear filter">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -169,16 +170,16 @@
                 </div>
 
                 <div id="su-isl-table-wrap" class="table-responsive d-none" style="max-height: 400px; overflow-y: auto;">
-                    <table class="table table-hover table-sm table-striped mb-0">
+                    <table class="table table-hover table-sm table-striped mb-0" id="su-isl-items-table">
                         <thead class="thead-dark sticky-top">
                             <tr>
-                                <th style="width: 45px;" class="text-center">#</th>
-                                <th>Item Name</th>
-                                <th style="width: 140px;" class="text-center">Code / Barcode</th>
-                                <th style="width: 90px;" class="text-center">Current Stock</th>
-                                <th style="width: 100px;" class="text-right">Sell Price</th>
-                                <th style="width: 100px;" class="text-right">MRP</th>
-                                <th style="width: 90px;" class="text-center">Action</th>
+                                <th style="width: 45px;" class="text-center" data-col-key="seq">#</th>
+                                <th data-col-key="name">Item Name</th>
+                                <th style="width: 140px;" class="text-center" data-col-key="code">Code / Barcode</th>
+                                <th style="width: 90px;" class="text-center" data-col-key="qty">Current Stock</th>
+                                <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
+                                <th style="width: 100px;" class="text-right" data-col-key="mrp">MRP</th>
+                                <th style="width: 90px;" class="text-center" data-col-key="action">Action</th>
                             </tr>
                         </thead>
                         <tbody id="su-isl-items-body"></tbody>
@@ -552,13 +553,13 @@
                             data-qty="${it.qty || 0}"
                             data-sell="${it.sell_price || 0}"
                             data-mrp="${it.mrp || 0}">
-                            <td class="align-middle text-center text-muted">${idx + 1}</td>
-                            <td class="align-middle font-weight-bold text-dark">${it.name}</td>
-                            <td class="align-middle text-center">${codeBadge}</td>
-                            <td class="align-middle text-center ${stockClass}">${parseFloat(it.qty || 0).toFixed(3)}</td>
-                            <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
-                            <td class="align-middle text-right text-muted">${mrpDisplay}</td>
-                            <td class="align-middle text-center">
+                            <td class="align-middle text-center text-muted" data-col-key="seq">${idx + 1}</td>
+                            <td class="align-middle font-weight-bold text-dark" data-col-key="name">${it.name}</td>
+                            <td class="align-middle text-center" data-col-key="code">${codeBadge}</td>
+                            <td class="align-middle text-center ${stockClass}" data-col-key="qty">${parseFloat(it.qty || 0).toFixed(3)}</td>
+                            <td class="align-middle text-right font-weight-bold text-success" data-col-key="sell_price">${sellDisplay}</td>
+                            <td class="align-middle text-right text-muted" data-col-key="mrp">${mrpDisplay}</td>
+                            <td class="align-middle text-center" data-col-key="action">
                                 <button type="button" class="btn btn-success btn-xs px-2 su-isl-btn-select">
                                     <i class="fas fa-check mr-1"></i>Select
                                 </button>
@@ -567,6 +568,9 @@
                 });
 
                 $tbody.html(html);
+                if (window.applyTablePreferences) {
+                    window.applyTablePreferences('su-isl-items-table');
+                }
                 $('#su-isl-table-wrap').removeClass('d-none');
                 $('#su-isl-count-label').text(items.length + ' item(s) found');
                 suIslSelectedIdx = items.length > 0 ? 0 : -1;

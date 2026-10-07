@@ -37,15 +37,20 @@
             @php
                 $user = auth()->user();
                 $allBranches = \App\Models\Branch::where('status', true)->orderBy('id')->get();
-                $reqBranch = request('branch_id');
-                if (!empty($reqBranch) && $reqBranch !== 'all' && $allBranches->contains('id', (int)$reqBranch)) {
-                    $activeBranchId = (int) $reqBranch;
+                if ($user->branch_id !== null) {
+                    $activeBranchId = (int) $user->branch_id;
                     session(['active_branch_id' => $activeBranchId]);
                 } else {
-                    $activeBranchId = session('active_branch_id');
-                    if (!$activeBranchId || !$allBranches->contains('id', (int)$activeBranchId)) {
-                        $activeBranchId = $user->branch_id ?: ($allBranches->firstWhere('id', 3)?->id ?? $allBranches->first()?->id ?? 3);
+                    $reqBranch = request('branch_id');
+                    if (!empty($reqBranch) && $reqBranch !== 'all' && $allBranches->contains('id', (int)$reqBranch)) {
+                        $activeBranchId = (int) $reqBranch;
                         session(['active_branch_id' => $activeBranchId]);
+                    } else {
+                        $activeBranchId = session('active_branch_id');
+                        if (!$activeBranchId || !$allBranches->contains('id', (int)$activeBranchId)) {
+                            $activeBranchId = $allBranches->firstWhere('id', 3)?->id ?? $allBranches->first()?->id ?? 3;
+                            session(['active_branch_id' => $activeBranchId]);
+                        }
                     }
                 }
                 $activeBranchObj = $allBranches->firstWhere('id', (int)$activeBranchId) ?? $allBranches->first();

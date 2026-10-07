@@ -397,7 +397,8 @@
                             <input type="text" id="sr-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-2 text-right">
+                    <div class="col-md-4 text-right d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.sales-returns.item-search" table-id="sr-isl-items-table" button-class="btn btn-sm btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
                         <button type="button" id="sr-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
@@ -417,14 +418,14 @@
                     <table class="table table-sm table-bordered table-hover mb-0" id="sr-isl-items-table">
                         <thead class="bg-dark text-white">
                             <tr>
-                                <th class="text-center" style="width: 40px;">#</th>
-                                <th>Product Name</th>
-                                <th class="text-center" style="width: 120px;">Code</th>
-                                <th class="text-center" style="width: 130px;">Expiry</th>
-                                <th class="text-right" style="width: 85px;">Sell Price</th>
-                                <th class="text-right" style="width: 85px;">MRP</th>
-                                <th class="text-right" style="width: 80px;">GST %</th>
-                                <th class="text-center" style="width: 80px;">Select</th>
+                                <th class="text-center" style="width: 40px;" data-col-key="seq">#</th>
+                                <th data-col-key="name">Product Name</th>
+                                <th class="text-center" style="width: 120px;" data-col-key="code">Code</th>
+                                <th class="text-center" style="width: 130px;" data-col-key="expiry">Expiry</th>
+                                <th class="text-right" style="width: 85px;" data-col-key="sell_price">Sell Price</th>
+                                <th class="text-right" style="width: 85px;" data-col-key="mrp">MRP</th>
+                                <th class="text-right" style="width: 80px;" data-col-key="gst">GST %</th>
+                                <th class="text-center" style="width: 80px;" data-col-key="action">Select</th>
                             </tr>
                         </thead>
                         <tbody id="sr-isl-items-body"></tbody>
@@ -729,14 +730,14 @@
                         data-mrp="${it.mrp || 0}"
                         data-gst="${it.gst_percent || 0}"
                         data-exp="${it.exp_date || ''}">
-                        <td class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
-                        <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-center">${expBadge}</td>
-                        <td class="align-middle text-right text-success font-weight-bold">${it.sell_price > 0 ? '\u20b9'+parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
-                        <td class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9'+parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
-                        <td class="align-middle text-right">${it.gst_percent || 0}%</td>
-                        <td class="align-middle text-center">
+                        <td data-col-key="seq" class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
+                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
+                        <td data-col-key="expiry" class="align-middle text-center">${expBadge}</td>
+                        <td data-col-key="sell_price" class="align-middle text-right text-success font-weight-bold">${it.sell_price > 0 ? '\u20b9'+parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
+                        <td data-col-key="mrp" class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9'+parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
+                        <td data-col-key="gst" class="align-middle text-right">${it.gst_percent || 0}%</td>
+                        <td data-col-key="action" class="align-middle text-center">
                             <button type="button" class="btn btn-success btn-xs px-2 sr-isl-btn-select"
                                 data-id="${it.id}">
                                 <i class="fas fa-check mr-1"></i>Select
@@ -745,6 +746,9 @@
                     </tr>`;
             });
             $tbody.html(html);
+            if (window.applyTablePreferences) {
+                window.applyTablePreferences('sr-isl-items-table');
+            }
             $('#sr-isl-table-wrap').removeClass('d-none');
             $('#sr-isl-no-results').addClass('d-none');
             $('#sr-isl-count-label').text(items.length + ' item(s) found');

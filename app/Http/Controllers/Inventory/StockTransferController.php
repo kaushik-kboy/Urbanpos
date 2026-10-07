@@ -31,6 +31,15 @@ class StockTransferController extends Controller
     {
         $query = StockTransfer::with(['fromBranch', 'toBranch']);
 
+        $user = $request->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $userBranchId = (int) $user->branch_id;
+            $query->where(function ($q) use ($userBranchId) {
+                $q->where('from_branch_id', $userBranchId)
+                  ->orWhere('to_branch_id', $userBranchId);
+            });
+        }
+
         if ($request->filled('search')) {
             $query->where('transfer_number', 'like', "%{$request->search}%");
         }
@@ -199,6 +208,14 @@ class StockTransferController extends Controller
 
     public function show(StockTransfer $stockTransfer)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $userBranchId = (int) $user->branch_id;
+            if ((int)$stockTransfer->from_branch_id !== $userBranchId && (int)$stockTransfer->to_branch_id !== $userBranchId) {
+                abort(403, 'You do not have access to this stock transfer.');
+            }
+        }
+
         $stockTransfer->load(['items.item', 'fromBranch', 'toBranch']);
 
         return view('inventory.stock-transfers.show', compact('stockTransfer'));
@@ -206,6 +223,14 @@ class StockTransferController extends Controller
 
     public function print(StockTransfer $stockTransfer)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $userBranchId = (int) $user->branch_id;
+            if ((int)$stockTransfer->from_branch_id !== $userBranchId && (int)$stockTransfer->to_branch_id !== $userBranchId) {
+                abort(403, 'You do not have access to this stock transfer.');
+            }
+        }
+
         $stockTransfer->load(['items.item', 'fromBranch', 'toBranch']);
 
         return view('inventory.stock-transfers.print', compact('stockTransfer'));
@@ -213,7 +238,9 @@ class StockTransferController extends Controller
 
     public function pendingReceipt(Request $request)
     {
-        $branchId = $request->input('branch_id');
+        $user = $request->user();
+        $isBranchScoped = $user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com';
+        $branchId = $isBranchScoped ? (int) $user->branch_id : $request->input('branch_id');
         $status = $request->input('status', 'Dispatched');
 
         $query = StockTransfer::with(['fromBranch', 'toBranch'])
@@ -224,7 +251,9 @@ class StockTransferController extends Controller
         }
 
         $stockTransfers = $query->latest('transfer_date')->latest('id')->paginate(20)->withQueryString();
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $branches = $isBranchScoped
+            ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
+            : Branch::orderBy('name')->pluck('name', 'id');
 
         $baseCountQuery = StockTransfer::query()
             ->when($branchId, fn ($q) => $q->where('to_branch_id', $branchId));
@@ -246,6 +275,13 @@ class StockTransferController extends Controller
 
     public function receiveForm(StockTransfer $stockTransfer)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $stockTransfer->to_branch_id !== (int) $user->branch_id) {
+                abort(403, 'Only the destination branch (' . ($stockTransfer->toBranch?->name ?? 'Receiving Branch') . ') can receive this stock transfer.');
+            }
+        }
+
         if ($stockTransfer->status !== 'Dispatched') {
             return redirect()->route('inventory.stock-transfers.pending-receipt')->with('status', 'This transfer is not awaiting receipt.');
         }
@@ -257,6 +293,13 @@ class StockTransferController extends Controller
 
     public function receive(Request $request, StockTransfer $stockTransfer)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $stockTransfer->to_branch_id !== (int) $user->branch_id) {
+                abort(403, 'Only the destination branch (' . ($stockTransfer->toBranch?->name ?? 'Receiving Branch') . ') can receive this stock transfer.');
+            }
+        }
+
         if ($stockTransfer->status !== 'Dispatched') {
             throw ValidationException::withMessages([
                 'status' => "Stock Transfer #{$stockTransfer->transfer_number} is not awaiting receipt.",
@@ -343,6 +386,13 @@ class StockTransferController extends Controller
 
     public function cancel(StockTransfer $stockTransfer)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $stockTransfer->from_branch_id !== (int) $user->branch_id) {
+                abort(403, 'Only the dispatching branch (' . ($stockTransfer->fromBranch?->name ?? 'Source Branch') . ') can cancel this stock transfer.');
+            }
+        }
+
         if ($stockTransfer->status !== 'Dispatched') {
             throw ValidationException::withMessages([
                 'status' => "Stock Transfer #{$stockTransfer->transfer_number} can only be cancelled while awaiting receipt.",

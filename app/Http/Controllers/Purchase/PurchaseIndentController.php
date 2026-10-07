@@ -42,8 +42,13 @@ class PurchaseIndentController extends Controller
             $query->where('priority', $request->priority);
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
+        $user = $request->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $query->where('branch_id', $user->branch_id);
+        } else {
+            if ($request->filled('branch_id') && $request->branch_id !== 'all') {
+                $query->where('branch_id', $request->branch_id);
+            }
         }
 
         if ($request->filled('date_from')) {
@@ -65,7 +70,9 @@ class PurchaseIndentController extends Controller
         $this->applySorting($query, $allowedSorts, ['indent_date' => 'desc', 'id' => 'desc']);
 
         $indents = $query->paginate(20)->withQueryString();
-        $branches = Branch::where('status', true)->orderBy('name')->get();
+        $branches = ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com')
+            ? Branch::where('id', $user->branch_id)->get()
+            : Branch::where('status', true)->orderBy('name')->get();
         $priorities = ['Low', 'Medium', 'High', 'Urgent'];
         $statuses = ['Pending', 'Approved', 'Rejected', 'Converted', 'Cancelled'];
 
@@ -174,6 +181,13 @@ class PurchaseIndentController extends Controller
 
     public function show(PurchaseIndent $purchaseIndent)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseIndent->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseIndent->load(['branch', 'requestedBy', 'reviewedBy', 'cancelledBy', 'purchaseOrder', 'items.item']);
 
         return view('purchase.indents.show', compact('purchaseIndent'));
@@ -297,6 +311,13 @@ class PurchaseIndentController extends Controller
 
     public function print(PurchaseIndent $purchaseIndent)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseIndent->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseIndent->load(['branch', 'requestedBy', 'reviewedBy', 'items.item']);
 
         return view('purchase.indents.print', compact('purchaseIndent'));

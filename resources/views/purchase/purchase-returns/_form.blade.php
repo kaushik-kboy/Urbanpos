@@ -233,8 +233,9 @@
                             <input type="text" id="pr-isl-filter-code" class="form-control font-weight-bold" placeholder="Filter by Code / Barcode..." autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-2">
-                        <button type="button" id="pr-isl-btn-clear" class="btn btn-outline-secondary btn-block">
+                    <div class="col-md-2 d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.purchase-returns.item-search" table-id="pr-isl-items-table" button-class="btn btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
+                        <button type="button" id="pr-isl-btn-clear" class="btn btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i> Clear
                         </button>
                     </div>
@@ -251,17 +252,17 @@
                 </div>
 
                 <div id="pr-isl-table-wrap" class="table-responsive d-none" style="max-height: 400px; overflow-y: auto;">
-                    <table class="table table-hover table-sm table-striped mb-0">
+                    <table class="table table-hover table-sm table-striped mb-0" id="pr-isl-items-table">
                         <thead class="thead-dark sticky-top">
                             <tr>
-                                <th style="width: 45px;" class="text-center">#</th>
-                                <th>Item Name</th>
-                                <th style="width: 140px;" class="text-center">Code / Barcode</th>
-                                <th style="width: 90px;" class="text-center">Stock</th>
-                                <th style="width: 110px;" class="text-right">Cost Price</th>
-                                <th style="width: 100px;" class="text-right">Sell Price</th>
-                                <th style="width: 80px;" class="text-right">GST %</th>
-                                <th style="width: 90px;" class="text-center">Action</th>
+                                <th style="width: 45px;" class="text-center" data-col-key="seq">#</th>
+                                <th data-col-key="name">Item Name</th>
+                                <th style="width: 140px;" class="text-center" data-col-key="code">Code / Barcode</th>
+                                <th style="width: 90px;" class="text-center" data-col-key="qty">Stock</th>
+                                <th style="width: 110px;" class="text-right" data-col-key="cost_price">Cost Price</th>
+                                <th style="width: 100px;" class="text-right" data-col-key="sell_price">Sell Price</th>
+                                <th style="width: 80px;" class="text-right" data-col-key="gst">GST %</th>
+                                <th style="width: 90px;" class="text-center" data-col-key="action">Action</th>
                             </tr>
                         </thead>
                         <tbody id="pr-isl-items-body"></tbody>
@@ -808,17 +809,17 @@
                             data-original-qty="${it.original_qty !== null && it.original_qty !== undefined ? it.original_qty : (it.invoiced_qty || '')}"
                             data-returned-qty="${it.already_returned || 0}"
                             data-remaining-qty="${it.remaining_qty !== null && it.remaining_qty !== undefined ? it.remaining_qty : ''}">
-                            <td class="align-middle text-center text-muted">${idx + 1}</td>
-                            <td class="align-middle font-weight-bold text-dark">
+                            <td data-col-key="seq" class="align-middle text-center text-muted">${idx + 1}</td>
+                            <td data-col-key="name" class="align-middle font-weight-bold text-dark">
                                 ${it.name}
                                 ${it.batch_no ? `<span class="badge badge-info ml-1">Batch: ${it.batch_no}</span>` : ''}
                             </td>
-                            <td class="align-middle text-center">${codeBadge}</td>
-                            <td class="align-middle text-center">${qtyCol}</td>
-                            <td class="align-middle text-right font-weight-bold text-dark">${costDisplay}</td>
-                            <td class="align-middle text-right text-success">${sellDisplay}</td>
-                            <td class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
-                            <td class="align-middle text-center">
+                            <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
+                            <td data-col-key="qty" class="align-middle text-center">${qtyCol}</td>
+                            <td data-col-key="cost_price" class="align-middle text-right font-weight-bold text-dark">${costDisplay}</td>
+                            <td data-col-key="sell_price" class="align-middle text-right text-success">${sellDisplay}</td>
+                            <td data-col-key="gst" class="align-middle text-right">${parseFloat(it.gst_percent || 0).toFixed(0)}%</td>
+                            <td data-col-key="action" class="align-middle text-center">
                                 <button type="button" class="btn btn-success btn-xs px-2 pr-isl-btn-select"
                                     data-id="${it.id}">
                                     <i class="fas fa-check mr-1"></i>Select
@@ -828,6 +829,9 @@
                 });
 
                 $tbody.html(html);
+                if (window.applyTablePreferences) {
+                    window.applyTablePreferences('pr-isl-items-table');
+                }
                 $('#pr-isl-table-wrap').removeClass('d-none');
                 $('#pr-isl-count-label').text(items.length + ' item(s) found');
 

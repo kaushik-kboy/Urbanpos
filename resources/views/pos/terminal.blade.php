@@ -1032,16 +1032,17 @@
                             <input type="text" id="pos-isl-filter-code" class="form-control form-control-sm" placeholder="Filter by code…" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-3 mb-1 mb-md-0 d-flex align-items-center">
+                    <div class="col-md-2 mb-1 mb-md-0 d-flex align-items-center">
                         <div class="custom-control custom-checkbox ml-1">
                             <input type="checkbox" class="custom-control-input" id="pos-isl-filter-all-products">
                             <label class="custom-control-label font-weight-bold text-dark small" for="pos-isl-filter-all-products" style="cursor: pointer; user-select: none;">
-                                <i class="fas fa-layer-group text-primary mr-1"></i>Show All Products (Zero Stock Bhi)
+                                <i class="fas fa-layer-group text-primary mr-1"></i>Show All
                             </label>
                         </div>
                     </div>
-                    <div class="col-md-1 text-right">
-                        <button type="button" id="pos-isl-btn-clear" class="btn btn-sm btn-outline-secondary font-weight-bold px-2 w-100" title="Clear Filters">
+                    <div class="col-md-2 text-right d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.pos.item-search" table-id="pos-isl-items-table" button-class="btn btn-sm btn-outline-secondary font-weight-bold px-2 mr-1" button-text="Columns" title="Customize Columns & Order" />
+                        <button type="button" id="pos-isl-btn-clear" class="btn btn-sm btn-outline-secondary font-weight-bold px-2" title="Clear Filters">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
                     </div>
@@ -1062,13 +1063,13 @@
                     <table class="table table-sm table-bordered table-hover mb-0" id="pos-isl-items-table">
                         <thead class="bg-dark text-white sticky-top" style="z-index: 2;">
                             <tr>
-                                <th class="text-center" style="width: 40px;">#</th>
-                                <th class="text-center" style="width: 140px;">Code / Barcode</th>
-                                <th>Product Name</th>
-                                <th class="text-right" style="width: 110px;">Qty (Stock)</th>
-                                <th class="text-right" style="width: 100px;">Sell Price</th>
-                                <th class="text-right" style="width: 100px;">MRP</th>
-                                <th class="text-center" style="width: 90px;">Action</th>
+                                <th class="text-center" style="width: 40px;" data-col-key="seq">#</th>
+                                <th class="text-center" style="width: 140px;" data-col-key="code">Code / Barcode</th>
+                                <th data-col-key="name">Product Name</th>
+                                <th class="text-right" style="width: 110px;" data-col-key="qty">Qty (Stock)</th>
+                                <th class="text-right" style="width: 100px;" data-col-key="sell_price">Sell Price</th>
+                                <th class="text-right" style="width: 100px;" data-col-key="mrp">MRP</th>
+                                <th class="text-center" style="width: 90px;" data-col-key="action">Action</th>
                             </tr>
                         </thead>
                         <tbody id="pos-isl-items-body">

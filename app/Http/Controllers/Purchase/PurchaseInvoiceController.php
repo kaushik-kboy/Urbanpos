@@ -59,8 +59,13 @@ class PurchaseInvoiceController extends Controller
             $query->whereDate('invoice_date', '<=', $request->input('date_to'));
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->input('branch_id'));
+        $user = $request->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $query->where('branch_id', $user->branch_id);
+        } else {
+            if ($request->filled('branch_id') && $request->input('branch_id') !== 'all') {
+                $query->where('branch_id', $request->input('branch_id'));
+            }
         }
 
         if ($request->filled('supplier_id')) {
@@ -86,7 +91,9 @@ class PurchaseInvoiceController extends Controller
         $this->applySorting($query, $allowedSorts, ['invoice_date' => 'desc', 'id' => 'desc']);
 
         $purchaseInvoices = $query->paginate(20)->withQueryString();
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $branches = ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com')
+            ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
+            : Branch::orderBy('name')->pluck('name', 'id');
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $purchaseTypes = ['Local', 'Interstate'];
 
@@ -254,6 +261,13 @@ class PurchaseInvoiceController extends Controller
 
     public function show(PurchaseInvoice $purchaseInvoice)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseInvoice->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseInvoice->load(['supplier', 'branch', 'purchaseOrder', 'items.item']);
 
         return view('purchase.purchase-invoices.show', compact('purchaseInvoice'));
@@ -261,6 +275,13 @@ class PurchaseInvoiceController extends Controller
 
     public function print(PurchaseInvoice $purchaseInvoice)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseInvoice->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseInvoice->load(['supplier', 'branch', 'purchaseOrder', 'items.item']);
 
         return view('purchase.purchase-invoices.print', compact('purchaseInvoice'));

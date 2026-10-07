@@ -154,6 +154,13 @@ class PurchaseOrderController extends Controller
 
     public function show(PurchaseOrder $purchaseOrder)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseOrder->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseOrder->load(['supplier', 'branch', 'items.item']);
 
         return view('purchase.purchase-orders.show', compact('purchaseOrder'));
@@ -161,6 +168,13 @@ class PurchaseOrderController extends Controller
 
     public function print(PurchaseOrder $purchaseOrder)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseOrder->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseOrder->load(['supplier', 'branch', 'items.item']);
 
         return view('purchase.purchase-orders.print', compact('purchaseOrder'));

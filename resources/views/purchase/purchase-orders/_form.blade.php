@@ -274,7 +274,8 @@
                             <input type="text" id="po-isl-filter-expiry" class="form-control" placeholder="Filter expiry…" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-2 text-right">
+                    <div class="col-md-2 text-right d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.purchase-orders.item-search" table-id="po-isl-items-table" button-class="btn btn-sm btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
                         <button type="button" id="po-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
@@ -296,15 +297,15 @@
                     <table class="table table-sm table-bordered table-hover mb-0" id="po-isl-items-table">
                         <thead class="bg-dark text-white">
                             <tr>
-                                <th class="text-center" style="width: 40px;">#</th>
-                                <th>Product Name</th>
-                                <th class="text-center" style="width: 120px;">Code</th>
-                                <th class="text-right" style="width: 95px;">Cost Price</th>
-                                <th class="text-right" style="width: 95px;">Sell Price</th>
-                                <th class="text-right" style="width: 90px;">MRP</th>
-                                <th class="text-right" style="width: 85px;">Stock</th>
-                                <th class="text-center" style="width: 120px;">Expiry / Batch</th>
-                                <th class="text-center" style="width: 80px;">Select</th>
+                                <th class="text-center" style="width: 40px;" data-col-key="seq">#</th>
+                                <th data-col-key="name">Product Name</th>
+                                <th class="text-center" style="width: 120px;" data-col-key="code">Code</th>
+                                <th class="text-right" style="width: 95px;" data-col-key="cost_price">Cost Price</th>
+                                <th class="text-right" style="width: 95px;" data-col-key="sell_price">Sell Price</th>
+                                <th class="text-right" style="width: 90px;" data-col-key="mrp">MRP</th>
+                                <th class="text-right" style="width: 85px;" data-col-key="qty">Stock</th>
+                                <th class="text-center" style="width: 120px;" data-col-key="expiry">Expiry / Batch</th>
+                                <th class="text-center" style="width: 80px;" data-col-key="action">Select</th>
                             </tr>
                         </thead>
                         <tbody id="po-isl-items-body">
@@ -450,24 +451,27 @@
                         data-mrp="${it.mrp || 0}"
                         data-stock="${it.qty || 0}"
                         data-gst="${it.gst_percent || 0}">
-                        <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name}</td>
-                        <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-right font-weight-bold text-primary">${costDisplay}</td>
-                        <td class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
-                        <td class="align-middle text-right text-muted">${mrpDisplay}</td>
-                        <td class="align-middle text-right ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
-                        <td class="align-middle text-center">${expBadge}</td>
-                        <td class="align-middle text-center">
+                        <td data-col-key="seq" class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">${it.name}</td>
+                        <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
+                        <td data-col-key="cost_price" class="align-middle text-right font-weight-bold text-primary">${costDisplay}</td>
+                        <td data-col-key="sell_price" class="align-middle text-right font-weight-bold text-success">${sellDisplay}</td>
+                        <td data-col-key="mrp" class="align-middle text-right text-muted">${mrpDisplay}</td>
+                        <td data-col-key="qty" class="align-middle text-right ${qtyClass}">${parseFloat(it.qty).toFixed(2)}</td>
+                        <td data-col-key="expiry" class="align-middle text-center">${expBadge}</td>
+                        <td data-col-key="action" class="align-middle text-center">
                             <button type="button" class="btn btn-success btn-xs px-2 po-isl-btn-select"
-                                data-id="${it.id}" data-code="${it.code}" data-stock="${it.qty || 0}">
-                                <i class="fas fa-check mr-1"></i>Select
+                                 data-id="${it.id}" data-code="${it.code}" data-stock="${it.qty || 0}">
+                                 <i class="fas fa-check mr-1"></i>Select
                             </button>
                         </td>
                     </tr>`;
             });
 
             $tbody.html(html);
+            if (window.applyTablePreferences) {
+                window.applyTablePreferences('po-isl-items-table');
+            }
             $('#po-isl-table-wrap').removeClass('d-none');
             $('#po-isl-count-label').text(items.length + (items.length === 100 ? '+ (showing top 100)' : '') + ' item(s) found');
             islSelectedIdx = items.length > 0 ? 0 : -1;

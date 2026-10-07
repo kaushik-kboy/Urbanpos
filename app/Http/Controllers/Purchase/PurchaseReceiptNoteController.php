@@ -54,8 +54,13 @@ class PurchaseReceiptNoteController extends Controller
             $query->whereDate('receipt_date', '<=', $request->date_to);
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
+        $user = $request->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $query->where('branch_id', $user->branch_id);
+        } else {
+            if ($request->filled('branch_id') && $request->branch_id !== 'all') {
+                $query->where('branch_id', $request->branch_id);
+            }
         }
 
         if ($request->filled('supplier_id')) {
@@ -80,7 +85,9 @@ class PurchaseReceiptNoteController extends Controller
         $this->applySorting($query, $allowedSorts, ['receipt_date' => 'desc', 'id' => 'desc']);
 
         $receiptNotes = $query->paginate(20)->withQueryString();
-        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $branches = ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com')
+            ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
+            : Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
         $suppliers = Supplier::where('status', true)->orderBy('name')->pluck('name', 'id');
         $statuses = ['Received', 'Invoiced', 'Cancelled'];
 
@@ -237,6 +244,13 @@ class PurchaseReceiptNoteController extends Controller
 
     public function show(PurchaseReceiptNote $purchaseReceiptNote)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseReceiptNote->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseReceiptNote->load(['supplier', 'branch', 'purchaseOrder', 'purchaseInvoice', 'items.item', 'createdBy', 'cancelledBy']);
 
         return view('purchase.receipt-notes.show', compact('purchaseReceiptNote'));
@@ -244,6 +258,13 @@ class PurchaseReceiptNoteController extends Controller
 
     public function print(PurchaseReceiptNote $purchaseReceiptNote)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseReceiptNote->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseReceiptNote->load(['supplier', 'branch', 'purchaseOrder', 'items.item']);
 
         return view('purchase.receipt-notes.print', compact('purchaseReceiptNote'));

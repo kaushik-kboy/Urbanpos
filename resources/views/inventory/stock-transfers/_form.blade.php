@@ -23,14 +23,20 @@
 
 <div class="row g-2 form-fields-grid tx-header-fields-grid mb-3" id="st-header-fields-grid">
     @php
-        $selectedFromBranch = old('from_branch_id', $transfer->from_branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+        $user = auth()->user();
+        $isBranchScoped = $user && $user->branch_id && !$user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com';
+        $selectedFromBranch = $isBranchScoped ? (int)$user->branch_id : old('from_branch_id', $transfer->from_branch_id ?? session('active_branch_id', $user?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
     @endphp
     <div class="field-wrapper col-md-4" data-field="from_branch_id" data-label="From Branch" data-default-order="1" data-core="1">
         <label for="from_branch_id" class="font-weight-bold">From Branch <span class="text-danger">*</span></label>
-        <select name="from_branch_id" id="from_branch_id" class="form-control select2" required>
-            <option value="">-- Select Source Branch --</option>
+        <select name="from_branch_id" id="from_branch_id" class="form-control select2" required {{ $isBranchScoped ? 'style=pointer-events:none;background-color:#e9ecef; tabindex=-1' : '' }}>
+            @if (!$isBranchScoped)
+                <option value="">-- Select Source Branch --</option>
+            @endif
             @foreach ($branches as $bId => $bName)
-                <option value="{{ $bId }}" @selected($selectedFromBranch == $bId)>{{ $bName }}</option>
+                @if (!$isBranchScoped || $bId == $selectedFromBranch)
+                    <option value="{{ $bId }}" @selected($selectedFromBranch == $bId)>{{ $bName }}</option>
+                @endif
             @endforeach
         </select>
     </div>
@@ -176,7 +182,8 @@
                             <input type="text" id="st-isl-filter-expiry" class="form-control" placeholder="Filter expiry (YYYY-MM)…" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-md-2 text-right">
+                    <div class="col-md-2 text-right d-flex justify-content-end align-items-center">
+                        <x-table-column-customizer table-key="modal.stock-transfers.item-search" table-id="st-isl-items-table" button-class="btn btn-sm btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
                         <button type="button" id="st-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i>Clear
                         </button>
@@ -198,12 +205,12 @@
                     <table class="table table-sm table-bordered table-hover mb-0" id="st-isl-items-table">
                         <thead class="bg-dark text-white">
                             <tr>
-                                <th class="text-center" style="width: 40px;">#</th>
-                                <th>Product Name</th>
-                                <th class="text-center" style="width: 140px;">Code / Barcode</th>
-                                <th class="text-center" style="width: 130px;">Expiry</th>
-                                <th class="text-right" style="width: 120px;">Available (Stock)</th>
-                                <th class="text-center" style="width: 90px;">Action</th>
+                                <th class="text-center" style="width: 40px;" data-col-key="seq">#</th>
+                                <th data-col-key="name">Product Name</th>
+                                <th class="text-center" style="width: 140px;" data-col-key="code">Code / Barcode</th>
+                                <th class="text-center" style="width: 130px;" data-col-key="expiry">Expiry</th>
+                                <th class="text-right" style="width: 120px;" data-col-key="qty">Available (Stock)</th>
+                                <th class="text-center" style="width: 90px;" data-col-key="action">Action</th>
                             </tr>
                         </thead>
                         <tbody id="st-isl-items-body">
@@ -568,17 +575,20 @@
                 html += `
                     <tr class="${rowClass}" style="${rowStyle}"
                         data-idx="${idx}">
-                        <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
-                        <td class="align-middle font-weight-bold text-dark">${it.name} ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : ''}</td>
-                        <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle text-center">${expBadge}</td>
-                        <td class="align-middle text-right ${qtyClass}">${qtyAvailable.toFixed(3)}</td>
-                        <td class="align-middle text-center">
+                        <td class="align-middle text-center font-weight-bold text-muted" data-col-key="seq">${idx + 1}</td>
+                        <td class="align-middle font-weight-bold text-dark" data-col-key="name">${it.name} ${isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : ''}</td>
+                        <td class="align-middle text-center" data-col-key="code">${codeBadge}</td>
+                        <td class="align-middle text-center" data-col-key="expiry">${expBadge}</td>
+                        <td class="align-middle text-right ${qtyClass}" data-col-key="qty">${qtyAvailable.toFixed(3)}</td>
+                        <td class="align-middle text-center" data-col-key="action">
                             ${actionBtn}
                         </td>
                     </tr>`;
             });
             $tbody.html(html);
+            if (window.applyTablePreferences) {
+                window.applyTablePreferences('st-isl-items-table');
+            }
             $('#st-isl-table-wrap').removeClass('d-none');
             $('#st-isl-count-label').text(items.length + (items.length === 100 ? '+ (showing top 100)' : '') + ' item(s) found');
 

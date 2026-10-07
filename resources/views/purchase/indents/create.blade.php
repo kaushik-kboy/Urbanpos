@@ -202,7 +202,8 @@
                                 <input type="text" id="indent-isl-filter-code" class="form-control" placeholder="Filter by code…" autocomplete="off">
                             </div>
                         </div>
-                        <div class="col-md-2 text-right">
+                        <div class="col-md-2 text-right d-flex justify-content-end align-items-center">
+                            <x-table-column-customizer table-key="modal.indents.item-search" table-id="indent-isl-items-table" button-class="btn btn-sm btn-outline-secondary mr-2" button-text="Columns" title="Customize Columns & Order" />
                             <button type="button" id="indent-isl-btn-clear" class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-times mr-1"></i>Clear
                             </button>
@@ -220,14 +221,14 @@
                         <table class="table table-sm table-bordered table-hover mb-0" id="indent-isl-items-table">
                             <thead class="bg-dark text-white">
                                 <tr>
-                                    <th class="text-center" style="width: 40px;">#</th>
-                                    <th>Product Name</th>
-                                    <th class="text-center" style="width: 130px;">Code</th>
-                                    <th class="text-right" style="width: 100px;">Cost Price</th>
-                                    <th class="text-right" style="width: 100px;">Sell Price</th>
-                                    <th class="text-right" style="width: 100px;">MRP</th>
-                                    <th class="text-right" style="width: 90px;">Stock</th>
-                                    <th class="text-center" style="width: 80px;">Select</th>
+                                    <th class="text-center" style="width: 40px;" data-col-key="seq">#</th>
+                                    <th data-col-key="name">Product Name</th>
+                                    <th class="text-center" style="width: 130px;" data-col-key="code">Code</th>
+                                    <th class="text-right" style="width: 100px;" data-col-key="cost_price">Cost Price</th>
+                                    <th class="text-right" style="width: 100px;" data-col-key="sell_price">Sell Price</th>
+                                    <th class="text-right" style="width: 100px;" data-col-key="mrp">MRP</th>
+                                    <th class="text-right" style="width: 90px;" data-col-key="qty">Stock</th>
+                                    <th class="text-center" style="width: 80px;" data-col-key="action">Select</th>
                                 </tr>
                             </thead>
                             <tbody id="indent-isl-items-body"></tbody>
@@ -428,19 +429,23 @@
                         'data-sell="' + sell + '" ' +
                         'data-mrp="' + mrp + '" ' +
                         'data-stock="' + stock + '">' +
-                        '<td class="text-center align-middle">' + (i + 1) + '</td>' +
-                        '<td class="align-middle font-weight-bold">' + $('<div>').text(itm.name).html() + '</td>' +
-                        '<td class="text-center align-middle font-weight-bold text-monospace">' + code + '</td>' +
-                        '<td class="text-right align-middle">₹' + cost + '</td>' +
-                        '<td class="text-right align-middle">₹' + sell + '</td>' +
-                        '<td class="text-right align-middle">₹' + mrp + '</td>' +
-                        '<td class="text-right align-middle font-weight-bold text-info">' + stock + '</td>' +
-                        '<td class="text-center align-middle">' +
+                        '<td data-col-key="seq" class="text-center align-middle">' + (i + 1) + '</td>' +
+                        '<td data-col-key="name" class="align-middle font-weight-bold">' + $('<div>').text(itm.name).html() + '</td>' +
+                        '<td data-col-key="code" class="text-center align-middle font-weight-bold text-monospace">' + code + '</td>' +
+                        '<td data-col-key="cost_price" class="text-right align-middle">₹' + cost + '</td>' +
+                        '<td data-col-key="sell_price" class="text-right align-middle">₹' + sell + '</td>' +
+                        '<td data-col-key="mrp" class="text-right align-middle">₹' + mrp + '</td>' +
+                        '<td data-col-key="qty" class="text-right align-middle font-weight-bold text-info">' + stock + '</td>' +
+                        '<td data-col-key="action" class="text-center align-middle">' +
                             '<button type="button" class="btn btn-primary btn-xs px-2 indent-isl-btn-select">Select</button>' +
                         '</td>' +
                     '</tr>';
                     $tbody.append(row);
                 });
+
+                if (window.applyTablePreferences) {
+                    window.applyTablePreferences('indent-isl-items-table');
+                }
 
                 islSelectedIdx = items.length > 0 ? 0 : -1;
                 updateModalHighlight();

@@ -2732,21 +2732,24 @@
                 html += `
                     <tr class="${rowClass} ${idx === 0 && !isBlocked ? 'table-primary' : ''}" style="${rowStyle}"
                         data-item='${JSON.stringify(it).replace(/'/g, "&#39;")}'>
-                        <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
-                        <td class="align-middle text-center">${codeBadge}</td>
-                        <td class="align-middle font-weight-bold text-dark">
+                        <td data-col-key="seq" class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                        <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
+                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">
                             ${escapeHtml(it.name)}
                             ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : '')}
                         </td>
-                        <td class="align-middle text-right">${qtyBadge}</td>
-                        <td class="align-middle text-right font-weight-bold text-primary">₹${parseFloat(it.sell_price || 0).toFixed(2)}</td>
-                        <td class="align-middle text-right text-muted">₹${parseFloat(it.mrp || 0).toFixed(2)}</td>
-                        <td class="align-middle text-center">${actionBtn}</td>
+                        <td data-col-key="qty" class="align-middle text-right">${qtyBadge}</td>
+                        <td data-col-key="sell_price" class="align-middle text-right font-weight-bold text-primary">₹${parseFloat(it.sell_price || 0).toFixed(2)}</td>
+                        <td data-col-key="mrp" class="align-middle text-right text-muted">₹${parseFloat(it.mrp || 0).toFixed(2)}</td>
+                        <td data-col-key="action" class="align-middle text-center">${actionBtn}</td>
                     </tr>
                 `;
             });
 
             $tbody.html(html);
+            if (window.applyTablePreferences) {
+                window.applyTablePreferences('pos-isl-items-table');
+            }
 
             // Click row or Add button to select item
             $tbody.find('.isl-item-row:not(.isl-item-disabled)').on('click', function (e) {

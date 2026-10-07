@@ -31,9 +31,9 @@
         @if(!empty($buttonText)) <span class="ml-1">{{ $buttonText }}</span> @endif
     </button>
 
-    <div class="modal fade" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-labelledby="{{ $modalId }}Label" aria-hidden="true">
+    <div class="modal fade table-customizer-modal" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-labelledby="{{ $modalId }}Label" aria-hidden="true" style="z-index: 1065;">
         <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered" role="document">
-            <div class="modal-content shadow">
+            <div class="modal-content shadow border-0">
                 <div class="modal-header bg-light py-2">
                     <h5 class="modal-title font-weight-bold h6 mb-0" id="{{ $modalId }}Label">
                         <i class="fas fa-sliders-h text-primary mr-1"></i> Customize Columns & Order
@@ -88,6 +88,12 @@
     .table-col-hidden {
         display: none !important;
     }
+    .table-customizer-modal {
+        z-index: 1065 !important;
+    }
+    .modal-backdrop.table-customizer-backdrop {
+        z-index: 1060 !important;
+    }
 </style>
 @endpush
 
@@ -141,7 +147,8 @@
             }
             th.setAttribute('data-orig-idx', idx);
 
-            const isActionCol = th.innerText.trim().toLowerCase() === 'actions' || th.hasAttribute('data-no-hide');
+            const labelLower = th.innerText.trim().toLowerCase();
+            const isActionCol = ['actions', 'action', 'select'].includes(labelLower) || th.hasAttribute('data-no-hide');
             colDefinitions.push({
                 key: colKey,
                 label: th.innerText.trim() || ('Column ' + (idx + 1)),
@@ -158,6 +165,7 @@
                 if (tr.children.length === 1 && tr.children[0].hasAttribute('colspan')) return;
 
                 Array.from(tr.children).forEach((td, idx) => {
+                    if (td.hasAttribute('data-col-key')) return;
                     const correspondingTh = thList[idx];
                     if (correspondingTh) {
                         td.setAttribute('data-col-key', correspondingTh.getAttribute('data-col-key'));
@@ -462,7 +470,41 @@
                 .catch(err => console.error('Error resetting table preferences:', err));
             };
         }
+        window.TableCustomizers = window.TableCustomizers || {};
+        window.TableCustomizers[tableId] = {
+            apply: function() {
+                tagBodyCells();
+                if (savedPrefs && savedPrefs.length > 0) {
+                    applyPreferences(savedPrefs);
+                }
+            },
+            reset: function() {
+                applyPreferences([]);
+            }
+        };
     }
+
+    window.applyTablePreferences = function(tableId) {
+        if (window.TableCustomizers && window.TableCustomizers[tableId]) {
+            window.TableCustomizers[tableId].apply();
+        }
+    };
+
+    $(document).on('show.bs.modal', '.table-customizer-modal', function() {
+        const $modal = $(this);
+        if ($('.modal:visible').not($modal).length > 0) {
+            $modal.css('z-index', 1065);
+            setTimeout(function() {
+                $('.modal-backdrop').not('.table-customizer-backdrop').last().addClass('table-customizer-backdrop').css('z-index', 1060);
+            }, 10);
+        }
+    });
+
+    $(document).on('hidden.bs.modal', '.table-customizer-modal', function() {
+        if ($('.modal:visible').length > 0) {
+            $('body').addClass('modal-open');
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.table-customizer-wrapper').forEach(wrapper => {

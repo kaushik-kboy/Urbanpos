@@ -57,8 +57,13 @@ class PurchaseReturnController extends Controller
             $query->whereDate('return_date', '<=', $request->input('date_to'));
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->input('branch_id'));
+        $user = $request->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            $query->where('branch_id', $user->branch_id);
+        } else {
+            if ($request->filled('branch_id') && $request->input('branch_id') !== 'all') {
+                $query->where('branch_id', $request->input('branch_id'));
+            }
         }
 
         if ($request->filled('supplier_id')) {
@@ -83,7 +88,9 @@ class PurchaseReturnController extends Controller
         $this->applySorting($query, $allowedSorts, ['return_date' => 'desc', 'id' => 'desc']);
 
         $purchaseReturns = $query->paginate(20)->withQueryString();
-        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $branches = ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com')
+            ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
+            : Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
         $suppliers = Supplier::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return view('purchase.purchase-returns.index', compact('purchaseReturns', 'branches', 'suppliers'));
@@ -562,6 +569,13 @@ class PurchaseReturnController extends Controller
 
     public function print(PurchaseReturn $purchaseReturn)
     {
+        $user = auth()->user();
+        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+            if ((int) $purchaseReturn->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseReturn->load(['supplier', 'branch', 'purchaseInvoice', 'items.item']);
 
         return view('purchase.purchase-returns.print', compact('purchaseReturn'));
