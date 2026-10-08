@@ -4,6 +4,7 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         globals: true,
+        pool: 'threads',
         include: ['tests/Javascript/**/*.test.js'],
     },
 });
