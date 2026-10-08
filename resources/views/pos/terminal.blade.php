@@ -106,12 +106,12 @@
                             <th class="text-center" style="width: 35px;">#</th>
                             <th class="text-center" style="width: 75px;">Code</th>
                             <th>Description</th>
-                            <th class="text-center" style="width: 100px;">Exp Date</th>
-                            <th class="text-center" style="width: 75px;">Qty</th>
+                            <th class="text-center" style="width: 105px; white-space: nowrap;">Exp Date</th>
+                            <th class="text-center" style="width: 70px;">Qty</th>
                             <th class="text-right" style="width: 80px;">Sell</th>
                             <th class="text-right" style="width: 80px;">MRP</th>
-                            <th class="text-center" style="width: 80px; min-width: 80px;">Dis %</th>
-                            <th class="text-center" style="width: 90px; min-width: 90px;">Dis Amt</th>
+                            <th class="text-right" style="width: 75px;">Dis %</th>
+                            <th class="text-right" style="width: 85px;">Dis Amt</th>
                             <th class="text-right" style="width: 95px;">Net Amount</th>
                             <th class="text-center" style="width: 35px;"></th>
                         </tr>

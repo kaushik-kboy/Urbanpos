@@ -35,7 +35,7 @@
         $expDateFormatted = '';
         if (!empty($expDate)) {
             try {
-                $expDateFormatted = \Carbon\Carbon::parse($expDate)->format('d/m/Y');
+                $expDateFormatted = \Carbon\Carbon::parse($expDate)->format('d-m-Y');
             } catch (\Throwable) {
                 $expDateFormatted = (string) $expDate;
             }

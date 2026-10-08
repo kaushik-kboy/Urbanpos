@@ -424,7 +424,7 @@
                                         ₹{{ number_format($bill->total, 2) }}
                                     </td>
                                     <td>
-                                        {{ $bill->bill_date ? $bill->bill_date->format('d/m/Y') : '' }}
+                                        {{ $bill->bill_date ? $bill->bill_date->format('d-m-Y') : '' }}
                                         <span class="d-block small text-muted">{{ $bill->bill_date ? $bill->bill_date->format('h:i A') : '' }}</span>
                                     </td>
                                     <td class="text-center">
@@ -440,7 +440,7 @@
                                         </td>
                                         <td>
                                             <div class="small font-weight-bold">Ack: {{ $bill->ack_no }}</div>
-                                            <div class="small text-muted">{{ $bill->ack_date ? $bill->ack_date->format('d/m/Y h:i A') : '' }}</div>
+                                            <div class="small text-muted">{{ $bill->ack_date ? $bill->ack_date->format('d-m-Y h:i A') : '' }}</div>
                                         </td>
                                         <td class="text-center" onclick="event.stopPropagation();">
                                             <div class="btn-group btn-group-sm">

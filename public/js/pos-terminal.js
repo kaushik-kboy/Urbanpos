@@ -29,6 +29,22 @@
         held_bills: []
     };
 
+    function formatDmyDate(val) {
+        if (!val) return '';
+        const str = String(val).trim().substring(0, 10);
+        const m = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+        if (m) {
+            const pad = n => String(n).padStart(2, '0');
+            return `${pad(m[3])}-${pad(m[2])}-${m[1]}`;
+        }
+        const m2 = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+        if (m2) {
+            const pad = n => String(n).padStart(2, '0');
+            return `${pad(m2[1])}-${pad(m2[2])}-${m2[3]}`;
+        }
+        return str;
+    }
+
     // Audio Feedback Generator using Web Audio API
     const sound = {
         ctx: null,
@@ -412,6 +428,77 @@
             }
         });
 
+        // Click-to-edit inline for Dis %
+        $(document).on('click', '.pos-row-disc-pct', function (e) {
+            if ($(this).find('input').length) return;
+            const idx = parseInt($(this).data('idx'));
+            if (isNaN(idx) || !state.cart[idx]) return;
+            const item = state.cart[idx];
+            const currentVal = item.disc_percent > 0 ? item.disc_percent : '';
+            const $cell = $(this);
+            $cell.html(`<input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" style="height: 26px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0" data-idx="${idx}">`);
+            const $input = $cell.find('input');
+            $input.focus().select();
+
+            $input.on('blur', function () {
+                let val = parseFloat($(this).val()) || 0;
+                if (val > 100) val = 100;
+                if (val < 0) val = 0;
+                state.cart[idx].disc_percent = val;
+                recalculateRow(idx, 'percent');
+                const disp = state.cart[idx].disc_percent > 0 ? (state.cart[idx].disc_percent % 1 === 0 ? state.cart[idx].disc_percent : state.cart[idx].disc_percent.toFixed(2)) + '%' : '0%';
+                $cell.text(disp);
+            });
+
+            $input.on('keydown', function (ke) {
+                if (ke.key === 'Enter') {
+                    ke.preventDefault();
+                    $(this).blur();
+                    focusScanner();
+                } else if (ke.key === 'Escape') {
+                    ke.preventDefault();
+                    const disp = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) + '%' : '0%';
+                    $cell.text(disp);
+                    focusScanner();
+                }
+            });
+        });
+
+        // Click-to-edit inline for Dis Amt
+        $(document).on('click', '.pos-row-disc-amt', function (e) {
+            if ($(this).find('input').length) return;
+            const idx = parseInt($(this).data('idx'));
+            if (isNaN(idx) || !state.cart[idx]) return;
+            const item = state.cart[idx];
+            const currentVal = item.disc_amount > 0 ? parseFloat(item.disc_amount).toFixed(2) : '';
+            const $cell = $(this);
+            $cell.html(`<input type="number" step="0.01" min="0" class="pos-row-input pos-disc-amount text-right" style="height: 26px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
+            const $input = $cell.find('input');
+            $input.focus().select();
+
+            $input.on('blur', function () {
+                let val = parseFloat($(this).val()) || 0;
+                const base = (item.qty || 1) * (item.sell_price || 0);
+                if (base > 0 && val > base) val = base;
+                if (val < 0) val = 0;
+                state.cart[idx].disc_amount = val;
+                recalculateRow(idx, 'amount');
+                $cell.text('₹ ' + (state.cart[idx].disc_amount || 0).toFixed(2));
+            });
+
+            $input.on('keydown', function (ke) {
+                if (ke.key === 'Enter') {
+                    ke.preventDefault();
+                    $(this).blur();
+                    focusScanner();
+                } else if (ke.key === 'Escape') {
+                    ke.preventDefault();
+                    $cell.text('₹ ' + (item.disc_amount || 0).toFixed(2));
+                    focusScanner();
+                }
+            });
+        });
+
         $(document).on('input change', '.pos-disc-percent', function () {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
@@ -446,7 +533,7 @@
             recalculateRow(idx, 'amount');
         });
 
-        // Fast POS keyboard flow (Task 5: Qty -> Dis % -> Dis Amt -> Scanner)
+        // Fast POS keyboard flow: Qty -> Enter -> Scanner
         $(document).on('keydown', '.pos-qty-input', function (e) {
             const idx = $(this).data('idx');
             const rawVal = $(this).val().trim();
@@ -465,39 +552,8 @@
 
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    const discPct = cartTableBody ? cartTableBody.querySelector(`.pos-disc-percent[data-idx="${idx}"]`) : null;
-                    if (discPct) {
-                        discPct.focus();
-                        discPct.select();
-                    } else {
-                        focusScanner();
-                    }
+                    focusScanner();
                 }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                focusScanner();
-            }
-        });
-
-        $(document).on('keydown', '.pos-disc-percent', function (e) {
-            const idx = $(this).data('idx');
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const discAmt = cartTableBody ? cartTableBody.querySelector(`.pos-disc-amount[data-idx="${idx}"]`) : null;
-                if (discAmt) {
-                    discAmt.focus();
-                    discAmt.select();
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                focusScanner();
-            }
-        });
-
-        $(document).on('keydown', '.pos-disc-amount', function (e) {
-            if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
-                e.preventDefault();
-                focusScanner();
             } else if (e.key === 'Escape') {
                 e.preventDefault();
                 focusScanner();
@@ -713,7 +769,7 @@
             const price = parseFloat(item.sell_price || item.mrp || 0).toFixed(2);
             const stock = parseFloat(item.qty || 0);
             const stockBadge = stock > 0 ? `<span class="badge badge-success">${stock} in stock</span>` : `<span class="badge badge-danger">0 in stock</span>`;
-            const expBadge = item.exp_date ? `<span class="badge badge-info ml-1"><i class="far fa-calendar-alt mr-1"></i>${item.exp_date}</span>` : '';
+            const expBadge = item.exp_date ? `<span class="badge badge-info ml-1"><i class="far fa-calendar-alt mr-1"></i>${formatDmyDate(item.exp_date)}</span>` : '';
             html += `
                 <div class="pos-search-item" data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}'>
                     <div>
@@ -870,37 +926,43 @@
             } else {
                 item.disc_amount = 0;
             }
-            const amtInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-amount[data-idx="${idx}"]`) : null;
-            if (amtInput) amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
         } else if (source === 'amount') {
             if (base > 0 && item.disc_amount > 0) {
                 item.disc_percent = Math.min(100, Math.round(((item.disc_amount / base) * 100) * 100) / 100);
             } else {
                 item.disc_percent = 0;
             }
-            const pctInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-percent[data-idx="${idx}"]`) : null;
-            if (pctInput) pctInput.value = item.disc_percent > 0 ? item.disc_percent : '';
         } else { // qty changed
             if (item.disc_percent > 0 && base > 0) {
                 item.disc_amount = Math.min(base, Math.round((base * item.disc_percent / 100) * 100) / 100);
-                const amtInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-amount[data-idx="${idx}"]`) : null;
-                if (amtInput) amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
             } else if (item.disc_amount > 0 && base > 0) {
                 if (item.disc_amount > base) {
                     item.disc_amount = base;
-                    const amtInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-amount[data-idx="${idx}"]`) : null;
-                    if (amtInput) amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
                 }
                 item.disc_percent = Math.min(100, Math.round(((item.disc_amount / base) * 100) * 100) / 100);
-                const pctInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-percent[data-idx="${idx}"]`) : null;
-                if (pctInput) pctInput.value = item.disc_percent > 0 ? item.disc_percent : '';
             } else if (base <= 0) {
                 item.disc_amount = 0;
                 item.disc_percent = 0;
-                const amtInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-amount[data-idx="${idx}"]`) : null;
-                if (amtInput) amtInput.value = '';
-                const pctInput = cartTableBody ? cartTableBody.querySelector(`.pos-disc-percent[data-idx="${idx}"]`) : null;
-                if (pctInput) pctInput.value = '';
+            }
+        }
+
+        // Update Dis % and Dis Amt cells (whether input or formatted text)
+        const pctCell = cartTableBody ? cartTableBody.querySelector(`.pos-row-disc-pct[data-idx="${idx}"]`) : null;
+        if (pctCell) {
+            const pctInput = pctCell.querySelector('input');
+            if (pctInput) {
+                pctInput.value = item.disc_percent > 0 ? item.disc_percent : '';
+            } else {
+                pctCell.textContent = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) + '%' : '0%';
+            }
+        }
+        const amtCell = cartTableBody ? cartTableBody.querySelector(`.pos-row-disc-amt[data-idx="${idx}"]`) : null;
+        if (amtCell) {
+            const amtInput = amtCell.querySelector('input');
+            if (amtInput) {
+                amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
+            } else {
+                amtCell.textContent = '₹ ' + (item.disc_amount || 0).toFixed(2);
             }
         }
 
@@ -1095,9 +1157,9 @@
             const qtyNum = parseFloat(qtyVal) || 0;
             const base = qtyNum * item.sell_price;
             const net = Math.max(0, base - (item.disc_amount || 0));
-            const expDisplay = item.exp_date ? item.exp_date : '—';
-            const discPctVal = item.disc_percent > 0 ? item.disc_percent : '';
-            const discAmtVal = item.disc_amount > 0 ? parseFloat(item.disc_amount).toFixed(2) : '';
+            const expDisplay = item.exp_date ? formatDmyDate(item.exp_date) : '—';
+            const discPctDisp = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) + '%' : '0%';
+            const discAmtDisp = '₹ ' + (item.disc_amount > 0 ? parseFloat(item.disc_amount).toFixed(2) : '0.00');
 
             const itemCodeDisp = item.code || item.item_code || (item.id ? String(item.id) : '-');
 
@@ -1110,10 +1172,10 @@
                     <td>
                         <div class="font-weight-bold text-dark text-truncate" style="max-width: 280px;" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
                     </td>
-                    <td class="text-center small ${item.exp_date ? 'font-weight-bold text-dark' : 'text-muted'}" style="width: 100px;">
+                    <td class="text-center small text-nowrap ${item.exp_date ? 'font-weight-bold text-dark' : 'text-muted'}" style="width: 105px; white-space: nowrap;">
                         ${expDisplay}
                     </td>
-                    <td class="text-center" style="width: 75px;">
+                    <td class="text-center" style="width: 70px;">
                         <input type="number" step="any" min="1" class="pos-row-input pos-qty-input font-weight-bold text-center ${isInvalidQty ? 'is-invalid border-danger' : ''}" value="${qtyVal}" placeholder="Qty" data-idx="${idx}" data-field="qty">
                     </td>
                     <td class="text-right font-weight-bold text-dark" style="width: 80px;">
@@ -1122,11 +1184,11 @@
                     <td class="text-right text-muted small" style="width: 80px;">
                         ₹ ${item.mrp.toFixed(2)}
                     </td>
-                    <td class="text-center" style="width: 80px;">
-                        <input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" placeholder="0" value="${discPctVal}" data-idx="${idx}" data-field="disc_percent">
+                    <td class="text-right text-muted small pos-row-disc-pct" data-idx="${idx}" style="width: 75px; cursor: pointer;" title="Click to edit discount %">
+                        ${discPctDisp}
                     </td>
-                    <td class="text-center" style="width: 90px;">
-                        <input type="number" step="0.01" min="0" class="pos-row-input pos-disc-amount text-right" placeholder="0.00" value="${discAmtVal}" data-idx="${idx}" data-field="disc_amount">
+                    <td class="text-right text-muted small pos-row-disc-amt" data-idx="${idx}" style="width: 85px; cursor: pointer;" title="Click to edit discount amount">
+                        ${discAmtDisp}
                     </td>
                     <td class="text-right font-weight-bold text-success pos-row-net" data-idx="${idx}" style="width: 95px; font-size: 0.95rem;">
                         ₹ ${net.toFixed(2)}

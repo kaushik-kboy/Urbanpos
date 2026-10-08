@@ -79,7 +79,7 @@
                 <h2 style="margin: 0 0 5px 0; color: #333;">DELIVERY CHALLAN</h2>
                 <div style="font-size: 11px; color: #666; margin-bottom: 4px;">(Issued under GST Rule 55 / Transport Gate Pass)</div>
                 <div><strong>Challan No:</strong> {{ $salesDeliveryNote->delivery_number }}</div>
-                <div><strong>Dispatch Date:</strong> {{ optional($salesDeliveryNote->delivery_date)->format('d-M-Y') }}</div>
+                <div><strong>Dispatch Date:</strong> {{ optional($salesDeliveryNote->delivery_date)->format('d-m-Y') }}</div>
                 <div><strong>Status:</strong> {{ strtoupper($salesDeliveryNote->status) }}</div>
             </td>
         </tr>
@@ -99,7 +99,7 @@
                 <div><strong>Vehicle No:</strong> {{ $salesDeliveryNote->vehicle_no ?: '—' }}</div>
                 <div><strong>Transporter:</strong> {{ $salesDeliveryNote->transporter_name ?: '—' }}</div>
                 <div><strong>LR / Bilty No:</strong> {{ $salesDeliveryNote->lr_no ?: '—' }}</div>
-                <div><strong>LR Date:</strong> {{ optional($salesDeliveryNote->lr_date)->format('d-M-Y') ?: '—' }}</div>
+                <div><strong>LR Date:</strong> {{ optional($salesDeliveryNote->lr_date)->format('d-m-Y') ?: '—' }}</div>
                 <div><strong>Ref Sales Order:</strong> {{ $salesDeliveryNote->salesOrder?->order_number ?: 'Direct Dispatch' }}</div>
                 @if ($salesDeliveryNote->reference_no)
                     <div><strong>Customer Ref:</strong> {{ $salesDeliveryNote->reference_no }}</div>

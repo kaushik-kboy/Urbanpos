@@ -68,7 +68,7 @@
 
                 <div class="d-flex align-items-center small text-muted">
                     <span class="mr-3">
-                        <i class="fas fa-sync text-success mr-1"></i> Last Sync: <strong>{{ now()->format('d/m/Y h:i A') }}</strong>
+                        <i class="fas fa-sync text-success mr-1"></i> Last Sync: <strong>{{ now()->format('d-m-Y h:i A') }}</strong>
                     </span>
                     <button type="button" class="btn btn-sm btn-outline-primary shadow-sm px-2 py-1" onclick="window.location.reload();" title="Refresh Live Calculations">
                         <i class="fas fa-redo-alt mr-1"></i> Refresh

@@ -96,11 +96,11 @@
                     <table class="table table-sm table-borderless mb-0">
                         <tr>
                             <td class="text-muted" style="width: 140px;">Order Date:</td>
-                            <td class="font-weight-bold">{{ $salesOrder->order_date?->format('d-M-Y') }}</td>
+                            <td class="font-weight-bold">{{ $salesOrder->order_date?->format('d-m-Y') }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Expected Delivery:</td>
-                            <td>{{ $salesOrder->expected_delivery_date ? $salesOrder->expected_delivery_date->format('d-M-Y') : 'Not specified' }}</td>
+                            <td>{{ $salesOrder->expected_delivery_date ? $salesOrder->expected_delivery_date->format('d-m-Y') : 'Not specified' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Branch:</td>

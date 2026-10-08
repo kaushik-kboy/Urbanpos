@@ -248,7 +248,7 @@ Dear *Ankit*,
 Thank you for shopping with us! Here are your bill details:
 
 📄 *Bill No:* SB-2026-0009
-📅 *Date:* {{ now()->format('d-M-Y h:i A') }}
+📅 *Date:* {{ now()->format('d-m-Y h:i A') }}
 🏪 *Branch:* URBAN PETS / MOTERA
 🛍️ *Total Items:* 2
 💰 *Net Payable:* ₹560.00

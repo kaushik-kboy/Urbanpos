@@ -127,7 +127,7 @@ class ChatOnClickWhatsAppService
         $branchName   = $salesBill->branch?->name ?: $this->headerTitle;
         $branchPhone  = $this->supportPhone ?: ($salesBill->branch?->phone ?: '7383056626');
         $billNumber   = $salesBill->bill_number;
-        $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-M-Y h:i A') : now()->format('d-M-Y');
+        $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-m-Y h:i A') : now()->format('d-m-Y');
         $totalItems   = $salesBill->relationLoaded('items') ? (int) $salesBill->items->count() : (int) $salesBill->items()->count();
         $totalAmount  = number_format((float) $salesBill->total, 2);
         $publicUrl    = $this->getPublicReceiptUrl($salesBill);
@@ -244,7 +244,7 @@ class ChatOnClickWhatsAppService
      */
     public function sendTestMessage(string $phone): array
     {
-        $timestamp = now()->format('d-M-Y h:i A');
+        $timestamp = now()->format('d-m-Y h:i A');
         $msg = "🐾 *{$this->headerTitle}* 🐾\n"
              . "✅ *WhatsApp Integration Test Successful!*\n"
              . "━━━━━━━━━━━━━━━━━━━━\n"
@@ -293,7 +293,7 @@ class ChatOnClickWhatsAppService
         if (!empty($this->templateName)) {
             $customerName = trim($salesBill->customer?->name ?: 'Customer');
             $billNumber   = (string)$salesBill->bill_number;
-            $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-M-Y h:i A') : now()->format('d-M-Y');
+            $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-m-Y h:i A') : now()->format('d-m-Y');
             $branchName   = trim($salesBill->branch?->name ?: $this->headerTitle);
             $totalItems   = (string)($salesBill->relationLoaded('items') ? $salesBill->items->count() : $salesBill->items()->count());
             $totalAmount  = number_format((float) $salesBill->total, 2);

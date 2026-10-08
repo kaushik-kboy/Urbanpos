@@ -176,7 +176,7 @@ class DynamicReportService
                         e($item->prefix ?: '-'),
                         e($item->alias_code ?: '-'),
                         $item->status ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>',
-                        $item->created_at ? $item->created_at->format('d M Y') : '-'
+                        $item->created_at ? $item->created_at->format('d-m-Y') : '-'
                     ]
                 ]);
                 return [
@@ -353,7 +353,7 @@ class DynamicReportService
                         '<span class="badge badge-info">' . e($item->roles->pluck('name')->join(', ') ?: 'Staff') . '</span>',
                         e($item->phone ?: '-'),
                         ($item->status ?? true) ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>',
-                        $item->created_at ? $item->created_at->format('d M Y') : '-'
+                        $item->created_at ? $item->created_at->format('d-m-Y') : '-'
                     ]
                 ]);
                 return [
@@ -633,7 +633,7 @@ class DynamicReportService
                 $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
-                        $item->created_at ? $item->created_at->format('d M Y H:i:s') : '-',
+                        $item->created_at ? $item->created_at->format('d-m-Y H:i:s') : '-',
                         e($item->user?->name ?: 'System'),
                         '<span class="badge badge-warning">' . e($item->action ?: 'Updated') . '</span>',
                         e($item->auditable_type ? class_basename($item->auditable_type) : 'GstTax'),
@@ -661,7 +661,7 @@ class DynamicReportService
                 $paginator = $query->paginate($this->perPage)->withQueryString();
                 $rows = $paginator->through(fn ($item) => [
                     'cells' => [
-                        $item->created_at ? $item->created_at->format('d M Y H:i:s') : '-',
+                        $item->created_at ? $item->created_at->format('d-m-Y H:i:s') : '-',
                         e($item->user?->name ?: 'System Admin'),
                         '<span class="badge badge-secondary">' . e($item->action ?: 'Activity') . '</span>',
                         e($item->auditable_type ? class_basename($item->auditable_type) : 'General'),

@@ -15,7 +15,7 @@
                     <span class="badge badge-danger ml-2"><i class="fas fa-times-circle mr-1"></i> Cancelled</span>
                 @endif
             </h1>
-            <div class="text-muted small">Dated: {{ $salesDeliveryNote->delivery_date->format('d M Y') }} | Created by {{ $salesDeliveryNote->createdBy?->name ?? 'System' }}</div>
+            <div class="text-muted small">Dated: {{ $salesDeliveryNote->delivery_date->format('d-m-Y') }} | Created by {{ $salesDeliveryNote->createdBy?->name ?? 'System' }}</div>
         </div>
         <div>
             <a href="{{ route('sales.delivery-notes.print', $salesDeliveryNote) }}" target="_blank" class="btn btn-outline-secondary btn-sm mr-1">

@@ -8,7 +8,7 @@
             <h1 class="m-0 text-dark">
                 <i class="fas fa-file-invoice text-danger mr-2"></i> Damage Stock: <strong>{{ $damageStock->damage_number }}</strong>
             </h1>
-            <small class="text-muted">Recorded on {{ $damageStock->entry_date ? $damageStock->entry_date->format('d M Y') : '-' }}</small>
+            <small class="text-muted">Recorded on {{ $damageStock->entry_date ? $damageStock->entry_date->format('d-m-Y') : '-' }}</small>
         </div>
         <div>
             <a href="{{ route('inventory.damage-stocks.edit', $damageStock) }}" class="btn btn-warning mr-1 shadow-sm">

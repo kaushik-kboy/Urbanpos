@@ -85,7 +85,7 @@
                     <table class="table table-sm table-borderless mb-0">
                         <tr>
                             <td class="text-muted" style="width: 140px;">Settlement Date:</td>
-                            <td class="font-weight-bold">{{ $settlement->settlement_date?->format('d-M-Y') }}</td>
+                            <td class="font-weight-bold">{{ $settlement->settlement_date?->format('d-m-Y') }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Payment Mode:</td>

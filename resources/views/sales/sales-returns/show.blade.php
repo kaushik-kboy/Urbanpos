@@ -9,7 +9,7 @@
                 <i class="fas fa-undo mr-2 text-warning"></i>Sales Return: {{ $salesReturn->return_number }}
             </h1>
             <div class="text-muted small">
-                Dated: {{ optional($salesReturn->return_date)->format('d M Y') }} | Branch: {{ $salesReturn->branch?->name }}
+                Dated: {{ optional($salesReturn->return_date)->format('d-m-Y') }} | Branch: {{ $salesReturn->branch?->name }}
             </div>
         </div>
         <div>

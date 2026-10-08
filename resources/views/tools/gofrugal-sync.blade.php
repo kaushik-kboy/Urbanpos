@@ -44,7 +44,7 @@
     </div>
 
     {{-- Live Database Audit Cards for Selected Date --}}
-    <h5 class="font-weight-bold text-secondary mb-3"><i class="fas fa-database mr-2"></i>UrbanPOS Database State for {{ \Carbon\Carbon::parse($selectedDate)->format('d M, Y') }}</h5>
+    <h5 class="font-weight-bold text-secondary mb-3"><i class="fas fa-database mr-2"></i>UrbanPOS Database State for {{ \Carbon\Carbon::parse($selectedDate)->format('d-m-Y') }}</h5>
     <div class="row">
         {{-- Closing Stock --}}
         <div class="col-md-3 col-sm-6 col-12">

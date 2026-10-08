@@ -96,11 +96,11 @@
                     <table class="table table-sm table-borderless mb-0">
                         <tr>
                             <td class="text-muted" style="width: 140px;">Quotation Date:</td>
-                            <td class="font-weight-bold">{{ $salesQuotation->quotation_date?->format('d-M-Y') }}</td>
+                            <td class="font-weight-bold">{{ $salesQuotation->quotation_date?->format('d-m-Y') }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Valid Until:</td>
-                            <td>{{ $salesQuotation->valid_until ? $salesQuotation->valid_until->format('d-M-Y') : 'Not specified' }}</td>
+                            <td>{{ $salesQuotation->valid_until ? $salesQuotation->valid_until->format('d-m-Y') : 'Not specified' }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Branch:</td>

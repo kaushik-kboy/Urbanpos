@@ -43,7 +43,7 @@
 
         <div class="d-flex align-items-center">
             <span class="text-muted mr-3" style="font-size: 11px;">
-                Last data sync time: <strong id="lastSyncTimeText">{{ now()->format('d/m/Y h:i A') }}</strong>
+                Last data sync time: <strong id="lastSyncTimeText">{{ now()->format('d-m-Y h:i A') }}</strong>
             </span>
 
             {{-- Green SYNC NOW Button --}}

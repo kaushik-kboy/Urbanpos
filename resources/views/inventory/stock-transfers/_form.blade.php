@@ -52,7 +52,7 @@
     </div>
     <div class="field-wrapper col-md-4" data-field="transfer_date" data-label="Transfer Date" data-default-order="3" data-core="1">
         <label for="transfer_date" class="font-weight-bold">Transfer Date <span class="text-danger">*</span></label>
-        <input type="text" name="transfer_date" id="transfer_date" class="form-control datepicker font-weight-bold" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('d/m/Y')) }}" placeholder="DD/MM/YYYY (e.g. 10012026)" data-date-format="d/m/Y" required autocomplete="off">
+        <input type="text" name="transfer_date" id="transfer_date" class="form-control datepicker font-weight-bold" value="{{ old('transfer_date', optional($transfer->transfer_date ?? now())->format('d-m-Y')) }}" placeholder="DD-MM-YYYY (e.g. 10012026)" data-date-format="d-m-Y" required autocomplete="off">
     </div>
 </div>
 

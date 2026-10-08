@@ -35,24 +35,18 @@
             $(document).trigger('urbanpos:date-config-changed');
         },
 
-        // Default format: 'DD-MM-YYYY' (e.g. 10-04-2026)
+        // Strict project standard format: 'DD-MM-YYYY' (e.g. 10-04-2026)
         getFormat: function () {
-            var f = localStorage.getItem(this.KEY_FORMAT);
-            if (f === 'YYYY-MM-DD' || f === 'DD/MM/YYYY') return f;
             return 'DD-MM-YYYY';
         },
 
         setFormat: function (format) {
-            var valid = (format === 'YYYY-MM-DD' || format === 'DD/MM/YYYY') ? format : 'DD-MM-YYYY';
-            localStorage.setItem(this.KEY_FORMAT, valid);
+            localStorage.setItem(this.KEY_FORMAT, 'DD-MM-YYYY');
             this.syncPreferences();
             $(document).trigger('urbanpos:date-config-changed');
         },
 
         getPlaceholder: function () {
-            var f = this.getFormat();
-            if (f === 'YYYY-MM-DD') return 'YYYY-MM-DD (e.g. 20260410)';
-            if (f === 'DD/MM/YYYY') return 'DD/MM/YYYY (e.g. 10042026)';
             return 'DD-MM-YYYY (e.g. 10042026)';
         },
 

@@ -289,6 +289,18 @@ input[type="number"],
     background: #FFF;
 }
 
+.pos-row-disc-pct,
+.pos-row-disc-amt {
+    transition: background-color 0.15s ease;
+}
+
+.pos-row-disc-pct:hover,
+.pos-row-disc-amt:hover {
+    background-color: #f1f5f9;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
 /* Bottom Quick Action Bar on Left Pane */
 .pos-action-bar {
     height: 54px;

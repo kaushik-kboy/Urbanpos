@@ -10,7 +10,7 @@
     $expDateVal = '';
     if (!empty($line->exp_date)) {
         try {
-            $expDateVal = \Carbon\Carbon::parse($line->exp_date)->format('d/m/Y');
+            $expDateVal = \Carbon\Carbon::parse($line->exp_date)->format('d-m-Y');
         } catch (\Throwable) {
             $expDateVal = (string) $line->exp_date;
         }

@@ -146,7 +146,7 @@
                                 <tr>
                                     <td>{{ $adjustments->firstItem() + $index }}</td>
                                     <td>
-                                        <small class="d-block font-weight-bold text-dark">{{ $row->created_at->format('d M Y') }}</small>
+                                        <small class="d-block font-weight-bold text-dark">{{ $row->created_at->format('d-m-Y') }}</small>
                                         <small class="text-muted">{{ $row->created_at->format('h:i A') }}</small>
                                     </td>
                                     <td>

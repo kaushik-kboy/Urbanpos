@@ -75,7 +75,7 @@
             <td style="width: 40%; text-align: right;">
                 <h2 style="margin: 0 0 5px 0; color: #333;">GOODS RECEIPT NOTE</h2>
                 <div><strong>GRN No:</strong> {{ $purchaseReceiptNote->receipt_number }}</div>
-                <div><strong>Date:</strong> {{ $purchaseReceiptNote->receipt_date->format('d-M-Y') }}</div>
+                <div><strong>Date:</strong> {{ $purchaseReceiptNote->receipt_date->format('d-m-Y') }}</div>
                 <div><strong>Status:</strong> {{ strtoupper($purchaseReceiptNote->status) }}</div>
             </td>
         </tr>
@@ -93,7 +93,7 @@
             <td style="width: 50%; vertical-align: top; padding-left: 15px;">
                 <div class="font-bold" style="text-decoration: underline; margin-bottom: 4px;">CHALLAN & TRANSPORT DETAILS:</div>
                 <div><strong>Supplier Challan No:</strong> {{ $purchaseReceiptNote->supplier_challan_no ?: '—' }}</div>
-                <div><strong>Challan Date:</strong> {{ optional($purchaseReceiptNote->supplier_challan_date)->format('d-M-Y') ?: '—' }}</div>
+                <div><strong>Challan Date:</strong> {{ optional($purchaseReceiptNote->supplier_challan_date)->format('d-m-Y') ?: '—' }}</div>
                 <div><strong>Ref Purchase Order:</strong> {{ $purchaseReceiptNote->purchaseOrder?->po_number ?: 'Direct (No PO)' }}</div>
                 <div><strong>Vehicle No:</strong> {{ $purchaseReceiptNote->vehicle_no ?: '—' }}</div>
                 <div><strong>Transporter:</strong> {{ $purchaseReceiptNote->transporter_name ?: '—' }}</div>

@@ -303,11 +303,11 @@
                                 @php
                                     $displayTime = $log->last_seen_at ?? $log->created_at;
                                 @endphp
-                                <div class="font-weight-bold text-dark">{{ $displayTime ? $displayTime->format('d M Y') : 'N/A' }}</div>
+                                <div class="font-weight-bold text-dark">{{ $displayTime ? $displayTime->format('d-m-Y') : 'N/A' }}</div>
                                 <div class="text-xs text-muted">{{ $displayTime ? $displayTime->format('h:i:s A') : '' }}</div>
                                 @if(($log->occurrence_count ?? 1) > 1)
-                                    <div class="text-xs text-info font-weight-bold mt-1" title="First logged on {{ $log->created_at ? $log->created_at->format('d M Y, h:i A') : '' }}">
-                                        <i class="fas fa-history mr-1"></i>First: {{ $log->created_at ? $log->created_at->format('d M, h:i A') : 'N/A' }}
+                                    <div class="text-xs text-info font-weight-bold mt-1" title="First logged on {{ $log->created_at ? $log->created_at->format('d-m-Y, h:i A') : '' }}">
+                                        <i class="fas fa-history mr-1"></i>First: {{ $log->created_at ? $log->created_at->format('d-m-Y, h:i A') : 'N/A' }}
                                     </div>
                                 @endif
                             </td>

@@ -317,7 +317,7 @@
         <table class="meta-table">
             <tr>
                 <td class="text-left font-bold" style="width: 55%;">Bill No: {{ $salesBill->bill_number }}</td>
-                <td class="text-right" style="width: 45%;">Date: {{ $salesBill->bill_date->format('d/m/Y') }}</td>
+                <td class="text-right" style="width: 45%;">Date: {{ $salesBill->bill_date->format('d-m-Y') }}</td>
             </tr>
             <tr>
                 @php
@@ -485,7 +485,7 @@
                     <div><strong>EWB NO:</strong> {{ $salesBill->eway_bill_no }}</div>
                 @endif
                 @if ($salesBill->eway_valid_until)
-                    <div><strong>VALID TILL:</strong> {{ $salesBill->eway_valid_until->format('d/m/Y h:i A') }}</div>
+                    <div><strong>VALID TILL:</strong> {{ $salesBill->eway_valid_until->format('d-m-Y h:i A') }}</div>
                 @endif
                 @if ($salesBill->vehicle_no)
                     <div><strong>VEHICLE:</strong> {{ strtoupper($salesBill->vehicle_no) }} ({{ $salesBill->vehicle_type === 'O' ? 'ODC' : 'REG' }})</div>

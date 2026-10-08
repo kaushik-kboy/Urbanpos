@@ -595,7 +595,7 @@
                                 <table style="width: 100%; font-size: 11px; line-height: 1.3;">
                                     <tr>
                                         <td style="font-weight: bold;">Transfer #: {{ $sampleTransfer?->transfer_number ?: 'ST-2026-0001' }}</td>
-                                        <td style="text-align: right;">Date: {{ $sampleTransfer?->transfer_date ? $sampleTransfer->transfer_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                        <td style="text-align: right;">Date: {{ $sampleTransfer?->transfer_date ? $sampleTransfer->transfer_date->format('d-m-Y') : now()->format('d-m-Y') }}</td>
                                     </tr>
                                     <tr>
                                         <td colspan="2">From: <strong>{{ $sampleTransfer?->fromBranch?->name ?: 'Central Warehouse (Main)' }}</strong></td>
@@ -710,7 +710,7 @@
                                 <table style="width: 100%; font-size: 11px; line-height: 1.3;">
                                     <tr>
                                         <td style="font-weight: bold;">Invoice #: {{ $samplePurchase?->invoice_number ?: 'PI-2026-0012' }}</td>
-                                        <td style="text-align: right;">Date: {{ $samplePurchase?->invoice_date ? $samplePurchase->invoice_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                        <td style="text-align: right;">Date: {{ $samplePurchase?->invoice_date ? $samplePurchase->invoice_date->format('d-m-Y') : now()->format('d-m-Y') }}</td>
                                     </tr>
                                     <tr>
                                         <td colspan="2">Supplier: <strong>{{ $samplePurchase?->supplier?->name ?: 'Mars Petcare India Pvt Ltd' }}</strong></td>
@@ -834,7 +834,7 @@
                                 <table style="width: 100%; font-size: 11px; line-height: 1.3;">
                                     <tr>
                                         <td style="font-weight: bold;">Return #: {{ $sampleSalesReturn?->return_number ?: 'SR-2026-0004' }}</td>
-                                        <td style="text-align: right;">Date: {{ $sampleSalesReturn?->return_date ? $sampleSalesReturn->return_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                        <td style="text-align: right;">Date: {{ $sampleSalesReturn?->return_date ? $sampleSalesReturn->return_date->format('d-m-Y') : now()->format('d-m-Y') }}</td>
                                     </tr>
                                     <tr>
                                         <td colspan="2">Orig Bill: <strong>{{ $sampleSalesReturn?->salesBill?->bill_number ?: 'SB-2026-0009' }}</strong></td>
@@ -930,7 +930,7 @@
                                 <table style="width: 100%; font-size: 11px; line-height: 1.3;">
                                     <tr>
                                         <td style="font-weight: bold;">Return #: {{ $samplePurchaseReturn?->return_number ?: 'PR-2026-0002' }}</td>
-                                        <td style="text-align: right;">Date: {{ $samplePurchaseReturn?->return_date ? $samplePurchaseReturn->return_date->format('d/m/Y') : now()->format('d/m/Y') }}</td>
+                                        <td style="text-align: right;">Date: {{ $samplePurchaseReturn?->return_date ? $samplePurchaseReturn->return_date->format('d-m-Y') : now()->format('d-m-Y') }}</td>
                                     </tr>
                                     <tr>
                                         <td colspan="2">Return To: <strong>{{ $samplePurchaseReturn?->supplier?->name ?: 'Royal Canin India Pvt Ltd' }}</strong></td>
@@ -1023,7 +1023,7 @@
                                 <table style="width: 100%; font-size: 11px; line-height: 1.3;">
                                     <tr>
                                         <td style="font-weight: bold;">Bill No: {{ $sampleBill?->bill_number ?: 'SB-2026-0009' }}</td>
-                                        <td style="text-align: right;">Date: {{ now()->format('d/m/Y') }}</td>
+                                        <td style="text-align: right;">Date: {{ now()->format('d-m-Y') }}</td>
                                     </tr>
                                     <tr>
                                         <td>Time: {{ now()->format('h:i A') }}</td>
@@ -1207,7 +1207,7 @@
                                                 </tr>
                                                 <tr style="border-bottom: 1px solid #e2e8f0;">
                                                     <td style="padding: 2px 6px; font-weight: bold;">Date:</td>
-                                                    <td style="padding: 2px 6px;">{{ now()->format('d/m/Y') }}</td>
+                                                    <td style="padding: 2px 6px;">{{ now()->format('d-m-Y') }}</td>
                                                 </tr>
                                                 <tr style="background: #f8fafc;">
                                                     <td style="padding: 2px 6px; font-weight: bold;">Place of Supply:</td>
@@ -1329,7 +1329,7 @@
                                         <div style="font-size: 10.5px; line-height: 1.45;">
                                             <table style="width: 100%;">
                                                 <tr><td style="width: 105px; color: #64748b;">Invoice No:</td><td><strong>{{ $sampleBill?->bill_number ?: 'EINV-TEST-1791271882' }}</strong></td></tr>
-                                                <tr><td style="color: #64748b;">Date:</td><td>{{ now()->format('d/m/Y') }}</td></tr>
+                                                <tr><td style="color: #64748b;">Date:</td><td>{{ now()->format('d-m-Y') }}</td></tr>
                                                 <tr><td style="color: #64748b;">Place of Supply:</td><td>24 - Gujarat</td></tr>
                                                 <tr><td style="color: #64748b;">GST Type:</td><td><strong>Consumer (B2C)</strong></td></tr>
                                             </table>
