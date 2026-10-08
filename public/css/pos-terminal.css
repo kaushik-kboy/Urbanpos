@@ -937,3 +937,28 @@ input[type="number"],
     background: #F8FAFC;
     border-color: #CBD5E1;
 }
+
+.pos-row-disc-pct,
+.pos-row-disc-amt {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    user-select: none;
+}
+
+.pos-row-disc-pct:hover,
+.pos-row-disc-amt:hover,
+.pos-row-disc-pct:focus,
+.pos-row-disc-amt:focus {
+    background-color: #EEF2F6 !important;
+    outline: none;
+    border-radius: 4px;
+}
+
+.pos-disc-percent,
+.pos-disc-amount {
+    border: 1.5px solid #1769E8 !important;
+    border-radius: 4px !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 0 0 2px rgba(23, 105, 232, 0.2) !important;
+    outline: none !important;
+}

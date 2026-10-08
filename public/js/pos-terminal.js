@@ -45,6 +45,10 @@
         return str;
     }
 
+    function isAllowNegative(val) {
+        return val === true || val === 1 || val === '1' || val === 'true';
+    }
+
     // Audio Feedback Generator using Web Audio API
     const sound = {
         ctx: null,
@@ -376,12 +380,14 @@
             // Real-time stock validation (across all rows for this item)
             const otherRowsQty = getTotalCartQtyForItem(cartItem.id, idx);
             const totalRequested = otherRowsQty + val;
-            const allowNeg = !!cartItem.allow_negative_stock;
+            const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
             const stock = cartItem.stock;
 
             if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
                 const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
-                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                const errMsg = stock <= 0
+                    ? `Cannot add item. Product is out of stock (${availDisp} available).`
+                    : `Insufficient stock. Only ${availDisp} units are available.`;
                 $(this).addClass('is-invalid border-danger text-danger').attr('title', errMsg);
                 payBtns.prop('disabled', true);
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
@@ -420,7 +426,7 @@
 
             const otherRowsQty = getTotalCartQtyForItem(cartItem.id, idx);
             const totalRequested = otherRowsQty + (isNaN(val) ? 0 : val);
-            const allowNeg = !!cartItem.allow_negative_stock;
+            const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
             const stock = cartItem.stock;
 
             if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
@@ -428,15 +434,18 @@
             }
         });
 
-        // Click-to-edit inline for Dis %
-        $(document).on('click', '.pos-row-disc-pct', function (e) {
-            if ($(this).find('input').length) return;
-            const idx = parseInt($(this).data('idx'));
+        // Inline editing helpers & keyboard flow for Dis % and Dis Amt
+        function openDiscountPercentInput(idx) {
             if (isNaN(idx) || !state.cart[idx]) return;
+            const $cell = $(`.pos-row-disc-pct[data-idx="${idx}"]`);
+            if (!$cell.length) return;
+            if ($cell.find('input').length) {
+                $cell.find('input').focus().select();
+                return;
+            }
             const item = state.cart[idx];
             const currentVal = item.disc_percent > 0 ? item.disc_percent : '';
-            const $cell = $(this);
-            $cell.html(`<input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" style="height: 26px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0" data-idx="${idx}">`);
+            $cell.html(`<input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" style="height: 26px; width: 62px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0" data-idx="${idx}">`);
             const $input = $cell.find('input');
             $input.focus().select();
 
@@ -451,7 +460,23 @@
             });
 
             $input.on('keydown', function (ke) {
-                if (ke.key === 'Enter') {
+                if (ke.key === 'Tab') {
+                    ke.preventDefault();
+                    let val = parseFloat($(this).val()) || 0;
+                    if (val > 100) val = 100;
+                    if (val < 0) val = 0;
+                    state.cart[idx].disc_percent = val;
+                    recalculateRow(idx, 'percent');
+                    const disp = state.cart[idx].disc_percent > 0 ? (state.cart[idx].disc_percent % 1 === 0 ? state.cart[idx].disc_percent : state.cart[idx].disc_percent.toFixed(2)) + '%' : '0%';
+                    $cell.text(disp);
+
+                    if (ke.shiftKey) {
+                        const qtyInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${idx}"]`) : null;
+                        if (qtyInput) { qtyInput.focus(); qtyInput.select(); }
+                    } else {
+                        openDiscountAmountInput(idx);
+                    }
+                } else if (ke.key === 'Enter') {
                     ke.preventDefault();
                     $(this).blur();
                     focusScanner();
@@ -462,23 +487,25 @@
                     focusScanner();
                 }
             });
-        });
+        }
 
-        // Click-to-edit inline for Dis Amt
-        $(document).on('click', '.pos-row-disc-amt', function (e) {
-            if ($(this).find('input').length) return;
-            const idx = parseInt($(this).data('idx'));
+        function openDiscountAmountInput(idx) {
             if (isNaN(idx) || !state.cart[idx]) return;
+            const $cell = $(`.pos-row-disc-amt[data-idx="${idx}"]`);
+            if (!$cell.length) return;
+            if ($cell.find('input').length) {
+                $cell.find('input').focus().select();
+                return;
+            }
             const item = state.cart[idx];
             const currentVal = item.disc_amount > 0 ? parseFloat(item.disc_amount).toFixed(2) : '';
-            const $cell = $(this);
-            $cell.html(`<input type="number" step="0.01" min="0" class="pos-row-input pos-disc-amount text-right" style="height: 26px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
+            $cell.html(`<input type="number" step="0.01" min="0" class="pos-row-input pos-disc-amount text-right" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
             const $input = $cell.find('input');
             $input.focus().select();
 
             $input.on('blur', function () {
                 let val = parseFloat($(this).val()) || 0;
-                const base = (item.qty || 1) * (item.sell_price || 0);
+                const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
                 if (base > 0 && val > base) val = base;
                 if (val < 0) val = 0;
                 state.cart[idx].disc_amount = val;
@@ -487,7 +514,28 @@
             });
 
             $input.on('keydown', function (ke) {
-                if (ke.key === 'Enter') {
+                if (ke.key === 'Tab') {
+                    ke.preventDefault();
+                    let val = parseFloat($(this).val()) || 0;
+                    const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
+                    if (base > 0 && val > base) val = base;
+                    if (val < 0) val = 0;
+                    state.cart[idx].disc_amount = val;
+                    recalculateRow(idx, 'amount');
+                    $cell.text('₹ ' + (state.cart[idx].disc_amount || 0).toFixed(2));
+
+                    if (ke.shiftKey) {
+                        openDiscountPercentInput(idx);
+                    } else {
+                        const nextQtyInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${idx + 1}"]`) : null;
+                        if (nextQtyInput) {
+                            nextQtyInput.focus();
+                            nextQtyInput.select();
+                        } else {
+                            focusScanner();
+                        }
+                    }
+                } else if (ke.key === 'Enter') {
                     ke.preventDefault();
                     $(this).blur();
                     focusScanner();
@@ -497,6 +545,16 @@
                     focusScanner();
                 }
             });
+        }
+
+        $(document).on('click', '.pos-row-disc-pct', function () {
+            const idx = parseInt($(this).data('idx'));
+            openDiscountPercentInput(idx);
+        });
+
+        $(document).on('click', '.pos-row-disc-amt', function () {
+            const idx = parseInt($(this).data('idx'));
+            openDiscountAmountInput(idx);
         });
 
         $(document).on('input change', '.pos-disc-percent', function () {
@@ -520,7 +578,7 @@
             if (isNaN(idx) || !state.cart[idx]) return;
             let val = parseFloat($(this).val()) || 0;
             const item = state.cart[idx];
-            const base = (item.qty || 1) * (item.sell_price || 0);
+            const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
             if (base > 0 && val > base) {
                 val = base;
                 $(this).val(base.toFixed(2));
@@ -533,9 +591,9 @@
             recalculateRow(idx, 'amount');
         });
 
-        // Fast POS keyboard flow: Qty -> Enter -> Scanner
+        // Fast POS keyboard flow: Qty -> Tab (to Dis%) or Enter -> Scanner
         $(document).on('keydown', '.pos-qty-input', function (e) {
-            const idx = $(this).data('idx');
+            const idx = parseInt($(this).data('idx'));
             const rawVal = $(this).val().trim();
             const val = parseFloat(rawVal);
 
@@ -553,6 +611,10 @@
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     focusScanner();
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    // Qty fillup k bad tab press -> open Dis %
+                    e.preventDefault();
+                    openDiscountPercentInput(idx);
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -731,10 +793,11 @@
             }
 
             if (itemToAdd) {
-                addItemToCart(itemToAdd);
-                sound.beep(2100, 0.07);
-                scanInput.value = '';
-                hideSearchResults();
+                if (addItemToCart(itemToAdd)) {
+                    sound.beep(2100, 0.07);
+                    scanInput.value = '';
+                    hideSearchResults();
+                }
             } else {
                 sound.error();
                 showNotification('Product not found for this Item Code/Barcode.', 'warning');
@@ -789,10 +852,11 @@
         searchResults.querySelectorAll('.pos-search-item').forEach(el => {
             el.addEventListener('click', () => {
                 const itemData = JSON.parse(el.dataset.item);
-                addItemToCart(itemData);
-                sound.beep(2100, 0.07);
-                scanInput.value = '';
-                hideSearchResults();
+                if (addItemToCart(itemData)) {
+                    sound.beep(2100, 0.07);
+                    scanInput.value = '';
+                    hideSearchResults();
+                }
             });
         });
     }
@@ -813,7 +877,10 @@
     }
 
     function addItemToCart(item) {
+        if (!item) return false;
         const itemId = parseInt(item.id || item.item_id);
+        if (isNaN(itemId)) return false;
+
         const expDate = item.exp_date ? (typeof item.exp_date === 'string' ? item.exp_date.substring(0, 10) : '') : '';
 
         // Prevent selling expired items (Task 2)
@@ -822,15 +889,17 @@
             if (expDate < todayStr) {
                 showNotification(`Cannot add expired item: "${item.name || item.productname || 'Item'}" (Expired on ${expDate}). Selling expired products is strictly prohibited.`, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
-                return;
+                return false;
             }
         }
 
-        const allowNeg = !!item.allow_negative_stock;
+        const allowNeg = isAllowNegative(item.allow_negative_stock) || state.cart.some(c => c.id === itemId && isAllowNegative(c.allow_negative_stock));
         let availableStock = null;
         if (item.stock !== undefined && item.stock !== null) {
             availableStock = parseFloat(item.stock);
-        } else if (item.qty !== undefined && item.qty !== null && !state.cart.some(c => c.id === itemId)) {
+        } else if (item.current_stock !== undefined && item.current_stock !== null) {
+            availableStock = parseFloat(item.current_stock);
+        } else if (item.qty !== undefined && item.qty !== null) {
             availableStock = parseFloat(item.qty);
         } else {
             const inCart = state.cart.find(c => c.id === itemId && c.stock !== undefined && c.stock !== null);
@@ -843,22 +912,24 @@
         let targetIdx = -1;
 
         if (existingIdx !== -1) {
-            if (availableStock === null && state.cart[existingIdx].stock !== undefined) {
-                availableStock = state.cart[existingIdx].stock;
+            if (availableStock === null && state.cart[existingIdx].stock !== undefined && state.cart[existingIdx].stock !== null) {
+                availableStock = parseFloat(state.cart[existingIdx].stock);
             }
+            const currentItemTotal = getTotalCartQtyForItem(itemId);
+            const proposedTotal = currentItemTotal + 1;
+            if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
+                const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
+                const errMsg = availableStock <= 0
+                    ? `Cannot add item. "${item.name || state.cart[existingIdx].name || 'Item'}" is out of stock (${availDisp} available).`
+                    : `Insufficient stock for "${item.name || state.cart[existingIdx].name || 'Item'}". Only ${availDisp} units are available.`;
+                showNotification(errMsg, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                return false;
+            }
+
             if (state.cart[existingIdx].qty === '' || state.cart[existingIdx].qty === null || state.cart[existingIdx].qty === undefined) {
                 targetIdx = existingIdx;
             } else {
-                const currentItemTotal = getTotalCartQtyForItem(itemId);
-                const proposedTotal = currentItemTotal + 1;
-                if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
-                    const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
-                    const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
-                    showNotification(errMsg, 'danger');
-                    if (typeof sound !== 'undefined' && sound.error) sound.error();
-                    return;
-                }
-
                 state.cart[existingIdx].qty = (parseFloat(state.cart[existingIdx].qty) || 0) + 1;
                 if (availableStock !== null) state.cart[existingIdx].stock = availableStock;
                 const existingQtyInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${existingIdx}"]`) : null;
@@ -871,10 +942,12 @@
             const proposedTotal = currentItemTotal + 1;
             if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
-                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                const errMsg = availableStock <= 0
+                    ? `Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).`
+                    : `Insufficient stock for "${item.name || item.productname || 'Item'}". Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
-                return;
+                return false;
             }
 
             const newItem = {
@@ -906,6 +979,8 @@
                 }
             }
         }, 50);
+
+        return true;
     }
 
     function recalculateRow(idx, source) {
@@ -985,11 +1060,13 @@
         if (delta > 0) {
             const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index);
             const totalRequested = otherRowsQty + newQty;
-            const allowNeg = !!cartItem.allow_negative_stock;
+            const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
             const stock = cartItem.stock;
             if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
                 const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
-                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                const errMsg = stock <= 0
+                    ? `Cannot add item. Product is out of stock (${availDisp} available).`
+                    : `Insufficient stock. Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
                 return;
@@ -1012,11 +1089,13 @@
         const cartItem = state.cart[index];
         const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index);
         const totalRequested = otherRowsQty + q;
-        const allowNeg = !!cartItem.allow_negative_stock;
+        const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
         const stock = cartItem.stock;
         if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
             const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
-            const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+            const errMsg = stock <= 0
+                ? `Cannot add item. Product is out of stock (${availDisp} available).`
+                : `Insufficient stock. Only ${availDisp} units are available.`;
             showNotification(errMsg, 'danger');
             if (typeof sound !== 'undefined' && sound.error) sound.error();
             return;
@@ -1184,10 +1263,10 @@
                     <td class="text-right text-muted small" style="width: 80px;">
                         ₹ ${item.mrp.toFixed(2)}
                     </td>
-                    <td class="text-right text-muted small pos-row-disc-pct" data-idx="${idx}" style="width: 75px; cursor: pointer;" title="Click to edit discount %">
+                    <td class="text-right text-muted small pos-row-disc-pct" data-idx="${idx}" tabindex="0" style="width: 75px; cursor: pointer;" title="Click or Tab to edit discount %">
                         ${discPctDisp}
                     </td>
-                    <td class="text-right text-muted small pos-row-disc-amt" data-idx="${idx}" style="width: 85px; cursor: pointer;" title="Click to edit discount amount">
+                    <td class="text-right text-muted small pos-row-disc-amt" data-idx="${idx}" tabindex="0" style="width: 85px; cursor: pointer;" title="Click or Tab to edit discount amount">
                         ${discAmtDisp}
                     </td>
                     <td class="text-right font-weight-bold text-success pos-row-net" data-idx="${idx}" style="width: 95px; font-size: 0.95rem;">
@@ -2153,12 +2232,13 @@
         if (raw) {
             try {
                 const itemData = JSON.parse(raw);
-                addItemToCart(itemData);
-                const $btn = $(this);
-                $btn.removeClass('btn-primary').addClass('btn-success').html('<i class="fas fa-check mr-1"></i> Added');
-                setTimeout(() => {
-                    $btn.removeClass('btn-success').addClass('btn-primary').html('<i class="fas fa-plus mr-1"></i> Add');
-                }, 1200);
+                if (addItemToCart(itemData)) {
+                    const $btn = $(this);
+                    $btn.removeClass('btn-primary').addClass('btn-success').html('<i class="fas fa-check mr-1"></i> Added');
+                    setTimeout(() => {
+                        $btn.removeClass('btn-success').addClass('btn-primary').html('<i class="fas fa-plus mr-1"></i> Add');
+                    }, 1200);
+                }
             } catch (err) {
                 console.error('Error parsing item data', err);
             }
@@ -2311,9 +2391,11 @@
             const cItem = state.cart[i];
             const otherQty = getTotalCartQtyForItem(cItem.id, i);
             const totalReq = otherQty + (parseFloat(cItem.qty) || 0);
-            if (!cItem.allow_negative_stock && cItem.stock !== undefined && cItem.stock !== null && totalReq > cItem.stock + 0.0001) {
+            if (!isAllowNegative(cItem.allow_negative_stock) && cItem.stock !== undefined && cItem.stock !== null && totalReq > cItem.stock + 0.0001) {
                 const availDisp = (cItem.stock === parseInt(cItem.stock, 10)) ? parseInt(cItem.stock, 10) : cItem.stock;
-                const errMsg = `Insufficient stock. Only ${availDisp} units are available.`;
+                const errMsg = cItem.stock <= 0
+                    ? `Cannot checkout. "${cItem.name || 'Item'}" is out of stock (${availDisp} available).`
+                    : `Insufficient stock for "${cItem.name || 'Item'}". Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
                 const badInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${i}"]`) : null;
@@ -2803,7 +2885,7 @@
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${escapeHtml(it.code)}</span>`
                     : `<span class="text-muted">—</span>`;
-                let isAllowNeg = !!(it.allow_negative_stock);
+                let isAllowNeg = isAllowNegative(it.allow_negative_stock);
                 let stockNum = parseFloat(it.qty || 0);
                 let isOutOfStock = stockNum <= 0 && !isAllowNeg;
                 let qtyBadge = isOutOfStock
@@ -2854,10 +2936,12 @@
                 let rawItem = $(this).attr('data-item');
                 if (rawItem) {
                     let it = JSON.parse(rawItem);
-                    addItemToCart(it);
-                    sound.success();
-                    showNotification(`Added "${it.name}" to cart`, 'success');
-                    $modal.modal('hide');
+                    const added = addItemToCart(it);
+                    if (added) {
+                        sound.success();
+                        showNotification(`Added "${it.name}" to cart`, 'success');
+                        $modal.modal('hide');
+                    }
                 }
             });
         }
