@@ -1484,18 +1484,21 @@
         const CIM_PAGE_SIZE = 10;
 
         function syncAndLockCustomerTypes(cType, sType) {
-            // 1. Sales Type (Auto-sync to customer's default, keep enabled so cashier can change if needed)
-            if (sType) {
-                let $st = $('select[name="sales_type"]');
-                if ($st.length) {
-                    $st.val(sType).trigger('change');
-                    $st.prop('disabled', false);
-                    $('#hidden-sales-type').remove();
-                    $('#sales-type-lock-indicator').addClass('d-none');
+            // 1. Sales Type (Locked from Customer Master, read-only)
+            let salesTypeVal = sType || 'Local';
+            let $st = $('select[name="sales_type"]');
+            if ($st.length) {
+                $st.val(salesTypeVal).trigger('change');
+                $st.prop('disabled', true);
+                if (!$('#hidden-sales-type').length) {
+                    $st.after('<input type="hidden" name="sales_type" id="hidden-sales-type" value="' + salesTypeVal + '">');
+                } else {
+                    $('#hidden-sales-type').val(salesTypeVal);
                 }
+                $('#sales-type-lock-indicator').removeClass('d-none');
             }
 
-            // 2. Invoice / Customer Type (Auto-sync to customer's default, keep enabled so cashier can change if needed)
+            // 2. Invoice / Customer Type (Locked from Customer Master, read-only)
             if (cType) {
                 let invType = 'Retail Invoice';
                 let cUpper = String(cType).toUpperCase();
@@ -1510,9 +1513,13 @@
                 let $it = $('select[name="invoice_type"]');
                 if ($it.length) {
                     $it.val(invType).trigger('change');
-                    $it.prop('disabled', false);
-                    $('#hidden-invoice-type').remove();
-                    $('#invoice-type-lock-indicator').addClass('d-none');
+                    $it.prop('disabled', true);
+                    if (!$('#hidden-invoice-type').length) {
+                        $it.after('<input type="hidden" name="invoice_type" id="hidden-invoice-type" value="' + invType + '">');
+                    } else {
+                        $('#hidden-invoice-type').val(invType);
+                    }
+                    $('#invoice-type-lock-indicator').removeClass('d-none');
                 }
             }
         }
@@ -3882,6 +3889,14 @@
             $('#payment_type').val(finalPaymentMode).trigger('change');
             $form.find('input[name="payment_type"]').remove();
             $form.append(`<input type="hidden" name="payment_type" value="${finalPaymentMode}">`);
+
+            let curSalesType = $('select[name="sales_type"]').val() || $('#hidden-sales-type').val() || 'Local';
+            $form.find('input[name="sales_type"]').remove();
+            $form.append(`<input type="hidden" name="sales_type" value="${curSalesType}">`);
+
+            let curInvType = $('select[name="invoice_type"]').val() || $('#hidden-invoice-type').val() || 'Retail Invoice';
+            $form.find('input[name="invoice_type"]').remove();
+            $form.append(`<input type="hidden" name="invoice_type" value="${curInvType}">`);
 
             payments.forEach(function (p, i) {
                 $form.append(`<input type="hidden" name="payments[${i}][tender_type_id]" value="${p.tender_type_id}">`);

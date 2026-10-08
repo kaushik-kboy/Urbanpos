@@ -180,10 +180,11 @@
                     </label>
                     <div class="d-flex align-items-center">
                         <span class="text-muted mr-1 font-weight-bold" style="font-size: 0.72rem; text-transform: uppercase;">Tax Type:</span>
-                        <select id="posSalesTypeSelect" class="form-control form-control-sm py-0 px-2 font-weight-bold" style="height: 26px; font-size: 0.75rem; border-radius: 4px; width: auto; background-color: #f8fafc; border-color: #cbd5e1; cursor: pointer;" title="Select GST (Local) or IGST (Interstate)">
-                            <option value="Local" {{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? '' : 'selected' }}>Local (GST)</option>
-                            <option value="Interstate" {{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'selected' : '' }}>Interstate (IGST)</option>
-                        </select>
+                        <span id="posSalesTypeBadge" class="badge badge-light border font-weight-bold px-2 py-1 text-dark" style="font-size: 0.75rem;" title="Customer Locked (Read Only)">
+                            <i class="fas fa-lock mr-1 text-muted" style="font-size: 0.65rem;"></i>
+                            <span id="posSalesTypeText">{{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'Interstate (IGST)' : 'Local (GST)' }}</span>
+                        </span>
+                        <input type="hidden" id="posSalesTypeSelect" value="{{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'Interstate' : 'Local' }}">
                     </div>
                 </div>
 

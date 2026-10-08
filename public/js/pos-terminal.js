@@ -1289,22 +1289,32 @@
     const clearCart = resetTerminalAll;
     window.resetTerminalAll = resetTerminalAll;
 
-    // Set Tax / Sales Type (Local GST vs Interstate IGST)
+    // Set Tax / Sales Type (Local GST vs Interstate IGST) - Synced from Customer Master (Read Only)
     function setSalesType(salesType) {
         const normalized = (salesType === 'Interstate') ? 'Interstate' : 'Local';
         state.sales_type = normalized;
         const $select = $('#posSalesTypeSelect');
-        if ($select.length && $select.val() !== normalized) {
+        if ($select.length) {
             $select.val(normalized);
         }
-        if (normalized === 'Interstate') {
-            $select.addClass('border-primary text-primary font-weight-bold').removeClass('border-secondary text-dark');
-        } else {
-            $select.removeClass('border-primary text-primary').addClass('text-dark font-weight-bold');
+        const $text = $('#posSalesTypeText');
+        const $badge = $('#posSalesTypeBadge');
+        if ($text.length) {
+            $text.text(normalized === 'Interstate' ? 'Interstate (IGST)' : 'Local (GST)');
+        }
+        if ($badge.length) {
+            if (normalized === 'Interstate') {
+                $badge.removeClass('badge-light text-dark').addClass('badge-primary text-white');
+            } else {
+                $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
+            }
         }
         const taxLabel = document.getElementById('posTaxLabel');
         if (taxLabel) {
             taxLabel.textContent = (normalized === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
+        }
+        if (state.cart && state.cart.length > 0) {
+            updateSummaryUI(computeTotals());
         }
     }
 

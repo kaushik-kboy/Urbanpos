@@ -155,7 +155,7 @@ class GstPurchaseSummaryInvoiceWiseExport implements FromQuery, WithHeadings, Wi
 
         return [
             $row->invoice_number,
-            ExcelDate::PHPToExcel(strtotime($row->invoice_date)),
+            $row->invoice_date ? \Carbon\Carbon::parse($row->invoice_date)->format('d-m-Y') : '',
             $row->supplier_name,
             $row->gst_no ?: '',
             $row->state_name ?: '',
@@ -178,7 +178,6 @@ class GstPurchaseSummaryInvoiceWiseExport implements FromQuery, WithHeadings, Wi
         $money = '0.00';
 
         return [
-            'B' => 'DD-MMM-YYYY',
             'F' => $money,
             'I' => $money,
             'K' => $money,

@@ -121,7 +121,7 @@ class PurchaseDetailExport implements FromQuery, WithHeadings, WithMapping, Shou
 
         return [
             $row->invoice_number,
-            ExcelDate::PHPToExcel(strtotime($row->invoice_date)),
+            $row->invoice_date ? \Carbon\Carbon::parse($row->invoice_date)->format('d-m-Y') : '',
             $row->supplier_name,
             $row->gst_no ?: '',
             $row->state_name ?: '',
@@ -144,7 +144,6 @@ class PurchaseDetailExport implements FromQuery, WithHeadings, WithMapping, Shou
         $money = '0.00';
 
         return [
-            'B' => 'dd-mm-yyyy',
             'F' => $money,
             'I' => $money,
             'K' => $money,

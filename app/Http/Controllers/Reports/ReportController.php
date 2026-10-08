@@ -82,7 +82,7 @@ class ReportController extends Controller
             );
         }
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
 
         return view('reports.sales-summary', compact('rows', 'from', 'to', 'branchId', 'branches'));
     }
@@ -135,7 +135,7 @@ class ReportController extends Controller
         // Paginated: bills + their lines are hydrated per page, never for the whole date range.
         $bills = $query->paginate(100)->withQueryString();
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $customerId = $request->input('customer_id');
         $selectedCustForFilter = $customerId ? Customer::find($customerId) : null;
         $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
@@ -183,7 +183,7 @@ class ReportController extends Controller
             );
         }
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
 
         return view('reports.gst-sales-summary', compact('rows', 'from', 'to', 'branchId', 'branches'));
     }
@@ -252,7 +252,7 @@ class ReportController extends Controller
         // Paginated: invoices + their lines are hydrated per page, never for the whole date range.
         $invoices = $query->paginate(100)->withQueryString();
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $suppliers = Supplier::orderBy('name')->get();
         $purchaseTypes = PurchaseInvoice::select('purchase_type')->distinct()->whereNotNull('purchase_type')->pluck('purchase_type');
 
@@ -331,7 +331,7 @@ class ReportController extends Controller
             ->selectRaw('COALESCE(SUM(item_stocks.quantity * COALESCE(ti.cost_price,0)),0) as cost_value, COALESCE(SUM(item_stocks.quantity * COALESCE(ti.sell_price,0)),0) as sell_value, COALESCE(SUM(item_stocks.quantity),0) as qty')->first();
         $rows = $query->orderBy('branch_id')->orderBy('item_stocks.id')->paginate(100)->withQueryString();
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $brands = Brand::orderBy('name')->pluck('name', 'id');
         $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
 
@@ -380,7 +380,7 @@ class ReportController extends Controller
             );
         }
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $customerId = $request->input('customer_id');
         $selectedCustForFilter = $customerId ? Customer::find($customerId) : null;
         $customers = Customer::where('status', true)->orderBy('name')->limit(30)->get(['id', 'name', 'mobile'])
@@ -441,7 +441,7 @@ class ReportController extends Controller
 
         $customers = $query->orderBy('name')->paginate(50)->withQueryString();
         $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
 
         return view('reports.customer-master', compact('customers', 'categories', 'branches', 'branchId'));
     }
@@ -585,7 +585,7 @@ class ReportController extends Controller
             );
         }
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
 
         return view('reports.eod', compact('summary', 'tillSessions', 'from', 'to', 'branchId', 'tillSessionId', 'branches'));
     }
@@ -733,7 +733,7 @@ class ReportController extends Controller
             );
         }
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
 
         return view('reports.gst-purchase-summary', compact('rows', 'from', 'to', 'branchId', 'branches'));
     }
@@ -780,7 +780,7 @@ class ReportController extends Controller
         }
 
         $purchaseOrders = $query->orderByDesc('po_date')->paginate(30)->withQueryString();
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $statuses = PurchaseOrder::select('status')->distinct()->whereNotNull('status')->pluck('status');
 
@@ -825,7 +825,7 @@ class ReportController extends Controller
         }
 
         $transfers = $query->orderByDesc('transfer_date')->paginate(30)->withQueryString();
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $statuses = StockTransfer::select('status')->distinct()->whereNotNull('status')->pluck('status');
 
         return view('reports.stock-transfer-summary', compact('transfers', 'from', 'to', 'branchId', 'toBranchId', 'branches', 'statuses', 'status', 'search'));
@@ -865,7 +865,7 @@ class ReportController extends Controller
         }
 
         $damageStocks = $query->orderByDesc('entry_date')->paginate(30)->withQueryString();
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
 
         return view('reports.damage-stock-summary', compact('damageStocks', 'from', 'to', 'branchId', 'branches', 'search'));
     }
@@ -913,7 +913,7 @@ class ReportController extends Controller
         }
 
         $totalCollected = (float) $rows->sum('total_amount');
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $tenderTypes = TenderType::orderBy('name')->pluck('name', 'id');
 
         return view('reports.tender-summary', compact('rows', 'totalCollected', 'from', 'to', 'branchId', 'branches', 'tenderTypes', 'tenderTypeId'));
@@ -1059,7 +1059,7 @@ class ReportController extends Controller
 
         $lines = $query->paginate(100)->withQueryString()->through($mapLine);
 
-        $branches        = ->getBranchesForUser();
+        $branches        = $this->getBranchesForUser();
         $brands          = Brand::orderBy('name')->pluck('name', 'id');
         $categories      = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
         $customerId = $request->input('customer_id');
@@ -1143,7 +1143,7 @@ class ReportController extends Controller
         $chartMargin = $grouped->take(10)->pluck('gross_margin');
         $chartSales  = $grouped->take(10)->pluck('sell_total');
 
-        $branches = ->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
 
         return view('reports.sales-margin-categorywise', compact(
             'grouped', 'totals', 'from', 'to', 'branchId', 'branches',
@@ -1243,7 +1243,7 @@ class ReportController extends Controller
             'cancelled'        => $rows->where('status', 'Cancelled')->count(),
         ];
 
-        $branches   = ->getBranchesForUser();
+        $branches   = $this->getBranchesForUser();
         $filterCustId = $request->input('customer_id');
         $customers  = Customer::where('status', true)->orderBy('name')->limit(30)->pluck('name', 'id');
         if ($filterCustId && ! isset($customers[$filterCustId])) {
@@ -1327,7 +1327,7 @@ class ReportController extends Controller
             ];
         });
 
-        $branches   = ->getBranchesForUser();
+        $branches   = $this->getBranchesForUser();
         $brands     = Brand::orderBy('name')->pluck('name', 'id');
         $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
 
@@ -1454,7 +1454,7 @@ class ReportController extends Controller
             return Branch::where('id', $user->branch_id)->pluck('name', 'id');
         }
 
-        return ->getBranchesForUser();
+        return Branch::orderBy('name')->pluck('name', 'id');
     }
 
     private function resolveBranchId(Request $request): ?int

@@ -162,7 +162,7 @@ class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, Sho
 
         return [
             $row->bill_number,
-            ExcelDate::PHPToExcel(strtotime($row->bill_date)),
+            $row->bill_date ? \Carbon\Carbon::parse($row->bill_date)->format('d-m-Y') : '',
             $row->customer_name,
             $row->gst_no ?: '',
             $row->state_name ?: '',
@@ -183,7 +183,6 @@ class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, Sho
     {
         $money = '0.00';
         return [
-            'B' => 'DD-MMM-YYYY',
             'F' => $money, 'G' => $money, 'H' => $money,
             'I' => $money, 'J' => $money, 'K' => $money,
             'L' => $money, 'M' => $money, 'N' => $money,
