@@ -203,8 +203,8 @@
             'due_date', 'payment_date', 'cheque_date', 'exp_date', 'dob', 'anniversary'
         ];
         if (dateFieldExact.indexOf(lower) !== -1) return true;
+        if (/update|candidate|validate|permission/i.test(lower)) return false;
         if (lower.indexOf('date') !== -1 || lower.indexOf('[exp_date]') !== -1) {
-            if (/^(candidates?|consolidated|update_rate)/i.test(lower)) return false;
             return true;
         }
         return false;
@@ -438,6 +438,7 @@
         if ($input.hasClass('daterange') || $input.data('mode') === 'range') return true;
         var inputType = (($input[0] && $input[0].type) || $input.prop('type') || $input.attr('type') || '').toLowerCase();
         if (inputType === 'datetime-local' || inputType === 'time') return true;
+        if (inputType === 'checkbox' || inputType === 'radio' || inputType === 'button' || inputType === 'submit' || inputType === 'hidden' || inputType === 'file') return true;
 
         var val = ($input.val() || '').trim();
         var isRequired = $input.prop('required') || $input.attr('required') !== undefined;
@@ -497,11 +498,24 @@
         return validateDateField($input, null);
     }
 
+    var DATE_SELECTORS = '.datepicker, input[type="date"], input[data-date-field="true"], input[type="text"][name*="date"], input[type="text"][id*="date"], input:not([type])[name*="date"], input:not([type])[id*="date"]';
+    var NON_DATE_TYPES = ['checkbox', 'radio', 'button', 'submit', 'hidden', 'file', 'number', 'password', 'range', 'color', 'datetime-local', 'time'];
+
+    function isEligibleDateInput(el) {
+        var $el = $(el);
+        var inputType = (el.type || $el.prop('type') || $el.attr('type') || '').toLowerCase();
+        if (NON_DATE_TYPES.indexOf(inputType) !== -1) return false;
+        if ($el.hasClass('daterange') || $el.data('mode') === 'range') return false;
+        if ($el.hasClass('datepicker') || $el.attr('data-date-field') === 'true' || inputType === 'date') return true;
+        var name = (el.name || $el.attr('name') || '').toLowerCase();
+        var id = (el.id || $el.attr('id') || '').toLowerCase();
+        return isDateFieldName(name) || isDateFieldName(id);
+    }
+
     // Auto-format on typing exact 8 raw digits (e.g. 10042026) and clear error when typing valid input
-    $(document).on('input keyup', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"]), input[data-date-field="true"]', function () {
+    $(document).on('input keyup', DATE_SELECTORS, function () {
+        if (!isEligibleDateInput(this)) return;
         var $this = $(this);
-        var inputType = (this.type || $this.prop('type') || $this.attr('type') || '').toLowerCase();
-        if (inputType === 'datetime-local' || inputType === 'time' || $this.hasClass('daterange') || $this.data('mode') === 'range') return;
 
         var raw = ($this.val() || '').trim();
         if (raw) {
@@ -520,9 +534,8 @@
     });
 
     // Format and Validate on Enter, Tab, or Blur. Block Tab if invalid date (Task 5)
-    $(document).on('keydown', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"]), input[data-date-field="true"]', function (e) {
-        var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
-        if (inputType === 'datetime-local' || inputType === 'time') return;
+    $(document).on('keydown', DATE_SELECTORS, function (e) {
+        if (!isEligibleDateInput(this)) return;
         if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
             var isValid = validateDateField($(this), e);
             if (!isValid) {
@@ -535,9 +548,8 @@
         }
     });
 
-    $(document).on('blur', '.datepicker, input[type="date"], input[name*="date"]:not([type="datetime-local"]):not([type="time"]), input[id*="date"]:not([type="datetime-local"]):not([type="time"]), input[data-date-field="true"]', function () {
-        var inputType = (this.type || $(this).prop('type') || $(this).attr('type') || '').toLowerCase();
-        if (inputType === 'datetime-local' || inputType === 'time') return;
+    $(document).on('blur', DATE_SELECTORS, function () {
+        if (!isEligibleDateInput(this)) return;
         validateDateField($(this), null);
     });
 

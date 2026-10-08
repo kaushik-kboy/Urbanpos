@@ -251,6 +251,8 @@ class DamageStockController extends Controller
                 'cost_price' => $costPrice,
                 'sell_price' => $sellPrice,
                 'mrp' => $mrp,
+                'available_qty' => (float) ($stock?->quantity ?? 0),
+                'qty' => (float) ($stock?->quantity ?? 0),
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
             ];
         }));
@@ -472,6 +474,12 @@ class DamageStockController extends Controller
 
         $header['entry_date'] = $this->normalizeDate($header['entry_date']);
 
+        $rawItems = $request->input('items', []);
+        if (is_array($rawItems)) {
+            $filteredItems = array_values(array_filter($rawItems, fn($i) => !empty($i['item_id'])));
+            $request->merge(['items' => $filteredItems]);
+        }
+
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
@@ -482,6 +490,13 @@ class DamageStockController extends Controller
             'items.*.sell_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
             'items.*.gst_percent' => ['nullable', 'numeric', 'min:0'],
+        ], [
+            'items.required' => 'Please add at least one valid item row.',
+            'items.min' => 'Please add at least one valid item row.',
+            'items.*.item_id.required' => 'Please select a valid item for all rows.',
+            'items.*.qty.required' => 'Quantity is required for all item rows.',
+            'items.*.qty.min' => 'Quantity must be greater than zero.',
+            'items.*.cost_price.required' => 'Cost price is required for all item rows.',
         ]);
 
         return ['header' => $header, 'items' => $validated['items']];

@@ -425,6 +425,14 @@
                 $row.find('.item-exp-date').val(formatted).attr('data-original-exp', formatted).data('original-exp', formatted);
             }
 
+            let availQty = (batch.available_qty !== undefined && batch.available_qty !== null) ? parseFloat(batch.available_qty) : (parseFloat(batch.qty) || 0);
+            $row.attr('data-available-qty', availQty).data('available-qty', availQty);
+            const $qty = $row.find('.item-qty');
+            $qty.attr('data-available-qty', availQty).data('available-qty', availQty);
+            $qty.attr('title', 'Available Stock: ' + availQty.toFixed(3));
+            $qty.attr('placeholder', 'Max ' + availQty.toFixed(3));
+            $qty.removeClass('is-invalid border-danger text-danger');
+
             recalcRow($row);
         }
 
@@ -533,7 +541,14 @@
                 $row.find('.item-exp-date').val('').attr('data-original-exp', '').data('original-exp', '');
             }
 
+            let availQty = (item.available_qty !== undefined && item.available_qty !== null) ? parseFloat(item.available_qty) : (parseFloat(item.qty) || 0);
+            $row.attr('data-available-qty', availQty).data('available-qty', availQty);
+
             const $qty = $row.find('.item-qty');
+            $qty.attr('data-available-qty', availQty).data('available-qty', availQty);
+            $qty.attr('title', 'Available Stock: ' + availQty.toFixed(3));
+            $qty.attr('placeholder', 'Max ' + availQty.toFixed(3));
+            $qty.removeClass('is-invalid border-danger text-danger');
             // Do not default qty to 1; keep blank as requested
 
             recalcRow($row);
@@ -960,11 +975,75 @@
             }, 100);
         });
 
-        // Add Row — block if first row has no item yet
+        function validateSingleRow($row, isTriggeredByAddRow = false) {
+            let itemId = $row.find('.item-id-hidden').val();
+            let $code = $row.find('.item-code-input');
+            let $qty = $row.find('.item-qty');
+            let rowSno = $row.find('.row-sno').text().trim() || '1';
+
+            // 1. Item must be selected
+            if (!itemId) {
+                if (isTriggeredByAddRow) {
+                    if (window.toastr) {
+                        toastr.clear();
+                        toastr.warning(`Row #${rowSno} me pehle product select karein!`, 'Item Required');
+                    }
+                    $code.addClass('is-invalid border-danger').focus();
+                }
+                return false;
+            }
+
+            // 2. Qty must be entered and > 0
+            let qtyVal = parseFloat($qty.val());
+            if (isNaN(qtyVal) || qtyVal <= 0) {
+                if (isTriggeredByAddRow) {
+                    if (window.toastr) {
+                        toastr.clear();
+                        toastr.warning(`Row #${rowSno} me valid quantity (greater than 0) enter karein!`, 'Quantity Required');
+                    }
+                    $qty.addClass('is-invalid border-danger text-danger').focus().select();
+                }
+                return false;
+            }
+
+            // 3. Qty must not exceed available stock
+            let availRaw = $qty.attr('data-available-qty') !== undefined ? $qty.attr('data-available-qty') : $row.attr('data-available-qty');
+            if (availRaw !== undefined && availRaw !== '' && !isNaN(parseFloat(availRaw))) {
+                let maxAvail = parseFloat(availRaw);
+                if (qtyVal > maxAvail) {
+                    $qty.addClass('is-invalid border-danger text-danger');
+                    let errMsg = `Row #${rowSno}: Available stock (${maxAvail.toFixed(3)}) se jyada damage quantity (${qtyVal.toFixed(3)}) enter nahi kar sakte!`;
+                    if (window.toastr) {
+                        toastr.clear();
+                        toastr.error(errMsg, 'Stock Limit Exceeded');
+                    }
+                    $qty.focus().select();
+                    return false;
+                }
+            }
+
+            $qty.removeClass('is-invalid border-danger text-danger');
+            $code.removeClass('is-invalid border-danger');
+            return true;
+        }
+
+        function validateAllRowsBeforeAdd() {
+            let $rows = $('#items-body tr.item-row');
+            if ($rows.length === 0) return true;
+
+            for (let i = 0; i < $rows.length; i++) {
+                let $r = $rows.eq(i);
+                if (!validateSingleRow($r, true)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Add Row — block until current rows are completely validated
         $('#add-row').on('click', function () {
-            if (!$('#items-body tr.item-row:first .item-id-hidden').val()) {
-                $('#items-body tr.item-row:first .item-code-input').focus();
-                return;
+            if (!validateAllRowsBeforeAdd()) {
+                return false;
             }
             const template = document.getElementById('row-template').innerHTML;
             const html = template.replace(/__INDEX__/g, rowIndex);
@@ -1136,9 +1215,94 @@
 
 
 
-        // Real-time calculation triggers
-        $('#items-body').on('input change', '.item-qty, .item-cost, .item-gst-percent', function () {
+        // Real-time stock limit validation for Task 2
+        function checkQtyStockLimit($qtyInput, showToast = true) {
+            let $row = $qtyInput.closest('tr.item-row');
+            let itemId = $row.find('.item-id-hidden').val();
+            let availRaw = $qtyInput.attr('data-available-qty') !== undefined ? $qtyInput.attr('data-available-qty') : $row.attr('data-available-qty');
+            let qtyVal = parseFloat($qtyInput.val());
+
+            if (!itemId) {
+                return true;
+            }
+
+            if (availRaw === undefined || availRaw === '' || isNaN(parseFloat(availRaw))) {
+                return true;
+            }
+
+            let maxAvail = parseFloat(availRaw);
+            if (!isNaN(qtyVal) && qtyVal > maxAvail) {
+                $qtyInput.addClass('is-invalid border-danger text-danger');
+                if (showToast) {
+                    let lastWarned = $qtyInput.data('last-warned-qty');
+                    if (lastWarned !== qtyVal) {
+                        $qtyInput.data('last-warned-qty', qtyVal);
+                        if (window.toastr) {
+                            toastr.clear();
+                            toastr.error(`Available stock (${maxAvail.toFixed(3)}) se jyada quantity enter nahi kar sakte! (Entered: ${qtyVal.toFixed(3)})`, 'Stock Limit Exceeded');
+                        }
+                    }
+                }
+                return false;
+            } else {
+                $qtyInput.data('last-warned-qty', null);
+                if (!isNaN(qtyVal) && qtyVal > 0) {
+                    $qtyInput.removeClass('is-invalid border-danger text-danger');
+                }
+                return true;
+            }
+        }
+
+        // Real-time calculation triggers and stock checking
+        $('#items-body').on('input change keyup', '.item-qty', function () {
+            checkQtyStockLimit($(this), true);
             recalcRow($(this).closest('tr'));
+        });
+
+        $('#items-body').on('input change', '.item-cost, .item-gst-percent', function () {
+            recalcRow($(this).closest('tr'));
+        });
+
+        // Keydown on .item-qty: block Tab & Enter if quantity > available or <= 0
+        $('#items-body').on('keydown', '.item-qty', function (e) {
+            let isMovingForward = (e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter';
+            if (isMovingForward) {
+                let $qty = $(this);
+                let $row = $qty.closest('tr.item-row');
+                let qtyVal = parseFloat($qty.val());
+                let availRaw = $qty.attr('data-available-qty') !== undefined ? $qty.attr('data-available-qty') : $row.attr('data-available-qty');
+                let maxAvail = (availRaw !== undefined && availRaw !== '' && !isNaN(parseFloat(availRaw))) ? parseFloat(availRaw) : null;
+
+                if (isNaN(qtyVal) || qtyVal <= 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $qty.addClass('is-invalid border-danger text-danger').focus().select();
+                    if (window.toastr) {
+                        toastr.clear();
+                        toastr.warning('Valid quantity (greater than 0) enter karein tabhi aage ja sakte hain.', 'Invalid Quantity');
+                    }
+                    return false;
+                }
+
+                if (maxAvail !== null && qtyVal > maxAvail) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $qty.addClass('is-invalid border-danger text-danger').focus().select();
+                    if (window.toastr) {
+                        toastr.clear();
+                        toastr.error(`Available stock (${maxAvail.toFixed(3)}) se jyada damage quantity enter nahi kar sakte! Aage badhne se pehle quantity sahi karein.`, 'Stock Limit Exceeded');
+                    }
+                    return false;
+                }
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let $cost = $row.find('.item-cost');
+                    if ($cost.length) {
+                        $cost.focus().select();
+                    }
+                }
+            }
         });
 
         // Global shortcuts (F2: Modal Search, F5: Add Row)
@@ -1236,9 +1400,22 @@
                     e.preventDefault();
                     hasError = true;
                     let desc = $row.find('.item-desc').val() || 'selected item';
-                    $row.find('.item-qty').addClass('is-invalid').focus();
+                    $row.find('.item-qty').addClass('is-invalid border-danger text-danger').focus().select();
                     if (window.toastr) {
                         toastr.warning('Please enter a valid quantity greater than 0 for: ' + desc);
+                    }
+                    return false;
+                }
+
+                let availRaw = $row.find('.item-qty').attr('data-available-qty') || $row.attr('data-available-qty');
+                let maxAvail = (availRaw !== undefined && availRaw !== '' && !isNaN(parseFloat(availRaw))) ? parseFloat(availRaw) : null;
+                if (maxAvail !== null && qty > maxAvail) {
+                    e.preventDefault();
+                    hasError = true;
+                    let desc = $row.find('.item-desc').val() || 'selected item';
+                    $row.find('.item-qty').addClass('is-invalid border-danger text-danger').focus().select();
+                    if (window.toastr) {
+                        toastr.error(`Available stock (${maxAvail.toFixed(3)}) se jyada damage quantity nahi daal sakte for: ${desc}`);
                     }
                     return false;
                 }

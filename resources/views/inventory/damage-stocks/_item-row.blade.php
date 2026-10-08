@@ -14,10 +14,12 @@
     $mrp = data_get($line, 'mrp', $item?->mrp ?? '');
     $gstPercent = data_get($line, 'gst_percent', $item?->gstTax?->percentage ?? 0);
     $gstTaxAmount = data_get($line, 'gst_tax_amount', 0);
-    $netAmount = data_get($line, 'net_amount', 0);
+    $branchId = $selectedBranch ?? session('active_branch_id', auth()->user()?->branch_id ?: 1);
+    $stock = $item?->stocks?->where('branch_id', $branchId)->first();
+    $availableQty = $stock ? (float)$stock->quantity : 0;
 @endphp
 
-<tr class="item-row">
+<tr class="item-row" data-available-qty="{{ $availableQty }}">
     {{-- S.No --}}
     <td class="text-center align-middle row-sno font-weight-bold text-muted" style="width: 45px;">
         {{ is_numeric($idx) ? $idx + 1 : 1 }}
@@ -85,7 +87,8 @@
     <td style="width: 75px;">
         <input type="number" step="0.001" min="0" name="items[{{ $idx }}][qty]" 
                value="{{ $qty }}" 
-               placeholder="0.000" 
+               data-available-qty="{{ $availableQty }}"
+               @if($item) max="{{ $availableQty }}" title="Available Stock: {{ number_format($availableQty, 3, '.', '') }}" placeholder="Max {{ number_format($availableQty, 3, '.', '') }}" @else placeholder="0.000" @endif 
                class="form-control form-control-sm item-qty text-right font-weight-bold px-1">
     </td>
 
