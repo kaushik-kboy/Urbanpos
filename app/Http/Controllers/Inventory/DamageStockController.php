@@ -478,7 +478,13 @@ class DamageStockController extends Controller
 
         $rawItems = $request->input('items', []);
         if (is_array($rawItems)) {
-            $filteredItems = array_values(array_filter($rawItems, fn($i) => !empty($i['item_id'])));
+            $filteredItems = array_values(array_filter($rawItems, fn($i) => is_array($i) && !empty($i['item_id'])));
+            foreach ($filteredItems as &$fItem) {
+                if (!empty($fItem['exp_date'])) {
+                    $fItem['exp_date'] = $this->normalizeDate($fItem['exp_date']);
+                }
+            }
+            unset($fItem);
             $request->merge(['items' => $filteredItems]);
         }
 

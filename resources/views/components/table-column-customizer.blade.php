@@ -215,10 +215,13 @@
                 if (tr.children.length === 1 && tr.children[0].hasAttribute('colspan')) return;
 
                 Array.from(tr.children).forEach((td, idx) => {
-                    if (td.hasAttribute('data-col-key')) return;
+                    const existingKey = td.getAttribute('data-col-key');
                     const correspondingTh = thList[idx];
-                    if (correspondingTh) {
-                        td.setAttribute('data-col-key', correspondingTh.getAttribute('data-col-key'));
+                    // If td has no key or its key doesn't match any known TH column, self-heal from corresponding TH
+                    if (!existingKey || !colDefinitions.some(c => c.key === existingKey)) {
+                        if (correspondingTh) {
+                            td.setAttribute('data-col-key', correspondingTh.getAttribute('data-col-key'));
+                        }
                     }
                 });
             });
@@ -561,10 +564,16 @@
         // Reset Preferences Button
         const btnReset = wrapper.querySelector('.btn-reset-customizer');
         if (btnReset) {
-            btnReset.onclick = function() {
+            btnReset.onclick = function(e) {
+                if (e) e.preventDefault();
                 if (!confirm('Are you sure you want to reset this table to default layout?')) return;
 
+                const origHtml = btnReset.innerHTML;
+                btnReset.disabled = true;
+                btnReset.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Resetting...';
+
                 savedPrefs = [];
+                wrapper.setAttribute('data-saved-prefs', '[]');
                 applyPreferences([]);
                 closeCustomizer();
 
@@ -584,8 +593,16 @@
                     if (window.toastr) {
                         toastr.info('Table columns reset to default.');
                     }
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 200);
                 })
-                .catch(err => console.error('Error resetting table preferences:', err));
+                .catch(err => {
+                    console.error('Error resetting table preferences:', err);
+                    btnReset.disabled = false;
+                    btnReset.innerHTML = origHtml;
+                    window.location.reload();
+                });
             };
         }
 
@@ -616,11 +633,17 @@
         }
     };
 
-    document.addEventListener('DOMContentLoaded', function() {
+    function initAllTableCustomizers() {
         document.querySelectorAll('.table-customizer-wrapper').forEach(wrapper => {
             initTableCustomizer(wrapper);
         });
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAllTableCustomizers);
+    } else {
+        initAllTableCustomizers();
+    }
 })();
 </script>
 @endpush

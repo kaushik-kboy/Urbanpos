@@ -64,13 +64,13 @@
     $profitVal = ($effectiveCostForProfit > 0 && $sellExclGstVal > 0) ? round((($sellExclGstVal - $effectiveCostForProfit) / $effectiveCostForProfit) * 100, 2) : null;
 @endphp
 <tr style="line-height: 1.15;">
-    <td class="text-center align-middle font-weight-bold pinv-sr-no px-0" style="width:28px; min-width:28px;" data-col-key="sr">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
+    <td class="text-center align-middle font-weight-bold pinv-sr-no px-0" style="width:28px; min-width:28px;" data-col-key="seq">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     {{-- Code / Barcode --}}
     <td class="px-1" style="width:110px; min-width:100px;" data-col-key="code">
         <input type="text" class="form-control form-control-sm pinv-item-code font-weight-bold px-1" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Enter or scan Code / Barcode (Enter/F2 for Search)">
     </td>
     {{-- Description --}}
-    <td class="px-1" style="min-width:180px; width:195px;" data-col-key="desc">
+    <td class="px-1" style="min-width:180px; width:195px;" data-col-key="item">
         <input type="text"
                class="form-control form-control-sm pinv-item-desc bg-light font-weight-bold text-truncate px-1"
                readonly
@@ -94,7 +94,7 @@
                title="Batch Number">
     </td>
     {{-- Exp Date --}}
-    <td class="px-1" style="width:115px; min-width:115px;" data-col-key="exp">
+    <td class="px-1" style="width:115px; min-width:115px;" data-col-key="expiry">
         <input type="date"
                name="items[{{ $index }}][exp_date]"
                value="{{ $expDateVal }}"
@@ -109,11 +109,11 @@
     {{-- Free --}}
     <td class="px-0" style="width:45px; min-width:45px;" data-col-key="free"><input type="number" step="0.001" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" placeholder="0" title="Free Quantity"></td>
     {{-- Cost Price --}}
-    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="cost"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost text-right px-1" autocomplete="off" title="Invoice Cost Price"></td>
+    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="cost_price"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost text-right px-1" autocomplete="off" title="Invoice Cost Price"></td>
     {{-- Landing Cost --}}
     <td class="px-1" style="width:80px; min-width:80px;" data-col-key="landing_cost"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-landing-cost bg-light text-right px-1 font-weight-bold text-info" value="{{ $landingCostVal !== null && $landingCostVal > 0 ? number_format($landingCostVal, 2) : '' }}" autocomplete="off" title="Landing Cost Price (Effective unit cost after free qty & discount)"></td>
     {{-- Sell Price --}}
-    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="sell"><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm pinv-sell text-right px-1" autocomplete="off"></td>
+    <td class="px-1" style="width:80px; min-width:80px;" data-col-key="sell_price"><input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm pinv-sell text-right px-1" autocomplete="off"></td>
     {{-- MRP --}}
     <td class="px-1" style="width:75px; min-width:75px;" data-col-key="mrp"><input type="number" step="0.01" name="items[{{ $index }}][mrp]" value="{{ $mrpPriceVal }}" class="form-control form-control-sm pinv-mrp text-right px-1" autocomplete="off"></td>
     {{-- Margin % --}}
@@ -121,17 +121,17 @@
     {{-- Profit % --}}
     <td class="px-0" style="width:50px; min-width:50px;" data-col-key="profit"><input type="text" readonly tabindex="-1" class="form-control form-control-sm pinv-profit bg-light text-right px-1 font-weight-bold" value="{{ $profitVal !== null && $profitVal != 0 ? number_format($profitVal, 1).'%' : '' }}" autocomplete="off" title="Profit %"></td>
     {{-- Disc % --}}
-    <td class="px-0" style="width:48px; min-width:48px;" data-col-key="disc_pct"><input type="number" step="0.01" min="0" max="100" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent text-right px-1" autocomplete="off" placeholder="0%"></td>
+    <td class="px-0" style="width:48px; min-width:48px;" data-col-key="disc_percent"><input type="number" step="0.01" min="0" max="100" name="items[{{ $index }}][disc_percent]" value="{{ $discPercentVal }}" class="form-control form-control-sm pinv-disc-percent text-right px-1" autocomplete="off" placeholder="0%"></td>
     {{-- Disc Amt --}}
     <td class="px-1" style="width:70px; min-width:70px;" data-col-key="disc_amt"><input type="number" step="0.01" min="0" name="items[{{ $index }}][disc_amount]" value="{{ $discAmountVal }}" class="form-control form-control-sm pinv-disc-amount text-right px-1" autocomplete="off"></td>
     {{-- GST % --}}
-    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="gst"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm pinv-gst bg-light text-right px-1" autocomplete="off" placeholder="0%" title="GST % (Read-only)"></td>
+    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="gst_percent"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_percent]" value="{{ $gstPercentVal }}" class="form-control form-control-sm pinv-gst bg-light text-right px-1" autocomplete="off" placeholder="0%" title="GST % (Read-only)"></td>
     {{-- GST Tax Amt --}}
     <td class="px-1" style="width:75px; min-width:75px;" data-col-key="gst_amt"><input type="number" step="0.01" readonly tabindex="-1" name="items[{{ $index }}][gst_tax_amount]" value="{{ $gstTaxAmtVal }}" class="form-control form-control-sm pinv-gst-amt bg-light text-right px-1" autocomplete="off" title="GST Tax Amount (Read-only)"></td>
     {{-- Net Amount --}}
-    <td class="px-1 text-right align-middle font-weight-bold text-success pinv-row-net" style="width:85px; min-width:85px; font-size:0.84rem;" data-col-key="net">{{ $netAmtVal }}</td>
+    <td class="px-1 text-right align-middle font-weight-bold text-success pinv-row-net" style="width:85px; min-width:85px; font-size:0.84rem;" data-col-key="net_amt">{{ $netAmtVal }}</td>
     {{-- Remove --}}
-    <td class="px-0 text-center align-middle" style="width:32px; min-width:32px;" data-col-key="action">
+    <td class="px-0 text-center align-middle" style="width:32px; min-width:32px;" data-col-key="actions">
         <button type="button" class="btn btn-xs btn-outline-danger pinv-remove-row" tabindex="-1"><i class="fas fa-times"></i></button>
     </td>
 </tr>

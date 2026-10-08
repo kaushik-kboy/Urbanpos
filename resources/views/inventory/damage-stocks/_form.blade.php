@@ -922,7 +922,7 @@
             $('#footer-grand-net').text(grandNet.toFixed(2));
             $('#display-ds-final-total').text(grandNet.toFixed(2));
             let itemCount = $('#items-body tr.item-row').filter(function () {
-                return !!$(this).find('.item-select').val();
+                return !!$(this).find('.item-id-hidden').val();
             }).length;
             $('#ds-total-items-badge').text(itemCount + (itemCount === 1 ? ' Item' : ' Items'));
         }
@@ -935,7 +935,7 @@
                 $row.find('input, select').each(function () {
                     const name = $(this).attr('name');
                     if (name) {
-                        const newName = name.replace(/items\[\d+|__INDEX__\]/, `items[${idx}]`);
+                        const newName = name.replace(/^items\[[^\]]+\]+/, `items[${idx}]`);
                         $(this).attr('name', newName);
                     }
                 });
@@ -1449,7 +1449,7 @@
                 $row.find('input, select').each(function () {
                     let name = $(this).attr('name');
                     if (name && name.startsWith('items[')) {
-                        $(this).attr('name', name.replace(/items\[\d+\]/, 'items[' + idx + ']'));
+                        $(this).attr('name', name.replace(/^items\[[^\]]+\]+/, 'items[' + idx + ']'));
                     }
                 });
             });

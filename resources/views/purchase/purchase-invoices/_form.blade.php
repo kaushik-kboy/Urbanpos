@@ -143,6 +143,7 @@
         'seq'          => ['label' => '#', 'default' => true],
         'code'         => ['label' => 'Code / Barcode', 'default' => true],
         'item'         => ['label' => 'Description', 'default' => true],
+        'batch'        => ['label' => 'Batch', 'default' => true],
         'expiry'       => ['label' => 'Exp Date', 'default' => true],
         'qty'          => ['label' => 'Qty', 'default' => true],
         'free'         => ['label' => 'Free', 'default' => true],
