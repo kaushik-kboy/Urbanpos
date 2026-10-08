@@ -289,11 +289,15 @@ input[type="number"],
     background: #FFF;
 }
 
+.pos-row-qty,
+.pos-row-sell-price,
 .pos-row-disc-pct,
 .pos-row-disc-amt {
     transition: background-color 0.15s ease;
 }
 
+.pos-row-qty:hover,
+.pos-row-sell-price:hover,
 .pos-row-disc-pct:hover,
 .pos-row-disc-amt:hover {
     background-color: #f1f5f9;
@@ -938,6 +942,8 @@ input[type="number"],
     border-color: #CBD5E1;
 }
 
+.pos-row-qty,
+.pos-row-sell-price,
 .pos-row-disc-pct,
 .pos-row-disc-amt {
     cursor: pointer;
@@ -945,8 +951,12 @@ input[type="number"],
     user-select: none;
 }
 
+.pos-row-qty:hover,
+.pos-row-sell-price:hover,
 .pos-row-disc-pct:hover,
 .pos-row-disc-amt:hover,
+.pos-row-qty:focus,
+.pos-row-sell-price:focus,
 .pos-row-disc-pct:focus,
 .pos-row-disc-amt:focus {
     background-color: #EEF2F6 !important;
@@ -954,6 +964,8 @@ input[type="number"],
     border-radius: 4px;
 }
 
+.pos-row-qty-input,
+.pos-sell-price-input,
 .pos-disc-percent,
 .pos-disc-amount {
     border: 1.5px solid #1769E8 !important;
@@ -961,4 +973,10 @@ input[type="number"],
     background: #FFFFFF !important;
     box-shadow: 0 0 0 2px rgba(23, 105, 232, 0.2) !important;
     outline: none !important;
+}
+
+.pos-row-qty-input.is-invalid {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+    color: #EF4444 !important;
 }

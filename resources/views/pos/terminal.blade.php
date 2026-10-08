@@ -107,7 +107,7 @@
                             <th class="text-center" style="width: 75px;">Code</th>
                             <th>Description</th>
                             <th class="text-center" style="width: 105px; white-space: nowrap;">Exp Date</th>
-                            <th class="text-center" style="width: 70px;">Qty</th>
+                            <th class="text-center" style="width: 70px;" title="Click row cell to edit quantity">Qty</th>
                             <th class="text-right" style="width: 80px;" title="Click row cell to edit selling price">Sell</th>
                             <th class="text-right" style="width: 80px;">MRP</th>
                             <th class="text-right" style="width: 75px;" title="Click row cell to edit discount %">Dis %</th>
