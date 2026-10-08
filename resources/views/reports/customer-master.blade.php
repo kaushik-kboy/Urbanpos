@@ -25,8 +25,10 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>
-                    <select name="branch_id" class="form-control form-control-sm">
-                        <option value="" {{ empty($branchId) ? 'selected' : '' }}>All Branches</option>
+                    <select name="branch_id" class="form-control form-control-sm" {{ count($branches) <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
+                        @if(count($branches) > 1)
+                            <option value="all" {{ (empty($branchId) || $branchId === 'all') ? 'selected' : '' }}>All Branches</option>
+                        @endif
                         @foreach ($branches as $bId => $bName)
                             <option value="{{ $bId }}" @selected((string) ($branchId ?? '') === (string) $bId)>{{ $bName }}</option>
                         @endforeach

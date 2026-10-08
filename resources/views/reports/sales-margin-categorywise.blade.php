@@ -15,10 +15,12 @@
                 <input type="date" name="from" class="form-control form-control-sm mr-3" value="{{ $from }}">
                 <label class="mr-2 small font-weight-bold">To</label>
                 <input type="date" name="to" class="form-control form-control-sm mr-3" value="{{ $to }}">
-                <select name="branch_id" class="form-control form-control-sm mr-3">
-                    <option value="">All Branches</option>
+                <select name="branch_id" class="form-control form-control-sm mr-3" {{ count($branches) <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
+                    @if(count($branches) > 1)
+                        <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Branches</option>
+                    @endif
                     @foreach ($branches as $id => $name)
-                        <option value="{{ $id }}" {{ $branchId == $id ? 'selected' : '' }}>{{ $name }}</option>
+                        <option value="{{ $id }}" {{ (string)$branchId === (string)$id ? 'selected' : '' }}>{{ $name }}</option>
                     @endforeach
                 </select>
                 <button type="submit" class="btn btn-sm btn-primary mr-2"><i class="fas fa-search mr-1"></i> Apply</button>

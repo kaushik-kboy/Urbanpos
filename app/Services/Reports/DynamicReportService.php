@@ -48,7 +48,15 @@ class DynamicReportService
         } catch (\Exception $e) {
             $to = now()->format('Y-m-d');
         }
-        $branchId = $request->input('branch_id');
+        $user = auth()->user();
+        $isGlobalAdmin = ! $user || $user->email === 'admin@urbanpos.com' || $user->branch_id === null;
+
+        if (! $isGlobalAdmin && $user && $user->branch_id) {
+            $branchId = (string) $user->branch_id;
+        } else {
+            $rawBranch = $request->input('branch_id');
+            $branchId = ($rawBranch && $rawBranch !== 'all' && $rawBranch !== '0') ? (string) $rawBranch : null;
+        }
         $search = trim($request->input('search', ''));
 
         // Normalize slug

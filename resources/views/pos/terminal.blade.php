@@ -108,10 +108,10 @@
                             <th>Description</th>
                             <th class="text-center" style="width: 105px; white-space: nowrap;">Exp Date</th>
                             <th class="text-center" style="width: 70px;">Qty</th>
-                            <th class="text-right" style="width: 80px;">Sell</th>
+                            <th class="text-right" style="width: 80px;" title="Click row cell to edit selling price">Sell</th>
                             <th class="text-right" style="width: 80px;">MRP</th>
-                            <th class="text-right" style="width: 75px;">Dis %</th>
-                            <th class="text-right" style="width: 85px;">Dis Amt</th>
+                            <th class="text-right" style="width: 75px;" title="Click row cell to edit discount %">Dis %</th>
+                            <th class="text-right" style="width: 85px;" title="Click row cell to edit discount amount">Dis Amt</th>
                             <th class="text-right" style="width: 95px;">Net Amount</th>
                             <th class="text-center" style="width: 35px;"></th>
                         </tr>

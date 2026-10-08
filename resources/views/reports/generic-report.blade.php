@@ -65,10 +65,12 @@
                 @if ($hasBranchFilter ?? true)
                     <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">Branch / Location</label>
-                        <select name="branch_id" class="form-control form-control-sm">
-                            <option value="">All Branches / Locations</option>
+                        <select name="branch_id" class="form-control form-control-sm" {{ $branches->count() <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
+                            @if($branches->count() > 1)
+                                <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Branches / Locations</option>
+                            @endif
                             @foreach ($branches as $id => $name)
-                                <option value="{{ $id }}" @selected(($branchId ?? '') == $id)>{{ $name }}</option>
+                                <option value="{{ $id }}" @selected((string)($branchId ?? '') === (string)$id)>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

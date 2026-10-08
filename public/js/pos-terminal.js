@@ -504,6 +504,55 @@
             });
         }
 
+        function openSellPriceInput(idx) {
+            if (isNaN(idx) || !state.cart[idx]) return;
+            const $cell = $(`.pos-row-sell-price[data-idx="${idx}"]`);
+            if (!$cell.length) return;
+            if ($cell.find('input').length) {
+                $cell.find('input').focus().select();
+                return;
+            }
+            const item = state.cart[idx];
+            const currentVal = item.sell_price > 0 ? parseFloat(item.sell_price) : '';
+            $cell.html(`<input type="number" step="any" min="0" class="pos-row-input pos-sell-price-input text-right font-weight-bold" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
+            const $input = $cell.find('input');
+            $input.focus().select();
+
+            $input.on('blur', function () {
+                let val = parseFloat($(this).val()) || 0;
+                if (val < 0) val = 0;
+                state.cart[idx].sell_price = val;
+                recalculateRow(idx, 'base');
+                $cell.text('₹ ' + (state.cart[idx].sell_price || 0).toFixed(2));
+            });
+
+            $input.on('keydown', function (ke) {
+                if (ke.key === 'Tab') {
+                    ke.preventDefault();
+                    let val = parseFloat($(this).val()) || 0;
+                    if (val < 0) val = 0;
+                    state.cart[idx].sell_price = val;
+                    recalculateRow(idx, 'base');
+                    $cell.text('₹ ' + (state.cart[idx].sell_price || 0).toFixed(2));
+
+                    if (ke.shiftKey) {
+                        const qtyInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${idx}"]`) : null;
+                        if (qtyInput) { qtyInput.focus(); qtyInput.select(); }
+                    } else {
+                        openDiscountPercentInput(idx);
+                    }
+                } else if (ke.key === 'Enter') {
+                    ke.preventDefault();
+                    $(this).blur();
+                    focusScanner();
+                } else if (ke.key === 'Escape') {
+                    ke.preventDefault();
+                    $cell.text('₹ ' + (item.sell_price || 0).toFixed(2));
+                    focusScanner();
+                }
+            });
+        }
+
         function openDiscountAmountInput(idx) {
             if (isNaN(idx) || !state.cart[idx]) return;
             const $cell = $(`.pos-row-disc-amt[data-idx="${idx}"]`);
@@ -513,15 +562,18 @@
                 return;
             }
             const item = state.cart[idx];
-            const currentVal = item.disc_amount > 0 ? parseFloat(item.disc_amount).toFixed(2) : '';
-            $cell.html(`<input type="number" step="0.01" min="0" class="pos-row-input pos-disc-amount text-right" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
+            const currentVal = item.disc_amount > 0 ? parseFloat(item.disc_amount) : '';
+            $cell.html(`<input type="number" step="any" min="0" class="pos-row-input pos-disc-amount text-right" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
             const $input = $cell.find('input');
             $input.focus().select();
 
             $input.on('blur', function () {
                 let val = parseFloat($(this).val()) || 0;
                 const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
-                if (base > 0 && val > base) val = base;
+                if (base > 0 && val > base) {
+                    val = base;
+                    showNotification('Discount amount cannot exceed line total', 'warning');
+                }
                 if (val < 0) val = 0;
                 state.cart[idx].disc_amount = val;
                 recalculateRow(idx, 'amount');
@@ -562,6 +614,20 @@
             });
         }
 
+        $(document).on('click', '.pos-row-sell-price', function () {
+            const idx = parseInt($(this).data('idx'));
+            openSellPriceInput(idx);
+        });
+
+        $(document).on('input', '.pos-sell-price-input', function () {
+            const idx = parseInt($(this).data('idx'));
+            if (isNaN(idx) || !state.cart[idx]) return;
+            let val = parseFloat($(this).val()) || 0;
+            if (val < 0) val = 0;
+            state.cart[idx].sell_price = val;
+            recalculateRow(idx, 'base');
+        });
+
         $(document).on('click', '.pos-row-disc-pct', function () {
             const idx = parseInt($(this).data('idx'));
             openDiscountPercentInput(idx);
@@ -572,7 +638,17 @@
             openDiscountAmountInput(idx);
         });
 
-        $(document).on('input change', '.pos-disc-percent', function () {
+        $(document).on('input', '.pos-disc-percent', function () {
+            const idx = parseInt($(this).data('idx'));
+            if (isNaN(idx) || !state.cart[idx]) return;
+            let val = parseFloat($(this).val()) || 0;
+            if (val > 100) val = 100;
+            if (val < 0) val = 0;
+            state.cart[idx].disc_percent = val;
+            recalculateRow(idx, 'percent');
+        });
+
+        $(document).on('change', '.pos-disc-percent', function () {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
             let val = parseFloat($(this).val()) || 0;
@@ -588,7 +664,18 @@
             recalculateRow(idx, 'percent');
         });
 
-        $(document).on('input change', '.pos-disc-amount', function () {
+        $(document).on('input', '.pos-disc-amount', function () {
+            const idx = parseInt($(this).data('idx'));
+            if (isNaN(idx) || !state.cart[idx]) return;
+            let val = parseFloat($(this).val()) || 0;
+            const item = state.cart[idx];
+            const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
+            if (val < 0) val = 0;
+            state.cart[idx].disc_amount = (base > 0 && val > base) ? base : val;
+            recalculateRow(idx, 'amount');
+        });
+
+        $(document).on('change', '.pos-disc-amount', function () {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
             let val = parseFloat($(this).val()) || 0;
@@ -597,7 +684,7 @@
             if (base > 0 && val > base) {
                 val = base;
                 $(this).val(base.toFixed(2));
-                showNotification('Discount amount cannot exceed 100% of line total', 'warning');
+                showNotification('Discount amount cannot exceed line total', 'warning');
             } else if (val < 0) {
                 val = 0;
                 $(this).val('0.00');
@@ -1036,12 +1123,27 @@
             }
         }
 
+        // Update Sell Price cell
+        const sellCell = cartTableBody ? cartTableBody.querySelector(`.pos-row-sell-price[data-idx="${idx}"]`) : null;
+        if (sellCell) {
+            const sellInput = sellCell.querySelector('input');
+            if (sellInput) {
+                if (source !== 'base') {
+                    sellInput.value = item.sell_price > 0 ? item.sell_price : '';
+                }
+            } else {
+                sellCell.textContent = '₹ ' + (item.sell_price || 0).toFixed(2);
+            }
+        }
+
         // Update Dis % and Dis Amt cells (whether input or formatted text)
         const pctCell = cartTableBody ? cartTableBody.querySelector(`.pos-row-disc-pct[data-idx="${idx}"]`) : null;
         if (pctCell) {
             const pctInput = pctCell.querySelector('input');
             if (pctInput) {
-                pctInput.value = item.disc_percent > 0 ? item.disc_percent : '';
+                if (source !== 'percent') {
+                    pctInput.value = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) : '';
+                }
             } else {
                 pctCell.textContent = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) + '%' : '0%';
             }
@@ -1050,7 +1152,9 @@
         if (amtCell) {
             const amtInput = amtCell.querySelector('input');
             if (amtInput) {
-                amtInput.value = item.disc_amount > 0 ? item.disc_amount.toFixed(2) : '';
+                if (source !== 'amount') {
+                    amtInput.value = item.disc_amount > 0 ? item.disc_amount : '';
+                }
             } else {
                 amtCell.textContent = '₹ ' + (item.disc_amount || 0).toFixed(2);
             }
@@ -1294,7 +1398,7 @@
                     <td class="text-center" style="width: 70px;">
                         <input type="number" step="any" min="1" class="pos-row-input pos-qty-input font-weight-bold text-center ${isInvalidQty ? 'is-invalid border-danger' : ''}" value="${qtyVal}" placeholder="Qty" data-idx="${idx}" data-field="qty">
                     </td>
-                    <td class="text-right font-weight-bold text-dark" style="width: 80px;">
+                    <td class="text-right font-weight-bold text-dark pos-row-sell-price" data-idx="${idx}" tabindex="0" style="width: 80px; cursor: pointer;" title="Click or Tab to edit selling price">
                         ₹ ${item.sell_price.toFixed(2)}
                     </td>
                     <td class="text-right text-muted small" style="width: 80px;">
