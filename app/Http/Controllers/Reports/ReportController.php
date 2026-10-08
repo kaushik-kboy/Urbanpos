@@ -429,7 +429,7 @@ class ReportController extends Controller
                     'City' => fn($c) => $c->city,
                     'GST No' => fn($c) => $c->gst_no,
                     'Category' => fn($c) => $c->category?->name ?? '',
-                    'Branch' => fn($c) => $c->branch?->name ?? 'GLOBAL',
+                    'Branch' => fn($c) => $c->branch?->name ?? 'All Branches',
                     'Credit Balance' => fn($c) => number_format((float) $c->credit_balance, 2),
                     'Status' => fn($c) => $c->status ? 'Active' : 'Inactive',
                 ],

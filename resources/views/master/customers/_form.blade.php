@@ -53,7 +53,7 @@
                 <x-field name="credit_days" label="Credit Days" type="number" :value="$c->credit_days ?? 1000" />
             </div>
             <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="12">
-                <x-select name="branch_id" label="Branch" :options="$branches" :selected="$c->branch_id ?? ''" placeholder="GLOBAL" />
+                <x-select name="branch_id" label="Branch" :options="$branches" :selected="$c->branch_id ?? ''" placeholder="All Branches" />
             </div>
             <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="13">
                 <x-bool-select name="status" label="Status" :value="$c->status ?? true" />

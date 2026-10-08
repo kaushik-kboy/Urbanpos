@@ -583,7 +583,7 @@
                                 <div class="field-wrapper col-md-4 mb-3" data-field="branch_id" data-label="Branch" data-default-order="12">
                                     <label class="font-weight-600 small mb-1">Branch</label>
                                     <select name="branch_id" id="posCust_branch_id" class="form-control form-control-sm">
-                                        <option value="">GLOBAL</option>
+                                        <option value="">All Branches</option>
                                         @if(isset($branches))
                                             @foreach($branches as $bId => $bName)
                                                 <option value="{{ $bId }}">{{ $bName }}</option>

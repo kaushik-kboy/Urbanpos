@@ -38,7 +38,7 @@
                     @forelse ($areas as $area)
                         <tr>
                             <td>{{ $area->name }}</td>
-                            <td>{{ $area->branch?->name ?? 'GLOBAL' }}</td>
+                            <td>{{ $area->branch?->name ?? 'All Branches' }}</td>
                             <td><x-status-badge :active="$area->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.areas.edit', $area) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>

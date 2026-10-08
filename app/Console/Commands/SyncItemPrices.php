@@ -26,15 +26,13 @@ class SyncItemPrices extends Command
         $itemMasterFile = base_path('data_files/110110_Item_Maste_tem_Master_1_2026_09_06_232919.csv');
 
         // Resolve branch IDs
-        $hoBranch = Branch::where('name', 'like', '%URBANPETS SERVICES%')->first();
+        $satelliteBranch = Branch::where('name', 'like', '%satellite%')->orWhere('name', 'like', '%URBANPETS SERVICES%')->first();
         $moteraBranch = Branch::where('name', 'like', '%MOTERA%')->first();
-        $globalBranch = Branch::where('name', 'GLOBAL')->first();
 
-        $hoBranchId = $hoBranch ? $hoBranch->id : 2;
+        $hoBranchId = $satelliteBranch ? $satelliteBranch->id : 2;
         $moteraBranchId = $moteraBranch ? $moteraBranch->id : 3;
-        $globalBranchId = $globalBranch ? $globalBranch->id : 1;
 
-        $this->info("HO Branch ID: {$hoBranchId}, Motera Branch ID: {$moteraBranchId}, Global Branch ID: {$globalBranchId}");
+        $this->info("Satellite Branch ID: {$hoBranchId}, Motera Branch ID: {$moteraBranchId}");
 
         $suppliersCache = Supplier::pluck('id', 'name')->toArray();
 

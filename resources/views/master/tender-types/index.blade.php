@@ -40,7 +40,7 @@
                         <tr>
                             <td>{{ $tenderType->name }}</td>
                             <td>{{ $tenderType->type }}</td>
-                            <td>{{ $tenderType->branch?->name ?? 'GLOBAL' }}</td>
+                            <td>{{ $tenderType->branch?->name ?? 'All Branches' }}</td>
                             <td><x-status-badge :active="$tenderType->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.tender-types.edit', $tenderType) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>

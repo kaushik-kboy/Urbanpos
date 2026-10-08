@@ -87,7 +87,7 @@
                             <td data-col-key="city">{{ $customer->city }}</td>
                             <td data-col-key="gst-no">{{ $customer->gst_no }}</td>
                             <td data-col-key="category">{{ $customer->category?->name }}</td>
-                            <td data-col-key="branch">{{ $customer->branch?->name ?? 'GLOBAL' }}</td>
+                            <td data-col-key="branch">{{ $customer->branch?->name ?? 'All Branches' }}</td>
                             <td data-col-key="credit-balance" class="text-right">{{ number_format($customer->credit_balance, 2) }}</td>
                             <td data-col-key="status"><x-status-badge :active="$customer->status" /></td>
                         </tr>
