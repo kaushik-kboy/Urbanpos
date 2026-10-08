@@ -73,6 +73,7 @@
                 'expiry'    => ['label' => 'Exp Dt', 'default' => true],
                 'available' => ['label' => 'Available', 'default' => true],
                 'qty'       => ['label' => 'Qty', 'default' => true],
+                'mrp'       => ['label' => 'MRP (₹)', 'default' => true],
                 'unit_cost' => ['label' => 'Unit Cost (₹)', 'default' => true],
                 'amount'    => ['label' => 'Amount (₹)', 'default' => true],
                 'actions'   => ['label' => 'Actions', 'default' => true],
@@ -97,7 +98,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive tx-items-scroll-container" style="overflow-x: auto; overflow-y: auto;">
-            <table class="table table-sm table-bordered table-hover mb-0 table-items-dense" id="items-table" style="min-width: 980px; font-size: 0.875rem;">
+            <table class="table table-sm table-bordered table-hover mb-0 table-items-dense" id="items-table" style="min-width: 1080px; font-size: 0.875rem;">
                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                     <tr class="text-center text-nowrap">
                         <th style="width: 45px;" data-col-key="seq">S.No</th>
@@ -106,6 +107,7 @@
                         <th style="width: 150px;" data-col-key="expiry">Exp Dt</th>
                         <th style="width: 95px;" data-col-key="available">Available</th>
                         <th style="width: 95px;" data-col-key="qty">Qty</th>
+                        <th style="width: 105px;" class="text-right" data-col-key="mrp">MRP (₹)</th>
                         <th style="width: 105px;" class="text-right" data-col-key="unit_cost">Unit Cost (₹)</th>
                         <th style="width: 115px;" class="text-right" data-col-key="amount">Amount (₹)</th>
                         <th style="width: 45px;" data-col-key="actions"></th>
@@ -120,9 +122,9 @@
                 </tbody>
                 <tfoot class="bg-light font-weight-bold" style="position: sticky; bottom: 0; z-index: 10; border-top: 2px solid #dee2e6;">
                     <tr>
-                        <td colspan="5" class="text-right align-middle">Total Qty:</td>
+                        <td colspan="6" class="text-right align-middle">Total Qty:</td>
                         <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty">0.000</td>
-                        <td class="text-right align-middle">Total Amount:</td>
+                        <td colspan="2" class="text-right align-middle">Total Amount:</td>
                         <td class="text-right align-middle text-success font-weight-bold" id="footer-total-amount">0.00</td>
                         <td></td>
                     </tr>
@@ -457,6 +459,9 @@
 
             let unitCost = parseFloat(item.unit_cost !== undefined ? item.unit_cost : (item.cost_price || 0)) || 0;
             $row.find('.item-cost').val(unitCost.toFixed(2));
+
+            let mrpVal = parseFloat(item.mrp || 0) || 0;
+            $row.find('.item-mrp').val(mrpVal > 0 ? mrpVal.toFixed(2) : '0.00');
 
             if (item.exp_date) {
                 let formattedExp = formatToDisplayDate(item.exp_date);
@@ -883,6 +888,10 @@
 
             if (batch.cost_price !== undefined && parseFloat(batch.cost_price) > 0) {
                 $row.find('.item-cost').val(parseFloat(batch.cost_price).toFixed(2));
+            }
+
+            if (batch.mrp !== undefined && parseFloat(batch.mrp) > 0) {
+                $row.find('.item-mrp').val(parseFloat(batch.mrp).toFixed(2));
             }
 
             if (batch.exp_date) {

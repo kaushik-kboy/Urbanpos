@@ -18,6 +18,9 @@
     $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
     $availableVal = isset($line->available_qty) ? number_format((float)$line->available_qty, 3, '.', '') : '0.000';
     $batchNoVal = data_get($line, 'batch_no', '');
+    $mrpVal = isset($line->mrp) && (float)$line->mrp > 0 
+        ? number_format((float)$line->mrp, 2, '.', '') 
+        : ($selectedItem ? number_format((float)$selectedItem->mrp, 2, '.', '') : '0.00');
     $unitCostVal = isset($line->unit_cost) && (float)$line->unit_cost > 0 
         ? number_format((float)$line->unit_cost, 2, '.', '') 
         : ($selectedItem ? number_format((float)($selectedItem->cost_price ?: ($selectedItem->landing_cost ?: ($selectedItem->sell_price ?: 0))), 2, '.', '') : '0.00');
@@ -55,16 +58,16 @@
     <td style="width: 150px;" data-col-key="expiry" title="Expiry date (Read-only)">
         <div class="input-group input-group-sm">
             <input type="text"
-                   name="items[{{ $index }}][exp_date]"
-                   value="{{ $expDateVal }}"
-                   data-original-exp="{{ $expDateVal }}"
-                   readonly
-                   tabindex="-1"
-                   style="pointer-events: none;"
-                   class="form-control form-control-sm item-exp-date text-center font-weight-bold bg-light"
-                   placeholder="DD/MM/YYYY"
-                   autocomplete="off"
-                   title="Expiry Date (Read-only)">
+               name="items[{{ $index }}][exp_date]"
+               value="{{ $expDateVal }}"
+               data-original-exp="{{ $expDateVal }}"
+               readonly
+               tabindex="-1"
+               style="pointer-events: none;"
+               class="form-control form-control-sm item-exp-date text-center font-weight-bold bg-light"
+               placeholder="DD/MM/YYYY"
+               autocomplete="off"
+               title="Expiry Date (Read-only)">
             <div class="input-group-append st-batch-btn-wrap {{ empty($batchNoVal) ? 'd-none' : '' }}" style="pointer-events: auto;">
                 <button type="button" tabindex="-1" class="btn btn-warning btn-xs st-btn-choose-batch px-2 font-weight-bold" title="{{ $batchNoVal ? 'Batch: '.$batchNoVal.' (Click to choose/change batch)' : 'Multiple batches available! Click to choose batch' }}">
                     <i class="fas fa-layer-group mr-1"></i><span class="st-batch-badge-text item-batch-text">{{ $batchNoVal ?: 'Batch' }}</span>
@@ -83,6 +86,16 @@
                value="{{ $qtyVal }}"
                class="form-control form-control-sm item-qty text-right font-weight-bold"
                placeholder="0">
+    </td>
+    <td style="min-width: 105px;" data-col-key="mrp">
+        <input type="number"
+               step="0.01"
+               min="0"
+               name="items[{{ $index }}][mrp]"
+               value="{{ $mrpVal }}"
+               class="form-control form-control-sm item-mrp text-right font-weight-bold"
+               placeholder="0.00"
+               title="MRP (₹)">
     </td>
     <td style="min-width: 105px;" data-col-key="unit_cost">
         <input type="number"

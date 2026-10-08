@@ -134,6 +134,7 @@
                 <th class="text-center" style="width: 85px;">Exp Date</th>
                 <th class="text-right" style="width: 80px;">Dispatched</th>
                 <th class="text-right" style="width: 80px;">Received</th>
+                <th class="text-right" style="width: 80px;">MRP</th>
                 <th class="text-right" style="width: 90px;">Unit Cost</th>
                 <th class="text-right" style="width: 100px;">Total Value</th>
             </tr>
@@ -200,6 +201,7 @@
                     <td class="text-center">{{ $expDate ? $expDate->format('d-m-Y') : '—' }}</td>
                     <td class="text-right font-bold">{{ number_format($line->qty, 3) }}</td>
                     <td class="text-right">{{ $line->received_qty !== null ? number_format($line->received_qty, 3) : '—' }}</td>
+                    <td class="text-right">₹{{ number_format((float) ($line->mrp ?: ($line->item?->mrp ?: 0)), 2) }}</td>
                     <td class="text-right">₹{{ number_format($unitCost, 2) }}</td>
                     <td class="text-right font-bold">₹{{ number_format($lineTotal, 2) }}</td>
                 </tr>
@@ -210,6 +212,7 @@
                 <td colspan="4" class="text-right">Total:</td>
                 <td class="text-right">{{ number_format($stockTransfer->items->sum('qty'), 3) }}</td>
                 <td class="text-right">{{ $stockTransfer->items->whereNotNull('received_qty')->isNotEmpty() ? number_format($stockTransfer->items->sum('received_qty'), 3) : '—' }}</td>
+                <td></td>
                 <td></td>
                 <td class="text-right">₹{{ number_format($stockTransfer->total_value, 2) }}</td>
             </tr>

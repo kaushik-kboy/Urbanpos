@@ -11,7 +11,7 @@ class StockTransferItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'stock_transfer_id', 'item_id', 'batch_no', 'exp_date', 'qty', 'unit_cost', 'received_qty',
+        'stock_transfer_id', 'item_id', 'batch_no', 'exp_date', 'qty', 'unit_cost', 'mrp', 'received_qty',
         'gst_percent', 'taxable_value', 'gst_tax_amount', 'cgst_amount', 'sgst_amount', 'igst_amount',
     ];
 

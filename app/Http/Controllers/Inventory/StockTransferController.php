@@ -183,12 +183,15 @@ class StockTransferController extends Controller
                     ? $this->taxEngine->calculate($qty, $unitCost, $item, isInterstate: true)
                     : null;
 
+                $mrp = isset($line['mrp']) && is_numeric($line['mrp']) ? (float) $line['mrp'] : (float) ($item->mrp ?: 0);
+
                 $stockTransfer->items()->create([
                     'item_id' => $item->id,
                     'batch_no' => $batchNo,
                     'exp_date' => $expDate,
                     'qty' => $qty,
                     'unit_cost' => $unitCost,
+                    'mrp' => $mrp,
                     'gst_percent' => $tax['gst_percent'] ?? 0,
                     'taxable_value' => $tax['taxable_value'] ?? 0,
                     'gst_tax_amount' => $tax['gst_tax_amount'] ?? 0,
@@ -563,6 +566,7 @@ class StockTransferController extends Controller
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
                 COALESCE(st.quantity, 0)   AS qty,
                 COALESCE(i.cost_price, i.landing_cost, 0) AS unit_cost,
+                COALESCE(i.mrp, 0)         AS mrp,
                 ei.exp_date
             FROM items i
             LEFT JOIN item_stocks st
@@ -632,6 +636,7 @@ class StockTransferController extends Controller
                 'available_qty' => (float) $row->qty,
                 'unit_cost' => (float) ($row->unit_cost ?? 0),
                 'cost_price' => (float) ($row->unit_cost ?? 0),
+                'mrp'       => (float) ($row->mrp ?? 0),
             ];
         }
 
@@ -681,6 +686,7 @@ class StockTransferController extends Controller
                 'exp_date' => $this->resolveItemExpiry($item, $stock),
                 'unit_cost' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
                 'cost_price' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
+                'mrp' => (float) ($item->mrp ?? 0),
             ];
         }));
     }
@@ -790,6 +796,7 @@ class StockTransferController extends Controller
                 'exp_date' => $expDate,
                 'unit_cost' => $defaultCost,
                 'cost_price' => $defaultCost,
+                'mrp' => (float) ($defaultBatch ? ($defaultBatch['mrp'] ?? ($item->mrp ?? 0)) : ($item->mrp ?? 0)),
                 'batches' => $batches,
             ],
         ]);
@@ -908,6 +915,7 @@ class StockTransferController extends Controller
             'items.*.exp_date' => ['nullable', 'date'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.unit_cost' => ['nullable', 'numeric'],
+            'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $todayStr = now()->toDateString();

@@ -1348,7 +1348,7 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (data.branch_id) {
+                if (data.branch_id && !$('#branch_id').val()) {
                     $('#branch_id').val(data.branch_id).trigger('change');
                 }
                 if (data.sales_type) {
@@ -1669,9 +1669,10 @@
             customerBillsLoading = true;
             $billSelect.prop('disabled', true);
 
-            let custBillsUrl = '/sales/sales-returns/customer-bills/' + customerId;
+            let branchId = $('#branch_id').val() || '';
+            let custBillsUrl = '/sales/sales-returns/customer-bills/' + customerId + '?branch_id=' + branchId;
             if (SR_CURRENT_RETURN_ID) {
-                custBillsUrl += '?ignore_return_id=' + SR_CURRENT_RETURN_ID;
+                custBillsUrl += '&ignore_return_id=' + SR_CURRENT_RETURN_ID;
             }
 
             $.getJSON(custBillsUrl, function (bills) {
@@ -2015,7 +2016,8 @@
             $('#sr-cph-stats-badge').text('Loading...');
             updateCphFooterCounters();
 
-            let url = `/sales/sales-returns/customer-purchased-items/${custId}?days=${days}`;
+            let branchId = $('#branch_id').val() || '';
+            let url = `/sales/sales-returns/customer-purchased-items/${custId}?days=${days}&branch_id=${branchId}`;
             @if(!empty($ret?->id))
                 url += `&ignore_return_id={{ $ret->id }}`;
             @endif

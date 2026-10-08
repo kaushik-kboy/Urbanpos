@@ -24,6 +24,7 @@
                             <th>Item</th>
                             <th class="text-center">Batch No</th>
                             <th class="text-center">Exp Date</th>
+                            <th class="text-right">MRP (₹)</th>
                             <th class="text-right">Unit Cost (₹)</th>
                             <th class="text-right">Dispatched Qty</th>
                             <th class="text-right">Amount (₹)</th>
@@ -114,6 +115,9 @@
                                         <span class="text-muted">—</span>
                                     @endif
                                 </td>
+                                <td class="text-right align-middle font-weight-bold">
+                                    {{ number_format((float) ($line->mrp ?: ($line->item?->mrp ?: 0)), 2) }}
+                                </td>
                                 <td class="text-right align-middle">{{ number_format($unitCost, 2) }}</td>
                                 <td class="text-right align-middle font-weight-bold">{{ number_format($line->qty, 3) }}</td>
                                 <td class="text-right align-middle font-weight-bold text-primary">{{ number_format($lineAmount, 2) }}</td>
@@ -128,7 +132,7 @@
                     </tbody>
                     <tfoot class="bg-light font-weight-bold">
                         <tr>
-                            <td colspan="6" class="text-right">Grand Total:</td>
+                            <td colspan="7" class="text-right">Grand Total:</td>
                             <td class="text-right text-primary">{{ number_format($grandTotal, 2) }}</td>
                             <td></td>
                         </tr>

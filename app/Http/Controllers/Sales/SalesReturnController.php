@@ -55,9 +55,9 @@ class SalesReturnController extends Controller
             $query->whereDate('return_date', '<=', $request->input('date_to'));
         }
 
-        $branchFilter = $request->has('branch_id')
-            ? $request->input('branch_id')
-            : session('active_branch_id', auth()->user()?->branch_id);
+        $activeBranch = session('active_branch_id', auth()->user()?->branch_id);
+        $rawBranch = $request->input('branch_id');
+        $branchFilter = ($rawBranch !== null && $rawBranch !== '') ? $rawBranch : $activeBranch;
 
         if (!empty($branchFilter) && $branchFilter !== 'all') {
             $query->where('branch_id', $branchFilter);
@@ -94,7 +94,7 @@ class SalesReturnController extends Controller
             ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $returnModes = ['Cash', 'Credit Note', 'Replacement'];
 
-        return view('sales.sales-returns.index', compact('salesReturns', 'branches', 'customers', 'returnModes'));
+        return view('sales.sales-returns.index', compact('salesReturns', 'branches', 'customers', 'returnModes', 'branchFilter'));
     }
 
     public function create(Request $request)
@@ -327,11 +327,13 @@ class SalesReturnController extends Controller
     public function customerBills(Customer $customer, Request $request)
     {
         $ignoreReturnId = $request->integer('ignore_return_id');
+        $branchId = $request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id);
 
         $returnedRows = DB::table('sales_return_items as sri')
             ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
             ->where('sr.customer_id', $customer->id)
             ->when($ignoreReturnId, fn ($q) => $q->where('sr.id', '!=', $ignoreReturnId))
+            ->when($branchId && $branchId !== 'all', fn ($q) => $q->where('sr.branch_id', $branchId))
             ->select(
                 DB::raw('COALESCE(sri.sales_bill_id, sr.sales_bill_id) as bill_id'),
                 'sri.item_id',
@@ -347,11 +349,16 @@ class SalesReturnController extends Controller
             }
         }
 
-        $bills = SalesBill::where('customer_id', $customer->id)
+        $billsQuery = SalesBill::where('customer_id', $customer->id)
             ->where(function ($q) {
                 $q->whereNull('status')->orWhere('status', '!=', 'Cancelled');
-            })
-            ->with('items')
+            });
+
+        if ($branchId && $branchId !== 'all') {
+            $billsQuery->where('branch_id', $branchId);
+        }
+
+        $bills = $billsQuery->with('items')
             ->latest('bill_date')
             ->get(['id', 'bill_number', 'bill_date', 'total'])
             ->map(function ($b) use ($returnedByBillAndItem) {
@@ -391,11 +398,16 @@ class SalesReturnController extends Controller
     {
         $days = $request->input('days', 30);
         $ignoreReturnId = $request->integer('ignore_return_id');
+        $branchId = $request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id);
 
         $billsQuery = SalesBill::where('customer_id', $customer->id)
             ->where(function ($q) {
                 $q->whereNull('status')->orWhere('status', '!=', 'Cancelled');
             });
+
+        if ($branchId && $branchId !== 'all') {
+            $billsQuery->where('branch_id', $branchId);
+        }
 
         if ($days !== 'all' && is_numeric($days) && (int) $days > 0) {
             $cutoff = now()->subDays((int) $days)->startOfDay();
@@ -409,6 +421,7 @@ class SalesReturnController extends Controller
             ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
             ->where('sr.customer_id', $customer->id)
             ->when($ignoreReturnId, fn ($q) => $q->where('sr.id', '!=', $ignoreReturnId))
+            ->when($branchId && $branchId !== 'all', fn ($q) => $q->where('sr.branch_id', $branchId))
             ->select(
                 DB::raw('COALESCE(sri.sales_bill_id, sr.sales_bill_id) as bill_id'),
                 'sri.item_id',
@@ -511,16 +524,20 @@ class SalesReturnController extends Controller
         $itemId    = $request->integer('item_id');
         $customerId = $request->integer('customer_id');
         $ignoreReturnId = $request->integer('ignore_return_id'); // for edit mode
+        $branchId = $request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id);
 
         if (!$itemId) {
             return response()->json(['total_sold' => null, 'already_returned' => 0, 'available' => null]);
         }
 
         $soldQuery = SalesBillItem::where('item_id', $itemId)
-            ->whereHas('salesBill', function ($q) {
+            ->whereHas('salesBill', function ($q) use ($branchId) {
                 $q->where(function ($q2) {
                     $q2->whereNull('status')->orWhere('status', '!=', 'Cancelled');
                 });
+                if ($branchId && $branchId !== 'all') {
+                    $q->where('branch_id', $branchId);
+                }
             });
 
         if ($customerId) {
@@ -535,6 +552,9 @@ class SalesReturnController extends Controller
         $returnedQuery = \App\Models\SalesReturnItem::where('item_id', $itemId);
         if ($ignoreReturnId) {
             $returnedQuery->where('sales_return_id', '!=', $ignoreReturnId);
+        }
+        if ($branchId && $branchId !== 'all') {
+            $returnedQuery->whereHas('salesReturn', fn ($q) => $q->where('branch_id', $branchId));
         }
         if ($customerId) {
             $returnedQuery->whereHas('salesReturn', function ($q) use ($customerId) {
@@ -602,6 +622,8 @@ class SalesReturnController extends Controller
     private function formOptions(?SalesReturn $salesReturn = null, ?int $presetCustomerId = null, ?int $presetBillId = null): array
     {
         $custId = old('customer_id', $salesReturn?->customer_id ?? $presetCustomerId);
+        $branchId = old('branch_id', $salesReturn?->branch_id ?? session('active_branch_id', auth()->user()?->branch_id));
+
         $customers = Customer::where('status', true)
             ->orderBy('name')
             ->limit(50)
@@ -617,6 +639,7 @@ class SalesReturnController extends Controller
 
         $salesBills = $custId
             ? SalesBill::where('customer_id', $custId)
+                ->when($branchId && $branchId !== 'all', fn ($q) => $q->where('branch_id', $branchId))
                 ->where(fn($q) => $q->whereNull('status')->orWhere('status', '!=', 'Cancelled'))
                 ->latest('bill_date')
                 ->pluck('bill_number', 'id')
