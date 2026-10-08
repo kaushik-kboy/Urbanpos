@@ -123,17 +123,24 @@
             state.customer_id = window.INITIAL_CUSTOMER.id;
             const initPetId = $('#posTaggedPetId').val();
             state.customer_pet_id = initPetId ? parseInt(initPetId, 10) : null;
+            if (window.INITIAL_CUSTOMER.sales_type) {
+                setSalesType(window.INITIAL_CUSTOMER.sales_type);
+            }
         } else {
             state.customer_id = null;
             state.customer_pet_id = null;
         }
+
+        const initSalesType = window.EDIT_BILL?.sales_type || window.INITIAL_CUSTOMER?.sales_type || $('#posSalesTypeSelect').val() || 'Local';
+        setSalesType(initSalesType);
 
         if (window.EDIT_BILL) {
             state.edit_id = window.EDIT_BILL.id;
             state.customer_pet_id = window.EDIT_BILL.customer_pet_id || null;
             if (state.customer_pet_id) $('#posTaggedPetId').val(state.customer_pet_id);
             state.invoice_type = window.EDIT_BILL.invoice_type || 'Retail Invoice';
-            state.sales_type = window.EDIT_BILL.sales_type || 'B2C';
+            state.sales_type = window.EDIT_BILL.sales_type === 'Interstate' ? 'Interstate' : 'Local';
+            setSalesType(state.sales_type);
             state.delivery_type = window.EDIT_BILL.delivery_type || 'Direct';
             state.cash_received = window.EDIT_BILL.payments && window.EDIT_BILL.payments.length > 0 ? parseFloat(window.EDIT_BILL.payments[0].amount) : 0;
             if (cashReceivedInput) cashReceivedInput.value = state.cash_received;
@@ -276,6 +283,14 @@
         document.getElementById('posHoldBtn')?.addEventListener('click', holdCurrentBill);
         document.getElementById('posRecallBtn')?.addEventListener('click', recallHeldBill);
         document.getElementById('posClearBtn')?.addEventListener('click', resetTerminalAll);
+
+        // Tax Type Change (Local GST vs Interstate IGST)
+        $('#posSalesTypeSelect').on('change', function () {
+            setSalesType(this.value);
+            const totals = computeTotals();
+            updateSummaryUI(totals);
+            showNotification(`Tax Type switched to ${state.sales_type === 'Interstate' ? 'Interstate (IGST)' : 'Local (GST)'}`, 'info');
+        });
 
         // Split modal handlers
         $(document).on('input', '.split-input', function () {
@@ -1158,7 +1173,10 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Re-render UI
+        // 6. Reset Tax Type to default
+        setSalesType(window.INITIAL_CUSTOMER?.sales_type || 'Local');
+
+        // 7. Re-render UI
         renderCart();
         focusScanner();
         showNotification('Terminal reset completely (Items, customer, discounts & tender mode cleared).', 'info');
@@ -1166,6 +1184,25 @@
 
     const clearCart = resetTerminalAll;
     window.resetTerminalAll = resetTerminalAll;
+
+    // Set Tax / Sales Type (Local GST vs Interstate IGST)
+    function setSalesType(salesType) {
+        const normalized = (salesType === 'Interstate') ? 'Interstate' : 'Local';
+        state.sales_type = normalized;
+        const $select = $('#posSalesTypeSelect');
+        if ($select.length && $select.val() !== normalized) {
+            $select.val(normalized);
+        }
+        if (normalized === 'Interstate') {
+            $select.addClass('border-primary text-primary font-weight-bold').removeClass('border-secondary text-dark');
+        } else {
+            $select.removeClass('border-primary text-primary').addClass('text-dark font-weight-bold');
+        }
+        const taxLabel = document.getElementById('posTaxLabel');
+        if (taxLabel) {
+            taxLabel.textContent = (normalized === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
+        }
+    }
 
     // Calculations & Rendering
     function computeTotals() {
@@ -1295,6 +1332,8 @@
         if (subtotalEl) subtotalEl.textContent = '₹ ' + totals.subtotal.toFixed(2);
         if (discountEl) discountEl.textContent = '- ₹ ' + totals.discount.toFixed(2);
         if (gstEl) gstEl.textContent = '₹ ' + totals.tax.toFixed(2);
+        const taxLabel = document.getElementById('posTaxLabel');
+        if (taxLabel) taxLabel.textContent = (state.sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
         if (roundOffEl) roundOffEl.textContent = (totals.roundOff >= 0 ? '+ ₹ ' : '- ₹ ') + Math.abs(totals.roundOff).toFixed(2);
         if (grandTotalEl) grandTotalEl.textContent = '₹ ' + totals.grandTotal.toFixed(2);
         if (itemsCountBadge) itemsCountBadge.textContent = `${totals.totalItems} units`;
@@ -1483,6 +1522,7 @@
                             id: custId,
                             name: data.name,
                             mobile: data.mobile || '',
+                            sales_type: data.sales_type || 'Local',
                             edit_url: data.edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                             pets: data.pets || [],
                             pets_summary: data.pets_summary || ''
@@ -1645,6 +1685,7 @@
                         id: newCustId,
                         name: custName,
                         mobile: custMobile,
+                        sales_type: $('#posCust_sales_type').val() || 'Local',
                         edit_url: editUrl
                     });
                     loadCustomerLoyalty(newCustId);
@@ -1703,6 +1744,9 @@
 
     function updateSelectedCustomerUI(customer) {
         if (!customer) return;
+        if (customer.sales_type) {
+            setSalesType(customer.sales_type);
+        }
         $('#posCustomerSearchWrapper').show();
         $('#posSelectedCustomerBox').show();
         $('#posCustomerInvoicesSection').show();
@@ -1983,6 +2027,7 @@
                     id: custId,
                     name: data.customer_name,
                     mobile: data.customer_mobile,
+                    sales_type: data.sales_type || 'Local',
                     edit_url: data.customer_edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                     pets: data.pets || [],
                     pets_summary: data.pets_summary || ''
@@ -2275,6 +2320,7 @@
             id: Date.now(),
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             customer_id: state.customer_id,
+            sales_type: state.sales_type,
             cart: JSON.parse(JSON.stringify(state.cart)),
             total: computeTotals().grandTotal
         };
@@ -2297,6 +2343,9 @@
         const bill = state.held_bills.pop();
         saveHeldBills();
         state.cart = bill.cart;
+        if (bill.sales_type) {
+            setSalesType(bill.sales_type);
+        }
         if (bill.customer_id) {
             state.customer_id = bill.customer_id;
             fetchCustomerDetailsAndInvoices(bill.customer_id);
@@ -2635,6 +2684,7 @@
                 state.cash_received = 0;
                 state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
                 state.customer_id = null;
+                setSalesType(window.INITIAL_CUSTOMER?.sales_type || 'Local');
                 $('#posCustomerSelect').val(null).trigger('change.select2');
                 $('#posSelectedCustomerBox').hide();
                 $('#posCustomerInvoicesSection').hide();
@@ -3103,6 +3153,7 @@
         updateQty: updateItemQty,
         setQty: setItemQty,
         removeRow: removeItem,
+        setSalesType: setSalesType,
         openAddCustomer: openAddCustomerModalWithTerm,
         triggerCreateCustomer: function (term) {
             const t = term !== undefined ? term : (lastCustomerSearchTerm || $('.select2-search__field').val() || '');

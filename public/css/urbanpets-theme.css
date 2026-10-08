@@ -50,7 +50,7 @@
     
     /* Sizes & Radius (Page 23) */
     --up-topbar-height: 56px;
-    --up-sidebar-width: 250px;
+    --up-sidebar-width: 285px;
     --up-sidebar-collapsed-width: 4.6rem;
     --up-radius-input: 8px;
     --up-radius-card: 12px;
@@ -457,11 +457,16 @@ p, span, label, small {
 }
 
 /* ==========================================================================
-   DESKTOP EXPANDED & COLLAPSE STATES (min-width: 992px)
+   DESKTOP EXPANDED & COLLAPSE STATES (min-width: 768px)
    ========================================================================== */
-@media (min-width: 992px) {
+@media (min-width: 768px) {
     /* Normal expanded sidebar */
-    body:not(.sidebar-collapse) .main-sidebar {
+    body:not(.sidebar-collapse) .main-sidebar,
+    body:not(.sidebar-collapse) .main-sidebar::before {
+        width: var(--up-sidebar-width) !important;
+    }
+
+    body:not(.sidebar-collapse) .brand-link {
         width: var(--up-sidebar-width) !important;
     }
 

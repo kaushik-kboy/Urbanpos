@@ -178,6 +178,13 @@
                     <label class="font-weight-bold text-muted small text-uppercase mb-0">
                         <i class="fas fa-user mr-1 text-primary"></i> Customer
                     </label>
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted mr-1 font-weight-bold" style="font-size: 0.72rem; text-transform: uppercase;">Tax Type:</span>
+                        <select id="posSalesTypeSelect" class="form-control form-control-sm py-0 px-2 font-weight-bold" style="height: 26px; font-size: 0.75rem; border-radius: 4px; width: auto; background-color: #f8fafc; border-color: #cbd5e1; cursor: pointer;" title="Select GST (Local) or IGST (Interstate)">
+                            <option value="Local" {{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? '' : 'selected' }}>Local (GST)</option>
+                            <option value="Interstate" {{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'selected' : '' }}>Interstate (IGST)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Customer Search Select (ALWAYS VISIBLE as in Sales Bill) -->
@@ -316,7 +323,7 @@
                     <span id="posDiscount" class="text-danger">- ₹ 0.00</span>
                 </div>
                 <div class="pos-summary-line">
-                    <span>Tax (GST Included)</span>
+                    <span id="posTaxLabel">{{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)' }}</span>
                     <span id="posGst" class="text-muted">₹ 0.00</span>
                 </div>
                 <div class="pos-summary-line">
@@ -1293,6 +1300,7 @@
         'id' => $defaultCustomer->id,
         'name' => $defaultCustomer->name,
         'mobile' => $defaultCustomer->mobile ?? '',
+        'sales_type' => $defaultCustomer->sales_type ?? 'Local',
         'edit_url' => route('master.customers.edit', $defaultCustomer),
         'pets_summary' => $defaultPetSummary,
     ] : null) !!};
