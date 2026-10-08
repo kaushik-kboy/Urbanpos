@@ -55,11 +55,8 @@ class SalesReturnController extends Controller
             $query->whereDate('return_date', '<=', $request->input('date_to'));
         }
 
-        $activeBranch = session('active_branch_id', auth()->user()?->branch_id);
-        $rawBranch = $request->input('branch_id');
-        $branchFilter = ($rawBranch !== null && $rawBranch !== '') ? $rawBranch : $activeBranch;
-
-        if (!empty($branchFilter) && $branchFilter !== 'all') {
+        $branchFilter = $this->resolveBranchFilter($request);
+        if ($branchFilter !== 'all') {
             $query->where('branch_id', $branchFilter);
         }
 
@@ -327,7 +324,7 @@ class SalesReturnController extends Controller
     public function customerBills(Customer $customer, Request $request)
     {
         $ignoreReturnId = $request->integer('ignore_return_id');
-        $branchId = $request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $this->resolveActiveBranchId($request);
 
         $returnedRows = DB::table('sales_return_items as sri')
             ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
@@ -398,7 +395,7 @@ class SalesReturnController extends Controller
     {
         $days = $request->input('days', 30);
         $ignoreReturnId = $request->integer('ignore_return_id');
-        $branchId = $request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $this->resolveActiveBranchId($request);
 
         $billsQuery = SalesBill::where('customer_id', $customer->id)
             ->where(function ($q) {
@@ -524,7 +521,7 @@ class SalesReturnController extends Controller
         $itemId    = $request->integer('item_id');
         $customerId = $request->integer('customer_id');
         $ignoreReturnId = $request->integer('ignore_return_id'); // for edit mode
-        $branchId = $request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $this->resolveActiveBranchId($request);
 
         if (!$itemId) {
             return response()->json(['total_sold' => null, 'already_returned' => 0, 'available' => null]);
@@ -622,7 +619,7 @@ class SalesReturnController extends Controller
     private function formOptions(?SalesReturn $salesReturn = null, ?int $presetCustomerId = null, ?int $presetBillId = null): array
     {
         $custId = old('customer_id', $salesReturn?->customer_id ?? $presetCustomerId);
-        $branchId = old('branch_id', $salesReturn?->branch_id ?? session('active_branch_id', auth()->user()?->branch_id));
+        $branchId = old('branch_id', $salesReturn?->branch_id ?? $this->resolveActiveBranchId());
 
         $customers = Customer::where('status', true)
             ->orderBy('name')

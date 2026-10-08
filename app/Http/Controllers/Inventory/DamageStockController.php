@@ -32,8 +32,9 @@ class DamageStockController extends Controller
         $query = DamageStock::with(['branch', 'items.item']);
 
         // Location / Branch filter
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->input('branch_id'));
+        $branchFilter = $this->resolveBranchFilter($request);
+        if ($branchFilter !== 'all') {
+            $query->where('branch_id', $branchFilter);
         }
 
         // Wastage Type filter
@@ -84,7 +85,8 @@ class DamageStockController extends Controller
             'branches',
             'totalEntries',
             'totalQty',
-            'totalCost'
+            'totalCost',
+            'branchFilter'
         ));
     }
 
@@ -216,7 +218,7 @@ class DamageStockController extends Controller
             return response()->json([]);
         }
 
-        $branchId = (int) ($request->input('branch_id') ?: 2);
+        $branchId = (int) $this->resolveActiveBranchId($request);
 
         $items = Item::with([
                 'gstTax',
@@ -266,7 +268,7 @@ class DamageStockController extends Controller
             return response()->json(['found' => false]);
         }
 
-        $branchId = (int) ($request->input('branch_id') ?: 2);
+        $branchId = (int) $this->resolveActiveBranchId($request);
 
         if ($itemId) {
             $item = Item::with([

@@ -87,10 +87,13 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Location / Branch</label>
+                    @php
+                        $selectedBranchId = $branchFilter ?? (request()->has('branch_id') ? request('branch_id') : session('active_branch_id', auth()->user()?->branch_id));
+                    @endphp
                     <select name="branch_id" class="form-control form-control-sm">
-                        <option value="">All Locations</option>
+                        <option value="all" @selected($selectedBranchId === 'all')>All Locations</option>
                         @foreach ($branches as $bId => $bName)
-                            <option value="{{ $bId }}" @selected(request('branch_id') == $bId)>{{ $bName }}</option>
+                            <option value="{{ $bId }}" @selected($selectedBranchId == $bId)>{{ $bName }}</option>
                         @endforeach
                     </select>
                 </div>

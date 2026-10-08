@@ -40,8 +40,9 @@ class OpeningStockController extends Controller
             $query->whereDate('entry_date', '<=', $request->date_to);
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
+        $branchFilter = $this->resolveBranchFilter($request);
+        if ($branchFilter !== 'all') {
+            $query->where('branch_id', $branchFilter);
         }
 
         $allowedSorts = [
@@ -56,7 +57,7 @@ class OpeningStockController extends Controller
         $openingStocks = $query->paginate(20)->withQueryString();
         $branches = Branch::orderBy('name')->get();
 
-        return view('inventory.opening-stocks.index', compact('openingStocks', 'branches'));
+        return view('inventory.opening-stocks.index', compact('openingStocks', 'branches', 'branchFilter'));
     }
 
     public function create()
@@ -101,7 +102,7 @@ class OpeningStockController extends Controller
             return response()->json([]);
         }
 
-        $branchId = (int) ($request->input('branch_id') ?: 2);
+        $branchId = (int) $this->resolveActiveBranchId($request);
 
         // Search ONLY by item description (name) and alias
         $items = Item::with([
@@ -150,7 +151,7 @@ class OpeningStockController extends Controller
             return response()->json(['found' => false]);
         }
 
-        $branchId = (int) ($request->input('branch_id') ?: 2);
+        $branchId = (int) $this->resolveActiveBranchId($request);
 
         // 1. Exact match on barcode (ean_upc_code) or TruePOS item_code
         $item = Item::with([

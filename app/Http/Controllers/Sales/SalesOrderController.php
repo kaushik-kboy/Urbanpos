@@ -47,17 +47,9 @@ class SalesOrderController extends Controller
             $query->whereDate('order_date', '<=', $request->input('date_to'));
         }
 
-        $user = $request->user();
-        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
-            $query->where('branch_id', $user->branch_id);
-        } else {
-            $branchFilter = $request->has('branch_id')
-                ? $request->input('branch_id')
-                : session('active_branch_id', $user?->branch_id);
-
-            if (!empty($branchFilter) && $branchFilter !== 'all') {
-                $query->where('branch_id', $branchFilter);
-            }
+        $branchFilter = $this->resolveBranchFilter($request);
+        if ($branchFilter !== 'all') {
+            $query->where('branch_id', $branchFilter);
         }
 
         if ($request->filled('customer_id')) {
@@ -87,7 +79,7 @@ class SalesOrderController extends Controller
             ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $statuses = ['Open', 'Partially Fulfilled', 'Converted', 'Cancelled'];
 
-        return view('sales.sales-orders.index', compact('orders', 'branches', 'customers', 'statuses'));
+        return view('sales.sales-orders.index', compact('orders', 'branches', 'customers', 'statuses', 'branchFilter'));
     }
 
     public function create(Request $request)

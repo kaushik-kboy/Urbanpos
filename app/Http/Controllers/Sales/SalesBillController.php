@@ -90,11 +90,8 @@ class SalesBillController extends Controller
             $query->where('bill_date', '<=', $request->input('date_to').' 23:59:59');
         }
 
-        $branchFilter = $request->has('branch_id')
-            ? $request->input('branch_id')
-            : session('active_branch_id', auth()->user()?->branch_id);
-
-        if (!empty($branchFilter) && $branchFilter !== 'all') {
+        $branchFilter = $this->resolveBranchFilter($request);
+        if ($branchFilter !== 'all') {
             $query->where('branch_id', $branchFilter);
         }
 
@@ -160,7 +157,7 @@ class SalesBillController extends Controller
         $dbTenders = TenderType::where('status', true)->pluck('name')->all();
         $paymentModes = array_values(array_unique(array_merge(['Cash', 'Card', 'UPI', 'Credit', 'Split'], $dbTenders)));
 
-        return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes', 'paymentModes'));
+        return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes', 'paymentModes', 'branchFilter'));
     }
 
     public function posTerminal(Request $request)
@@ -893,7 +890,7 @@ class SalesBillController extends Controller
      */
     public function verifyStock(Request $request)
     {
-        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+        $branchId = (int) $this->resolveActiveBranchId($request);
         $items = $request->input('items', []);
         $editId = (int) ($request->input('edit_id') ?: $request->input('sales_bill_id') ?: 0);
         $existingQuantities = [];
@@ -946,7 +943,7 @@ class SalesBillController extends Controller
 
     private function nextNumber(): string
     {
-        $branchId = session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = (int) $this->resolveActiveBranchId();
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
             'sales_bill',
@@ -956,7 +953,7 @@ class SalesBillController extends Controller
 
     public function itemList(Request $request)
     {
-        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+        $branchId = (int) $this->resolveActiveBranchId($request);
         $search   = trim((string) $request->input('search', ''));
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));
@@ -1198,7 +1195,7 @@ class SalesBillController extends Controller
     {
         $itemId = $request->input('item_id');
         $query = trim((string) ($request->input('query') ?: $request->input('q', '')));
-        $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?? 3));
+        $branchId = (int) $this->resolveActiveBranchId($request);
 
         $exactMatchOnly = $request->boolean('exact_match_only');
 
@@ -1412,7 +1409,7 @@ class SalesBillController extends Controller
             ]);
         }
 
-        $activeBranchId = (int) ($salesBill?->branch_id ?: (session('active_branch_id') ?: (auth()->user()?->branch_id ?: Branch::where('status', true)->value('id'))));
+        $activeBranchId = (int) ($salesBill?->branch_id ?: $this->resolveActiveBranchId());
 
         $branchStaff = User::where(function ($q) use ($activeBranchId) {
                 $q->where('branch_id', $activeBranchId)

@@ -464,7 +464,7 @@ class StockTransferController extends Controller
 
     public function itemList(Request $request)
     {
-        $branchId = (int) ($request->input('branch_id') ?: $request->input('from_branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+        $branchId = (int) ($request->input('from_branch_id') ?: $this->resolveActiveBranchId($request));
         $search   = trim((string) $request->input('search', ''));
         $expiry   = trim((string) $request->input('expiry', ''));
         $code     = trim((string) $request->input('code', ''));
@@ -650,7 +650,7 @@ class StockTransferController extends Controller
             return response()->json([]);
         }
 
-        $branchId = (int) $request->input('branch_id');
+        $branchId = (int) ($request->input('branch_id') ?: $request->input('from_branch_id') ?: $this->resolveActiveBranchId($request));
 
         $items = Item::where('status', true)
             ->whereHas('stocks', function ($query) use ($branchId) {
@@ -699,7 +699,7 @@ class StockTransferController extends Controller
             return response()->json(['found' => false]);
         }
 
-        $branchId = (int) $request->input('branch_id');
+        $branchId = (int) ($request->input('branch_id') ?: $request->input('from_branch_id') ?: $this->resolveActiveBranchId($request));
 
         $query = Item::where('status', true)
             ->with(['stocks' => fn ($query) => $query->where('branch_id', $branchId)]);

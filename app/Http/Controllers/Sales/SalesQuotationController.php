@@ -46,11 +46,8 @@ class SalesQuotationController extends Controller
             $query->whereDate('quotation_date', '<=', $request->input('date_to'));
         }
 
-        $branchFilter = $request->has('branch_id')
-            ? $request->input('branch_id')
-            : session('active_branch_id', auth()->user()?->branch_id);
-
-        if (!empty($branchFilter) && $branchFilter !== 'all') {
+        $branchFilter = $this->resolveBranchFilter($request);
+        if ($branchFilter !== 'all') {
             $query->where('branch_id', $branchFilter);
         }
 
@@ -81,7 +78,7 @@ class SalesQuotationController extends Controller
             ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $statuses = ['Draft', 'Sent', 'Accepted', 'Converted', 'Cancelled'];
 
-        return view('sales.sales-quotations.index', compact('quotations', 'branches', 'customers', 'statuses'));
+        return view('sales.sales-quotations.index', compact('quotations', 'branches', 'customers', 'statuses', 'branchFilter'));
     }
 
     public function create()

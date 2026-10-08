@@ -490,7 +490,7 @@
             if (itemData && itemData.batches && itemData.batches.length > 0) {
                 showDsBatchModal($row, itemData, itemData.batches);
             } else {
-                const currentBranch = $('#branch_id').val() || 2;
+                const currentBranch = $('#branch_id').val() || '';
                 $.getJSON(itemByCodeUrl, { item_id: itemId, branch_id: currentBranch }, function (res) {
                     if (res && res.found && res.item) {
                         $row.data('item-data', res.item);
@@ -661,7 +661,7 @@
                 </tr>
             `);
 
-            const currentBranch = $('#branch_id').val() || 2;
+            const currentBranch = $('#branch_id').val() || '';
             $.ajax({
                 url: searchItemsUrl,
                 data: { q: query, branch_id: currentBranch },
@@ -758,7 +758,7 @@
                 damageCancellingRow = null;
                 $('#item-search-modal').modal('hide');
 
-                const currentBranch = $('#branch_id').val() || 2;
+                const currentBranch = $('#branch_id').val() || '';
                 $.getJSON(itemByCodeUrl, { item_id: item.id, branch_id: currentBranch }, function (res) {
                     if (res && res.found && res.item) {
                         applyItemToRow($targetRow, res.item);
@@ -841,7 +841,7 @@
                 }
             }
 
-            const currentBranch = $('#branch_id').val() || 2;
+            const currentBranch = $('#branch_id').val() || '';
             $.ajax({
                 url: itemByCodeUrl,
                 data: { code: code, branch_id: currentBranch },

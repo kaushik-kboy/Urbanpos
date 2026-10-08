@@ -33,17 +33,9 @@ class SalesDeliveryNoteController extends Controller
         $user = $request->user();
         $query = SalesDeliveryNote::with(['customer', 'branch', 'salesOrder', 'salesBill', 'createdBy']);
 
-        // Scope to branch if user has branch_id assigned and not an Owner
-        if ($user && $user->branch_id && !$user->hasRole('Owner')) {
-            $query->where('branch_id', $user->branch_id);
-        } else {
-            $branchFilter = $request->has('branch_id')
-                ? $request->input('branch_id')
-                : session('active_branch_id', auth()->user()?->branch_id);
-
-            if (!empty($branchFilter) && $branchFilter !== 'all') {
-                $query->where('branch_id', $branchFilter);
-            }
+        $branchFilter = $this->resolveBranchFilter($request);
+        if ($branchFilter !== 'all') {
+            $query->where('branch_id', $branchFilter);
         }
 
         if ($request->filled('search')) {
@@ -99,7 +91,7 @@ class SalesDeliveryNoteController extends Controller
             ->mapWithKeys(fn ($c) => [$c->id => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name]);
         $statuses = ['Dispatched', 'Invoiced', 'Cancelled'];
 
-        return view('sales.delivery-notes.index', compact('deliveryNotes', 'branches', 'customers', 'statuses'));
+        return view('sales.delivery-notes.index', compact('deliveryNotes', 'branches', 'customers', 'statuses', 'branchFilter'));
     }
 
     public function create(Request $request)
