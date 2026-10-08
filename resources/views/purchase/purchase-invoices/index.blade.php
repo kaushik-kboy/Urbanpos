@@ -34,10 +34,12 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>
-                    <select name="branch_id" class="form-control form-control-sm">
-                        <option value="">All Branches</option>
+                    <select name="branch_id" class="form-control form-control-sm" {{ $branches->count() <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
+                        @if($branches->count() > 1)
+                            <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Branches</option>
+                        @endif
                         @foreach ($branches as $bId => $bName)
-                            <option value="{{ $bId }}" {{ request('branch_id') == $bId ? 'selected' : '' }}>
+                            <option value="{{ $bId }}" {{ (string)request('branch_id') === (string)$bId ? 'selected' : '' }}>
                                 {{ $bName }}
                             </option>
                         @endforeach
@@ -46,9 +48,9 @@
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Supplier</label>
                     <select name="supplier_id" class="form-control form-control-sm">
-                        <option value="">All Suppliers</option>
+                        <option value="all" {{ (!request('supplier_id') || request('supplier_id') === 'all') ? 'selected' : '' }}>All Suppliers</option>
                         @foreach ($suppliers as $sId => $sName)
-                            <option value="{{ $sId }}" {{ request('supplier_id') == $sId ? 'selected' : '' }}>
+                            <option value="{{ $sId }}" {{ (string)request('supplier_id') === (string)$sId ? 'selected' : '' }}>
                                 {{ $sName }}
                             </option>
                         @endforeach
@@ -57,7 +59,7 @@
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Purchase Type</label>
                     <select name="purchase_type" class="form-control form-control-sm">
-                        <option value="">All Types</option>
+                        <option value="all" {{ (!request('purchase_type') || request('purchase_type') === 'all') ? 'selected' : '' }}>All Types</option>
                         @foreach ($purchaseTypes as $pt)
                             <option value="{{ $pt }}" {{ request('purchase_type') == $pt ? 'selected' : '' }}>
                                 {{ ucfirst(str_replace('_', ' ', $pt)) }}

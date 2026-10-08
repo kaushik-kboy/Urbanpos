@@ -1484,22 +1484,18 @@
         const CIM_PAGE_SIZE = 10;
 
         function syncAndLockCustomerTypes(cType, sType) {
-            // 1. Sales Type
+            // 1. Sales Type (Auto-sync to customer's default, keep enabled so cashier can change if needed)
             if (sType) {
                 let $st = $('select[name="sales_type"]');
                 if ($st.length) {
                     $st.val(sType).trigger('change');
-                    $st.prop('disabled', true);
-                    if (!$('#hidden-sales-type').length) {
-                        $st.after('<input type="hidden" name="sales_type" id="hidden-sales-type" value="' + sType + '">');
-                    } else {
-                        $('#hidden-sales-type').val(sType);
-                    }
-                    $('#sales-type-lock-indicator').removeClass('d-none');
+                    $st.prop('disabled', false);
+                    $('#hidden-sales-type').remove();
+                    $('#sales-type-lock-indicator').addClass('d-none');
                 }
             }
 
-            // 2. Invoice / Customer Type
+            // 2. Invoice / Customer Type (Auto-sync to customer's default, keep enabled so cashier can change if needed)
             if (cType) {
                 let invType = 'Retail Invoice';
                 let cUpper = String(cType).toUpperCase();
@@ -1514,13 +1510,9 @@
                 let $it = $('select[name="invoice_type"]');
                 if ($it.length) {
                     $it.val(invType).trigger('change');
-                    $it.prop('disabled', true);
-                    if (!$('#hidden-invoice-type').length) {
-                        $it.after('<input type="hidden" name="invoice_type" id="hidden-invoice-type" value="' + invType + '">');
-                    } else {
-                        $('#hidden-invoice-type').val(invType);
-                    }
-                    $('#invoice-type-lock-indicator').removeClass('d-none');
+                    $it.prop('disabled', false);
+                    $('#hidden-invoice-type').remove();
+                    $('#invoice-type-lock-indicator').addClass('d-none');
                 }
             }
         }

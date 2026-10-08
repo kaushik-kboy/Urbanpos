@@ -14,6 +14,7 @@
     $mrp = data_get($line, 'mrp', $item?->mrp ?? '');
     $gstPercent = data_get($line, 'gst_percent', $item?->gstTax?->percentage ?? 0);
     $gstTaxAmount = data_get($line, 'gst_tax_amount', 0);
+    $netAmount = data_get($line, 'net_amount', 0);
     $branchId = $selectedBranch ?? session('active_branch_id', auth()->user()?->branch_id ?: 1);
     $stock = $item?->stocks?->where('branch_id', $branchId)->first();
     $availableQty = $stock ? (float)$stock->quantity : 0;
