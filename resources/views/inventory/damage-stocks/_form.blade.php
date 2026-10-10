@@ -927,6 +927,11 @@
             $('#ds-total-items-badge').text(itemCount + (itemCount === 1 ? ' Item' : ' Items'));
         }
 
+        // Rewrites an "items[<oldIndex>]..." field name to use the given row index
+        function reindexItemFieldName(name, idx) {
+            return name.replace(/^items\[[^\]]+\]+/, `items[${idx}]`);
+        }
+
         function reindexRows() {
             $('#items-body tr.item-row').each(function (idx) {
                 const $row = $(this);
@@ -935,8 +940,7 @@
                 $row.find('input, select').each(function () {
                     const name = $(this).attr('name');
                     if (name) {
-                        const newName = name.replace(/^items\[[^\]]+\]+/, `items[${idx}]`);
-                        $(this).attr('name', newName);
+                        $(this).attr('name', reindexItemFieldName(name, idx));
                     }
                 });
             });
@@ -1449,7 +1453,7 @@
                 $row.find('input, select').each(function () {
                     let name = $(this).attr('name');
                     if (name && name.startsWith('items[')) {
-                        $(this).attr('name', name.replace(/^items\[[^\]]+\]+/, 'items[' + idx + ']'));
+                        $(this).attr('name', reindexItemFieldName(name, idx));
                     }
                 });
             });

@@ -35,6 +35,7 @@ use App\Http\Controllers\Inventory\DamageStockController;
 use App\Http\Controllers\Inventory\OpeningStockController;
 use App\Http\Controllers\Inventory\StockUpdateController;
 use App\Http\Controllers\Inventory\StockUpdateApprovalController;
+use App\Http\Controllers\Inventory\StockVerificationController;
 use App\Http\Controllers\Inventory\BarcodeController;
 use App\Http\Controllers\Inventory\BarcodePrintingController;
 use App\Http\Controllers\Inventory\PriceFixingController;
@@ -210,6 +211,21 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
         ->post('stock-update-approval/{stockUpdate}/approve', [StockUpdateApprovalController::class, 'approve'])->name('stock-update-approval.approve');
     Route::middleware(['permission:stock-update-approval.reject', 'branch.access'])
         ->post('stock-update-approval/{stockUpdate}/reject', [StockUpdateApprovalController::class, 'reject'])->name('stock-update-approval.reject');
+
+    // Urban Pets Stock & Expiry Verification (desktop screens; the Flutter app is the
+    // primary client, these mirror the Manager/Owner review + History & Audit flows).
+    // Authorization is enforced inside ApiObservationController (reused directly, see
+    // StockVerificationController's docblock), not by Laravel's permission middleware
+    // alias, for consistency with the mobile API's established approach.
+    Route::prefix('stock-verification')->name('stock-verification.')->group(function () {
+        Route::get('review-queue', [StockVerificationController::class, 'reviewQueue'])->name('review-queue');
+        Route::get('history', [StockVerificationController::class, 'history'])->name('history');
+        Route::get('{observation}', [StockVerificationController::class, 'show'])->name('show');
+        Route::get('{observation}/photo', [StockVerificationController::class, 'photo'])->name('photo');
+        Route::post('{observation}/approve', [StockVerificationController::class, 'approve'])->name('approve');
+        Route::post('{observation}/request-recount', [StockVerificationController::class, 'requestRecount'])->name('request-recount');
+        Route::post('{observation}/reject', [StockVerificationController::class, 'reject'])->name('reject');
+    });
 
     // Barcode Printing (legacy invoice-based)
     Route::get('barcode-printing', [BarcodePrintingController::class, 'index'])->name('barcode-printing.index');

@@ -107,6 +107,9 @@ class RolesAndPermissionsSeeder extends Seeder
         'eway-bills', 'einvoices', 'gst-returns',
         // Tools & Templates
         'whatsapp-settings', 'document-sequences', 'receipt-designer',
+        // Urban Pets Stock & Expiry Verification module (mobile app) — Manager/Owner get
+        // review + assign-task + barcode-mapping.review in addition to submit/request.
+        'stock-verification', 'barcode-mapping',
     ];
 
     /**
@@ -151,6 +154,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'till.open',
             'till.close',
             'customers.create',
+        ]);
+
+        // Urban Pets Stock & Expiry Verification module (mobile app). Staff is a new,
+        // branch-scoped role (same branch_id column/semantics as Cashier) limited to
+        // submitting observations/mapping requests — never review/approval authority.
+        $staff = Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
+        $staff->syncPermissions([
+            Permission::firstOrCreate(['name' => 'stock-verification.submit', 'guard_name' => 'web']),
+            Permission::firstOrCreate(['name' => 'barcode-mapping.request', 'guard_name' => 'web']),
         ]);
 
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();

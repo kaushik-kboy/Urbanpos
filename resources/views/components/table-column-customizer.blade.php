@@ -588,8 +588,11 @@
                         table_key: tableKey
                     })
                 })
-                .then(r => r.json())
-                .then(data => {
+                .then(r => r.json().catch(() => null).then(data => ({ ok: r.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok) {
+                        throw new Error((data && data.message) || 'Failed to reset table columns.');
+                    }
                     if (window.toastr) {
                         toastr.info('Table columns reset to default.');
                     }
@@ -601,7 +604,11 @@
                     console.error('Error resetting table preferences:', err);
                     btnReset.disabled = false;
                     btnReset.innerHTML = origHtml;
-                    window.location.reload();
+                    if (window.toastr) {
+                        toastr.error('Could not reset table columns. Please try again.');
+                    } else {
+                        alert('Could not reset table columns. Please try again.');
+                    }
                 });
             };
         }

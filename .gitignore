@@ -42,3 +42,4 @@ scripts/*.json
 scripts/*.html
 scripts/*.php
 test-results/
+backups/

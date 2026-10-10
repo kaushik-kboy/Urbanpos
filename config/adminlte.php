@@ -599,7 +599,7 @@ return [
         [
             'text' => 'Inventory',
             'icon' => 'fas fa-fw fa-warehouse',
-            'can' => ['opening-stocks.create', 'damage-stocks.create', 'stock-updates.create', 'stock-update-approval.approve', 'price-fixing.apply', 'change-selling.edit', 'repack.create', 'kit-preparation.create', 'kit-unpack.create', 'items.create', 'barcode-printing.print', 'kit-recipes.create'],
+            'can' => ['opening-stocks.create', 'damage-stocks.create', 'stock-updates.create', 'stock-update-approval.approve', 'price-fixing.apply', 'change-selling.edit', 'repack.create', 'kit-preparation.create', 'kit-unpack.create', 'items.create', 'barcode-printing.print', 'kit-recipes.create', 'stock-verification.review'],
             'submenu' => [
                 [
                     'text' => 'Opening Stock Entry',
@@ -635,6 +635,27 @@ return [
                     'icon' => 'fas fa-fw fa-barcode',
                     'active' => ['inventory/barcode*'],
                     'can' => ['barcode-printing.print', 'items.create'],
+                ],
+                [
+                    'text' => 'Stock & Expiry Verification',
+                    'icon' => 'fas fa-fw fa-mobile-alt',
+                    'can' => 'stock-verification.review',
+                    'submenu' => [
+                        [
+                            'text' => 'Manager Review Queue',
+                            'url' => 'inventory/stock-verification/review-queue',
+                            'icon' => 'fas fa-fw fa-clipboard-check',
+                            'active' => ['inventory/stock-verification/review-queue*'],
+                            'can' => 'stock-verification.review',
+                        ],
+                        [
+                            'text' => 'History & Audit',
+                            'url' => 'inventory/stock-verification/history',
+                            'icon' => 'fas fa-fw fa-history',
+                            'active' => ['inventory/stock-verification/history*'],
+                            'can' => 'stock-verification.review',
+                        ],
+                    ],
                 ],
                 [
                     'text' => 'Price Fixing',

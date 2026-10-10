@@ -287,6 +287,17 @@ class RoleController extends Controller
                 'modules' => [
                     'users' => ['label' => 'Staff Accounts & Roles Assignment', 'actions' => ['create' => 'Create Staff', 'edit' => 'Edit Staff', 'cancel' => 'Delete Staff']],
                 ]
+            ],
+            // Urban Pets Stock & Expiry Verification module (mobile app + AdminLTE
+            // review/history screens added 2026-10-10) — see
+            // URBANPETS_DATABASE_AND_WORKFLOW.md §6.
+            'stock-verification' => [
+                'label' => 'Stock & Expiry Verification',
+                'icon' => 'fas fa-mobile-alt text-primary',
+                'modules' => [
+                    'stock-verification' => ['label' => 'Blind Stock Count & Expiry Verification', 'actions' => ['submit' => 'Submit Observation', 'review' => 'Approve/Reject/Recount', 'assign-task' => 'Assign Count Task']],
+                    'barcode-mapping' => ['label' => 'Unknown Barcode Mapping', 'actions' => ['request' => 'Request Mapping', 'review' => 'Review Mapping Request']],
+                ]
             ]
         ];
     }

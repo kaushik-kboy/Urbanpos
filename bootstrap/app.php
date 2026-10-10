@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -17,11 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureActiveBranch::class,
             \App\Http\Middleware\NormalizeDateInputs::class,
         ]);
+        // Mobile app uses bearer tokens (Sanctum personal access tokens), not cookies,
+        // so EnsureFrontendRequestsAreStateful (Sanctum's cookie/SPA mode) is deliberately
+        // NOT added to the api group here.
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'branch.access' => \App\Http\Middleware\EnsureBranchAccess::class,
+            'api.branch.access' => \App\Http\Middleware\EnsureApiBranchAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
