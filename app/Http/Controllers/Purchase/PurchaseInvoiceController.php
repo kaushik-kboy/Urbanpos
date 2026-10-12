@@ -67,6 +67,8 @@ class PurchaseInvoiceController extends Controller
         } else {
             if ($request->filled('branch_id') && $request->input('branch_id') !== 'all') {
                 $query->where('branch_id', $request->input('branch_id'));
+            } elseif ($request->session()->has('active_branch_id') && $request->session()->get('active_branch_id') !== 'all' && is_numeric($request->session()->get('active_branch_id'))) {
+                $query->where('branch_id', (int) $request->session()->get('active_branch_id'));
             }
         }
 
@@ -293,6 +295,14 @@ class PurchaseInvoiceController extends Controller
 
     public function edit(PurchaseInvoice $purchaseInvoice)
     {
+        $user = auth()->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        if (! $isGlobalAdmin && $user->branch_id) {
+            if ((int) $purchaseInvoice->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseInvoice->load('items.item.gstTax');
 
         return view('purchase.purchase-invoices.edit', array_merge(['purchaseInvoice' => $purchaseInvoice], $this->formOptions($purchaseInvoice)));
@@ -300,6 +310,14 @@ class PurchaseInvoiceController extends Controller
 
     public function update(Request $request, PurchaseInvoice $purchaseInvoice)
     {
+        $user = auth()->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        if (! $isGlobalAdmin && $user->branch_id) {
+            if ((int) $purchaseInvoice->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         $purchaseInvoice->assertEditable();
 
         $data = $this->validateData($request, $purchaseInvoice->id);
@@ -331,6 +349,14 @@ class PurchaseInvoiceController extends Controller
 
     public function destroy(PurchaseInvoice $purchaseInvoice)
     {
+        $user = auth()->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        if (! $isGlobalAdmin && $user->branch_id) {
+            if ((int) $purchaseInvoice->branch_id !== (int) $user->branch_id) {
+                abort(403, 'You do not have access to this branch.');
+            }
+        }
+
         // No assertEditable() guard here: destroy() already IS the cancel/reversal action.
         $oldValues = $purchaseInvoice->only(['invoice_number', 'invoice_date', 'supplier_id', 'branch_id', 'total', 'status']);
 
@@ -771,21 +797,32 @@ class PurchaseInvoiceController extends Controller
         $activeSupplierId = $supplierId ?? $purchaseInvoice?->supplier_id;
 
         $purchaseOrders = collect();
+        $user = auth()->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+
         if ($activeSupplierId) {
-            $purchaseOrders = PurchaseOrder::where('supplier_id', $activeSupplierId)
+            $poQuery = PurchaseOrder::where('supplier_id', $activeSupplierId)
                 ->where(function ($q) use ($purchaseInvoice) {
                     $q->where('status', 'Open');
                     if ($purchaseInvoice?->purchase_order_id) {
                         $q->orWhere('id', $purchaseInvoice->purchase_order_id);
                     }
-                })
-                ->orderBy('po_number')
-                ->pluck('po_number', 'id');
+                });
+
+            if (! $isGlobalAdmin && $user->branch_id) {
+                $poQuery->where('branch_id', $user->branch_id);
+            }
+
+            $purchaseOrders = $poQuery->orderBy('po_number')->pluck('po_number', 'id');
         }
+
+        $branches = (! $isGlobalAdmin && $user->branch_id)
+            ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
+            : Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         return [
             'suppliers' => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches' => $branches,
             'items' => $items,
             'purchaseOrders' => $purchaseOrders,
         ];
@@ -1092,6 +1129,11 @@ class PurchaseInvoiceController extends Controller
         }
 
         $header = $request->validate($headerRules, $headerMessages);
+
+        $user = auth()->user();
+        if ($user && $user->branch_id !== null && ! $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) && $user->email !== 'admin@urbanpos.com') {
+            $header['branch_id'] = (int) $user->branch_id;
+        }
 
         $supplier = Supplier::find($header['supplier_id'] ?? null);
         if ($supplier && $supplier->isInterstate()) {

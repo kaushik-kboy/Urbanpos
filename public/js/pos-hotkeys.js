@@ -545,34 +545,39 @@
         }
 
         // POS Terminal Context (Touch/High-Speed POS Screen)
-        let isPosTerminal = document.body && (document.body.classList.contains('pos-terminal-body') || !!document.querySelector('.pos-terminal-container'));
+        let isPosTerminal = (document.body && (document.body.classList.contains('pos-terminal-body') || !!document.querySelector('.pos-terminal-container'))) || (window.location.pathname.indexOf('/pos') !== -1);
         if (isPosTerminal) {
-            if (keyCombo === 'ALT+C') {
+            if (keyCombo === 'ALT+C' || (e.altKey && (e.code === 'KeyC' || e.key === 'c' || e.key === 'C' || e.keyCode === 67))) {
                 e.preventDefault();
+                e.stopPropagation();
                 e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Cash"]')?.click();
                 return;
             }
-            if (keyCombo === 'ALT+U') {
+            if (keyCombo === 'ALT+U' || (e.altKey && (e.code === 'KeyU' || e.key === 'u' || e.key === 'U' || e.keyCode === 85))) {
                 e.preventDefault();
+                e.stopPropagation();
                 e.stopImmediatePropagation();
                 document.querySelector('[data-mode="UPI"]')?.click();
                 return;
             }
-            if (keyCombo === 'ALT+D') {
+            if (keyCombo === 'ALT+D' || (e.altKey && (e.code === 'KeyD' || e.key === 'd' || e.key === 'D' || e.keyCode === 68))) {
                 e.preventDefault();
+                e.stopPropagation();
                 e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Card"]')?.click();
                 return;
             }
-            if (keyCombo === 'ALT+E') {
+            if (keyCombo === 'ALT+E' || (e.altKey && (e.code === 'KeyE' || e.key === 'e' || e.key === 'E' || e.keyCode === 69))) {
                 e.preventDefault();
+                e.stopPropagation();
                 e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Credit"]')?.click();
                 return;
             }
-            if (keyCombo === 'ALT+S') {
+            if (keyCombo === 'ALT+S' || (e.altKey && (e.code === 'KeyS' || e.key === 's' || e.key === 'S' || e.keyCode === 83))) {
                 e.preventDefault();
+                e.stopPropagation();
                 e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Split"]')?.click();
                 return;
@@ -744,5 +749,15 @@
             }
         }, 150);
     });
+
+    // Global Scroll-Wheel Guard on Number Inputs (Prevent mouse wheel from altering values)
+    document.addEventListener('wheel', function (e) {
+        if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+            e.preventDefault();
+            e.target.blur();
+        } else if (document.activeElement && document.activeElement.tagName === 'INPUT' && document.activeElement.type === 'number') {
+            document.activeElement.blur();
+        }
+    }, { passive: false });
 
 })();

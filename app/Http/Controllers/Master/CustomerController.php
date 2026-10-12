@@ -71,6 +71,10 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+        $user = $request->user();
+        if ($user && $user->branch_id !== null && ! $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) && $user->email !== 'admin@urbanpos.com') {
+            $data['branch_id'] = $user->branch_id;
+        }
         $customer = Customer::create($data);
         $this->syncPets($request, $customer);
         if ($request->has('custom_fields')) {
@@ -129,6 +133,10 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $data = $this->validateData($request, $customer);
+        $user = $request->user();
+        if ($user && $user->branch_id !== null && ! $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) && $user->email !== 'admin@urbanpos.com') {
+            $data['branch_id'] = $user->branch_id;
+        }
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);
@@ -249,11 +257,17 @@ class CustomerController extends Controller
             ]);
         }
 
+        $user = auth()->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        $branches = (! $isGlobalAdmin && $user->branch_id)
+            ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
+            : Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
+
         return [
             'customerCategories' => CustomerCategory::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'customerTypes' => $customerTypes,
             'salesTypes' => $salesTypes,
-            'branches' => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'branches' => $branches,
             'areas' => Area::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'petTypes' => PetType::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'breeds' => Breed::where('status', true)->orderBy('name')->pluck('name', 'id'),

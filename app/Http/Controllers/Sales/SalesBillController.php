@@ -617,13 +617,21 @@ class SalesBillController extends Controller
         return response()->json($this->loyaltyService->getCustomerLoyalty($customer));
     }
 
-    public function customerInvoices($customer)
+    public function customerInvoices(Request $request, $customer)
     {
         if (! ($customer instanceof Customer)) {
             $customer = Customer::findOrFail($customer);
         }
 
-        $bills = SalesBill::where('customer_id', $customer->id)
+        $branchId = $this->resolveActiveBranchId($request, allowAll: true);
+
+        $billsQuery = SalesBill::where('customer_id', $customer->id);
+
+        if ($branchId && $branchId !== 'all') {
+            $billsQuery->where('branch_id', (int) $branchId);
+        }
+
+        $bills = $billsQuery
             ->withCount('items')
             ->orderByDesc('id')
             ->limit(100)

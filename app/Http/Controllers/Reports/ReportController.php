@@ -43,23 +43,91 @@ class ReportController extends Controller
     public function salesSummary(Request $request)
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
+        $paymentMode = $request->input('payment_mode');
 
-        $rows = SalesBill::with('branch')
+        $availablePaymentModes = \App\Models\TenderType::where('status', true)->pluck('name')->values()->all();
+        if (empty($availablePaymentModes)) {
+            $availablePaymentModes = ['Cash', 'Card', 'UPI'];
+        }
+        if (!in_array('UPI', $availablePaymentModes)) {
+            $availablePaymentModes[] = 'UPI';
+        }
+        if (!in_array('Split', $availablePaymentModes)) {
+            $availablePaymentModes[] = 'Split';
+        }
+
+        $billsQuery = SalesBill::with(['branch', 'payments.tenderType'])
             ->where('status', '!=', 'Cancelled')
-            ->where('bill_date', '>=', $from.' 00:00:00')
-            ->where('bill_date', '<=', $to.' 23:59:59')
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->selectRaw('DATE(bill_date) as bill_date, branch_id, COUNT(*) as bill_count, SUM(total) as total_amount, SUM(disc_amount) as total_disc, SUM(total_gst) as total_gst')
-            ->groupBy(DB::raw('DATE(bill_date)'), 'branch_id')
-            ->orderBy('bill_date')
-            ->get();
+            ->where('bill_date', '>=', $from . ' 00:00:00')
+            ->where('bill_date', '<=', $to . ' 23:59:59')
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+
+        if ($paymentMode && $paymentMode !== 'all') {
+            if (strtolower($paymentMode) === 'split') {
+                $billsQuery->where(function ($q) {
+                    $q->where('payment_type', 'Split')
+                      ->orWhereHas('payments', null, '>', 1);
+                });
+            } else {
+                $billsQuery->where(function ($q) use ($paymentMode) {
+                    $q->where(function ($sq) use ($paymentMode) {
+                        $sq->where('payment_type', $paymentMode)
+                           ->where(function ($mq) {
+                               $mq->whereDoesntHave('payments')
+                                  ->orWhereHas('payments', null, '<=', 1);
+                           });
+                    })->orWhere(function ($sq) use ($paymentMode) {
+                        $sq->has('payments', '=', 1)
+                           ->whereHas('payments.tenderType', fn ($tq) => $tq->where('name', $paymentMode));
+                    });
+                });
+            }
+        }
+
+        $bills = $billsQuery->orderBy('bill_date')->get();
+
+        $bills->each(function ($bill) {
+            $tenders = $bill->payments->map(fn ($p) => $p->tenderType?->name)->filter()->unique()->values()->all();
+            if (count($tenders) > 1) {
+                $bill->effective_payment_mode = 'Split (' . implode(' + ', $tenders) . ')';
+                $bill->is_split = true;
+            } elseif (count($tenders) === 1) {
+                $bill->effective_payment_mode = $tenders[0];
+                $bill->is_split = false;
+            } else {
+                $rawType = $bill->payment_type && $bill->payment_type !== 'None' ? $bill->payment_type : 'Cash';
+                $bill->effective_payment_mode = $rawType;
+                $bill->is_split = ($rawType === 'Split');
+            }
+        });
+
+        $rows = $bills->groupBy(function ($b) {
+            $date = \Carbon\Carbon::parse($b->bill_date)->format('Y-m-d');
+            return $date . '_' . $b->branch_id . '_' . $b->effective_payment_mode;
+        })->map(function ($group) {
+            $first = $group->first();
+            return (object) [
+                'bill_date'    => \Carbon\Carbon::parse($first->bill_date)->format('Y-m-d'),
+                'branch_id'    => $first->branch_id,
+                'branch'       => $first->branch,
+                'payment_mode' => $first->effective_payment_mode,
+                'bill_count'   => $group->count(),
+                'total_amount' => (float) $group->sum('total'),
+                'total_disc'   => (float) $group->sum('disc_amount'),
+                'total_gst'    => (float) $group->sum('total_gst'),
+            ];
+        })->values();
 
         if ($rows->isEmpty() && \Illuminate\Support\Facades\Schema::hasTable('daily_sales_summaries')) {
             $summaryRows = \App\Models\DailySalesSummary::whereBetween('summary_date', [$from, $to])
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->selectRaw('summary_date as bill_date, branch_id, total_bills as bill_count, bill_amount as total_amount, disc_amount as total_disc, gst_tax_amt as total_gst')
                 ->orderBy('summary_date')
-                ->get();
+                ->get()
+                ->map(function ($r) {
+                    $r->payment_mode = 'All';
+                    return $r;
+                });
             if ($summaryRows->isNotEmpty()) {
                 $rows = $summaryRows;
             }
@@ -69,11 +137,12 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $rows,
                 [
-                    'Date' => fn($r) => \Carbon\Carbon::parse($r->bill_date)->format('d-m-Y'),
-                    'Branch' => fn($r) => $r->branch?->name ?? 'All Branches',
-                    'Total Bills' => 'bill_count',
-                    'Total Discount' => fn($r) => number_format((float) $r->total_disc, 2),
-                    'Total GST' => fn($r) => number_format((float) $r->total_gst, 2),
+                    'Date'             => fn($r) => \Carbon\Carbon::parse($r->bill_date)->format('d-m-Y'),
+                    'Branch'           => fn($r) => $r->branch?->name ?? 'All Branches',
+                    'Payment Mode'     => fn($r) => $r->payment_mode ?? 'All',
+                    'Total Bills'      => 'bill_count',
+                    'Total Discount'   => fn($r) => number_format((float) $r->total_disc, 2),
+                    'Total GST'        => fn($r) => number_format((float) $r->total_gst, 2),
                     'Net Sales Amount' => fn($r) => number_format((float) $r->total_amount, 2),
                 ],
                 'sales-summary_' . $from . '_to_' . $to . '.xlsx',
@@ -84,7 +153,9 @@ class ReportController extends Controller
 
         $branches = $this->getBranchesForUser();
 
-        return view('reports.sales-summary', compact('rows', 'from', 'to', 'branchId', 'branches'));
+        return view('reports.sales-summary', compact(
+            'rows', 'from', 'to', 'branchId', 'branches', 'paymentMode', 'availablePaymentModes'
+        ));
     }
 
     public function billwiseSales(Request $request)

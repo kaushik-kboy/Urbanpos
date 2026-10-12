@@ -662,8 +662,43 @@ class ReportsCoreTest extends TestCase
         $r = $this->get(route('reports.quotation-order-summary', ['customer_id' => $zed->id]));
         $this->assertSame('Zzz Selected', $r->viewData('customers')[$zed->id]);
         $this->assertCount(31, $r->viewData('customers'));
-        // an unknown id must not crash or add a phantom option
         $r = $this->get(route('reports.quotation-order-summary', ['customer_id' => 999999]));
         $this->assertCount(30, $r->viewData('customers'));
+    }
+
+    public function test_sales_summary_payment_mode_filter_and_split_breakdown(): void
+    {
+        $ttCash = TenderType::firstOrCreate(['name' => 'Cash'], ['status' => true, 'type' => 'Cash', 'mode' => 'Manual']);
+        $ttCard = TenderType::firstOrCreate(['name' => 'Card'], ['status' => true, 'type' => 'Card', 'mode' => 'Manual']);
+        $ttUpi  = TenderType::firstOrCreate(['name' => 'UPI'],  ['status' => true, 'type' => 'Wallet', 'mode' => 'Manual']);
+
+        // Bill 1: Pure Cash
+        $b1 = $this->bill('PM-CASH', '2026-09-10', $this->b1, 500, 'Posted');
+        $b1->payments()->create(['tender_type_id' => $ttCash->id, 'amount' => 500]);
+        $b1->update(['payment_type' => 'Cash']);
+
+        // Bill 2: Split Cash + Card
+        $b2 = $this->bill('PM-SPLIT', '2026-09-10', $this->b1, 1000, 'Posted');
+        $b2->payments()->create(['tender_type_id' => $ttCash->id, 'amount' => 600]);
+        $b2->payments()->create(['tender_type_id' => $ttCard->id, 'amount' => 400]);
+        $b2->update(['payment_type' => 'Split']);
+
+        // 1. All Payment Modes
+        $rAll = $this->get(route('reports.sales-summary', $this->range() + ['branch_id' => $this->b1->id, 'payment_mode' => 'all']))->assertOk();
+        $rowsAll = $rAll->viewData('rows');
+        $this->assertTrue($rowsAll->contains(fn($row) => $row->payment_mode === 'Cash' && (float)$row->total_amount === 500.0));
+        $this->assertTrue($rowsAll->contains(fn($row) => str_contains($row->payment_mode, 'Split') && (float)$row->total_amount === 1000.0));
+
+        // 2. Filter by Cash
+        $rCash = $this->get(route('reports.sales-summary', $this->range() + ['branch_id' => $this->b1->id, 'payment_mode' => 'Cash']))->assertOk();
+        $rowsCash = $rCash->viewData('rows');
+        $this->assertTrue($rowsCash->every(fn($row) => $row->payment_mode === 'Cash'));
+
+        // 3. Filter by Split
+        $rSplit = $this->get(route('reports.sales-summary', $this->range() + ['branch_id' => $this->b1->id, 'payment_mode' => 'Split']))->assertOk();
+        $rowsSplit = $rSplit->viewData('rows');
+        $this->assertTrue($rowsSplit->every(fn($row) => str_contains($row->payment_mode, 'Split')));
+        $splitRow = $rowsSplit->first(fn($row) => str_contains($row->payment_mode, 'Split'));
+        $this->assertStringContainsString('Cash + Card', $splitRow->payment_mode);
     }
 }

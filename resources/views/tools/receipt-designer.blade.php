@@ -78,7 +78,21 @@
                     @endforeach
                 </div>
 
-                {{-- Branch is globally managed from the top navigation bar --}}
+                <div class="d-flex align-items-center mt-2 mt-md-0">
+                    <label class="font-weight-bold small text-dark mb-0 mr-2">
+                        <i class="fas fa-store text-primary mr-1"></i> Branch Profile:
+                    </label>
+                    <select id="receipt-designer-branch-select" class="form-control form-control-sm font-weight-bold shadow-sm" style="min-width: 210px;" onchange="window.location.href = this.value">
+                        @foreach($branches as $b)
+                            <option value="{{ route('tools.receipt-designer.index', ['doc' => $docType, 'branch_id' => $b->id]) }}" {{ (string)$selectedBranchId === (string)$b->id ? 'selected' : '' }}>
+                                {{ $b->name }}
+                            </option>
+                        @endforeach
+                        <option value="{{ route('tools.receipt-designer.index', ['doc' => $docType, 'branch_id' => 'global']) }}" {{ $selectedBranchId === null ? 'selected' : '' }}>
+                            🌐 Global Default (All Branches)
+                        </option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>

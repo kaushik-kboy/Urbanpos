@@ -29,9 +29,16 @@ class ReceiptDesignerController extends Controller
         }
 
         $branches = \App\Models\Branch::where('status', true)->orderBy('name')->get();
-        $selectedBranchId = $request->filled('branch_id')
-            ? (int) $request->input('branch_id')
-            : (session('active_branch_id', auth()->user()?->branch_id) ?: ($branches->first()?->id ?? null));
+        if ($request->has('branch_id')) {
+            $rawBranch = $request->input('branch_id');
+            if ($rawBranch === 'global' || $rawBranch === 'all' || $rawBranch === '0' || $rawBranch === '') {
+                $selectedBranchId = null;
+            } else {
+                $selectedBranchId = (int) $rawBranch;
+            }
+        } else {
+            $selectedBranchId = session('active_branch_id', auth()->user()?->branch_id) ?: ($branches->first()?->id ?? null);
+        }
 
         // A stale/placeholder branch id (e.g. EnsureActiveBranch's fallback when no branch exists yet)
         // would violate the receipt_settings.branch_id FK on firstOrCreate - fall back to a real one.
@@ -196,51 +203,18 @@ class ReceiptDesignerController extends Controller
             $data['show_logo'] = true;
         }
 
-        // 1. Update or create the selected branch settings
+        // 1. Update the target settings for this branch (or global default if branchId is null)
         $settings->update($data);
 
-        // 2. ALWAYS update or create the global default template (branch_id = null)
-        $globalData = $data;
-        $globalData['branch_id'] = null;
-        ReceiptSetting::updateOrCreate(
-            ['document_type' => $docType, 'branch_id' => null],
-            $globalData
-        );
-
-        // 3. Sync common print design tokens across all existing branch records
-        ReceiptSetting::where('document_type', $docType)
-            ->whereNotNull('branch_id')
-            ->update([
-                'invoice_format'         => $data['invoice_format'],
-                'header_layout'          => $data['header_layout'],
-                'accent_color'           => $data['accent_color'],
-                'store_name'             => $data['store_name'],
-                'tagline'                => $data['tagline'],
-                'show_logo'              => $data['show_logo'],
-                'logo_width'             => $data['logo_width'],
-                'logo_path'              => $data['logo_path'] ?? $settings->logo_path,
-                'show_customer_pet_name' => $data['show_customer_pet_name'],
-                'show_ship_to'           => $data['show_ship_to'],
-                'show_hsn_code'          => $data['show_hsn_code'],
-                'show_tax_breakup'       => $data['show_tax_breakup'],
-                'show_tax_summary_table' => $data['show_tax_summary_table'],
-                'show_discount'          => $data['show_discount'],
-                'show_payment_details'   => $data['show_payment_details'],
-                'show_upi_qr'            => $data['show_upi_qr'],
-                'upi_id'                 => $data['upi_id'],
-                'upi_payee_name'         => $data['upi_payee_name'],
-                'show_barcode'           => $data['show_barcode'],
-                'show_signature_box'     => $data['show_signature_box'],
-                'show_support_qr'        => $data['show_support_qr'],
-                'support_qr_payload'     => $data['support_qr_payload'],
-                'paper_size'             => $data['paper_size'],
-                'font_size'              => $data['font_size'],
-                'terms_conditions'       => $data['terms_conditions'],
-                'compliance_notes'       => $data['compliance_notes'],
-                'footer_policy'          => $data['footer_policy'],
-                'footer_note'            => $data['footer_note'],
-                'custom_css'             => $data['custom_css'],
-            ]);
+        // 2. Ensure global default template exists if not already present
+        if ($branchId === null || !ReceiptSetting::where('document_type', $docType)->whereNull('branch_id')->exists()) {
+            $globalData = $data;
+            $globalData['branch_id'] = null;
+            ReceiptSetting::updateOrCreate(
+                ['document_type' => $docType, 'branch_id' => null],
+                $globalData
+            );
+        }
 
         $typeLabel = $supportedTypes[$docType]['label'] ?? $docType;
         $branchName = $branchId ? (\App\Models\Branch::find($branchId)?->name ?? "Branch #{$branchId}") : 'All Branches';

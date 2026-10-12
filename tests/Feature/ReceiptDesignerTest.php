@@ -271,5 +271,47 @@ class ReceiptDesignerTest extends TestCase
         $this->assertEquals('URBAN PETS AJAX STORE', $settings->store_name);
         $this->assertEquals('80mm', $settings->paper_size);
     }
+
+    public function test_saving_settings_for_motera_branch_does_not_overwrite_satellite_branch(): void
+    {
+        $motera = Branch::create(['name' => 'Motera Branch Extra', 'code' => 'MOT-EXT', 'status' => 1]);
+        $satellite = Branch::create(['name' => 'Satellite Branch Extra', 'code' => 'SAT-EXT', 'status' => 1]);
+
+        // First configure Satellite
+        $satellitePayload = [
+            'document_type'  => 'sales_bill',
+            'branch_id'      => $satellite->id,
+            'store_name'     => 'URBAN POS SATELLITE',
+            'paper_size'     => '80mm',
+            'font_size'      => 'normal',
+            'header_address' => 'Satellite Road, Ahmedabad',
+        ];
+        $this->actingAs($this->user)->postJson(route('tools.receipt-designer.update'), $satellitePayload)->assertOk();
+
+        // Then configure Motera
+        $moteraPayload = [
+            'document_type'  => 'sales_bill',
+            'branch_id'      => $motera->id,
+            'store_name'     => 'URBAN POS MOTERA',
+            'paper_size'     => 'a4',
+            'font_size'      => 'large',
+            'header_address' => 'Motera Stadium Road, Ahmedabad',
+        ];
+        $this->actingAs($this->user)->postJson(route('tools.receipt-designer.update'), $moteraPayload)->assertOk();
+
+        // Verify Satellite settings are still Satellite
+        $satelliteSettings = ReceiptSetting::where('document_type', 'sales_bill')->where('branch_id', $satellite->id)->first();
+        $this->assertNotNull($satelliteSettings);
+        $this->assertEquals('URBAN POS SATELLITE', $satelliteSettings->store_name);
+        $this->assertEquals('80mm', $satelliteSettings->paper_size);
+        $this->assertEquals('Satellite Road, Ahmedabad', $satelliteSettings->header_address);
+
+        // Verify Motera settings are Motera
+        $moteraSettings = ReceiptSetting::where('document_type', 'sales_bill')->where('branch_id', $motera->id)->first();
+        $this->assertNotNull($moteraSettings);
+        $this->assertEquals('URBAN POS MOTERA', $moteraSettings->store_name);
+        $this->assertEquals('a4', $moteraSettings->paper_size);
+        $this->assertEquals('Motera Stadium Road, Ahmedabad', $moteraSettings->header_address);
+    }
 }
 

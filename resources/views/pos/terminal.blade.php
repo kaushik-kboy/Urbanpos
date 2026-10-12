@@ -33,8 +33,12 @@
                 <i class="fas fa-cash-register mr-2"></i>UrbanPOS <span class="badge badge-success ml-2 font-weight-normal small">Terminal</span>
             </div>
             @php
-                $activeBrId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: ($branches->keys()->first() ?? 1));
-                $activeBrName = $branches[$activeBrId] ?? ($branches->first() ?? 'Branch');
+                $user = auth()->user();
+                $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+                $activeBrId = (! $isGlobalAdmin && $user?->branch_id)
+                    ? (int) $user->branch_id
+                    : (int) (session('active_branch_id') ?: ($user?->branch_id ?: ($branches->keys()->first() ?? 1)));
+                $activeBrName = $branches[$activeBrId] ?? ($user?->branch?->name ?? ($branches->first() ?? 'Branch'));
             @endphp
             <div class="pos-meta-item d-none d-md-inline-flex" title="Store Branch">
                 <i class="fas fa-store text-info mr-1"></i>
@@ -583,11 +587,19 @@
                                 <div class="field-wrapper col-md-4 mb-3" data-field="branch_id" data-label="Branch" data-default-order="12">
                                     <label class="font-weight-600 small mb-1">Branch</label>
                                     <select name="branch_id" id="posCust_branch_id" class="form-control form-control-sm">
-                                        <option value="">All Branches</option>
-                                        @if(isset($branches))
-                                            @foreach($branches as $bId => $bName)
-                                                <option value="{{ $bId }}">{{ $bName }}</option>
-                                            @endforeach
+                                        @if($isGlobalAdmin)
+                                            <option value="">All Branches</option>
+                                            @if(isset($branches))
+                                                @foreach($branches as $bId => $bName)
+                                                    <option value="{{ $bId }}" @selected($bId == $activeBrId)>{{ $bName }}</option>
+                                                @endforeach
+                                            @endif
+                                        @else
+                                            @if(isset($branches) && isset($branches[$activeBrId]))
+                                                <option value="{{ $activeBrId }}" selected>{{ $branches[$activeBrId] }}</option>
+                                            @elseif($user?->branch)
+                                                <option value="{{ $user->branch_id }}" selected>{{ $user->branch->name }}</option>
+                                            @endif
                                         @endif
                                     </select>
                                 </div>
@@ -1103,6 +1115,53 @@
     </div>
 </div>
 
+<!-- POS Multiple Batches Selection Modal -->
+<div class="modal fade" id="pos-batch-modal" tabindex="-1" role="dialog" aria-labelledby="posBatchModalLabel" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white py-2 px-3 align-items-center">
+                <h5 class="modal-title font-weight-bold mb-0" id="posBatchModalLabel" style="font-size: 1.1rem;">
+                    <i class="fas fa-layer-group mr-2 text-warning"></i> Multiple Batches Available — Select Batch
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.9;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3 bg-light">
+                <div class="alert alert-info py-2 mb-3 small font-weight-bold">
+                    Item: <span id="pos-modal-item-title" class="text-dark font-weight-bold"></span> | 
+                    Code: <span id="pos-modal-item-code" class="text-dark font-weight-bold"></span>
+                </div>
+                <div class="table-responsive bg-white rounded shadow-sm" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-hover mb-0" id="pos-modal-batches-table">
+                        <thead class="bg-dark text-white sticky-top" style="z-index: 2;">
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th>Product Name</th>
+                                <th class="text-center" style="width: 120px;">Batch No</th>
+                                <th class="text-center" style="width: 130px;">Expiry</th>
+                                <th class="text-right" style="width: 85px;">Stock</th>
+                                <th class="text-right" style="width: 95px;">Sell Price</th>
+                                <th class="text-right" style="width: 95px;">MRP</th>
+                                <th class="text-center" style="width: 90px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pos-modal-batches-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                    <small class="text-muted"><kbd>↑</kbd> <kbd>↓</kbd> to Navigate &bull; <kbd>Enter</kbd> to Select &bull; <kbd>Esc</kbd> to Close</small>
+                </div>
+            </div>
+            <div class="modal-footer py-2 px-3 bg-white justify-content-end">
+                <button type="button" class="btn btn-secondary btn-sm px-3 font-weight-bold" data-dismiss="modal">Close (Esc)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- POS Split Payment / Multi-Tender Modal -->
 <div class="modal fade" id="posSplitModal" tabindex="-1" role="dialog" aria-labelledby="posSplitModalTitle" aria-hidden="true" data-backdrop="static">
     <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 520px;">
@@ -1309,6 +1368,8 @@
     window.NEXT_BILL_NUMBER = "{{ $nextBillNumber ?? '' }}";
     window.TENDER_TYPES = {!! json_encode($tenderTypes ?? []) !!};
     window.ALL_BRANCH_STAFF = {!! json_encode($allBranchStaff ?? []) !!};
+    window.CURRENT_USER_BRANCH_ID = {{ (int) $activeBrId }};
+    window.IS_GLOBAL_ADMIN = {{ $isGlobalAdmin ? 'true' : 'false' }};
 
     // Update POS Biller / Staff options based on selected branch
     function syncPosBranchStaff(branchId) {

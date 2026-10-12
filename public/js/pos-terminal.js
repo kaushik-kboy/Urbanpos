@@ -10,7 +10,7 @@
         cart: [],
         customer_id: null,
         customer_pet_id: null,
-        branch_id: null,
+        branch_id: (typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) ? parseInt(window.CURRENT_USER_BRANCH_ID, 10) : null,
         invoice_type: 'Retail Invoice',
         sales_type: 'Local',
         delivery_type: 'Delivered',
@@ -47,6 +47,39 @@
 
     function isAllowNegative(val) {
         return val === true || val === 1 || val === '1' || val === 'true';
+    }
+
+    function getItemStock(item) {
+        if (!item) return null;
+        if (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== '') {
+            return parseFloat(item.batch_stock);
+        }
+        if (item.stock !== undefined && item.stock !== null && item.stock !== '') {
+            return parseFloat(item.stock);
+        }
+        if (item.current_stock !== undefined && item.current_stock !== null && item.current_stock !== '') {
+            return parseFloat(item.current_stock);
+        }
+        return null;
+    }
+
+    function isItemStockExceeded(item, requestedQty, excludeRowIdx = -1) {
+        if (!item) return false;
+        const stock = getItemStock(item);
+        if (stock === null || isNaN(stock)) return false;
+
+        const hasBatch = !!(item.batch_no || (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== ''));
+        // Physical batch lots can never allow negative stock under any condition
+        const allowNeg = hasBatch ? false : isAllowNegative(item.allow_negative_stock);
+        if (allowNeg) return false;
+
+        const otherRowsQty = getTotalCartQtyForItem(item.id, excludeRowIdx, item.batch_no || null);
+        const totalReq = otherRowsQty + (parseFloat(requestedQty) || 0);
+        return totalReq > (stock + 0.0001);
+    }
+
+    function getActiveBranchId() {
+        return state.branch_id || (typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) || '';
     }
 
     // Audio Feedback Generator using Web Audio API
@@ -197,6 +230,14 @@
                 const code = scanInput.value.trim();
                 if (code) {
                     processBarcodeScan(code);
+                } else if (state.cart.length > 0) {
+                    // Item already in cart: Tab from barcode input goes straight to QTY of the active/last cart row!
+                    const targetIdx = state.cart.length - 1;
+                    openQuantityInput(targetIdx);
+                    setTimeout(() => {
+                        const $inp = $(`.pos-row-qty[data-idx="${targetIdx}"] input`);
+                        if ($inp.length) $inp.focus().select();
+                    }, 40);
                 } else {
                     if (typeof window.openPosItemSearchModal === 'function') {
                         window.openPosItemSearchModal();
@@ -222,8 +263,12 @@
         // Branch change
         const branchSelect = document.getElementById('posBranchSelect');
         if (branchSelect) {
+            state.branch_id = parseInt(branchSelect.value, 10) || state.branch_id;
             branchSelect.addEventListener('change', () => {
-                state.branch_id = branchSelect.value;
+                state.branch_id = parseInt(branchSelect.value, 10);
+                if (state.customer_id) {
+                    loadCustomerInvoices(state.customer_id);
+                }
             });
         }
 
@@ -238,19 +283,24 @@
         // Tender modes
         document.querySelectorAll('.pos-tender-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const invalidItem = state.cart.find(item => item.qty === '' || item.qty === null || item.qty === undefined || isNaN(parseFloat(item.qty)) || parseFloat(item.qty) <= 0);
-                if (invalidItem) {
-                    const badIdx = state.cart.indexOf(invalidItem);
-                    showNotification(`Item "${invalidItem.name}" ki quantity bhariye! (Please enter quantity first)`, 'warning');
-                    openQuantityInput(badIdx);
-                    const badInput = cartTableBody ? cartTableBody.querySelector(`input.pos-qty-input[data-idx="${badIdx}"]`) : null;
-                    if (badInput) {
-                        badInput.classList.add('is-invalid', 'border-danger');
-                        badInput.focus();
-                        badInput.select();
+                for (let i = 0; i < state.cart.length; i++) {
+                    const it = state.cart[i];
+                    if (it.qty === '' || it.qty === null || it.qty === undefined || isNaN(parseFloat(it.qty)) || parseFloat(it.qty) <= 0) {
+                        showNotification(`Item "${it.name}" ki quantity bhariye! (Please enter quantity first)`, 'warning');
+                        openQuantityInput(i);
+                        if (typeof sound !== 'undefined' && sound.error) sound.error();
+                        return;
                     }
-                    if (typeof sound !== 'undefined' && sound.error) sound.error();
-                    return;
+                    if (isItemStockExceeded(it, it.qty, i)) {
+                        const stock = getItemStock(it);
+                        const otherRowsQty = getTotalCartQtyForItem(it.id, i, it.batch_no || null);
+                        const availRemaining = Math.max(0, stock - otherRowsQty);
+                        const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                        showNotification(`Insufficient stock for "${it.name}". Only ${availDisp} units are available.`, 'danger');
+                        openQuantityInput(i);
+                        if (typeof sound !== 'undefined' && sound.error) sound.error();
+                        return;
+                    }
                 }
                 document.querySelectorAll('.pos-tender-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -382,7 +432,9 @@
             const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
             if (!$cell.length) return;
             if ($cell.find('input').length) {
-                $cell.find('input').focus().select();
+                const $existing = $cell.find('input');
+                $existing.focus().select();
+                setTimeout(() => $existing.focus().select(), 20);
                 return;
             }
             const item = state.cart[idx];
@@ -390,6 +442,7 @@
             $cell.html(`<input type="number" step="any" min="1" class="pos-row-input pos-qty-input pos-row-qty-input font-weight-bold text-center" style="height: 26px; width: 58px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="Qty" data-idx="${idx}">`);
             const $input = $cell.find('input');
             $input.focus().select();
+            setTimeout(() => $input.focus().select(), 20);
 
             $input.on('blur', function () {
                 const rawVal = $(this).val().trim();
@@ -398,10 +451,26 @@
                     state.cart[idx].qty = '';
                     $cell.html('<span class="text-danger font-weight-bold">Qty</span>');
                     $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                } else {
-                    state.cart[idx].qty = val;
-                    $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                    recalculateRow(idx, 'qty');
+                    return;
                 }
+
+                if (isItemStockExceeded(item, val, idx)) {
+                    state.cart[idx].qty = '';
+                    const stock = getItemStock(item);
+                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                    const availRemaining = Math.max(0, stock - otherRowsQty);
+                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                    $cell.html(`<span class="text-danger font-weight-bold" title="Insufficient stock: max ${availDisp} available">Exceeds Stock (${availDisp}) ⚠️</span>`);
+                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                    showNotification(`Insufficient stock for "${item.name}". Only ${availDisp} units available (entered ${val}). Qty not accepted!`, 'danger');
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    recalculateRow(idx, 'qty');
+                    return;
+                }
+
+                state.cart[idx].qty = val;
+                $cell.text(val % 1 === 0 ? val : val.toFixed(2));
                 recalculateRow(idx, 'qty');
             });
 
@@ -412,11 +481,29 @@
                     ke.preventDefault();
                     if (rawVal === '' || isNaN(val) || val <= 0) {
                         $(this).addClass('is-invalid border-danger text-danger');
-                        showNotification('Pehle item ki quantity bhariye! Tab aage nahi jayga.', 'warning');
+                        showNotification('Pehle item ki quantity bhariye! Tab aage nahi ja sakta.', 'warning');
                         if (typeof sound !== 'undefined' && sound.error) sound.error();
                         $(this).focus().select();
                         return;
                     }
+
+                    if (isItemStockExceeded(item, val, idx)) {
+                        $(this).addClass('is-invalid border-danger text-danger');
+                        const stock = getItemStock(item);
+                        const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                        const availRemaining = Math.max(0, stock - otherRowsQty);
+                        const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                        const errMsg = availRemaining <= 0
+                            ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
+                            : `Insufficient stock! "${item.name}" ka available stock sirf ${availDisp} hai (entered: ${val}). Tab aage nahi ja sakta.`;
+                        showNotification(errMsg, 'danger');
+                        if (typeof sound !== 'undefined' && sound.error) sound.error();
+                        $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                        $(this).focus().select();
+                        return; // STRICTLY BLOCKS TAB FROM ADVANCING
+                    }
+
+                    $(this).removeClass('is-invalid border-danger text-danger');
                     state.cart[idx].qty = val;
                     $cell.text(val % 1 === 0 ? val : val.toFixed(2));
                     recalculateRow(idx, 'qty');
@@ -439,6 +526,24 @@
                         $(this).focus().select();
                         return;
                     }
+
+                    if (isItemStockExceeded(item, val, idx)) {
+                        $(this).addClass('is-invalid border-danger text-danger');
+                        const stock = getItemStock(item);
+                        const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                        const availRemaining = Math.max(0, stock - otherRowsQty);
+                        const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                        const errMsg = availRemaining <= 0
+                            ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
+                            : `Insufficient stock! "${item.name}" ka available stock sirf ${availDisp} hai (entered: ${val}).`;
+                        showNotification(errMsg, 'danger');
+                        if (typeof sound !== 'undefined' && sound.error) sound.error();
+                        $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                        $(this).focus().select();
+                        return; // STRICTLY BLOCKS ENTER FROM ADVANCING
+                    }
+
+                    $(this).removeClass('is-invalid border-danger text-danger');
                     state.cart[idx].qty = val;
                     $cell.text(val % 1 === 0 ? val : val.toFixed(2));
                     recalculateRow(idx, 'qty');
@@ -684,18 +789,18 @@
                 return;
             }
 
-            // Real-time stock validation (across all rows for this item)
-            const otherRowsQty = getTotalCartQtyForItem(cartItem.id, idx);
-            const totalRequested = otherRowsQty + val;
-            const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
-            const stock = cartItem.stock;
-
-            if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
-                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
-                const errMsg = stock <= 0
+            // Real-time stock validation (across all rows for this item/batch)
+            if (isItemStockExceeded(cartItem, val, idx)) {
+                const stock = getItemStock(cartItem);
+                const otherRowsQty = getTotalCartQtyForItem(cartItem.id, idx, cartItem.batch_no || null);
+                const availRemaining = Math.max(0, stock - otherRowsQty);
+                const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                const errMsg = availRemaining <= 0
                     ? `Cannot add item. Product is out of stock (${availDisp} available).`
-                    : `Insufficient stock. Only ${availDisp} units are available.`;
+                    : `Insufficient stock. Only ${availDisp} units are available (entered: ${val}).`;
                 $(this).addClass('is-invalid border-danger text-danger').attr('title', errMsg);
+                state.cart[idx].qty = '';
+                recalculateRow(idx, 'qty');
                 payBtns.prop('disabled', true);
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
                 showNotification(errMsg, 'danger');
@@ -708,8 +813,13 @@
 
             let allValid = true;
             for (let i = 0; i < state.cart.length; i++) {
-                let q = state.cart[i].qty;
+                let it = state.cart[i];
+                let q = it.qty;
                 if (q === '' || q === null || q === undefined || isNaN(parseFloat(q)) || parseFloat(q) <= 0) {
+                    allValid = false;
+                    break;
+                }
+                if (isItemStockExceeded(it, q, i)) {
                     allValid = false;
                     break;
                 }
@@ -717,6 +827,8 @@
             if ($(this).hasClass('is-invalid')) allValid = false;
             if (allValid && state.cart.length > 0) {
                 payBtns.prop('disabled', false);
+            } else {
+                payBtns.prop('disabled', true);
             }
         });
 
@@ -923,6 +1035,223 @@
         $('#posSplitDispTotal').text('₹ ' + total.toFixed(2));
     }
 
+    // ============================================================
+    // POS BATCH MODAL & MULTI-BATCH SUPPORT ENGINE (Task 1)
+    // ============================================================
+    let posBatchSelectCallback = null;
+
+    function applyBatchDetailsToItem(item, b) {
+        if (!item || !b) return;
+        item.batch_no = b.batch_no || '';
+        if (b.qty !== undefined && b.qty !== null && b.qty !== '') {
+            const bQty = parseFloat(b.qty);
+            if (!isNaN(bQty)) {
+                item.batch_stock = bQty;
+                item.stock = bQty;
+            }
+        }
+        if (b.exp_date) item.exp_date = b.exp_date;
+        if (b.sell_price && parseFloat(b.sell_price) > 0) item.sell_price = parseFloat(b.sell_price);
+        if (b.mrp && parseFloat(b.mrp) > 0) item.mrp = parseFloat(b.mrp);
+    }
+
+    function highlightPosBatchNavRow($row) {
+        if (!$row || !$row.length) return;
+        $('#pos-modal-batches-body tr.batch-nav-row').removeClass('table-primary batch-row-selected');
+        $row.addClass('table-primary batch-row-selected');
+        if ($row[0] && $row[0].scrollIntoView) {
+            $row[0].scrollIntoView({ block: 'nearest' });
+        }
+        $row.find('.btn-apply-pos-batch').focus();
+    }
+
+    function openPosBatchModal(item, batches, onSelect) {
+        posBatchSelectCallback = onSelect;
+        const $modal = $('#pos-batch-modal');
+        $('#pos-modal-item-title').text(item.name || 'Item');
+        $('#pos-modal-item-code').text(item.code || item.item_code || item.ean_upc_code || '—');
+
+        const $tbody = $('#pos-modal-batches-body');
+        $tbody.empty();
+
+        const todayStr = new Date().toISOString().substring(0, 10);
+        const allowNeg = isAllowNegative(item.allow_negative_stock);
+
+        batches.forEach(function (b, idx) {
+            const pName = b.productname || item.name || 'Item';
+            const bNo = b.batch_no || 'Default';
+            const expDisplay = b.exp_date ? formatDmyDate(b.exp_date) : 'No Expiry';
+            const bExpStr = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
+            const isBatchExpired = bExpStr && (bExpStr < todayStr);
+            const qtyNum = parseFloat(b.qty || 0);
+            const isBatchOOS = qtyNum <= 0 && !allowNeg;
+            const isBlocked = isBatchExpired || isBatchOOS;
+
+            const qtyDisplay = (qtyNum === parseInt(qtyNum, 10)) ? parseInt(qtyNum, 10) : qtyNum.toFixed(2);
+            const sellDisplay = b.sell_price ? '₹ ' + parseFloat(b.sell_price).toFixed(2) : '—';
+            const mrpDisplay = b.mrp ? '₹ ' + parseFloat(b.mrp).toFixed(2) : '—';
+            const bRowClass = isBlocked ? 'pos-batch-row batch-disabled text-muted bg-light' : 'pos-batch-row batch-nav-row';
+            const bRowStyle = isBlocked ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
+
+            const actionBtn = isBatchExpired
+                ? `<button type="button" class="btn btn-danger btn-xs px-2" disabled title="Batch Expired"><i class="fas fa-ban mr-1"></i>Expired</button>`
+                : (isBatchOOS
+                    ? `<button type="button" class="btn btn-secondary btn-xs px-2" disabled title="Out of Stock"><i class="fas fa-ban mr-1"></i>Out of Stock</button>`
+                    : `<button type="button" class="btn btn-success btn-xs px-2 btn-apply-pos-batch font-weight-bold"><i class="fas fa-check mr-1"></i>Select</button>`);
+
+            const tr = `
+                <tr class="${bRowClass}" style="${bRowStyle}" data-idx="${idx}">
+                    <td class="align-middle text-center font-weight-bold text-muted">${idx + 1}</td>
+                    <td class="align-middle font-weight-bold text-dark">
+                        ${escapeHtml(pName)}
+                        ${isBatchExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isBatchOOS ? '<span class="badge badge-secondary ml-1 small">No Stock</span>' : '')}
+                    </td>
+                    <td class="align-middle text-center"><span class="badge badge-info px-2 py-1">${escapeHtml(bNo)}</span></td>
+                    <td class="align-middle text-center font-weight-bold ${isBatchExpired ? 'text-danger' : 'text-primary'}"><i class="far fa-calendar-alt mr-1"></i> ${expDisplay}</td>
+                    <td class="align-middle text-right font-weight-bold ${isBatchOOS ? 'text-danger' : 'text-success'}">${qtyDisplay}</td>
+                    <td class="align-middle text-right font-weight-bold text-primary">${sellDisplay}</td>
+                    <td class="align-middle text-right text-muted">${mrpDisplay}</td>
+                    <td class="align-middle text-center">${actionBtn}</td>
+                </tr>
+            `;
+            $tbody.append(tr);
+        });
+
+        $modal.modal('show');
+        setTimeout(function () {
+            const $firstNav = $('#pos-modal-batches-body tr.batch-nav-row:first');
+            if ($firstNav.length) {
+                highlightPosBatchNavRow($firstNav);
+            }
+        }, 250);
+
+        // Click handler on row / button
+        $tbody.off('click').on('click', 'tr.pos-batch-row:not(.batch-disabled)', function () {
+            const bIdx = parseInt($(this).data('idx'), 10);
+            const selBatch = batches[bIdx];
+            if (selBatch) {
+                $modal.modal('hide');
+                if (posBatchSelectCallback) posBatchSelectCallback(selBatch);
+                setTimeout(() => {
+                    const lastIdx = state.cart.length - 1;
+                    if (lastIdx >= 0) {
+                        openQuantityInput(lastIdx);
+                        const $inp = $(`.pos-row-qty[data-idx="${lastIdx}"] input`);
+                        if ($inp.length) $inp.focus().select();
+                    }
+                }, 220);
+            }
+        });
+    }
+
+    // Keyboard navigation for Batch Selection Modal (ArrowUp, ArrowDown, Enter, Tab, Esc, 1-9)
+    $(document).on('keydown', function (e) {
+        const $modal = $('#pos-batch-modal');
+        if (!$modal.is(':visible') && !$modal.hasClass('show')) return;
+
+        const $selectableRows = $('#pos-modal-batches-body tr.batch-nav-row');
+        if (!$selectableRows.length) return;
+
+        const $current = $('#pos-modal-batches-body tr.batch-row-selected');
+        let idx = $selectableRows.index($current);
+        if (idx === -1) idx = 0;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            const nextIdx = (idx + 1) % $selectableRows.length;
+            highlightPosBatchNavRow($selectableRows.eq(nextIdx));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            const prevIdx = (idx - 1 + $selectableRows.length) % $selectableRows.length;
+            highlightPosBatchNavRow($selectableRows.eq(prevIdx));
+        } else if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+            e.preventDefault();
+            e.stopPropagation();
+            const $target = $current.length ? $current : $selectableRows.first();
+            if ($target.length && !$target.hasClass('batch-disabled')) {
+                $target.trigger('click');
+            }
+        } else if (e.key >= '1' && e.key <= '9') {
+            const numIdx = parseInt(e.key, 10) - 1;
+            if (numIdx < $selectableRows.length) {
+                e.preventDefault();
+                e.stopPropagation();
+                $selectableRows.eq(numIdx).trigger('click');
+            }
+        }
+    });
+
+    $(document).on('mouseenter', '#pos-modal-batches-body tr.batch-nav-row', function () {
+        $('#pos-modal-batches-body tr.batch-nav-row').removeClass('table-primary batch-row-selected');
+        $(this).addClass('table-primary batch-row-selected');
+    });
+
+    // Helper: Lookup item details + batches and add to cart
+    async function resolveAndAddItem(item) {
+        try {
+            const branchId = state.branch_id || window.CURRENT_USER_BRANCH_ID || 1;
+            const queryParam = item.id ? `item_id=${item.id}` : `q=${encodeURIComponent(item.code || item.item_code || '')}`;
+            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?${queryParam}&branch_id=${branchId}`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (data && data.found && data.item) {
+                const itemToAdd = data.item;
+                const batches = Array.isArray(data.batches) ? data.batches : [];
+                if (batches.length > 1) {
+                    openPosBatchModal(itemToAdd, batches, function (selectedBatch) {
+                        applyBatchDetailsToItem(itemToAdd, selectedBatch);
+                        if (addItemToCart(itemToAdd)) {
+                            sound.beep(2100, 0.07);
+                            if (scanInput) scanInput.value = '';
+                            hideSearchResults();
+                        }
+                    });
+                    return true;
+                } else if (batches.length === 1) {
+                    applyBatchDetailsToItem(itemToAdd, batches[0]);
+                } else if (data.item.exp_date) {
+                    itemToAdd.exp_date = data.item.exp_date;
+                }
+                const res = addItemToCart(itemToAdd);
+                if (res) {
+                    sound.beep(2100, 0.07);
+                    if (scanInput) scanInput.value = '';
+                    hideSearchResults();
+                }
+                return res;
+            }
+        } catch (e) {
+            console.warn('lookupItem failed, falling back to basic item:', e);
+        }
+        return addItemToCart(item);
+    }
+
+    async function chooseBatchForRow(idx) {
+        const item = state.cart[idx];
+        if (!item) return;
+        const branchId = state.branch_id || window.CURRENT_USER_BRANCH_ID || 1;
+        const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?item_id=${item.id}&branch_id=${branchId}`;
+        try {
+            const resp = await fetch(url);
+            const data = await resp.json();
+            const batches = (data && data.batches) ? data.batches : [];
+            if (!batches || batches.length === 0) {
+                showNotification(`No batches recorded for "${item.name}".`, 'info');
+                return;
+            }
+            openPosBatchModal(item, batches, function (selectedBatch) {
+                applyBatchDetailsToItem(item, selectedBatch);
+                recalculateRow(idx, 'base');
+                renderCart();
+                showNotification(`Batch switched to "${selectedBatch.batch_no || 'Default'}" for "${item.name}"`, 'success');
+            });
+        } catch (e) {
+            showNotification('Error fetching batches for item', 'danger');
+        }
+    }
+
     // Barcode & Item Search
     async function processBarcodeScan(code) {
         // Double-scan guard (prevent hardware scanner bounce within 350ms)
@@ -934,17 +1263,27 @@
         state.last_scan_code = code;
 
         try {
-            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?q=${encodeURIComponent(code)}&query=${encodeURIComponent(code)}&exact_match_only=1&branch_id=${state.branch_id || ''}&limit=1`;
+            const branchId = state.branch_id || window.CURRENT_USER_BRANCH_ID || 1;
+            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?q=${encodeURIComponent(code)}&query=${encodeURIComponent(code)}&exact_match_only=1&branch_id=${branchId}&limit=1`;
             const resp = await fetch(url);
             const data = await resp.json();
 
             let itemToAdd = null;
             if (data && data.found && data.item) {
                 itemToAdd = data.item;
-                if (data.batches && data.batches.length > 0) {
-                    itemToAdd.exp_date = data.batches[0].exp_date;
-                    if (data.batches[0].sell_price > 0) itemToAdd.sell_price = data.batches[0].sell_price;
-                    if (data.batches[0].mrp > 0) itemToAdd.mrp = data.batches[0].mrp;
+                const batches = Array.isArray(data.batches) ? data.batches : [];
+                if (batches.length > 1) {
+                    openPosBatchModal(itemToAdd, batches, function (selectedBatch) {
+                        applyBatchDetailsToItem(itemToAdd, selectedBatch);
+                        if (addItemToCart(itemToAdd)) {
+                            sound.beep(2100, 0.07);
+                            scanInput.value = '';
+                            hideSearchResults();
+                        }
+                    });
+                    return;
+                } else if (batches.length === 1) {
+                    applyBatchDetailsToItem(itemToAdd, batches[0]);
                 } else if (data.item.exp_date) {
                     itemToAdd.exp_date = data.item.exp_date;
                 }
@@ -1012,13 +1351,11 @@
         searchResults.style.display = 'block';
 
         searchResults.querySelectorAll('.pos-search-item').forEach(el => {
-            el.addEventListener('click', () => {
+            el.addEventListener('click', async () => {
                 const itemData = JSON.parse(el.dataset.item);
-                if (addItemToCart(itemData)) {
-                    sound.beep(2100, 0.07);
-                    scanInput.value = '';
-                    hideSearchResults();
-                }
+                if (scanInput) scanInput.value = '';
+                hideSearchResults();
+                await resolveAndAddItem(itemData);
             });
         });
     }
@@ -1028,11 +1365,13 @@
     }
 
     // Cart Management
-    function getTotalCartQtyForItem(itemId, excludeIdx = -1) {
+    function getTotalCartQtyForItem(itemId, excludeIdx = -1, batchNo = null) {
         let total = 0;
         state.cart.forEach((c, idx) => {
             if (idx !== excludeIdx && c.id === itemId) {
-                total += parseFloat(c.qty) || 0;
+                if (batchNo === null || (c.batch_no || '') === (batchNo || '')) {
+                    total += parseFloat(c.qty) || 0;
+                }
             }
         });
         return total;
@@ -1043,6 +1382,7 @@
         const itemId = parseInt(item.id || item.item_id);
         if (isNaN(itemId)) return false;
 
+        const batchNo = item.batch_no || '';
         const expDate = item.exp_date ? (typeof item.exp_date === 'string' ? item.exp_date.substring(0, 10) : '') : '';
 
         // Prevent selling expired items (Task 2)
@@ -1055,29 +1395,35 @@
             }
         }
 
-        const allowNeg = isAllowNegative(item.allow_negative_stock) || state.cart.some(c => c.id === itemId && isAllowNegative(c.allow_negative_stock));
+        const hasBatch = !!(batchNo || (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== ''));
+        const allowNeg = hasBatch ? false : (isAllowNegative(item.allow_negative_stock) || state.cart.some(c => c.id === itemId && isAllowNegative(c.allow_negative_stock)));
         let availableStock = null;
-        if (item.stock !== undefined && item.stock !== null) {
+        if (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== '') {
+            availableStock = parseFloat(item.batch_stock);
+        } else if (item.stock !== undefined && item.stock !== null) {
             availableStock = parseFloat(item.stock);
         } else if (item.current_stock !== undefined && item.current_stock !== null) {
             availableStock = parseFloat(item.current_stock);
         } else if (item.qty !== undefined && item.qty !== null) {
             availableStock = parseFloat(item.qty);
         } else {
-            const inCart = state.cart.find(c => c.id === itemId && c.stock !== undefined && c.stock !== null);
+            const inCart = state.cart.find(c => c.id === itemId && (c.batch_no || '') === batchNo && (c.batch_stock !== undefined && c.batch_stock !== null));
             if (inCart) {
-                availableStock = parseFloat(inCart.stock);
+                availableStock = parseFloat(inCart.batch_stock);
+            } else {
+                const inCartGeneral = state.cart.find(c => c.id === itemId && c.stock !== undefined && c.stock !== null);
+                if (inCartGeneral) availableStock = parseFloat(inCartGeneral.stock);
             }
         }
 
-        const existingIdx = state.cart.findIndex(c => c.id === itemId && (c.exp_date || '') === expDate);
+        const existingIdx = state.cart.findIndex(c => c.id === itemId && (c.batch_no || '') === batchNo && (c.exp_date || '') === expDate);
         let targetIdx = -1;
 
         if (existingIdx !== -1) {
             if (availableStock === null && state.cart[existingIdx].stock !== undefined && state.cart[existingIdx].stock !== null) {
                 availableStock = parseFloat(state.cart[existingIdx].stock);
             }
-            const currentItemTotal = getTotalCartQtyForItem(itemId);
+            const currentItemTotal = getTotalCartQtyForItem(itemId, -1, batchNo || null);
             const proposedTotal = currentItemTotal + 1;
             if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
@@ -1093,12 +1439,15 @@
                 targetIdx = existingIdx;
             } else {
                 state.cart[existingIdx].qty = (parseFloat(state.cart[existingIdx].qty) || 0) + 1;
-                if (availableStock !== null) state.cart[existingIdx].stock = availableStock;
+                if (availableStock !== null) {
+                    state.cart[existingIdx].stock = availableStock;
+                    if (batchNo) state.cart[existingIdx].batch_stock = availableStock;
+                }
                 recalculateRow(existingIdx, 'qty');
                 targetIdx = existingIdx;
             }
         } else {
-            const currentItemTotal = getTotalCartQtyForItem(itemId);
+            const currentItemTotal = getTotalCartQtyForItem(itemId, -1, batchNo || null);
             const proposedTotal = currentItemTotal + 1;
             if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
@@ -1114,6 +1463,8 @@
                 id: itemId,
                 name: item.name || item.productname || 'Unknown Item',
                 code: item.item_code || item.code || item.barcode || '',
+                batch_no: batchNo,
+                batch_stock: (item.batch_stock !== undefined && item.batch_stock !== null) ? parseFloat(item.batch_stock) : null,
                 exp_date: expDate,
                 sell_price: parseFloat(item.sell_price || item.mrp || 0),
                 mrp: parseFloat(item.mrp || item.sell_price || 0),
@@ -1130,9 +1481,24 @@
         }
 
         // Auto-focus Qty field of the added/selected item and select text (Task 5)
-        setTimeout(() => {
-            openQuantityInput(targetIdx);
-        }, 50);
+        function focusRowQty(idx) {
+            if (isNaN(idx) || !state.cart[idx]) return;
+            openQuantityInput(idx);
+            const $inp = $(`.pos-row-qty[data-idx="${idx}"] input`);
+            if ($inp.length) {
+                $inp.focus().select();
+            }
+        }
+
+        focusRowQty(targetIdx);
+        setTimeout(() => focusRowQty(targetIdx), 60);
+        setTimeout(() => focusRowQty(targetIdx), 220);
+        setTimeout(() => focusRowQty(targetIdx), 450);
+
+        $('.modal').one('hidden.bs.modal', function () {
+            setTimeout(() => focusRowQty(targetIdx), 60);
+            setTimeout(() => focusRowQty(targetIdx), 220);
+        });
 
         return true;
     }
@@ -1237,8 +1603,13 @@
         const payBtns = $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp');
         let hasInvalidQty = false;
         for (let i = 0; i < state.cart.length; i++) {
-            const q = state.cart[i].qty;
+            const it = state.cart[i];
+            const q = it.qty;
             if (q === '' || q === null || q === undefined || isNaN(parseFloat(q)) || parseFloat(q) <= 0) {
+                hasInvalidQty = true;
+                break;
+            }
+            if (isItemStockExceeded(it, q, i)) {
                 hasInvalidQty = true;
                 break;
             }
@@ -1249,20 +1620,19 @@
     function updateItemQty(index, delta) {
         if (!state.cart[index]) return;
         const cartItem = state.cart[index];
-        const newQty = cartItem.qty + delta;
+        const newQty = (parseFloat(cartItem.qty) || 0) + delta;
         if (newQty <= 0) {
             state.cart.splice(index, 1);
             renderCart();
             return;
         }
         if (delta > 0) {
-            const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index);
-            const totalRequested = otherRowsQty + newQty;
-            const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
-            const stock = cartItem.stock;
-            if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
-                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
-                const errMsg = stock <= 0
+            if (isItemStockExceeded(cartItem, newQty, index)) {
+                const stock = getItemStock(cartItem);
+                const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index, cartItem.batch_no || null);
+                const availRemaining = Math.max(0, stock - otherRowsQty);
+                const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                const errMsg = availRemaining <= 0
                     ? `Cannot add item. Product is out of stock (${availDisp} available).`
                     : `Insufficient stock. Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
@@ -1285,11 +1655,13 @@
             return;
         }
         const cartItem = state.cart[index];
-        const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index);
+        const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index, cartItem.batch_no || null);
         const totalRequested = otherRowsQty + q;
         const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
-        const stock = cartItem.stock;
-        if (!allowNeg && stock !== undefined && stock !== null && totalRequested > stock + 0.0001) {
+        const stock = (cartItem.batch_stock !== undefined && cartItem.batch_stock !== null && cartItem.batch_stock !== '')
+            ? parseFloat(cartItem.batch_stock)
+            : (cartItem.stock !== undefined && cartItem.stock !== null ? parseFloat(cartItem.stock) : null);
+        if (!allowNeg && stock !== null && totalRequested > stock + 0.0001) {
             const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
             const errMsg = stock <= 0
                 ? `Cannot add item. Product is out of stock (${availDisp} available).`
@@ -1469,9 +1841,30 @@
             const expDisplay = item.exp_date ? formatDmyDate(item.exp_date) : '—';
             const discPctDisp = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) + '%' : '0%';
             const discAmtDisp = '₹ ' + (item.disc_amount > 0 ? parseFloat(item.disc_amount).toFixed(2) : '0.00');
-            const qtyDisp = isInvalidQty ? '<span class="text-danger font-weight-bold">Qty</span>' : (qtyNum % 1 === 0 ? qtyNum : qtyNum.toFixed(2));
+
+            const allowNeg = isAllowNegative(item.allow_negative_stock);
+            const stock = (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== '')
+                ? parseFloat(item.batch_stock)
+                : (item.stock !== undefined && item.stock !== null ? parseFloat(item.stock) : null);
+            const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+            const totalRequested = otherRowsQty + (parseFloat(qtyVal) || 0);
+            const isStockExceeded = !allowNeg && stock !== null && totalRequested > stock + 0.0001;
+            if (isStockExceeded) hasInvalidQty = true;
+
+            let qtyDisp;
+            if (isInvalidQty) {
+                qtyDisp = '<span class="text-danger font-weight-bold">Qty</span>';
+            } else if (isStockExceeded) {
+                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
+                qtyDisp = `<span class="text-danger font-weight-bold" title="Insufficient stock (${availDisp} available)">${qtyNum % 1 === 0 ? qtyNum : qtyNum.toFixed(2)} ⚠️</span>`;
+            } else {
+                qtyDisp = qtyNum % 1 === 0 ? qtyNum : qtyNum.toFixed(2);
+            }
 
             const itemCodeDisp = item.code || item.item_code || (item.id ? String(item.id) : '-');
+            const batchBadge = item.batch_no
+                ? `<button type="button" class="btn btn-xs btn-outline-info ml-1 px-1 py-0 font-weight-bold text-nowrap" style="font-size: 0.72rem; line-height: 1.2;" onclick="window.posEngine.chooseBatchForRow(${idx})" title="Batch: ${escapeHtml(item.batch_no)} (Click to switch batch)"><i class="fas fa-layer-group mr-1"></i>${escapeHtml(item.batch_no)}</button>`
+                : '';
 
             html += `
                 <tr>
@@ -1480,7 +1873,10 @@
                         <span class="badge badge-light border font-monospace text-dark" title="Item Code: ${escapeHtml(itemCodeDisp)} (ID: ${item.id})">${escapeHtml(itemCodeDisp)}</span>
                     </td>
                     <td>
-                        <div class="font-weight-bold text-dark text-truncate" style="max-width: 280px;" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="font-weight-bold text-dark text-truncate" style="max-width: 210px;" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                            ${batchBadge}
+                        </div>
                     </td>
                     <td class="text-center small text-nowrap ${item.exp_date ? 'font-weight-bold text-dark' : 'text-muted'}" style="width: 105px; white-space: nowrap;">
                         ${expDisplay}
@@ -2120,6 +2516,14 @@
         $('#posCust_country').val('India');
         $('#posCust_customer_type').val('RETAIL INVOICE');
 
+        const activeBranch = state.branch_id || window.CURRENT_USER_BRANCH_ID || '';
+        if (activeBranch) {
+            $('#posCust_branch_id').val(activeBranch);
+        }
+        if (!window.IS_GLOBAL_ADMIN && window.CURRENT_USER_BRANCH_ID) {
+            $('#posCust_branch_id').val(window.CURRENT_USER_BRANCH_ID);
+        }
+
         const cleanMob = (term || '').replace(/[^0-9]/g, '');
         if (cleanMob.length >= 5) {
             $('#posCust_mobile').val(cleanMob);
@@ -2171,8 +2575,10 @@
                 $('#posCust_credit_limit').val(c.credit_limit !== undefined && c.credit_limit !== null ? c.credit_limit : 1000000);
                 $('#posCust_credit_balance').val(c.credit_balance !== undefined && c.credit_balance !== null ? c.credit_balance : 0);
                 $('#posCust_monthly_credit_balance').val(c.monthly_credit_balance !== undefined && c.monthly_credit_balance !== null ? c.monthly_credit_balance : 0);
-                $('#posCust_credit_days').val(c.credit_days !== undefined && c.credit_days !== null ? c.credit_days : 1000);
                 $('#posCust_branch_id').val(c.branch_id || '');
+                if (!window.IS_GLOBAL_ADMIN && window.CURRENT_USER_BRANCH_ID) {
+                    $('#posCust_branch_id').val(window.CURRENT_USER_BRANCH_ID);
+                }
                 $('#posCust_status').val(c.status ? '1' : '0');
                 $('#posCust_sales_formula').val(c.sales_formula || '');
                 $('#posCust_gst_type').val(c.gst_type || 'Un Register');
@@ -2214,7 +2620,9 @@
     async function fetchCustomerDetailsAndInvoices(custId) {
         if (!custId) return;
         try {
-            const resp = await fetch(`${window.CUSTOMER_INVOICES_URL || (window.APP_URL + '/sales/sales-bills/customer-invoices')}/${custId}`);
+            const brId = getActiveBranchId();
+            const url = `${window.CUSTOMER_INVOICES_URL || (window.APP_URL + '/sales/sales-bills/customer-invoices')}/${custId}${brId ? `?branch_id=${brId}` : ''}`;
+            const resp = await fetch(url);
             const data = await resp.json();
             if (data) {
                 updateSelectedCustomerUI({
@@ -2241,7 +2649,9 @@
     async function loadCustomerInvoices(custId) {
         if (!custId) return;
         try {
-            const resp = await fetch(`${window.CUSTOMER_INVOICES_URL || (window.APP_URL + '/sales/sales-bills/customer-invoices')}/${custId}`);
+            const brId = getActiveBranchId();
+            const url = `${window.CUSTOMER_INVOICES_URL || (window.APP_URL + '/sales/sales-bills/customer-invoices')}/${custId}${brId ? `?branch_id=${brId}` : ''}`;
+            const resp = await fetch(url);
             const data = await resp.json();
             if (data) {
                 currentCustomerInvoices = data.invoices || [];
@@ -2633,11 +3043,17 @@
         // Validate stock locally before checkout
         for (let i = 0; i < state.cart.length; i++) {
             const cItem = state.cart[i];
-            const otherQty = getTotalCartQtyForItem(cItem.id, i);
-            const totalReq = otherQty + (parseFloat(cItem.qty) || 0);
-            if (!isAllowNegative(cItem.allow_negative_stock) && cItem.stock !== undefined && cItem.stock !== null && totalReq > cItem.stock + 0.0001) {
-                const availDisp = (cItem.stock === parseInt(cItem.stock, 10)) ? parseInt(cItem.stock, 10) : cItem.stock;
-                const errMsg = cItem.stock <= 0
+            if (cItem.qty === '' || cItem.qty === null || isNaN(parseFloat(cItem.qty)) || parseFloat(cItem.qty) <= 0) {
+                showNotification(`Please enter quantity for "${cItem.name}".`, 'warning');
+                openQuantityInput(i);
+                return;
+            }
+            if (isItemStockExceeded(cItem, cItem.qty, i)) {
+                const stock = getItemStock(cItem);
+                const otherQty = getTotalCartQtyForItem(cItem.id, i, cItem.batch_no || null);
+                const availRemaining = Math.max(0, stock - otherQty);
+                const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                const errMsg = availRemaining <= 0
                     ? `Cannot checkout. "${cItem.name || 'Item'}" is out of stock (${availDisp} available).`
                     : `Insufficient stock for "${cItem.name || 'Item'}". Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
@@ -2825,6 +3241,8 @@
             round_off: totals.roundOff,
             items: state.cart.map(item => ({
                 item_id: item.id,
+                batch_no: item.batch_no || null,
+                exp_date: item.exp_date || null,
                 qty: item.qty,
                 sell_price: item.sell_price,
                 mrp: item.mrp,
@@ -2915,57 +3333,85 @@
         }
     }
 
-    // Keyboard Shortcuts
+    // Keyboard Shortcuts (Capture phase for 100% reliable interception in all browsers)
     function setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
+        window.addEventListener('keydown', (e) => {
             // ALT+H: Hold bill
-            if (e.altKey && e.code === 'KeyH') {
+            if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyH' || e.key === 'h' || e.key === 'H' || e.keyCode === 72)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 holdCurrentBill();
             }
             // ALT+R: Recall bill
-            else if (e.altKey && e.code === 'KeyR') {
+            else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyR' || e.key === 'r' || e.key === 'R' || e.keyCode === 82)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 recallHeldBill();
             }
             // ALT+C: Cash
-            else if (e.altKey && e.code === 'KeyC') {
+            else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyC' || e.key === 'c' || e.key === 'C' || e.keyCode === 67)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Cash"]')?.click();
             }
             // ALT+U: UPI
-            else if (e.altKey && e.code === 'KeyU') {
+            else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyU' || e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 document.querySelector('[data-mode="UPI"]')?.click();
             }
-            // ALT+D: Card
-            else if (e.altKey && e.code === 'KeyD') {
+            // ALT+D: Card (Interception in capture phase overrides browser address bar shortcut)
+            else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyD' || e.key === 'd' || e.key === 'D' || e.keyCode === 68)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Card"]')?.click();
             }
             // ALT+E: Credit
-            else if (e.altKey && (e.code === 'KeyE' || e.key === 'e' || e.key === 'E')) {
+            else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyE' || e.key === 'e' || e.key === 'E' || e.keyCode === 69)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Credit"]')?.click();
             }
             // ALT+S: Split
-            else if (e.altKey && (e.code === 'KeyS' || e.key === 's' || e.key === 'S')) {
+            else if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'KeyS' || e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 document.querySelector('[data-mode="Split"]')?.click();
             }
             // F2: Open Item Search Modal
-            else if (e.key === 'F2' || e.code === 'F2') {
+            else if (e.key === 'F2' || e.code === 'F2' || e.keyCode === 113) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 if (typeof window.openPosItemSearchModal === 'function') {
                     window.openPosItemSearchModal();
                 }
             }
             // F9: Reset Terminal (Items, Customer, Discounts, Tender mode)
-            else if (e.key === 'F9' || e.code === 'F9') {
+            else if (e.key === 'F9' || e.code === 'F9' || e.keyCode === 120) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 resetTerminalAll();
             }
-        });
+        }, true);
+
+        // Global Scroll-Wheel Guard on Number Inputs in POS
+        document.addEventListener('wheel', (e) => {
+            if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+                e.preventDefault();
+                e.target.blur();
+            } else if (document.activeElement && document.activeElement.tagName === 'INPUT' && document.activeElement.type === 'number') {
+                document.activeElement.blur();
+            }
+        }, { passive: false });
     }
 
     function focusScanner() {
@@ -3061,7 +3507,7 @@
                 if ($target[0]) {
                     $target[0].scrollIntoView({ block: 'nearest' });
                 }
-            } else if (e.key === 'Enter') {
+            } else if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
                 e.preventDefault();
                 let $target = $current.length ? $current : $rows.first();
                 if ($target.length) {
@@ -3071,7 +3517,7 @@
         });
 
         function fetchItems() {
-            let branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value) || 3;
+            let branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value) || window.CURRENT_USER_BRANCH_ID || 1;
             let srch = ($('#pos-isl-filter-name').val() || '').trim();
             let code = ($('#pos-isl-filter-code').val() || '').trim();
             let showAll = $('#pos-isl-filter-all-products').is(':checked') ? 1 : 0;
@@ -3179,16 +3625,20 @@
             }
 
             // Click row or Add button to select item
-            $tbody.find('.isl-item-row:not(.isl-item-disabled)').on('click', function (e) {
+            $tbody.find('.isl-item-row:not(.isl-item-disabled)').on('click', async function (e) {
                 let rawItem = $(this).attr('data-item');
                 if (rawItem) {
                     let it = JSON.parse(rawItem);
-                    const added = addItemToCart(it);
-                    if (added) {
-                        sound.success();
-                        showNotification(`Added "${it.name}" to cart`, 'success');
-                        $modal.modal('hide');
-                    }
+                    $modal.modal('hide');
+                    await resolveAndAddItem(it);
+                    setTimeout(() => {
+                        const lastIdx = state.cart.length - 1;
+                        if (lastIdx >= 0) {
+                            openQuantityInput(lastIdx);
+                            const $inp = $(`.pos-row-qty[data-idx="${lastIdx}"] input`);
+                            if ($inp.length) $inp.focus().select();
+                        }
+                    }, 250);
                 }
             });
         }
@@ -3351,6 +3801,7 @@
         setQty: setItemQty,
         removeRow: removeItem,
         setSalesType: setSalesType,
+        chooseBatchForRow: chooseBatchForRow,
         openAddCustomer: openAddCustomerModalWithTerm,
         triggerCreateCustomer: function (term) {
             const t = term !== undefined ? term : (lastCustomerSearchTerm || $('.select2-search__field').val() || '');

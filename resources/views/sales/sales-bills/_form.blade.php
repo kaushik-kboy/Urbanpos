@@ -1548,7 +1548,8 @@
                 resetCustomerInvoices();
                 return;
             }
-            $.getJSON(`/sales/sales-bills/customer-invoices/${customerId}`, function (res) {
+            const brId = $('#branch_id').val() || '';
+            $.getJSON(`/sales/sales-bills/customer-invoices/${customerId}${brId ? `?branch_id=${brId}` : ''}`, function (res) {
                 if (res) {
                     if (res.customer_type || res.sales_type) {
                         syncAndLockCustomerTypes(res.customer_type, res.sales_type);

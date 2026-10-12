@@ -2053,8 +2053,8 @@
             return true;
         }
 
-        // Validate immediately when expiry date is changed/input/blur
-        $(document).on('change input', '.pinv-exp-date', function (e) {
+        // Validate when expiry date is committed/changed or on blur
+        $(document).on('change', '.pinv-exp-date', function (e) {
             validatePinvExpDate($(this), false);
         });
 
