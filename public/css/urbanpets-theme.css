@@ -3201,6 +3201,15 @@ body.dark-mode .badge-pill-secondary {
     color: #cbd5e1;
 }
 
+/* ==========================================================================
+   URBAN PETS AUTH / LOGIN PAGES
+   ========================================================================== */
+body.login-page,
+body.register-page {
+    background: #fff4ea url('/images/login-bg.jpg') no-repeat center center fixed !important;
+    background-size: cover !important;
+}
+
 
 
 
