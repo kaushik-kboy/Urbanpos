@@ -1290,15 +1290,18 @@ class SalesBillController extends Controller
     public function customerSearch(Request $request)
     {
         $q = trim((string) $request->input('q', ''));
+        if ($q === '') {
+            return response()->json(['results' => []]);
+        }
 
-        $exactHit = $q !== '' && Customer::where('status', true)->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q))->exists();
+        $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q))->exists();
         $customers = Customer::where('status', true)
             ->with(['pets.petType', 'pets.breed'])
-            ->when($q !== '' && $exactHit, function ($query) use ($q) {
+            ->when($exactHit, function ($query) use ($q) {
                 // Exact customer_code / mobile (typed in full or scanned): index lookup, no substring scan.
                 $query->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q));
             })
-            ->when($q !== '' && ! $exactHit, function ($query) use ($q) {
+            ->when(! $exactHit, function ($query) use ($q) {
                 // Resolve matching ids with index-only probes first (Customer::pickerMatchIds), then fetch <= 30 rows.
                 $query->whereIn('id', Customer::pickerMatchIds($q));
             })
@@ -1328,13 +1331,46 @@ class SalesBillController extends Controller
                     'mobile' => $c->mobile ?? '',
                     'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                     'sales_type' => $c->sales_type ?? 'Local',
-                    'edit_url' => url("master/customers/{$c->id}/edit"),
+                    'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                     'pets' => $pets,
                     'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
                 ];
             });
 
         return response()->json(['results' => $customers]);
+    }
+
+    public function quickCustomerStore(Request $request)
+    {
+        $defaults = [
+            'payment_mode' => 'Cash Only',
+            'credit_limit' => 0,
+            'credit_balance' => 0,
+            'monthly_credit_balance' => 0,
+            'credit_days' => 0,
+            'status' => 1,
+            'sms_consent' => 1,
+            'gst_type' => 'Un Register',
+            'customer_type' => 'RETAIL INVOICE',
+            'sales_type' => 'Local',
+        ];
+        foreach ($defaults as $key => $val) {
+            if (! $request->has($key) || $request->input($key) === null || $request->input($key) === '') {
+                $request->merge([$key => $val]);
+            }
+        }
+
+        return app(\App\Http\Controllers\Master\CustomerController::class)->store($request);
+    }
+
+    public function quickCustomerShow(Request $request, Customer $customer)
+    {
+        return app(\App\Http\Controllers\Master\CustomerController::class)->show($request, $customer);
+    }
+
+    public function quickCustomerUpdate(Request $request, Customer $customer)
+    {
+        return app(\App\Http\Controllers\Master\CustomerController::class)->update($request, $customer);
     }
 
     private function formOptions(?SalesBill $salesBill = null, $convertedItems = null, ?int $explicitCustomerId = null): array

@@ -325,7 +325,7 @@ return [
         [
             'text' => 'Master',
             'icon' => 'fas fa-fw fa-th-large',
-            'can' => ['items.create', 'item-categories.create', 'brands.create', 'customers.create', 'suppliers.create', 'gst-taxes.create', 'branches.create', 'registers.create'],
+            'can' => ['items.create', 'item-categories.create', 'brands.create', 'customers.view', 'suppliers.create', 'gst-taxes.create', 'branches.create', 'registers.create'],
             'submenu' => [
                 [
                     'text' => 'Item',
@@ -350,12 +350,12 @@ return [
                 [
                     'text' => 'Customer',
                     'icon' => 'fas fa-fw fa-users',
-                    'can' => ['customers.create', 'customer-categories.create', 'customer-types.create'],
+                    'can' => ['customers.view', 'customer-categories.create', 'customer-types.create'],
                     'submenu' => [
                         ['text' => 'Customer Category', 'url' => 'master/customer-categories', 'icon' => 'fas fa-fw fa-user-tag', 'can' => 'customer-categories.create'],
                         ['text' => 'Customer Types', 'url' => 'master/customer-types', 'icon' => 'fas fa-fw fa-id-card', 'can' => 'customer-types.create'],
                         ['text' => 'Sales Types', 'url' => 'master/sales-types', 'icon' => 'fas fa-fw fa-file-contract', 'can' => 'sales-types.create'],
-                        ['text' => 'Customer', 'url' => 'master/customers', 'icon' => 'fas fa-fw fa-user', 'can' => 'customers.create'],
+                        ['text' => 'Customer', 'url' => 'master/customers', 'icon' => 'fas fa-fw fa-user', 'can' => 'customers.view'],
                         ['text' => 'Area', 'url' => 'master/areas', 'icon' => 'fas fa-fw fa-map-marker-alt', 'can' => 'areas.create'],
                         ['text' => 'Loyalty Program Info', 'url' => 'master/loyalty-programs', 'icon' => 'fas fa-fw fa-award', 'can' => 'loyalty-programs.create'],
                         ['text' => 'Loyalty Points Update', 'url' => 'master/loyalty-points', 'icon' => 'fas fa-fw fa-star', 'can' => 'loyalty-programs.create'],

@@ -1363,13 +1363,15 @@
     window.ISL_URL = "{{ route('sales.sales-bills.item-list') }}";
     window.CUSTOMER_SEARCH_URL = "{{ route('sales.sales-bills.customer-search') }}";
     window.CUSTOMER_INVOICES_URL = "{{ url('sales/sales-bills/customer-invoices') }}";
-    window.CUSTOMER_EDIT_BASE_URL = "{{ url('master/customers') }}";
+    window.CUSTOMER_QUICK_SAVE_URL = "{{ route('sales.sales-bills.quick-customer') }}";
+    window.CUSTOMER_QUICK_BASE_URL = "{{ url('sales/sales-bills/quick-customer') }}";
+    window.CUSTOMER_EDIT_BASE_URL = "{{ url('sales/sales-bills/quick-customer') }}";
     window.INITIAL_CUSTOMER = {!! json_encode($defaultCustomer ? [
         'id' => $defaultCustomer->id,
         'name' => $defaultCustomer->name,
         'mobile' => $defaultCustomer->mobile ?? '',
         'sales_type' => $defaultCustomer->sales_type ?? 'Local',
-        'edit_url' => route('master.customers.edit', $defaultCustomer),
+        'edit_url' => url("sales/sales-bills/quick-customer/{$defaultCustomer->id}"),
         'pets_summary' => $defaultPetSummary,
     ] : null) !!};
     window.EDIT_BILL = {!! isset($editBill) ? json_encode($editBill) : 'null' !!};

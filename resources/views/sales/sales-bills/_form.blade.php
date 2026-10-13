@@ -952,11 +952,13 @@
                     <label class="small font-weight-bold mb-1">Address / City</label>
                     <input type="text" id="qc-address" class="form-control form-control-sm" placeholder="Address (Optional)">
                 </div>
+                @can('customers.create')
                 <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                     <a href="{{ route('master.customers.create') }}" target="_blank" class="small text-primary font-weight-bold">
                         <i class="fas fa-external-link-alt mr-1"></i> Open Full Customer Master
                     </a>
                 </div>
+                @endcan
             </div>
             <div class="modal-footer py-2 bg-light">
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
@@ -1415,7 +1417,7 @@
             $('#qc-alert').addClass('d-none');
 
             $.ajax({
-                url: '{{ route("master.customers.store") }}',
+                url: '{{ route("sales.sales-bills.quick-customer") }}',
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',

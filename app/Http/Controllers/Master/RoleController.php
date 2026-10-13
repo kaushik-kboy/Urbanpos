@@ -255,7 +255,7 @@ class RoleController extends Controller
                 'label' => 'Master Reference Data',
                 'icon' => 'fas fa-th-large text-secondary',
                 'modules' => [
-                    'customers' => ['label' => 'Customer Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'customers' => ['label' => 'Customer Master', 'actions' => ['view' => 'View Full Directory', 'create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'customer-categories' => ['label' => 'Customer Categories', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'customer-types' => ['label' => 'Customer Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'sales-types' => ['label' => 'Sales Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],

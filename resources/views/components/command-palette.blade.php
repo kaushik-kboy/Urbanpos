@@ -62,7 +62,6 @@
         // Masters
         { id: 'master-items', title: 'Items Master Catalog', desc: 'Manage products, barcodes, MRP, taxes, and categories', category: 'Masters', icon: 'fas fa-box text-primary', url: '{{ route("master.items.index") }}', shortcut: 'Alt+I', keywords: 'item master products catalog barcodes goods' },
         { id: 'master-items-create', title: 'Add New Item / Product', desc: 'Register a new product with barcode, GST rate, and MRP', category: 'Masters', icon: 'fas fa-plus text-success', url: '{{ route("master.items.create") }}', keywords: 'add item create product new barcode sku' },
-        { id: 'master-customers', title: 'Customers Master', desc: 'Customer accounts, contact directory, and ledger balances', category: 'Masters', icon: 'fas fa-users text-info', url: '{{ route("master.customers.index") }}', shortcut: 'Alt+C', keywords: 'customer master client accounts phone gst' },
         { id: 'master-suppliers', title: 'Suppliers Master', desc: 'Vendor directory, GSTIN, and payable ledger accounts', category: 'Masters', icon: 'fas fa-truck-loading text-secondary', url: '{{ route("master.suppliers.index") }}', keywords: 'supplier vendor master distributor contacts' },
         { id: 'master-brands', title: 'Brands Master', desc: 'Manage brand hierarchy and manufacturers', category: 'Masters', icon: 'fas fa-copyright text-warning', url: '{{ route("master.brands.index") }}', keywords: 'brands master manufacturer maker' },
         { id: 'master-categories', title: 'Item Categories', desc: 'Organize items by department and category', category: 'Masters', icon: 'fas fa-tags text-teal', url: '{{ route("master.item-categories.index") }}', keywords: 'categories departments groups classification' },
@@ -83,6 +82,10 @@
         { id: 'action-density', title: 'Toggle Table Density (Compact / Comfortable)', desc: 'Switch between dense data-table rows and spacious comfortable view', category: 'Quick Actions', icon: 'fas fa-compress-arrows-alt text-teal', action: 'toggleDensity', keywords: 'table density compact comfortable rows padding spacing view' },
         { id: 'action-shortcuts', title: 'Keyboard Shortcuts Cheat Sheet', desc: 'View complete list of Marg / Tally POS shortcut keys', category: 'Quick Actions', icon: 'fas fa-keyboard text-primary', action: 'openShortcuts', keywords: 'shortcuts keys hotkeys help tally marg f1 f2 alt' }
     ];
+
+    @can('customers.view')
+    COMMAND_ITEMS.push({ id: 'master-customers', title: 'Customers Master', desc: 'Customer accounts, contact directory, and ledger balances', category: 'Masters', icon: 'fas fa-users text-info', url: '{{ route("master.customers.index") }}', shortcut: 'Alt+C', keywords: 'customer master client accounts phone gst' });
+    @endcan
 
     var backdrop = document.getElementById('urbanpos-command-palette-backdrop');
     var input = document.getElementById('up-command-input');

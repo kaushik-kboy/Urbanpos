@@ -67,7 +67,7 @@ use Illuminate\Support\Facades\Route;
  * on every test's fresh application boot, and a `function` declaration here would fatal
  * with "Cannot redeclare" on the second test.
  */
-$gatedResource = function (string $uri, string $controller, string $module, array $skip = []) {
+$gatedResource = function (string $uri, string $controller, string $module, array $skip = [], ?string $viewPermission = null) {
     $only = fn (array $actions) => array_values(array_diff($actions, $skip));
 
     Route::middleware(['permission:'.$module.'.create', 'branch.access'])
@@ -79,7 +79,12 @@ $gatedResource = function (string $uri, string $controller, string $module, arra
     Route::middleware(['permission:'.$module.'.cancel', 'branch.access'])
         ->group(fn () => Route::resource($uri, $controller)->only($only(['destroy'])));
 
-    Route::resource($uri, $controller)->only($only(['index', 'show']));
+    if ($viewPermission) {
+        Route::middleware(['permission:'.$viewPermission, 'branch.access'])
+            ->group(fn () => Route::resource($uri, $controller)->only($only(['index', 'show'])));
+    } else {
+        Route::resource($uri, $controller)->only($only(['index', 'show']));
+    }
 };
 
 Route::get('/', function () {
@@ -122,7 +127,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::get('barcodes/tspl', [\App\Http\Controllers\Master\BarcodePrintController::class, 'downloadTspl'])->name('barcodes.tspl');
 
     foreach ($masterResources as $uri => $controller) {
-        $gatedResource($uri, $controller, $uri);
+        $viewPermission = ($uri === 'customers') ? 'customers.view' : null;
+        $gatedResource($uri, $controller, $uri, [], $viewPermission);
         Route::middleware(['permission:'.$uri.'.create', 'branch.access'])
             ->post("{$uri}/import", [$controller, 'import'])->name("{$uri}.import");
         Route::get("{$uri}/import/sample", [$controller, 'importSample'])->name("{$uri}.import-sample");
@@ -295,6 +301,9 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::get('sales-bills/customer-search', [SalesBillController::class, 'customerSearch'])->name('sales-bills.customer-search');
     Route::get('sales-bills/customer-loyalty/{customer}', [SalesBillController::class, 'customerLoyalty'])->name('sales-bills.customer-loyalty');
     Route::get('sales-bills/customer-invoices/{customer}', [SalesBillController::class, 'customerInvoices'])->name('sales-bills.customer-invoices');
+    Route::post('sales-bills/quick-customer', [SalesBillController::class, 'quickCustomerStore'])->name('sales-bills.quick-customer');
+    Route::get('sales-bills/quick-customer/{customer}', [SalesBillController::class, 'quickCustomerShow'])->name('sales-bills.quick-customer-show');
+    Route::match(['put', 'post'], 'sales-bills/quick-customer/{customer}', [SalesBillController::class, 'quickCustomerUpdate'])->name('sales-bills.quick-customer-update');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
     Route::post('sales-bills/{salesBill}/send-whatsapp', [SalesBillController::class, 'sendWhatsApp'])->name('sales-bills.send-whatsapp');
     Route::get('sales-bills/{salesBill}/eway-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadJson'])->name('sales-bills.eway-json');

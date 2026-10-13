@@ -50,7 +50,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'customer-categories' => ['create', 'edit', 'cancel'],
         'customer-types' => ['create', 'edit', 'cancel'],
         'sales-types' => ['create', 'edit', 'cancel'],
-        'customers' => ['create', 'edit', 'cancel'],
+        'customers' => ['view', 'create', 'edit', 'cancel'],
         'areas' => ['create', 'edit', 'cancel'],
         'pet-types' => ['create', 'edit', 'cancel'],
         'breeds' => ['create', 'edit', 'cancel'],
@@ -153,7 +153,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'sales-returns.create',
             'till.open',
             'till.close',
-            'customers.create',
         ]);
 
         // Urban Pets Stock & Expiry Verification module (mobile app). Staff is a new,

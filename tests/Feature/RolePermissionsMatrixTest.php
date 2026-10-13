@@ -148,7 +148,8 @@ class RolePermissionsMatrixTest extends TestCase
         $this->assertTrue($cashierRole->hasPermissionTo('sales-returns.create'));
         $this->assertTrue($cashierRole->hasPermissionTo('till.open'));
         $this->assertTrue($cashierRole->hasPermissionTo('till.close'));
-        $this->assertTrue($cashierRole->hasPermissionTo('customers.create'));
+        $this->assertFalse($cashierRole->hasPermissionTo('customers.create'));
+        $this->assertFalse($cashierRole->hasPermissionTo('customers.view'));
 
         $this->assertFalse($cashierRole->hasPermissionTo('purchase-invoices.create'));
         $this->assertFalse($cashierRole->hasPermissionTo('reports-dashboard.view'));

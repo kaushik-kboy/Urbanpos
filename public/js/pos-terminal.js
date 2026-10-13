@@ -2419,8 +2419,8 @@
 
             const formData = $(this).serialize();
             const url = isEdit 
-                ? `${window.CUSTOMER_EDIT_BASE_URL || (window.APP_URL + '/master/customers')}/${custId}`
-                : `${window.APP_URL || ''}/master/customers`;
+                ? `${window.CUSTOMER_QUICK_BASE_URL || (window.APP_URL + '/sales/sales-bills/quick-customer')}/${custId}`
+                : `${window.CUSTOMER_QUICK_SAVE_URL || (window.APP_URL + '/sales/sales-bills/quick-customer')}`;
 
             const $submitBtn = $('#posSaveCustomerBtn');
             $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
@@ -2743,7 +2743,7 @@
         posPetIndex = 0;
 
         $.ajax({
-            url: `${window.CUSTOMER_EDIT_BASE_URL || (window.APP_URL + '/master/customers')}/${custId}/edit`,
+            url: `${window.CUSTOMER_QUICK_BASE_URL || (window.APP_URL + '/sales/sales-bills/quick-customer')}/${custId}`,
             method: 'GET',
             headers: {
                 'Accept': 'application/json'

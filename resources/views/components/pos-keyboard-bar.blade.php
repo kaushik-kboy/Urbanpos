@@ -51,7 +51,9 @@
         <a href="{{ url('sales/sales-bills/create') }}" tabindex="-1" class="badge" title="Sales Bill (Alt+S)"><kbd class="bg-primary">Alt+S</kbd> Sales</a>
         <a href="{{ url('purchase/purchase-invoices/create') }}" tabindex="-1" class="badge" title="Purchase Invoice (Alt+P)"><kbd class="bg-info">Alt+P</kbd> Purchase</a>
         <a href="{{ url('inventory/stock-transfers/create') }}" tabindex="-1" class="badge" title="Stock Transfer (Alt+T)"><kbd class="bg-secondary">Alt+T</kbd> Transfer</a>
+        @can('customers.view')
         <a href="{{ url('master/customers') }}" tabindex="-1" class="badge d-none d-xl-inline-block" title="Customer Master (Alt+C)"><kbd class="bg-success">Alt+C</kbd> Cust</a>
+        @endcan
         <a href="{{ url('master/items') }}" tabindex="-1" class="badge d-none d-xl-inline-block" title="Item Master (Alt+I)"><kbd class="bg-secondary">Alt+I</kbd> Items</a>
         <a href="{{ url('tools/function-keys') }}" tabindex="-1" class="badge text-warning" title="Configure Shortcuts (Alt+K)"><i class="fas fa-cog"></i> Config</a>
     </div>

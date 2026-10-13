@@ -44,10 +44,10 @@ function cleanBladeJs(rawJs) {
     // 3. Replace @foreach, @forelse, @while, @if, @else, @endif, @endforeach, etc.
     js = js.replace(/^[ \t]*@(?:foreach|forelse|while)\s*\([^\n]*\)[ \t]*$/gm, '{');
     js = js.replace(/^[ \t]*@(?:endforeach|endforelse|endwhile)[ \t]*$/gm, '}');
-    js = js.replace(/^[ \t]*@(?:if|unless|isset|empty)\s*\([^\n]*\)[ \t]*$/gm, 'if (true) {');
+    js = js.replace(/^[ \t]*@(?:if|unless|isset|empty|can|cannot)\s*\([^\n]*\)[ \t]*$/gm, 'if (true) {');
     js = js.replace(/^[ \t]*@(?:elseif)\s*\([^\n]*\)[ \t]*$/gm, '} else if (true) {');
     js = js.replace(/^[ \t]*@(?:else)[ \t]*$/gm, '} else {');
-    js = js.replace(/^[ \t]*@(?:endif|endunless|endisset|endempty)[ \t]*$/gm, '}');
+    js = js.replace(/^[ \t]*@(?:endif|endunless|endisset|endempty|endcan|endcannot)[ \t]*$/gm, '}');
     js = js.replace(/^[ \t]*@(?:php)[\s\S]*?@(?:endphp)[ \t]*$/gm, '');
     js = js.replace(/^[ \t]*@(?:push|endpush|section|endsection|stop|once|endonce)[^\n]*$/gm, '');
 
