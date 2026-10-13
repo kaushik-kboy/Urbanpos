@@ -44,6 +44,20 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
     exit 1
 fi
 
+# 2b. Run Master QA Certification Suite (Sequences, Validations, Branch Scoping, Clean English)
+echo ">> Running Master QA Certification Suite (npm run test:certify)..."
+php vendor/bin/phpunit tests/Feature/QaSystemCertificationTest.php
+QA_CERT_EXIT_CODE=$?
+if [ $QA_CERT_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "=========================================================="
+    echo "❌ PUSH BLOCKED: QA Certification Suite Failed!"
+    echo "Document sequence, form validation, or branch isolation broke."
+    echo "=========================================================="
+    echo ""
+    exit 1
+fi
+
 # 3. Run Frontend & Keyboard/Modal Automated Tests (if vitest installed)
 if [ -f "./node_modules/.bin/vitest" ] || [ -d "./node_modules/vitest" ]; then
     echo ">> Running Frontend & Keyboard/Modal Test Suite (npm run test:frontend)..."
