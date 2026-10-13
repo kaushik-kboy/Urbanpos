@@ -18,7 +18,7 @@
         : ($selectedItemId ? (float)(\App\Models\ItemStock::where('item_id', $selectedItemId)->where('branch_id', $activeBranchId)->value('quantity') ?? 0) : 0);
 
     $itemCodeVal = $selectedItemId ?: ($selectedItem ? $selectedItem->id : ($line->code ?? ''));
-    $qtyVal = isset($line->qty) && $line->qty != 0 ? ((float)$line->qty == (int)$line->qty ? (int)$line->qty : $line->qty) : '';
+    $qtyVal = isset($line->qty) && $line->qty != 0 ? (int)$line->qty : '';
     $sellPriceVal = isset($line->sell_price) && $line->sell_price != 0 ? $line->sell_price : ($selectedItem?->sell_price > 0 ? $selectedItem->sell_price : '');
     $mrpPriceVal = isset($line->mrp) && $line->mrp != 0 ? $line->mrp : ($selectedItem?->mrp > 0 ? $selectedItem->mrp : '');
     $discPercentVal = isset($line->disc_percent) && $line->disc_percent != 0 ? ((float)$line->disc_percent == (int)$line->disc_percent ? (int)$line->disc_percent : $line->disc_percent) : '';
@@ -73,7 +73,7 @@
         </div>
     </td>
     <td style="width: 85px;" data-col-key="qty">
-        <input type="number" step="any" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sb-qty font-weight-bold text-right" autocomplete="off" placeholder="Qty">
+        <input type="number" step="1" min="1" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm sb-qty font-weight-bold text-right" autocomplete="off" placeholder="Qty">
         <div class="sb-qty-error-msg text-danger font-weight-bold mt-1 text-center" style="font-size: 10px; line-height: 1.1; display: none;"></div>
     </td>
     <td style="width: 100px;" data-col-key="sell_price">

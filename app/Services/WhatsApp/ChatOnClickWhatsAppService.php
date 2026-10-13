@@ -164,7 +164,7 @@ class ChatOnClickWhatsAppService
             return str_replace(array_keys($replacements), array_values($replacements), $this->customMessage);
         }
 
-        return "🐾 *{$header}* 🐾\n"
+        return "🧾 *{$header}*\n"
              . "*Official Tax Invoice Receipt*\n"
              . "━━━━━━━━━━━━━━━━━━━━\n"
              . "Dear *{$customerName}*,\n"
@@ -179,7 +179,7 @@ class ChatOnClickWhatsAppService
              . "{$publicUrl}\n\n"
              . "━━━━━━━━━━━━━━━━━━━━\n"
              . "📞 *Store Helpline:* {$branchPhone}\n"
-             . "🐾 *{$footer}*";
+             . (!empty($footer) ? "{$footer}" : "");
     }
 
     /**
@@ -405,6 +405,32 @@ class ChatOnClickWhatsAppService
                 ->post($this->url . '/api/whatsapp/message', $multipart);
 
             $json = $response->json();
+
+            // Automatic fallback: if template was rejected (not found / unapproved on device), retry as direct message
+            if (!empty($this->templateName) && (!$response->successful() || !($json['success'] ?? false) || ($json['data']['status'] ?? '') === 'failed')) {
+                $templateErr = $json['error'] ?? ($json['message'] ?? 'Template rejected');
+                Log::warning("WhatsApp template '{$this->templateName}' rejected by device ({$templateErr}). Falling back to direct formatted text message for Bill #{$salesBill->bill_number}.");
+
+                $directMessage = $this->formatInvoiceMessage($salesBill);
+                $fallbackResp = Http::asMultipart()
+                    ->timeout(15)
+                    ->post($this->url . '/api/whatsapp/message', [
+                        ['name' => 'appkey', 'contents' => $this->appKey],
+                        ['name' => 'authkey', 'contents' => $this->authKey],
+                        ['name' => 'to', 'contents' => $cleanPhone],
+                        ['name' => 'message', 'contents' => $directMessage],
+                    ]);
+                $fallbackJson = $fallbackResp->json();
+                if ($fallbackResp->successful() && ($fallbackJson['success'] ?? false) && ($fallbackJson['data']['status'] ?? '') !== 'failed') {
+                    Log::info("WhatsApp bill dispatched via direct message fallback for Bill #{$salesBill->bill_number} to {$cleanPhone}");
+                    return [
+                        'success' => true,
+                        'phone'   => $cleanPhone,
+                        'wamid'   => $fallbackJson['data']['mid'] ?? null,
+                        'message' => "WhatsApp bill successfully sent to +{$cleanPhone}",
+                    ];
+                }
+            }
 
             if ($response->successful() && ($json['success'] ?? false)) {
                 $deliveryStatus = $json['data']['status'] ?? 'sent';

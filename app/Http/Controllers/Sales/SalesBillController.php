@@ -1136,9 +1136,38 @@ class SalesBillController extends Controller
             }
         }
 
+        // Fallback: for rows without branch-specific expiry, try all branches
+        $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
+        $expiryFallback = [];
+        if (! empty($noExpIds)) {
+            $ph = implode(',', array_fill(0, count($noExpIds), '?'));
+            $fbSql = "
+                SELECT pi2.item_id,
+                       MIN(pi2.exp_date) AS exp_date,
+                       {$sellPriceSub},
+                       {$mrpSub}
+                FROM purchase_invoice_items pi2
+                WHERE pi2.item_id IN ({$ph})
+                  AND pi2.exp_date IS NOT NULL
+                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                GROUP BY pi2.item_id
+            ";
+            foreach (\Illuminate\Support\Facades\DB::select($fbSql, $noExpIds) as $fb) {
+                $expiryFallback[$fb->item_id] = $fb;
+            }
+        }
+
         $result = [];
         foreach ($rows as $row) {
             $expRaw = $row->exp_date ?? null;
+
+            // Use cross-branch fallback expiry if main query returned null
+            if (empty($expRaw) && isset($expiryFallback[$row->id])) {
+                $fb     = $expiryFallback[$row->id];
+                $expRaw = $fb->exp_date;
+                if ((float) ($fb->sell_price ?? 0) > 0) $row->sell_price = $fb->sell_price;
+                if ((float) ($fb->mrp ?? 0) > 0)        $row->mrp        = $fb->mrp;
+            }
 
             // Normalise expiry date
             $exp = null;
@@ -1228,26 +1257,32 @@ class SalesBillController extends Controller
         $batchService = app(\App\Services\Inventory\BatchStockService::class);
         $resolvedBatches = $batchService->getItemBatches($item->id, $branchId);
 
+        $hasPositiveNamedBatches = collect($resolvedBatches)->some(fn($b) => !empty($b['raw_batch_no']) && (float)($b['remaining_qty'] ?? 0) > 0);
+        $hasActualBatchOrExpiry = collect($resolvedBatches)->some(fn($b) => !empty($b['raw_batch_no']) || !empty($b['exp_date']));
+
         $batches = [];
-        foreach ($resolvedBatches as $b) {
-            if ((float) ($b['remaining_qty'] ?? 0) <= 0) {
-                continue; // Batches with 0 stock must not be shown
+        if ($item->batch_expiry_details !== 'Not Required' || $hasActualBatchOrExpiry) {
+            foreach ($resolvedBatches as $b) {
+                $bQty = (float) ($b['remaining_qty'] ?? 0);
+                if ($hasPositiveNamedBatches && !empty($b['raw_batch_no']) && $bQty <= 0) {
+                    continue; // When active named batches exist, exclude depleted named batches
+                }
+                $batches[] = [
+                    'productname' => $item->name,
+                    'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'batch_no' => $b['batch_no'] ?: '',
+                    'exp_date' => $b['exp_date'],
+                    'in_qty' => $b['purchased_qty'],
+                    'qty' => $b['remaining_qty'],
+                    'cost_price' => $b['cost_price'],
+                    'sell_price' => $b['sell_price'],
+                    'mrp' => $b['mrp'],
+                    'source' => $b['source'] ?? 'purchase',
+                ];
             }
-            $batches[] = [
-                'productname' => $item->name,
-                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                'batch_no' => $b['batch_no'] ?: '',
-                'exp_date' => $b['exp_date'],
-                'in_qty' => $b['purchased_qty'],
-                'qty' => $b['remaining_qty'],
-                'cost_price' => $b['cost_price'],
-                'sell_price' => $b['sell_price'],
-                'mrp' => $b['mrp'],
-                'source' => 'purchase',
-            ];
         }
 
-        // Sort: FIFO by expiry date / purchase sequence
+        // Sort: chronological by expiry date (FIFO)
         usort($batches, function ($a, $b) {
             return strcmp($a['exp_date'] ?? '', $b['exp_date'] ?? '');
         });
@@ -1256,7 +1291,7 @@ class SalesBillController extends Controller
         foreach ($batches as $b) {
             $batchStockSum += max(0, (float) ($b['qty'] ?? 0));
         }
-        if (!empty($batches)) {
+        if (!empty($batches) && !$salesBillId) {
             $stock = $batchStockSum;
         }
 

@@ -2820,8 +2820,9 @@
                 let bExpStr = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
                 let isBatchExpired = bExpStr && (bExpStr < todayBatchStr);
                 let qtyNum = parseFloat(b.qty || 0);
-                let isBlocked = isBatchExpired;
-                let qtyDisplay = qtyNum.toFixed(3);
+                let isBatchOOS = qtyNum <= 0;
+                let isBlocked = isBatchExpired || isBatchOOS;
+                let qtyDisplay = parseInt(qtyNum, 10) || 0;
                 let sellDisplay = b.sell_price ? '₹' + parseFloat(b.sell_price).toFixed(2) : '—';
                 let mrpDisplay = b.mrp ? '₹' + parseFloat(b.mrp).toFixed(2) : '—';
                 let bRowClass = isBlocked ? 'batch-select-row batch-disabled text-muted bg-light' : 'batch-select-row batch-nav-row';
@@ -2999,14 +3000,45 @@
             applyBatchToRow(exp, sell, mrp, batch, batchQty);
         });
 
-        // Click on batch button in row to re-open modal
-        $(document).on('click', '.sb-btn-choose-batch', function () {
-            let $row = $(this).closest('tr');
+        // Click on batch button or expiry field in row to re-open modal
+        async function openBatchModalForRow($row) {
             let batches = $row.data('batches') || [];
             let item = $row.data('item-data') || {};
-            if (batches.length > 1) {
-                showBatchModal($row, item, batches);
+            let itemId = $row.find('.sb-item-select').val();
+
+            if ((!batches || batches.length === 0) && itemId) {
+                let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
+                try {
+                    let resp = await fetch(`{{ route('sales.sales-bills.lookup-item') }}?item_id=${itemId}&branch_id=${branchId}`);
+                    let data = await resp.json();
+                    if (data && data.found) {
+                        batches = data.batches || [];
+                        item = data.item || item;
+                        $row.data('batches', batches);
+                        $row.data('item-data', item);
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch batches on demand:', e);
+                }
             }
+
+            if (batches && batches.length > 0) {
+                showBatchModal($row, item, batches);
+            } else {
+                toastr.info('No alternative batches available for this item.');
+            }
+        }
+
+        $(document).on('click', '.sb-btn-choose-batch, .sb-batch-btn-wrap', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let $row = $(this).closest('tr');
+            openBatchModalForRow($row);
+        });
+
+        $(document).on('dblclick', '.sb-exp-date', function (e) {
+            let $row = $(this).closest('tr');
+            openBatchModalForRow($row);
         });
 
         let isSyncing = false;
@@ -3141,12 +3173,7 @@
                         calculateRow($row, 'base');
                         if (!isInitial) {
                             saveBillDraft();
-                            // If direct code lookup, do NOT open popup! Focus Qty field directly.
-                            if (!isDirectLookup) {
-                                showBatchModal($row, item, batches);
-                            } else {
-                                setTimeout(() => $row.find('.sb-qty').focus().select(), 60);
-                            }
+                            showBatchModal($row, item, batches);
                         }
                     } else {
                         $batchWrap.addClass('d-none');
@@ -3441,6 +3468,10 @@
 
         // Fast POS keyboard flow: Qty -> Disc % -> Disc Amt -> next row (if exists)
         $(document).on('keydown', '.sb-qty', function (e) {
+            if (e.key === '.' || e.key === ',' || e.key === 'Decimal') {
+                e.preventDefault();
+                return false;
+            }
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 if (!validateSbQty($(this))) {
                     e.preventDefault();
@@ -3457,6 +3488,11 @@
         });
 
         $(document).on('input keyup change', '.sb-qty', function () {
+            let val = $(this).val();
+            let clean = val.replace(/[^\d]/g, '');
+            if (clean !== val) {
+                $(this).val(clean);
+            }
             validateSbQty($(this));
         });
 

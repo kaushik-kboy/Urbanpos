@@ -80,41 +80,101 @@
     </div>
 
     <div class="tab-pane" id="tab-taxes">
-        <x-bool-select name="tax_inclusive" label="Tax Inclusive" :value="$i->tax_inclusive ?? false" true-label="Yes" false-label="No" />
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-percent mr-1 text-primary"></i> Taxes & Pricing Settings</h6>
+            <x-form-layout-customizer
+                form-key="master_items.taxes"
+                container-id="item-taxes-fields-grid"
+                title="Customize Taxes Form Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="item-taxes-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="tax_inclusive" data-label="Tax Inclusive" data-default-order="1">
+                <x-bool-select name="tax_inclusive" label="Tax Inclusive" :value="$i->tax_inclusive ?? false" true-label="Yes" false-label="No" />
+            </div>
+        </div>
     </div>
 
     <div class="tab-pane" id="tab-sales">
-        <x-select name="batch_expiry_details" label="Batch/Expiry Details" :options="['Not Required' => 'Not Required', 'Optional' => 'Optional', 'Mandatory' => 'Mandatory', 'Days' => 'Days', 'Month' => 'Month']" :selected="$i->batch_expiry_details ?? 'Not Required'" />
-        <x-field name="shelf_life_days" label="Shelf Life (days)" type="number" :value="$i->shelf_life_days ?? ''" />
-        <x-field name="minimum_shelf_life_days" label="Minimum Shelf Life (days)" type="number" :value="$i->minimum_shelf_life_days ?? ''" />
-        <x-bool-select name="allow_negative_stock" label="Allow Negative Stock" :value="$i->allow_negative_stock ?? false" true-label="Yes" false-label="No" />
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-boxes mr-1 text-primary"></i> Inventory & Sales Details</h6>
+            <x-form-layout-customizer
+                form-key="master_items.sales"
+                container-id="item-sales-fields-grid"
+                title="Customize Sales & Inventory Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="item-sales-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="batch_expiry_details" data-label="Batch/Expiry Details" data-default-order="1">
+                <x-select name="batch_expiry_details" label="Batch/Expiry Details" :options="['Not Required' => 'Not Required', 'Optional' => 'Optional', 'Mandatory' => 'Mandatory', 'Days' => 'Days', 'Month' => 'Month']" :selected="$i->batch_expiry_details ?? 'Not Required'" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="shelf_life_days" data-label="Shelf Life (days)" data-default-order="2">
+                <x-field name="shelf_life_days" label="Shelf Life (days)" type="number" :value="$i->shelf_life_days ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="minimum_shelf_life_days" data-label="Minimum Shelf Life (days)" data-default-order="3">
+                <x-field name="minimum_shelf_life_days" label="Minimum Shelf Life (days)" type="number" :value="$i->minimum_shelf_life_days ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="allow_negative_stock" data-label="Allow Negative Stock" data-default-order="4">
+                <x-bool-select name="allow_negative_stock" label="Allow Negative Stock" :value="$i->allow_negative_stock ?? false" true-label="Yes" false-label="No" />
+            </div>
+        </div>
     </div>
 
     <div class="tab-pane" id="tab-category">
-        <x-select name="department_value_id" label="DEPARTMENT" :options="$departmentValues" :selected="$i->department_value_id ?? ''" placeholder="Select a value">
-            <button type="button" class="btn btn-outline-primary btn-sm text-nowrap btn-quick-cat-val" data-head-id="{{ $deptHeadId ?? '' }}" data-head-name="DEPARTMENT" data-target-select="#department_value_id" title="Add Department Value">
-                <i class="fas fa-plus mr-1"></i> Add
-            </button>
-        </x-select>
-        <x-select name="category_value_id" label="CATEGORY" :options="$categoryValues" :selected="$i->category_value_id ?? ''" placeholder="Select a value">
-            <button type="button" class="btn btn-outline-primary btn-sm text-nowrap btn-quick-cat-val" data-head-id="{{ $catHeadId ?? '' }}" data-head-name="CATEGORY" data-target-select="#category_value_id" title="Add Category Value">
-                <i class="fas fa-plus mr-1"></i> Add
-            </button>
-        </x-select>
-        <x-select name="brand_value_id" label="Brands" :options="$brandValues" :selected="$i->brand_value_id ?? ''" placeholder="Select a value">
-            <button type="button" class="btn btn-outline-primary btn-sm text-nowrap btn-quick-cat-val" data-head-id="{{ $brandHeadId ?? '' }}" data-head-name="Brands" data-target-select="#brand_value_id" title="Add Brand Value">
-                <i class="fas fa-plus mr-1"></i> Add
-            </button>
-        </x-select>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-sitemap mr-1 text-primary"></i> Category & Classification</h6>
+            <x-form-layout-customizer
+                form-key="master_items.category"
+                container-id="item-category-fields-grid"
+                title="Customize Category Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="item-category-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="department_value_id" data-label="Department" data-default-order="1">
+                <x-select name="department_value_id" label="DEPARTMENT" :options="$departmentValues" :selected="$i->department_value_id ?? ''" placeholder="Select a value">
+                    <button type="button" class="btn btn-outline-primary btn-sm text-nowrap btn-quick-cat-val" data-head-id="{{ $deptHeadId ?? '' }}" data-head-name="DEPARTMENT" data-target-select="#department_value_id" title="Add Department Value">
+                        <i class="fas fa-plus mr-1"></i> Add
+                    </button>
+                </x-select>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="category_value_id" data-label="Category" data-default-order="2">
+                <x-select name="category_value_id" label="CATEGORY" :options="$categoryValues" :selected="$i->category_value_id ?? ''" placeholder="Select a value">
+                    <button type="button" class="btn btn-outline-primary btn-sm text-nowrap btn-quick-cat-val" data-head-id="{{ $catHeadId ?? '' }}" data-head-name="CATEGORY" data-target-select="#category_value_id" title="Add Category Value">
+                        <i class="fas fa-plus mr-1"></i> Add
+                    </button>
+                </x-select>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="brand_value_id" data-label="Brands Classification" data-default-order="3">
+                <x-select name="brand_value_id" label="Brands" :options="$brandValues" :selected="$i->brand_value_id ?? ''" placeholder="Select a value">
+                    <button type="button" class="btn btn-outline-primary btn-sm text-nowrap btn-quick-cat-val" data-head-id="{{ $brandHeadId ?? '' }}" data-head-name="Brands" data-target-select="#brand_value_id" title="Add Brand Value">
+                        <i class="fas fa-plus mr-1"></i> Add
+                    </button>
+                </x-select>
+            </div>
+        </div>
     </div>
 
     <div class="tab-pane" id="tab-gst">
-        <x-select name="gst_tax_id" label="GST Tax" :options="$gstTaxes" :selected="$i->gst_tax_id ?? ''" placeholder="Select a GST tax" />
-        <x-field name="hsn_code" label="HSN Code" :value="$i->hsn_code ?? ''" maxlength="8" pattern="\d{4,8}" title="HSN Code must be 4 to 8 digits" placeholder="e.g. 1234 or 12345678" hint="Must be 4 to 8 digits (numeric). Format: 4 to 8 digits" id="hsn_code_input" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8); document.getElementById('hsn-len').textContent = this.value.length + '/8'; document.getElementById('hsn-len').className = (this.value.length >= 4 && this.value.length <= 8) ? 'badge badge-success ml-2' : (this.value.length === 0 ? 'badge badge-secondary ml-2' : 'badge badge-warning ml-2');" />
-        <div class="form-group row mt-n2 mb-2">
-            <div class="col-sm-3"></div>
-            <div class="col-sm-6">
-                <span id="hsn-len" class="badge {{ !empty($i->hsn_code) && strlen($i->hsn_code) >= 4 ? 'badge-success' : 'badge-secondary' }}">{{ strlen($i->hsn_code ?? '') }}/8</span>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="font-weight-bold text-muted text-uppercase small mb-0"><i class="fas fa-file-invoice mr-1 text-primary"></i> GST & Tax Rates</h6>
+            <x-form-layout-customizer
+                form-key="master_items.gst"
+                container-id="item-gst-fields-grid"
+                title="Customize GST Layout"
+            />
+        </div>
+        <div class="row g-2 form-fields-grid" id="item-gst-fields-grid">
+            <div class="field-wrapper col-md-6" data-field="gst_tax_id" data-label="GST Tax" data-default-order="1">
+                <x-select name="gst_tax_id" label="GST Tax" :options="$gstTaxes" :selected="$i->gst_tax_id ?? ''" placeholder="Select a GST tax" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="hsn_code" data-label="HSN Code" data-default-order="2">
+                <x-field name="hsn_code" label="HSN Code" :value="$i->hsn_code ?? ''" maxlength="8" pattern="\d{4,8}" title="HSN Code must be 4 to 8 digits" placeholder="e.g. 1234 or 12345678" hint="Must be 4 to 8 digits (numeric). Format: 4 to 8 digits" id="hsn_code_input" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8); document.getElementById('hsn-len').textContent = this.value.length + '/8'; document.getElementById('hsn-len').className = (this.value.length >= 4 && this.value.length <= 8) ? 'badge badge-success ml-2' : (this.value.length === 0 ? 'badge badge-secondary ml-2' : 'badge badge-warning ml-2');" />
+                <div class="form-group row mt-n2 mb-2">
+                    <div class="col-sm-3"></div>
+                    <div class="col-sm-6">
+                        <span id="hsn-len" class="badge {{ !empty($i->hsn_code) && strlen($i->hsn_code) >= 4 ? 'badge-success' : 'badge-secondary' }}">{{ strlen($i->hsn_code ?? '') }}/8</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

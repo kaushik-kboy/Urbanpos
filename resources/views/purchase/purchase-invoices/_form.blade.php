@@ -539,22 +539,28 @@
                     }
                 }
 
-                // When user selects a supplier or no value set yet, auto-select
-                if (userInitiated || !$('#purchase_type').val()) {
-                    $('#purchase_type').val(targetType).trigger('change');
-                }
+                // Automatically set from Supplier Master and LOCK: cannot be changed in Purchase Invoice
+                $('#purchase_type').val(targetType).trigger('change');
+                $('#purchase_type').closest('.field-wrapper').find('.select2-selection, select').css({
+                    'pointer-events': 'none',
+                    'background-color': '#e9ecef',
+                    'opacity': '0.9',
+                    'cursor': 'not-allowed'
+                }).attr('tabindex', '-1');
 
-                // Keep editable: user can change if needed
-                $('#purchase_type').prop('disabled', false).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'','background':'','opacity':''});
-
-                let noteText = 'Supplier Default: ' + targetType + ' (' + (targetType === 'Interstate' ? 'IGST' : 'CGST+SGST') + ')';
+                let noteText = '<i class="fas fa-lock text-warning mr-1"></i> Locked from Supplier Master: ' + targetType + ' (' + (targetType === 'Interstate' ? 'IGST' : 'CGST+SGST') + ')';
                 if (!$('#purchase_type_locked_note').length) {
-                    $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted"><i class="fas fa-info-circle text-info mr-1"></i>' + noteText + '</small>');
+                    $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted d-block mt-1 font-weight-bold">' + noteText + '</small>');
                 } else {
-                    $('#purchase_type_locked_note').html('<i class="fas fa-info-circle text-info mr-1"></i>' + noteText);
+                    $('#purchase_type_locked_note').html(noteText);
                 }
             } else {
-                $('#purchase_type').prop('disabled', false).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'','background':'','opacity':''});
+                $('#purchase_type').closest('.field-wrapper').find('.select2-selection, select').css({
+                    'pointer-events': '',
+                    'background-color': '',
+                    'opacity': '',
+                    'cursor': ''
+                }).removeAttr('tabindex');
                 $('#purchase_type_locked_note').remove();
             }
         }
@@ -2111,8 +2117,12 @@
             }
         });
 
-        // Qty Tab & Enter navigation and validation (PHASE 12)
-        $(document).on('keydown', '.pinv-qty', function (e) {
+        // Prevent decimals on quantity and free quantity inputs
+        $(document).on('keydown', '.pinv-qty, .pinv-free-qty', function (e) {
+            if (e.key === '.' || e.key === ',' || e.key === 'Decimal') {
+                e.preventDefault();
+                return false;
+            }
             if (islModalOpen || islModalClosing || $(this).data('just-selected')) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -2120,10 +2130,10 @@
                 return;
             }
             if (e.key === 'Tab' || e.key === 'Enter') {
-                let qty = parseFloat($(this).val()) || 0;
+                let qty = parseInt($(this).val(), 10) || 0;
                 let $row = $(this).closest('tr');
                 let itemId = $row.find('.pinv-item-select').val();
-                if (itemId && qty <= 0) {
+                if ($(this).hasClass('pinv-qty') && itemId && qty <= 0) {
                     e.preventDefault();
                     e.stopPropagation();
                     $(this).addClass('is-invalid border-danger');
@@ -2142,8 +2152,13 @@
             }
         });
 
-        $(document).on('input change', '.pinv-qty', function () {
-            let qty = parseFloat($(this).val()) || 0;
+        $(document).on('input change', '.pinv-qty, .pinv-free-qty', function () {
+            let val = $(this).val();
+            let clean = val.replace(/[^\d]/g, '');
+            if (clean !== val) {
+                $(this).val(clean);
+            }
+            let qty = parseInt($(this).val(), 10) || 0;
             if (qty > 0) {
                 $(this).removeClass('is-invalid border-danger');
                 $(this).siblings('.pinv-qty-error-msg').css('display', 'none').text('');

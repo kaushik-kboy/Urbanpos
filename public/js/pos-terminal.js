@@ -262,7 +262,7 @@
             setTimeout(() => $existing.focus().select(), 20);
             return;
         }
-        $cell.html(`<input type="number" step="any" min="1" class="pos-row-input pos-qty-input pos-row-qty-input font-weight-bold text-center" style="height: 26px; width: 58px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="Qty" data-idx="${idx}">`);
+        $cell.html(`<input type="number" step="1" min="1" class="pos-row-input pos-qty-input pos-row-qty-input font-weight-bold text-center" style="height: 26px; width: 58px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="Qty" data-idx="${idx}">`);
         const $input = $cell.find('input');
         $input.focus().select();
         setTimeout(() => $input.focus().select(), 20);
@@ -272,10 +272,10 @@
             const related = e.relatedTarget || document.activeElement;
             if (related && $(related).closest('.btn, button, .modal, #posTableBody, .pos-batch-row, .btn-remove-item').length) {
                 const rawVal = $(this).val().trim();
-                const val = parseFloat(rawVal);
+                const val = parseInt(rawVal.replace(/[^\d]/g, ''), 10);
                 if (!isNaN(val) && val > 0 && !isItemStockExceeded(item, val, idx)) {
                     state.cart[idx].qty = val;
-                    $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                    $cell.text(val);
                     recalculateRow(idx, 'qty');
                 }
                 return;
@@ -292,7 +292,7 @@
             }
 
             const rawVal = $(this).val().trim();
-            let val = parseFloat(rawVal);
+            let val = parseInt(rawVal.replace(/[^\d]/g, ''), 10);
             if (rawVal === '' || isNaN(val) || val <= 0) {
                 state.cart[idx].qty = '';
                 $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
@@ -307,14 +307,14 @@
                 const stock = getItemStock(item);
                 const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
                 const availRemaining = Math.max(0, stock - otherRowsQty);
-                const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                const availDisp = parseInt(availRemaining, 10);
 
                 if (availRemaining > 0) {
                     // Auto-cap to maximum available stock so user is not deadlocked
-                    val = availRemaining;
+                    val = parseInt(availRemaining, 10);
                     $(this).val(val);
                     state.cart[idx].qty = val;
-                    $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                    $cell.text(val);
                     $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
                     recalculateRow(idx, 'qty');
                     showNotification(`Only ${availDisp} units available for "${item.name}". Quantity auto-adjusted to ${availDisp}.`, 'warning');
@@ -332,13 +332,17 @@
 
             $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
             state.cart[idx].qty = val;
-            $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+            $cell.text(val);
             recalculateRow(idx, 'qty');
         });
 
         $input.on('keydown', function (ke) {
+            if (ke.key === '.' || ke.key === ',' || ke.key === 'Decimal') {
+                ke.preventDefault();
+                return false;
+            }
             const rawVal = $(this).val().trim();
-            let val = parseFloat(rawVal);
+            let val = parseInt(rawVal.replace(/[^\d]/g, ''), 10);
             if (ke.key === 'Tab') {
                 ke.preventDefault();
                 if (rawVal === '' || isNaN(val) || val <= 0) {
@@ -897,12 +901,25 @@
             }
         });
 
+        // Prevent decimal points in quantity input
+        $(document).on('keydown', '.pos-qty-input', function (ke) {
+            if (ke.key === '.' || ke.key === ',' || ke.key === 'Decimal') {
+                ke.preventDefault();
+                return false;
+            }
+        });
+
         // Real-time calculation and validation while typing in Qty input
         $(document).on('input change keyup paste', '.pos-qty-input', function (e) {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
-            const rawVal = $(this).val();
-            let val = parseFloat(rawVal);
+            let rawVal = $(this).val();
+            let cleanVal = rawVal.replace(/[^\d]/g, '');
+            if (cleanVal !== rawVal) {
+                $(this).val(cleanVal);
+                rawVal = cleanVal;
+            }
+            let val = parseInt(rawVal, 10);
             const payBtns = $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp');
             const cartItem = state.cart[idx];
 
@@ -1234,7 +1251,7 @@
             const isBatchOOS = qtyNum <= 0 && !allowNeg;
             const isBlocked = isBatchExpired || isBatchOOS;
 
-            const qtyDisplay = (qtyNum === parseInt(qtyNum, 10)) ? parseInt(qtyNum, 10) : qtyNum.toFixed(2);
+            const qtyDisplay = parseInt(qtyNum, 10) || 0;
             const sellDisplay = b.sell_price ? '₹ ' + parseFloat(b.sell_price).toFixed(2) : '—';
             const mrpDisplay = b.mrp ? '₹ ' + parseFloat(b.mrp).toFixed(2) : '—';
             const bRowClass = isBlocked ? 'pos-batch-row batch-disabled text-muted bg-light' : 'pos-batch-row batch-nav-row';
@@ -2040,10 +2057,10 @@
             if (isInvalidQty) {
                 qtyDisp = '<span class="text-danger font-weight-bold">Qty</span>';
             } else if (isStockExceeded) {
-                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
-                qtyDisp = `<span class="text-danger font-weight-bold" title="Insufficient stock (${availDisp} available)">${qtyNum % 1 === 0 ? qtyNum : qtyNum.toFixed(2)} ⚠️</span>`;
+                const availDisp = parseInt(stock, 10);
+                qtyDisp = `<span class="text-danger font-weight-bold" title="Insufficient stock (${availDisp} available)">${parseInt(qtyNum, 10)} ⚠️</span>`;
             } else {
-                qtyDisp = qtyNum % 1 === 0 ? qtyNum : qtyNum.toFixed(2);
+                qtyDisp = parseInt(qtyNum, 10);
             }
 
             const itemCodeDisp = item.code || item.item_code || (item.id ? String(item.id) : '-');
@@ -3423,12 +3440,14 @@
             sales_type: state.sales_type,
             delivery_type: state.delivery_type,
             payment_type: state.tender_mode,
+            save_action: action,
+            send_whatsapp: action === 'whatsapp' ? 1 : 0,
             round_off: totals.roundOff,
             items: state.cart.map(item => ({
                 item_id: item.id,
                 batch_no: item.batch_no || null,
                 exp_date: item.exp_date || null,
-                qty: item.qty,
+                qty: parseInt(item.qty, 10) || 1,
                 sell_price: item.sell_price,
                 mrp: item.mrp,
                 disc_percent: item.disc_percent,

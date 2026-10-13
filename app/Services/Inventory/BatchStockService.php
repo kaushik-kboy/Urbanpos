@@ -48,6 +48,7 @@ class BatchStockService
                 'total_in' => (float) $lr->total_in,
                 'exp_date' => $expStr,
                 'batch_no' => $bNo,
+                'assigned' => 0.0,
             ];
         }
 
@@ -66,6 +67,25 @@ class BatchStockService
             ->get();
 
         $allPurchases = $piItems->concat($osItems);
+
+        // Fallback: If no purchase records for this specific branch, check across all branches as metadata fallback
+        if ($allPurchases->isEmpty()) {
+            $fallbackPi = PurchaseInvoiceItem::with('purchaseInvoice')
+                ->where('item_id', $itemId)
+                ->whereNotNull('exp_date')
+                ->where('exp_date', '!=', '')
+                ->where('exp_date', '!=', '0000-00-00')
+                ->orderBy('exp_date', 'asc')
+                ->get();
+            $fallbackOs = OpeningStockItem::with('openingStock')
+                ->where('item_id', $itemId)
+                ->whereNotNull('exp_date')
+                ->where('exp_date', '!=', '')
+                ->where('exp_date', '!=', '0000-00-00')
+                ->orderBy('exp_date', 'asc')
+                ->get();
+            $allPurchases = $fallbackPi->concat($fallbackOs);
+        }
 
         $batches = [];
         $unassignedKeys = [];
@@ -91,19 +111,24 @@ class BatchStockService
                 // Merge only if same batch_no, same expiry, and same prices
                 $key = 'B_' . $rawBNo . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2) . '|' . ($exp ?: '');
             } else {
-                // When batch_no is omitted, assign a recognizable purchase/lot label and preserve distinct prices
-                if ($p instanceof PurchaseInvoiceItem && $p->purchaseInvoice) {
-                    $invNum = $p->purchaseInvoice->supplier_inv_no ?: $p->purchaseInvoice->invoice_number;
-                    $invDate = $p->purchaseInvoice->invoice_date ? Carbon::parse($p->purchaseInvoice->invoice_date)->format('d/m/Y') : null;
-                    $displayBatchNo = $invNum ? ($invNum . ($invDate ? " ({$invDate})" : '')) : ($invDate ? "Lot {$invDate}" : ('Lot #' . $p->id));
-                } elseif ($p instanceof OpeningStockItem && $p->openingStock) {
-                    $osDate = $p->openingStock->opening_date ? Carbon::parse($p->openingStock->opening_date)->format('d/m/Y') : null;
-                    $displayBatchNo = $osDate ? "Opening ({$osDate})" : 'Opening Stock';
+                if ($exp !== null) {
+                    // Purchases with same expiry date merge into one batch, latest price wins
+                    $key = 'EXP_' . $exp;
+                    $displayBatchNo = Carbon::parse($exp)->format('d/m/Y');
                 } else {
-                    $displayBatchNo = 'Lot #' . $p->id;
+                    if ($p instanceof PurchaseInvoiceItem && $p->purchaseInvoice) {
+                        $invNum = $p->purchaseInvoice->supplier_inv_no ?: $p->purchaseInvoice->invoice_number;
+                        $invDate = $p->purchaseInvoice->invoice_date ? Carbon::parse($p->purchaseInvoice->invoice_date)->format('d/m/Y') : null;
+                        $displayBatchNo = $invNum ? ($invNum . ($invDate ? " ({$invDate})" : '')) : ($invDate ? "Lot {$invDate}" : ('Lot #' . $p->id));
+                    } elseif ($p instanceof OpeningStockItem && $p->openingStock) {
+                        $osDate = $p->openingStock->opening_date ? Carbon::parse($p->openingStock->opening_date)->format('d/m/Y') : null;
+                        $displayBatchNo = $osDate ? "Opening ({$osDate})" : 'Opening Stock';
+                    } else {
+                        $displayBatchNo = 'Lot #' . $p->id;
+                    }
+                    $key = 'PI_' . $p->id . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2);
+                    $unassignedKeys[$key] = true;
                 }
-                $key = 'PI_' . $p->id . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2) . '|' . ($exp ?: '');
-                $unassignedKeys[$key] = true;
             }
 
             if (!isset($batches[$key])) {
@@ -119,39 +144,85 @@ class BatchStockService
                     'mrp' => $mrp,
                     'purchased_qty' => $inQty,
                     'remaining_qty' => 0.0,
+                    'source' => 'purchase',
                 ];
             } else {
                 $batches[$key]['purchased_qty'] += $inQty;
                 if ($exp && !$batches[$key]['exp_date']) $batches[$key]['exp_date'] = $exp;
+                if ($sell > 0) $batches[$key]['sell_price'] = $sell;
+                if ($mrp > 0) $batches[$key]['mrp'] = $mrp;
+                if ($cost > 0) $batches[$key]['cost_price'] = $cost;
             }
         }
 
-        // Also add any batches present in StockLedger not in purchases
+        // Count how many purchase batches map to each ledger key
+        $matchCounts = [];
+        foreach ($batches as $k => $b) {
+            $raw = $b['raw_batch_no'] ?? '';
+            $bNo = $b['batch_no'] ?? '';
+            $exp = $b['exp_date'] ?? '';
+            $mk = ($raw !== '' && isset($ledgerBatchMap[$raw])) ? $raw : (($bNo !== '' && isset($ledgerBatchMap[$bNo])) ? $bNo : (($raw === '' && $exp !== '' && isset($ledgerBatchMap[$exp])) ? $exp : null));
+            if ($mk !== null) {
+                $matchCounts[$mk] = ($matchCounts[$mk] ?? 0) + 1;
+            }
+        }
+
+        // Apply remaining quantities from StockLedger to matching purchase batches
+        $namedBatchRemaining = 0.0;
+        $seenMatches = [];
+        foreach ($batches as $key => &$bData) {
+            $raw = $bData['raw_batch_no'] ?? '';
+            $bNo = $bData['batch_no'] ?? '';
+            $exp = $bData['exp_date'] ?? '';
+            $pQty = (float) $bData['purchased_qty'];
+
+            $matchedKey = null;
+            if ($raw !== '' && isset($ledgerBatchMap[$raw])) {
+                $matchedKey = $raw;
+            } elseif ($bNo !== '' && isset($ledgerBatchMap[$bNo])) {
+                $matchedKey = $bNo;
+            } elseif ($raw === '' && $exp !== '' && isset($ledgerBatchMap[$exp])) {
+                $matchedKey = $exp;
+            }
+
+            if ($matchedKey !== null) {
+                $seenMatches[$matchedKey] = ($seenMatches[$matchedKey] ?? 0) + 1;
+                $isLast = ($seenMatches[$matchedKey] === $matchCounts[$matchedKey]);
+                $ledgerRem = max(0.0, $ledgerBatchMap[$matchedKey]['remaining'] - $ledgerBatchMap[$matchedKey]['assigned']);
+                $alloc = $isLast ? $ledgerRem : min($pQty, $ledgerRem);
+                $bData['remaining_qty'] = $alloc;
+                $ledgerBatchMap[$matchedKey]['assigned'] += $alloc;
+                $namedBatchRemaining += $alloc;
+            } elseif (!isset($unassignedKeys[$key])) {
+                $bData['remaining_qty'] = $pQty;
+                $namedBatchRemaining += $bData['remaining_qty'];
+            }
+        }
+        unset($bData);
+
+        // Also add any batches present in StockLedger not fully assigned to purchases
         foreach ($ledgerBatchMap as $key => $lData) {
+            $unassignedInLedger = max(0.0, $lData['remaining'] - ($lData['assigned'] ?? 0));
+            if ($unassignedInLedger <= 0) {
+                continue; // Fully matched to actual purchases!
+            }
             $lBNo = $lData['batch_no'] ?: ($key !== 'DEFAULT' ? $key : '');
             if ($lBNo !== '') {
-                $foundExisting = false;
-                foreach ($batches as $b) {
-                    if (strcasecmp((string)$b['batch_no'], $lBNo) === 0 || strcasecmp((string)($b['raw_batch_no'] ?? ''), $lBNo) === 0) {
-                        $foundExisting = true;
-                        break;
-                    }
-                }
-                if (!$foundExisting) {
-                    $batches['L_' . $lBNo] = [
-                        'item_id' => $itemId,
-                        'item_code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                        'item_name' => $item->name,
-                        'batch_no' => $lBNo,
-                        'raw_batch_no' => $lBNo,
-                        'exp_date' => $lData['exp_date'] ?: null,
-                        'cost_price' => (float) ($item->cost_price ?? 0),
-                        'sell_price' => (float) ($item->sell_price ?? 0),
-                        'mrp' => (float) ($item->mrp ?? 0),
-                        'purchased_qty' => $lData['total_in'],
-                        'remaining_qty' => (float) $lData['remaining'],
-                    ];
-                }
+                $batches['L_' . $lBNo] = [
+                    'item_id' => $itemId,
+                    'item_code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'item_name' => $item->name,
+                    'batch_no' => $lBNo,
+                    'raw_batch_no' => $lData['batch_no'] ?: '',
+                    'exp_date' => $lData['exp_date'] ?: null,
+                    'cost_price' => (float) ($item->cost_price ?? 0),
+                    'sell_price' => (float) ($item->sell_price ?? 0),
+                    'mrp' => (float) ($item->mrp ?? 0),
+                    'purchased_qty' => $lData['total_in'],
+                    'remaining_qty' => $unassignedInLedger,
+                    'source' => 'ledger',
+                ];
+                $namedBatchRemaining += $unassignedInLedger;
             }
         }
 
@@ -160,26 +231,27 @@ class BatchStockService
             ->where('branch_id', $branchId)
             ->value('quantity') ?? 0);
 
-        // Apply remaining quantities from ledger:
-        // 1. For batches with specific tracked raw_batch_no in StockLedger:
-        $namedBatchRemaining = 0.0;
-        foreach ($batches as $key => &$bData) {
-            $raw = $bData['raw_batch_no'] ?? '';
-            $bNo = $bData['batch_no'];
-            if ($raw !== '' && isset($ledgerBatchMap[$raw])) {
-                $bData['remaining_qty'] = max(0.0, (float) $ledgerBatchMap[$raw]['remaining']);
-                $namedBatchRemaining += $bData['remaining_qty'];
-            } elseif ($bNo !== '' && isset($ledgerBatchMap[$bNo])) {
-                $bData['remaining_qty'] = max(0.0, (float) $ledgerBatchMap[$bNo]['remaining']);
-                $namedBatchRemaining += $bData['remaining_qty'];
-            } elseif (!isset($unassignedKeys[$key])) {
-                $bData['remaining_qty'] = (float) $bData['purchased_qty'];
-                $namedBatchRemaining += $bData['remaining_qty'];
-            }
-        }
-        unset($bData);
+        if (empty($ledgerBatchMap) && !empty($batches)) {
+            // FIFO allocation across purchases by expiry date
+            $totalIn = array_sum(array_column($batches, 'purchased_qty'));
+            $effectiveStock = max(0.0, (float) $currentBranchStock);
+            $consumedQty = max(0.0, $totalIn - $effectiveStock);
 
-        // 2. For unassigned / lot purchase batches (where no specific batch_no was stamped):
+            $toDeduct = $consumedQty;
+            foreach ($batches as &$bData) {
+                $batchOrig = (float) $bData['purchased_qty'];
+                if ($toDeduct >= $batchOrig) {
+                    $bData['remaining_qty'] = 0.0;
+                    $toDeduct -= $batchOrig;
+                } else {
+                    $bData['remaining_qty'] = max(0.0, round($batchOrig - $toDeduct, 3));
+                    $toDeduct = 0.0;
+                }
+            }
+            unset($bData);
+        }
+
+        // 2. For unassigned / lot purchase batches (where neither batch_no nor expiry was stamped):
         // Remaining unassigned stock is the branch physical stock minus what is in named batches.
         $unassignedAvailable = max(0.0, round($currentBranchStock - $namedBatchRemaining, 3));
         $unassignedCount = count($unassignedKeys);
