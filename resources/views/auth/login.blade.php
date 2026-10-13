@@ -55,7 +55,6 @@
         .up-hero-logo {
             height: 52px;
             width: auto;
-            mix-blend-mode: multiply;
             object-fit: contain;
             margin-bottom: 0.85rem;
             align-self: flex-start;
@@ -447,7 +446,7 @@
 
         {{-- Left Hero Section --}}
         <div class="up-hero-col">
-            <img src="{{ asset('images/urbanpets-logo.jpg') }}" alt="urban pets" class="up-hero-logo">
+            <img src="{{ asset('images/urbanpets-logo.png') }}?v=20261013_trans" alt="urban pets" class="up-hero-logo">
             
             <h1 class="up-hero-title">Smart retail system for pet business</h1>
             <p class="up-hero-subtitle">Everything you need to manage, grow and automate your pet business — in one powerful system.</p>
@@ -537,7 +536,7 @@
             <div class="up-login-card">
 
                 <div class="up-card-logo-wrap">
-                    <img src="{{ asset('images/urbanpets-logo.jpg') }}" alt="urban pets" class="up-card-logo">
+                    <img src="{{ asset('images/urbanpets-logo.png') }}?v=20261013_trans" alt="urban pets" class="up-card-logo">
                 </div>
 
                 <h2 class="up-card-title">Welcome Back</h2>
