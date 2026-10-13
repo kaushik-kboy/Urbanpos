@@ -1474,9 +1474,13 @@
                                     </tbody>
                                     <tfoot>
                                         <tr style="background: #f1f5f9; font-weight: 700;">
-                                            <td colspan="4" style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">Total:</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: center;"></td>
+                                            <td class="prev_a4_hsn_col" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1;"></td>
+                                            <td class="prev_a4_item_code_col" style="{{ ($settings->show_item_code ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1;"></td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; font-weight: 700;">Total:</td>
                                             <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">3.00</td>
-                                            <td colspan="2" style="padding: 4px; border: 1px solid #cbd5e1;"></td>
+                                            <td class="prev_a4_mrp_col" style="{{ ($settings->show_mrp ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1;"></td>
+                                            <td class="prev_a4_disc_col" style="{{ $settings->show_discount ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1;"></td>
                                             <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #64748b;">-</td>
                                             <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #64748b;">-</td>
                                             <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #64748b;">-</td>
@@ -2028,6 +2032,18 @@
         });
         const a4DiscRow = document.getElementById('prev_a4_discount_row');
         if (a4DiscRow) a4DiscRow.style.display = this.checked ? 'table-row' : 'none';
+    });
+
+    document.getElementById('input_show_item_code')?.addEventListener('change', function() {
+        document.querySelectorAll('.prev_a4_item_code_col').forEach(el => {
+            el.style.display = this.checked ? '' : 'none';
+        });
+    });
+
+    document.getElementById('input_show_mrp')?.addEventListener('change', function() {
+        document.querySelectorAll('.prev_a4_mrp_col').forEach(el => {
+            el.style.display = this.checked ? '' : 'none';
+        });
     });
 
     document.getElementById('input_show_barcode')?.addEventListener('change', function() {
