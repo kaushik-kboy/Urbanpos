@@ -68,6 +68,8 @@
         if (!item) return false;
         const stock = getItemStock(item);
         if (stock === null || isNaN(stock)) return false;
+        const reqQty = parseFloat(requestedQty) || 0;
+        if (stock <= 0) return true; // Zero or negative physical stock is strictly blocked in POS
 
         const hasBatch = !!(item.batch_no || (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== ''));
         // Physical batch lots can never allow negative stock under any condition
@@ -75,7 +77,7 @@
         if (allowNeg) return false;
 
         const otherRowsQty = getTotalCartQtyForItem(item.id, excludeRowIdx, item.batch_no || null);
-        const totalReq = otherRowsQty + (parseFloat(requestedQty) || 0);
+        const totalReq = otherRowsQty + reqQty;
         return totalReq > (stock + 0.0001);
     }
 
@@ -200,20 +202,405 @@
         }
     }
 
-    function setupEventListeners() {
-        // Scanner Barcode / Query input
-        // Mouse click on barcode input opens item lookup popup
-        scanInput.addEventListener('click', (e) => {
-            if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
-                e.preventDefault();
-                e.stopPropagation();
+    // Check and strictly enforce that all previous cart items have filled Qty before advancing
+    function checkAndEnforceUnfilledQty(allowIdx = null) {
+        const unfilledIdx = state.cart.findIndex((c, i) => i !== allowIdx && (c.qty === '' || c.qty === null || c.qty === undefined || isNaN(parseFloat(c.qty)) || parseFloat(c.qty) <= 0));
+        if (unfilledIdx !== -1) {
+            const it = state.cart[unfilledIdx];
+            showNotification(`Pehle "${it.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'danger');
+            if (typeof sound !== 'undefined' && sound.error) sound.error();
+            focusRowQty(unfilledIdx);
+            const $cell = $(`.pos-row-qty[data-idx="${unfilledIdx}"]`);
+            const $inp = $cell.find('input');
+            if ($inp.length) {
+                $inp.addClass('is-invalid border-danger text-danger bg-warning-light');
+                $inp.focus().select();
+            }
+            return false;
+        }
+        return true;
+    }
+    window.posCheckUnfilledQty = checkAndEnforceUnfilledQty;
+
+    // Focus Qty field helper - ensures input is rendered, focused, selected and scrolled into view
+    function focusRowQty(idx) {
+        if (idx === undefined || idx === null || isNaN(idx) || !state.cart[idx]) {
+            idx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+            if (idx < 0 || !state.cart[idx]) return;
+        }
+        window._posLastItemSelectTime = Date.now();
+        openQuantityInput(idx);
+        const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
+        const $inp = $cell.find('input');
+        if ($inp.length) {
+            if (document.activeElement && document.activeElement !== $inp[0]) {
+                document.activeElement.blur();
+            }
+            $inp[0].focus();
+            $inp[0].select();
+            const row = $cell.closest('tr')[0];
+            if (row && typeof row.scrollIntoView === 'function') {
+                row.scrollIntoView({ block: 'nearest' });
+            }
+        }
+    }
+    window.posFocusRowQty = focusRowQty;
+
+    // Inline editing helpers & keyboard flow for Qty, Sell Price, Dis % and Dis Amt
+    function openQuantityInput(idx) {
+        if (isNaN(idx) || !state.cart[idx]) return;
+        const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
+        if (!$cell.length) return;
+        const item = state.cart[idx];
+        const currentVal = (item.qty === '' || item.qty === null || item.qty === undefined) ? '' : item.qty;
+        if ($cell.find('input').length) {
+            const $existing = $cell.find('input');
+            if (currentVal !== '') {
+                $existing.val(currentVal);
+            }
+            $existing.focus().select();
+            setTimeout(() => $existing.focus().select(), 20);
+            return;
+        }
+        $cell.html(`<input type="number" step="any" min="1" class="pos-row-input pos-qty-input pos-row-qty-input font-weight-bold text-center" style="height: 26px; width: 58px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="Qty" data-idx="${idx}">`);
+        const $input = $cell.find('input');
+        $input.focus().select();
+        setTimeout(() => $input.focus().select(), 20);
+
+        $input.on('blur', function (e) {
+            // If user clicked an action button (remove row, switch batch, modal, reset), don't trap them
+            const related = e.relatedTarget || document.activeElement;
+            if (related && $(related).closest('.btn, button, .modal, #posTableBody, .pos-batch-row, .btn-remove-item').length) {
+                const rawVal = $(this).val().trim();
+                const val = parseFloat(rawVal);
+                if (!isNaN(val) && val > 0 && !isItemStockExceeded(item, val, idx)) {
+                    state.cart[idx].qty = val;
+                    $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                    recalculateRow(idx, 'qty');
+                }
                 return;
             }
-            if (typeof window.openPosItemSearchModal === 'function') {
-                window.openPosItemSearchModal(scanInput.value.trim());
+
+            // Prevent newly opened Qty input from accidental collapse while modals are closing or backdrop is animating
+            if (window._posSuppressQtyBlur || (Date.now() - (window._posLastItemSelectTime || 0) < 600)) {
+                setTimeout(() => {
+                    if ($cell.find('input').length) {
+                        $cell.find('input').focus().select();
+                    }
+                }, 50);
+                return;
             }
+
+            const rawVal = $(this).val().trim();
+            let val = parseFloat(rawVal);
+            if (rawVal === '' || isNaN(val) || val <= 0) {
+                state.cart[idx].qty = '';
+                $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
+                $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                showNotification(`Pehle "${item.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'warning');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                recalculateRow(idx, 'qty');
+                return;
+            }
+
+            if (isItemStockExceeded(item, val, idx)) {
+                const stock = getItemStock(item);
+                const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                const availRemaining = Math.max(0, stock - otherRowsQty);
+                const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+
+                if (availRemaining > 0) {
+                    // Auto-cap to maximum available stock so user is not deadlocked
+                    val = availRemaining;
+                    $(this).val(val);
+                    state.cart[idx].qty = val;
+                    $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                    $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
+                    recalculateRow(idx, 'qty');
+                    showNotification(`Only ${availDisp} units available for "${item.name}". Quantity auto-adjusted to ${availDisp}.`, 'warning');
+                    return;
+                } else {
+                    state.cart[idx].qty = '';
+                    $(this).addClass('is-invalid border-danger text-danger');
+                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                    showNotification(`Product "${item.name}" is out of stock (${availDisp} available).`, 'danger');
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    recalculateRow(idx, 'qty');
+                    return;
+                }
+            }
+
+            $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
+            state.cart[idx].qty = val;
+            $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+            recalculateRow(idx, 'qty');
         });
 
+        $input.on('keydown', function (ke) {
+            const rawVal = $(this).val().trim();
+            let val = parseFloat(rawVal);
+            if (ke.key === 'Tab') {
+                ke.preventDefault();
+                if (rawVal === '' || isNaN(val) || val <= 0) {
+                    $(this).addClass('is-invalid border-danger text-danger');
+                    showNotification('Pehle item ki quantity bhariye! Tab aage nahi ja sakta.', 'warning');
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    $(this).focus().select();
+                    return;
+                }
+
+                if (isItemStockExceeded(item, val, idx)) {
+                    const stock = getItemStock(item);
+                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                    const availRemaining = Math.max(0, stock - otherRowsQty);
+                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+
+                    if (availRemaining > 0) {
+                        val = availRemaining;
+                        $(this).val(val);
+                        state.cart[idx].qty = val;
+                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                        recalculateRow(idx, 'qty');
+                        showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
+                    } else {
+                        $(this).addClass('is-invalid border-danger text-danger');
+                        showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
+                        if (typeof sound !== 'undefined' && sound.error) sound.error();
+                        $(this).focus().select();
+                        return;
+                    }
+                }
+
+                $(this).removeClass('is-invalid border-danger text-danger');
+                state.cart[idx].qty = val;
+                $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                recalculateRow(idx, 'qty');
+
+                if (ke.shiftKey) {
+                    if (idx > 0) {
+                        openDiscountAmountInput(idx - 1);
+                    } else {
+                        focusScanner();
+                    }
+                } else {
+                    openDiscountPercentInput(idx);
+                }
+            } else if (ke.key === 'Enter') {
+                ke.preventDefault();
+                if (rawVal === '' || isNaN(val) || val <= 0) {
+                    $(this).addClass('is-invalid border-danger text-danger');
+                    showNotification('Pehle item ki quantity bhariye!', 'warning');
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    $(this).focus().select();
+                    return;
+                }
+
+                if (isItemStockExceeded(item, val, idx)) {
+                    const stock = getItemStock(item);
+                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                    const availRemaining = Math.max(0, stock - otherRowsQty);
+                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+
+                    if (availRemaining > 0) {
+                        val = availRemaining;
+                        $(this).val(val);
+                        state.cart[idx].qty = val;
+                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                        recalculateRow(idx, 'qty');
+                        showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
+                    } else {
+                        $(this).addClass('is-invalid border-danger text-danger');
+                        showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
+                        if (typeof sound !== 'undefined' && sound.error) sound.error();
+                        $(this).focus().select();
+                        return;
+                    }
+                }
+
+                $(this).removeClass('is-invalid border-danger text-danger');
+                state.cart[idx].qty = val;
+                $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                recalculateRow(idx, 'qty');
+                focusScanner();
+            } else if (ke.key === 'Escape') {
+                ke.preventDefault();
+                const oldVal = (item.qty === '' || item.qty === null || item.qty === undefined) ? '' : item.qty;
+                if (oldVal === '' || isNaN(parseFloat(oldVal)) || parseFloat(oldVal) <= 0) {
+                    // Cleanly remove newly added unfilled item so cashier can easily escape
+                    state.cart.splice(idx, 1);
+                    renderCart();
+                    showNotification(`Item "${item.name}" removed from cart.`, 'info');
+                } else {
+                    const num = parseFloat(oldVal);
+                    $cell.text(num % 1 === 0 ? num : num.toFixed(2));
+                }
+                focusScanner();
+            }
+        });
+    }
+
+    function openDiscountPercentInput(idx) {
+        if (isNaN(idx) || !state.cart[idx]) return;
+        const $cell = $(`.pos-row-disc-pct[data-idx="${idx}"]`);
+        if (!$cell.length) return;
+        if ($cell.find('input').length) {
+            $cell.find('input').focus().select();
+            return;
+        }
+        const item = state.cart[idx];
+        const currentVal = item.disc_percent > 0 ? item.disc_percent : '';
+        $cell.html(`<input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" style="height: 26px; width: 62px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0" data-idx="${idx}">`);
+        const $input = $cell.find('input');
+        $input.focus().select();
+
+        $input.on('blur', function () {
+            let val = parseFloat($(this).val()) || 0;
+            if (val > 100) val = 100;
+            if (val < 0) val = 0;
+            state.cart[idx].disc_percent = val;
+            recalculateRow(idx, 'percent');
+            const disp = state.cart[idx].disc_percent > 0 ? (state.cart[idx].disc_percent % 1 === 0 ? state.cart[idx].disc_percent : state.cart[idx].disc_percent.toFixed(2)) + '%' : '0%';
+            $cell.text(disp);
+        });
+
+        $input.on('keydown', function (ke) {
+            if (ke.key === 'Tab') {
+                ke.preventDefault();
+                let val = parseFloat($(this).val()) || 0;
+                if (val > 100) val = 100;
+                if (val < 0) val = 0;
+                state.cart[idx].disc_percent = val;
+                recalculateRow(idx, 'percent');
+                const disp = state.cart[idx].disc_percent > 0 ? (state.cart[idx].disc_percent % 1 === 0 ? state.cart[idx].disc_percent : state.cart[idx].disc_percent.toFixed(2)) + '%' : '0%';
+                $cell.text(disp);
+
+                if (ke.shiftKey) {
+                    openQuantityInput(idx);
+                } else {
+                    openDiscountAmountInput(idx);
+                }
+            } else if (ke.key === 'Enter') {
+                ke.preventDefault();
+                $(this).blur();
+                focusScanner();
+            } else if (ke.key === 'Escape') {
+                ke.preventDefault();
+                const disp = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) + '%' : '0%';
+                $cell.text(disp);
+                focusScanner();
+            }
+        });
+    }
+
+    function openSellPriceInput(idx) {
+        if (isNaN(idx) || !state.cart[idx]) return;
+        const $cell = $(`.pos-row-sell-price[data-idx="${idx}"]`);
+        if (!$cell.length) return;
+        if ($cell.find('input').length) {
+            $cell.find('input').focus().select();
+            return;
+        }
+        const item = state.cart[idx];
+        const currentVal = item.sell_price > 0 ? parseFloat(item.sell_price) : '';
+        $cell.html(`<input type="number" step="any" min="0" class="pos-row-input pos-sell-price-input text-right font-weight-bold" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
+        const $input = $cell.find('input');
+        $input.focus().select();
+
+        $input.on('blur', function () {
+            let val = parseFloat($(this).val()) || 0;
+            if (val < 0) val = 0;
+            state.cart[idx].sell_price = val;
+            recalculateRow(idx, 'base');
+            $cell.text('₹ ' + (state.cart[idx].sell_price || 0).toFixed(2));
+        });
+
+        $input.on('keydown', function (ke) {
+            if (ke.key === 'Tab') {
+                ke.preventDefault();
+                let val = parseFloat($(this).val()) || 0;
+                if (val < 0) val = 0;
+                state.cart[idx].sell_price = val;
+                recalculateRow(idx, 'base');
+                $cell.text('₹ ' + (state.cart[idx].sell_price || 0).toFixed(2));
+
+                if (ke.shiftKey) {
+                    openQuantityInput(idx);
+                } else {
+                    openDiscountPercentInput(idx);
+                }
+            } else if (ke.key === 'Enter') {
+                ke.preventDefault();
+                $(this).blur();
+                focusScanner();
+            } else if (ke.key === 'Escape') {
+                ke.preventDefault();
+                $cell.text('₹ ' + (item.sell_price || 0).toFixed(2));
+                focusScanner();
+            }
+        });
+    }
+
+    function openDiscountAmountInput(idx) {
+        if (isNaN(idx) || !state.cart[idx]) return;
+        const $cell = $(`.pos-row-disc-amt[data-idx="${idx}"]`);
+        if (!$cell.length) return;
+        if ($cell.find('input').length) {
+            $cell.find('input').focus().select();
+            return;
+        }
+        const item = state.cart[idx];
+        const currentVal = item.disc_amount > 0 ? parseFloat(item.disc_amount) : '';
+        $cell.html(`<input type="number" step="any" min="0" class="pos-row-input pos-disc-amount text-right" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
+        const $input = $cell.find('input');
+        $input.focus().select();
+
+        $input.on('blur', function () {
+            let val = parseFloat($(this).val()) || 0;
+            const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
+            if (base > 0 && val > base) {
+                val = base;
+                showNotification('Discount amount cannot exceed line total', 'warning');
+            }
+            if (val < 0) val = 0;
+            state.cart[idx].disc_amount = val;
+            recalculateRow(idx, 'amount');
+            $cell.text('₹ ' + (state.cart[idx].disc_amount || 0).toFixed(2));
+        });
+
+        $input.on('keydown', function (ke) {
+            if (ke.key === 'Tab') {
+                ke.preventDefault();
+                let val = parseFloat($(this).val()) || 0;
+                const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
+                if (base > 0 && val > base) val = base;
+                if (val < 0) val = 0;
+                state.cart[idx].disc_amount = val;
+                recalculateRow(idx, 'amount');
+                $cell.text('₹ ' + (state.cart[idx].disc_amount || 0).toFixed(2));
+
+                if (ke.shiftKey) {
+                    openDiscountPercentInput(idx);
+                } else {
+                    if (state.cart[idx + 1]) {
+                        openQuantityInput(idx + 1);
+                    } else {
+                        focusScanner();
+                    }
+                }
+            } else if (ke.key === 'Enter') {
+                ke.preventDefault();
+                $(this).blur();
+                focusScanner();
+            } else if (ke.key === 'Escape') {
+                ke.preventDefault();
+                $cell.text('₹ ' + (item.disc_amount || 0).toFixed(2));
+                focusScanner();
+            }
+        });
+    }
+
+    function setupEventListeners() {
+        // Scanner Barcode / Query input
         // Hide floating dropdown on typing to keep barcode scanning direct and clean
         scanInput.addEventListener('input', (e) => {
             hideSearchResults();
@@ -438,402 +825,7 @@
             }
         });
 
-        // Check and strictly enforce that all previous cart items have filled Qty before advancing
-        function checkAndEnforceUnfilledQty(allowIdx = null) {
-            const unfilledIdx = state.cart.findIndex((c, i) => i !== allowIdx && (c.qty === '' || c.qty === null || c.qty === undefined || isNaN(parseFloat(c.qty)) || parseFloat(c.qty) <= 0));
-            if (unfilledIdx !== -1) {
-                const it = state.cart[unfilledIdx];
-                showNotification(`Pehle "${it.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'danger');
-                if (typeof sound !== 'undefined' && sound.error) sound.error();
-                focusRowQty(unfilledIdx);
-                const $cell = $(`.pos-row-qty[data-idx="${unfilledIdx}"]`);
-                const $inp = $cell.find('input');
-                if ($inp.length) {
-                    $inp.addClass('is-invalid border-danger text-danger bg-warning-light');
-                    $inp.focus().select();
-                }
-                return false;
-            }
-            return true;
-        }
-        window.posCheckUnfilledQty = checkAndEnforceUnfilledQty;
-
-        // Focus Qty field helper - ensures input is rendered, focused, selected and scrolled into view
-        function focusRowQty(idx) {
-            if (idx === undefined || idx === null || isNaN(idx) || !state.cart[idx]) {
-                idx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
-                if (idx < 0 || !state.cart[idx]) return;
-            }
-            window._posLastItemSelectTime = Date.now();
-            openQuantityInput(idx);
-            const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
-            const $inp = $cell.find('input');
-            if ($inp.length) {
-                if (document.activeElement && document.activeElement !== $inp[0]) {
-                    document.activeElement.blur();
-                }
-                $inp[0].focus();
-                $inp[0].select();
-                const row = $cell.closest('tr')[0];
-                if (row && typeof row.scrollIntoView === 'function') {
-                    row.scrollIntoView({ block: 'nearest' });
-                }
-            }
-        }
-        window.posFocusRowQty = focusRowQty;
-
-        // Inline editing helpers & keyboard flow for Qty, Sell Price, Dis % and Dis Amt
-        function openQuantityInput(idx) {
-            if (isNaN(idx) || !state.cart[idx]) return;
-            const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
-            if (!$cell.length) return;
-            const item = state.cart[idx];
-            const currentVal = (item.qty === '' || item.qty === null || item.qty === undefined) ? '' : item.qty;
-            if ($cell.find('input').length) {
-                const $existing = $cell.find('input');
-                if (currentVal !== '') {
-                    $existing.val(currentVal);
-                }
-                $existing.focus().select();
-                setTimeout(() => $existing.focus().select(), 20);
-                return;
-            }
-            $cell.html(`<input type="number" step="any" min="1" class="pos-row-input pos-qty-input pos-row-qty-input font-weight-bold text-center" style="height: 26px; width: 58px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="Qty" data-idx="${idx}">`);
-            const $input = $cell.find('input');
-            $input.focus().select();
-            setTimeout(() => $input.focus().select(), 20);
-
-            $input.on('blur', function (e) {
-                // If user clicked an action button (remove row, switch batch, modal, reset), don't trap them
-                const related = e.relatedTarget || document.activeElement;
-                if (related && $(related).closest('.btn, button, .modal, #posTableBody, .pos-batch-row, .btn-remove-item').length) {
-                    const rawVal = $(this).val().trim();
-                    const val = parseFloat(rawVal);
-                    if (!isNaN(val) && val > 0 && !isItemStockExceeded(item, val, idx)) {
-                        state.cart[idx].qty = val;
-                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                        recalculateRow(idx, 'qty');
-                    }
-                    return;
-                }
-
-                // Prevent newly opened Qty input from accidental collapse while modals are closing or backdrop is animating
-                if (window._posSuppressQtyBlur || (Date.now() - (window._posLastItemSelectTime || 0) < 600)) {
-                    setTimeout(() => {
-                        if ($cell.find('input').length) {
-                            $cell.find('input').focus().select();
-                        }
-                    }, 50);
-                    return;
-                }
-
-                const rawVal = $(this).val().trim();
-                let val = parseFloat(rawVal);
-                if (rawVal === '' || isNaN(val) || val <= 0) {
-                    state.cart[idx].qty = '';
-                    $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
-                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                    showNotification(`Pehle "${item.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'warning');
-                    if (typeof sound !== 'undefined' && sound.error) sound.error();
-                    recalculateRow(idx, 'qty');
-                    return;
-                }
-
-                if (isItemStockExceeded(item, val, idx)) {
-                    const stock = getItemStock(item);
-                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
-                    const availRemaining = Math.max(0, stock - otherRowsQty);
-                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-
-                    if (availRemaining > 0) {
-                        // Auto-cap to maximum available stock so user is not deadlocked
-                        val = availRemaining;
-                        $(this).val(val);
-                        state.cart[idx].qty = val;
-                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                        $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
-                        recalculateRow(idx, 'qty');
-                        showNotification(`Only ${availDisp} units available for "${item.name}". Quantity auto-adjusted to ${availDisp}.`, 'warning');
-                        return;
-                    } else {
-                        state.cart[idx].qty = '';
-                        $(this).addClass('is-invalid border-danger text-danger');
-                        $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                        showNotification(`Product "${item.name}" is out of stock (${availDisp} available).`, 'danger');
-                        if (typeof sound !== 'undefined' && sound.error) sound.error();
-                        recalculateRow(idx, 'qty');
-                        return;
-                    }
-                }
-
-                $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
-                state.cart[idx].qty = val;
-                $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                recalculateRow(idx, 'qty');
-            });
-
-            $input.on('keydown', function (ke) {
-                const rawVal = $(this).val().trim();
-                let val = parseFloat(rawVal);
-                if (ke.key === 'Tab') {
-                    ke.preventDefault();
-                    if (rawVal === '' || isNaN(val) || val <= 0) {
-                        $(this).addClass('is-invalid border-danger text-danger');
-                        showNotification('Pehle item ki quantity bhariye! Tab aage nahi ja sakta.', 'warning');
-                        if (typeof sound !== 'undefined' && sound.error) sound.error();
-                        $(this).focus().select();
-                        return;
-                    }
-
-                    if (isItemStockExceeded(item, val, idx)) {
-                        const stock = getItemStock(item);
-                        const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
-                        const availRemaining = Math.max(0, stock - otherRowsQty);
-                        const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-
-                        if (availRemaining > 0) {
-                            val = availRemaining;
-                            $(this).val(val);
-                            state.cart[idx].qty = val;
-                            $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                            recalculateRow(idx, 'qty');
-                            showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
-                        } else {
-                            $(this).addClass('is-invalid border-danger text-danger');
-                            showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
-                            if (typeof sound !== 'undefined' && sound.error) sound.error();
-                            $(this).focus().select();
-                            return;
-                        }
-                    }
-
-                    $(this).removeClass('is-invalid border-danger text-danger');
-                    state.cart[idx].qty = val;
-                    $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                    recalculateRow(idx, 'qty');
-
-                    if (ke.shiftKey) {
-                        if (idx > 0) {
-                            openDiscountAmountInput(idx - 1);
-                        } else {
-                            focusScanner();
-                        }
-                    } else {
-                        openDiscountPercentInput(idx);
-                    }
-                } else if (ke.key === 'Enter') {
-                    ke.preventDefault();
-                    if (rawVal === '' || isNaN(val) || val <= 0) {
-                        $(this).addClass('is-invalid border-danger text-danger');
-                        showNotification('Pehle item ki quantity bhariye!', 'warning');
-                        if (typeof sound !== 'undefined' && sound.error) sound.error();
-                        $(this).focus().select();
-                        return;
-                    }
-
-                    if (isItemStockExceeded(item, val, idx)) {
-                        const stock = getItemStock(item);
-                        const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
-                        const availRemaining = Math.max(0, stock - otherRowsQty);
-                        const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-
-                        if (availRemaining > 0) {
-                            val = availRemaining;
-                            $(this).val(val);
-                            state.cart[idx].qty = val;
-                            $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                            recalculateRow(idx, 'qty');
-                            showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
-                        } else {
-                            $(this).addClass('is-invalid border-danger text-danger');
-                            showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
-                            if (typeof sound !== 'undefined' && sound.error) sound.error();
-                            $(this).focus().select();
-                            return;
-                        }
-                    }
-
-                    $(this).removeClass('is-invalid border-danger text-danger');
-                    state.cart[idx].qty = val;
-                    $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                    recalculateRow(idx, 'qty');
-                    focusScanner();
-                } else if (ke.key === 'Escape') {
-                    ke.preventDefault();
-                    const oldVal = (item.qty === '' || item.qty === null || item.qty === undefined) ? '' : item.qty;
-                    if (oldVal === '' || isNaN(parseFloat(oldVal)) || parseFloat(oldVal) <= 0) {
-                        // Cleanly remove newly added unfilled item so cashier can easily escape
-                        state.cart.splice(idx, 1);
-                        renderCart();
-                        showNotification(`Item "${item.name}" removed from cart.`, 'info');
-                    } else {
-                        const num = parseFloat(oldVal);
-                        $cell.text(num % 1 === 0 ? num : num.toFixed(2));
-                    }
-                    focusScanner();
-                }
-            });
-        }
-
-        function openDiscountPercentInput(idx) {
-            if (isNaN(idx) || !state.cart[idx]) return;
-            const $cell = $(`.pos-row-disc-pct[data-idx="${idx}"]`);
-            if (!$cell.length) return;
-            if ($cell.find('input').length) {
-                $cell.find('input').focus().select();
-                return;
-            }
-            const item = state.cart[idx];
-            const currentVal = item.disc_percent > 0 ? item.disc_percent : '';
-            $cell.html(`<input type="number" step="any" min="0" max="100" class="pos-row-input pos-disc-percent text-right" style="height: 26px; width: 62px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0" data-idx="${idx}">`);
-            const $input = $cell.find('input');
-            $input.focus().select();
-
-            $input.on('blur', function () {
-                let val = parseFloat($(this).val()) || 0;
-                if (val > 100) val = 100;
-                if (val < 0) val = 0;
-                state.cart[idx].disc_percent = val;
-                recalculateRow(idx, 'percent');
-                const disp = state.cart[idx].disc_percent > 0 ? (state.cart[idx].disc_percent % 1 === 0 ? state.cart[idx].disc_percent : state.cart[idx].disc_percent.toFixed(2)) + '%' : '0%';
-                $cell.text(disp);
-            });
-
-            $input.on('keydown', function (ke) {
-                if (ke.key === 'Tab') {
-                    ke.preventDefault();
-                    let val = parseFloat($(this).val()) || 0;
-                    if (val > 100) val = 100;
-                    if (val < 0) val = 0;
-                    state.cart[idx].disc_percent = val;
-                    recalculateRow(idx, 'percent');
-                    const disp = state.cart[idx].disc_percent > 0 ? (state.cart[idx].disc_percent % 1 === 0 ? state.cart[idx].disc_percent : state.cart[idx].disc_percent.toFixed(2)) + '%' : '0%';
-                    $cell.text(disp);
-
-                    if (ke.shiftKey) {
-                        openQuantityInput(idx);
-                    } else {
-                        openDiscountAmountInput(idx);
-                    }
-                } else if (ke.key === 'Enter') {
-                    ke.preventDefault();
-                    $(this).blur();
-                    focusScanner();
-                } else if (ke.key === 'Escape') {
-                    ke.preventDefault();
-                    const disp = item.disc_percent > 0 ? (item.disc_percent % 1 === 0 ? item.disc_percent : item.disc_percent.toFixed(2)) + '%' : '0%';
-                    $cell.text(disp);
-                    focusScanner();
-                }
-            });
-        }
-
-        function openSellPriceInput(idx) {
-            if (isNaN(idx) || !state.cart[idx]) return;
-            const $cell = $(`.pos-row-sell-price[data-idx="${idx}"]`);
-            if (!$cell.length) return;
-            if ($cell.find('input').length) {
-                $cell.find('input').focus().select();
-                return;
-            }
-            const item = state.cart[idx];
-            const currentVal = item.sell_price > 0 ? parseFloat(item.sell_price) : '';
-            $cell.html(`<input type="number" step="any" min="0" class="pos-row-input pos-sell-price-input text-right font-weight-bold" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
-            const $input = $cell.find('input');
-            $input.focus().select();
-
-            $input.on('blur', function () {
-                let val = parseFloat($(this).val()) || 0;
-                if (val < 0) val = 0;
-                state.cart[idx].sell_price = val;
-                recalculateRow(idx, 'base');
-                $cell.text('₹ ' + (state.cart[idx].sell_price || 0).toFixed(2));
-            });
-
-            $input.on('keydown', function (ke) {
-                if (ke.key === 'Tab') {
-                    ke.preventDefault();
-                    let val = parseFloat($(this).val()) || 0;
-                    if (val < 0) val = 0;
-                    state.cart[idx].sell_price = val;
-                    recalculateRow(idx, 'base');
-                    $cell.text('₹ ' + (state.cart[idx].sell_price || 0).toFixed(2));
-
-                    if (ke.shiftKey) {
-                        openQuantityInput(idx);
-                    } else {
-                        openDiscountPercentInput(idx);
-                    }
-                } else if (ke.key === 'Enter') {
-                    ke.preventDefault();
-                    $(this).blur();
-                    focusScanner();
-                } else if (ke.key === 'Escape') {
-                    ke.preventDefault();
-                    $cell.text('₹ ' + (item.sell_price || 0).toFixed(2));
-                    focusScanner();
-                }
-            });
-        }
-
-        function openDiscountAmountInput(idx) {
-            if (isNaN(idx) || !state.cart[idx]) return;
-            const $cell = $(`.pos-row-disc-amt[data-idx="${idx}"]`);
-            if (!$cell.length) return;
-            if ($cell.find('input').length) {
-                $cell.find('input').focus().select();
-                return;
-            }
-            const item = state.cart[idx];
-            const currentVal = item.disc_amount > 0 ? parseFloat(item.disc_amount) : '';
-            $cell.html(`<input type="number" step="any" min="0" class="pos-row-input pos-disc-amount text-right" style="height: 26px; width: 75px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="0.00" data-idx="${idx}">`);
-            const $input = $cell.find('input');
-            $input.focus().select();
-
-            $input.on('blur', function () {
-                let val = parseFloat($(this).val()) || 0;
-                const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
-                if (base > 0 && val > base) {
-                    val = base;
-                    showNotification('Discount amount cannot exceed line total', 'warning');
-                }
-                if (val < 0) val = 0;
-                state.cart[idx].disc_amount = val;
-                recalculateRow(idx, 'amount');
-                $cell.text('₹ ' + (state.cart[idx].disc_amount || 0).toFixed(2));
-            });
-
-            $input.on('keydown', function (ke) {
-                if (ke.key === 'Tab') {
-                    ke.preventDefault();
-                    let val = parseFloat($(this).val()) || 0;
-                    const base = (parseFloat(item.qty) || 1) * (item.sell_price || 0);
-                    if (base > 0 && val > base) val = base;
-                    if (val < 0) val = 0;
-                    state.cart[idx].disc_amount = val;
-                    recalculateRow(idx, 'amount');
-                    $cell.text('₹ ' + (state.cart[idx].disc_amount || 0).toFixed(2));
-
-                    if (ke.shiftKey) {
-                        openDiscountPercentInput(idx);
-                    } else {
-                        if (state.cart[idx + 1]) {
-                            openQuantityInput(idx + 1);
-                        } else {
-                            focusScanner();
-                        }
-                    }
-                } else if (ke.key === 'Enter') {
-                    ke.preventDefault();
-                    $(this).blur();
-                    focusScanner();
-                } else if (ke.key === 'Escape') {
-                    ke.preventDefault();
-                    $cell.text('₹ ' + (item.disc_amount || 0).toFixed(2));
-                    focusScanner();
-                }
-            });
-        }
+        // (Helper functions moved to module scope above)
 
         // Click to open inputs
         $(document).on('click', '.pos-row-qty', function (e) {
@@ -1224,7 +1216,7 @@
 
         const availableBatches = (batches || []).filter(function (b) {
             const qtyNum = parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0));
-            return qtyNum > 0 || allowNeg;
+            return qtyNum > 0;
         });
 
         if (availableBatches.length === 0) {
@@ -1650,10 +1642,17 @@
                 return false;
             }
 
-            const newItem = {
+            if (availableStock !== null && availableStock <= 0) {
+            const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
+            showNotification(`Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).`, 'danger');
+            if (typeof sound !== 'undefined' && sound.error) sound.error();
+            return false;
+        }
+
+        const newItem = {
                 id: itemId,
                 name: item.name || item.productname || 'Unknown Item',
-                code: item.item_code || item.code || item.barcode || '',
+                code: item.item_code || item.code || item.ean_upc_code || item.barcode || '',
                 batch_no: batchNo,
                 batch_stock: (item.batch_stock !== undefined && item.batch_stock !== null) ? parseFloat(item.batch_stock) : null,
                 exp_date: expDate,
@@ -3781,9 +3780,8 @@
                 let codeBadge = it.code
                     ? `<span class="badge badge-secondary px-2 py-1">${escapeHtml(it.code)}</span>`
                     : `<span class="text-muted">—</span>`;
-                let isAllowNeg = isAllowNegative(it.allow_negative_stock);
-                let stockNum = parseFloat(it.qty || 0);
-                let isOutOfStock = stockNum <= 0 && !isAllowNeg;
+                let stockNum = parseFloat(it.qty !== undefined ? it.qty : (it.stock !== undefined ? it.stock : 0));
+                let isOutOfStock = stockNum <= 0;
                 let qtyBadge = isOutOfStock
                     ? `<span class="badge badge-danger px-2 py-1">0 (Out)</span>`
                     : (stockNum <= 0 && isAllowNeg
@@ -3828,7 +3826,14 @@
             }
 
             // Click row or Add button to select item
-            $tbody.find('.isl-item-row:not(.isl-item-disabled)').on('click', async function (e) {
+            $tbody.off('click', '.isl-item-row').on('click', '.isl-item-row', async function (e) {
+                if ($(this).hasClass('isl-item-disabled')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showNotification('This product is out of stock (0 quantity) and cannot be added to cart.', 'warning');
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    return;
+                }
                 e.preventDefault();
                 if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
                     $modal.modal('hide');
