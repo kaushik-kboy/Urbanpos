@@ -34,14 +34,21 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">From Branch</label>
-                    <select name="from_branch_id" class="form-control form-control-sm">
-                        <option value="">All Branches</option>
+                    <select name="from_branch_id" class="form-control form-control-sm" {{ !$isGlobalAdmin ? 'disabled' : '' }}>
+                        @if($isGlobalAdmin)
+                            <option value="all" {{ (string)$selectedFromBranch === 'all' ? 'selected' : '' }}>All Branches</option>
+                        @endif
                         @foreach ($branches as $branch)
-                            <option value="{{ $branch->id }}" {{ request('from_branch_id') == $branch->id ? 'selected' : '' }}>
-                                {{ $branch->name }}
-                            </option>
+                            @if($isGlobalAdmin || $branch->id == $selectedFromBranch)
+                                <option value="{{ $branch->id }}" {{ (string)$selectedFromBranch === (string)$branch->id ? 'selected' : '' }}>
+                                    {{ $branch->name }}
+                                </option>
+                            @endif
                         @endforeach
                     </select>
+                    @if(!$isGlobalAdmin)
+                        <input type="hidden" name="from_branch_id" value="{{ $selectedFromBranch }}">
+                    @endif
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">To Branch</label>

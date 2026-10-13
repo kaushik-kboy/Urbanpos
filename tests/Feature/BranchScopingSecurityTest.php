@@ -141,7 +141,7 @@ class BranchScopingSecurityTest extends TestCase
         $res = $this->actingAs($this->managerMotera)->get(route('inventory.stock-transfers.index'));
         $res->assertOk();
         $res->assertSee('STF-MOT-SAT-01');
-        $res->assertSee('STF-SAT-MOT-02');
+        $res->assertDontSee('STF-SAT-MOT-02');
         $res->assertDontSee('STF-SAT-VAS-03');
 
         // Dhruvi cannot view or print transfer 3

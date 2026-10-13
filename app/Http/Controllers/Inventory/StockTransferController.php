@@ -32,12 +32,27 @@ class StockTransferController extends Controller
         $query = StockTransfer::with(['fromBranch', 'toBranch']);
 
         $user = $request->user();
-        if ($user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
-            $userBranchId = (int) $user->branch_id;
-            $query->where(function ($q) use ($userBranchId) {
-                $q->where('from_branch_id', $userBranchId)
-                  ->orWhere('to_branch_id', $userBranchId);
-            });
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        $activeBranchId = (int) (session('active_branch_id') ?: ($user?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+
+        if ($isGlobalAdmin) {
+            $fromBranchParam = $request->input('from_branch_id');
+            if ($request->has('from_branch_id')) {
+                if ($fromBranchParam !== '' && $fromBranchParam !== 'all' && is_numeric($fromBranchParam)) {
+                    $selectedFromBranch = (int) $fromBranchParam;
+                    $query->where('from_branch_id', $selectedFromBranch);
+                } else {
+                    $selectedFromBranch = 'all';
+                }
+            } else {
+                // By default, strictly scope to active branch
+                $selectedFromBranch = $activeBranchId;
+                $query->where('from_branch_id', $selectedFromBranch);
+            }
+        } else {
+            // Branch-restricted user is strictly locked to their branch
+            $selectedFromBranch = (int) ($user->branch_id ?: $activeBranchId);
+            $query->where('from_branch_id', $selectedFromBranch);
         }
 
         if ($request->filled('search')) {
@@ -50,10 +65,6 @@ class StockTransferController extends Controller
 
         if ($request->filled('date_to')) {
             $query->whereDate('transfer_date', '<=', $request->date_to);
-        }
-
-        if ($request->filled('from_branch_id')) {
-            $query->where('from_branch_id', $request->from_branch_id);
         }
 
         if ($request->filled('to_branch_id')) {
@@ -73,10 +84,16 @@ class StockTransferController extends Controller
         $this->applySorting($query, $allowedSorts, ['transfer_date' => 'desc', 'id' => 'desc']);
 
         $stockTransfers = $query->paginate(20)->withQueryString();
-        $branches = Branch::orderBy('name')->get();
+        $branches = Branch::where('status', true)->orderBy('name')->get();
         $statuses = StockTransfer::select('status')->distinct()->whereNotNull('status')->pluck('status');
 
-        return view('inventory.stock-transfers.index', compact('stockTransfers', 'branches', 'statuses'));
+        return view('inventory.stock-transfers.index', compact(
+            'stockTransfers',
+            'branches',
+            'statuses',
+            'selectedFromBranch',
+            'isGlobalAdmin'
+        ));
     }
 
     public function create()
@@ -242,8 +259,21 @@ class StockTransferController extends Controller
     public function pendingReceipt(Request $request)
     {
         $user = $request->user();
-        $isBranchScoped = $user && $user->branch_id && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com';
-        $branchId = $isBranchScoped ? (int) $user->branch_id : $request->input('branch_id');
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        $isBranchScoped = ! $isGlobalAdmin && $user && $user->branch_id;
+        $activeBranchId = (int) (session('active_branch_id') ?: ($user?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+
+        if ($isBranchScoped) {
+            $branchId = (int) $user->branch_id;
+        } else {
+            if ($request->has('branch_id')) {
+                $bParam = $request->input('branch_id');
+                $branchId = ($bParam === '' || $bParam === 'all') ? null : (int) $bParam;
+            } else {
+                $branchId = $activeBranchId;
+            }
+        }
+
         $status = $request->input('status', 'Dispatched');
 
         $query = StockTransfer::with(['fromBranch', 'toBranch'])
@@ -256,7 +286,7 @@ class StockTransferController extends Controller
         $stockTransfers = $query->latest('transfer_date')->latest('id')->paginate(20)->withQueryString();
         $branches = $isBranchScoped
             ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
-            : Branch::orderBy('name')->pluck('name', 'id');
+            : Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
 
         $baseCountQuery = StockTransfer::query()
             ->when($branchId, fn ($q) => $q->where('to_branch_id', $branchId));
