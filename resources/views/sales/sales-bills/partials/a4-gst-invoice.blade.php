@@ -8,7 +8,7 @@
     $email = $receiptSettings->email ?: ($salesBill->branch?->email ?: 'support@urbanpets.in');
     $gstin = $receiptSettings->gstin ?: ($salesBill->branch?->gst_number ?: '24ABCDE1234F1Z5');
     $address = $receiptSettings->header_address ?: ($salesBill->branch?->address ?: 'Shop No. 1, Ahmedabad, Gujarat - 380015');
-    $logoUrl = $receiptSettings->logo_path ?: ($salesBill->branch?->logo_url ?? null);
+    $logoUrl = $receiptSettings->logo_path ?: ($salesBill->branch?->logo_url ?? asset('images/urbanpets-logo.png'));
     $logoWidth = $receiptSettings->logo_width ?: 120;
     $showLogo = $receiptSettings->show_logo && !empty($logoUrl);
 
@@ -151,7 +151,7 @@
             @endif
 
             @if($showLogo)
-                <img src="{{ $logoUrl }}" alt="Logo" style="max-width: {{ $logoWidth }}px; max-height: 60px; margin-bottom: 4px;">
+                <img src="{{ $logoUrl }}" alt="Logo" style="width: {{ $logoWidth }}px; max-width: 100%; max-height: 140px; height: auto; object-fit: contain; margin-bottom: 4px;">
             @endif
             <div style="font-size: 20px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--accent);">
                 {{ $storeName }}
@@ -190,7 +190,7 @@
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
             <div style="width: 45%;">
                 @if($showLogo)
-                    <img src="{{ $logoUrl }}" alt="Logo" style="max-width: {{ $logoWidth }}px; max-height: 65px; margin-bottom: 4px;">
+                    <img src="{{ $logoUrl }}" alt="Logo" style="width: {{ $logoWidth }}px; max-width: 100%; max-height: 140px; height: auto; object-fit: contain; margin-bottom: 4px;">
                 @endif
                 <div style="font-size: 20px; font-weight: 900; color: var(--accent); text-transform: uppercase;">
                     {{ $storeName }}
@@ -226,7 +226,7 @@
             </div>
             <div style="width: 45%; text-align: right;">
                 @if($showLogo)
-                    <img src="{{ $logoUrl }}" alt="Logo" style="max-width: {{ $logoWidth }}px; max-height: 65px; margin-bottom: 4px;">
+                    <img src="{{ $logoUrl }}" alt="Logo" style="width: {{ $logoWidth }}px; max-width: 100%; max-height: 140px; height: auto; object-fit: contain; margin-bottom: 4px;">
                 @endif
             </div>
         </div>
@@ -242,7 +242,7 @@
             {{-- Left Column: Logo & Company Particulars --}}
             <div style="width: 56%;">
                 @if($showLogo)
-                    <img src="{{ $logoUrl }}" alt="Logo" style="max-width: {{ $logoWidth }}px; max-height: 60px; margin-bottom: 6px;">
+                    <img src="{{ $logoUrl }}" alt="Logo" style="width: {{ $logoWidth }}px; max-width: 100%; max-height: 140px; height: auto; object-fit: contain; margin-bottom: 6px;">
                 @endif
                 <div style="font-size: 18px; font-weight: 800; color: var(--accent); text-transform: uppercase;">
                     {{ $storeName }}

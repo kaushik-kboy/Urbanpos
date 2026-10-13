@@ -282,7 +282,7 @@
         {{-- Store Logo (Optional) --}}
         @if ($receiptSettings->show_logo && $receiptSettings->logo_path)
             <div class="text-center" style="margin-bottom: 6px;">
-                <img src="{{ asset(ltrim($receiptSettings->logo_path, '/')) }}" alt="{{ $receiptSettings->store_name }}" style="max-width: {{ $receiptSettings->logo_width }}px; height: auto;">
+                <img src="{{ asset(ltrim($receiptSettings->logo_path, '/')) }}" alt="{{ $receiptSettings->store_name }}" style="width: {{ $receiptSettings->logo_width }}px; max-width: 100%; height: auto; object-fit: contain;">
             </div>
         @endif
 

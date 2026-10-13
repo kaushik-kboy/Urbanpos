@@ -105,7 +105,7 @@
     </div>
 
     <div class="field-wrapper col-md-2" data-field="purchase_type" data-label="Purchase Type" data-default-order="5" data-core="1">
-        <x-select name="purchase_type" id="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$inv->purchase_type ?? 'Local'" required />
+        <x-select name="purchase_type" id="purchase_type" label="Purchase Type" :options="['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="old('purchase_type', $inv->purchase_type ?? 'Local')" required />
     </div>
 
     <div class="field-wrapper col-md-2" data-field="c_form" data-label="C-Form" data-default-order="6">
@@ -518,31 +518,40 @@
 
         const supplierMetas = @json($supplierMetas);
 
-        // Auto-set purchase_type based on supplier master (State outside Gujarat or GSTIN != 24 => Interstate / IGST)
-        function applySupplierPurchaseType(sId) {
+        // Auto-set purchase_type based on supplier master (supports explicit Local / Interstate, with GSTIN/state fallback)
+        function applySupplierPurchaseType(sId, userInitiated = false) {
             if (sId && supplierMetas[sId]) {
                 let sup = supplierMetas[sId];
                 let pType = String(sup.purchase_type || '').trim().toLowerCase();
-                let isInterstate = false;
+                let targetType = 'Local';
+
                 if (pType === 'interstate' || pType === 'import') {
-                    isInterstate = true;
+                    targetType = 'Interstate';
+                } else if (pType === 'local') {
+                    targetType = 'Local';
                 } else {
                     let gstNo = String(sup.gst_no || '').trim();
                     let st = String(sup.state || '').trim().toLowerCase();
                     if (gstNo.length >= 2 && /^\d{2}/.test(gstNo) && !gstNo.startsWith('24')) {
-                        isInterstate = true;
+                        targetType = 'Interstate';
                     } else if (st && st !== 'gujarat' && st !== 'gj' && st !== 'guj') {
-                        isInterstate = true;
+                        targetType = 'Interstate';
                     }
                 }
 
-                let targetType = isInterstate ? 'Interstate' : 'Local';
-                $('#purchase_type').val(targetType).trigger('change');
-                $('#purchase_type').prop('disabled', true).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'none','background':'#e9ecef','opacity':'0.85'});
+                // When user selects a supplier or no value set yet, auto-select
+                if (userInitiated || !$('#purchase_type').val()) {
+                    $('#purchase_type').val(targetType).trigger('change');
+                }
+
+                // Keep editable: user can change if needed
+                $('#purchase_type').prop('disabled', false).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'','background':'','opacity':''});
+
+                let noteText = 'Supplier Default: ' + targetType + ' (' + (targetType === 'Interstate' ? 'IGST' : 'CGST+SGST') + ')';
                 if (!$('#purchase_type_locked_note').length) {
-                    $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted"><i class="fas fa-lock mr-1"></i>Auto-set (' + (isInterstate ? 'IGST Interstate' : 'CGST+SGST Local') + ')</small>');
+                    $('#purchase_type').closest('.field-wrapper').append('<small id="purchase_type_locked_note" class="text-muted"><i class="fas fa-info-circle text-info mr-1"></i>' + noteText + '</small>');
                 } else {
-                    $('#purchase_type_locked_note').html('<i class="fas fa-lock mr-1"></i>Auto-set (' + (isInterstate ? 'IGST Interstate' : 'CGST+SGST Local') + ')');
+                    $('#purchase_type_locked_note').html('<i class="fas fa-info-circle text-info mr-1"></i>' + noteText);
                 }
             } else {
                 $('#purchase_type').prop('disabled', false).closest('.field-wrapper').find('.select2-selection').css({'pointer-events':'','background':'','opacity':''});
@@ -552,7 +561,7 @@
 
         $('#supplier_id').on('change', function () {
             let val = $(this).val();
-            applySupplierPurchaseType(val);
+            applySupplierPurchaseType(val, true);
             if ($.trim($('#supplier_inv_no').val())) {
                 validateSupplierInvNo();
             } else {
@@ -711,12 +720,16 @@
             }
         }
 
-        // On page load: if supplier already selected (edit mode), lock purchase_type & enable previous invoices link
+        // On page load: if supplier already selected, initialize link and note without overwriting existing purchase_type
         (function () {
             let initialSuppId = $('#supplier_id').val();
             let initialPoId = '{{ $selectedPo ?? "" }}';
+            let savedPurchaseType = $('#purchase_type').val();
             if (initialSuppId) {
-                applySupplierPurchaseType(initialSuppId);
+                applySupplierPurchaseType(initialSuppId, false);
+                if (savedPurchaseType) {
+                    $('#purchase_type').val(savedPurchaseType).trigger('change');
+                }
                 updateSupplierPrevInvoicesLink(initialSuppId);
                 updateSupplierOpenPOs(initialSuppId, initialPoId);
             }

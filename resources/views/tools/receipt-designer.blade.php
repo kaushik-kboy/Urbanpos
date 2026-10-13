@@ -400,7 +400,7 @@
                             </div>
                             <div class="col-md-4 mb-2">
                                 <label class="font-weight-bold text-secondary small text-uppercase mb-0">Logo Width (<span id="logo_width_val">{{ $settings->logo_width ?? 120 }}</span>px)</label>
-                                <input type="range" class="custom-range mt-1" min="60" max="220" step="10" name="logo_width" id="input_logo_width" value="{{ old('logo_width', $settings->logo_width ?? 120) }}">
+                                <input type="range" class="custom-range mt-1" min="40" max="360" step="5" name="logo_width" id="input_logo_width" value="{{ old('logo_width', $settings->logo_width ?? 120) }}">
                             </div>
                         </div>
                     </div>
@@ -645,7 +645,7 @@
                             
                             {{-- Store Logo (Preview) --}}
                             <div id="prev_logo_container" class="text-center mb-2" style="{{ $settings->show_logo ? '' : 'display: none;' }}">
-                                <img id="prev_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Store Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                <img id="prev_logo_img" src="{{ $settings->logo_path ?: asset('images/urbanpets-logo.png') }}" onerror="this.src='{{ asset('images/urbanpets-logo.png') }}'" alt="Store Logo" style="width: {{ $settings->logo_width ?? 120 }}px; max-width: 100%; height: auto; object-fit: contain;">
                             </div>
 
                             {{-- Store Header --}}
@@ -1270,7 +1270,7 @@
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
                                         <div style="flex: 1 1 58%;">
                                             <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 6px;">
-                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: asset('images/urbanpets-logo.png') }}" onerror="this.src='{{ asset('images/urbanpets-logo.png') }}'" alt="Logo" style="width: {{ $settings->logo_width ?? 120 }}px; max-width: 100%; height: auto; object-fit: contain;">
                                             </div>
                                             <div class="prev_a4_store_name" style="font-size: 16px; font-weight: 800; color: #0f172a; text-transform: uppercase;">{{ $settings->store_name ?: 'URBAN PETS' }}</div>
                                             <div class="prev_a4_tagline" style="font-size: 10.5px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
@@ -1315,7 +1315,7 @@
                                         <div style="font-size: 8px; font-weight: bold; color: #475569;">Help / QR</div>
                                     </div>
                                     <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 4px;">
-                                        <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                        <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: asset('images/urbanpets-logo.png') }}" onerror="this.src='{{ asset('images/urbanpets-logo.png') }}'" alt="Logo" style="width: {{ $settings->logo_width ?? 120 }}px; max-width: 100%; height: auto; object-fit: contain;">
                                     </div>
                                     <div class="prev_a4_store_name" style="font-size: 18px; font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $settings->store_name ?: 'URBAN PETS' }}</div>
                                     <div class="prev_a4_tagline" style="font-size: 10.5px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
@@ -1338,7 +1338,7 @@
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                         <div style="flex: 1;">
                                             <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 4px;">
-                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: asset('images/urbanpets-logo.png') }}" onerror="this.src='{{ asset('images/urbanpets-logo.png') }}'" alt="Logo" style="width: {{ $settings->logo_width ?? 120 }}px; max-width: 100%; height: auto; object-fit: contain;">
                                             </div>
                                             <div class="prev_a4_store_name" style="font-size: 16px; font-weight: 800; color: var(--accent); text-transform: uppercase;">{{ $settings->store_name ?: 'URBAN PETS' }}</div>
                                             <div class="prev_a4_tagline" style="font-size: 10px; font-weight: 600; color: #64748b; {{ $settings->tagline ? '' : 'display: none;' }}">{{ $settings->tagline }}</div>
@@ -1371,9 +1371,9 @@
                                             </div>
                                             <div class="prev_a4_gstin" style="font-weight: 700; color: var(--accent);">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
                                         </div>
-                                        <div style="flex: 0 0 160px; text-align: right;">
+                                        <div style="flex: 0 0 auto; max-width: 45%; text-align: right;">
                                             <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 4px;">
-                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: 'https://placehold.co/120x60?text=LOGO' }}" alt="Logo" style="max-width: {{ $settings->logo_width ?? 120 }}px; height: auto;">
+                                                <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: asset('images/urbanpets-logo.png') }}" onerror="this.src='{{ asset('images/urbanpets-logo.png') }}'" alt="Logo" style="width: {{ $settings->logo_width ?? 120 }}px; max-width: 100%; height: auto; object-fit: contain;">
                                             </div>
                                             <div style="display: inline-block; background: var(--accent); color: #fff; padding: 3px 10px; font-weight: 800; font-size: 11px; letter-spacing: 1px; border-radius: 3px; text-transform: uppercase;">
                                                 TAX INVOICE
@@ -1891,8 +1891,16 @@
 
     document.getElementById('input_logo_width').addEventListener('input', function() {
         document.getElementById('logo_width_val').textContent = this.value;
-        document.getElementById('prev_logo_img').style.maxWidth = this.value + 'px';
-        document.querySelectorAll('.prev_a4_logo_img').forEach(img => img.style.maxWidth = this.value + 'px');
+        const w = this.value + 'px';
+        const thermalLogo = document.getElementById('prev_logo_img');
+        if (thermalLogo) {
+            thermalLogo.style.width = w;
+            thermalLogo.style.maxWidth = '100%';
+        }
+        document.querySelectorAll('.prev_a4_logo_img').forEach(img => {
+            img.style.width = w;
+            img.style.maxWidth = '100%';
+        });
     });
 
     document.getElementById('input_logo_file').addEventListener('change', function(e) {

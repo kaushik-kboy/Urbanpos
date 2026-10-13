@@ -43,8 +43,13 @@ class Supplier extends Model
      */
     public function isInterstate(?string $destinationState = 'Gujarat'): bool
     {
-        if (in_array(strtolower((string) $this->purchase_type), ['interstate', 'import'])) {
+        $pType = strtolower(trim((string) $this->purchase_type));
+        if (in_array($pType, ['interstate', 'import'])) {
             return true;
+        }
+
+        if ($pType === 'local') {
+            return false;
         }
 
         // Check GSTIN 2-digit state prefix (Gujarat state code is 24)

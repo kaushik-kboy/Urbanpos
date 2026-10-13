@@ -116,7 +116,7 @@ class ReceiptDesignerController extends Controller
             'tagline'                => 'nullable|string|max:150',
             'show_logo'              => 'nullable|boolean',
             'logo_file'              => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
-            'logo_width'             => 'nullable|integer|min:40|max:300',
+            'logo_width'             => 'nullable|integer|min:30|max:400',
             'header_address'         => 'nullable|string|max:500',
             'phone'                  => 'nullable|string|max:50',
             'phone_alt'              => 'nullable|string|max:50',

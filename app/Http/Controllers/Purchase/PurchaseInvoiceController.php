@@ -747,6 +747,21 @@ class PurchaseInvoiceController extends Controller
             $stock = (float) (ItemStock::where('item_id', $item->id)->sum('quantity') ?? 0);
         }
 
+        $latestExpDate = null;
+        if ($item->batch_expiry_details && $item->batch_expiry_details !== 'Not Required') {
+            $rawExp = \App\Models\PurchaseInvoiceItem::where('item_id', $item->id)
+                ->whereNotNull('exp_date')
+                ->latest('id')
+                ->value('exp_date');
+            if ($rawExp) {
+                try {
+                    $latestExpDate = \Carbon\Carbon::parse($rawExp)->format('Y-m-d');
+                } catch (\Exception $e) {
+                    $latestExpDate = substr((string) $rawExp, 0, 10) ?: null;
+                }
+            }
+        }
+
         return response()->json([
             'id'                      => $item->id,
             'name'                    => $item->name,
@@ -757,7 +772,7 @@ class PurchaseInvoiceController extends Controller
             'mrp'                     => (float) ($item->mrp ?? 0),
             'stock'                   => $stock,
             'qty'                     => $stock,
-            'exp_date'                => null,
+            'exp_date'                => $latestExpDate,
             'gst_percent'             => (float) ($item->gstTax?->percentage ?? 0),
             'batch_expiry_details'    => $item->batch_expiry_details ?? 'Not Required',
             'shelf_life_days'         => $item->shelf_life_days ? (int) $item->shelf_life_days : null,
@@ -832,7 +847,9 @@ class PurchaseInvoiceController extends Controller
     {
         $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
         $supplier = isset($header['supplier_id']) ? Supplier::find($header['supplier_id']) : null;
-        $isInterstate = (($header['purchase_type'] ?? null) === 'Interstate') || ($supplier && $supplier->isInterstate());
+        $isInterstate = !empty($header['purchase_type'])
+            ? ($header['purchase_type'] === 'Interstate')
+            : ($supplier && $supplier->isInterstate());
 
         $totalHeaderDiscount = (float) ($header['scheme_item_disc_amt'] ?? 0) + (float) ($header['other_disc_amt'] ?? 0);
 
@@ -1135,9 +1152,9 @@ class PurchaseInvoiceController extends Controller
             $header['branch_id'] = (int) $user->branch_id;
         }
 
-        $supplier = Supplier::find($header['supplier_id'] ?? null);
-        if ($supplier && $supplier->isInterstate()) {
-            $header['purchase_type'] = 'Interstate';
+        if (empty($header['purchase_type'])) {
+            $supplier = Supplier::find($header['supplier_id'] ?? null);
+            $header['purchase_type'] = ($supplier && $supplier->isInterstate()) ? 'Interstate' : 'Local';
         }
 
         if (!empty($header['supplier_inv_no'])) {
