@@ -155,49 +155,70 @@ class BatchStockService
             }
         }
 
+        // Fetch current physical branch stock
+        $currentBranchStock = (float) (\App\Models\ItemStock::where('item_id', $itemId)
+            ->where('branch_id', $branchId)
+            ->value('quantity') ?? 0);
+
         // Apply remaining quantities from ledger:
         // 1. For batches with specific tracked raw_batch_no in StockLedger:
+        $namedBatchRemaining = 0.0;
         foreach ($batches as $key => &$bData) {
             $raw = $bData['raw_batch_no'] ?? '';
             $bNo = $bData['batch_no'];
             if ($raw !== '' && isset($ledgerBatchMap[$raw])) {
-                $bData['remaining_qty'] = (float) $ledgerBatchMap[$raw]['remaining'];
+                $bData['remaining_qty'] = max(0.0, (float) $ledgerBatchMap[$raw]['remaining']);
+                $namedBatchRemaining += $bData['remaining_qty'];
             } elseif ($bNo !== '' && isset($ledgerBatchMap[$bNo])) {
-                $bData['remaining_qty'] = (float) $ledgerBatchMap[$bNo]['remaining'];
+                $bData['remaining_qty'] = max(0.0, (float) $ledgerBatchMap[$bNo]['remaining']);
+                $namedBatchRemaining += $bData['remaining_qty'];
             } elseif (!isset($unassignedKeys[$key])) {
-                $bData['remaining_qty'] = $bData['purchased_qty'];
+                $bData['remaining_qty'] = (float) $bData['purchased_qty'];
+                $namedBatchRemaining += $bData['remaining_qty'];
             }
         }
         unset($bData);
 
         // 2. For unassigned / lot purchase batches (where no specific batch_no was stamped):
-        // Consume unassigned outward movement FIFO across chronological purchases
-        $unassignedOut = (float) StockLedger::where('item_id', $itemId)
-            ->where('branch_id', $branchId)
-            ->where(function ($q) {
-                $q->whereNull('batch_no')->orWhere('batch_no', '');
-            })
-            ->sum('qty_out');
+        // Remaining unassigned stock is the branch physical stock minus what is in named batches.
+        $unassignedAvailable = max(0.0, round($currentBranchStock - $namedBatchRemaining, 3));
+        $unassignedCount = count($unassignedKeys);
 
-        $remOutToDeduct = $unassignedOut;
-        foreach ($batches as $key => &$bData) {
-            if (isset($unassignedKeys[$key])) {
-                $inQty = (float) $bData['purchased_qty'];
-                if ($remOutToDeduct >= $inQty) {
-                    $bData['remaining_qty'] = 0.0;
-                    $remOutToDeduct -= $inQty;
-                } else {
-                    $bData['remaining_qty'] = max(0.0, round($inQty - $remOutToDeduct, 3));
-                    $remOutToDeduct = 0.0;
+        if ($unassignedCount > 0) {
+            $remToDistribute = $unassignedAvailable;
+            $i = 0;
+            foreach ($batches as $key => &$bData) {
+                if (isset($unassignedKeys[$key])) {
+                    $i++;
+                    $pQty = (float) $bData['purchased_qty'];
+                    if ($i === $unassignedCount) {
+                        $bData['remaining_qty'] = $remToDistribute;
+                    } else {
+                        $alloc = min($pQty, $remToDistribute);
+                        $bData['remaining_qty'] = $alloc;
+                        $remToDistribute = max(0.0, round($remToDistribute - $alloc, 3));
+                    }
                 }
             }
+            unset($bData);
         }
-        unset($bData);
 
-        // Cap remaining quantities by branch stock
-        $currentBranchStock = (float) (\App\Models\ItemStock::where('item_id', $itemId)
-            ->where('branch_id', $branchId)
-            ->value('quantity') ?? 0);
+        // 3. If no batches exist but branch has physical stock (e.g. from transfer in or manual stock), provide default batch
+        if (empty($batches) && $currentBranchStock > 0) {
+            $batches['DEFAULT'] = [
+                'item_id' => $itemId,
+                'item_code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'item_name' => $item->name,
+                'batch_no' => 'DEFAULT',
+                'raw_batch_no' => '',
+                'exp_date' => null,
+                'cost_price' => (float) ($item->cost_price ?? 0),
+                'sell_price' => (float) ($item->sell_price ?? 0),
+                'mrp' => (float) ($item->mrp ?? 0),
+                'purchased_qty' => $currentBranchStock,
+                'remaining_qty' => $currentBranchStock,
+            ];
+        }
 
         if ($currentBranchStock <= 0 && !($item->allow_negative_stock ?? false)) {
             foreach ($batches as &$bData) {

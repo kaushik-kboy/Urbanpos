@@ -1127,24 +1127,11 @@ class SalesBillController extends Controller
             foreach (\Illuminate\Support\Facades\DB::select($eiSql, array_merge([$branchId], $ids)) as $e) {
                 $ei[$e->item_id] = $e;
             }
-            // Also check branch batch remaining totals from StockLedger for these items
-            $batchTotals = \App\Models\StockLedger::whereIn('item_id', $ids)
-                ->where('branch_id', $branchId)
-                ->whereNotNull('batch_no')
-                ->where('batch_no', '!=', '')
-                ->selectRaw('item_id, SUM(qty_in) - SUM(qty_out) as total_batch_stock')
-                ->groupBy('item_id')
-                ->pluck('total_batch_stock', 'item_id')
-                ->all();
-
             foreach ($rows as $row) {
                 if (isset($ei[$row->id])) {
                     $row->exp_date = $ei[$row->id]->exp_date;
                     if ((float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
                     if ((float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
-                }
-                if (isset($batchTotals[$row->id])) {
-                    $row->qty = max(0, (float) $batchTotals[$row->id]);
                 }
             }
         }
