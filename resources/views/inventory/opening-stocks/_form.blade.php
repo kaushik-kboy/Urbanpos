@@ -1013,7 +1013,7 @@
             if (validRows === 0) {
                 e.preventDefault();
                 if (window.toastr) {
-                    toastr.warning('Pehle item add karein. Please add at least one item before saving.');
+                    toastr.warning('Please add at least one item before saving.');
                 }
                 $('#items-body tr.item-row:first .item-code-input').focus();
                 return false;

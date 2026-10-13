@@ -167,7 +167,7 @@ class PurchaseReceiptNoteController extends Controller
                 $totAmount += round((float) ($line['accepted_qty'] ?? 0) * (float) ($line['unit_cost'] ?? 0), 2);
             }
 
-            $receiptNumber = $this->nextNumber();
+            $receiptNumber = $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['receipt_date'] ?? null);
 
             $receiptNote = PurchaseReceiptNote::create(array_merge($data['header'], [
                 'receipt_number' => $receiptNumber,
@@ -328,11 +328,15 @@ class PurchaseReceiptNoteController extends Controller
             ->with('status', "Receipt Note {$purchaseReceiptNote->receipt_number} has been cancelled and stock reversed.");
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('GRN', \App\Models\PurchaseReceiptNote::class, 'receipt_number', 5);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'purchase_receipt_note',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
     private function formOptions(?int $supplierId = null, ?int $selectedPoId = null, $existingNote = null): array

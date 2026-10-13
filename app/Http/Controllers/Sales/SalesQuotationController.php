@@ -94,8 +94,11 @@ class SalesQuotationController extends Controller
             $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
+            $headerBranchId = !empty($data['header']['branch_id']) ? (int) $data['header']['branch_id'] : null;
+            $headerQuotationDate = $data['header']['quotation_date'] ?? null;
+
             $quotation = SalesQuotation::create(array_merge($data['header'], $totals, [
-                'quotation_number' => $this->nextNumber(),
+                'quotation_number' => $this->nextNumber($headerBranchId, $headerQuotationDate),
             ]));
 
             $quotation->items()->createMany($lines);
@@ -167,13 +170,14 @@ class SalesQuotationController extends Controller
             ->with('status', "Quotation {$salesQuotation->quotation_number} cancelled.");
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        $branchId = session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
             'sales_quotation',
-            $branchId ? (int) $branchId : null
+            $branchId ? (int) $branchId : null,
+            $date
         );
     }
 

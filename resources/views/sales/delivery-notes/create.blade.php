@@ -489,7 +489,7 @@ $(function () {
 
         if (validRows === 0 && !hasError) {
             hasError = true;
-            reason = 'Pehle item add karein. Please add at least one item before saving.';
+            reason = 'Please add at least one item before saving.';
         }
 
         $('#sdn-total-items-badge').html('<span class="badge badge-secondary px-2 py-1 font-weight-bold" style="font-size: 0.85rem;">' + validRows + ' Items</span>');
@@ -939,7 +939,7 @@ $(function () {
 
         if (validRows === 0) {
             e.preventDefault();
-            alert('Pehle item add karein. Please add at least one item before saving.');
+            alert('Please add at least one item before saving.');
             $('#sdn-items-body tr.sdn-item-row:first .sdn-item-code').focus();
             return false;
         }

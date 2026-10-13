@@ -409,6 +409,16 @@ class DocumentNumberingService
                 'model'    => \App\Models\StockUpdate::class,
                 'column'   => 'update_number',
             ],
+            'opening_stock' => [
+                'title'    => 'Opening Stock Entry',
+                'module'   => 'Inventory',
+                'prefix'   => 'OPS-{YEAR}-',
+                'padding'  => 4,
+                'reset'    => 'financial_year',
+                'start'    => 1,
+                'model'    => \App\Models\OpeningStock::class,
+                'column'   => 'entry_number',
+            ],
             'voucher_payment' => [
                 'title'    => 'Payment Voucher',
                 'module'   => 'Finance',
@@ -416,7 +426,7 @@ class DocumentNumberingService
                 'padding'  => 4,
                 'reset'    => 'financial_year',
                 'start'    => 1,
-                'model'    => \App\Models\Voucher::class,
+                'model'    => \App\Models\JournalEntry::class,
                 'column'   => 'voucher_number',
             ],
             'voucher_receipt' => [
@@ -426,7 +436,7 @@ class DocumentNumberingService
                 'padding'  => 4,
                 'reset'    => 'financial_year',
                 'start'    => 1,
-                'model'    => \App\Models\Voucher::class,
+                'model'    => \App\Models\JournalEntry::class,
                 'column'   => 'voucher_number',
             ],
             'voucher_journal' => [
@@ -436,7 +446,7 @@ class DocumentNumberingService
                 'padding'  => 4,
                 'reset'    => 'financial_year',
                 'start'    => 1,
-                'model'    => \App\Models\Voucher::class,
+                'model'    => \App\Models\JournalEntry::class,
                 'column'   => 'voucher_number',
             ],
             'voucher_contra' => [
@@ -446,7 +456,7 @@ class DocumentNumberingService
                 'padding'  => 4,
                 'reset'    => 'financial_year',
                 'start'    => 1,
-                'model'    => \App\Models\Voucher::class,
+                'model'    => \App\Models\JournalEntry::class,
                 'column'   => 'voucher_number',
             ],
         ];

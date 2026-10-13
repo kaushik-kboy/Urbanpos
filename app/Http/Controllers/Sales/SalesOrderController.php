@@ -111,8 +111,11 @@ class SalesOrderController extends Controller
             $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
 
+            $headerBranchId = !empty($data['header']['branch_id']) ? (int) $data['header']['branch_id'] : null;
+            $headerOrderDate = $data['header']['order_date'] ?? null;
+
             $order = SalesOrder::create(array_merge($data['header'], $totals, [
-                'order_number' => $this->nextNumber(),
+                'order_number' => $this->nextNumber($headerBranchId, $headerOrderDate),
             ]));
 
             $order->items()->createMany($lines);
@@ -189,13 +192,14 @@ class SalesOrderController extends Controller
             ->with('status', "Sales Order {$salesOrder->order_number} cancelled.");
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        $branchId = session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
             'sales_order',
-            $branchId ? (int) $branchId : null
+            $branchId ? (int) $branchId : null,
+            $date
         );
     }
 

@@ -142,7 +142,7 @@ class PurchaseReturnController extends Controller
                 $totals = $this->computeTotals($lines, $data);
 
                 $purchaseReturn = PurchaseReturn::create(array_merge($data['header'], $totals, [
-                    'return_number' => $this->nextNumber(),
+                    'return_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['return_date'] ?? null),
                 ]));
 
                 $createdItems = $purchaseReturn->items()->createMany($lines);
@@ -612,11 +612,15 @@ class PurchaseReturnController extends Controller
         }
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('PRN', \App\Models\PurchaseReturn::class, 'return_number', 6);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'purchase_return',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
     private function formOptions(?PurchaseReturn $purchaseReturn = null): array

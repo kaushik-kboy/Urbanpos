@@ -114,14 +114,24 @@
         </div>
         <div class="row align-items-center">
             <div class="col-12">
-                <label class="small font-weight-bold text-primary mb-1">
-                    <i class="fas fa-receipt mr-1"></i> Select Item(s) from Sales Bill to Return:
-                </label>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="small font-weight-bold text-primary mb-0">
+                        <i class="fas fa-receipt mr-1"></i> Select Item(s) from Sales Bill to Return:
+                    </label>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-xs btn-outline-primary font-weight-bold" id="sr-btn-select-all-bill-items">
+                            <i class="fas fa-check-square mr-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold" id="sr-btn-deselect-all-bill-items">
+                            <i class="fas fa-square mr-1"></i>Deselect All
+                        </button>
+                    </div>
+                </div>
                 <div id="sr-bill-item-checklist" class="border rounded bg-white p-2" style="max-height: 220px; overflow-y: auto;" tabindex="0">
                     <div class="text-muted small p-2">-- Load a Sales Bill above to see its items --</div>
                 </div>
                 <div id="sr-bill-item-error" class="text-danger font-weight-bold small mt-1" style="display: none;"></div>
-                <small class="text-muted">Check the item(s) you want to return — checked items appear in Return Items below immediately; uncheck to remove them again.</small>
+                <small class="text-muted">Items are not selected by default — check the item(s) you wish to return, and only selected items will appear in the return list below.</small>
             </div>
         </div>
     </div>
@@ -1138,7 +1148,7 @@
                 let qtyVal = parseFloat($lastRow.find('.sr-qty').val()) || 0;
 
                 if (!itemId) {
-                    let msg = 'Pehle current row me item select karein.';
+                    let msg = 'Please select an item in the current row first.';
                     if (window.toastr) toastr.warning(msg, 'Incomplete Row');
                     else alert(msg);
                     $lastRow.find('.sr-item-code').focus();
@@ -1146,7 +1156,7 @@
                 }
 
                 if (qtyVal <= 0) {
-                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    let msg = 'Please enter a valid quantity for the item first.';
                     if (window.toastr) toastr.warning(msg, 'Quantity Required');
                     else alert(msg);
                     $lastRow.find('.sr-qty').focus().select();
@@ -1399,16 +1409,17 @@
                     recalculateAll();
                 } else {
                     tbody.innerHTML = '';
-                    let addedCount = 0;
-                    cachedBillItems.forEach((item, idx) => {
+                    let returnableCount = 0;
+                    cachedBillItems.forEach((item) => {
                         let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
                         if (remQty > 0) {
-                            appendBillItemRow(item, remQty);
-                            addedCount++;
+                            returnableCount++;
                         }
                     });
-                    if (addedCount === 0) {
+                    if (returnableCount === 0) {
                         tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-info-circle text-info mr-1"></i> Original Sales Bill loaded, but all items have already been fully returned (0 returnable items).</td></tr>';
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-hand-pointer text-primary mr-1"></i> Please select item(s) from the checklist above — only checked items will appear in the return list below.</td></tr>';
                     }
                     renderBillItemChecklist();
                     recalculateAll();
@@ -1608,6 +1619,18 @@
                 let item = cachedBillItems[idx];
                 if (item) removeReturnRowForItem(item.item_id);
             }
+        });
+
+        $(document).on('click', '#sr-btn-select-all-bill-items', function () {
+            $('.sr-bill-item-checkbox:not(:disabled):not(:checked)').each(function () {
+                $(this).prop('checked', true).trigger('change');
+            });
+        });
+
+        $(document).on('click', '#sr-btn-deselect-all-bill-items', function () {
+            $('.sr-bill-item-checkbox:checked').each(function () {
+                $(this).prop('checked', false).trigger('change');
+            });
         });
 
         function updateBillModeUI() {

@@ -392,7 +392,7 @@
                 const hasValidItems = totalQty > 0 && document.querySelectorAll('#pr-items-body .pr-item-row').length > 0;
                 submitBtn.disabled = !hasValidItems || hasInvalidDisc;
                 if (hasInvalidDisc) {
-                    submitBtn.title = 'Discount percentage ya discount amount 100% / line total se zyada hai. Kripya use theek karein.';
+                    submitBtn.title = 'Discount percentage or discount amount exceeds 100% / line total. Please correct it.';
                 } else {
                     submitBtn.removeAttribute('title');
                 }
@@ -430,7 +430,7 @@
                 let qtyVal = parseFloat($lastRow.find('.pr-qty').val()) || 0;
 
                 if (!itemId) {
-                    let msg = 'Pehle current row me item select karein.';
+                    let msg = 'Please select an item in the current row first.';
                     if (window.toastr) toastr.warning(msg, 'Incomplete Row');
                     else alert(msg);
                     $lastRow.find('.pr-item-code').focus();
@@ -438,7 +438,7 @@
                 }
 
                 if (qtyVal <= 0) {
-                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    let msg = 'Please enter a valid quantity for the item first.';
                     if (window.toastr) toastr.warning(msg, 'Quantity Required');
                     else alert(msg);
                     $lastRow.find('.pr-qty').focus().select();
@@ -1339,7 +1339,7 @@
 
                 if (discPct > 100 || discPct < 0) {
                     e.preventDefault();
-                    notifyWarn(`Discount % 100 se zyada nahi ho sakta for "${itemName}"! Kripya sahi discount enter karein.`, 'Invalid Discount');
+                    notifyWarn(`Discount % cannot exceed 100% for "${itemName}"! Please enter a valid discount.`, 'Invalid Discount');
                     $row.find('.pr-disc-percent').focus().select();
                     hasError = true;
                     return false;
@@ -1347,7 +1347,7 @@
 
                 if (discAmt > (baseVal + 0.001) || discAmt < 0) {
                     e.preventDefault();
-                    notifyWarn(`Discount amount line total se zyada nahi ho sakta for "${itemName}"! Kripya sahi discount enter karein.`, 'Invalid Discount');
+                    notifyWarn(`Discount amount cannot exceed line total for "${itemName}"! Please enter a valid discount.`, 'Invalid Discount');
                     $row.find('.pr-disc-amount').focus().select();
                     hasError = true;
                     return false;
@@ -1358,7 +1358,7 @@
 
             if (validCount === 0) {
                 e.preventDefault();
-                notifyWarn('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
+                notifyWarn('Please add at least one item before saving.', 'No Items Added');
                 $('#pr-items-body .pr-item-row:first .pr-item-code').focus();
                 return false;
             }

@@ -152,8 +152,11 @@ class SalesReturnController extends Controller
                     ? \App\Models\Customer::where('id', $data['header']['customer_id'])->value('gst_no')
                     : null;
 
+                $headerBranchId = !empty($data['header']['branch_id']) ? (int) $data['header']['branch_id'] : null;
+                $headerReturnDate = $data['header']['return_date'] ?? null;
+
                 $salesReturn = SalesReturn::create(array_merge($data['header'], $totals, [
-                    'return_number' => $this->nextNumber(),
+                    'return_number' => $this->nextNumber($headerBranchId, $headerReturnDate),
                     'customer_gstin' => $customerGstin ?: null,
                 ]));
 
@@ -606,13 +609,14 @@ class SalesReturnController extends Controller
         }
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        $branchId = session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
             'sales_return',
-            $branchId ? (int) $branchId : null
+            $branchId ? (int) $branchId : null,
+            $date
         );
     }
 

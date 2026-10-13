@@ -3309,7 +3309,7 @@
                 let qtyVal = parseFloat($lastRow.find('.sb-qty').val()) || 0;
 
                 if (!itemId) {
-                    let msg = 'Pehle current row me item select karein.';
+                    let msg = 'Please select an item in the current row first.';
                     if (window.toastr) toastr.warning(msg, 'Incomplete Row');
                     else alert(msg);
                     $lastRow.find('.sb-item-code').focus();
@@ -3317,7 +3317,7 @@
                 }
 
                 if (qtyVal <= 0) {
-                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    let msg = 'Please enter a valid quantity for the item first.';
                     if (window.toastr) toastr.warning(msg, 'Quantity Required');
                     else alert(msg);
                     $lastRow.find('.sb-qty').focus().select();
@@ -3325,7 +3325,7 @@
                 }
 
                 if (!validateSbQty($lastRow.find('.sb-qty'))) {
-                    let msg = $lastRow.find('.sb-qty-error-msg').text() || 'Pehle current row ki quantity validation solve karein.';
+                    let msg = $lastRow.find('.sb-qty-error-msg').text() || 'Please resolve the quantity validation for the current row first.';
                     if (window.toastr) toastr.warning(msg, 'Stock Exceeded');
                     else alert(msg);
                     $lastRow.find('.sb-qty').focus().select();

@@ -29,8 +29,13 @@ class BrandController extends Controller
             });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', (bool) $request->input('status'));
+        $statusInput = $request->input('status');
+        if ($statusInput !== null && $statusInput !== '' && strtolower((string) $statusInput) !== 'all') {
+            if ($statusInput === '1' || $statusInput === 'active' || (int) $statusInput === 1) {
+                $query->where('status', 1);
+            } elseif ($statusInput === '0' || $statusInput === 'inactive' || (int) $statusInput === 0) {
+                $query->where('status', 0);
+            }
         }
 
         $allowedSorts = [

@@ -980,7 +980,7 @@
                 if (isTriggeredByAddRow) {
                     if (window.toastr) {
                         toastr.clear();
-                        toastr.warning(`Row #${rowSno} me pehle product select karein!`, 'Item Required');
+                        toastr.warning(`Please select a product in Row #${rowSno} first!`, 'Item Required');
                     }
                     $code.addClass('is-invalid border-danger').focus();
                 }
@@ -993,7 +993,7 @@
                 if (isTriggeredByAddRow) {
                     if (window.toastr) {
                         toastr.clear();
-                        toastr.warning(`Row #${rowSno} me valid quantity (greater than 0) enter karein!`, 'Quantity Required');
+                        toastr.warning(`Please enter a valid quantity (greater than 0) in Row #${rowSno}!`, 'Quantity Required');
                     }
                     $qty.addClass('is-invalid border-danger text-danger').focus().select();
                 }
@@ -1006,7 +1006,7 @@
                 let maxAvail = parseFloat(availRaw);
                 if (qtyVal > maxAvail) {
                     $qty.addClass('is-invalid border-danger text-danger');
-                    let errMsg = `Row #${rowSno}: Available stock (${maxAvail.toFixed(3)}) se jyada damage quantity (${qtyVal.toFixed(3)}) enter nahi kar sakte!`;
+                    let errMsg = `Row #${rowSno}: Damage quantity (${qtyVal.toFixed(3)}) cannot exceed available stock (${maxAvail.toFixed(3)})!`;
                     if (window.toastr) {
                         toastr.clear();
                         toastr.error(errMsg, 'Stock Limit Exceeded');
@@ -1233,7 +1233,7 @@
                         $qtyInput.data('last-warned-qty', qtyVal);
                         if (window.toastr) {
                             toastr.clear();
-                            toastr.error(`Available stock (${maxAvail.toFixed(3)}) se jyada quantity enter nahi kar sakte! (Entered: ${qtyVal.toFixed(3)})`, 'Stock Limit Exceeded');
+                            toastr.error(`Entered quantity (${qtyVal.toFixed(3)}) cannot exceed available stock (${maxAvail.toFixed(3)})!`, 'Stock Limit Exceeded');
                         }
                     }
                 }
@@ -1273,7 +1273,7 @@
                     $qty.addClass('is-invalid border-danger text-danger').focus().select();
                     if (window.toastr) {
                         toastr.clear();
-                        toastr.warning('Valid quantity (greater than 0) enter karein tabhi aage ja sakte hain.', 'Invalid Quantity');
+                        toastr.warning('Please enter a valid quantity (greater than 0) before proceeding.', 'Invalid Quantity');
                     }
                     return false;
                 }
@@ -1284,7 +1284,7 @@
                     $qty.addClass('is-invalid border-danger text-danger').focus().select();
                     if (window.toastr) {
                         toastr.clear();
-                        toastr.error(`Available stock (${maxAvail.toFixed(3)}) se jyada damage quantity enter nahi kar sakte! Aage badhne se pehle quantity sahi karein.`, 'Stock Limit Exceeded');
+                        toastr.error(`Damage quantity cannot exceed available stock (${maxAvail.toFixed(3)})! Please correct the quantity before proceeding.`, 'Stock Limit Exceeded');
                     }
                     return false;
                 }
@@ -1409,7 +1409,7 @@
                     let desc = $row.find('.item-desc').val() || 'selected item';
                     $row.find('.item-qty').addClass('is-invalid border-danger text-danger').focus().select();
                     if (window.toastr) {
-                        toastr.error(`Available stock (${maxAvail.toFixed(3)}) se jyada damage quantity nahi daal sakte for: ${desc}`);
+                        toastr.error(`Damage quantity cannot exceed available stock (${maxAvail.toFixed(3)}) for: ${desc}`);
                     }
                     return false;
                 }
@@ -1422,7 +1422,7 @@
             if (validRows === 0) {
                 e.preventDefault();
                 if (window.toastr) {
-                    toastr.warning('Pehle item add karein. Please add at least one item before saving.');
+                    toastr.warning('Please add at least one item before saving.');
                 }
                 $('#items-body tr.item-row:first .item-code-input').focus();
                 return false;

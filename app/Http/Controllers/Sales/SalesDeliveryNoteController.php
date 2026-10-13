@@ -177,7 +177,9 @@ class SalesDeliveryNoteController extends Controller
                 $totAmount += round((float) ($line['dispatched_qty'] ?? 0) * (float) ($line['unit_price'] ?? 0), 2);
             }
 
-            $deliveryNumber = $this->nextNumber();
+            $headerBranchId = !empty($data['header']['branch_id']) ? (int) $data['header']['branch_id'] : null;
+            $headerDeliveryDate = $data['header']['delivery_date'] ?? null;
+            $deliveryNumber = $this->nextNumber($headerBranchId, $headerDeliveryDate);
 
             $deliveryNote = SalesDeliveryNote::create(array_merge($data['header'], [
                 'delivery_number' => $deliveryNumber,
@@ -327,13 +329,14 @@ class SalesDeliveryNoteController extends Controller
             ->with('status', "Delivery Note {$salesDeliveryNote->delivery_number} has been cancelled and stock restored.");
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        $branchId = session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
             'delivery_note',
-            $branchId ? (int) $branchId : null
+            $branchId ? (int) $branchId : null,
+            $date
         );
     }
 

@@ -59,22 +59,29 @@ class ItemController extends Controller
             });
         }
 
-        if ($request->filled('supplier_id')) {
-            $query->where('supplier_id', $request->input('supplier_id'));
+        $supplierId = $request->input('supplier_id', $request->input('supplier'));
+        if ($supplierId !== null && $supplierId !== '' && strtolower((string) $supplierId) !== 'all') {
+            $query->where('supplier_id', $supplierId);
         }
 
-        if ($request->filled('brand_id')) {
-            $query->where('brand_id', $request->input('brand_id'));
+        $brandId = $request->input('brand_id', $request->input('brand'));
+        if ($brandId !== null && $brandId !== '' && strtolower((string) $brandId) !== 'all') {
+            $query->where('brand_id', $brandId);
         }
 
-        if ($request->filled('category_value_id')) {
-            $query->where('category_value_id', $request->input('category_value_id'));
+        $categoryId = $request->input('category_value_id', $request->input('category_id'));
+        if ($categoryId !== null && $categoryId !== '' && strtolower((string) $categoryId) !== 'all') {
+            $query->where('category_value_id', $categoryId);
         }
 
         // Status filter: If blank or 'all', do not filter so BOTH active and inactive items are shown
         $statusInput = $request->input('status');
-        if ($statusInput !== null && $statusInput !== '' && $statusInput !== 'all') {
-            $query->where('status', (int) $statusInput);
+        if ($statusInput !== null && $statusInput !== '' && strtolower((string) $statusInput) !== 'all') {
+            if ($statusInput === '1' || $statusInput === 'active' || (int) $statusInput === 1) {
+                $query->where('status', 1);
+            } elseif ($statusInput === '0' || $statusInput === 'inactive' || (int) $statusInput === 0) {
+                $query->where('status', 0);
+            }
         }
 
         $allowedSorts = [
@@ -371,7 +378,7 @@ class ItemController extends Controller
             'hsn_code.regex' => 'HSN Code must be between 4 and 8 digits (numeric).',
         ];
 
-        app(\App\Services\DynamicValidationService::class)->applyTo('items', $rules, $messages);
+        app(\App\Services\DynamicValidationService::class)->applyTo('items', $rules, $messages, $item?->id);
 
         return $request->validate($rules, $messages);
     }

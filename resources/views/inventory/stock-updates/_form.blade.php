@@ -327,19 +327,23 @@
                     $currentRow.find('.su-item-code').focus();
                     return;
                 }
-                let $nextRow = $currentRow.next('tr');
+
+                e.preventDefault();
+                let $nextRow = $currentRow.next('tr.su-item-row');
                 if ($nextRow.length) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        $nextRow.find('.su-item-code').focus();
+                    let $nextCode = $nextRow.find('.su-item-code');
+                    $nextCode.focus();
+                    if (!$nextRow.find('.su-item-id').val()) {
+                        checkAndOpenSuModal($nextCode);
                     }
                 } else {
-                    e.preventDefault();
                     $('#su-add-row').trigger('click');
-                    let $newRow = $('#items-body tr').last();
+                    let $newRow = $('#items-body tr.su-item-row').last();
                     setTimeout(function () {
-                        $newRow.find('.su-item-code').focus();
-                    }, 60);
+                        let $newCode = $newRow.find('.su-item-code');
+                        $newCode.focus();
+                        checkAndOpenSuModal($newCode);
+                    }, 80);
                 }
             }
         });
@@ -495,17 +499,6 @@
             let srch = $.trim($('#su-isl-filter-name').val());
             let code = $.trim($('#su-isl-filter-code').val());
             let showZero = $('#su-isl-show-zero').is(':checked');
-
-            if (!srch && !code) {
-                $('#su-isl-loading').addClass('d-none');
-                $('#su-isl-table-wrap').addClass('d-none');
-                $('#su-isl-items-body').empty();
-                $('#su-isl-no-results').removeClass('d-none').html(
-                    '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
-                );
-                $('#su-isl-count-label').text('');
-                return;
-            }
 
             $('#su-isl-loading').removeClass('d-none');
             $('#su-isl-no-results').addClass('d-none');
@@ -1008,7 +1001,7 @@
 
             if (validRows === 0) {
                 e.preventDefault();
-                alert('Pehle item add karein. Please add at least one item before saving.');
+                alert('Please add at least one item before saving.');
                 $('#items-body tr.su-item-row:first .su-item-code').focus();
                 return false;
             }

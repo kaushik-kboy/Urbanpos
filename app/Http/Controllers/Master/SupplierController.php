@@ -29,16 +29,23 @@ class SupplierController extends Controller
             });
         }
 
-        if ($request->filled('purchase_type')) {
-            $query->where('purchase_type', $request->purchase_type);
+        $pType = $request->input('purchase_type');
+        if ($pType !== null && $pType !== '' && strtolower((string) $pType) !== 'all') {
+            $query->where('purchase_type', $pType);
         }
 
-        if ($request->filled('purchase_mode')) {
-            $query->where('purchase_mode', $request->purchase_mode);
+        $pMode = $request->input('purchase_mode');
+        if ($pMode !== null && $pMode !== '' && strtolower((string) $pMode) !== 'all') {
+            $query->where('purchase_mode', $pMode);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', (bool)$request->status);
+        $statusInput = $request->input('status');
+        if ($statusInput !== null && $statusInput !== '' && strtolower((string) $statusInput) !== 'all') {
+            if ($statusInput === '1' || $statusInput === 'active' || (int) $statusInput === 1) {
+                $query->where('status', 1);
+            } elseif ($statusInput === '0' || $statusInput === 'inactive' || (int) $statusInput === 0) {
+                $query->where('status', 0);
+            }
         }
 
         $allowedSorts = [

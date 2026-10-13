@@ -57,13 +57,10 @@
                     </select>
                 @endif
             </div>
-            <div class="pos-meta-item d-inline-flex align-items-center">
+            <div class="pos-meta-item d-inline-flex align-items-center" title="Logged in User: {{ auth()->user()?->name }}">
                 <i class="fas fa-user-check text-warning mr-1"></i>
-                <select id="posBillerSelect" class="bg-transparent border-0 text-white font-weight-bold" style="outline:none; cursor:pointer;" title="Biller / Staff Name (Branch-wise)">
-                    @foreach ($branchStaff as $stId => $stName)
-                        <option value="{{ $stId }}" class="text-dark" @selected(($selectedStaffId ?? auth()->id()) == $stId)>{{ $stName }}</option>
-                    @endforeach
-                </select>
+                <span class="text-white font-weight-bold ml-1">{{ auth()->user()?->name ?? 'Cashier' }}</span>
+                <input type="hidden" id="posBillerSelect" value="{{ auth()->id() }}">
             </div>
             @if(isset($activeTillSession))
                 <div class="pos-meta-item">
@@ -1384,7 +1381,7 @@
     // Update POS Biller / Staff options based on selected branch
     function syncPosBranchStaff(branchId) {
         const billerSelect = document.getElementById('posBillerSelect');
-        if (!billerSelect || !window.ALL_BRANCH_STAFF || !window.ALL_BRANCH_STAFF.length) return;
+        if (!billerSelect || billerSelect.tagName !== 'SELECT' || !window.ALL_BRANCH_STAFF || !window.ALL_BRANCH_STAFF.length) return;
         const currentVal = billerSelect.value;
         const bId = parseInt(branchId, 10);
         

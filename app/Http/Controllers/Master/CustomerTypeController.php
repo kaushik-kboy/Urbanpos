@@ -25,6 +25,15 @@ class CustomerTypeController extends Controller
             });
         }
 
+        $statusInput = $request->input('status');
+        if ($statusInput !== null && $statusInput !== '' && strtolower((string) $statusInput) !== 'all') {
+            if ($statusInput === '1' || $statusInput === 'active' || (int) $statusInput === 1) {
+                $query->where('status', 1);
+            } elseif ($statusInput === '0' || $statusInput === 'inactive' || (int) $statusInput === 0) {
+                $query->where('status', 0);
+            }
+        }
+
         $customerTypes = $query->paginate($this->perPage())->withQueryString();
 
         return view('master.customer-types.index', compact('customerTypes'));

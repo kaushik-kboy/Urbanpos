@@ -123,7 +123,7 @@ class PurchaseOrderController extends Controller
             $totals = $this->computeTotals($lines, $data);
 
             $purchaseOrder = PurchaseOrder::create(array_merge($data['header'], $totals, [
-                'po_number' => $this->nextNumber(),
+                'po_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['po_date'] ?? null),
             ]));
 
             $purchaseOrder->items()->createMany($lines);
@@ -316,13 +316,14 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        $branchId = session('active_branch_id', auth()->user()?->branch_id);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
             'purchase_order',
-            $branchId ? (int) $branchId : null
+            $branchId ? (int) $branchId : null,
+            $date
         );
     }
 

@@ -43,109 +43,264 @@ class ReportController extends Controller
     public function salesSummary(Request $request)
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
-        $paymentMode = $request->input('payment_mode');
 
-        $availablePaymentModes = \App\Models\TenderType::where('status', true)->pluck('name')->values()->all();
-        if (empty($availablePaymentModes)) {
-            $availablePaymentModes = ['Cash', 'Card', 'UPI'];
-        }
-        if (!in_array('UPI', $availablePaymentModes)) {
-            $availablePaymentModes[] = 'UPI';
-        }
-        if (!in_array('Split', $availablePaymentModes)) {
-            $availablePaymentModes[] = 'Split';
+        $rows = collect();
+
+        // 1. Fetch from imported DailySalesSummary if records exist
+        if (\Illuminate\Support\Facades\Schema::hasTable('daily_sales_summaries')) {
+            $summaryRecords = \App\Models\DailySalesSummary::with('branch')
+                ->whereBetween('summary_date', [$from, $to])
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->orderBy('summary_date', 'desc')
+                ->orderBy('branch_id')
+                ->get();
+
+            foreach ($summaryRecords as $s) {
+                $storeName = $s->store_name ?: ($s->branch?->name ?? ($s->branch_id ? "Branch #{$s->branch_id}" : 'All Branches'));
+                $dateStr = \Carbon\Carbon::parse($s->summary_date)->format('Y-m-d');
+                $rows->push((object) [
+                    'store'            => $storeName,
+                    'bill_date'        => $dateStr,
+                    'branch_id'        => $s->branch_id,
+                    'bill_amount'      => (float) $s->bill_amount,
+                    'tax'              => (float) $s->tax,
+                    'disc_amount'      => (float) $s->disc_amount,
+                    'scheme_amount'    => (float) $s->scheme_amount,
+                    'cash'             => (float) $s->cash,
+                    'card'             => (float) $s->card,
+                    'cheque'           => (float) $s->cheque,
+                    'coupon'           => (float) $s->coupon,
+                    'wallet_amt'       => (float) $s->wallet_amt,
+                    'credit'           => (float) $s->credit,
+                    'due'              => (float) $s->due,
+                    'compliment'       => (float) $s->compliment,
+                    'approval'         => (float) $s->approval,
+                    'advance_adjusted' => (float) $s->advance_adjusted,
+                    'rounded_off'      => (float) $s->rounded_off,
+                    'profit'           => (float) $s->profit,
+                    'item_discount'    => (float) $s->item_discount,
+                    'bill_discount'    => (float) $s->bill_discount,
+                    'freight'          => (float) $s->freight,
+                    'total_bills'      => (int) $s->total_bills,
+                    'gst_tax_amt'      => (float) $s->gst_tax_amt,
+                    'sgst_tax_amt'     => (float) $s->sgst_tax_amt,
+                    'cgst_tax_amt'     => (float) $s->cgst_tax_amt,
+                    'igst_tax_amt'     => (float) $s->igst_tax_amt,
+                    'gst_cess_amt'     => (float) $s->gst_cess_amt,
+                    'redeemed_point'   => (float) $s->redeemed_point,
+                ]);
+            }
         }
 
-        $billsQuery = SalesBill::with(['branch', 'payments.tenderType'])
+        // 2. Fetch from live SalesBill for dates/branches not already in daily summaries
+        $existingDateBranchKeys = $rows->map(fn ($r) => $r->bill_date . '_' . ($r->branch_id ?? '0'))->all();
+
+        $billsQuery = SalesBill::with(['branch', 'payments.tenderType', 'items.item'])
             ->where('status', '!=', 'Cancelled')
             ->where('bill_date', '>=', $from . ' 00:00:00')
             ->where('bill_date', '<=', $to . ' 23:59:59')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
 
-        if ($paymentMode && $paymentMode !== 'all') {
-            if (strtolower($paymentMode) === 'split') {
-                $billsQuery->where(function ($q) {
-                    $q->where('payment_type', 'Split')
-                      ->orWhereHas('payments', null, '>', 1);
-                });
-            } else {
-                $billsQuery->where(function ($q) use ($paymentMode) {
-                    $q->where(function ($sq) use ($paymentMode) {
-                        $sq->where('payment_type', $paymentMode)
-                           ->where(function ($mq) {
-                               $mq->whereDoesntHave('payments')
-                                  ->orWhereHas('payments', null, '<=', 1);
-                           });
-                    })->orWhere(function ($sq) use ($paymentMode) {
-                        $sq->has('payments', '=', 1)
-                           ->whereHas('payments.tenderType', fn ($tq) => $tq->where('name', $paymentMode));
-                    });
-                });
-            }
-        }
+        $bills = $billsQuery->orderBy('bill_date', 'desc')->get();
 
-        $bills = $billsQuery->orderBy('bill_date')->get();
-
-        $bills->each(function ($bill) {
-            $tenders = $bill->payments->map(fn ($p) => $p->tenderType?->name)->filter()->unique()->values()->all();
-            if (count($tenders) > 1) {
-                $bill->effective_payment_mode = 'Split (' . implode(' + ', $tenders) . ')';
-                $bill->is_split = true;
-            } elseif (count($tenders) === 1) {
-                $bill->effective_payment_mode = $tenders[0];
-                $bill->is_split = false;
-            } else {
-                $rawType = $bill->payment_type && $bill->payment_type !== 'None' ? $bill->payment_type : 'Cash';
-                $bill->effective_payment_mode = $rawType;
-                $bill->is_split = ($rawType === 'Split');
-            }
+        $liveGroups = $bills->groupBy(function ($b) {
+            return \Carbon\Carbon::parse($b->bill_date)->format('Y-m-d') . '_' . ($b->branch_id ?? '0');
         });
 
-        $rows = $bills->groupBy(function ($b) {
-            $date = \Carbon\Carbon::parse($b->bill_date)->format('Y-m-d');
-            return $date . '_' . $b->branch_id . '_' . $b->effective_payment_mode;
-        })->map(function ($group) {
-            $first = $group->first();
-            return (object) [
-                'bill_date'    => \Carbon\Carbon::parse($first->bill_date)->format('Y-m-d'),
-                'branch_id'    => $first->branch_id,
-                'branch'       => $first->branch,
-                'payment_mode' => $first->effective_payment_mode,
-                'bill_count'   => $group->count(),
-                'total_amount' => (float) $group->sum('total'),
-                'total_disc'   => (float) $group->sum('disc_amount'),
-                'total_gst'    => (float) $group->sum('total_gst'),
-            ];
-        })->values();
-
-        if ($rows->isEmpty() && \Illuminate\Support\Facades\Schema::hasTable('daily_sales_summaries')) {
-            $summaryRows = \App\Models\DailySalesSummary::whereBetween('summary_date', [$from, $to])
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                ->selectRaw('summary_date as bill_date, branch_id, total_bills as bill_count, bill_amount as total_amount, disc_amount as total_disc, gst_tax_amt as total_gst')
-                ->orderBy('summary_date')
-                ->get()
-                ->map(function ($r) {
-                    $r->payment_mode = 'All';
-                    return $r;
-                });
-            if ($summaryRows->isNotEmpty()) {
-                $rows = $summaryRows;
+        foreach ($liveGroups as $key => $group) {
+            if (in_array($key, $existingDateBranchKeys, true)) {
+                continue;
             }
+
+            $first = $group->first();
+            $dateStr = \Carbon\Carbon::parse($first->bill_date)->format('Y-m-d');
+            $storeName = $first->branch?->name ?? 'Main Branch';
+
+            $totalBills = $group->count();
+            $billAmount = (float) $group->sum('total');
+            $tax = (float) ($group->sum('total_tax') ?: $group->sum('total_gst'));
+            $discAmount = (float) $group->sum('disc_amount');
+            $roundOff = (float) $group->sum('round_off');
+            $freight = (float) $group->sum('freight');
+
+            $cash = 0.0;
+            $card = 0.0;
+            $cheque = 0.0;
+            $coupon = 0.0;
+            $wallet = 0.0;
+            $credit = 0.0;
+            $due = 0.0;
+            $redeemedPoint = 0.0;
+            $itemDiscount = 0.0;
+            $cgst = 0.0;
+            $sgst = 0.0;
+            $igst = 0.0;
+            $cess = 0.0;
+            $profit = 0.0;
+
+            foreach ($group as $bill) {
+                $billPaid = 0.0;
+                $billPayments = $bill->payments;
+
+                if ($billPayments && $billPayments->isNotEmpty()) {
+                    foreach ($billPayments as $pmt) {
+                        $amt = (float) $pmt->amount;
+                        $tName = strtolower($pmt->tenderType?->name ?? '');
+                        $billPaid += $amt;
+
+                        if (str_contains($tName, 'cash')) {
+                            $cash += $amt;
+                        } elseif (str_contains($tName, 'card')) {
+                            $card += $amt;
+                        } elseif (str_contains($tName, 'cheque')) {
+                            $cheque += $amt;
+                        } elseif (str_contains($tName, 'coupon') || str_contains($tName, 'voucher')) {
+                            $coupon += $amt;
+                        } elseif (str_contains($tName, 'wallet') || str_contains($tName, 'upi')) {
+                            $wallet += $amt;
+                        } elseif (str_contains($tName, 'credit') || str_contains($tName, 'khata')) {
+                            $credit += $amt;
+                        } else {
+                            $cash += $amt;
+                        }
+                    }
+                } else {
+                    $pType = strtolower($bill->payment_type ?? 'cash');
+                    $amt = (float) $bill->total;
+                    $billPaid += $amt;
+                    if (str_contains($pType, 'card')) $card += $amt;
+                    elseif (str_contains($pType, 'upi') || str_contains($pType, 'wallet')) $wallet += $amt;
+                    elseif (str_contains($pType, 'cheque')) $cheque += $amt;
+                    elseif (str_contains($pType, 'coupon')) $coupon += $amt;
+                    elseif (str_contains($pType, 'credit')) $credit += $amt;
+                    else $cash += $amt;
+                }
+
+                if ((float) $bill->total > $billPaid) {
+                    $due += ((float) $bill->total - $billPaid);
+                }
+
+                if (!empty($bill->points_redeemed_amount)) {
+                    $redeemedPoint += (float) $bill->points_redeemed_amount;
+                }
+
+                if ($bill->items) {
+                    foreach ($bill->items as $it) {
+                        $itemDiscount += (float) ($it->disc_amount ?? 0);
+                        $itTax = (float) ($it->tax_amount ?? $it->gst_amount ?? 0);
+                        $cgst += (float) ($it->cgst_amount ?? ($itTax / 2));
+                        $sgst += (float) ($it->sgst_amount ?? ($itTax / 2));
+                        $igst += (float) ($it->igst_amount ?? 0);
+                        $cess += (float) ($it->cess_amount ?? 0);
+
+                        $cost = (float) ($it->cost_price ?? $it->item?->cost_price ?? 0);
+                        $qty = (float) ($it->qty ?? 1);
+                        $netLine = (float) ($it->net_amount ?? (($it->sell_price ?? 0) * $qty));
+                        $profit += ($netLine - ($cost * $qty));
+                    }
+                }
+            }
+
+            $billDiscount = max(0.0, $discAmount - $itemDiscount);
+
+            $rows->push((object) [
+                'store'            => $storeName,
+                'bill_date'        => $dateStr,
+                'branch_id'        => $first->branch_id,
+                'bill_amount'      => $billAmount,
+                'tax'              => $tax,
+                'disc_amount'      => $discAmount,
+                'scheme_amount'    => 0.0,
+                'cash'             => $cash,
+                'card'             => $card,
+                'cheque'           => $cheque,
+                'coupon'           => $coupon,
+                'wallet_amt'       => $wallet,
+                'credit'           => $credit,
+                'due'              => $due,
+                'compliment'       => 0.0,
+                'approval'         => 0.0,
+                'advance_adjusted' => 0.0,
+                'rounded_off'      => $roundOff,
+                'profit'           => $profit,
+                'item_discount'    => $itemDiscount,
+                'bill_discount'    => $billDiscount,
+                'freight'          => $freight,
+                'total_bills'      => $totalBills,
+                'gst_tax_amt'      => $tax,
+                'sgst_tax_amt'     => $sgst,
+                'cgst_tax_amt'     => $cgst,
+                'igst_tax_amt'     => $igst,
+                'gst_cess_amt'     => $cess,
+                'redeemed_point'   => $redeemedPoint,
+            ]);
         }
+
+        $rows = $rows->sortByDesc('bill_date')->values();
+
+        $totals = (object) [
+            'bill_amount'      => (float) $rows->sum('bill_amount'),
+            'tax'              => (float) $rows->sum('tax'),
+            'disc_amount'      => (float) $rows->sum('disc_amount'),
+            'scheme_amount'    => (float) $rows->sum('scheme_amount'),
+            'cash'             => (float) $rows->sum('cash'),
+            'card'             => (float) $rows->sum('card'),
+            'cheque'           => (float) $rows->sum('cheque'),
+            'coupon'           => (float) $rows->sum('coupon'),
+            'wallet_amt'       => (float) $rows->sum('wallet_amt'),
+            'credit'           => (float) $rows->sum('credit'),
+            'due'              => (float) $rows->sum('due'),
+            'compliment'       => (float) $rows->sum('compliment'),
+            'approval'         => (float) $rows->sum('approval'),
+            'advance_adjusted' => (float) $rows->sum('advance_adjusted'),
+            'rounded_off'      => (float) $rows->sum('rounded_off'),
+            'profit'           => (float) $rows->sum('profit'),
+            'item_discount'    => (float) $rows->sum('item_discount'),
+            'bill_discount'    => (float) $rows->sum('bill_discount'),
+            'freight'          => (float) $rows->sum('freight'),
+            'total_bills'      => (int) $rows->sum('total_bills'),
+            'gst_tax_amt'      => (float) $rows->sum('gst_tax_amt'),
+            'sgst_tax_amt'     => (float) $rows->sum('sgst_tax_amt'),
+            'cgst_tax_amt'     => (float) $rows->sum('cgst_tax_amt'),
+            'igst_tax_amt'     => (float) $rows->sum('igst_tax_amt'),
+            'gst_cess_amt'     => (float) $rows->sum('gst_cess_amt'),
+            'redeemed_point'   => (float) $rows->sum('redeemed_point'),
+        ];
 
         if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
             return $this->exportQueryOrData(
                 $rows,
                 [
+                    'Store'            => fn($r) => $r->store,
                     'Date'             => fn($r) => \Carbon\Carbon::parse($r->bill_date)->format('d-m-Y'),
-                    'Branch'           => fn($r) => $r->branch?->name ?? 'All Branches',
-                    'Payment Mode'     => fn($r) => $r->payment_mode ?? 'All',
-                    'Total Bills'      => 'bill_count',
-                    'Total Discount'   => fn($r) => number_format((float) $r->total_disc, 2),
-                    'Total GST'        => fn($r) => number_format((float) $r->total_gst, 2),
-                    'Net Sales Amount' => fn($r) => number_format((float) $r->total_amount, 2),
+                    'Bill amount'      => fn($r) => number_format((float) $r->bill_amount, 2, '.', ''),
+                    'Tax'              => fn($r) => number_format((float) $r->tax, 2, '.', ''),
+                    'Disc. Amount'     => fn($r) => number_format((float) $r->disc_amount, 2, '.', ''),
+                    'Scheme amount'    => fn($r) => number_format((float) $r->scheme_amount, 2, '.', ''),
+                    'Cash'             => fn($r) => number_format((float) $r->cash, 2, '.', ''),
+                    'Card'             => fn($r) => number_format((float) $r->card, 2, '.', ''),
+                    'Cheque'           => fn($r) => number_format((float) $r->cheque, 2, '.', ''),
+                    'Coupon'           => fn($r) => number_format((float) $r->coupon, 2, '.', ''),
+                    'Wallet Amt'       => fn($r) => number_format((float) $r->wallet_amt, 2, '.', ''),
+                    'Credit'           => fn($r) => number_format((float) $r->credit, 2, '.', ''),
+                    'Due'              => fn($r) => number_format((float) $r->due, 2, '.', ''),
+                    'Compliment'       => fn($r) => number_format((float) $r->compliment, 2, '.', ''),
+                    'Approval'         => fn($r) => number_format((float) $r->approval, 2, '.', ''),
+                    'Advance adjusted' => fn($r) => number_format((float) $r->advance_adjusted, 2, '.', ''),
+                    'Rounded off'      => fn($r) => number_format((float) $r->rounded_off, 2, '.', ''),
+                    'Profit'           => fn($r) => number_format((float) $r->profit, 2, '.', ''),
+                    'Item discount'    => fn($r) => number_format((float) $r->item_discount, 2, '.', ''),
+                    'Bill discount'    => fn($r) => number_format((float) $r->bill_discount, 2, '.', ''),
+                    'Freight'          => fn($r) => number_format((float) $r->freight, 2, '.', ''),
+                    'Total bills'      => fn($r) => $r->total_bills,
+                    'GST TaxAmt'       => fn($r) => number_format((float) $r->gst_tax_amt, 2, '.', ''),
+                    'SGST TaxAmt'      => fn($r) => number_format((float) $r->sgst_tax_amt, 2, '.', ''),
+                    'CGST TaxAmt'      => fn($r) => number_format((float) $r->cgst_tax_amt, 2, '.', ''),
+                    'IGST TaxAmt'      => fn($r) => number_format((float) $r->igst_tax_amt, 2, '.', ''),
+                    'GST Cess Amt'     => fn($r) => number_format((float) $r->gst_cess_amt, 2, '.', ''),
+                    'Redeemed Point'   => fn($r) => number_format((float) $r->redeemed_point, 2, '.', ''),
                 ],
-                'sales-summary_' . $from . '_to_' . $to . '.xlsx',
+                'Daily_Sale_Store_Wise_' . $from . '_to_' . $to . '.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -154,7 +309,7 @@ class ReportController extends Controller
         $branches = $this->getBranchesForUser();
 
         return view('reports.sales-summary', compact(
-            'rows', 'from', 'to', 'branchId', 'branches', 'paymentMode', 'availablePaymentModes'
+            'rows', 'totals', 'from', 'to', 'branchId', 'branches'
         ));
     }
 

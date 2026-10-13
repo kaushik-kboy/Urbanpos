@@ -125,7 +125,7 @@ class StockTransferController extends Controller
             // concurrent transfers for the same items are serialized at the database row level.
             $this->assertStockAvailable($data['items'], $fromBranchId);
             $stockTransfer = StockTransfer::create([
-                'transfer_number' => $this->nextNumber(),
+                'transfer_number' => $this->nextNumber($fromBranchId, $data['header']['transfer_date'] ?? null),
                 'transfer_date' => $data['header']['transfer_date'],
                 'from_branch_id' => $fromBranchId,
                 'to_branch_id' => $toBranchId,
@@ -890,11 +890,15 @@ class StockTransferController extends Controller
         return null;
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('STF', \App\Models\StockTransfer::class, 'transfer_number', 5);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'stock_transfer',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
     private function formOptions(): array

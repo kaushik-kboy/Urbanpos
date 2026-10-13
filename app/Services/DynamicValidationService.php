@@ -54,8 +54,6 @@ class DynamicValidationService
     private array $fieldAliases = [
         'gstin' => 'gst_no',
         'gst_no' => 'gstin',
-        'item_code' => 'ean_upc_code',
-        'ean_upc_code' => 'item_code',
         'code' => 'erp_code',
         'erp_code' => 'code',
         'address' => 'address1',
@@ -178,7 +176,6 @@ class DynamicValidationService
                     // and treating them as required when is_required=false causes silent form failures.
                     $protectedKeys = [
                         'name',
-                        'item_code',
                         'code',
                         'erp_code',
                         'branch_id',

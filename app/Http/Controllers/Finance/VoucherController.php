@@ -87,7 +87,7 @@ class VoucherController extends Controller
             $this->assertBalanced($data['lines']);
 
             $voucher = JournalEntry::create(array_merge($data['header'], [
-                'voucher_number' => $this->nextNumber($data['header']['voucher_type']),
+                'voucher_number' => $this->nextNumber($data['header']['voucher_type'], $data['header']['branch_id'] ?? null, $data['header']['voucher_date'] ?? null),
                 'total_debit' => collect($data['lines'])->sum('debit'),
                 'total_credit' => collect($data['lines'])->sum('credit'),
             ]));
@@ -156,18 +156,22 @@ class VoucherController extends Controller
         }
     }
 
-    private function nextNumber(string $voucherType): string
+    private function nextNumber(string $voucherType, ?int $branchId = null, ?string $date = null): string
     {
-        $prefix = match ($voucherType) {
-            'Payment' => 'PMT',
-            'Receipt' => 'RCT',
-            'Contra' => 'CTR',
-            default => 'JV',
+        $docType = match ($voucherType) {
+            'Payment' => 'voucher_payment',
+            'Receipt' => 'voucher_receipt',
+            'Contra'  => 'voucher_contra',
+            default   => 'voucher_journal',
         };
 
-        $next = $this->numbering->next('voucher:'.$voucherType);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
-        return $prefix.'-'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        return $this->numbering->generate(
+            $docType,
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
     private function formOptions(): array

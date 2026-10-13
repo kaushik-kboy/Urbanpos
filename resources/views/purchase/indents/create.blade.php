@@ -811,7 +811,7 @@
 
                 if (validRows === 0) {
                     e.preventDefault();
-                    alert('Pehle item add karein. Please add at least one item before saving.');
+                    alert('Please add at least one item before saving.');
                     $('#indent-items-body tr.indent-row:first .indent-item-code').focus();
                     return false;
                 }

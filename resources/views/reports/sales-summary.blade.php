@@ -1,29 +1,93 @@
 @extends('adminlte::page')
 
-@section('title', 'Daily Sales Summary')
+@section('title', 'Daily Sales Summary (Store Wise)')
 
 @section('content_header')
-    <h1>Daily Sales Summary [Store Wise]</h1>
+    <div class="d-flex justify-content-between align-items-center py-1">
+        <div>
+            <h1 class="h4 font-weight-bold text-dark mb-0">
+                <i class="fas fa-store-alt text-primary mr-1"></i> Daily Sales Summary (Store Wise)
+            </h1>
+            <small class="text-muted">Comprehensive multi-tender store-wise daily billing, tax, and tender reconciliation report</small>
+        </div>
+        <div>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success font-weight-bold shadow-sm mr-1">
+                <i class="fas fa-file-excel mr-1"></i> Export Excel
+            </a>
+            <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success font-weight-bold shadow-sm mr-1">
+                <i class="fas fa-file-csv mr-1"></i> Export CSV
+            </a>
+            <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm">
+                <i class="fas fa-print mr-1"></i> Print
+            </button>
+        </div>
+    </div>
 @stop
 
 @section('content')
-    <div class="card card-primary card-outline">
-        <div class="card-header py-2 d-flex justify-content-between align-items-center">
-            <h3 class="card-title font-weight-bold text-muted small mb-0"><i class="fas fa-chart-bar mr-1"></i> Summary</h3>
-            <div class="card-tools d-flex align-items-center ml-auto">
-                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary mr-2"><i class="fas fa-print mr-1"></i> Print</button>
-                <a href="{{ request()->fullUrlWithQuery(['export' => 'excel', 'page' => null]) }}" class="btn btn-sm btn-success mr-2 font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</a>
-                <button type="button" onclick="exportTableToCSV('sales-summary-table', 'sales-summary-report')" class="btn btn-sm btn-outline-success mr-2"><i class="fas fa-file-csv mr-1"></i> Export CSV</button>
-                <x-table-column-customizer table-key="reports.sales-summary" table-id="sales-summary-table" button-class="btn btn-sm btn-light border text-secondary" />
+    {{-- KPI Cards Row --}}
+    <div class="row g-2 mb-3">
+        <div class="col-md-2 col-sm-4 col-6">
+            <div class="card bg-gradient-info text-white shadow-sm mb-2 mb-md-0 border-0">
+                <div class="card-body p-2 text-center">
+                    <div class="small font-weight-bold text-white-50 text-uppercase">Total Stores</div>
+                    <div class="h5 font-weight-bold mb-0">{{ $rows->pluck('store')->unique()->count() }}</div>
+                </div>
             </div>
         </div>
-        <div class="card-body">
-            <form method="GET" class="form-inline mb-3">
-                <label class="mr-2 font-weight-bold">From</label>
+        <div class="col-md-2 col-sm-4 col-6">
+            <div class="card bg-gradient-primary text-white shadow-sm mb-2 mb-md-0 border-0">
+                <div class="card-body p-2 text-center">
+                    <div class="small font-weight-bold text-white-50 text-uppercase">Total Bills</div>
+                    <div class="h5 font-weight-bold mb-0">{{ number_format($totals->total_bills ?? 0) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-6">
+            <div class="card bg-gradient-success text-white shadow-sm mb-2 mb-md-0 border-0">
+                <div class="card-body p-2 text-center">
+                    <div class="small font-weight-bold text-white-50 text-uppercase">Bill Amount</div>
+                    <div class="h5 font-weight-bold mb-0">₹{{ number_format($totals->bill_amount ?? 0, 2) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-6">
+            <div class="card bg-gradient-warning text-white shadow-sm mb-2 mb-md-0 border-0">
+                <div class="card-body p-2 text-center">
+                    <div class="small font-weight-bold text-white-50 text-uppercase">Total Tax</div>
+                    <div class="h5 font-weight-bold mb-0">₹{{ number_format($totals->tax ?? 0, 2) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-6">
+            <div class="card bg-gradient-danger text-white shadow-sm mb-2 mb-md-0 border-0">
+                <div class="card-body p-2 text-center">
+                    <div class="small font-weight-bold text-white-50 text-uppercase">Disc. Amount</div>
+                    <div class="h5 font-weight-bold mb-0">₹{{ number_format($totals->disc_amount ?? 0, 2) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4 col-6">
+            <div class="card bg-gradient-secondary text-white shadow-sm mb-2 mb-md-0 border-0">
+                <div class="card-body p-2 text-center">
+                    <div class="small font-weight-bold text-white-50 text-uppercase">Gross Profit</div>
+                    <div class="h5 font-weight-bold mb-0">₹{{ number_format($totals->profit ?? 0, 2) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-primary card-outline shadow-sm">
+        <div class="card-body p-3">
+            {{-- Filter Bar --}}
+            <form method="GET" class="form-inline mb-3 align-items-center">
+                <label class="mr-2 font-weight-bold small text-muted"><i class="far fa-calendar-alt mr-1"></i> From</label>
                 <input type="date" name="from" value="{{ $from }}" class="form-control form-control-sm mr-3">
-                <label class="mr-2 font-weight-bold">To</label>
+
+                <label class="mr-2 font-weight-bold small text-muted"><i class="far fa-calendar-alt mr-1"></i> To</label>
                 <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm mr-3">
-                <label class="mr-2 font-weight-bold">Location</label>
+
+                <label class="mr-2 font-weight-bold small text-muted"><i class="fas fa-store mr-1"></i> Location</label>
                 <select name="branch_id" class="form-control form-control-sm mr-3" {{ count($branches) <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
                     @if(count($branches) > 1)
                         <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Locations</option>
@@ -32,87 +96,126 @@
                         <option value="{{ $id }}" @selected((string) $branchId === (string) $id)>{{ $name }}</option>
                     @endforeach
                 </select>
-                <label class="mr-2 font-weight-bold"><i class="fas fa-wallet mr-1 text-primary"></i> Payment Mode</label>
-                <select name="payment_mode" class="form-control form-control-sm mr-3">
-                    <option value="all" {{ (!request('payment_mode') || request('payment_mode') === 'all') ? 'selected' : '' }}>All Modes</option>
-                    @if(isset($availablePaymentModes))
-                        @foreach ($availablePaymentModes as $pm)
-                            <option value="{{ $pm }}" @selected(request('payment_mode') === $pm)>{{ $pm }}</option>
-                        @endforeach
-                    @else
-                        <option value="Cash" @selected(request('payment_mode') === 'Cash')>Cash</option>
-                        <option value="Card" @selected(request('payment_mode') === 'Card')>Card</option>
-                        <option value="UPI" @selected(request('payment_mode') === 'UPI')>UPI</option>
-                        <option value="Split" @selected(request('payment_mode') === 'Split')>Split</option>
-                    @endif
-                </select>
-                <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
-                <a href="{{ url()->current() }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
-                <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold mr-1 shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
-                <button type="button" class="btn btn-outline-info btn-sm font-weight-bold" onclick="window.print()"><i class="fas fa-print mr-1"></i> Print Report</button>
+
+                <button type="submit" class="btn btn-primary btn-sm font-weight-bold mr-1 shadow-sm">
+                    <i class="fas fa-filter mr-1"></i> Apply Filter
+                </button>
+                <a href="{{ url()->current() }}" class="btn btn-outline-secondary btn-sm mr-2 font-weight-bold">
+                    <i class="fas fa-undo mr-1"></i> Reset
+                </a>
             </form>
 
-            <table id="sales-summary-table" class="table table-sm table-striped">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Store</th>
-                        <th>Payment Mode</th>
-                        <th class="text-right">Total Bills</th>
-                        <th class="text-right">Bill Amount</th>
-                        <th class="text-right">Discount</th>
-                        <th class="text-right">GST</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($rows as $row)
+            {{-- 28-Column Full Detail Table --}}
+            <div class="table-responsive border rounded" style="max-height: 650px; overflow-x: auto; overflow-y: auto;">
+                <table id="sales-summary-table" class="table table-bordered table-striped table-hover table-sm text-nowrap mb-0" style="font-size: 13px;">
+                    <thead class="thead-dark position-sticky" style="top: 0; z-index: 2;">
                         <tr>
-                            <td>{{ \Carbon\Carbon::parse($row->bill_date)->format('d-m-Y') }}</td>
-                            <td>{{ $branches[$row->branch_id] ?? '' }}</td>
-                            <td>
-                                @if(!empty($row->payment_mode) && str_contains($row->payment_mode, 'Split'))
-                                    <span class="badge badge-warning text-dark font-weight-bold px-2 py-1">
-                                        <i class="fas fa-layer-group mr-1"></i> {{ $row->payment_mode }}
-                                    </span>
-                                @elseif(!empty($row->payment_mode) && $row->payment_mode === 'Cash')
-                                    <span class="badge badge-success font-weight-bold px-2 py-1">
-                                        <i class="fas fa-money-bill-wave mr-1"></i> Cash
-                                    </span>
-                                @elseif(!empty($row->payment_mode) && $row->payment_mode === 'Card')
-                                    <span class="badge badge-info font-weight-bold px-2 py-1">
-                                        <i class="fas fa-credit-card mr-1"></i> Card
-                                    </span>
-                                @elseif(!empty($row->payment_mode) && $row->payment_mode === 'UPI')
-                                    <span class="badge badge-primary font-weight-bold px-2 py-1">
-                                        <i class="fas fa-qrcode mr-1"></i> UPI
-                                    </span>
-                                @else
-                                    <span class="badge badge-secondary font-weight-bold px-2 py-1">
-                                        {{ $row->payment_mode ?? 'All' }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="text-right">{{ $row->bill_count }}</td>
-                            <td class="text-right">{{ number_format($row->total_amount, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->total_disc, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->total_gst, 2) }}</td>
+                            <th class="align-middle">Store</th>
+                            <th class="align-middle">Date</th>
+                            <th class="align-middle text-right bg-primary text-white">Bill amount</th>
+                            <th class="align-middle text-right">Tax</th>
+                            <th class="align-middle text-right">Disc. Amount</th>
+                            <th class="align-middle text-right">Scheme amount</th>
+                            <th class="align-middle text-right">Cash</th>
+                            <th class="align-middle text-right">Card</th>
+                            <th class="align-middle text-right">Cheque</th>
+                            <th class="align-middle text-right">Coupon</th>
+                            <th class="align-middle text-right">Wallet Amt</th>
+                            <th class="align-middle text-right">Credit</th>
+                            <th class="align-middle text-right">Due</th>
+                            <th class="align-middle text-right">Compliment</th>
+                            <th class="align-middle text-right">Approval</th>
+                            <th class="align-middle text-right">Advance adjusted</th>
+                            <th class="align-middle text-right">Rounded off</th>
+                            <th class="align-middle text-right">Profit</th>
+                            <th class="align-middle text-right">Item discount</th>
+                            <th class="align-middle text-right">Bill discount</th>
+                            <th class="align-middle text-right">Freight</th>
+                            <th class="align-middle text-right bg-info text-white">Total bills</th>
+                            <th class="align-middle text-right">GST TaxAmt</th>
+                            <th class="align-middle text-right">SGST TaxAmt</th>
+                            <th class="align-middle text-right">CGST TaxAmt</th>
+                            <th class="align-middle text-right">IGST TaxAmt</th>
+                            <th class="align-middle text-right">GST Cess Amt</th>
+                            <th class="align-middle text-right">Redeemed Point</th>
                         </tr>
-                    @empty
-                        <tr><td colspan="7" class="text-center text-muted py-3">No sales in this period.</td></tr>
-                    @endforelse
-                </tbody>
-                @if ($rows->isNotEmpty())
-                    <tfoot>
-                        <tr class="font-weight-bold">
-                            <td colspan="3">NetTotal</td>
-                            <td class="text-right">{{ $rows->sum('bill_count') }}</td>
-                            <td class="text-right">{{ number_format($rows->sum('total_amount'), 2) }}</td>
-                            <td class="text-right">{{ number_format($rows->sum('total_disc'), 2) }}</td>
-                            <td class="text-right">{{ number_format($rows->sum('total_gst'), 2) }}</td>
-                        </tr>
-                    </tfoot>
-                @endif
-            </table>
+                    </thead>
+                    <tbody>
+                        @forelse ($rows as $row)
+                            <tr>
+                                <td class="font-weight-bold text-dark">{{ $row->store }}</td>
+                                <td>{{ \Carbon\Carbon::parse($row->bill_date)->format('d-m-Y') }}</td>
+                                <td class="text-right font-weight-bold text-primary">{{ number_format($row->bill_amount, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->tax, 2) }}</td>
+                                <td class="text-right text-danger">{{ number_format($row->disc_amount, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->scheme_amount, 2) }}</td>
+                                <td class="text-right text-success font-weight-bold">{{ number_format($row->cash, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->card, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->cheque, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->coupon, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->wallet_amt, 2) }}</td>
+                                <td class="text-right text-warning font-weight-bold">{{ number_format($row->credit, 2) }}</td>
+                                <td class="text-right text-danger font-weight-bold">{{ number_format($row->due, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->compliment, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->approval, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->advance_adjusted, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->rounded_off, 2) }}</td>
+                                <td class="text-right text-info font-weight-bold">{{ number_format($row->profit, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->item_discount, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->bill_discount, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->freight, 2) }}</td>
+                                <td class="text-right font-weight-bold">{{ $row->total_bills }}</td>
+                                <td class="text-right">{{ number_format($row->gst_tax_amt, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->sgst_tax_amt, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->cgst_tax_amt, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->igst_tax_amt, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->gst_cess_amt, 2) }}</td>
+                                <td class="text-right">{{ number_format($row->redeemed_point, 2) }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="28" class="text-center text-muted py-4 font-weight-bold">
+                                    <i class="fas fa-info-circle mr-1 text-info"></i> No sales records found for the selected date range and store filter.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                    @if ($rows->isNotEmpty())
+                        <tfoot class="thead-dark position-sticky" style="bottom: 0; z-index: 2;">
+                            <tr class="font-weight-bold bg-dark text-white">
+                                <td class="align-middle">Grand Total</td>
+                                <td class="align-middle text-muted">{{ $rows->count() }} Days</td>
+                                <td class="text-right align-middle bg-primary text-white font-weight-bold">{{ number_format($totals->bill_amount, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->tax, 2) }}</td>
+                                <td class="text-right align-middle text-danger">{{ number_format($totals->disc_amount, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->scheme_amount, 2) }}</td>
+                                <td class="text-right align-middle text-success font-weight-bold">{{ number_format($totals->cash, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->card, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->cheque, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->coupon, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->wallet_amt, 2) }}</td>
+                                <td class="text-right align-middle text-warning font-weight-bold">{{ number_format($totals->credit, 2) }}</td>
+                                <td class="text-right align-middle text-danger font-weight-bold">{{ number_format($totals->due, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->compliment, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->approval, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->advance_adjusted, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->rounded_off, 2) }}</td>
+                                <td class="text-right align-middle text-info font-weight-bold">{{ number_format($totals->profit, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->item_discount, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->bill_discount, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->freight, 2) }}</td>
+                                <td class="text-right align-middle bg-info text-white font-weight-bold">{{ number_format($totals->total_bills) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->gst_tax_amt, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->sgst_tax_amt, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->cgst_tax_amt, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->igst_tax_amt, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->gst_cess_amt, 2) }}</td>
+                                <td class="text-right align-middle">{{ number_format($totals->redeemed_point, 2) }}</td>
+                            </tr>
+                        </tfoot>
+                    @endif
+                </table>
+            </div>
         </div>
     </div>
 @stop

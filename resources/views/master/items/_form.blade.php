@@ -59,22 +59,22 @@
                 <x-select name="product_type" label="Product Type" :options="$prodTypes" :selected="$i->product_type ?? 'Standard'" />
             </div>
             <div class="field-wrapper col-md-6" data-field="cost_price" data-label="Cost Price" data-default-order="7" data-core="1">
-                <x-field name="cost_price" label="Cost Price" type="number" step="0.01" :value="$i->cost_price ?? 0" />
+                <x-field name="cost_price" label="Cost Price" type="number" step="0.01" :value="$i->cost_price ?? ''" />
             </div>
             <div class="field-wrapper col-md-6" data-field="landing_cost" data-label="Landing Cost" data-default-order="8">
-                <x-field name="landing_cost" label="Landing Cost" type="number" step="0.01" :value="$i->landing_cost ?? 0" />
+                <x-field name="landing_cost" label="Landing Cost" type="number" step="0.01" :value="$i->landing_cost ?? ''" />
             </div>
             <div class="field-wrapper col-md-6" data-field="sell_price" data-label="Sell Price" data-default-order="9" data-core="1">
-                <x-field name="sell_price" label="Sell Price" type="number" step="0.01" :value="$i->sell_price ?? 0" />
+                <x-field name="sell_price" label="Sell Price" type="number" step="0.01" :value="$i->sell_price ?? ''" />
             </div>
             <div class="field-wrapper col-md-6" data-field="mrp" data-label="MRP (Maximum Retail Price)" data-default-order="10" data-core="1">
-                <x-field name="mrp" label="MRP (Maximum Retail Price)" type="number" step="0.01" :value="$i->mrp ?? 0" />
+                <x-field name="mrp" label="MRP (Maximum Retail Price)" type="number" step="0.01" :value="$i->mrp ?? ''" />
             </div>
             <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="11">
-                <x-bool-select name="status" label="Status" :value="$i->status ?? true" />
+                <x-bool-select name="status" label="Status" :value="$i?->status" placeholder="Select Status" />
             </div>
             <div class="field-wrapper col-md-6" data-field="store_pickup" data-label="Store Pickup" data-default-order="12">
-                <x-bool-select name="store_pickup" label="Store Pickup" :value="$i->store_pickup ?? false" true-label="Yes" false-label="No" />
+                <x-bool-select name="store_pickup" label="Store Pickup" :value="$i?->store_pickup" true-label="Yes" false-label="No" placeholder="Select Store Pickup" />
             </div>
         </div>
     </div>

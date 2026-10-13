@@ -1600,7 +1600,7 @@
 
             if (validCount === 0) {
                 e.preventDefault();
-                alert('Pehle item add karein. Please add at least one item before saving.');
+                alert('Please add at least one item before saving.');
                 $('#items-body tr.item-row:first .item-code-input').focus();
                 return false;
             }

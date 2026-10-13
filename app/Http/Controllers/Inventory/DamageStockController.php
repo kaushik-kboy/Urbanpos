@@ -152,7 +152,7 @@ class DamageStockController extends Controller
             $lines = $this->computeLines($data['items']);
 
             $damageStock = DamageStock::create(array_merge($data['header'], [
-                'damage_number' => $this->nextNumber(),
+                'damage_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['entry_date'] ?? null),
                 'total_qty' => collect($lines)->sum('qty'),
                 'total_cost' => collect($lines)->sum('net_amount'),
             ]));
@@ -389,11 +389,15 @@ class DamageStockController extends Controller
         }
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('DMG', \App\Models\DamageStock::class, 'damage_number', 5);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'damage_stock',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
     private function formOptions(): array

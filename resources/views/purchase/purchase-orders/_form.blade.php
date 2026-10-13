@@ -1104,7 +1104,7 @@
                 let qtyVal = parseFloat($lastRow.find('.po-qty').val()) || 0;
 
                 if (!itemId) {
-                    let msg = 'Pehle current row me item select karein.';
+                    let msg = 'Please select an item in the current row first.';
                     if (window.toastr) toastr.warning(msg, 'Incomplete Row');
                     else alert(msg);
                     $lastRow.find('.po-item-code').focus();
@@ -1112,7 +1112,7 @@
                 }
 
                 if (qtyVal <= 0) {
-                    let msg = 'Pehle item ki valid quantity enter karein.';
+                    let msg = 'Please enter a valid quantity for the item first.';
                     if (window.toastr) toastr.warning(msg, 'Quantity Required');
                     else alert(msg);
                     $lastRow.find('.po-qty').focus().select();
@@ -1324,9 +1324,9 @@
             if (validCount === 0) {
                 e.preventDefault();
                 if (window.toastr) {
-                    toastr.warning('Pehle item add karein. Please add at least one item before saving.', 'No Items Added');
+                    toastr.warning('Please add at least one item before saving.', 'No Items Added');
                 } else {
-                    alert('Pehle item add karein. Please add at least one item before saving.');
+                    alert('Please add at least one item before saving.');
                 }
                 $('#po-items-body tr:first .po-item-code').focus();
                 return false;

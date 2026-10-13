@@ -24,12 +24,22 @@ class ItemCategoryController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', (bool) $request->input('status'));
+        $statusInput = $request->input('status');
+        if ($statusInput !== null && $statusInput !== '' && strtolower((string) $statusInput) !== 'all') {
+            if ($statusInput === '1' || $statusInput === 'active' || (int) $statusInput === 1) {
+                $query->where('status', 1);
+            } elseif ($statusInput === '0' || $statusInput === 'inactive' || (int) $statusInput === 0) {
+                $query->where('status', 0);
+            }
         }
 
-        if ($request->filled('is_mandatory')) {
-            $query->where('is_mandatory', (bool) $request->input('is_mandatory'));
+        $mandatoryInput = $request->input('is_mandatory');
+        if ($mandatoryInput !== null && $mandatoryInput !== '' && strtolower((string) $mandatoryInput) !== 'all') {
+            if ($mandatoryInput === '1' || $mandatoryInput === 'yes' || (int) $mandatoryInput === 1) {
+                $query->where('is_mandatory', 1);
+            } elseif ($mandatoryInput === '0' || $mandatoryInput === 'no' || (int) $mandatoryInput === 0) {
+                $query->where('is_mandatory', 0);
+            }
         }
 
         $itemCategories = $query->orderBy('name')->paginate($this->perPage())->withQueryString();

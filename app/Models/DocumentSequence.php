@@ -36,6 +36,16 @@ class DocumentSequence extends Model
         'is_active'       => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (DocumentSequence $sequence) {
+            if (empty($sequence->series)) {
+                $base = 'doc:' . ($sequence->document_type ?? 'seq') . ($sequence->branch_id ? ":{$sequence->branch_id}" : '');
+                $sequence->series = $base . ':' . uniqid();
+            }
+        });
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);

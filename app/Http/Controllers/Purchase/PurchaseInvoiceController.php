@@ -223,7 +223,7 @@ class PurchaseInvoiceController extends Controller
             $supplierGstin = \App\Models\Supplier::where('id', $data['header']['supplier_id'])->value('gst_no');
 
             $purchaseInvoice = PurchaseInvoice::create(array_merge($data['header'], $totals, [
-                'invoice_number' => $this->nextNumber(),
+                'invoice_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['invoice_date'] ?? null),
                 'supplier_gstin' => $supplierGstin ?: null,
             ]));
 
@@ -449,17 +449,33 @@ class PurchaseInvoiceController extends Controller
         }
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('PINV', \App\Models\PurchaseInvoice::class, 'invoice_number', 5);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'purchase_invoice',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
-    private function nextGrnNumber(bool $consume = true): string
+    private function nextGrnNumber(bool $consume = true, ?int $branchId = null, ?string $date = null): string
     {
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('GRN', \App\Models\PurchaseInvoice::class, 'grn_number', 6, $consume);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        if (! $consume) {
+            return app(\App\Services\Accounting\DocumentNumberingService::class)->preview(
+                'purchase_receipt_note',
+                $branchId ? (int) $branchId : null
+            );
+        }
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'purchase_receipt_note',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
     public function itemList(Request $request)

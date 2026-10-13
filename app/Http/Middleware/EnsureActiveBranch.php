@@ -35,8 +35,8 @@ class EnsureActiveBranch
                 }
             }
 
-            // Auto-heal incoming form/query branch_id if present but invalid/stale/empty
-            if ($request->has('branch_id')) {
+            // Auto-heal incoming query/filter branch_id if present but invalid/stale/empty on GET
+            if ($request->isMethod('GET') && $request->has('branch_id')) {
                 $rawBranch = $request->input('branch_id');
                 if (empty($rawBranch) || $rawBranch === 'all' || $rawBranch === '0' || ! Branch::where('id', $rawBranch)->where('status', true)->exists()) {
                     $healedBranchId = session('active_branch_id') ?: $firstActiveBranchId;

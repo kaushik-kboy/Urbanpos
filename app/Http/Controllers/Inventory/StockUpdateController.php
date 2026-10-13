@@ -190,7 +190,7 @@ class StockUpdateController extends Controller
 
         $stockUpdate = DB::transaction(function () use ($data) {
             $stockUpdate = StockUpdate::create(array_merge($data['header'], [
-                'update_number' => $this->nextNumber(),
+                'update_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['entry_date'] ?? null),
                 'status' => 'Pending',
             ]));
 
@@ -324,11 +324,15 @@ class StockUpdateController extends Controller
         }
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('STKU', \App\Models\StockUpdate::class, 'update_number', 5);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'stock_update',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 
     private function formOptions(): array

@@ -27,19 +27,25 @@ class UserController extends Controller
             });
         }
 
-        if ($request->filled('role')) {
-            $query->whereHas('roles', function ($rq) use ($request) {
-                $rq->where('name', $request->role);
+        $role = $request->input('role');
+        if ($role !== null && $role !== '' && strtolower((string) $role) !== 'all') {
+            $query->whereHas('roles', function ($rq) use ($role) {
+                $rq->where('name', $role);
             });
         }
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
+        $branchId = $request->input('branch_id');
+        if ($branchId !== null && $branchId !== '' && strtolower((string) $branchId) !== 'all') {
+            $query->where('branch_id', $branchId);
         }
 
-        if ($request->filled('status')) {
-            $isActive = in_array($request->status, ['active', '1', 1], true);
-            $query->where('is_active', $isActive);
+        $statusInput = $request->input('status');
+        if ($statusInput !== null && $statusInput !== '' && strtolower((string) $statusInput) !== 'all') {
+            if ($statusInput === '1' || $statusInput === 'active' || (int) $statusInput === 1) {
+                $query->where('is_active', true);
+            } elseif ($statusInput === '0' || $statusInput === 'inactive' || (int) $statusInput === 0) {
+                $query->where('is_active', false);
+            }
         }
 
         $users = $query->orderBy('name')->paginate($this->perPage())->withQueryString();

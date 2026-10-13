@@ -28,12 +28,18 @@ class BranchController extends Controller
             });
         }
 
-        if ($request->filled('business_type')) {
-            $query->where('business_type', $request->business_type);
+        $bType = $request->input('business_type');
+        if ($bType !== null && $bType !== '' && strtolower((string) $bType) !== 'all') {
+            $query->where('business_type', $bType);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', (bool)$request->status);
+        $statusInput = $request->input('status');
+        if ($statusInput !== null && $statusInput !== '' && strtolower((string) $statusInput) !== 'all') {
+            if ($statusInput === '1' || $statusInput === 'active' || (int) $statusInput === 1) {
+                $query->where('status', 1);
+            } elseif ($statusInput === '0' || $statusInput === 'inactive' || (int) $statusInput === 0) {
+                $query->where('status', 0);
+            }
         }
 
         $allowedSorts = [

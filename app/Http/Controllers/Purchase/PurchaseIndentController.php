@@ -150,7 +150,7 @@ class PurchaseIndentController extends Controller
                 ];
             }
 
-            $indentNumber = $this->nextNumber();
+            $indentNumber = $this->nextNumber($data['branch_id'] ?? null, $data['indent_date'] ?? null);
 
             $indent = PurchaseIndent::create([
                 'indent_number' => $indentNumber,
@@ -387,10 +387,14 @@ class PurchaseIndentController extends Controller
         ]);
     }
 
-    private function nextNumber(): string
+    private function nextNumber(?int $branchId = null, ?string $date = null): string
     {
-        // Atomic: serialised on a counter row inside the store transaction (was max(id)+1, racy).
-        return app(\App\Services\Accounting\DocumentNumberingService::class)
-            ->nextPrefixed('IND', \App\Models\PurchaseIndent::class, 'indent_number', 5);
+        $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+            'purchase_indent',
+            $branchId ? (int) $branchId : null,
+            $date
+        );
     }
 }

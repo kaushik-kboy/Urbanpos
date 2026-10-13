@@ -39,36 +39,36 @@
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Brand</label>
                     <select name="brand_id" class="form-control form-control-sm">
-                        <option value="">All Brands</option>
+                        <option value="" {{ request('brand_id') === '' || request('brand_id') === 'all' || !request()->has('brand_id') ? 'selected' : '' }}>All Brands</option>
                         @foreach ($brands as $bId => $bName)
-                            <option value="{{ $bId }}" {{ request('brand_id') == $bId ? 'selected' : '' }}>{{ $bName }}</option>
+                            <option value="{{ $bId }}" {{ request('brand_id') !== '' && request('brand_id') !== 'all' && (string)request('brand_id') === (string)$bId ? 'selected' : '' }}>{{ $bName }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Category</label>
                     <select name="category_value_id" class="form-control form-control-sm">
-                        <option value="">All Categories</option>
+                        <option value="" {{ request('category_value_id') === '' || request('category_value_id') === 'all' || !request()->has('category_value_id') ? 'selected' : '' }}>All Categories</option>
                         @foreach ($categories as $cId => $cName)
-                            <option value="{{ $cId }}" {{ request('category_value_id') == $cId ? 'selected' : '' }}>{{ $cName }}</option>
+                            <option value="{{ $cId }}" {{ request('category_value_id') !== '' && request('category_value_id') !== 'all' && (string)request('category_value_id') === (string)$cId ? 'selected' : '' }}>{{ $cName }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Supplier</label>
                     <select name="supplier_id" class="form-control form-control-sm">
-                        <option value="">All Suppliers</option>
+                        <option value="" {{ request('supplier_id') === '' || request('supplier_id') === 'all' || !request()->has('supplier_id') ? 'selected' : '' }}>All Suppliers</option>
                         @foreach ($suppliers as $sId => $sName)
-                            <option value="{{ $sId }}" {{ request('supplier_id') == $sId ? 'selected' : '' }}>{{ $sName }}</option>
+                            <option value="{{ $sId }}" {{ request('supplier_id') !== '' && request('supplier_id') !== 'all' && (string)request('supplier_id') === (string)$sId ? 'selected' : '' }}>{{ $sName }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Status</label>
                     <select name="status" class="form-control form-control-sm">
-                        <option value="">All (Active & Inactive)</option>
-                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active Only</option>
-                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive Only</option>
+                        <option value="" {{ request('status') === '' || request('status') === 'all' || !request()->has('status') ? 'selected' : '' }}>All (Active & Inactive)</option>
+                        <option value="1" {{ request('status') === '1' || request('status') === 'active' ? 'selected' : '' }}>Active Only</option>
+                        <option value="0" {{ request('status') === '0' || request('status') === 'inactive' ? 'selected' : '' }}>Inactive Only</option>
                     </select>
                 </div>
                 <div class="col-md-1 col-sm-12 mb-2">
