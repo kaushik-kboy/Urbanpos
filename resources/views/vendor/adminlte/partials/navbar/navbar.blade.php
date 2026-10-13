@@ -37,7 +37,8 @@
             @php
                 $user = auth()->user();
                 $allBranches = \App\Models\Branch::where('status', true)->orderBy('id')->get();
-                if ($user->branch_id !== null) {
+                $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+                if (! $isGlobalAdmin && $user->branch_id !== null) {
                     $activeBranchId = (int) $user->branch_id;
                     session(['active_branch_id' => $activeBranchId]);
                 } else {
@@ -48,7 +49,7 @@
                     } else {
                         $activeBranchId = session('active_branch_id');
                         if (!$activeBranchId || !$allBranches->contains('id', (int)$activeBranchId)) {
-                            $activeBranchId = $allBranches->firstWhere('id', 3)?->id ?? $allBranches->first()?->id ?? 3;
+                            $activeBranchId = ($user?->branch_id && $allBranches->contains('id', (int)$user->branch_id)) ? (int)$user->branch_id : ($allBranches->first()?->id ?? 1);
                             session(['active_branch_id' => $activeBranchId]);
                         }
                     }
@@ -59,7 +60,7 @@
                 <span class="badge badge-primary px-2 py-1 mr-1 font-weight-bold" style="font-size: 0.85rem;">
                     <i class="fas fa-store mr-1"></i> Branch:
                 </span>
-                @if ($user->branch_id !== null)
+                @if (! $isGlobalAdmin && $user->branch_id !== null)
                     <span class="badge badge-light border px-2 py-1 font-weight-bold text-dark" style="font-size: 0.85rem;">
                         {{ $user->branch?->name ?? ($activeBranchObj?->name ?? 'Assigned Branch') }}
                     </span>

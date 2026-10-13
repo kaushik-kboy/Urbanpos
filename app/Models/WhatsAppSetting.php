@@ -12,6 +12,7 @@ class WhatsAppSetting extends Model
     protected $table = 'whats_app_settings';
 
     protected $fillable = [
+        'branch_id',
         'api_url',
         'app_key',
         'auth_key',
@@ -20,6 +21,7 @@ class WhatsAppSetting extends Model
         'header_title',
         'footer_message',
         'support_phone',
+        'custom_message',
         'auto_send_on_bill',
         'is_active',
     ];
@@ -29,22 +31,59 @@ class WhatsAppSetting extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Get or create the singleton WhatsApp settings row.
-     */
-    public static function current(): self
+    public function branch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return static::firstOrCreate([], [
-            'api_url' => config('services.chatonclick.url') ?: 'https://chatonclick.com',
-            'app_key' => config('services.chatonclick.appkey') ?: '01cbe6e8-abf4-449c-a40f-46e83709aa63',
-            'auth_key' => config('services.chatonclick.authkey') ?: 'HrvnRKqlZGpJFwVRMDEhFXT8NStSHnmd12',
-            'template_name' => config('services.chatonclick.template_name') ?: 'urban_tax_invoice',
-            'template_lang' => config('services.chatonclick.template_lang') ?: 'en_US',
-            'header_title' => 'URBAN PETS',
-            'footer_message' => 'Have an Awesome Day!',
-            'support_phone' => '7383056626',
-            'auto_send_on_bill' => true,
-            'is_active' => true,
-        ]);
+        return $this->belongsTo(Branch::class);
+    }
+
+    /**
+     * Get or create WhatsApp settings for a specific branch (or global).
+     */
+    public static function forBranch(?int $branchId = null): self
+    {
+        if ($branchId) {
+            $branchSetting = static::where('branch_id', $branchId)->first();
+            if ($branchSetting) {
+                return $branchSetting;
+            }
+        }
+
+        // Return global template if exists
+        $global = static::whereNull('branch_id')->first();
+        if ($global) {
+            return $global;
+        }
+
+        return static::current();
+    }
+
+    /**
+     * Get or create the singleton / global WhatsApp settings row.
+     */
+    public static function current(?int $branchId = null): self
+    {
+        if ($branchId) {
+            $branchSetting = static::where('branch_id', $branchId)->first();
+            if ($branchSetting) {
+                return $branchSetting;
+            }
+        }
+
+        return static::firstOrCreate(
+            ['branch_id' => null],
+            [
+                'api_url' => config('services.chatonclick.url') ?: 'https://chatonclick.com',
+                'app_key' => config('services.chatonclick.appkey') ?: '01cbe6e8-abf4-449c-a40f-46e83709aa63',
+                'auth_key' => config('services.chatonclick.authkey') ?: 'HrvnRKqlZGpJFwVRMDEhFXT8NStSHnmd12',
+                'template_name' => config('services.chatonclick.template_name') ?: 'urban_tax_invoice',
+                'template_lang' => config('services.chatonclick.template_lang') ?: 'en_US',
+                'header_title' => 'URBAN PETS',
+                'footer_message' => 'Have an Awesome Day!',
+                'support_phone' => '7383056626',
+                'custom_message' => null,
+                'auto_send_on_bill' => true,
+                'is_active' => true,
+            ]
+        );
     }
 }

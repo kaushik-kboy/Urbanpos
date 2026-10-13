@@ -26,7 +26,8 @@
         cash_received: 0,
         last_scan_time: 0,
         last_scan_code: '',
-        held_bills: []
+        held_bills: [],
+        last_added_idx: -1
     };
 
     function formatDmyDate(val) {
@@ -203,6 +204,11 @@
         // Scanner Barcode / Query input
         // Mouse click on barcode input opens item lookup popup
         scanInput.addEventListener('click', (e) => {
+            if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             if (typeof window.openPosItemSearchModal === 'function') {
                 window.openPosItemSearchModal(scanInput.value.trim());
             }
@@ -217,6 +223,9 @@
         scanInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+                    return;
+                }
                 const code = scanInput.value.trim();
                 if (code) {
                     processBarcodeScan(code);
@@ -227,6 +236,9 @@
                 }
             } else if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();
+                if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+                    return;
+                }
                 const code = scanInput.value.trim();
                 if (code) {
                     processBarcodeScan(code);
@@ -426,49 +438,135 @@
             }
         });
 
+        // Check and strictly enforce that all previous cart items have filled Qty before advancing
+        function checkAndEnforceUnfilledQty(allowIdx = null) {
+            const unfilledIdx = state.cart.findIndex((c, i) => i !== allowIdx && (c.qty === '' || c.qty === null || c.qty === undefined || isNaN(parseFloat(c.qty)) || parseFloat(c.qty) <= 0));
+            if (unfilledIdx !== -1) {
+                const it = state.cart[unfilledIdx];
+                showNotification(`Pehle "${it.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                focusRowQty(unfilledIdx);
+                const $cell = $(`.pos-row-qty[data-idx="${unfilledIdx}"]`);
+                const $inp = $cell.find('input');
+                if ($inp.length) {
+                    $inp.addClass('is-invalid border-danger text-danger bg-warning-light');
+                    $inp.focus().select();
+                }
+                return false;
+            }
+            return true;
+        }
+        window.posCheckUnfilledQty = checkAndEnforceUnfilledQty;
+
+        // Focus Qty field helper - ensures input is rendered, focused, selected and scrolled into view
+        function focusRowQty(idx) {
+            if (idx === undefined || idx === null || isNaN(idx) || !state.cart[idx]) {
+                idx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+                if (idx < 0 || !state.cart[idx]) return;
+            }
+            window._posLastItemSelectTime = Date.now();
+            openQuantityInput(idx);
+            const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
+            const $inp = $cell.find('input');
+            if ($inp.length) {
+                if (document.activeElement && document.activeElement !== $inp[0]) {
+                    document.activeElement.blur();
+                }
+                $inp[0].focus();
+                $inp[0].select();
+                const row = $cell.closest('tr')[0];
+                if (row && typeof row.scrollIntoView === 'function') {
+                    row.scrollIntoView({ block: 'nearest' });
+                }
+            }
+        }
+        window.posFocusRowQty = focusRowQty;
+
         // Inline editing helpers & keyboard flow for Qty, Sell Price, Dis % and Dis Amt
         function openQuantityInput(idx) {
             if (isNaN(idx) || !state.cart[idx]) return;
             const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
             if (!$cell.length) return;
+            const item = state.cart[idx];
+            const currentVal = (item.qty === '' || item.qty === null || item.qty === undefined) ? '' : item.qty;
             if ($cell.find('input').length) {
                 const $existing = $cell.find('input');
+                if (currentVal !== '') {
+                    $existing.val(currentVal);
+                }
                 $existing.focus().select();
                 setTimeout(() => $existing.focus().select(), 20);
                 return;
             }
-            const item = state.cart[idx];
-            const currentVal = (item.qty === '' || item.qty === null || item.qty === undefined) ? '' : item.qty;
             $cell.html(`<input type="number" step="any" min="1" class="pos-row-input pos-qty-input pos-row-qty-input font-weight-bold text-center" style="height: 26px; width: 58px; padding: 1px 4px; font-size: 0.85rem;" value="${currentVal}" placeholder="Qty" data-idx="${idx}">`);
             const $input = $cell.find('input');
             $input.focus().select();
             setTimeout(() => $input.focus().select(), 20);
 
-            $input.on('blur', function () {
-                const rawVal = $(this).val().trim();
-                const val = parseFloat(rawVal);
-                if (rawVal === '' || isNaN(val) || val <= 0) {
-                    state.cart[idx].qty = '';
-                    $cell.html('<span class="text-danger font-weight-bold">Qty</span>');
-                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                    recalculateRow(idx, 'qty');
+            $input.on('blur', function (e) {
+                // If user clicked an action button (remove row, switch batch, modal, reset), don't trap them
+                const related = e.relatedTarget || document.activeElement;
+                if (related && $(related).closest('.btn, button, .modal, #posTableBody, .pos-batch-row, .btn-remove-item').length) {
+                    const rawVal = $(this).val().trim();
+                    const val = parseFloat(rawVal);
+                    if (!isNaN(val) && val > 0 && !isItemStockExceeded(item, val, idx)) {
+                        state.cart[idx].qty = val;
+                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                        recalculateRow(idx, 'qty');
+                    }
                     return;
                 }
 
-                if (isItemStockExceeded(item, val, idx)) {
+                // Prevent newly opened Qty input from accidental collapse while modals are closing or backdrop is animating
+                if (window._posSuppressQtyBlur || (Date.now() - (window._posLastItemSelectTime || 0) < 600)) {
+                    setTimeout(() => {
+                        if ($cell.find('input').length) {
+                            $cell.find('input').focus().select();
+                        }
+                    }, 50);
+                    return;
+                }
+
+                const rawVal = $(this).val().trim();
+                let val = parseFloat(rawVal);
+                if (rawVal === '' || isNaN(val) || val <= 0) {
                     state.cart[idx].qty = '';
-                    const stock = getItemStock(item);
-                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
-                    const availRemaining = Math.max(0, stock - otherRowsQty);
-                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-                    $cell.html(`<span class="text-danger font-weight-bold" title="Insufficient stock: max ${availDisp} available">Exceeds Stock (${availDisp}) ⚠️</span>`);
+                    $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
                     $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                    showNotification(`Insufficient stock for "${item.name}". Only ${availDisp} units available (entered ${val}). Qty not accepted!`, 'danger');
+                    showNotification(`Pehle "${item.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'warning');
                     if (typeof sound !== 'undefined' && sound.error) sound.error();
                     recalculateRow(idx, 'qty');
                     return;
                 }
 
+                if (isItemStockExceeded(item, val, idx)) {
+                    const stock = getItemStock(item);
+                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                    const availRemaining = Math.max(0, stock - otherRowsQty);
+                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+
+                    if (availRemaining > 0) {
+                        // Auto-cap to maximum available stock so user is not deadlocked
+                        val = availRemaining;
+                        $(this).val(val);
+                        state.cart[idx].qty = val;
+                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                        $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
+                        recalculateRow(idx, 'qty');
+                        showNotification(`Only ${availDisp} units available for "${item.name}". Quantity auto-adjusted to ${availDisp}.`, 'warning');
+                        return;
+                    } else {
+                        state.cart[idx].qty = '';
+                        $(this).addClass('is-invalid border-danger text-danger');
+                        $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                        showNotification(`Product "${item.name}" is out of stock (${availDisp} available).`, 'danger');
+                        if (typeof sound !== 'undefined' && sound.error) sound.error();
+                        recalculateRow(idx, 'qty');
+                        return;
+                    }
+                }
+
+                $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
                 state.cart[idx].qty = val;
                 $cell.text(val % 1 === 0 ? val : val.toFixed(2));
                 recalculateRow(idx, 'qty');
@@ -476,7 +574,7 @@
 
             $input.on('keydown', function (ke) {
                 const rawVal = $(this).val().trim();
-                const val = parseFloat(rawVal);
+                let val = parseFloat(rawVal);
                 if (ke.key === 'Tab') {
                     ke.preventDefault();
                     if (rawVal === '' || isNaN(val) || val <= 0) {
@@ -488,19 +586,25 @@
                     }
 
                     if (isItemStockExceeded(item, val, idx)) {
-                        $(this).addClass('is-invalid border-danger text-danger');
                         const stock = getItemStock(item);
                         const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
                         const availRemaining = Math.max(0, stock - otherRowsQty);
                         const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-                        const errMsg = availRemaining <= 0
-                            ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
-                            : `Insufficient stock! "${item.name}" ka available stock sirf ${availDisp} hai (entered: ${val}). Tab aage nahi ja sakta.`;
-                        showNotification(errMsg, 'danger');
-                        if (typeof sound !== 'undefined' && sound.error) sound.error();
-                        $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                        $(this).focus().select();
-                        return; // STRICTLY BLOCKS TAB FROM ADVANCING
+
+                        if (availRemaining > 0) {
+                            val = availRemaining;
+                            $(this).val(val);
+                            state.cart[idx].qty = val;
+                            $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                            recalculateRow(idx, 'qty');
+                            showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
+                        } else {
+                            $(this).addClass('is-invalid border-danger text-danger');
+                            showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
+                            if (typeof sound !== 'undefined' && sound.error) sound.error();
+                            $(this).focus().select();
+                            return;
+                        }
                     }
 
                     $(this).removeClass('is-invalid border-danger text-danger');
@@ -528,19 +632,25 @@
                     }
 
                     if (isItemStockExceeded(item, val, idx)) {
-                        $(this).addClass('is-invalid border-danger text-danger');
                         const stock = getItemStock(item);
                         const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
                         const availRemaining = Math.max(0, stock - otherRowsQty);
                         const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-                        const errMsg = availRemaining <= 0
-                            ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
-                            : `Insufficient stock! "${item.name}" ka available stock sirf ${availDisp} hai (entered: ${val}).`;
-                        showNotification(errMsg, 'danger');
-                        if (typeof sound !== 'undefined' && sound.error) sound.error();
-                        $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                        $(this).focus().select();
-                        return; // STRICTLY BLOCKS ENTER FROM ADVANCING
+
+                        if (availRemaining > 0) {
+                            val = availRemaining;
+                            $(this).val(val);
+                            state.cart[idx].qty = val;
+                            $cell.text(val % 1 === 0 ? val : val.toFixed(2));
+                            recalculateRow(idx, 'qty');
+                            showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
+                        } else {
+                            $(this).addClass('is-invalid border-danger text-danger');
+                            showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
+                            if (typeof sound !== 'undefined' && sound.error) sound.error();
+                            $(this).focus().select();
+                            return;
+                        }
                     }
 
                     $(this).removeClass('is-invalid border-danger text-danger');
@@ -552,7 +662,10 @@
                     ke.preventDefault();
                     const oldVal = (item.qty === '' || item.qty === null || item.qty === undefined) ? '' : item.qty;
                     if (oldVal === '' || isNaN(parseFloat(oldVal)) || parseFloat(oldVal) <= 0) {
-                        $cell.html('<span class="text-danger font-weight-bold">Qty</span>');
+                        // Cleanly remove newly added unfilled item so cashier can easily escape
+                        state.cart.splice(idx, 1);
+                        renderCart();
+                        showNotification(`Item "${item.name}" removed from cart.`, 'info');
                     } else {
                         const num = parseFloat(oldVal);
                         $cell.text(num % 1 === 0 ? num : num.toFixed(2));
@@ -723,23 +836,43 @@
         }
 
         // Click to open inputs
-        $(document).on('click', '.pos-row-qty', function () {
+        $(document).on('click', '.pos-row-qty', function (e) {
             const idx = parseInt($(this).data('idx'));
+            if (!checkAndEnforceUnfilledQty(idx)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             openQuantityInput(idx);
         });
 
-        $(document).on('click', '.pos-row-sell-price', function () {
+        $(document).on('click', '.pos-row-sell-price', function (e) {
             const idx = parseInt($(this).data('idx'));
+            if (!checkAndEnforceUnfilledQty(idx)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             openSellPriceInput(idx);
         });
 
-        $(document).on('click', '.pos-row-disc-pct', function () {
+        $(document).on('click', '.pos-row-disc-pct', function (e) {
             const idx = parseInt($(this).data('idx'));
+            if (!checkAndEnforceUnfilledQty(idx)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             openDiscountPercentInput(idx);
         });
 
-        $(document).on('click', '.pos-row-disc-amt', function () {
+        $(document).on('click', '.pos-row-disc-amt', function (e) {
             const idx = parseInt($(this).data('idx'));
+            if (!checkAndEnforceUnfilledQty(idx)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             openDiscountAmountInput(idx);
         });
 
@@ -773,11 +906,11 @@
         });
 
         // Real-time calculation and validation while typing in Qty input
-        $(document).on('input change keyup paste', '.pos-qty-input', function () {
+        $(document).on('input change keyup paste', '.pos-qty-input', function (e) {
             const idx = parseInt($(this).data('idx'));
             if (isNaN(idx) || !state.cart[idx]) return;
             const rawVal = $(this).val();
-            const val = parseFloat(rawVal);
+            let val = parseFloat(rawVal);
             const payBtns = $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp');
             const cartItem = state.cart[idx];
 
@@ -798,12 +931,24 @@
                 const errMsg = availRemaining <= 0
                     ? `Cannot add item. Product is out of stock (${availDisp} available).`
                     : `Insufficient stock. Only ${availDisp} units are available (entered: ${val}).`;
+
+                if (e.type === 'change' && availRemaining > 0) {
+                    val = availRemaining;
+                    $(this).val(val).removeClass('is-invalid border-danger text-danger').attr('title', '');
+                    state.cart[idx].qty = val;
+                    recalculateRow(idx, 'qty');
+                    showNotification(`Quantity auto-adjusted to available stock (${availDisp} units).`, 'warning');
+                    return;
+                }
+
                 $(this).addClass('is-invalid border-danger text-danger').attr('title', errMsg);
                 state.cart[idx].qty = '';
                 recalculateRow(idx, 'qty');
                 payBtns.prop('disabled', true);
-                if (typeof sound !== 'undefined' && sound.error) sound.error();
-                showNotification(errMsg, 'danger');
+                if (e.type === 'change') {
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    showNotification(errMsg, 'danger');
+                }
                 return;
             }
 
@@ -1077,13 +1222,23 @@
         const todayStr = new Date().toISOString().substring(0, 10);
         const allowNeg = isAllowNegative(item.allow_negative_stock);
 
-        batches.forEach(function (b, idx) {
+        const availableBatches = (batches || []).filter(function (b) {
+            const qtyNum = parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0));
+            return qtyNum > 0 || allowNeg;
+        });
+
+        if (availableBatches.length === 0) {
+            showNotification(`No batches in stock for "${item.name || 'item'}".`, 'warning');
+            return;
+        }
+
+        availableBatches.forEach(function (b, idx) {
             const pName = b.productname || item.name || 'Item';
             const bNo = b.batch_no || 'Default';
             const expDisplay = b.exp_date ? formatDmyDate(b.exp_date) : 'No Expiry';
             const bExpStr = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
             const isBatchExpired = bExpStr && (bExpStr < todayStr);
-            const qtyNum = parseFloat(b.qty || 0);
+            const qtyNum = parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0));
             const isBatchOOS = qtyNum <= 0 && !allowNeg;
             const isBlocked = isBatchExpired || isBatchOOS;
 
@@ -1128,18 +1283,31 @@
         // Click handler on row / button
         $tbody.off('click').on('click', 'tr.pos-batch-row:not(.batch-disabled)', function () {
             const bIdx = parseInt($(this).data('idx'), 10);
-            const selBatch = batches[bIdx];
+            const selBatch = availableBatches[bIdx];
             if (selBatch) {
+                window._posLastItemSelectTime = Date.now();
+                const bsData = $modal.data('bs.modal');
+                if (bsData) bsData._triggerElement = null;
                 $modal.modal('hide');
                 if (posBatchSelectCallback) posBatchSelectCallback(selBatch);
-                setTimeout(() => {
-                    const lastIdx = state.cart.length - 1;
-                    if (lastIdx >= 0) {
-                        openQuantityInput(lastIdx);
-                        const $inp = $(`.pos-row-qty[data-idx="${lastIdx}"] input`);
-                        if ($inp.length) $inp.focus().select();
-                    }
-                }, 220);
+                const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+                if (targetIdx >= 0) {
+                    focusRowQty(targetIdx);
+                    setTimeout(() => focusRowQty(targetIdx), 50);
+                    setTimeout(() => focusRowQty(targetIdx), 150);
+                    setTimeout(() => focusRowQty(targetIdx), 300);
+                    setTimeout(() => focusRowQty(targetIdx), 500);
+                }
+            }
+        });
+
+        $modal.off('hidden.bs.modal.batchFocus').on('hidden.bs.modal.batchFocus', function () {
+            const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+            if (targetIdx >= 0 && state.cart[targetIdx]) {
+                focusRowQty(targetIdx);
+                setTimeout(() => focusRowQty(targetIdx), 50);
+                setTimeout(() => focusRowQty(targetIdx), 150);
+                setTimeout(() => focusRowQty(targetIdx), 300);
             }
         });
     }
@@ -1190,6 +1358,9 @@
 
     // Helper: Lookup item details + batches and add to cart
     async function resolveAndAddItem(item) {
+        if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+            return false;
+        }
         try {
             const branchId = state.branch_id || window.CURRENT_USER_BRANCH_ID || 1;
             const queryParam = item.id ? `item_id=${item.id}` : `q=${encodeURIComponent(item.code || item.item_code || '')}`;
@@ -1198,7 +1369,11 @@
             const data = await resp.json();
             if (data && data.found && data.item) {
                 const itemToAdd = data.item;
-                const batches = Array.isArray(data.batches) ? data.batches : [];
+                const allowNeg = isAllowNegative(itemToAdd.allow_negative_stock);
+                const batches = (Array.isArray(data.batches) ? data.batches : []).filter(function (b) {
+                    const q = parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0));
+                    return q > 0 || allowNeg;
+                });
                 if (batches.length > 1) {
                     openPosBatchModal(itemToAdd, batches, function (selectedBatch) {
                         applyBatchDetailsToItem(itemToAdd, selectedBatch);
@@ -1236,9 +1411,13 @@
         try {
             const resp = await fetch(url);
             const data = await resp.json();
-            const batches = (data && data.batches) ? data.batches : [];
+            const allowNeg = isAllowNegative(item.allow_negative_stock);
+            const batches = ((data && data.batches) ? data.batches : []).filter(function (b) {
+                const q = parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0));
+                return q > 0 || allowNeg;
+            });
             if (!batches || batches.length === 0) {
-                showNotification(`No batches recorded for "${item.name}".`, 'info');
+                showNotification(`No batches in stock for "${item.name}".`, 'info');
                 return;
             }
             openPosBatchModal(item, batches, function (selectedBatch) {
@@ -1254,6 +1433,11 @@
 
     // Barcode & Item Search
     async function processBarcodeScan(code) {
+        if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+            if (scanInput) scanInput.value = '';
+            return;
+        }
+
         // Double-scan guard (prevent hardware scanner bounce within 350ms)
         const now = Date.now();
         if (code === state.last_scan_code && (now - state.last_scan_time) < 350) {
@@ -1271,7 +1455,11 @@
             let itemToAdd = null;
             if (data && data.found && data.item) {
                 itemToAdd = data.item;
-                const batches = Array.isArray(data.batches) ? data.batches : [];
+                const allowNeg = isAllowNegative(itemToAdd.allow_negative_stock);
+                const batches = (Array.isArray(data.batches) ? data.batches : []).filter(function (b) {
+                    const q = parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0));
+                    return q > 0 || allowNeg;
+                });
                 if (batches.length > 1) {
                     openPosBatchModal(itemToAdd, batches, function (selectedBatch) {
                         applyBatchDetailsToItem(itemToAdd, selectedBatch);
@@ -1379,6 +1567,9 @@
 
     function addItemToCart(item) {
         if (!item) return false;
+        if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+            return false;
+        }
         const itemId = parseInt(item.id || item.item_id);
         if (isNaN(itemId)) return false;
 
@@ -1480,24 +1671,19 @@
             renderCart();
         }
 
-        // Auto-focus Qty field of the added/selected item and select text (Task 5)
-        function focusRowQty(idx) {
-            if (isNaN(idx) || !state.cart[idx]) return;
-            openQuantityInput(idx);
-            const $inp = $(`.pos-row-qty[data-idx="${idx}"] input`);
-            if ($inp.length) {
-                $inp.focus().select();
-            }
-        }
+        state.last_added_idx = targetIdx;
 
+        // Auto-focus Qty field of the added/selected item and select text (Task 5)
         focusRowQty(targetIdx);
-        setTimeout(() => focusRowQty(targetIdx), 60);
-        setTimeout(() => focusRowQty(targetIdx), 220);
-        setTimeout(() => focusRowQty(targetIdx), 450);
+        setTimeout(() => focusRowQty(targetIdx), 50);
+        setTimeout(() => focusRowQty(targetIdx), 150);
+        setTimeout(() => focusRowQty(targetIdx), 300);
+        setTimeout(() => focusRowQty(targetIdx), 500);
 
         $('.modal').one('hidden.bs.modal', function () {
-            setTimeout(() => focusRowQty(targetIdx), 60);
-            setTimeout(() => focusRowQty(targetIdx), 220);
+            setTimeout(() => focusRowQty(targetIdx), 50);
+            setTimeout(() => focusRowQty(targetIdx), 150);
+            setTimeout(() => focusRowQty(targetIdx), 300);
         });
 
         return true;
@@ -3453,6 +3639,10 @@
         let itemCache = {};
 
         function openModal() {
+            if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+                return;
+            }
+            $modal.data('is-selecting', false);
             $('#pos-isl-filter-name').val('');
             $('#pos-isl-filter-code').val('');
             $('#pos-isl-filter-all-products').prop('checked', false);
@@ -3462,6 +3652,19 @@
             });
             fetchItems();
         }
+
+        $modal.off('hidden.bs.modal.islFocus').on('hidden.bs.modal.islFocus', function () {
+            $modal.data('is-selecting', false);
+            if (!$('#pos-batch-modal').is(':visible') && !$('#pos-batch-modal').hasClass('show')) {
+                const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+                if (targetIdx >= 0 && state.cart[targetIdx]) {
+                    focusRowQty(targetIdx);
+                    setTimeout(() => focusRowQty(targetIdx), 50);
+                    setTimeout(() => focusRowQty(targetIdx), 150);
+                    setTimeout(() => focusRowQty(targetIdx), 300);
+                }
+            }
+        });
 
         window.openPosItemSearchModal = openModal;
 
@@ -3626,19 +3829,35 @@
 
             // Click row or Add button to select item
             $tbody.find('.isl-item-row:not(.isl-item-disabled)').on('click', async function (e) {
+                e.preventDefault();
+                if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
+                    $modal.modal('hide');
+                    return;
+                }
+                if ($modal.data('is-selecting')) return;
+                $modal.data('is-selecting', true);
+
                 let rawItem = $(this).attr('data-item');
                 if (rawItem) {
+                    window._posLastItemSelectTime = Date.now();
+                    const bsData = $modal.data('bs.modal');
+                    if (bsData) bsData._triggerElement = null;
+
                     let it = JSON.parse(rawItem);
                     $modal.modal('hide');
                     await resolveAndAddItem(it);
-                    setTimeout(() => {
-                        const lastIdx = state.cart.length - 1;
-                        if (lastIdx >= 0) {
-                            openQuantityInput(lastIdx);
-                            const $inp = $(`.pos-row-qty[data-idx="${lastIdx}"] input`);
-                            if ($inp.length) $inp.focus().select();
+
+                    // If batch modal did not pop up, focus target Qty immediately
+                    if (!$('#pos-batch-modal').is(':visible') && !$('#pos-batch-modal').hasClass('show')) {
+                        const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+                        if (targetIdx >= 0) {
+                            focusRowQty(targetIdx);
+                            setTimeout(() => focusRowQty(targetIdx), 50);
+                            setTimeout(() => focusRowQty(targetIdx), 150);
+                            setTimeout(() => focusRowQty(targetIdx), 300);
+                            setTimeout(() => focusRowQty(targetIdx), 500);
                         }
-                    }, 250);
+                    }
                 }
             });
         }
@@ -3803,6 +4022,7 @@
         setSalesType: setSalesType,
         chooseBatchForRow: chooseBatchForRow,
         openAddCustomer: openAddCustomerModalWithTerm,
+        focusQty: focusRowQty,
         triggerCreateCustomer: function (term) {
             const t = term !== undefined ? term : (lastCustomerSearchTerm || $('.select2-search__field').val() || '');
             const $custSelect = $('#posCustomerSelect');

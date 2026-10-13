@@ -267,6 +267,13 @@ $(document).ready(function () {
         } else {
             localStorage.setItem('urbanpos_active_branch_id', String(navSelectedVal));
         }
+    } else if (activeBranchId) {
+        // If no top-navbar select exists on this page, verify activeBranchId against page dropdowns
+        var $firstBranchSel = $('select[name="branch_id"], #posBranchSelect').first();
+        if ($firstBranchSel.length && $firstBranchSel.find('option[value="' + activeBranchId + '"]').length === 0) {
+            localStorage.removeItem('urbanpos_active_branch_id');
+            activeBranchId = $firstBranchSel.val() || null;
+        }
     }
 
     function syncBranchAcrossApp(branchId, triggerReload) {

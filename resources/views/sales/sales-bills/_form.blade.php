@@ -457,7 +457,7 @@
     </div>
 
     {{-- Branch (Hidden input, active branch controlled at top navbar) --}}
-    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}">
+    <input type="hidden" name="branch_id" value="{{ $selectedBranch }}" id="sales_bill_branch_id">
 
     {{-- Staff / Biller (Branch-wise) --}}
     <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="user_id" data-default-order="3">
@@ -2004,7 +2004,7 @@
         }
 
         function fetchItemList() {
-            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             let srch    = $('#isl-filter-name').val().trim();
             let code    = $('#isl-filter-code').val().trim();
             let showAll = $('#isl-filter-show-all').is(':checked') ? 1 : 0;
@@ -2801,16 +2801,24 @@
             let $tbody = $('#modal-batches-body');
             $tbody.empty();
 
+            let inStockBatches = (batches || []).filter(function (b) {
+                return parseFloat(b.qty || 0) > 0;
+            });
+
+            if (inStockBatches.length === 0) {
+                toastr.warning('No batches in stock for ' + (item.name || 'this item') + '.');
+                return;
+            }
+
             let todayBatchStr = new Date().toISOString().substring(0, 10);
-            batches.forEach(function (b, idx) {
+            inStockBatches.forEach(function (b, idx) {
                 let pName = b.productname || item.name || 'Item';
                 let pCode = b.code || item.item_code || item.ean_upc_code || '—';
                 let expDisplay = b.exp_date || 'No Expiry';
                 let bExpStr = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
                 let isBatchExpired = bExpStr && (bExpStr < todayBatchStr);
                 let qtyNum = parseFloat(b.qty || 0);
-                let isBatchOOS = qtyNum <= 0;
-                let isBlocked = isBatchOOS || isBatchExpired;
+                let isBlocked = isBatchExpired;
                 let qtyDisplay = qtyNum.toFixed(3);
                 let sellDisplay = b.sell_price ? '₹' + parseFloat(b.sell_price).toFixed(2) : '—';
                 let mrpDisplay = b.mrp ? '₹' + parseFloat(b.mrp).toFixed(2) : '—';
@@ -3003,7 +3011,7 @@
 
         // Main Item Lookup Function
         function processItemLookup(query, $row, itemId, isInitial = false, isDirectLookup = false) {
-            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             let $select = $row.find('.sb-item-select');
             let $desc = $row.find('.sb-item-desc');
             let $code = $row.find('.sb-item-code');
@@ -3959,57 +3967,15 @@
             calculateTotals();
         }
 
-        // Form Reset Button Handler: resets header form fields without deleting table items (Task 4)
+        // Form Reset Button Handler: resets entire form including items (Task 3: Global Reset)
         $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
             e.preventDefault();
-            if (confirm('Reset header form inputs? (Existing table items will be preserved)')) {
-                // Unlock customer-locked fields first
-                unlockCustomerTypes();
-
-                // Clear customer select2 & loyalty/invoices
-                $('#customer_id').val('').trigger('change');
-                resetCustomerInvoices();
-                $('#sb-customer-loyalty-badge').addClass('d-none');
-                $('#sb-loyalty-pts').text('0.00');
-                $('#sb-loyalty-val').text('0.00');
-
-                // Reset bill date to current Indian Standard Time (Asia/Kolkata)
-                const localIso = getIndianDateTimeIso();
-                $('#bill_date').val(localIso).trigger('change');
-                $('#bill_date').removeClass('is-invalid');
-                $('#bill_date_future_error').remove();
-
-                // Reset biller / staff to default if available
-                let defaultBillerId = "{{ $selectedStaffId ?? auth()->id() }}";
-                if (defaultBillerId) {
-                    $('#sales_biller_user_id').val(defaultBillerId).trigger('change');
+            if (confirm('Are you sure you want to reset this form? All items and unsaved data will be cleared.')) {
+                if (typeof DRAFT_KEY !== 'undefined') {
+                    localStorage.removeItem(DRAFT_KEY);
                 }
-
-                // Reset select dropdowns
-                $('select[name="invoice_type"]').val('Retail Invoice').trigger('change');
-                $('select[name="delivery_type"]').val('Delivered').trigger('change');
-                $('input[name="delivery_time"]').val('');
-                $('select[name="sales_type"]').val('Local').trigger('change');
-                $('select[name="payment_type"]').val('Cash').trigger('change');
-
-                // Reset additional / footer inputs
-                $('input[name="round_off"]').val('0.00');
-                $('input[name="total_extra_cess"]').val('0.00');
-                $('input[name="gst_calamity_cess"]').val('0.00');
-                $('input[name="total_weight"]').val('0');
-                $('#remarks').val('');
-                $('#message').val('');
-
-                // Clear draft and alert banner
-                localStorage.removeItem(DRAFT_KEY);
-                $('#sb-draft-recovery-alert').addClass('d-none');
-
-                // Recalculate totals
-                calculateTotals();
-
-                if (window.toastr) {
-                    toastr.info('Header form inputs have been reset. Existing table items are preserved.', 'Form Reset');
-                }
+                localStorage.removeItem('urbanpos_sales_bill_draft_v1');
+                window.location.reload();
             }
         });
 

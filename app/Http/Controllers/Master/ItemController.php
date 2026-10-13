@@ -24,12 +24,38 @@ class ItemController extends Controller
         $query = Item::with(['brand', 'supplier']);
 
         if ($request->filled('name')) {
-            $term = $request->input('name');
-            $query->where(function ($q) use ($term) {
-                $q->where('name', 'like', "%{$term}%")
-                  ->orWhere('alias', 'like', "%{$term}%")
-                  ->orWhere('item_code', 'like', "%{$term}%")
-                  ->orWhere('ean_upc_code', 'like', "%{$term}%");
+            $rawTerm = trim($request->input('name'));
+            $tokens = preg_split('/\s+/', $rawTerm, -1, PREG_SPLIT_NO_EMPTY);
+
+            $query->where(function ($q) use ($rawTerm, $tokens) {
+                // Exact phrase match
+                $q->where('name', 'like', "%{$rawTerm}%")
+                  ->orWhere('alias', 'like', "%{$rawTerm}%")
+                  ->orWhere('item_code', 'like', "%{$rawTerm}%")
+                  ->orWhere('ean_upc_code', 'like', "%{$rawTerm}%");
+
+                // Multi-token match across name, alias, item_code, barcode
+                if (count($tokens) > 1) {
+                    $q->orWhere(function ($subQ) use ($tokens) {
+                        foreach ($tokens as $token) {
+                            $subQ->where(function ($tokenQ) use ($token) {
+                                $tokenQ->where('name', 'like', "%{$token}%")
+                                       ->orWhere('alias', 'like', "%{$token}%")
+                                       ->orWhere('item_code', 'like', "%{$token}%")
+                                       ->orWhere('ean_upc_code', 'like', "%{$token}%");
+
+                                // Support unit variations like 3kg <-> 3 kg
+                                if (preg_match('/^(\d+)(kg|g|gm|ml|l|ltr)$/i', $token, $m)) {
+                                    $alt = $m[1] . ' ' . $m[2];
+                                    $tokenQ->orWhere('name', 'like', "%{$alt}%");
+                                } elseif (is_numeric($token)) {
+                                    $tokenQ->orWhere('name', 'like', "%{$token}kg%")
+                                           ->orWhere('name', 'like', "%{$token} kg%");
+                                }
+                            });
+                        }
+                    });
+                }
             });
         }
 
@@ -45,8 +71,10 @@ class ItemController extends Controller
             $query->where('category_value_id', $request->input('category_value_id'));
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', (bool)$request->input('status'));
+        // Status filter: If blank or 'all', do not filter so BOTH active and inactive items are shown
+        $statusInput = $request->input('status');
+        if ($statusInput !== null && $statusInput !== '' && $statusInput !== 'all') {
+            $query->where('status', (int) $statusInput);
         }
 
         $allowedSorts = [

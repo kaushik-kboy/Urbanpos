@@ -415,22 +415,12 @@
             }, 60);
         });
 
-        // Reset Form: Clears header and table
+        // Reset Form: Task 3: Global Reset
         $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
             e.preventDefault();
-            $('#supplier_id').val('').trigger('change.select2');
-            $('#purchase_invoice_id').val('').trigger('change.select2');
-            $('input[name="remarks"]').val('');
-            $('#pr-btn-reset-table').trigger('click');
-            if (window.toastr) {
-                toastr.info('Purchase Return form has been reset.');
+            if (confirm('Are you sure you want to reset this form? All items and unsaved data will be cleared.')) {
+                window.location.reload();
             }
-            setTimeout(function () {
-                let $s = $('#supplier_id');
-                if ($s.data('select2')) {
-                    $s.data('select2').$container.find('.select2-selection').focus();
-                }
-            }, 100);
         });
 
         function canAddPrRow() {
@@ -739,7 +729,7 @@
         });
 
         function fetchPrItemList() {
-            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             let supplierId = $('#supplier_id').val();
             let invoiceId = $('#purchase_invoice_id').val();
             let srch = $.trim($('#pr-isl-filter-name').val());
@@ -940,7 +930,7 @@
                 }
             }
 
-            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             let params = {
                 branch_id: branchId,
                 supplier_id: supplierId,

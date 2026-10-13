@@ -506,7 +506,7 @@
                 }
             }
 
-            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             let params = { branch_id: branchId, show_all: 1 };
             if (itemId) {
                 params.item_id = itemId;

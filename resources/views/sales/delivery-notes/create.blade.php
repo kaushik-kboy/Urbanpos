@@ -573,7 +573,7 @@ $(function () {
                 checkCustomerAndOpenSdnModal($(this));
                 return;
             }
-            let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             $.getJSON(LOOKUP_URL, { query: query, branch_id: branchId }, function (item) {
                 if (item && item.id) {
                     applyItemToSdnRow($row, item);
@@ -651,7 +651,7 @@ $(function () {
 
     // Fetch items from backend
     function fetchSdnItemList() {
-        let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+        let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
         let srch = $.trim($('#sdn-isl-filter-name').val());
         let code = $.trim($('#sdn-isl-filter-code').val());
 

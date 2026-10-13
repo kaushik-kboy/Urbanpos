@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Branch;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +21,27 @@ class EnsureApiBranchAccess
     {
         $user = $request->user();
 
-        if (! $user || $user->branch_id === null || $user->hasRole('Owner') || $user->email === 'admin@urbanpos.com') {
+        if (! $user) {
+            return $next($request);
+        }
+
+        $firstActiveBranchId = (int) (Branch::where('status', true)->orderBy('id')->value('id') ?? 1);
+
+        // Auto-heal branch_id if requested value does not exist in branches table
+        $requestedBranchId = $request->input('branch_id') ?? $request->query('branch_id');
+        if ($requestedBranchId !== null) {
+            $exists = Branch::where('id', $requestedBranchId)->exists();
+            if (! $exists) {
+                $healedId = ($user->branch_id !== null && Branch::where('id', $user->branch_id)->exists())
+                    ? (int) $user->branch_id
+                    : $firstActiveBranchId;
+
+                $request->merge(['branch_id' => $healedId]);
+                $requestedBranchId = $healedId;
+            }
+        }
+
+        if ($user->branch_id === null || $user->hasRole('Owner') || $user->email === 'admin@urbanpos.com') {
             return $next($request);
         }
 

@@ -41,6 +41,37 @@
         </div>
     @endif
 
+    {{-- Branch Scope Switcher Bar --}}
+    <div class="card shadow-sm border-0 mb-3 bg-white">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                <div class="d-flex align-items-center flex-wrap my-1">
+                    <span class="font-weight-bold mr-3 text-secondary small text-uppercase">
+                        <i class="fas fa-store-alt text-primary mr-1"></i> Configure Numbering For Branch:
+                    </span>
+                    @foreach($branches as $b)
+                        <a href="{{ route('tools.document-sequences.index', ['branch_id' => $b->id]) }}" 
+                           class="btn btn-sm mr-2 mb-1 {{ $branchId == $b->id ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-secondary' }}">
+                            🏪 {{ $b->name }}
+                        </a>
+                    @endforeach
+                    <a href="{{ route('tools.document-sequences.index', ['branch_id' => 'global']) }}" 
+                       class="btn btn-sm mb-1 {{ empty($branchId) ? 'btn-secondary font-weight-bold shadow-sm' : 'btn-outline-secondary' }}">
+                        🌐 Global Defaults
+                    </a>
+                </div>
+                <div class="small my-1">
+                    @php $currBranch = $branchId ? $branches->firstWhere('id', $branchId) : null; @endphp
+                    @if($currBranch)
+                        <span class="badge badge-success px-2 py-1 font-weight-bold"><i class="fas fa-check-circle mr-1"></i> Active Scope: {{ $currBranch->name }}</span>
+                    @else
+                        <span class="badge badge-secondary px-2 py-1 font-weight-bold"><i class="fas fa-globe mr-1"></i> Active Scope: Global Defaults</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Token Cheat Sheet & Fast Insert Bar --}}
     <div class="card shadow-sm border-0 mb-3 bg-light">
         <div class="card-body py-2 px-3">
@@ -108,6 +139,13 @@
                             <span class="font-weight-bold text-dark" style="font-size: 15px;">
                                 {{ $seq['document_title'] }}
                             </span>
+                            @if($branchId)
+                                @if(!empty($seq['is_branch_customized']))
+                                    <span class="badge badge-info ml-1" style="font-size: 10px;">Branch Custom</span>
+                                @else
+                                    <span class="badge badge-light border ml-1 text-muted" style="font-size: 10px;">Global Default</span>
+                                @endif
+                            @endif
                         </div>
                         <div>
                             <span class="badge badge-light border px-2 py-1 font-weight-bold text-monospace" style="font-size: 12px;" id="preview-badge-{{ $key }}">

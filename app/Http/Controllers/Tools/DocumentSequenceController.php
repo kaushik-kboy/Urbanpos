@@ -22,14 +22,18 @@ class DocumentSequenceController extends Controller
      */
     public function index(Request $request): View
     {
-        $branchId = $request->filled('branch_id') && $request->input('branch_id') !== 'all'
-            ? (int) $request->input('branch_id')
-            : null;
-
         $branches = Branch::where('status', 1)->orderBy('name')->get();
+
+        if ($request->has('branch_id')) {
+            $raw = $request->input('branch_id');
+            $branchId = ($raw === 'all' || $raw === 'global' || $raw === '' || $raw === '0') ? null : (int) $raw;
+        } else {
+            $branchId = session('active_branch_id', auth()->user()?->branch_id) ?: ($branches->first()?->id ?? null);
+        }
+
         $definitions = DocumentNumberingService::defaultDefinitions();
 
-        // Fetch existing sequence records for this branch / global
+        // Fetch existing sequence records for this branch (or global if branchId is null)
         $existingSequences = DocumentSequence::where(function ($q) use ($branchId) {
             if ($branchId) {
                 $q->where('branch_id', $branchId);
@@ -38,14 +42,21 @@ class DocumentSequenceController extends Controller
             }
         })->get()->keyBy('document_type');
 
+        // Global fallback sequences if branch doesn't have custom ones yet
+        $globalSequences = $branchId 
+            ? DocumentSequence::whereNull('branch_id')->get()->keyBy('document_type')
+            : collect();
+
         // Merge defaults with saved database records
         $sequences = [];
         foreach ($definitions as $typeKey => $def) {
-            $record = $existingSequences->get($typeKey);
+            $branchRecord = $existingSequences->get($typeKey);
+            $globalRecord = $globalSequences->get($typeKey);
+            $record = $branchRecord ?? $globalRecord;
             $previewBranch = $branchId ? $branches->firstWhere('id', $branchId) : null;
 
             $sequences[$typeKey] = [
-                'id'              => $record?->id,
+                'id'              => $branchRecord?->id ?? $globalRecord?->id,
                 'document_type'   => $typeKey,
                 'document_title'  => $record?->document_title ?: $def['title'],
                 'module'          => $def['module'],
@@ -56,6 +67,7 @@ class DocumentSequenceController extends Controller
                 'last_number'     => $record?->last_number ?: 0,
                 'reset_frequency' => $record?->reset_frequency ?: $def['reset'],
                 'is_active'       => $record ? (bool)$record->is_active : true,
+                'is_branch_customized' => $existingSequences->has($typeKey),
                 'preview'         => $record 
                     ? $record->formatPreview($previewBranch)
                     : (new DocumentSequence([
@@ -82,11 +94,15 @@ class DocumentSequenceController extends Controller
             'padding_zeros'   => 'required|integer|min:1|max:10',
             'starting_number' => 'required|integer|min:1',
             'reset_frequency' => 'required|in:financial_year,yearly,monthly,never',
-            'branch_id'       => 'nullable|integer',
+            'branch_id'       => 'nullable',
             'is_active'       => 'nullable|boolean',
         ]);
 
-        $branchId = !empty($validated['branch_id']) ? (int) $validated['branch_id'] : null;
+        $rawBranch = $validated['branch_id'] ?? null;
+        $branchId = ($rawBranch === 'all' || $rawBranch === 'global' || $rawBranch === '' || $rawBranch === null || $rawBranch === 0 || $rawBranch === '0')
+            ? null
+            : (int) $rawBranch;
+
         $def = DocumentNumberingService::defaultDefinitions()[$validated['document_type']] ?? null;
         $title = $def['title'] ?? ucwords(str_replace('_', ' ', $validated['document_type']));
 
@@ -111,16 +127,18 @@ class DocumentSequenceController extends Controller
 
         $sequence->save();
 
+        $branchName = $branchId ? (Branch::find($branchId)?->name ?? "Branch #{$branchId}") : 'Global (All Outlets)';
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "{$sequence->document_title} numbering rule updated successfully!",
-                'preview' => $sequence->formatPreview(),
+                'message' => "{$sequence->document_title} numbering rule for {$branchName} saved successfully!",
+                'preview' => $sequence->formatPreview($branchId ? Branch::find($branchId) : null),
                 'sequence' => $sequence,
             ]);
         }
 
-        return redirect()->back()->with('success', "{$sequence->document_title} numbering rule updated successfully!");
+        return redirect()->back()->with('success', "{$sequence->document_title} numbering rule for {$branchName} saved successfully!");
     }
 
     /**

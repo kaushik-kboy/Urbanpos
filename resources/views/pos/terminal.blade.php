@@ -40,14 +40,22 @@
                     : (int) (session('active_branch_id') ?: ($user?->branch_id ?: ($branches->keys()->first() ?? 1)));
                 $activeBrName = $branches[$activeBrId] ?? ($user?->branch?->name ?? ($branches->first() ?? 'Branch'));
             @endphp
-            <div class="pos-meta-item d-none d-md-inline-flex" title="Store Branch">
+            <div class="pos-meta-item d-none d-md-inline-flex align-items-center" title="Store Branch">
                 <i class="fas fa-store text-info mr-1"></i>
-                <span class="text-white font-weight-bold ml-1">{{ $activeBrName }}</span>
-                <select id="posBranchSelect" class="d-none" style="display: none !important;">
-                    @foreach ($branches as $bId => $bName)
-                        <option value="{{ $bId }}" @selected($bId == $activeBrId) class="text-dark">{{ $bName }}</option>
-                    @endforeach
-                </select>
+                @if($isGlobalAdmin && count($branches) > 1)
+                    <select id="posBranchSelect" class="bg-transparent border-0 text-white font-weight-bold" style="outline:none; cursor:pointer;" title="Switch Store Branch">
+                        @foreach ($branches as $bId => $bName)
+                            <option value="{{ $bId }}" @selected($bId == $activeBrId) class="text-dark">{{ $bName }}</option>
+                        @endforeach
+                    </select>
+                @else
+                    <span class="text-white font-weight-bold ml-1">{{ $activeBrName }}</span>
+                    <select id="posBranchSelect" class="d-none" style="display: none !important;">
+                        @foreach ($branches as $bId => $bName)
+                            <option value="{{ $bId }}" @selected($bId == $activeBrId) class="text-dark">{{ $bName }}</option>
+                        @endforeach
+                    </select>
+                @endif
             </div>
             <div class="pos-meta-item d-inline-flex align-items-center">
                 <i class="fas fa-user-check text-warning mr-1"></i>
@@ -1409,7 +1417,24 @@
         const branchSelect = document.getElementById('posBranchSelect');
         if (branchSelect) {
             branchSelect.addEventListener('change', function () {
-                syncPosBranchStaff(this.value);
+                const newBranchId = this.value;
+                syncPosBranchStaff(newBranchId);
+                const csrfToken = window.CSRF_TOKEN || $('meta[name="csrf-token"]').attr('content');
+                fetch((window.APP_URL || '') + '/active-branch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({ branch_id: newBranchId, _token: csrfToken })
+                }).then(() => {
+                    localStorage.setItem('urbanpos_active_branch_id', String(newBranchId));
+                    window.location.reload();
+                }).catch(() => {
+                    localStorage.setItem('urbanpos_active_branch_id', String(newBranchId));
+                    window.location.reload();
+                });
             });
             syncPosBranchStaff(branchSelect.value);
         }

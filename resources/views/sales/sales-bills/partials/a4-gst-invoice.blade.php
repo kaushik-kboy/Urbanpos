@@ -15,7 +15,7 @@
     $customer = $salesBill->customer;
     $customerName = $customer?->name ?: 'Walk-in Customer';
     $customerMobile = $customer?->mobile ?: ($customer?->phone ?: '');
-    $customerAddress = $customer?->address ?: ($customer?->city ? "{$customer->city}, {$customer->state}" : 'Satellite, Ahmedabad, Gujarat - 380015');
+    $customerAddress = $customer?->address ?: ($customer?->city ? "{$customer->city}, {$customer->state}" : ($salesBill->branch?->address ?: 'Ahmedabad, Gujarat'));
     $customerGstin = trim((string) ($salesBill->customer_gstin ?: ($customer?->gst_no ?: '')));
     $hasValidGstin = !empty($customerGstin) && strcasecmp($customerGstin, 'unregistered') !== 0;
 
@@ -267,11 +267,15 @@
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr><td style="color: #475569; width: 95px; padding: 2px 0;">Invoice No.</td><td style="padding: 2px 0;">: <strong>{{ $salesBill->bill_number }}</strong></td></tr>
                         <tr><td style="color: #475569; padding: 2px 0;">Invoice Date</td><td style="padding: 2px 0;">: {{ $salesBill->bill_date ? $salesBill->bill_date->format('d/m/Y') : now()->format('d/m/Y') }}</td></tr>
-                        <tr><td style="color: #475569; padding: 2px 0;">Order Ref</td><td style="padding: 2px 0;">: {{ $salesBill->sales_delivery_note_id ? 'DN-' . $salesBill->sales_delivery_note_id : ($salesBill->posting_key ?: 'ORD-' . $salesBill->id) }}</td></tr>
-                        <tr><td style="color: #475569; padding: 2px 0;">Mode of Supply</td><td style="padding: 2px 0;">: {{ $customerGstin !== 'Unregistered' ? 'B2B Supply' : 'Retail Sale' }}</td></tr>
-                        <tr><td style="color: #475569; padding: 2px 0;">Reverse Charge</td><td style="padding: 2px 0;">: No</td></tr>
-                        <tr><td style="color: #475569; padding: 2px 0;">Place of Supply</td><td style="padding: 2px 0;">: {{ $salesBill->branch?->state ?: 'Gujarat (24)' }}</td></tr>
-                        <tr><td style="color: #475569; padding: 2px 0;">State Code</td><td style="padding: 2px 0;">: 24</td></tr>
+                        @if($receiptSettings->show_order_ref ?? true)
+                            <tr><td style="color: #475569; padding: 2px 0;">Order Ref</td><td style="padding: 2px 0;">: {{ $salesBill->sales_delivery_note_id ? 'DN-' . $salesBill->sales_delivery_note_id : ($salesBill->posting_key ?: 'ORD-' . $salesBill->id) }}</td></tr>
+                        @endif
+                        @if($receiptSettings->show_supply_details ?? true)
+                            <tr><td style="color: #475569; padding: 2px 0;">Mode of Supply</td><td style="padding: 2px 0;">: {{ $customerGstin !== 'Unregistered' ? 'B2B Supply' : 'Retail Sale' }}</td></tr>
+                            <tr><td style="color: #475569; padding: 2px 0;">Reverse Charge</td><td style="padding: 2px 0;">: No</td></tr>
+                            <tr><td style="color: #475569; padding: 2px 0;">Place of Supply</td><td style="padding: 2px 0;">: {{ $salesBill->branch?->state ?: 'Gujarat (24)' }}</td></tr>
+                            <tr><td style="color: #475569; padding: 2px 0;">State Code</td><td style="padding: 2px 0;">: 24</td></tr>
+                        @endif
                     </table>
                 </div>
             </div>
@@ -340,21 +344,34 @@
         @endif
     </div>
 
+    @php
+        $leadCols = 2 + ($receiptSettings->show_hsn_code ? 1 : 0) + ($receiptSettings->show_item_code ? 1 : 0);
+        $totalCols = $leadCols + 1 + ($receiptSettings->show_mrp ? 1 : 0) + ($receiptSettings->show_discount ? 1 : 0) + 4;
+    @endphp
+
     {{-- ── 3. ITEMS TABLE ──────────────────────────────────────────────────────── --}}
     <div style="border: 1px solid #cbd5e1; border-radius: 3px; overflow: hidden; margin-bottom: 12px;">
         <table style="width: 100%; border-collapse: collapse; font-size: 9.5px;">
             <thead>
                 <tr style="background: var(--accent); color: #ffffff; text-align: left;">
                     <th style="width: 25px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">Sr.</th>
-                    <th style="width: 55px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">HSN</th>
-                    <th style="width: 65px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">Item Code</th>
+                    @if($receiptSettings->show_hsn_code ?? true)
+                        <th style="width: 55px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">HSN</th>
+                    @endif
+                    @if($receiptSettings->show_item_code ?? true)
+                        <th style="width: 65px; text-align: center; border-right: 1px solid rgba(255,255,255,0.2);">Item Code</th>
+                    @endif
                     <th style="border-right: 1px solid rgba(255,255,255,0.2); padding-left: 6px;">Item Name</th>
                     <th style="width: 38px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">Qty</th>
-                    <th style="width: 55px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">MRP (₹)</th>
-                    <th style="width: 45px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">Disc %</th>
-                    <th style="width: 50px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">SGST (₹)</th>
-                    <th style="width: 50px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">CGST (₹)</th>
-                    <th style="width: 50px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">IGST (₹)</th>
+                    @if($receiptSettings->show_mrp ?? true)
+                        <th style="width: 55px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">MRP (₹)</th>
+                    @endif
+                    @if($receiptSettings->show_discount ?? true)
+                        <th style="width: 45px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">Disc %</th>
+                    @endif
+                    <th style="width: 50px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">SGST (%)</th>
+                    <th style="width: 50px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">CGST (%)</th>
+                    <th style="width: 50px; text-align: right; border-right: 1px solid rgba(255,255,255,0.2);">IGST (%)</th>
                     <th style="width: 68px; text-align: right;">Amount (₹)</th>
                 </tr>
             </thead>
@@ -372,23 +389,26 @@
                         if ($discPct <= 0 && $mrp > 0 && $discAmt > 0) {
                             $discPct = round(($discAmt / ($mrp * $qty)) * 100, 1);
                         }
-                        $sgst = (float) ($line->sgst_amount ?? 0);
-                        $cgst = (float) ($line->cgst_amount ?? 0);
-                        $igst = (float) ($line->igst_amount ?? 0);
-                        if ($sgst == 0 && $cgst == 0 && $igst == 0 && (float)($line->gst_tax_amount ?? 0) > 0) {
-                            if ($isInterstate) {
-                                $igst = (float) $line->gst_tax_amount;
-                            } else {
-                                $sgst = (float) ($line->gst_tax_amount / 2);
-                                $cgst = (float) ($line->gst_tax_amount / 2);
+                        $lineGstPct = (float) ($line->gst_percent ?? 0);
+                        if ($lineGstPct <= 0 && (float)($line->gst_tax_amount ?? 0) > 0) {
+                            $taxableEst = (float)($line->net_amount ?? 0) - (float)($line->gst_tax_amount ?? 0);
+                            if ($taxableEst > 0) {
+                                $lineGstPct = round(((float)$line->gst_tax_amount / $taxableEst) * 100);
                             }
                         }
+                        $sgstRate = $isInterstate ? 0 : ($lineGstPct > 0 ? ($lineGstPct / 2) : 0);
+                        $cgstRate = $isInterstate ? 0 : ($lineGstPct > 0 ? ($lineGstPct / 2) : 0);
+                        $igstRate = $isInterstate ? $lineGstPct : 0;
                         $amount = (float) ($line->net_amount ?? 0);
                     @endphp
                     <tr style="border-bottom: 1px solid #e2e8f0; {{ $idx % 2 == 1 ? 'background: #f8fafc;' : '' }}">
                         <td style="text-align: center; border-right: 1px solid #e2e8f0; color: #64748b;">{{ $idx + 1 }}</td>
-                        <td style="text-align: center; border-right: 1px solid #e2e8f0; color: #475569;">{{ $hsnCode }}</td>
-                        <td style="text-align: center; border-right: 1px solid #e2e8f0; font-family: monospace; font-size: 8.5px; color: #334155;">{{ $itemCode }}</td>
+                        @if($receiptSettings->show_hsn_code ?? true)
+                            <td style="text-align: center; border-right: 1px solid #e2e8f0; color: #475569;">{{ $hsnCode }}</td>
+                        @endif
+                        @if($receiptSettings->show_item_code ?? true)
+                            <td style="text-align: center; border-right: 1px solid #e2e8f0; font-family: monospace; font-size: 8.5px; color: #334155;">{{ $itemCode }}</td>
+                        @endif
                         <td style="border-right: 1px solid #e2e8f0; padding-left: 6px;">
                             <strong style="color: #0f172a;">{{ $itemName }}</strong>
                             @if($line->batch_no)
@@ -396,18 +416,22 @@
                             @endif
                         </td>
                         <td style="text-align: right; border-right: 1px solid #e2e8f0; font-weight: 600;">{{ number_format($qty, 2) }}</td>
-                        <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ number_format($mrp, 2) }}</td>
-                        <td style="text-align: right; border-right: 1px solid #e2e8f0; color: {{ $discPct > 0 ? '#b91c1c' : '#64748b' }};">
-                            {{ $discPct > 0 ? number_format($discPct, 1) . '%' : '-' }}
-                        </td>
-                        <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ $sgst > 0 ? number_format($sgst, 2) : '-' }}</td>
-                        <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ $cgst > 0 ? number_format($cgst, 2) : '-' }}</td>
-                        <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ $igst > 0 ? number_format($igst, 2) : '-' }}</td>
+                        @if($receiptSettings->show_mrp ?? true)
+                            <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ number_format($mrp, 2) }}</td>
+                        @endif
+                        @if($receiptSettings->show_discount ?? true)
+                            <td style="text-align: right; border-right: 1px solid #e2e8f0; color: {{ $discPct > 0 ? '#b91c1c' : '#64748b' }};">
+                                {{ $discPct > 0 ? number_format($discPct, 1) . '%' : '-' }}
+                            </td>
+                        @endif
+                        <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ $sgstRate > 0 ? (float)$sgstRate . '%' : '-' }}</td>
+                        <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ $cgstRate > 0 ? (float)$cgstRate . '%' : '-' }}</td>
+                        <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ $igstRate > 0 ? (float)$igstRate . '%' : '-' }}</td>
                         <td style="text-align: right; font-weight: 700; color: #0f172a;">{{ number_format($amount, 2) }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" style="text-align: center; padding: 20px; color: #94a3b8;">
+                        <td colspan="{{ $totalCols }}" style="text-align: center; padding: 20px; color: #94a3b8;">
                             No items recorded in this bill.
                         </td>
                     </tr>
@@ -415,12 +439,14 @@
             </tbody>
             <tfoot>
                 <tr style="background: #f1f5f9; font-weight: 700; border-top: 1px solid #cbd5e1;">
-                    <td colspan="4" style="text-align: right; padding-right: 8px;">Total:</td>
+                    <td colspan="{{ $leadCols }}" style="text-align: right; padding-right: 8px;">Total:</td>
                     <td style="text-align: right;">{{ number_format($totalQty, 2) }}</td>
-                    <td colspan="2"></td>
-                    <td style="text-align: right;">{{ number_format((float) ($salesBill->total_sgst ?? ($isInterstate ? 0 : ($salesBill->total_gst / 2))), 2) }}</td>
-                    <td style="text-align: right;">{{ number_format((float) ($salesBill->total_cgst ?? ($isInterstate ? 0 : ($salesBill->total_gst / 2))), 2) }}</td>
-                    <td style="text-align: right;">{{ number_format((float) ($salesBill->total_igst ?? ($isInterstate ? $salesBill->total_gst : 0)), 2) }}</td>
+                    @if(($receiptSettings->show_mrp ?? true) || ($receiptSettings->show_discount ?? true))
+                        <td colspan="{{ (($receiptSettings->show_mrp ?? true) ? 1 : 0) + (($receiptSettings->show_discount ?? true) ? 1 : 0) }}"></td>
+                    @endif
+                    <td style="text-align: right; color: #64748b;">-</td>
+                    <td style="text-align: right; color: #64748b;">-</td>
+                    <td style="text-align: right; color: #64748b;">-</td>
                     <td style="text-align: right; font-weight: 800; color: var(--accent);">{{ number_format($salesBill->total, 2) }}</td>
                 </tr>
             </tfoot>
@@ -480,9 +506,11 @@
                 </div>
             @endif
 
-            <div style="font-size: 10px; color: #475569; background: #f8fafc; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 3px;">
-                <strong>Total Quantity:</strong> {{ number_format($totalQty) }} &nbsp;|&nbsp; <strong>Total Items:</strong> {{ $totalItems }}
-            </div>
+            @if($receiptSettings->show_total_qty ?? true)
+                <div style="font-size: 10px; color: #475569; background: #f8fafc; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 3px;">
+                    <strong>Total Quantity:</strong> {{ number_format($totalQty) }} &nbsp;|&nbsp; <strong>Total Items:</strong> {{ $totalItems }}
+                </div>
+            @endif
         </div>
 
         {{-- Right Column: Invoice Totals Card --}}
@@ -534,9 +562,11 @@
     </div>
 
     {{-- ── 5. AMOUNT IN WORDS BANNER ─────────────────────────────────────────── --}}
-    <div style="background: color-mix(in srgb, var(--accent) 8%, #f8fafc); border: 1px solid color-mix(in srgb, var(--accent) 25%, #e2e8f0); border-radius: 3px; padding: 5px 10px; font-size: 10px; margin-bottom: 12px;">
-        <strong>Amount in Words :</strong> <span style="color: #0f172a; font-weight: 600;">{{ $amountInWords }}</span>
-    </div>
+    @if($receiptSettings->show_amount_in_words ?? true)
+        <div style="background: color-mix(in srgb, var(--accent) 8%, #f8fafc); border: 1px solid color-mix(in srgb, var(--accent) 25%, #e2e8f0); border-radius: 3px; padding: 5px 10px; font-size: 10px; margin-bottom: 12px;">
+            <strong>Amount in Words :</strong> <span style="color: #0f172a; font-weight: 600;">{{ $amountInWords }}</span>
+        </div>
+    @endif
 
     {{-- ── 6. BOTTOM CARDS (Payment Details | E-Invoice QR / Compliance | Signatory) ─ --}}
     <div style="display: flex; justify-content: space-between; align-items: stretch; margin-bottom: 12px; gap: 10px;">
@@ -568,12 +598,12 @@
         @endif
 
         {{-- Card B: E-Invoice IRN QR or Compliance Notes --}}
-        <div style="flex: 1.1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 8px; font-size: 9px; background: #fff;">
-            @if($salesBill->hasIrn() || $receiptSettings->compliance_notes)
-                <div style="font-weight: bold; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
-                    Notes / Statutory Compliance
-                </div>
+        @if($receiptSettings->show_compliance_notes ?? true)
+            <div style="flex: 1.1; border: 1px solid #cbd5e1; border-radius: 3px; padding: 6px 8px; font-size: 9px; background: #fff;">
                 @if($salesBill->hasIrn())
+                    <div style="font-weight: bold; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
+                        Notes / Statutory Compliance
+                    </div>
                     <div style="display: flex; align-items: center; justify-content: space-between;">
                         <div style="font-size: 8px; line-height: 1.3; color: #475569;">
                             <div><strong>IRN:</strong> {{ substr($salesBill->irn, 0, 20) }}...</div>
@@ -581,22 +611,25 @@
                         </div>
                         <img src="{{ $salesBill->getEinvoiceQrUrl() }}" alt="IRN QR" style="width: 50px; height: 50px;">
                     </div>
-                @else
+                @elseif(!empty($receiptSettings->compliance_notes))
+                    <div style="font-weight: bold; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
+                        Notes / Statutory Compliance
+                    </div>
                     <div style="color: #475569; line-height: 1.35;">
-                        {!! nl2br(e($receiptSettings->compliance_notes ?: "1. HSN/SAC shown item-wise.\n2. Taxable value shown after discount.\n3. Goods once sold cannot be returned without bill.")) !!}
+                        {!! nl2br(e($receiptSettings->compliance_notes)) !!}
+                    </div>
+                @else
+                    <div style="font-weight: bold; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
+                        Store Guarantee
+                    </div>
+                    <div style="color: #475569; line-height: 1.35;">
+                        1. 100% Genuine and authenticated products.<br>
+                        2. Check batch no and expiry before accepting.<br>
+                        3. Computer generated invoice, valid across all branches.
                     </div>
                 @endif
-            @else
-                <div style="font-weight: bold; color: var(--accent); border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
-                    Store Guarantee
-                </div>
-                <div style="color: #475569; line-height: 1.35;">
-                    1. 100% Genuine and authenticated products.<br>
-                    2. Check batch no and expiry before accepting.<br>
-                    3. Computer generated invoice, valid across all branches.
-                </div>
-            @endif
-        </div>
+            </div>
+        @endif
 
         {{-- Card C: Authorised Signatory Box --}}
         @if($receiptSettings->show_signature_box)
@@ -622,16 +655,18 @@
     @endif
 
     {{-- ── 7. TERMS & CONDITIONS FOOTER ───────────────────────────────────────── --}}
-    <div style="border-top: 1px solid #cbd5e1; padding-top: 8px; font-size: 8.5px; color: #64748b; line-height: 1.35;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <div style="width: 70%;">
-                <div style="font-weight: bold; color: #334155; margin-bottom: 2px;">Terms &amp; Conditions / Return Policy:</div>
-                <div>{!! nl2br(e($receiptSettings->terms_conditions ?: ($receiptSettings->footer_policy ?: "1. Please check goods at the time of purchase/delivery for any damage or defect.\n2. Returns or exchanges accepted only with original bill within 7 days.\n3. Subject to local jurisdiction."))) !!}</div>
-            </div>
-            <div style="width: 28%; text-align: right; color: var(--accent); font-weight: bold; font-size: 9.5px;">
-                <div>{{ $receiptSettings->footer_note ?: 'Thank You for Shopping! 🐾' }}</div>
-                <div style="font-size: 8px; color: #94a3b8; font-weight: normal; margin-top: 2px;">{{ $email }}</div>
+    @if($receiptSettings->show_terms_conditions ?? true)
+        <div style="border-top: 1px solid #cbd5e1; padding-top: 8px; font-size: 8.5px; color: #64748b; line-height: 1.35;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="width: 70%;">
+                    <div style="font-weight: bold; color: #334155; margin-bottom: 2px;">Terms &amp; Conditions / Return Policy:</div>
+                    <div>{!! nl2br(e($receiptSettings->terms_conditions ?: ($receiptSettings->footer_policy ?: "1. Please check goods at the time of purchase/delivery for any damage or defect.\n2. Returns or exchanges accepted only with original bill within 7 days.\n3. Subject to local jurisdiction."))) !!}</div>
+                </div>
+                <div style="width: 28%; text-align: right; color: var(--accent); font-weight: bold; font-size: 9.5px;">
+                    <div>{{ $receiptSettings->footer_note ?: 'Thank You for Shopping! 🐾' }}</div>
+                    <div style="font-size: 8px; color: #94a3b8; font-weight: normal; margin-top: 2px;">{{ $email }}</div>
+                </div>
             </div>
         </div>
-    </div>
+    @endif
 </div>

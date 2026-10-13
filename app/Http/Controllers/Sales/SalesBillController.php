@@ -421,7 +421,7 @@ class SalesBillController extends Controller
         $whatsappNotice = '';
         if ($saveAction === 'whatsapp' || $request->boolean('send_whatsapp')) {
             try {
-                $waSettings = \App\Models\WhatsAppSetting::current();
+                $waSettings = \App\Models\WhatsAppSetting::current($salesBill->branch_id);
                 if ($waSettings->is_active) {
                     $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
                     if ($waResult['success'] ?? false) {
@@ -1127,47 +1127,31 @@ class SalesBillController extends Controller
             foreach (\Illuminate\Support\Facades\DB::select($eiSql, array_merge([$branchId], $ids)) as $e) {
                 $ei[$e->item_id] = $e;
             }
+            // Also check branch batch remaining totals from StockLedger for these items
+            $batchTotals = \App\Models\StockLedger::whereIn('item_id', $ids)
+                ->where('branch_id', $branchId)
+                ->whereNotNull('batch_no')
+                ->where('batch_no', '!=', '')
+                ->selectRaw('item_id, SUM(qty_in) - SUM(qty_out) as total_batch_stock')
+                ->groupBy('item_id')
+                ->pluck('total_batch_stock', 'item_id')
+                ->all();
+
             foreach ($rows as $row) {
                 if (isset($ei[$row->id])) {
                     $row->exp_date = $ei[$row->id]->exp_date;
                     if ((float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
                     if ((float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
                 }
-            }
-        }
-
-        // Fallback: for rows without branch-specific expiry, try all branches
-        $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
-        $expiryFallback = [];
-        if (! empty($noExpIds)) {
-            $ph = implode(',', array_fill(0, count($noExpIds), '?'));
-            $fbSql = "
-                SELECT pi2.item_id,
-                       MIN(pi2.exp_date) AS exp_date,
-                       {$sellPriceSub},
-                       {$mrpSub}
-                FROM purchase_invoice_items pi2
-                WHERE pi2.item_id IN ({$ph})
-                  AND pi2.exp_date IS NOT NULL
-                   AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
-                GROUP BY pi2.item_id
-            ";
-            foreach (\Illuminate\Support\Facades\DB::select($fbSql, $noExpIds) as $fb) {
-                $expiryFallback[$fb->item_id] = $fb;
+                if (isset($batchTotals[$row->id])) {
+                    $row->qty = max(0, (float) $batchTotals[$row->id]);
+                }
             }
         }
 
         $result = [];
         foreach ($rows as $row) {
             $expRaw = $row->exp_date ?? null;
-
-            // Use cross-branch fallback expiry if main query returned null
-            if (empty($expRaw) && isset($expiryFallback[$row->id])) {
-                $fb     = $expiryFallback[$row->id];
-                $expRaw = $fb->exp_date;
-                if ((float) ($fb->sell_price ?? 0) > 0) $row->sell_price = $fb->sell_price;
-                if ((float) ($fb->mrp ?? 0) > 0)        $row->mrp        = $fb->mrp;
-            }
 
             // Normalise expiry date
             $exp = null;
@@ -1259,6 +1243,9 @@ class SalesBillController extends Controller
 
         $batches = [];
         foreach ($resolvedBatches as $b) {
+            if ((float) ($b['remaining_qty'] ?? 0) <= 0) {
+                continue; // Batches with 0 stock must not be shown
+            }
             $batches[] = [
                 'productname' => $item->name,
                 'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
@@ -1273,12 +1260,18 @@ class SalesBillController extends Controller
             ];
         }
 
-        // Sort: available batches first (FIFO), then out-of-stock batches
+        // Sort: FIFO by expiry date / purchase sequence
         usort($batches, function ($a, $b) {
-            if ($a['qty'] > 0 && $b['qty'] <= 0) return -1;
-            if ($a['qty'] <= 0 && $b['qty'] > 0) return 1;
             return strcmp($a['exp_date'] ?? '', $b['exp_date'] ?? '');
         });
+
+        $batchStockSum = 0.0;
+        foreach ($batches as $b) {
+            $batchStockSum += max(0, (float) ($b['qty'] ?? 0));
+        }
+        if (!empty($batches)) {
+            $stock = $batchStockSum;
+        }
 
         $defaultExp = !empty($batches) ? $batches[0]['exp_date'] : null;
         $defaultBatchNo = !empty($batches) ? $batches[0]['batch_no'] : null;
@@ -1540,6 +1533,18 @@ class SalesBillController extends Controller
         // Auto-assign next bill number on create if not provided (e.g. from POS or auto-number form)
         if (!$request->filled('bill_number') && (!$ignoreId && !$request->route('sales_bill'))) {
             $request->merge(['bill_number' => $this->nextNumber()]);
+        }
+
+        // Auto-heal invalid, missing, or stale branch_id
+        $branchId = $request->input('branch_id');
+        $validBranch = !empty($branchId) && \App\Models\Branch::where('status', true)->where('id', $branchId)->exists();
+        if (!$validBranch) {
+            $user = $request->user();
+            $fallbackBranchId = session('active_branch_id')
+                ?? ($user?->branch_id && \App\Models\Branch::where('status', true)->where('id', $user->branch_id)->exists() ? $user->branch_id : null)
+                ?? \App\Models\Branch::where('status', true)->orderBy('id')->value('id')
+                ?? 1;
+            $request->merge(['branch_id' => $fallbackBranchId]);
         }
 
         $now = now()->setTimezone('Asia/Kolkata')->addMinutes(5)->format('Y-m-d H:i:s');

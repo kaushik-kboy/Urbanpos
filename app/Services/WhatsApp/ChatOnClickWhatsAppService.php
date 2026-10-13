@@ -16,6 +16,7 @@ class ChatOnClickWhatsAppService
     protected string $headerTitle;
     protected string $footerMessage;
     protected ?string $supportPhone;
+    protected ?string $customMessage;
     protected bool $autoSendOnBill;
     protected bool $isActive;
 
@@ -25,14 +26,14 @@ class ChatOnClickWhatsAppService
     }
 
     /**
-     * Refresh settings dynamically from database singleton (with env/config fallback).
+     * Refresh settings dynamically from database for a specific branch (with env/config fallback).
      */
-    public function refreshSettings(): void
+    public function refreshSettings(?int $branchId = null): void
     {
         $settings = null;
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('whats_app_settings')) {
-                $settings = \App\Models\WhatsAppSetting::current();
+                $settings = \App\Models\WhatsAppSetting::forBranch($branchId);
             }
         } catch (\Throwable $e) {
             // Fallback gracefully during early boot or tests without migrations
@@ -46,6 +47,7 @@ class ChatOnClickWhatsAppService
         $this->headerTitle = $settings?->header_title ?: 'URBAN PETS';
         $this->footerMessage = $settings?->footer_message ?: 'Have an Awesome Day!';
         $this->supportPhone = $settings?->support_phone ?: null;
+        $this->customMessage = $settings?->custom_message ?: null;
         $this->autoSendOnBill = $settings ? (bool) $settings->auto_send_on_bill : true;
         $this->isActive = $settings ? (bool) $settings->is_active : true;
     }
@@ -123,6 +125,8 @@ class ChatOnClickWhatsAppService
      */
     public function formatInvoiceMessage(SalesBill $salesBill): string
     {
+        $this->refreshSettings($salesBill->branch_id);
+
         $customerName = trim($salesBill->customer?->name ?: 'Customer');
         $branchName   = $salesBill->branch?->name ?: $this->headerTitle;
         $branchPhone  = $this->supportPhone ?: ($salesBill->branch?->phone ?: '7383056626');
@@ -142,6 +146,23 @@ class ChatOnClickWhatsAppService
 
         $header = strtoupper($this->headerTitle);
         $footer = $this->footerMessage;
+
+        if (!empty($this->customMessage)) {
+            $replacements = [
+                '{customer_name}' => $customerName,
+                '{bill_number}'   => (string)$billNumber,
+                '{date}'          => $billDate,
+                '{branch_name}'   => $branchName,
+                '{total_items}'   => (string)$totalItems,
+                '{total}'         => $totalAmount,
+                '{payment_mode}'  => $paymentModes,
+                '{bill_url}'      => $publicUrl,
+                '{store_phone}'   => $branchPhone,
+                '{header}'        => $header,
+                '{footer}'        => $footer,
+            ];
+            return str_replace(array_keys($replacements), array_values($replacements), $this->customMessage);
+        }
 
         return "🐾 *{$header}* 🐾\n"
              . "*Official Tax Invoice Receipt*\n"
@@ -164,9 +185,9 @@ class ChatOnClickWhatsAppService
     /**
      * Send arbitrary text message to a specific phone number.
      */
-    public function sendTextMessage(string $phone, string $message): array
+    public function sendTextMessage(string $phone, string $message, ?int $branchId = null): array
     {
-        $this->refreshSettings();
+        $this->refreshSettings($branchId);
 
         if (empty($this->appKey) || empty($this->authKey)) {
             return [
@@ -242,8 +263,9 @@ class ChatOnClickWhatsAppService
     /**
      * Dispatch a test WhatsApp message from Settings page to verify credentials.
      */
-    public function sendTestMessage(string $phone): array
+    public function sendTestMessage(string $phone, ?int $branchId = null): array
     {
+        $this->refreshSettings($branchId);
         $timestamp = now()->format('d-m-Y h:i A');
         $msg = "🐾 *{$this->headerTitle}* 🐾\n"
              . "✅ *WhatsApp Integration Test Successful!*\n"
@@ -254,7 +276,7 @@ class ChatOnClickWhatsAppService
              . "━━━━━━━━━━━━━━━━━━━━\n"
              . "🐾 *{$this->footerMessage}*";
 
-        return $this->sendTextMessage($phone, $msg);
+        return $this->sendTextMessage($phone, $msg, $branchId);
     }
 
     /**
@@ -262,7 +284,7 @@ class ChatOnClickWhatsAppService
      */
     public function sendSalesBillInvoice(SalesBill $salesBill, ?string $overridePhone = null, bool $force = false): array
     {
-        $this->refreshSettings();
+        $this->refreshSettings($salesBill->branch_id);
 
         // Check if disabled and not forced
         if (!$this->isActive && !$force) {

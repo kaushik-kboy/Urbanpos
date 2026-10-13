@@ -14,7 +14,9 @@ class SwitchBranchController extends Controller
 
     public function switch(Request $request, Branch $branch)
     {
-        if ($request->user()->branch_id !== null && (int)$request->user()->branch_id !== (int)$branch->id) {
+        $user = $request->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        if (! $isGlobalAdmin && $user && $user->branch_id !== null && (int)$user->branch_id !== (int)$branch->id) {
             abort(403, 'Unauthorized branch switch.');
         }
 
@@ -35,8 +37,9 @@ class SwitchBranchController extends Controller
     {
         $branchId = $request->input('branch_id');
         $user = $request->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
 
-        if ($user && $user->branch_id !== null) {
+        if (! $isGlobalAdmin && $user && $user->branch_id !== null) {
             $branchId = $user->branch_id;
         }
 

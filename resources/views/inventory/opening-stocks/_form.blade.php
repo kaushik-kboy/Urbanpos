@@ -901,20 +901,11 @@
             }, 50);
         });
 
-        // Reset Form (Clears form and resets table)
+        // Reset Form (Task 3: Global Reset)
         $(document).on('click', '#btn-reset-form, .btn-reset-form', function () {
-            $('#btn-reset-table').trigger('click');
-            if (window.toastr) {
-                toastr.info('Opening Stock form has been reset.');
+            if (confirm('Are you sure you want to reset this form? All items and unsaved data will be cleared.')) {
+                window.location.reload();
             }
-            setTimeout(function () {
-                let $b = $('#branch_id');
-                if ($b.data('select2')) {
-                    $b.data('select2').$container.find('.select2-selection').focus();
-                } else if ($b.length) {
-                    $b.focus();
-                }
-            }, 100);
         });
 
         // Add Row — focus item-code (Tab will open modal)

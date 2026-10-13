@@ -44,7 +44,6 @@
 @endif
 
 <input type="hidden" name="purchase_receipt_note_id" value="{{ $rnIdVal }}">
-<input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
 
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h5 class="mb-0 text-muted font-weight-bold text-uppercase small"><i class="fas fa-file-invoice text-primary mr-1"></i> Invoice Details</h5>
@@ -79,7 +78,16 @@
         <x-field name="invoice_date" label="Invoice Date" type="date" :value="optional($inv->invoice_date ?? now())->format('Y-m-d')" max="{{ date('Y-m-d') }}" required />
     </div>
 
-    <div class="field-wrapper col-md-2" data-field="supplier_id" data-label="Supplier" data-default-order="2" data-core="1">
+    <div class="field-wrapper col-md-2" data-field="branch_id" data-label="Branch" data-default-order="2" data-core="1">
+        @if(!empty($inv?->id))
+            <x-field name="branch_display" label="Branch" :value="$inv->branch?->name ?? 'Branch'" readonly />
+            <input type="hidden" name="branch_id" id="branch_id" value="{{ $inv->branch_id }}">
+        @else
+            <x-select name="branch_id" id="branch_id" label="Branch" :options="$branches" :selected="$selectedBranch" required />
+        @endif
+    </div>
+
+    <div class="field-wrapper col-md-2" data-field="supplier_id" data-label="Supplier" data-default-order="3" data-core="1">
         <x-select name="supplier_id" label="Supplier" :options="$suppliers" :selected="$selectedSupplier" placeholder="Select a Supplier" required />
         <div class="form-group row mt-n2 mb-2" id="supplier-prev-inv-wrapper">
             <div class="col-sm-3"></div>
@@ -994,7 +1002,7 @@
         }
 
         function fetchItemList() {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             let srch     = $.trim($('#pinv-isl-filter-name').val());
             let code     = $.trim($('#pinv-isl-filter-code').val());
             let expiry   = $.trim($('#pinv-isl-filter-expiry').val());
@@ -1755,7 +1763,7 @@
         }
 
         function processPurchaseItemLookup($row, itemId, query, isDirectLookup = false) {
-            let branchId = $('select[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+            let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
             let $select = $row.find('.pinv-item-select');
             let $desc = $row.find('.pinv-item-desc');
             let $code = $row.find('.pinv-item-code');
@@ -2661,70 +2669,11 @@
             calculateTotals();
         }
 
-        // Form Reset Button Handler: resets header form fields without deleting table items (Task 4)
+        // Form Reset Button Handler: resets form and clears all items (just like reload)
         $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
             e.preventDefault();
-            if (confirm('Reset header form inputs? (Existing table items will be preserved)')) {
-                // Reset Supplier & trigger associated cascades (PO list, prev invoices link, lock indicator)
-                $('#supplier_id').val('').trigger('change');
-                applySupplierPurchaseType(null);
-                updateSupplierPrevInvoicesLink('');
-                updateSupplierOpenPOs('');
-
-                // Reset PO
-                $('#purchase_order_id').val('').trigger('change.select2');
-
-                // Reset Purchase Type & C-Form
-                $('#purchase_type').val('Local').trigger('change');
-                $('select[name="c_form"]').val('No Forms').trigger('change');
-
-                // Reset Dates to today
-                let now = new Date();
-                let pad = n => String(n).padStart(2, '0');
-                let todayParts = { day: now.getDate(), month: now.getMonth() + 1, year: now.getFullYear() };
-                let todayFormatted = typeof window.formatParts === 'function' && typeof window.UrbanPosDateConfig !== 'undefined'
-                    ? window.formatParts(todayParts, window.UrbanPosDateConfig.getFormat())
-                    : (todayParts.year + '-' + pad(todayParts.month) + '-' + pad(todayParts.day));
-
-                function setDateVal($input, val) {
-                    if (!$input.length) return;
-                    $input.val(val).trigger('change');
-                    let dp = $input.data('daterangepicker');
-                    if (dp && typeof moment !== 'undefined') {
-                        let m = moment();
-                        dp.setStartDate(m);
-                        dp.setEndDate(m);
-                    }
-                }
-
-                setDateVal($('#invoice_date'), todayFormatted);
-                setDateVal($('#grn_date'), todayFormatted);
-                setDateVal($('#supplier_inv_date'), todayFormatted);
-
-                // Reset Supplier Inv No & Amount & Feedbacks
-                $('#supplier_inv_no').val('').removeClass('is-invalid border-danger');
-                $('#supplier-inv-feedback-container').hide();
-                $('#supplier-inv-feedback').text('');
-                $('#supplier_inv_amount').val('');
-                $('#supplier-inv-amount-match-status').empty().removeClass('text-success text-danger');
-
-                // Reset Footer & Additional Fields
-                $('#freight').val('0.00');
-                $('#round_off').val('0.00');
-                $('#scheme_item_disc_amt').val('0.00');
-                $('#scheme_item_disc_percent').val('');
-                $('#other_disc_amt').val('0.00');
-                $('#total_extra_cess').val('0.00');
-                $('#total_weight').val('0');
-                $('#tcs_amount').val('0.00');
-                $('#remarks').val('');
-                $('#message').val('');
-
-                calculateTotals();
-
-                if (window.toastr) {
-                    toastr.info('Header form inputs have been reset. Existing table items are preserved.', 'Form Reset');
-                }
+            if (confirm('Are you sure you want to reset this form? All items and unsaved data will be cleared.')) {
+                window.location.reload();
             }
         });
 

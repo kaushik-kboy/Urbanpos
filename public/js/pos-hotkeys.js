@@ -374,13 +374,14 @@
                     return;
                 }
 
-                if (confirm('Are you sure you want to clear this form? All unsaved data will be lost.')) {
-                    let $resetBtn = $('.btn-reset-form, [type="reset"]').filter(':visible').first();
-                    if ($resetBtn.length) {
-                        $resetBtn.trigger('click');
-                    } else {
-                        window.location.reload();
+                if (confirm('Are you sure you want to reset this form? All items and unsaved data will be cleared.')) {
+                    if (typeof DRAFT_KEY !== 'undefined') {
+                        localStorage.removeItem(DRAFT_KEY);
                     }
+                    try {
+                        localStorage.removeItem('urbanpos_sales_bill_draft_v1');
+                    } catch (e) {}
+                    window.location.reload();
                 }
                 break;
             }

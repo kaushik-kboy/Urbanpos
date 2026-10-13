@@ -425,7 +425,7 @@ $(function() {
             }
         }
 
-        let branchId = $('#branch_id').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+        let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
         let params = { branch_id: branchId };
         if (itemId) {
             params.item_id = itemId;
@@ -604,7 +604,7 @@ $(function() {
     });
 
     function fetchSoItemList() {
-        let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 3;
+        let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
         let srch = $.trim($('#so-isl-filter-name').val());
         let code = $.trim($('#so-isl-filter-code').val());
 

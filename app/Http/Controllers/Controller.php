@@ -55,7 +55,8 @@ class Controller extends BaseController
     protected function resolveActiveBranchId(?\Illuminate\Http\Request $request = null, bool $allowAll = false): int|string
     {
         $user = auth()->user();
-        if ($user && $user->branch_id !== null && ! $user->hasRole('Owner') && $user->email !== 'admin@urbanpos.com') {
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        if (! $isGlobalAdmin && $user && $user->branch_id !== null) {
             return (int) $user->branch_id;
         }
 

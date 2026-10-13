@@ -730,7 +730,7 @@
                         if (applyItemToRow($targetRow, fullItem, true) === false) {
                             return;
                         }
-                        let realBatches = (fullItem.batches || []).filter(b => b && (parseFloat(b.qty || b.available_qty || 0) > 0 || (b.batch_no && String(b.batch_no).trim() !== '')));
+                        let realBatches = (fullItem.batches || []).filter(b => b && parseFloat(b.qty !== undefined ? b.qty : (b.available_qty || 0)) > 0);
                         if (realBatches.length > 1) {
                             showStBatchModal($targetRow, fullItem, realBatches);
                         } else {
@@ -818,17 +818,16 @@
             $('#st-batch-modal-branch-info').text('Branch: ' + branchName);
 
             let $tbody = $('#st-modal-batches-body');
-            $tbody.empty();
-
-            if (!batches || batches.length === 0) {
-                $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No batches recorded for this item. Existing stock can be transferred without batch.</td></tr>');
+            let inStockBatches = (batches || []).filter(b => parseFloat(b.qty !== undefined ? b.qty : (b.available_qty || 0)) > 0);
+            if (!inStockBatches || inStockBatches.length === 0) {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No batches in stock for this item. Existing stock can be transferred without batch.</td></tr>');
                 $('#st-batch-modal').modal('show');
                 return;
             }
 
             let currentBatchNo = $row.find('.item-batch-no').val() || '';
             let html = '';
-            batches.forEach(function (b, idx) {
+            inStockBatches.forEach(function (b, idx) {
                 let isExpired = b.exp_date && isExpiredDate(b.exp_date);
                 let expBadge = b.exp_date
                     ? (isExpired
@@ -1045,21 +1044,12 @@
             }, 50);
         });
 
-        // Reset Form Handler (Clears header fields and resets table)
+        // Reset Form Handler (Task 3: Global Reset)
         $(document).on('click', '#btn-reset-form, .btn-reset-form', function (e) {
             e.preventDefault();
-            $('#to_branch_id').val('').trigger('change.select2');
-            $('textarea[name="remarks"]').val('');
-            $('#btn-reset-table').trigger('click');
-            if (window.toastr) {
-                toastr.info('Stock Transfer form has been reset.');
+            if (confirm('Are you sure you want to reset this form? All items and unsaved data will be cleared.')) {
+                window.location.reload();
             }
-            setTimeout(function () {
-                let $from = $('#from_branch_id');
-                if ($from.data('select2')) {
-                    $from.data('select2').$container.find('.select2-selection').focus();
-                }
-            }, 100);
         });
 
         // Row Remove Handler

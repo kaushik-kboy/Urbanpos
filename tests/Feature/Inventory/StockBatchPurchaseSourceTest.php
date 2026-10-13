@@ -40,7 +40,13 @@ class StockBatchPurchaseSourceTest extends TestCase
 
         $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
 
-        $this->user = User::factory()->create(['id' => 1]);
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
+        $this->user = User::factory()->create([
+            'id' => 1,
+            'branch_id' => null,
+            'email' => 'admin@urbanpos.com',
+        ]);
+        $this->user->assignRole('Owner');
         $this->actingAs($this->user);
 
         $this->branch = Branch::create(['name' => 'Main Branch', 'state' => 'Gujarat']);
@@ -67,8 +73,9 @@ class StockBatchPurchaseSourceTest extends TestCase
     /**
      * Helper to post a purchase invoice
      */
-    private function postPurchase(string $invoiceNo, string $batchNo, string $expDate, float $costPrice, float $mrp, float $sellPrice, float $qty): PurchaseInvoice
+    private function postPurchase(string $invoiceNo, string $batchNo, string $expDate, float $costPrice, float $mrp, float $sellPrice, float $qty, ?Item $customItem = null): PurchaseInvoice
     {
+        $targetItem = $customItem ?: $this->item;
         $response = $this->post(route('purchase.purchase-invoices.store'), [
             'branch_id' => $this->branch->id,
             'supplier_id' => $this->supplier->id,
@@ -79,7 +86,7 @@ class StockBatchPurchaseSourceTest extends TestCase
             'supplier_inv_amount' => $costPrice * $qty,
             'items' => [
                 [
-                    'item_id' => $this->item->id,
+                    'item_id' => $targetItem->id,
                     'batch_no' => $batchNo,
                     'exp_date' => $expDate,
                     'cost_price' => $costPrice,
@@ -439,5 +446,101 @@ class StockBatchPurchaseSourceTest extends TestCase
 
         $this->assertEquals(12.0, (float) $b1After['remaining_qty']);
         $this->assertEquals(20.0, (float) $b2After['remaining_qty']);
+    }
+
+    /**
+     * TEST 12: User scenario: Item purchased at 1000 (10 qty) then at 1100 (15 qty).
+     * Must maintain 10 qty @ 1000 and 15 qty @ 1100, not merge into 25 qty @ 1100.
+     * When 10 qty is sold, 0 stock batch must be excluded from lookup.
+     */
+    public function test_multiple_purchases_preserve_distinct_batch_prices_and_exclude_zero_stock(): void
+    {
+        $testItem = Item::create([
+            'name' => 'Drools 10kg Test',
+            'item_code' => 'DRL-10',
+            'sell_price' => 1200,
+            'cost_price' => 1000,
+            'mrp' => 1500,
+            'gst_tax_id' => $this->gst->id,
+            'status' => true,
+            'allow_negative_stock' => false,
+        ]);
+
+        // Purchase 1: 10 qty @ 1000 (sell: 1200)
+        $this->postPurchase('INV-3010', 'BATCH-1', '2027-10-30', 1000.0, 1500.0, 1200.0, 10.0, $testItem);
+
+        // Purchase 2: 15 qty @ 1100 (sell: 1300)
+        $this->postPurchase('INV-0211', 'BATCH-2', '2027-11-02', 1100.0, 1500.0, 1300.0, 15.0, $testItem);
+
+        // Fetch batches via BatchStockService
+        $batches = $this->batchService->getItemBatches($testItem->id, $this->branch->id);
+
+        // Must have 2 distinct batches, NOT 1 merged batch of 25 @ 1100 / 1300
+        $this->assertCount(2, $batches);
+
+        $batch1 = $batches->first(fn ($b) => $b['batch_no'] === 'BATCH-1');
+        $batch2 = $batches->first(fn ($b) => $b['batch_no'] === 'BATCH-2');
+
+        $this->assertNotNull($batch1);
+        $this->assertNotNull($batch2);
+
+        $this->assertEquals(10.0, (float) $batch1['remaining_qty']);
+        $this->assertEquals(1000.0, (float) $batch1['cost_price']);
+        $this->assertEquals(1200.0, (float) $batch1['sell_price']);
+
+        $this->assertEquals(15.0, (float) $batch2['remaining_qty']);
+        $this->assertEquals(1100.0, (float) $batch2['cost_price']);
+        $this->assertEquals(1300.0, (float) $batch2['sell_price']);
+
+        // Check lookup-item endpoint for sales bill / POS
+        $lookupRes = $this->getJson(route('sales.sales-bills.lookup-item', [
+            'item_id' => $testItem->id,
+            'branch_id' => $this->branch->id,
+        ]));
+        $lookupRes->assertOk();
+        $this->assertCount(2, $lookupRes->json('batches'));
+
+        // Sell 10 units from BATCH-1 (so BATCH-1 stock becomes 0)
+        $this->post(route('sales.sales-bills.store'), [
+            'branch_id' => $this->branch->id,
+            'customer_id' => $this->customer->id,
+            'bill_date' => now()->format('Y-m-d H:i:s'),
+            'sales_type' => 'Local',
+            'delivery_type' => 'Counter Sale',
+            'invoice_type' => 'Retail Invoice',
+            'items' => [
+                [
+                    'item_id' => $testItem->id,
+                    'batch_no' => 'BATCH-1',
+                    'exp_date' => '2027-10-30',
+                    'qty' => 10.0,
+                    'sell_price' => 1200.0,
+                    'mrp' => 1500.0,
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => 0,
+                ],
+            ],
+            'payments' => [
+                [
+                    'tender_type_id' => \App\Models\TenderType::firstOrCreate(['name' => 'Cash'], ['code' => 'CSH', 'status' => true])->id,
+                    'amount' => 12000.0,
+                ],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        // Verify lookup-item excludes BATCH-1 because its stock is 0
+        $lookupAfter = $this->getJson(route('sales.sales-bills.lookup-item', [
+            'item_id' => $testItem->id,
+            'branch_id' => $this->branch->id,
+        ]));
+        $lookupAfter->assertOk();
+
+        // Only BATCH-2 with 15 remaining stock should be returned
+        $activeBatches = $lookupAfter->json('batches');
+        $this->assertCount(1, $activeBatches);
+        $this->assertEquals('BATCH-2', $activeBatches[0]['batch_no']);
+        $this->assertEquals(15.0, (float) $activeBatches[0]['qty']);
+        $this->assertEquals(1300.0, (float) $activeBatches[0]['sell_price']);
     }
 }

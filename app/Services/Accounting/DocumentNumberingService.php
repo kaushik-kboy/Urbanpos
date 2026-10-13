@@ -130,7 +130,8 @@ class DocumentNumberingService
             $sharedLast = null;
             $gatePeriod = null;
             $probePrefix = $sequence?->prefix ?? (static::defaultDefinitions()[$documentType]['prefix'] ?? '');
-            if (! str_contains((string) $probePrefix, '{BRANCH}')) {
+            $isBranchSpecific = ($sequence && $sequence->branch_id !== null) || ($branchId !== null);
+            if (! str_contains((string) $probePrefix, '{BRANCH}') && ! $isBranchSpecific) {
                 $gate = 'gate:'.$documentType;
                 if (! DB::table('document_sequences')->where('series', $gate)->exists()) {
                     DB::table('document_sequences')->insertOrIgnore([

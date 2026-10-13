@@ -292,6 +292,60 @@
                                 <label class="font-weight-bold text-secondary small text-uppercase">Support QR URL / WhatsApp Link</label>
                                 <input type="text" name="support_qr_payload" id="input_support_qr_payload" class="form-control form-control-sm" value="{{ old('support_qr_payload', $settings->support_qr_payload) }}" placeholder="e.g. https://wa.me/917383056626">
                             </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_order_ref" name="show_order_ref" value="1" {{ old('show_order_ref', $settings->show_order_ref ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_order_ref">
+                                        🔖 Show Order Ref / Tracking No.
+                                    </label>
+                                    <div class="small text-muted pl-4">Display Order Ref / Delivery Note in invoice header.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_supply_details" name="show_supply_details" value="1" {{ old('show_supply_details', $settings->show_supply_details ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_supply_details">
+                                        📍 Show Supply Details (Mode, Reverse Charge, State)
+                                    </label>
+                                    <div class="small text-muted pl-4">Shows Mode of Supply, Reverse Charge, Place of Supply & State Code.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_amount_in_words" name="show_amount_in_words" value="1" {{ old('show_amount_in_words', $settings->show_amount_in_words ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_amount_in_words">
+                                        🔤 Show Amount in Words Banner
+                                    </label>
+                                    <div class="small text-muted pl-4">Prints written words representation of the invoice grand total.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_compliance_notes" name="show_compliance_notes" value="1" {{ old('show_compliance_notes', $settings->show_compliance_notes ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_compliance_notes">
+                                        🛡️ Show Store Guarantee / Compliance Card
+                                    </label>
+                                    <div class="small text-muted pl-4">Displays statutory compliance / store guarantee notes card.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_terms_conditions" name="show_terms_conditions" value="1" {{ old('show_terms_conditions', $settings->show_terms_conditions ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_terms_conditions">
+                                        📜 Show Terms & Conditions Footer
+                                    </label>
+                                    <div class="small text-muted pl-4">Displays bottom return policy & legal jurisdiction terms.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_total_qty" name="show_total_qty" value="1" {{ old('show_total_qty', $settings->show_total_qty ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_total_qty">
+                                        📦 Show Total Qty & Items Summary
+                                    </label>
+                                    <div class="small text-muted pl-4">Displays Total Quantity and Item count below tax summary.</div>
+                                </div>
+                            </div>
                         </div>
 
                         {{-- Statutory Compliance & Terms --}}
@@ -439,6 +493,24 @@
                                         ║▌ Print Barcode at Bottom
                                     </label>
                                     <div class="small text-muted pl-4">Allows barcode scanner to scan the receipt for quick lookup/returns.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_item_code" name="show_item_code" value="1" {{ old('show_item_code', $settings->show_item_code ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_item_code">
+                                        🏷️ Print Item Code Column
+                                    </label>
+                                    <div class="small text-muted pl-4">Shows SKU / Item Code column in items table.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="input_show_mrp" name="show_mrp" value="1" {{ old('show_mrp', $settings->show_mrp ?? true) ? 'checked' : '' }}>
+                                    <label class="custom-control-label font-weight-bold" for="input_show_mrp">
+                                        💰 Print MRP Column
+                                    </label>
+                                    <div class="small text-muted pl-4">Shows original MRP (Maximum Retail Price) column.</div>
                                 </div>
                             </div>
                         </div>
@@ -1223,7 +1295,11 @@
                                                     <td style="padding: 2px 6px; font-weight: bold;">Date:</td>
                                                     <td style="padding: 2px 6px;">{{ now()->format('d-m-Y') }}</td>
                                                 </tr>
-                                                <tr style="background: #f8fafc;">
+                                                <tr id="prev_a4_order_ref_row" style="{{ ($settings->show_order_ref ?? true) ? '' : 'display: none;' }}; border-bottom: 1px solid #e2e8f0;">
+                                                    <td style="padding: 2px 6px; font-weight: bold;">Order Ref:</td>
+                                                    <td style="padding: 2px 6px;">ORD-1002</td>
+                                                </tr>
+                                                <tr class="prev_a4_supply_detail_row" style="{{ ($settings->show_supply_details ?? true) ? '' : 'display: none;' }}; background: #f8fafc;">
                                                     <td style="padding: 2px 6px; font-weight: bold;">Place of Supply:</td>
                                                     <td style="padding: 2px 6px;">24 - Gujarat</td>
                                                 </tr>
@@ -1357,14 +1433,14 @@
                                         <tr style="background: var(--accent); color: #fff;">
                                             <th style="padding: 4px; border: 1px solid #cbd5e1; width: 25px; text-align: center;">Sr.</th>
                                             <th class="prev_a4_hsn_col" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: center;">HSN</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 65px; text-align: center;">Item Code</th>
+                                            <th class="prev_a4_item_code_col" style="{{ ($settings->show_item_code ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1; width: 65px; text-align: center;">Item Code</th>
                                             <th style="padding: 4px; border: 1px solid #cbd5e1; text-align: left;">Item Name</th>
                                             <th style="padding: 4px; border: 1px solid #cbd5e1; width: 35px; text-align: right;">Qty</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: right;">MRP</th>
+                                            <th class="prev_a4_mrp_col" style="{{ ($settings->show_mrp ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1; width: 55px; text-align: right;">MRP</th>
                                             <th class="prev_a4_disc_col" style="{{ $settings->show_discount ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #cbd5e1; width: 45px; text-align: right;">Disc%</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">SGST</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">CGST</th>
-                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">IGST</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">SGST (%)</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">CGST (%)</th>
+                                            <th style="padding: 4px; border: 1px solid #cbd5e1; width: 50px; text-align: right;">IGST (%)</th>
                                             <th style="padding: 4px; border: 1px solid #cbd5e1; width: 65px; text-align: right;">Amount</th>
                                         </tr>
                                     </thead>
@@ -1372,26 +1448,26 @@
                                         <tr style="border-bottom: 1px solid #e2e8f0;">
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">1</td>
                                             <td class="prev_a4_hsn_col" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: center; color: #64748b;">23091000</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 8.5px;">RC-MAXI-4K</td>
+                                            <td class="prev_a4_item_code_col" style="{{ ($settings->show_item_code ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 8.5px;">RC-MAXI-4K</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Royal Canin Maxi Puppy 4kg</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">1.00</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹2,450.00</td>
+                                            <td class="prev_a4_mrp_col" style="{{ ($settings->show_mrp ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹2,450.00</td>
                                             <td class="prev_a4_disc_col" style="{{ $settings->show_discount ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: right; color: #dc2626;">6.1%</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹175.42</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹175.42</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">9%</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">9%</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">-</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹2,300.00</td>
                                         </tr>
                                         <tr style="border-bottom: 1px solid #e2e8f0;">
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center;">2</td>
                                             <td class="prev_a4_hsn_col" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: center; color: #64748b;">23099090</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 8.5px;">GNW-BONE-12</td>
+                                            <td class="prev_a4_item_code_col" style="{{ ($settings->show_item_code ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-family: monospace; font-size: 8.5px;">GNW-BONE-12</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; font-weight: 600;">Gnawlers Calcium Milk Bones</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">2.00</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹180.00</td>
+                                            <td class="prev_a4_mrp_col" style="{{ ($settings->show_mrp ?? true) ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹180.00</td>
                                             <td class="prev_a4_disc_col" style="{{ $settings->show_discount ? '' : 'display: none;' }}; padding: 4px; border: 1px solid #e2e8f0; text-align: right;">-</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹19.29</td>
-                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">₹19.29</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">6%</td>
+                                            <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">6%</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right;">-</td>
                                             <td style="padding: 4px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹360.00</td>
                                         </tr>
@@ -1401,9 +1477,9 @@
                                             <td colspan="4" style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">Total:</td>
                                             <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">3.00</td>
                                             <td colspan="2" style="padding: 4px; border: 1px solid #cbd5e1;"></td>
-                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹194.71</td>
-                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">₹194.71</td>
-                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">-</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #64748b;">-</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #64748b;">-</td>
+                                            <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #64748b;">-</td>
                                             <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; font-weight: 800; color: var(--accent);">₹2,660.00</td>
                                         </tr>
                                     </tfoot>
@@ -1445,6 +1521,9 @@
                                                 <td style="padding: 2px 4px;">₹389.42</td>
                                             </tr>
                                         </table>
+                                        <div id="prev_a4_total_qty_badge" style="{{ ($settings->show_total_qty ?? true) ? '' : 'display: none;' }}; font-size: 10px; color: #475569; background: #f8fafc; padding: 4px 8px; border-top: 1px solid #cbd5e1; border-radius: 0 0 3px 3px;">
+                                            <strong>Total Quantity:</strong> 3.00 &nbsp;|&nbsp; <strong>Total Items:</strong> 2
+                                        </div>
                                     </div>
 
                                     <div style="flex: 1; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 10.5px;">
@@ -1474,7 +1553,7 @@
                                 </div>
 
                                 {{-- Amount in words --}}
-                                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px 8px; font-size: 10px; margin-bottom: 10px;">
+                                <div id="prev_a4_amount_in_words_box" style="{{ ($settings->show_amount_in_words ?? true) ? '' : 'display: none;' }}; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 3px; padding: 4px 8px; font-size: 10px; margin-bottom: 10px;">
                                     <strong>Amount in Words:</strong> Rupees Two Thousand Six Hundred Sixty Only
                                 </div>
 
@@ -1509,11 +1588,11 @@
                                 </div>
 
                                 {{-- ── 6. COMPLIANCE NOTES & TERMS ────────────────────────────────── --}}
-                                <div id="prev_a4_compliance_box" style="font-size: 9px; color: #475569; margin-bottom: 4px; line-height: 1.3; border-top: 1px solid #e2e8f0; padding-top: 4px;">
+                                <div id="prev_a4_compliance_box" style="{{ ($settings->show_compliance_notes ?? true) ? '' : 'display: none;' }}; font-size: 9px; color: #475569; margin-bottom: 4px; line-height: 1.3; border-top: 1px solid #e2e8f0; padding-top: 4px;">
                                     <div id="prev_a4_compliance_text">{!! nl2br(e($settings->compliance_notes ?: 'Whether tax is payable on reverse charge basis: NO | Certified that the particulars given above are true and correct.')) !!}</div>
                                 </div>
 
-                                <div id="prev_a4_terms_box" style="font-size: 9px; color: #64748b; line-height: 1.3; border-top: 1px dashed #cbd5e1; padding-top: 4px;">
+                                <div id="prev_a4_terms_box" style="{{ ($settings->show_terms_conditions ?? true) ? '' : 'display: none;' }}; font-size: 9px; color: #64748b; line-height: 1.3; border-top: 1px dashed #cbd5e1; padding-top: 4px;">
                                     <div style="font-weight: 700; color: #334155; margin-bottom: 2px;">Terms & Conditions / Return Policy:</div>
                                     <div id="prev_a4_terms_text">{!! nl2br(e($settings->terms_conditions ?: ($settings->footer_policy ?: "1. Goods once sold will not be taken back without original bill.\n2. Subject to local jurisdiction only."))) !!}</div>
                                 </div>
@@ -1867,6 +1946,50 @@
     document.getElementById('input_terms_conditions')?.addEventListener('input', function() {
         const textEl = document.getElementById('prev_a4_terms_text');
         if (textEl) textEl.innerText = this.value || '1. Goods once sold will not be taken back without original bill.\n2. Subject to local jurisdiction only.';
+    });
+
+    // New Modular Toggles Listeners
+    document.getElementById('input_show_order_ref')?.addEventListener('change', function() {
+        const el = document.getElementById('prev_a4_order_ref_row');
+        if (el) el.style.display = this.checked ? '' : 'none';
+    });
+
+    document.getElementById('input_show_supply_details')?.addEventListener('change', function() {
+        document.querySelectorAll('.prev_a4_supply_detail_row').forEach(el => {
+            el.style.display = this.checked ? '' : 'none';
+        });
+    });
+
+    document.getElementById('input_show_item_code')?.addEventListener('change', function() {
+        document.querySelectorAll('.prev_a4_item_code_col').forEach(el => {
+            el.style.display = this.checked ? '' : 'none';
+        });
+    });
+
+    document.getElementById('input_show_mrp')?.addEventListener('change', function() {
+        document.querySelectorAll('.prev_a4_mrp_col').forEach(el => {
+            el.style.display = this.checked ? '' : 'none';
+        });
+    });
+
+    document.getElementById('input_show_amount_in_words')?.addEventListener('change', function() {
+        const el = document.getElementById('prev_a4_amount_in_words_box');
+        if (el) el.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('input_show_compliance_notes')?.addEventListener('change', function() {
+        const el = document.getElementById('prev_a4_compliance_box');
+        if (el) el.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('input_show_terms_conditions')?.addEventListener('change', function() {
+        const el = document.getElementById('prev_a4_terms_box');
+        if (el) el.style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('input_show_total_qty')?.addEventListener('change', function() {
+        const el = document.getElementById('prev_a4_total_qty_badge');
+        if (el) el.style.display = this.checked ? 'block' : 'none';
     });
 
     // Synchronized Receipt Feature Toggles (Thermal & A4)

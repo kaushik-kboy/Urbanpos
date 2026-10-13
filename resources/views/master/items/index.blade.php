@@ -63,19 +63,19 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-1 col-sm-6 mb-2">
+                <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Status</label>
                     <select name="status" class="form-control form-control-sm">
-                        <option value="">All</option>
-                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
-                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive</option>
+                        <option value="">All (Active & Inactive)</option>
+                        <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active Only</option>
+                        <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive Only</option>
                     </select>
                 </div>
-                <div class="col-md-2 col-sm-12 mb-2">
-                    <button type="submit" class="btn btn-sm btn-primary mr-1">
+                <div class="col-md-1 col-sm-12 mb-2">
+                    <button type="submit" class="btn btn-sm btn-primary btn-block mb-1">
                         <i class="fas fa-filter"></i> Apply
                     </button>
-                    <a href="{{ route('master.items.index') }}" class="btn btn-sm btn-outline-secondary">
+                    <a href="{{ route('master.items.index') }}" class="btn btn-sm btn-outline-secondary btn-block">
                         <i class="fas fa-undo"></i> Reset
                     </a>
                 </div>
@@ -91,6 +91,7 @@
                         <x-sortable-th column="alias" label="Alias" data-col-key="alias" />
                         <x-sortable-th column="sell_price" label="Sell Price" data-col-key="sell_price" />
                         <x-sortable-th column="supplier" label="Supplier" data-col-key="supplier" />
+                        <x-sortable-th column="status" label="Status" data-col-key="status" />
                         <x-sortable-th column="updated_at" label="Updated Time" data-col-key="updated_at" />
                         <th class="text-right" data-col-key="actions">Actions</th>
                     </tr>
@@ -104,6 +105,13 @@
                             <td data-col-key="alias">{{ $item->alias }}</td>
                             <td data-col-key="sell_price">{{ number_format($item->sell_price, 2) }}</td>
                             <td data-col-key="supplier">{{ $item->supplier?->name }}</td>
+                            <td data-col-key="status">
+                                @if($item->status)
+                                    <span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i>Active</span>
+                                @else
+                                    <span class="badge badge-secondary px-2 py-1"><i class="fas fa-times-circle mr-1"></i>Inactive</span>
+                                @endif
+                            </td>
                             <td data-col-key="updated_at">{{ $item->updated_at->format('d-m-Y H:i') }}</td>
                             <td class="text-right text-nowrap" data-col-key="actions">
                                 <a href="{{ route('master.barcodes.print', ['item_id' => $item->id, 'qty' => 1]) }}" target="_blank" class="btn btn-xs btn-outline-warning mr-1" title="Print Barcode Stickers"><i class="fas fa-barcode"></i></a>
@@ -113,7 +121,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-3">No items yet.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-3">No items yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

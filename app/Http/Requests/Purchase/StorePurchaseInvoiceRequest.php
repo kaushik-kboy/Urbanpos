@@ -26,6 +26,26 @@ class StorePurchaseInvoiceRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $header = $this->input('header', []);
+        $branchId = $header['branch_id'] ?? $this->input('branch_id');
+        $validBranch = ! empty($branchId) && \App\Models\Branch::where('status', true)->where('id', $branchId)->exists();
+        if (! $validBranch) {
+            $user = $this->user();
+            $fallbackBranchId = session('active_branch_id')
+                ?? ($user?->branch_id && \App\Models\Branch::where('status', true)->where('id', $user->branch_id)->exists() ? $user->branch_id : null)
+                ?? \App\Models\Branch::where('status', true)->orderBy('id')->value('id')
+                ?? 1;
+
+            if (is_array($header)) {
+                $header['branch_id'] = $fallbackBranchId;
+                $this->merge(['header' => $header]);
+            }
+            $this->merge(['branch_id' => $fallbackBranchId]);
+        }
+    }
+
     public function rules(): array
     {
         return [

@@ -49,6 +49,14 @@ class ReceiptSetting extends Model
         'footer_policy',
         'footer_note',
         'custom_css',
+        'show_order_ref',
+        'show_supply_details',
+        'show_item_code',
+        'show_mrp',
+        'show_amount_in_words',
+        'show_compliance_notes',
+        'show_terms_conditions',
+        'show_total_qty',
     ];
 
     protected $casts = [
@@ -65,6 +73,14 @@ class ReceiptSetting extends Model
         'show_barcode'           => 'boolean',
         'show_signature_box'     => 'boolean',
         'show_support_qr'        => 'boolean',
+        'show_order_ref'         => 'boolean',
+        'show_supply_details'    => 'boolean',
+        'show_item_code'         => 'boolean',
+        'show_mrp'               => 'boolean',
+        'show_amount_in_words'   => 'boolean',
+        'show_compliance_notes'  => 'boolean',
+        'show_terms_conditions'  => 'boolean',
+        'show_total_qty'         => 'boolean',
     ];
 
     public function branch(): \Illuminate\Database\Eloquent\Relations\BelongsTo

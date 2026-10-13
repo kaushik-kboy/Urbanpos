@@ -24,6 +24,23 @@ class StoreSalesBillRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $branchId = $this->input('branch_id');
+        $validBranch = ! empty($branchId) && \App\Models\Branch::where('status', true)->where('id', $branchId)->exists();
+        if (! $validBranch) {
+            $user = $this->user();
+            $fallbackBranchId = session('active_branch_id')
+                ?? ($user?->branch_id && \App\Models\Branch::where('status', true)->where('id', $user->branch_id)->exists() ? $user->branch_id : null)
+                ?? \App\Models\Branch::where('status', true)->orderBy('id')->value('id')
+                ?? 1;
+
+            $this->merge([
+                'branch_id' => $fallbackBranchId,
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         $now = now()->addMinutes(10)->format('Y-m-d H:i:s');
