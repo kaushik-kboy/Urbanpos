@@ -527,4 +527,16 @@ Route::middleware('auth')->prefix('user/dashboard-preferences')->name('user.dash
 Route::get('receipt/v/{salesBill}/{hash}', [\App\Http\Controllers\Sales\SalesBillController::class, 'publicReceipt'])
     ->name('sales-bills.public-receipt');
 
+// Public route to download the UrbanPOS Android Mobile App APK
+Route::get('/downloads/urbanpos.apk', function () {
+    $path = public_path('downloads/urbanpos.apk');
+    if (!file_exists($path)) {
+        abort(404, 'APK not found. Please contact the administrator.');
+    }
+    return response()->download($path, 'UrbanPOS.apk', [
+        'Content-Type' => 'application/vnd.android.package-archive',
+    ]);
+})->name('download.apk');
+
+
 
