@@ -735,36 +735,44 @@ class StockTransferController extends Controller
         $batches = [];
         foreach ($resolvedBatches as $b) {
             if ($b['remaining_qty'] > 0) {
-                $bNo = !empty($b['batch_no']) ? trim($b['batch_no']) : '';
+                // $b['batch_no'] is the DISPLAY label (e.g. "INV-001 (12/10/2024)" for unbatched PI)
+                // $b['raw_batch_no'] is the actual DB value (e.g. '' or 'BATCH123')
+                $displayBatchNo = !empty($b['batch_no']) ? trim($b['batch_no']) : '';
+                $rawBatchNo     = isset($b['raw_batch_no']) ? trim((string) $b['raw_batch_no']) : $displayBatchNo;
                 $batches[] = [
-                    'productname' => $item->name,
-                    'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                    'batch_no' => $bNo,
-                    'exp_date' => $b['exp_date'],
-                    'qty' => $b['remaining_qty'],
-                    'cost_price' => (float) ($b['cost_price'] > 0 ? $b['cost_price'] : ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0)))),
-                    'sell_price' => (float) ($b['sell_price'] ?: ($item->sell_price ?: 0)),
-                    'mrp' => (float) ($b['mrp'] ?: ($item->mrp ?: 0)),
+                    'productname'  => $item->name,
+                    'code'         => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'batch_no'     => $displayBatchNo,   // shown in UI badge / modal
+                    'raw_batch_no' => $rawBatchNo,        // stored in hidden input & submitted to DB
+                    'exp_date'     => $b['exp_date'],
+                    'qty'          => $b['remaining_qty'],
+                    'available_qty'=> $b['remaining_qty'],
+                    'cost_price'   => (float) ($b['cost_price'] > 0 ? $b['cost_price'] : ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0)))),
+                    'sell_price'   => (float) ($b['sell_price'] ?: ($item->sell_price ?: 0)),
+                    'mrp'          => (float) ($b['mrp'] ?: ($item->mrp ?: 0)),
                 ];
             }
         }
 
         if (empty($batches) && $avail > 0) {
             $batches[] = [
-                'productname' => $item->name,
-                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                'batch_no' => '',
-                'exp_date' => $this->resolveItemExpiry($item, $stock),
-                'qty' => $avail,
-                'cost_price' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
-                'sell_price' => (float) ($item->sell_price ?: 0),
-                'mrp' => (float) ($item->mrp ?: 0),
+                'productname'  => $item->name,
+                'code'         => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'batch_no'     => '',
+                'raw_batch_no' => '',
+                'exp_date'     => $this->resolveItemExpiry($item, $stock),
+                'qty'          => $avail,
+                'available_qty'=> $avail,
+                'cost_price'   => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
+                'sell_price'   => (float) ($item->sell_price ?: 0),
+                'mrp'          => (float) ($item->mrp ?: 0),
             ];
         }
 
         $defaultBatch = !empty($batches) ? $batches[0] : null;
-        $batchNo = $defaultBatch ? $defaultBatch['batch_no'] : null;
-        $expDate = $defaultBatch ? $defaultBatch['exp_date'] : $this->resolveItemExpiry($item, $stock);
+        // Use the RAW batch_no (actual DB value) for top-level item.batch_no so hidden input is correct
+        $rawDefaultBatchNo = $defaultBatch ? ($defaultBatch['raw_batch_no'] ?? '') : null;
+        $expDate  = $defaultBatch ? $defaultBatch['exp_date'] : $this->resolveItemExpiry($item, $stock);
         $availQty = $defaultBatch ? (float) $defaultBatch['qty'] : $avail;
 
         if ($expDate && $expDate < now()->toDateString()) {
@@ -785,19 +793,19 @@ class StockTransferController extends Controller
         return response()->json([
             'found' => true,
             'item' => [
-                'id' => $item->id,
-                'name' => $item->name,
-                'text' => "{$item->name}{$codeStr}",
-                'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                'item_code' => $item->item_code ?: '',
-                'barcode' => $item->ean_upc_code ?: '',
-                'batch_no' => $batchNo,
+                'id'            => $item->id,
+                'name'          => $item->name,
+                'text'          => "{$item->name}{$codeStr}",
+                'code'          => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                'item_code'     => $item->item_code ?: '',
+                'barcode'       => $item->ean_upc_code ?: '',
+                'batch_no'      => $rawDefaultBatchNo,   // actual DB batch value (may be '' for unbatched)
                 'available_qty' => $availQty,
-                'exp_date' => $expDate,
-                'unit_cost' => $defaultCost,
-                'cost_price' => $defaultCost,
-                'mrp' => (float) ($defaultBatch ? ($defaultBatch['mrp'] ?? ($item->mrp ?? 0)) : ($item->mrp ?? 0)),
-                'batches' => $batches,
+                'exp_date'      => $expDate,
+                'unit_cost'     => $defaultCost,
+                'cost_price'    => $defaultCost,
+                'mrp'           => (float) ($defaultBatch ? ($defaultBatch['mrp'] ?? ($item->mrp ?? 0)) : ($item->mrp ?? 0)),
+                'batches'       => $batches,
             ],
         ]);
     }

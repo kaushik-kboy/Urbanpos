@@ -733,6 +733,12 @@
                         let realBatches = (fullItem.batches || []).filter(b => b && parseFloat(b.qty !== undefined ? b.qty : (b.available_qty || 0)) > 0);
                         if (realBatches.length > 1) {
                             showStBatchModal($targetRow, fullItem, realBatches);
+                        } else if (realBatches.length === 1) {
+                            // Single batch — apply automatically, no modal needed
+                            applyBatchToRow($targetRow, realBatches[0]);
+                            setTimeout(function () {
+                                $targetRow.find('.item-qty').focus().select();
+                            }, 80);
                         } else {
                             setTimeout(function () {
                                 $targetRow.find('.item-qty').focus().select();
@@ -877,13 +883,22 @@
         }
 
         function applyBatchToRow($row, batch) {
-            let batchNo = batch.batch_no || '';
-            $row.find('.item-batch-no').val(batchNo);
+            // Display label for badge (e.g. "INV-001 (12/10/2024)") vs raw DB value for hidden input
+            let displayBatchNo = batch.batch_no || '';
+            let rawBatchNo = (batch.raw_batch_no !== undefined) ? batch.raw_batch_no : displayBatchNo;
+
+            // Hidden input holds the RAW batch_no that goes to DB
+            $row.find('.item-batch-no').val(rawBatchNo);
 
             let $batchWrap = $row.find('.st-batch-btn-wrap');
-            $batchWrap.removeClass('d-none');
-            $row.find('.st-batch-badge-text, .item-batch-text').text(batchNo || 'Batch');
-            $row.find('.st-btn-choose-batch').attr('title', batchNo ? ('Batch: ' + batchNo + ' (Click to change)') : 'Click to choose batch');
+            if (displayBatchNo) {
+                $batchWrap.removeClass('d-none');
+                $row.find('.st-batch-badge-text, .item-batch-text').text(displayBatchNo);
+                $row.find('.st-btn-choose-batch').attr('title', 'Batch: ' + displayBatchNo + ' (Click to change)');
+            } else {
+                $batchWrap.addClass('d-none');
+                $row.find('.st-batch-badge-text, .item-batch-text').text('');
+            }
 
             if (batch.cost_price !== undefined && parseFloat(batch.cost_price) > 0) {
                 $row.find('.item-cost').val(parseFloat(batch.cost_price).toFixed(2));
@@ -898,6 +913,7 @@
                 $row.find('.item-exp-date, input[name*="[exp_date]"]').val(formatted).attr('data-original-exp', formatted).data('original-exp', formatted);
             }
 
+            // Update available qty to this batch's specific remaining stock
             let qtyAvail = parseFloat(batch.qty !== undefined ? batch.qty : (batch.available_qty || 0));
             $row.find('.item-available').val(qtyAvail.toFixed(3));
             recalcTotals();
@@ -1106,9 +1122,16 @@
                     if (applyItemToRow($row, res.item, true) === false) {
                         return;
                     }
-                    let realBatches = (res.item.batches || []).filter(b => b && (parseFloat(b.qty || b.available_qty || 0) > 0 || (b.batch_no && String(b.batch_no).trim() !== '')));
+                    // Only show batches with actual stock > 0
+                    let realBatches = (res.item.batches || []).filter(b => b && parseFloat(b.qty !== undefined ? b.qty : (b.available_qty || 0)) > 0);
                     if (realBatches.length > 1) {
                         showStBatchModal($row, res.item, realBatches);
+                    } else if (realBatches.length === 1) {
+                        // Single batch — apply automatically, no modal needed
+                        applyBatchToRow($row, realBatches[0]);
+                        setTimeout(function () {
+                            $row.find('.item-qty').focus().select();
+                        }, 60);
                     } else {
                         setTimeout(function () {
                             $row.find('.item-qty').focus().select();
