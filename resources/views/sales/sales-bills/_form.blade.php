@@ -2843,7 +2843,7 @@
                             <i class="fas fa-ban mr-1"></i>Out of Stock
                            </button>`
                         : `<button type="button" class="btn btn-success btn-xs px-2 btn-apply-batch" 
-                            data-batch="${b.batch_no || ''}"
+                            data-batch="${b.raw_batch_no !== undefined ? b.raw_batch_no : (b.batch_no || '')}"
                             data-exp="${b.exp_date || ''}" 
                             data-sell="${b.sell_price || ''}" 
                             data-mrp="${b.mrp || ''}"
@@ -2853,7 +2853,7 @@
 
                 let tr = `
                     <tr class="${bRowClass}" style="${bRowStyle}" 
-                        data-batch="${b.batch_no || ''}"
+                        data-batch="${b.raw_batch_no !== undefined ? b.raw_batch_no : (b.batch_no || '')}"
                         data-exp="${b.exp_date || ''}" 
                         data-sell="${b.sell_price || ''}" 
                         data-mrp="${b.mrp || ''}"

@@ -741,9 +741,9 @@ class StockTransferController extends Controller
                 'brand' => $item->brand?->name ?? '-',
                 'available_qty' => (float) ($stock?->quantity ?? 0),
                 'exp_date' => $this->resolveItemExpiry($item, $stock),
-                'unit_cost' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
-                'cost_price' => (float) ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0))),
-                'mrp' => (float) ($item->mrp ?? 0),
+                'unit_cost' => (float) (($stock && (float)$stock->cost_price > 0) ? $stock->cost_price : ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0)))),
+                'cost_price' => (float) (($stock && (float)$stock->cost_price > 0) ? $stock->cost_price : ($item->cost_price ?: ($item->landing_cost ?: ($item->sell_price ?: 0)))),
+                'mrp' => (float) (($stock && (float)$stock->mrp > 0) ? $stock->mrp : ($item->mrp ?? 0)),
             ];
         }));
     }

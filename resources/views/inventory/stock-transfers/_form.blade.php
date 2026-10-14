@@ -435,7 +435,7 @@
             $row.data('item-data', item);
 
             const avail = parseFloat(item.available_qty !== undefined ? item.available_qty : (item.qty || 0));
-            $row.find('.item-available').val(avail.toFixed(3));
+            $row.find('.item-available').val(Math.round(avail));
 
             let hasBatches = false;
             if (item.batch_no && String(item.batch_no).trim() !== '' && String(item.batch_no).trim() !== '—') {
@@ -914,7 +914,7 @@
 
             // Update available qty to this batch's specific remaining stock
             let qtyAvail = parseFloat(batch.qty !== undefined ? batch.qty : (batch.available_qty || 0));
-            $row.find('.item-available').val(qtyAvail.toFixed(3));
+            $row.find('.item-available').val(Math.round(qtyAvail));
             recalcTotals();
         }
 
@@ -1083,7 +1083,7 @@
                 $row.find('.st-batch-btn-wrap').addClass('d-none');
                 $row.find('.st-batch-badge-text, .item-batch-text').text('');
                 $row.find('.item-exp-date').val('');
-                $row.find('.item-available').val('0.000');
+                $row.find('.item-available').val('0');
                 $row.find('.item-qty').val('');
                 $row.find('.item-cost').val('0.00');
                 $row.find('.item-amount').val('0.00');
@@ -1228,7 +1228,7 @@
                 if (!val) {
                     $row.find('.item-id-input, .item-select').val('');
                     $row.find('.item-desc-input').val('');
-                    $row.find('.item-available').val('0.000');
+                    $row.find('.item-available').val('0');
                     $row.find('.item-batch-no').val('');
                     $row.find('.st-batch-btn-wrap').addClass('d-none');
                     $row.find('.st-batch-badge-text, .item-batch-text').text('');

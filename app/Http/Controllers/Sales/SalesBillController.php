@@ -1296,10 +1296,13 @@ class SalesBillController extends Controller
                 if ($hasPositiveNamedBatches && !empty($b['raw_batch_no']) && $bQty <= 0) {
                     continue; // When active named batches exist, exclude depleted named batches
                 }
+                $rawBatchNo = !empty($b['raw_batch_no']) ? trim($b['raw_batch_no']) : '';
+                $displayBatchNo = !empty($b['batch_no']) ? trim($b['batch_no']) : ($rawBatchNo ?: '');
                 $batches[] = [
                     'productname' => $item->name,
                     'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
-                    'batch_no' => $b['batch_no'] ?: '',
+                    'batch_no' => $displayBatchNo,
+                    'raw_batch_no' => $rawBatchNo,
                     'exp_date' => $b['exp_date'],
                     'in_qty' => $b['purchased_qty'],
                     'qty' => $b['remaining_qty'],
@@ -1325,7 +1328,7 @@ class SalesBillController extends Controller
         }
 
         $defaultExp = !empty($batches) ? $batches[0]['exp_date'] : null;
-        $defaultBatchNo = !empty($batches) ? $batches[0]['batch_no'] : null;
+        $defaultBatchNo = !empty($batches) ? ($batches[0]['raw_batch_no'] ?? '') : null;
         $branchStock = \App\Models\ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->first();
         $defaultCost = !empty($batches) && $batches[0]['cost_price'] > 0 
             ? $batches[0]['cost_price'] 

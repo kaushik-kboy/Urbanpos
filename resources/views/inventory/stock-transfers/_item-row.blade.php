@@ -16,7 +16,7 @@
         }
     }
     $qtyVal = isset($line->qty) && $line->qty != 0 ? (int)$line->qty : '';
-    $availableVal = isset($line->available_qty) ? number_format((float)$line->available_qty, 3, '.', '') : '0.000';
+    $availableVal = isset($line->available_qty) ? number_format((float)$line->available_qty, 0, '.', '') : '0';
     $batchNoVal = data_get($line, 'batch_no', '');
     $mrpVal = isset($line->mrp) && (float)$line->mrp > 0 
         ? number_format((float)$line->mrp, 2, '.', '') 

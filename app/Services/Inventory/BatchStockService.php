@@ -35,22 +35,39 @@ class BatchStockService
         // 1. Query tracked batch stock from StockLedger for this branch & item
         $ledgerRows = StockLedger::where('item_id', $itemId)
             ->where('branch_id', $branchId)
-            ->selectRaw('batch_no, DATE(exp_date) as exp_date_val, SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in')
-            ->groupBy('batch_no', DB::raw('DATE(exp_date)'))
+            ->selectRaw("COALESCE(NULLIF(TRIM(batch_no), ''), '') as b_no, DATE(exp_date) as exp_date_val, SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in")
+            ->groupBy('b_no', DB::raw('DATE(exp_date)'))
             ->get();
 
         $ledgerBatchMap = [];
         foreach ($ledgerRows as $lr) {
-            $bNo = $lr->batch_no ? trim($lr->batch_no) : '';
+            $bNo = $lr->b_no ? trim($lr->b_no) : ($lr->batch_no ? trim($lr->batch_no) : '');
             $expStr = $lr->exp_date_val ? trim((string) $lr->exp_date_val) : '';
+
+            // If bNo is just a formatted date matching expStr (e.g. '30/05/2031' or '2031-05-30' or 'DEFAULT'), treat as unbatched expiry movement
+            if ($bNo !== '' && $expStr !== '') {
+                $expDmy = '';
+                try {
+                    $expDmy = Carbon::parse($expStr)->format('d/m/Y');
+                } catch (\Throwable) {}
+                if ($bNo === $expStr || $bNo === $expDmy || strcasecmp($bNo, 'DEFAULT') === 0) {
+                    $bNo = '';
+                }
+            }
+
             $key = $bNo !== '' ? $bNo : ($expStr !== '' ? $expStr : 'DEFAULT');
-            $ledgerBatchMap[$key] = [
-                'remaining' => (float) $lr->remaining_qty,
-                'total_in' => (float) $lr->total_in,
-                'exp_date' => $expStr,
-                'batch_no' => $bNo,
-                'assigned' => 0.0,
-            ];
+            if (!isset($ledgerBatchMap[$key])) {
+                $ledgerBatchMap[$key] = [
+                    'remaining' => (float) $lr->remaining_qty,
+                    'total_in' => (float) $lr->total_in,
+                    'exp_date' => $expStr,
+                    'batch_no' => $bNo,
+                    'assigned' => 0.0,
+                ];
+            } else {
+                $ledgerBatchMap[$key]['remaining'] += (float) $lr->remaining_qty;
+                $ledgerBatchMap[$key]['total_in'] += (float) $lr->total_in;
+            }
         }
 
         // 2. Fetch purchase batches strictly from Purchase Invoices in this branch
@@ -327,6 +344,20 @@ class BatchStockService
                 $bData['remaining_qty'] = 0.0;
             }
             unset($bData);
+        } else if ($currentBranchStock > 0) {
+            // Safety cap: total batch remaining should never exceed physical branch stock
+            $batchTotal = array_sum(array_column($batches, 'remaining_qty'));
+            if ($batchTotal > $currentBranchStock) {
+                $excess = $batchTotal - $currentBranchStock;
+                $revKeys = array_reverse(array_keys($batches));
+                foreach ($revKeys as $rk) {
+                    if ($excess <= 0) break;
+                    $cur = (float) $batches[$rk]['remaining_qty'];
+                    $ded = min($cur, $excess);
+                    $batches[$rk]['remaining_qty'] = max(0.0, round($cur - $ded, 3));
+                    $excess -= $ded;
+                }
+            }
         }
 
         return collect(array_values($batches));
