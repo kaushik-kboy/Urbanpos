@@ -145,7 +145,7 @@
                     </div>
                     <div class="col-md-3">
                         <div class="custom-control custom-checkbox pt-1">
-                            <input type="checkbox" class="custom-control-input" id="su-isl-show-zero">
+                            <input type="checkbox" class="custom-control-input" id="su-isl-show-zero" checked>
                             <label class="custom-control-label font-weight-bold text-dark" for="su-isl-show-zero">
                                 Show Zero/Negative Stock
                             </label>
@@ -421,7 +421,7 @@
 
         $('#su-item-search-modal').on('hide.bs.modal', function () {
             suModalOpen = false;
-            suModalClosing = true;
+            suModalClosing = false;
             if (!suItemSelectedInModal && suActiveSearchRow && suActiveSearchRow.length) {
                 let selectedId = suActiveSearchRow.find('.su-item-id').val();
                 if (!selectedId) {
@@ -432,8 +432,7 @@
 
         $('#su-item-search-modal').on('hidden.bs.modal', function () {
             suModalOpen = false;
-            suModalClosing = true;
-            setTimeout(function () { suModalClosing = false; }, 350);
+            suModalClosing = false;
 
             if (!suItemSelectedInModal && suCancellingRow && suCancellingRow.length) {
                 let totalRows = $('#items-body tr').length;
@@ -442,6 +441,7 @@
                 } else {
                     suCancellingRow.find('.su-item-code').val('');
                     suCancellingRow.find('.su-item-desc').val('');
+                    suCancellingRow.find('.su-item-code').focus().select();
                 }
                 suCancellingRow = null;
                 suActiveSearchRow = null;

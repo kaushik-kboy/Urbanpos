@@ -592,17 +592,6 @@ $(function() {
         let srch = $.trim($('#sq-isl-filter-name').val());
         let code = $.trim($('#sq-isl-filter-code').val());
 
-        if (!srch && !code) {
-            $('#sq-isl-loading').addClass('d-none');
-            $('#sq-isl-table-wrap').addClass('d-none');
-            $('#sq-isl-items-body').empty();
-            $('#sq-isl-no-results').removeClass('d-none').html(
-                '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
-            );
-            $('#sq-isl-count-label').text('');
-            return;
-        }
-
         $('#sq-isl-loading').removeClass('d-none');
         $('#sq-isl-no-results').addClass('d-none');
         $('#sq-isl-table-wrap').addClass('d-none');

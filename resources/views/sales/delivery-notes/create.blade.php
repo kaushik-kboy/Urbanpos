@@ -655,17 +655,6 @@ $(function () {
         let srch = $.trim($('#sdn-isl-filter-name').val());
         let code = $.trim($('#sdn-isl-filter-code').val());
 
-        if (!srch && !code) {
-            $('#sdn-isl-loading').addClass('d-none');
-            $('#sdn-isl-table-wrap').addClass('d-none');
-            $('#sdn-isl-items-body').empty();
-            $('#sdn-isl-no-results').removeClass('d-none').html(
-                '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
-            );
-            $('#sdn-isl-count-label').text('');
-            return;
-        }
-
         $('#sdn-isl-loading').removeClass('d-none');
         $('#sdn-isl-no-results').addClass('d-none');
         $('#sdn-isl-table-wrap').addClass('d-none');

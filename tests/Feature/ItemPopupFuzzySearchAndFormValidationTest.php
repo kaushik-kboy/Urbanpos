@@ -176,4 +176,58 @@ class ItemPopupFuzzySearchAndFormValidationTest extends TestCase
         $response->assertOk();
         $response->assertSee('Form Field Validations');
     }
+
+    /**
+     * Regression test: Item popup must immediately load available branch items on empty search query
+     * so user never sees a stuck empty modal requiring exit/reopen.
+     */
+    public function test_item_popup_loads_items_on_empty_search_query(): void
+    {
+        $item1 = $this->createItemWithStock('Pedigree Adult Dog Food 3 kg', 'PD-3KG');
+        $item2 = $this->createItemWithStock('Whiskas Cat Food 1 kg', 'WH-1KG');
+
+        $response = $this->getJson(route('sales.sales-bills.item-list', [
+            'branch_id' => $this->branch->id,
+            'search' => '',
+            'code' => '',
+            'show_all' => 0,
+        ]));
+
+        $response->assertOk();
+        $items = $response->json('items');
+        $this->assertNotEmpty($items, 'Item list must return items on empty search');
+        $names = collect($items)->pluck('name')->all();
+        $this->assertContains('Pedigree Adult Dog Food 3 kg', $names);
+        $this->assertContains('Whiskas Cat Food 1 kg', $names);
+    }
+
+    /**
+     * Regression test: Stock Update search must load zero-stock and non-zero-stock items by default
+     * on empty search query.
+     */
+    public function test_stock_update_search_items_loads_items_on_empty_search(): void
+    {
+        $itemWithStock = $this->createItemWithStock('Stocked Item 500g', 'STK-500');
+        $itemZeroStock = Item::create([
+            'name' => 'Zero Stock Item 200g',
+            'item_code' => 'ZRO-200',
+            'status' => 1,
+            'cost_price' => 50,
+            'sell_price' => 80,
+            'mrp' => 100,
+        ]);
+
+        $response = $this->getJson(route('inventory.stock-updates.search-items', [
+            'branch_id' => $this->branch->id,
+            'search' => '',
+            'code' => '',
+        ]));
+
+        $response->assertOk();
+        $items = $response->json('items');
+        $this->assertNotEmpty($items, 'Stock update item search must return items on empty search');
+        $names = collect($items)->pluck('name')->all();
+        $this->assertContains('Stocked Item 500g', $names);
+        $this->assertContains('Zero Stock Item 200g', $names);
+    }
 }

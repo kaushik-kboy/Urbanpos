@@ -509,10 +509,8 @@
 
             let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
             if (stIslCache[cacheKey]) {
-                if (stIslLastKey !== cacheKey) {
-                    stIslLastKey = cacheKey;
-                    renderItems(stIslCache[cacheKey]);
-                }
+                stIslLastKey = cacheKey;
+                renderItems(stIslCache[cacheKey]);
                 return;
             }
 
@@ -756,13 +754,14 @@
         $('#st-item-search-modal').on('show.bs.modal', function() {
             stModalOpen = true;
             stModalClosing = false;
+            stIslLastKey = null;
             stItemSelectedInModal = false;
             stCancellingRow = null;
         });
 
         $('#st-item-search-modal').on('hide.bs.modal', function() {
             stModalOpen = false;
-            stModalClosing = true;
+            stModalClosing = false;
             if (!stItemSelectedInModal && activeTargetRow && activeTargetRow.length) {
                 let selectedId = activeTargetRow.find('.item-id-input, .item-select').val();
                 if (!selectedId) {
@@ -773,8 +772,8 @@
 
         $('#st-item-search-modal').on('hidden.bs.modal', function() {
             stModalOpen = false;
-            stModalClosing = true;
-            setTimeout(function() { stModalClosing = false; }, 350);
+            stModalClosing = false;
+            stIslLastKey = null;
 
             if (!stItemSelectedInModal && stCancellingRow && stCancellingRow.length) {
                 let totalRows = $('#items-table tbody tr.item-row').length;

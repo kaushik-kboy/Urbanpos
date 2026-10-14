@@ -1822,7 +1822,9 @@
         let islModalClosing = false;
 
         function openItemSearchModal($input) {
-            if (islModalOpen || islModalClosing || isSyncing) return;
+            if (islModalOpen || isSyncing) return;
+            islModalClosing = false;
+            islLastKey = null;
             activeSearchRow = $input.closest('tr');
             let prefill = $.trim($input.val());
             $('#isl-filter-name').val(prefill);
@@ -1973,10 +1975,26 @@
 
 
 
-        // Debounced filter inputs — 400ms to avoid firing on every keystroke
+        // Debounced filter inputs — 300ms to avoid firing on every keystroke
         $('#isl-filter-name, #isl-filter-code').on('input', function () {
             clearTimeout(islDebounce);
-            islDebounce = setTimeout(fetchItemList, 400);
+            islDebounce = setTimeout(fetchItemList, 300);
+        });
+
+        // Pressing Enter inside filter immediately triggers search or selects highlighted row
+        $('#isl-filter-name, #isl-filter-code').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(islDebounce);
+                let $rows = $('#isl-items-body tr.isl-item-row:not(.isl-item-disabled)');
+                if ($rows.length) {
+                    let $current = $rows.filter('.table-primary');
+                    let $target = $current.length ? $current : $rows.first();
+                    $target.trigger('click');
+                } else {
+                    fetchItemList();
+                }
+            }
         });
 
         $('#isl-filter-show-all').on('change', function () {
@@ -2011,20 +2029,12 @@
             let code    = $('#isl-filter-code').val().trim();
             let showAll = $('#isl-filter-show-all').is(':checked') ? 1 : 0;
 
-            // No filter — show hint, skip AJAX unless showAll is checked
-            if (! srch && ! code && ! showAll) {
-                showHintState('Start typing to search items or check "Show All"…');
-                return;
-            }
-
             let cacheKey = branchId + '|' + srch + '|' + code + '|' + showAll;
 
-            // Return cached result if available (same query, same branch)
+            // Return cached result if available (always re-render into table)
             if (islCache[cacheKey]) {
-                if (islLastKey !== cacheKey) {
-                    islLastKey = cacheKey;
-                    renderItems(islCache[cacheKey]);
-                }
+                islLastKey = cacheKey;
+                renderItems(islCache[cacheKey]);
                 return;
             }
 
@@ -2162,13 +2172,14 @@
         $('#sb-item-search-modal').on('show.bs.modal', function () {
             islModalOpen = true;
             islModalClosing = false;
+            islLastKey = null;
             sbItemSelectedInModal = false;
             sbCancellingRow = null;
         });
 
         $('#sb-item-search-modal').on('hide.bs.modal', function () {
             islModalOpen = false;
-            islModalClosing = true;
+            islModalClosing = false;
             if (!sbItemSelectedInModal && activeSearchRow && activeSearchRow.length) {
                 let selectedId = activeSearchRow.find('.sb-item-select').val();
                 if (!selectedId) {
@@ -2179,10 +2190,8 @@
 
         $('#sb-item-search-modal').on('hidden.bs.modal', function () {
             islModalOpen = false;
-            islModalClosing = true;
-            setTimeout(function () {
-                islModalClosing = false;
-            }, 350);
+            islModalClosing = false;
+            islLastKey = null;
 
             if (!sbItemSelectedInModal) {
                 if (sbCancellingRow && sbCancellingRow.length) {
@@ -2193,16 +2202,14 @@
                         sbCancellingRow.remove();
                         updateRowNumbers();
                         calculateTotals();
+                    } else if (!hasItemId) {
+                        setTimeout(function () {
+                            sbCancellingRow.find('.sb-item-code').focus().select();
+                        }, 50);
                     }
                 }
                 sbCancellingRow = null;
                 activeSearchRow = null;
-                setTimeout(function () {
-                    let $roundOff = $('input[name="round_off"], #round_off');
-                    if ($roundOff.length) {
-                        $roundOff.first().focus().select();
-                    }
-                }, 80);
                 return;
             }
 

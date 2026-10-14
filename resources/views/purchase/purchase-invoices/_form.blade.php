@@ -998,10 +998,26 @@
            ITEM SEARCH MODAL — open on Code/Barcode focus
            ================================================================ */
 
-        // Debounced filter inputs — 400ms to avoid firing on every keystroke
+        // Debounced filter inputs — 300ms to avoid firing on every keystroke
         $('#pinv-isl-filter-name, #pinv-isl-filter-code, #pinv-isl-filter-expiry').on('input', function () {
             clearTimeout(islDebounce);
-            islDebounce = setTimeout(fetchItemList, 400);
+            islDebounce = setTimeout(fetchItemList, 300);
+        });
+
+        // Pressing Enter inside filter immediately triggers search or selects highlighted row
+        $('#pinv-isl-filter-name, #pinv-isl-filter-code, #pinv-isl-filter-expiry').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(islDebounce);
+                let $rows = $('#pinv-isl-items-body tr.pinv-isl-item-row');
+                if ($rows.length) {
+                    let $current = $rows.filter('.table-primary');
+                    let $target = $current.length ? $current : $rows.first();
+                    $target.trigger('click');
+                } else {
+                    fetchItemList();
+                }
+            }
         });
 
         $('#pinv-isl-btn-clear').on('click', function () {
@@ -1034,12 +1050,10 @@
 
             let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
 
-            // Return cached result if available (same query, same branch)
+            // Return cached result if available (always re-render into table)
             if (islCache[cacheKey]) {
-                if (islLastKey !== cacheKey) {
-                    islLastKey = cacheKey;
-                    renderItems(islCache[cacheKey]);
-                }
+                islLastKey = cacheKey;
+                renderItems(islCache[cacheKey]);
                 return;
             }
 
@@ -1210,13 +1224,14 @@
             }
             islModalOpen = true;
             islModalClosing = false;
+            islLastKey = null;
             itemSelectedInModal = false;
             cancellingRow = null;
         });
 
         $('#pinv-item-search-modal').on('hide.bs.modal', function() {
             islModalOpen = false;
-            islModalClosing = true;
+            islModalClosing = false;
             if (!itemSelectedInModal && activeSearchRow && activeSearchRow.length) {
                 let selectedId = activeSearchRow.find('.pinv-item-select').val();
                 if (!selectedId) {
@@ -1227,8 +1242,8 @@
 
         $('#pinv-item-search-modal').on('hidden.bs.modal', function() {
             islModalOpen = false;
-            islModalClosing = true;
-            setTimeout(function() { islModalClosing = false; }, 350);
+            islModalClosing = false;
+            islLastKey = null;
 
             if (!itemSelectedInModal) {
                 if (cancellingRow && cancellingRow.length) {
@@ -1240,18 +1255,11 @@
                     } else {
                         cancellingRow.find('.pinv-item-code').val('');
                         cancellingRow.find('.pinv-item-desc').val('');
+                        cancellingRow.find('.pinv-item-code').focus().select();
                     }
                 }
                 cancellingRow = null;
                 activeSearchRow = null;
-                setTimeout(function() {
-                    let $freight = $('input[name="freight"], #freight');
-                    if ($freight.length) {
-                        $freight.first().focus().select();
-                    } else {
-                        $('#pinv-add-row').focus();
-                    }
-                }, 80);
                 return;
             }
 
@@ -1278,7 +1286,9 @@
                 $input.blur();
                 return false;
             }
-            if (islModalOpen || islModalClosing) return false;
+            if (islModalOpen) return false;
+            islModalClosing = false;
+            islLastKey = null;
             let $row = $input.closest('tr');
             if ($row.find('.pinv-item-select').val()) return false;
             activeSearchRow = $row;

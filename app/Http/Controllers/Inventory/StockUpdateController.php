@@ -375,7 +375,7 @@ class StockUpdateController extends Controller
         $branchId = (int) ($request->input('branch_id') ?: session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
         $search = trim((string) $request->input('search', ''));
         $code = trim((string) $request->input('code', ''));
-        $showAll = $request->boolean('show_all');
+        $showAll = $request->has('show_all') ? $request->boolean('show_all') : true;
 
         $query = Item::query()
             ->with(['stocks' => fn ($q) => $q->where('branch_id', $branchId)]);

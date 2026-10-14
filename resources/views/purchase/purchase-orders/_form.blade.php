@@ -400,10 +400,8 @@
 
             let cacheKey = branchId + '|' + srch + '|' + code + '|' + expiry;
             if (islCache[cacheKey]) {
-                if (islLastKey !== cacheKey) {
-                    islLastKey = cacheKey;
-                    renderItems(islCache[cacheKey]);
-                }
+                islLastKey = cacheKey;
+                renderItems(islCache[cacheKey]);
                 return;
             }
 
@@ -609,7 +607,9 @@
                 $('#supplier_id').select2('open');
                 return false;
             }
-            if (islModalOpen || islModalClosing) return false;
+            if (islModalOpen) return false;
+            islModalClosing = false;
+            islLastKey = null;
             let $row = $input.closest('tr');
             if ($row.find('.po-item-select').val()) return false;
             activeSearchRow = $row;
@@ -642,13 +642,14 @@
         $('#po-item-search-modal').on('show.bs.modal', function () {
             islModalOpen = true;
             islModalClosing = false;
+            islLastKey = null;
             poItemSelectedInModal = false;
             poCancellingRow = null;
         });
 
         $('#po-item-search-modal').on('hide.bs.modal', function () {
             islModalOpen = false;
-            islModalClosing = true;
+            islModalClosing = false;
             if (!poItemSelectedInModal && activeSearchRow && activeSearchRow.length) {
                 let selectedId = activeSearchRow.find('.po-item-select').val();
                 if (!selectedId) {
@@ -659,8 +660,8 @@
 
         $('#po-item-search-modal').on('hidden.bs.modal', function () {
             islModalOpen = false;
-            islModalClosing = true;
-            setTimeout(function () { islModalClosing = false; }, 350);
+            islModalClosing = false;
+            islLastKey = null;
 
             if (!poItemSelectedInModal) {
                 if (poCancellingRow && poCancellingRow.length) {

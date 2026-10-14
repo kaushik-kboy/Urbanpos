@@ -608,17 +608,6 @@ $(function() {
         let srch = $.trim($('#so-isl-filter-name').val());
         let code = $.trim($('#so-isl-filter-code').val());
 
-        if (!srch && !code) {
-            $('#so-isl-loading').addClass('d-none');
-            $('#so-isl-table-wrap').addClass('d-none');
-            $('#so-isl-items-body').empty();
-            $('#so-isl-no-results').removeClass('d-none').html(
-                '<i class="fas fa-keyboard fa-2x text-muted"></i><p class="mt-2 text-muted">Start typing to search items…</p>'
-            );
-            $('#so-isl-count-label').text('');
-            return;
-        }
-
         $('#so-isl-loading').removeClass('d-none');
         $('#so-isl-no-results').addClass('d-none');
         $('#so-isl-table-wrap').addClass('d-none');
