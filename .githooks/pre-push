@@ -44,9 +44,9 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
     exit 1
 fi
 
-# 2b. Run Master QA Certification Suite (Sequences, Validations, Math, Stock Flow, Branch, Clean English)
+# 2b. Run Master QA Certification Suite (Sequences, Validations, Math, Stock Flow, Branch, All 40+ Screens Health)
 echo ">> Running Master QA Certification Suite (npm run test:certify)..."
-php vendor/bin/phpunit tests/Feature/QaSystemCertificationTest.php tests/Feature/GoldenMathAndStockMovementIntegrityTest.php
+php vendor/bin/phpunit tests/Feature/QaSystemCertificationTest.php tests/Feature/GoldenMathAndStockMovementIntegrityTest.php tests/Feature/FullSystemHealthAuditTest.php
 QA_CERT_EXIT_CODE=$?
 if [ $QA_CERT_EXIT_CODE -ne 0 ]; then
     echo ""
