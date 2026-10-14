@@ -337,9 +337,17 @@ class ImportReportsLive extends Command
             $mode = $getVal('Mode of purchase') ?: 'Credit';
             $purMode = in_array(strtoupper($mode), ['CASH', 'CREDIT', 'CONSIGNMENT']) ? ucfirst(strtolower($mode)) : 'Credit';
 
+            $pTypeRaw = strtoupper(trim((string)$getVal('Purchase type')));
+            $purType = 'Local';
+            if (str_contains($pTypeRaw, 'INTERSTATE')) {
+                $purType = 'Interstate';
+            } elseif (str_contains($pTypeRaw, 'IMPORT')) {
+                $purType = 'Import';
+            }
+
             $data = [
                 'currency' => $getVal('Symbol') ?: $getVal('Currency') ?: 'INR',
-                'purchase_type' => $getVal('Purchase type') ?: 'Local',
+                'purchase_type' => $purType,
                 'purchase_mode' => $purMode,
                 'status' => strtoupper($getVal('Status')) !== 'INACTIVE',
                 'gst_type' => 'Un Register',
