@@ -34,7 +34,54 @@ class BarcodePrintController extends Controller
     public function downloadTspl(Request $request)
     {
         [$labels, $storeName, $format] = $this->resolveLabelsAndStore($request);
+        $output = $this->generateTspl($labels, $storeName, $format);
 
+        return response($output, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="labels_tsc_te244.prn"',
+        ]);
+    }
+
+    /**
+     * Send TSPL directly to local TSC TE244 printer (1-click printing).
+     */
+    public function directPrint(Request $request)
+    {
+        [$labels, $storeName, $format] = $this->resolveLabelsAndStore($request);
+
+        if (empty($labels)) {
+            return response()->json(['success' => false, 'message' => 'No items selected for printing.'], 422);
+        }
+
+        $tspl = $this->generateTspl($labels, $storeName, $format);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'tsc_');
+        file_put_contents($tempFile, $tspl);
+
+        $scriptPath = base_path('scripts/print_tspl_direct.py');
+        $cmd = "python " . escapeshellarg($scriptPath) . " " . escapeshellarg($tempFile);
+        $output = shell_exec($cmd . " 2>&1");
+        @unlink($tempFile);
+
+        if ($output && str_contains($output, 'SUCCESS')) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Printed ' . count($labels) . ' stickers directly to TSC TE244!',
+                'count'   => count($labels),
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Printer error: ' . trim($output ?? 'Unable to connect to printer'),
+        ], 500);
+    }
+
+    /**
+     * Generate raw TSPL commands calibrated for TSC TE244.
+     */
+    public function generateTspl(array $labels, string $storeName, string $format): string
+    {
         $is2Up = str_ends_with($format, '_2up') || $format === '38x25';
         $rowHeightMm = match ($format) {
             '50x38_2up' => 38,
@@ -53,32 +100,61 @@ class BarcodePrintController extends Controller
         $output .= "SET TEAR ON\r\n";
 
         if ($is2Up) {
+            $buildLabel = function (array $lbl, int $x) use ($storeName): string {
+                $cleanStore = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $storeName), 0, 18);
+                $cleanName  = trim(preg_replace('/[^A-Za-z0-9 \-\.\,\&\/]/', '', $lbl['name']));
+                $code       = preg_replace('/[^A-Za-z0-9]/', '', $lbl['barcode']);
+
+                $mrpDecimals = ($lbl['mrp'] == (int)$lbl['mrp']) ? 0 : 2;
+                $sellDecimals = ($lbl['sell_price'] == (int)$lbl['sell_price']) ? 0 : 2;
+                $mrpStr = 'Rs. ' . number_format($lbl['mrp'], $mrpDecimals);
+                $sellStr = 'Rs. ' . number_format($lbl['sell_price'], $sellDecimals);
+
+                $t = "TEXT {$x},15,\"3\",0,1,1,\"{$cleanStore}\"\r\n";
+
+                // Smart Long Product Name Handling:
+                // <= 16 chars: Large Font "3" (1 line)
+                // > 16 chars: Medium Font "2" (2 lines auto-wrapped)
+                if (strlen($cleanName) > 16) {
+                    $wrapped = explode("\n", wordwrap($cleanName, 20, "\n", true));
+                    $line1 = substr(trim($wrapped[0]), 0, 22);
+                    $line2 = substr(trim($wrapped[1] ?? ''), 0, 22);
+                    if (count($wrapped) > 2 && strlen($line2) > 18) {
+                        $line2 = substr($line2, 0, 18) . '...';
+                    }
+                    $t .= "TEXT {$x},38,\"2\",0,1,1,\"{$line1}\"\r\n";
+                    if ($line2 !== '') {
+                        $t .= "TEXT {$x},60,\"2\",0,1,1,\"{$line2}\"\r\n";
+                    }
+                } else {
+                    $t .= "TEXT {$x},48,\"3\",0,1,1,\"{$cleanName}\"\r\n";
+                }
+
+                $t .= "BARCODE {$x},88,\"128\",55,1,0,2,2,\"{$code}\"\r\n";
+
+                if ($lbl['mrp'] > $lbl['sell_price']) {
+                    $t .= "TEXT {$x},190,\"3\",0,1,1,\"MRP: {$mrpStr}\"\r\n";
+                    $t .= "TEXT {$x},225,\"3\",0,1,1,\"PRICE: {$sellStr}\"\r\n";
+                } else {
+                    $t .= "TEXT {$x},190,\"3\",0,1,1,\"MRP: {$mrpStr}\"\r\n";
+                    $t .= "TEXT {$x},225,\"2\",0,1,1,\"(Incl. TAX)\"\r\n";
+                }
+
+                return $t;
+            };
+
             $chunks = array_chunk($labels, 2);
             foreach ($chunks as $pair) {
                 $output .= "CLS\r\n";
 
-                // Label 1 (Left Column: X = 20)
-                $lbl1 = $pair[0];
-                $name1 = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl1['name']), 0, 24);
-                $code1 = preg_replace('/[^A-Za-z0-9]/', '', $lbl1['barcode']);
-                $price1 = 'Rs. ' . number_format($lbl1['sell_price'], 2);
+                // Left Sticker (X = 115)
+                $output .= $buildLabel($pair[0], 115);
 
-                $output .= "TEXT 20,10,\"2\",0,1,1,\"{$name1}\"\r\n";
-                $output .= "BARCODE 20,35,\"128\",45,1,0,2,2,\"{$code1}\"\r\n";
-                $output .= "TEXT 20,115,\"3\",0,1,1,\"{$price1}\"\r\n";
+                // Right Sticker (X = 430, shifted inward for safe margin to prevent edge cut)
+                $lbl2 = $pair[1] ?? $pair[0];
+                $output .= $buildLabel($lbl2, 430);
 
-                // Label 2 (Right Column: X = 430)
-                if (isset($pair[1])) {
-                    $lbl2 = $pair[1];
-                    $name2 = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl2['name']), 0, 24);
-                    $code2 = preg_replace('/[^A-Za-z0-9]/', '', $lbl2['barcode']);
-                    $price2 = 'Rs. ' . number_format($lbl2['sell_price'], 2);
-
-                    $output .= "TEXT 430,10,\"2\",0,1,1,\"{$name2}\"\r\n";
-                    $output .= "BARCODE 430,35,\"128\",45,1,0,2,2,\"{$code2}\"\r\n";
-                    $output .= "TEXT 430,115,\"3\",0,1,1,\"{$price2}\"\r\n";
-                }
-                $output .= "PRINT 1\r\n";
+                $output .= "PRINT 1,1\r\n";
             }
         } else {
             foreach ($labels as $lbl) {
@@ -103,10 +179,7 @@ class BarcodePrintController extends Controller
             }
         }
 
-        return response($output, 200, [
-            'Content-Type' => 'text/plain; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="labels_tsc_te244.prn"',
-        ]);
+        return $output;
     }
 
     /**

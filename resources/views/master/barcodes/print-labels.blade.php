@@ -127,20 +127,20 @@
         /* ── 50x38mm 2-Up ─────────────────────────────────────────────────── */
         .format-50x38_2up .barcode-label-pair {
             width: 102mm;
-            height: 38mm;
+            height: 37mm;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 2mm auto;
+            margin: 1mm auto;
             page-break-inside: avoid;
             break-inside: avoid;
             box-sizing: border-box;
         }
         .format-50x38_2up .barcode-label-card {
             width: 49.5mm;
-            height: 36.5mm;
-            max-height: 36.5mm;
-            padding: 1.5mm 2mm;
+            height: 36mm;
+            max-height: 36mm;
+            padding: 1mm 1.5mm;
             box-sizing: border-box;
             border: 1px dashed #94a3b8;
             background: #ffffff;
@@ -152,27 +152,56 @@
             border-radius: 3px;
         }
         .format-50x38_2up .label-store-name {
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: 800;
             text-transform: uppercase;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin: 0;
         }
         .format-50x38_2up .label-item-name {
-            font-size: 10pt;
-            font-weight: 800;
-            line-height: 1.2;
-            max-height: 2.4em;
+            font-size: 8.5pt;
+            font-weight: 700;
+            line-height: 1.15;
+            max-height: 2.3em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-break: break-word;
+            color: #000;
+            margin: 0.3mm 0;
         }
         .format-50x38_2up .label-barcode-svg {
             max-width: 98%;
-            max-height: 19mm;
+            max-height: 15mm;
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 0 auto;
         }
         .format-50x38_2up .label-prices {
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: 700;
+            border-top: 1px solid #000;
+            padding-top: 0.5mm;
+            margin: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .format-50x38_2up .label-mrp {
+            font-size: 7pt;
+            text-decoration: line-through;
+            color: #334155;
         }
         .format-50x38_2up .label-sell {
-            font-size: 13.5pt;
+            font-size: 11.5pt;
             font-weight: 900;
+            color: #000;
         }
 
         /* ── Scale Size Modifiers (Normal / Large / Extra Large) ───────────── */
@@ -582,8 +611,8 @@
             }
             .format-50x38_2up .barcode-label-pair {
                 width: 102mm !important;
-                height: 36.5mm !important;
-                max-height: 36.5mm !important;
+                height: 36.0mm !important;
+                max-height: 36.0mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 display: flex !important;
@@ -600,8 +629,8 @@
             }
             .format-50x38_2up .barcode-label-card {
                 width: 49.5mm !important;
-                height: 36.5mm !important;
-                max-height: 36.5mm !important;
+                height: 35.5mm !important;
+                max-height: 35.5mm !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
                 overflow: hidden !important;
@@ -807,9 +836,14 @@
                 <i class="fas fa-vial mr-1"></i> Test 1 Row (2 Stickers)
             </button>
 
-            {{-- Main Print All Stickers --}}
-            <button type="button" class="btn btn-success font-weight-bold shadow-sm px-4 my-1" onclick="window.print();">
-                <i class="fas fa-print mr-2"></i> Print All Stickers
+            {{-- 1-Click Direct Print to TSC TE244 --}}
+            <button type="button" class="btn btn-primary font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="directPrintTsc()" title="Bina Chrome dialog khole seedha TSC TE244 printer par print karein">
+                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Direct Print (TSC TE244)
+            </button>
+
+            {{-- Main Print via Browser Dialog --}}
+            <button type="button" class="btn btn-success font-weight-bold shadow-sm px-4 my-1" onclick="window.print();" title="Chrome print preview dialog kholein">
+                <i class="fas fa-print mr-2"></i> Print via Chrome (Ctrl + P)
             </button>
         </div>
     </div>
@@ -907,7 +941,10 @@
             @elseif($is2Up)
                 {{-- 2-Up Layout: 2 stickers paired side-by-side per row across thermal roll --}}
                 <div class="labels-container">
-                    @foreach(array_chunk($labels, 2) as $pair)
+                    @foreach(array_chunk($labels, 2) as $rawPair)
+                        @php
+                            $pair = (count($rawPair) === 1) ? [$rawPair[0], $rawPair[0]] : $rawPair;
+                        @endphp
                         <div class="barcode-label-pair">
                             @foreach($pair as $lbl)
                                 <div class="barcode-label-card">
@@ -940,10 +977,6 @@
                                     </div>
                                 </div>
                             @endforeach
-                            @if(count($pair) === 1)
-                                {{-- Empty invisible placeholder to preserve left alignment --}}
-                                <div class="barcode-label-card barcode-label-empty"></div>
-                            @endif
                         </div>
                     @endforeach
                 </div>
@@ -1142,9 +1175,9 @@
                 barHeight = 58;
                 fontSize = 13;
             } else if (is50x38) {
-                barWidth = isScaleXl ? 1.6 : (isScaleLarge ? 1.45 : 1.3);
-                barHeight = isScaleXl ? 52 : (isScaleLarge ? 44 : 36);
-                fontSize = isScaleXl ? 12.5 : (isScaleLarge ? 11 : 10);
+                barWidth = isScaleXl ? 1.5 : (isScaleLarge ? 1.35 : 1.25);
+                barHeight = isScaleXl ? 44 : (isScaleLarge ? 38 : 32);
+                fontSize = isScaleXl ? 11.0 : (isScaleLarge ? 9.5 : 8.5);
             } else if (is50x50) {
                 barWidth = isScaleXl ? 1.65 : 1.45;
                 barHeight = isScaleXl ? 54 : 46;
@@ -1221,6 +1254,34 @@
                 renderAllBarcodes();
             }
         });
+
+        function directPrintTsc() {
+            const $btn = $('#btnDirectPrint');
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing to TSC…');
+
+            const url = '{{ route("master.barcodes.direct-print") }}' + window.location.search;
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                dataType: 'json'
+            }).done(function (res) {
+                $btn.prop('disabled', false).html(originalHtml);
+                if (res && res.success) {
+                    alert('✅ ' + (res.message || 'Stickers printed successfully!'));
+                } else {
+                    alert('⚠️ ' + (res.message || 'Failed to print stickers'));
+                }
+            }).fail(function (xhr) {
+                $btn.prop('disabled', false).html(originalHtml);
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error printing stickers directly';
+                alert('❌ ' + msg);
+            });
+        }
     </script>
 </body>
 </html>
