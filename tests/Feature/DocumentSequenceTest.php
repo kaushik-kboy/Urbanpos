@@ -262,4 +262,33 @@ class DocumentSequenceTest extends TestCase
         $this->assertNotEmpty($inv2->grn_number);
         $this->assertNotEquals($inv1->grn_number, $inv2->grn_number, 'GRN numbers across consecutive invoices must never be duplicate!');
     }
+
+    public function test_sales_bill_sequence_increments_strictly_continuous_without_gaps(): void
+    {
+        $numbering = app(DocumentNumberingService::class);
+
+        // Configure branch sequence with last_number = 1275
+        $seq = DocumentSequence::create([
+            'document_type' => 'sales_bill',
+            'document_title' => 'Sales Bill / POS Invoice',
+            'prefix' => 'SI01/2627/',
+            'suffix' => null,
+            'padding_zeros' => 6,
+            'starting_number' => 1,
+            'last_number' => 1275,
+            'reset_frequency' => 'financial_year',
+            'last_reset_period' => '2026-2027',
+            'branch_id' => $this->branch->id,
+            'is_active' => true,
+            'series' => 'doc:sales_bill:' . $this->branch->id,
+        ]);
+
+        $b1 = $numbering->generate('sales_bill', $this->branch->id);
+        $b2 = $numbering->generate('sales_bill', $this->branch->id);
+        $b3 = $numbering->generate('sales_bill', $this->branch->id);
+
+        $this->assertEquals('SI01/2627/001276', $b1);
+        $this->assertEquals('SI01/2627/001277', $b2);
+        $this->assertEquals('SI01/2627/001278', $b3);
+    }
 }
