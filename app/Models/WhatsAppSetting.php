@@ -41,7 +41,8 @@ class WhatsAppSetting extends Model
      */
     public static function forBranch(?int $branchId = null): self
     {
-        if ($branchId) {
+        $hasBranchCol = \Illuminate\Support\Facades\Schema::hasColumn('whats_app_settings', 'branch_id');
+        if ($branchId && $hasBranchCol) {
             $branchSetting = static::where('branch_id', $branchId)->first();
             if ($branchSetting) {
                 return $branchSetting;
@@ -49,12 +50,12 @@ class WhatsAppSetting extends Model
         }
 
         // Return global template if exists
-        $global = static::whereNull('branch_id')->first();
+        $global = $hasBranchCol ? static::whereNull('branch_id')->first() : static::first();
         if ($global) {
             return $global;
         }
 
-        return static::current();
+        return static::current($branchId);
     }
 
     /**
@@ -62,20 +63,23 @@ class WhatsAppSetting extends Model
      */
     public static function current(?int $branchId = null): self
     {
-        if ($branchId) {
+        $hasBranchCol = \Illuminate\Support\Facades\Schema::hasColumn('whats_app_settings', 'branch_id');
+        if ($branchId && $hasBranchCol) {
             $branchSetting = static::where('branch_id', $branchId)->first();
             if ($branchSetting) {
                 return $branchSetting;
             }
         }
 
+        $matchCriteria = $hasBranchCol ? ['branch_id' => null] : [];
+
         return static::firstOrCreate(
-            ['branch_id' => null],
+            $matchCriteria,
             [
                 'api_url' => config('services.chatonclick.url') ?: 'https://chatonclick.com',
                 'app_key' => config('services.chatonclick.appkey') ?: '01cbe6e8-abf4-449c-a40f-46e83709aa63',
                 'auth_key' => config('services.chatonclick.authkey') ?: 'HrvnRKqlZGpJFwVRMDEhFXT8NStSHnmd12',
-                'template_name' => config('services.chatonclick.template_name') ?: 'urban_tax_invoice',
+                'template_name' => config('services.chatonclick.template_name') ?: null,
                 'template_lang' => config('services.chatonclick.template_lang') ?: 'en_US',
                 'header_title' => 'URBAN PETS',
                 'footer_message' => 'Have an Awesome Day!',

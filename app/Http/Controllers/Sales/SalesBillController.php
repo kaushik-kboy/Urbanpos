@@ -1326,7 +1326,40 @@ class SalesBillController extends Controller
     {
         $q = trim((string) $request->input('q', ''));
         if ($q === '') {
-            return response()->json(['results' => []]);
+            $customers = Customer::where('status', true)
+                ->with(['pets.petType', 'pets.breed'])
+                ->orderBy('name')
+                ->limit(30)
+                ->get()
+                ->map(function ($c) {
+                    $pets = $c->pets->map(function ($p) {
+                        $breedName = $p->breed?->name ?? '';
+                        $typeName = $p->petType?->name ?? '';
+                        $disp = $p->name 
+                            ? ($breedName ? "{$p->name} ({$breedName})" : ($typeName ? "{$p->name} ({$typeName})" : $p->name)) 
+                            : ($breedName ?: ($typeName ?: 'Pet'));
+                        return [
+                            'id' => $p->id,
+                            'name' => $p->name,
+                            'type' => $typeName,
+                            'breed' => $breedName,
+                            'display' => $disp,
+                        ];
+                    });
+
+                    return [
+                        'id' => $c->id,
+                        'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
+                        'name' => $c->name,
+                        'mobile' => $c->mobile ?? '',
+                        'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
+                        'sales_type' => $c->sales_type ?? 'Local',
+                        'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
+                        'pets' => $pets,
+                    ];
+                });
+
+            return response()->json(['results' => $customers]);
         }
 
         $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q))->exists();

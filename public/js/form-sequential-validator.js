@@ -81,6 +81,14 @@
         if ($field.attr('tabindex') === '-1' && !$field.hasClass('select2-hidden-accessible')) {
             return false;
         }
+        // Filter / Search forms must never be treated as required
+        const $parentForm = $field.closest('form');
+        if ($parentForm.length && ($parentForm.attr('method') || '').toUpperCase() === 'GET') {
+            return false;
+        }
+        if ($field.closest('.filter-form, .search-form, #filter-form, #search-form, .card-header form').length > 0) {
+            return false;
+        }
         if ($field.is('[required]') || $field.prop('required') || $field.attr('aria-required') === 'true' || $field.data('required') === true || $field.data('required') === 1) {
             return true;
         }
@@ -496,7 +504,16 @@
                     `[data-field="${fn}"] select`,
                     `[data-field="${fn}"] textarea`
                 ];
-                const $el = $(selectors.join(', ')).filter(':not([type="hidden"])');
+                const $el = $(selectors.join(', ')).filter(':not([type="hidden"])').filter(function () {
+                    const $form = $(this).closest('form');
+                    if (!$form.length) return true;
+                    const method = ($form.attr('method') || '').toUpperCase();
+                    if (method === 'GET') return false;
+                    if ($form.is('.filter-form, .search-form, #filter-form, #search-form') || $form.closest('.card-header, .filter-card, .search-card').length) {
+                        return false;
+                    }
+                    return true;
+                });
                 if (!$el.length) return;
 
                 const $wrapper = $el.closest('.form-group, .field-wrapper');

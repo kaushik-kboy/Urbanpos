@@ -19,6 +19,10 @@ class ChatOnClickWhatsAppServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config([
+            'services.chatonclick.appkey' => 'test-appkey-1234',
+            'services.chatonclick.authkey' => 'test-authkey-1234',
+        ]);
         $this->service = new ChatOnClickWhatsAppService();
     }
 
@@ -104,6 +108,13 @@ class ChatOnClickWhatsAppServiceTest extends TestCase
             ], 200),
         ]);
 
+        \App\Models\WhatsAppSetting::create([
+            'app_key' => 'test-appkey-1234',
+            'auth_key' => 'test-authkey-1234',
+            'api_url' => 'https://chatonclick.com',
+            'is_active' => true,
+        ]);
+
         $branch = Branch::create(['name' => 'Main Branch', 'code' => 'MB-2']);
         $customer = Customer::create(['name' => 'Test Client', 'customer_code' => 'CUST-003', 'phone' => '9876543210']);
         $bill = SalesBill::create([
@@ -120,7 +131,7 @@ class ChatOnClickWhatsAppServiceTest extends TestCase
 
         $result = $this->service->sendSalesBillInvoice($bill);
 
-        $this->assertTrue($result['success']);
+        $this->assertTrue($result['success'], 'Failed with error: ' . ($result['error'] ?? 'None'));
         $this->assertEquals('919876543210', $result['phone']);
         $this->assertEquals('wamid.TEST123456789', $result['wamid']);
     }

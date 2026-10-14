@@ -39,7 +39,7 @@ return [
         'url'           => env('CHATONCLICK_URL', 'https://chatonclick.com'),
         'appkey'        => env('CHATONCLICK_APPKEY'),
         'authkey'       => env('CHATONCLICK_AUTHKEY'),
-        'template_name' => env('CHATONCLICK_TEMPLATE_NAME', 'urban_tax_invoice'),
+        'template_name' => env('CHATONCLICK_TEMPLATE_NAME', null),
         'template_lang' => env('CHATONCLICK_TEMPLATE_LANG', 'en_US'),
     ],
 

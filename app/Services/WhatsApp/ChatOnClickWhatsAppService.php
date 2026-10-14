@@ -42,7 +42,8 @@ class ChatOnClickWhatsAppService
         $this->url = rtrim($settings?->api_url ?: config('services.chatonclick.url', 'https://chatonclick.com'), '/');
         $this->appKey = $settings?->app_key ?: config('services.chatonclick.appkey');
         $this->authKey = $settings?->auth_key ?: config('services.chatonclick.authkey');
-        $this->templateName = $settings?->template_name ?: config('services.chatonclick.template_name');
+        $configuredTemplate = config('services.chatonclick.template_name');
+        $this->templateName = !empty($settings?->template_name) ? trim($settings->template_name) : (!empty($configuredTemplate) ? trim($configuredTemplate) : null);
         $this->templateLang = $settings?->template_lang ?: config('services.chatonclick.template_lang', 'en');
         $this->headerTitle = $settings?->header_title ?: 'URBAN PETS';
         $this->footerMessage = $settings?->footer_message ?: 'Have an Awesome Day!';

@@ -25,7 +25,7 @@
             </div>
         </div>
         <div class="card-header bg-light border-bottom">
-            <form method="GET" action="{{ route('master.items.index') }}" class="row align-items-end">
+            <form method="GET" action="{{ route('master.items.index') }}" class="row align-items-end" novalidate>
                 @if(request('sort'))
                     <input type="hidden" name="sort" value="{{ request('sort') }}">
                 @endif

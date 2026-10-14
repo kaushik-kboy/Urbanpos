@@ -337,13 +337,13 @@
                         checkAndOpenSuModal($nextCode);
                     }
                 } else {
-                    $('#su-add-row').trigger('click');
-                    let $newRow = $('#items-body tr.su-item-row').last();
+                    $('#add-row').trigger('click');
                     setTimeout(function () {
+                        let $newRow = $('#items-body tr.su-item-row').last();
                         let $newCode = $newRow.find('.su-item-code');
                         $newCode.focus();
                         checkAndOpenSuModal($newCode);
-                    }, 80);
+                    }, 100);
                 }
             }
         });
@@ -446,7 +446,7 @@
                 suCancellingRow = null;
                 suActiveSearchRow = null;
                 setTimeout(function () {
-                    let $target = $('#su-add-row, #remarks, button[type=submit]');
+                    let $target = $('#add-row, #remarks, button[type=submit]');
                     $target.first().focus();
                 }, 60);
                 return;

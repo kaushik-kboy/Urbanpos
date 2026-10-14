@@ -209,7 +209,7 @@
 
         // 2. Tag each TD in tbody and tfoot with corresponding data-col-key
         function tagBodyCells() {
-            const rows = table.querySelectorAll('tbody tr, tfoot tr');
+            const rows = table.querySelectorAll('tbody tr, tfoot:not([data-customizer-ignore]) tr:not([data-customizer-ignore])');
             rows.forEach(tr => {
                 // If it's an empty row with colspan, skip tagging
                 if (tr.children.length === 1 && tr.children[0].hasAttribute('colspan')) return;
@@ -247,7 +247,7 @@
                 sortedThs.forEach(th => headerRow.appendChild(th));
 
                 // Sort TDs in rows back
-                table.querySelectorAll('tbody tr, tfoot tr').forEach(tr => {
+                table.querySelectorAll('tbody tr, tfoot:not([data-customizer-ignore]) tr:not([data-customizer-ignore])').forEach(tr => {
                     if (tr.children.length === 1 && tr.children[0].hasAttribute('colspan')) {
                         tr.children[0].setAttribute('colspan', colDefinitions.length);
                         return;
@@ -295,7 +295,7 @@
                 if (isVisible) visibleCount++;
             });
 
-            table.querySelectorAll('tbody tr, tfoot tr').forEach(tr => {
+            table.querySelectorAll('tbody tr, tfoot:not([data-customizer-ignore]) tr:not([data-customizer-ignore])').forEach(tr => {
                 if (tr.children.length === 1 && tr.children[0].hasAttribute('colspan')) {
                     tr.children[0].setAttribute('colspan', visibleCount > 0 ? visibleCount : 1);
                     return;
