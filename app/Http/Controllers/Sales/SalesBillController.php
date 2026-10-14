@@ -325,8 +325,21 @@ class SalesBillController extends Controller
                 $data['header']['user_id'] = auth()->id();
             }
 
+            $submittedBillNumber = trim((string)($data['header']['bill_number'] ?? ''));
+            $billBranchId = $data['header']['branch_id'] ?? null;
+            $billPaymentType = $data['header']['payment_type'] ?? null;
+
+            $assignedBillNumber = $submittedBillNumber !== '' 
+                ? $submittedBillNumber 
+                : $this->nextNumber($billBranchId, $billPaymentType);
+
+            // If submitted bill number already exists in DB, generate fresh sequence to avoid duplicate exception
+            if ($submittedBillNumber !== '' && SalesBill::where('bill_number', $submittedBillNumber)->exists()) {
+                $assignedBillNumber = $this->nextNumber($billBranchId, $billPaymentType);
+            }
+
             $salesBill = SalesBill::create(array_merge($data['header'], $totals, [
-                'bill_number' => $this->nextNumber($data['header']['branch_id'] ?? null),
+                'bill_number' => $assignedBillNumber,
                 'customer_gstin' => $customerGstin ?: null,
             ]));
 
@@ -419,18 +432,21 @@ class SalesBillController extends Controller
 
         $saveAction = $request->input('save_action', 'save');
         $whatsappNotice = '';
-        if ($saveAction === 'whatsapp' || $request->boolean('send_whatsapp')) {
-            try {
-                $waSettings = \App\Models\WhatsAppSetting::current($salesBill->branch_id);
-                if ($waSettings->is_active) {
-                    $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
-                    if ($waResult['success'] ?? false) {
-                        $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
-                    }
+        try {
+            $waSettings = \App\Models\WhatsAppSetting::current($salesBill->branch_id);
+            $custPhone = $salesBill->customer?->phone ?: $salesBill->customer?->mobile;
+            $shouldSend = $saveAction === 'whatsapp' 
+                || $request->boolean('send_whatsapp') 
+                || ($waSettings->is_active && $waSettings->auto_send_on_bill && !empty($custPhone));
+
+            if ($shouldSend && $waSettings->is_active) {
+                $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
+                if ($waResult['success'] ?? false) {
+                    $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
                 }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
             }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
         }
 
         if ($request->wantsJson()) {
@@ -946,22 +962,30 @@ class SalesBillController extends Controller
         return response()->json(['success' => true]);
     }
 
-    private function previewNextNumber(?int $branchId = null): string
+    private function previewNextNumber(?int $branchId = null, ?string $paymentType = null): string
     {
         $branchId = $branchId ?: (int) $this->resolveActiveBranchId();
+        $isCod = $paymentType && (strcasecmp($paymentType, 'COD') === 0 || stripos($paymentType, 'Cash on Delivery') !== false);
+        $docType = ($isCod && \App\Models\DocumentSequence::where('document_type', 'cod_bill')->where('is_active', true)->exists())
+            ? 'cod_bill'
+            : 'sales_bill';
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->preview(
-            'sales_bill',
+            $docType,
             $branchId ? (int) $branchId : null
         );
     }
 
-    private function nextNumber(?int $branchId = null): string
+    private function nextNumber(?int $branchId = null, ?string $paymentType = null): string
     {
         $branchId = $branchId ?: (int) $this->resolveActiveBranchId();
+        $isCod = $paymentType && (strcasecmp($paymentType, 'COD') === 0 || stripos($paymentType, 'Cash on Delivery') !== false);
+        $docType = ($isCod && \App\Models\DocumentSequence::where('document_type', 'cod_bill')->where('is_active', true)->exists())
+            ? 'cod_bill'
+            : 'sales_bill';
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
-            'sales_bill',
+            $docType,
             $branchId ? (int) $branchId : null
         );
     }

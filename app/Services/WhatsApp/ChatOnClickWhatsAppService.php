@@ -313,7 +313,9 @@ class ChatOnClickWhatsAppService
             ];
         }
 
-        if (!empty($this->templateName)) {
+        $isTemplateUnsupported = !empty($this->templateName) && \Illuminate\Support\Facades\Cache::get('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName);
+
+        if (!empty($this->templateName) && !$isTemplateUnsupported) {
             $customerName = trim($salesBill->customer?->name ?: 'Customer');
             $billNumber   = (string)$salesBill->bill_number;
             $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-m-Y h:i A') : now()->format('d-m-Y');
@@ -408,8 +410,11 @@ class ChatOnClickWhatsAppService
             $json = $response->json();
 
             // Automatic fallback: if template was rejected (not found / unapproved on device), retry as direct message
-            if (!empty($this->templateName) && (!$response->successful() || !($json['success'] ?? false) || ($json['data']['status'] ?? '') === 'failed')) {
+            if (!empty($this->templateName) && !$isTemplateUnsupported && (!$response->successful() || !($json['success'] ?? false) || ($json['data']['status'] ?? '') === 'failed')) {
                 $templateErr = $json['error'] ?? ($json['message'] ?? 'Template rejected');
+                if (str_contains(strtolower((string)$templateErr), 'template not found') || str_contains(strtolower((string)$templateErr), 'not approved')) {
+                    \Illuminate\Support\Facades\Cache::put('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName, true, 86400);
+                }
                 Log::warning("WhatsApp template '{$this->templateName}' rejected by device ({$templateErr}). Falling back to direct formatted text message for Bill #{$salesBill->bill_number}.");
 
                 $directMessage = $this->formatInvoiceMessage($salesBill);

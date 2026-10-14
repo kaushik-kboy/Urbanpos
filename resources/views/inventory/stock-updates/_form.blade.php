@@ -268,10 +268,10 @@
 
         function formatToDisplayDate(dtStr) {
             if (!dtStr) return '';
-            let str = dtStr.toString().substring(0, 10);
+            let str = dtStr.toString().substring(0, 10).replace(/\//g, '-');
             let parts = str.split('-');
             if (parts.length === 3 && parts[0].length === 4) {
-                return parts[2] + '/' + parts[1] + '/' + parts[0];
+                return parts[2] + '-' + parts[1] + '-' + parts[0];
             }
             return str;
         }
@@ -321,12 +321,25 @@
         $(document).off('keydown', '.su-physical-qty').on('keydown', '.su-physical-qty', function (e) {
             if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
                 let $currentRow = $(this).closest('tr');
+                let itemId = $currentRow.find('.su-item-id').val();
                 // Block advancing if current row has no item yet
-                if (!$currentRow.find('.su-item-id').val()) {
+                if (!itemId) {
                     e.preventDefault();
                     $currentRow.find('.su-item-code').focus();
                     return;
                 }
+
+                let qtyVal = $.trim($(this).val());
+                if (qtyVal === '' || isNaN(parseFloat(qtyVal)) || parseFloat(qtyVal) < 0) {
+                    e.preventDefault();
+                    $(this).addClass('is-invalid');
+                    if (window.toastr) {
+                        toastr.warning('Please enter physical quantity before proceeding.', 'Quantity Required');
+                    }
+                    $(this).focus().select();
+                    return;
+                }
+                $(this).removeClass('is-invalid');
 
                 e.preventDefault();
                 let $nextRow = $currentRow.next('tr.su-item-row');

@@ -2823,8 +2823,26 @@
             inStockBatches.forEach(function (b, idx) {
                 let pName = b.productname || item.name || 'Item';
                 let pCode = b.code || item.item_code || item.ean_upc_code || '—';
-                let expDisplay = b.exp_date || 'No Expiry';
-                let bExpStr = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
+                let expDisplay = 'No Expiry';
+                let bExpStr = '';
+                if (b.exp_date) {
+                    let clean = b.exp_date.toString().substring(0, 10).replace(/\//g, '-');
+                    let p = clean.split('-');
+                    if (p.length === 3) {
+                        if (p[0].length === 4) {
+                            // YYYY-MM-DD -> DD-MM-YYYY
+                            expDisplay = p[2] + '-' + p[1] + '-' + p[0];
+                            bExpStr = clean;
+                        } else {
+                            // DD-MM-YYYY
+                            expDisplay = p[0] + '-' + p[1] + '-' + p[2];
+                            bExpStr = p[2] + '-' + p[1] + '-' + p[0];
+                        }
+                    } else {
+                        expDisplay = clean;
+                        bExpStr = clean;
+                    }
+                }
                 let isBatchExpired = bExpStr && (bExpStr < todayBatchStr);
                 let qtyNum = parseFloat(b.qty || 0);
                 let isBatchOOS = qtyNum <= 0;

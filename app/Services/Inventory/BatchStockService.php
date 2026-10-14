@@ -151,12 +151,12 @@ class BatchStockService
 
             if ($rawBNo !== '') {
                 $displayBatchNo = $rawBNo;
-                // Merge only if same batch_no, same expiry, and same prices
-                $key = 'B_' . $rawBNo . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2) . '|' . ($exp ?: '');
+                // Group strictly by physical batch_no, MRP, and expiry date
+                $key = 'B_' . $rawBNo . '|' . round($mrp, 2) . '|' . ($exp ?: '');
             } else {
                 if ($exp !== null) {
-                    // Purchases/transfers with same expiry date AND same sell price / MRP merge into one batch; different prices stay separate
-                    $key = 'EXP_' . $exp . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2);
+                    // Purchases/transfers with same expiry date AND same MRP merge into one batch
+                    $key = 'EXP_' . $exp . '|' . round($mrp, 2);
                     $displayBatchNo = Carbon::parse($exp)->format('d/m/Y');
                 } else {
                     if ($p instanceof PurchaseInvoiceItem && $p->purchaseInvoice) {
@@ -173,7 +173,7 @@ class BatchStockService
                     } else {
                         $displayBatchNo = 'Lot #' . $p->id;
                     }
-                    $key = 'SRC_' . (get_class($p) === 'App\Models\StockTransferItem' ? 'ST_' : (get_class($p) === 'App\Models\OpeningStockItem' ? 'OS_' : 'PI_')) . $p->id . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2);
+                    $key = 'SRC_' . (get_class($p) === 'App\Models\StockTransferItem' ? 'ST_' : (get_class($p) === 'App\Models\OpeningStockItem' ? 'OS_' : 'PI_')) . $p->id . '|' . round($mrp, 2);
                     $unassignedKeys[$key] = true;
                 }
             }

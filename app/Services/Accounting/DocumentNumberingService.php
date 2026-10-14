@@ -309,6 +309,16 @@ class DocumentNumberingService
                 'model'    => \App\Models\SalesBill::class,
                 'column'   => 'bill_number',
             ],
+            'cod_bill' => [
+                'title'    => 'COD Bill / Cash on Delivery',
+                'module'   => 'Sales',
+                'prefix'   => 'COD-{YEAR}-',
+                'padding'  => 4,
+                'reset'    => 'financial_year',
+                'start'    => 1,
+                'model'    => \App\Models\SalesBill::class,
+                'column'   => 'bill_number',
+            ],
             'sales_quotation' => [
                 'title'    => 'Sales Quotation',
                 'module'   => 'Sales',

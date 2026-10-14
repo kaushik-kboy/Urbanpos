@@ -54,7 +54,7 @@
                         <label class="small font-weight-bold mb-1">Payment Mode</label>
                         <select name="payment_mode" class="form-control form-control-sm" onchange="this.form.submit()">
                             <option value="">All Payment Modes</option>
-                            @foreach ($paymentModes ?? ['Cash', 'Card', 'UPI', 'Credit', 'Split'] as $mode)
+                            @foreach ($paymentModes ?? ['Cash', 'Card', 'UPI', 'Wallet', 'Credit', 'COD', 'Split'] as $mode)
                                 <option value="{{ $mode }}" @selected(request('payment_mode') == $mode)>{{ $mode }}</option>
                             @endforeach
                         </select>
@@ -116,7 +116,7 @@
                         <label class="small font-weight-bold mb-1">Payment</label>
                         <select name="payment_mode" class="form-control form-control-sm">
                             <option value="">All</option>
-                            @foreach ($paymentModes ?? ['Cash', 'Card', 'UPI', 'Credit', 'Split'] as $mode)
+                            @foreach ($paymentModes ?? ['Cash', 'Card', 'UPI', 'Wallet', 'Credit', 'COD', 'Split'] as $mode)
                                 <option value="{{ $mode }}" @selected(request('payment_mode') == $mode)>{{ $mode }}</option>
                             @endforeach
                         </select>

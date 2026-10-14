@@ -140,9 +140,14 @@
                                 $field.hasClass('sr-item-code') || 
                                 $field.hasClass('so-item-code') || 
                                 $field.hasClass('sq-item-code') || 
+                                $field.hasClass('su-item-code') || 
                                 $field.hasClass('indent-item-code');
 
-            const isQtyInput = $field.hasClass('pinv-qty') || 
+            const isStockUpdateQty = $field.hasClass('su-physical-qty') || 
+                                     ($field.attr('name') && $field.attr('name').includes('[physical_qty]'));
+
+            const isQtyInput = isStockUpdateQty ||
+                               $field.hasClass('pinv-qty') || 
                                $field.hasClass('po-qty') || 
                                $field.hasClass('item-qty') || 
                                $field.hasClass('qty-input') || 
@@ -174,7 +179,7 @@
                                    ($field.attr('name') && $field.attr('name').includes('[exp_date]'));
 
             // Find item ID in this row
-            const $itemIdEl = $row.find('input[name*="[item_id]"], select[name*="[item_id]"], .pinv-item-select, .po-item-select, .item-select, .item-id-hidden, .indent-item-select, .pr-item-id, .sr-item-select, .so-item-select, .sq-item-select');
+            const $itemIdEl = $row.find('input[name*="[item_id]"], select[name*="[item_id]"], .pinv-item-select, .po-item-select, .item-select, .item-id-hidden, .indent-item-select, .pr-item-id, .sr-item-select, .so-item-select, .sq-item-select, .su-item-id');
             const hasItemId = $itemIdEl.length && ($itemIdEl.val() || '').trim() !== '';
 
             // A. Item Code / Selection: if row has entered code or has other filled values (qty, cost)
@@ -185,8 +190,18 @@
                 }
             }
 
-            // B. Quantity validation: Quantity must be > 0 once item is selected or if required
-            if (isQtyInput) {
+            // B. Quantity validation: Quantity must be >= 0 (Stock Update) or > 0 (Sales/Purchase) once item is selected
+            if (isStockUpdateQty) {
+                const numVal = parseFloat(val);
+                if (hasItemId || isFieldRequired($field)) {
+                    if (val === null || val === undefined || String(val).trim() === '') {
+                        return { valid: false, message: 'Physical quantity is required and cannot be empty.' };
+                    }
+                    if (isNaN(numVal) || numVal < 0) {
+                        return { valid: false, message: 'Physical quantity must be 0 or greater.' };
+                    }
+                }
+            } else if (isQtyInput) {
                 const numVal = parseFloat(val);
                 if (hasItemId || isFieldRequired($field)) {
                     if (val === null || val === undefined || String(val).trim() === '') {
@@ -441,7 +456,7 @@
         if ($t.is('button[type="reset"], .btn-reset-form, [data-dismiss], .close, .btn-secondary, .btn-default')) return true;
         // NOTE: .open-item-modal, .pr-search-btn, #btn-add-row, #add-row are intentionally NOT in safe bypass
         // so that item-add buttons and item-search modals are blocked until header fields (e.g. supplier_inv_no) are valid.
-        if ($t.closest('[data-dismiss], .main-sidebar, .main-header, .modal-backdrop, .dropdown-menu, .nav-tabs, .nav-pills, .row-remove, .pinv-remove-row, .po-remove-row, .sr-row-remove, .so-remove-row, .sq-remove-row, .remove-row-btn').length) return true;
+        if ($t.closest('[data-dismiss], .main-sidebar, .main-header, .modal-backdrop, .dropdown-menu, .nav-tabs, .nav-pills, .row-remove, .pinv-remove-row, .po-remove-row, .sr-row-remove, .so-remove-row, .sq-remove-row, .su-row-remove, .remove-row-btn').length) return true;
         return false;
     }
 
