@@ -2287,11 +2287,19 @@
             let bNo = ($row.find('.sb-item-batch-no').val() || '').trim();
             let exp = ($row.find('.sb-exp-date').val() || '').trim();
             if (exp) exp = exp.substring(0, 10);
+            let rowMrp = parseFloat($row.find('.sb-mrp').val() || $row.find('.sb-item-mrp').val() || 0);
+            let rowSell = parseFloat($row.find('.sb-sell-price').val() || 0);
             let matched = batches.find(b => {
                 let bExp = b.exp_date ? b.exp_date.toString().substring(0, 10) : '';
                 let bNum = (b.batch_no || '').trim();
+                let bMrp = parseFloat(b.mrp || 0);
+                let bSell = parseFloat(b.sell_price || 0);
                 if (bNo && bNum) return bNo.toLowerCase() === bNum.toLowerCase();
-                if (exp && bExp) return exp === bExp;
+                if (exp && bExp) {
+                    if (rowMrp > 0 && bMrp > 0 && Math.abs(rowMrp - bMrp) > 0.01) return false;
+                    if (rowSell > 0 && bSell > 0 && Math.abs(rowSell - bSell) > 0.01) return false;
+                    return exp === bExp;
+                }
                 if (!bNo && !exp && !bNum && !bExp) return true;
                 return false;
             });

@@ -71,12 +71,12 @@
         const reqQty = parseFloat(requestedQty) || 0;
         if (stock <= 0) return true; // Zero or negative physical stock is strictly blocked in POS
 
-        const hasBatch = !!(item.batch_no || (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== ''));
+        const hasBatch = !!(item.batch_no || item.exp_date || (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== ''));
         // Physical batch lots can never allow negative stock under any condition
         const allowNeg = hasBatch ? false : isAllowNegative(item.allow_negative_stock);
         if (allowNeg) return false;
 
-        const otherRowsQty = getTotalCartQtyForItem(item.id, excludeRowIdx, item.batch_no || null);
+        const otherRowsQty = getTotalCartQtyForItem(item, excludeRowIdx, item.batch_no || null, item.exp_date || null, item.mrp || null);
         const totalReq = otherRowsQty + reqQty;
         return totalReq > (stock + 0.0001);
     }
@@ -306,7 +306,7 @@
 
             if (isItemStockExceeded(item, val, idx)) {
                 const stock = getItemStock(item);
-                const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                const otherRowsQty = getTotalCartQtyForItem(item, idx, item.batch_no || null, item.exp_date || null, item.mrp || null);
                 const availRemaining = Math.max(0, stock - otherRowsQty);
                 const availDisp = parseInt(availRemaining, 10);
                 const errMsg = availRemaining <= 0
@@ -352,7 +352,7 @@
 
                 if (isItemStockExceeded(item, val, idx)) {
                     const stock = getItemStock(item);
-                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                    const otherRowsQty = getTotalCartQtyForItem(item, idx, item.batch_no || null, item.exp_date || null, item.mrp || null);
                     const availRemaining = Math.max(0, stock - otherRowsQty);
                     const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                     const errMsg = availRemaining <= 0
@@ -395,7 +395,7 @@
 
                 if (isItemStockExceeded(item, val, idx)) {
                     const stock = getItemStock(item);
-                    const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+                    const otherRowsQty = getTotalCartQtyForItem(item, idx, item.batch_no || null, item.exp_date || null, item.mrp || null);
                     const availRemaining = Math.max(0, stock - otherRowsQty);
                     const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                     const errMsg = availRemaining <= 0
@@ -687,7 +687,7 @@
                     }
                     if (isItemStockExceeded(it, it.qty, i)) {
                         const stock = getItemStock(it);
-                        const otherRowsQty = getTotalCartQtyForItem(it.id, i, it.batch_no || null);
+                        const otherRowsQty = getTotalCartQtyForItem(it, i, it.batch_no || null, it.exp_date || null, it.mrp || null);
                         const availRemaining = Math.max(0, stock - otherRowsQty);
                         const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                         showNotification(`Insufficient stock for "${it.name}". Only ${availDisp} units are available.`, 'danger');
@@ -925,7 +925,7 @@
             // Real-time stock validation (across all rows for this item/batch)
             if (isItemStockExceeded(cartItem, val, idx)) {
                 const stock = getItemStock(cartItem);
-                const otherRowsQty = getTotalCartQtyForItem(cartItem.id, idx, cartItem.batch_no || null);
+                const otherRowsQty = getTotalCartQtyForItem(cartItem, idx, cartItem.batch_no || null, cartItem.exp_date || null, cartItem.mrp || null);
                 const availRemaining = Math.max(0, stock - otherRowsQty);
                 const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                 const errMsg = availRemaining <= 0
@@ -1542,13 +1542,40 @@
     }
 
     // Cart Management
-    function getTotalCartQtyForItem(itemId, excludeIdx = -1, batchNo = null) {
+    function getTotalCartQtyForItem(itemIdOrItem, excludeIdx = -1, batchNo = null, expDate = null, mrp = null) {
+        let itemId = itemIdOrItem;
+        let bNo = batchNo;
+        let exp = expDate;
+        let itemMrp = mrp;
+
+        if (itemIdOrItem && typeof itemIdOrItem === 'object') {
+            itemId = parseInt(itemIdOrItem.id || itemIdOrItem.item_id);
+            if (bNo === null && itemIdOrItem.batch_no !== undefined) bNo = itemIdOrItem.batch_no;
+            if (exp === null && itemIdOrItem.exp_date !== undefined) exp = itemIdOrItem.exp_date;
+            if (itemMrp === null && (itemIdOrItem.mrp !== undefined || itemIdOrItem.sell_price !== undefined)) {
+                itemMrp = itemIdOrItem.mrp || itemIdOrItem.sell_price;
+            }
+        }
+
+        const expStr = exp ? (typeof exp === 'string' ? exp.substring(0, 10) : '') : '';
+        const mrpNum = itemMrp !== null && itemMrp !== undefined ? parseFloat(itemMrp) : null;
+
         let total = 0;
         state.cart.forEach((c, idx) => {
             if (idx !== excludeIdx && c.id === itemId) {
-                if (batchNo === null || (c.batch_no || '') === (batchNo || '')) {
-                    total += parseFloat(c.qty) || 0;
+                if (bNo !== null && (c.batch_no || '') !== (bNo || '')) {
+                    return;
                 }
+                if (expStr && (c.exp_date ? c.exp_date.substring(0, 10) : '') !== expStr) {
+                    return;
+                }
+                if (mrpNum !== null && !isNaN(mrpNum) && mrpNum > 0) {
+                    const cMrp = parseFloat(c.mrp || c.sell_price || 0);
+                    if (cMrp > 0 && Math.abs(cMrp - mrpNum) > 0.01) {
+                        return;
+                    }
+                }
+                total += parseFloat(c.qty) || 0;
             }
         });
         return total;
@@ -1564,6 +1591,8 @@
 
         const batchNo = item.batch_no || '';
         const expDate = item.exp_date ? (typeof item.exp_date === 'string' ? item.exp_date.substring(0, 10) : '') : '';
+        const itemMrp = parseFloat(item.mrp || 0);
+        const itemSell = parseFloat(item.sell_price || item.unit_price || 0);
 
         // Prevent selling expired items (Task 2)
         if (expDate) {
@@ -1575,7 +1604,7 @@
             }
         }
 
-        const hasBatch = !!(batchNo || (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== ''));
+        const hasBatch = !!(batchNo || expDate || (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== ''));
         const allowNeg = hasBatch ? false : (isAllowNegative(item.allow_negative_stock) || state.cart.some(c => c.id === itemId && isAllowNegative(c.allow_negative_stock)));
         let availableStock = null;
         if (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== '') {
@@ -1587,7 +1616,14 @@
         } else if (item.qty !== undefined && item.qty !== null) {
             availableStock = parseFloat(item.qty);
         } else {
-            const inCart = state.cart.find(c => c.id === itemId && (c.batch_no || '') === batchNo && (c.batch_stock !== undefined && c.batch_stock !== null));
+            const inCart = state.cart.find(c => {
+                if (c.id !== itemId) return false;
+                if ((c.batch_no || '') !== batchNo) return false;
+                if ((c.exp_date || '') !== expDate) return false;
+                const cMrp = parseFloat(c.mrp || 0);
+                if ((itemMrp > 0 || cMrp > 0) && Math.abs(cMrp - itemMrp) > 0.01) return false;
+                return (c.batch_stock !== undefined && c.batch_stock !== null);
+            });
             if (inCart) {
                 availableStock = parseFloat(inCart.batch_stock);
             } else {
@@ -1596,14 +1632,31 @@
             }
         }
 
-        const existingIdx = state.cart.findIndex(c => c.id === itemId && (c.batch_no || '') === batchNo && (c.exp_date || '') === expDate);
+        const existingIdx = state.cart.findIndex(c => {
+            if (c.id !== itemId) return false;
+            if ((c.batch_no || '') !== batchNo) return false;
+            if ((c.exp_date || '') !== expDate) return false;
+
+            const cMrp = parseFloat(c.mrp || 0);
+            if ((itemMrp > 0 || cMrp > 0) && Math.abs(cMrp - itemMrp) > 0.01) {
+                return false;
+            }
+
+            const cSell = parseFloat(c.sell_price || c.unit_price || 0);
+            if ((itemSell > 0 || cSell > 0) && Math.abs(cSell - itemSell) > 0.01) {
+                return false;
+            }
+
+            return true;
+        });
+
         let targetIdx = -1;
 
         if (existingIdx !== -1) {
             if (availableStock === null && state.cart[existingIdx].stock !== undefined && state.cart[existingIdx].stock !== null) {
                 availableStock = parseFloat(state.cart[existingIdx].stock);
             }
-            const currentItemTotal = getTotalCartQtyForItem(itemId, -1, batchNo || null);
+            const currentItemTotal = getTotalCartQtyForItem(itemId, -1, batchNo || null, expDate || null, itemMrp || null);
             const proposedTotal = currentItemTotal + 1;
             if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
@@ -1627,7 +1680,7 @@
                 targetIdx = existingIdx;
             }
         } else {
-            const currentItemTotal = getTotalCartQtyForItem(itemId, -1, batchNo || null);
+            const currentItemTotal = getTotalCartQtyForItem(itemId, -1, batchNo || null, expDate || null, itemMrp || null);
             const proposedTotal = currentItemTotal + 1;
             if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
@@ -1640,13 +1693,13 @@
             }
 
             if (availableStock !== null && availableStock <= 0) {
-            const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
-            showNotification(`Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).`, 'danger');
-            if (typeof sound !== 'undefined' && sound.error) sound.error();
-            return false;
-        }
+                const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
+                showNotification(`Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).`, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                return false;
+            }
 
-        const newItem = {
+            const newItem = {
                 id: itemId,
                 name: item.name || item.productname || 'Unknown Item',
                 code: item.item_code || item.code || item.ean_upc_code || item.barcode || '',
@@ -1811,7 +1864,7 @@
         if (delta > 0) {
             if (isItemStockExceeded(cartItem, newQty, index)) {
                 const stock = getItemStock(cartItem);
-                const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index, cartItem.batch_no || null);
+                const otherRowsQty = getTotalCartQtyForItem(cartItem, index, cartItem.batch_no || null, cartItem.exp_date || null, cartItem.mrp || null);
                 const availRemaining = Math.max(0, stock - otherRowsQty);
                 const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                 const errMsg = availRemaining <= 0
@@ -1837,7 +1890,7 @@
             return;
         }
         const cartItem = state.cart[index];
-        const otherRowsQty = getTotalCartQtyForItem(cartItem.id, index, cartItem.batch_no || null);
+        const otherRowsQty = getTotalCartQtyForItem(cartItem, index, cartItem.batch_no || null, cartItem.exp_date || null, cartItem.mrp || null);
         const totalRequested = otherRowsQty + q;
         const allowNeg = isAllowNegative(cartItem.allow_negative_stock);
         const stock = (cartItem.batch_stock !== undefined && cartItem.batch_stock !== null && cartItem.batch_stock !== '')
@@ -2028,7 +2081,7 @@
             const stock = (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== '')
                 ? parseFloat(item.batch_stock)
                 : (item.stock !== undefined && item.stock !== null ? parseFloat(item.stock) : null);
-            const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
+            const otherRowsQty = getTotalCartQtyForItem(item, idx, item.batch_no || null, item.exp_date || null, item.mrp || null);
             const totalRequested = otherRowsQty + (parseFloat(qtyVal) || 0);
             const isStockExceeded = !allowNeg && stock !== null && totalRequested > stock + 0.0001;
             if (isStockExceeded) hasInvalidQty = true;
@@ -3196,7 +3249,7 @@
             const it = state.cart[i];
             if (isItemStockExceeded(it, it.qty, i)) {
                 const stock = getItemStock(it);
-                const otherRowsQty = getTotalCartQtyForItem(it.id, i, it.batch_no || null);
+                const otherRowsQty = getTotalCartQtyForItem(it, i, it.batch_no || null, it.exp_date || null, it.mrp || null);
                 const availRemaining = Math.max(0, stock - otherRowsQty);
                 const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                 const msg = `Stock Limit Exceeded: Only ${availDisp} units available for "${it.name}" (entered: ${it.qty}). Please correct quantity.`;
@@ -3248,7 +3301,7 @@
             }
             if (isItemStockExceeded(cItem, cItem.qty, i)) {
                 const stock = getItemStock(cItem);
-                const otherQty = getTotalCartQtyForItem(cItem.id, i, cItem.batch_no || null);
+                const otherQty = getTotalCartQtyForItem(cItem, i, cItem.batch_no || null, cItem.exp_date || null, cItem.mrp || null);
                 const availRemaining = Math.max(0, stock - otherQty);
                 const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                 const errMsg = availRemaining <= 0
