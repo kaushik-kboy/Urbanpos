@@ -541,10 +541,10 @@ class ReportController extends Controller
                     'Category' => fn($r) => $r->item?->categoryValue?->name ?? '',
                     'Branch / Location' => fn($r) => $r->branch?->name ?? '',
                     'Stock Qty' => fn($r) => (float) $r->quantity,
-                    'Cost Price' => fn($r) => number_format((float) ($r->item?->cost_price ?? 0), 2),
-                    'Cost Value' => fn($r) => number_format((float) ($r->quantity * ($r->item?->cost_price ?? 0)), 2),
-                    'Selling Price' => fn($r) => number_format((float) ($r->item?->sell_price ?? 0), 2),
-                    'Selling Value' => fn($r) => number_format((float) ($r->quantity * ($r->item?->sell_price ?? 0)), 2),
+                    'Cost Price' => fn($r) => number_format((float) (($r->cost_price > 0 ? $r->cost_price : ($r->item?->cost_price ?? 0))), 2),
+                    'Cost Value' => fn($r) => number_format((float) ($r->quantity * ($r->cost_price > 0 ? $r->cost_price : ($r->item?->cost_price ?? 0))), 2),
+                    'Selling Price' => fn($r) => number_format((float) (($r->sell_price > 0 ? $r->sell_price : ($r->item?->sell_price ?? 0))), 2),
+                    'Selling Value' => fn($r) => number_format((float) ($r->quantity * ($r->sell_price > 0 ? $r->sell_price : ($r->item?->sell_price ?? 0))), 2),
                 ],
                 'current-stock-report_' . date('Y-m-d') . '.xlsx',
                 null,
@@ -554,7 +554,7 @@ class ReportController extends Controller
 
         // Totals for the whole filtered set come from SQL; only one page of rows is loaded/rendered.
         $totals = (clone $query)->join('items as ti', 'ti.id', '=', 'item_stocks.item_id')
-            ->selectRaw('COALESCE(SUM(item_stocks.quantity * COALESCE(ti.cost_price,0)),0) as cost_value, COALESCE(SUM(item_stocks.quantity * COALESCE(ti.sell_price,0)),0) as sell_value, COALESCE(SUM(item_stocks.quantity),0) as qty')->first();
+            ->selectRaw('COALESCE(SUM(item_stocks.quantity * COALESCE(NULLIF(item_stocks.cost_price,0), ti.cost_price, 0)),0) as cost_value, COALESCE(SUM(item_stocks.quantity * COALESCE(NULLIF(item_stocks.sell_price,0), ti.sell_price, 0)),0) as sell_value, COALESCE(SUM(item_stocks.quantity),0) as qty')->first();
         $rows = $query->orderBy('branch_id')->orderBy('item_stocks.id')->paginate(100)->withQueryString();
 
         $branches = $this->getBranchesForUser();

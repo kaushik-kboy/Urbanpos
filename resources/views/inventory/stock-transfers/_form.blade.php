@@ -256,9 +256,11 @@
                         <thead class="bg-dark text-white">
                             <tr>
                                 <th class="text-center" style="width: 40px;">#</th>
-                                <th class="text-center" style="width: 140px;">Batch No</th>
-                                <th class="text-center" style="width: 140px;">Expiry Date</th>
-                                <th class="text-right" style="width: 120px;">Available Qty</th>
+                                <th class="text-center" style="width: 130px;">Batch No</th>
+                                <th class="text-center" style="width: 120px;">Expiry Date</th>
+                                <th class="text-right" style="width: 100px;">Available Qty</th>
+                                <th class="text-right" style="width: 100px;">Sell Price</th>
+                                <th class="text-right" style="width: 100px;">MRP</th>
                                 <th class="text-center" style="width: 90px;">Action</th>
                             </tr>
                         </thead>
@@ -843,6 +845,8 @@
                     : `<span class="text-muted">—</span>`;
                 let batchLabel = b.batch_no ? `<span class="badge badge-secondary px-2 py-1 font-weight-bold">${b.batch_no}</span>` : `<span class="badge badge-light border text-muted">No Batch</span>`;
                 let qtyAvail = parseFloat(b.qty !== undefined ? b.qty : (b.available_qty || 0));
+                let sellDisp = (b.sell_price !== undefined && parseFloat(b.sell_price) > 0) ? ('₹ ' + parseFloat(b.sell_price).toFixed(2)) : '—';
+                let mrpDisp = (b.mrp !== undefined && parseFloat(b.mrp) > 0) ? ('₹ ' + parseFloat(b.mrp).toFixed(2)) : '—';
                 let isSelected = (currentBatchNo && b.batch_no === currentBatchNo);
                 let rowClass = 'st-batch-row ' + (isSelected ? 'table-success ' : '') + (isExpired ? 'text-muted bg-light ' : '');
                 let rowStyle = isExpired ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
@@ -856,6 +860,8 @@
                         <td class="align-middle text-center">${batchLabel}</td>
                         <td class="align-middle text-center">${expBadge}</td>
                         <td class="align-middle text-right font-weight-bold text-success">${qtyAvail.toFixed(3)}</td>
+                        <td class="align-middle text-right font-weight-bold text-primary">${sellDisp}</td>
+                        <td class="align-middle text-right text-muted">${mrpDisp}</td>
                         <td class="align-middle text-center">${selectBtn}</td>
                     </tr>`;
             });

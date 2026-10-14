@@ -77,12 +77,17 @@
                         <tr>
                             <td>{{ $row->branch?->name }}</td>
                             <td>{{ $row->item?->name }}</td>
+                            @php
+                                $cost = (float) ($row->cost_price > 0 ? $row->cost_price : ($row->item?->cost_price ?? 0));
+                                $sell = (float) ($row->sell_price > 0 ? $row->sell_price : ($row->item?->sell_price ?? 0));
+                                $mrp = (float) ($row->mrp > 0 ? $row->mrp : ($row->item?->mrp ?? 0));
+                            @endphp
                             <td class="text-right">{{ $row->quantity }}</td>
-                            <td class="text-right">{{ number_format($row->item?->cost_price ?? 0, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->item?->sell_price ?? 0, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->item?->mrp ?? 0, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->quantity * ($row->item?->cost_price ?? 0), 2) }}</td>
-                            <td class="text-right">{{ number_format($row->quantity * ($row->item?->sell_price ?? 0), 2) }}</td>
+                            <td class="text-right">{{ number_format($cost, 2) }}</td>
+                            <td class="text-right">{{ number_format($sell, 2) }}</td>
+                            <td class="text-right">{{ number_format($mrp, 2) }}</td>
+                            <td class="text-right">{{ number_format($row->quantity * $cost, 2) }}</td>
+                            <td class="text-right">{{ number_format($row->quantity * $sell, 2) }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="8" class="text-center text-muted py-3">No stock on hand.</td></tr>

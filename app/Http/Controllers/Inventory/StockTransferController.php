@@ -415,10 +415,10 @@ class StockTransferController extends Controller
                         : ($fromStock && (float) $fromStock->mrp > 0 ? $fromStock->mrp : ($line->item?->mrp ?: 0)));
                     $transferSellPrice = (float) ($line->sell_price > 0
                         ? $line->sell_price
-                        : ($transferMrp > 0
-                            ? $transferMrp
-                            : ($fromStock && (float) $fromStock->sell_price > 0
-                                ? $fromStock->sell_price
+                        : ($fromStock && (float) $fromStock->sell_price > 0
+                            ? $fromStock->sell_price
+                            : ($transferMrp > 0
+                                ? $transferMrp
                                 : ($line->item?->sell_price ?: 0))));
                     if ($transferMrp > 0 && $transferSellPrice > $transferMrp) {
                         $transferSellPrice = $transferMrp;
@@ -494,12 +494,17 @@ class StockTransferController extends Controller
             $itemId = (int) $line['item_id'];
             $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
 
-            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
-            if ($batchNo) {
-                $bKey = "{$itemId}_{$batchNo}";
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : '';
+            $expDate = !empty($line['exp_date']) ? trim($line['exp_date']) : null;
+            $mrp = isset($line['mrp']) && (float) $line['mrp'] > 0 ? (float) $line['mrp'] : null;
+
+            if ($batchNo !== '' || $expDate !== null || $mrp !== null) {
+                $bKey = "{$itemId}_{$batchNo}_{$expDate}_{$mrp}";
                 $totalQtyByBatch[$bKey] = [
                     'item_id' => $itemId,
                     'batch_no' => $batchNo,
+                    'exp_date' => $expDate,
+                    'mrp' => $mrp,
                     'qty' => ($totalQtyByBatch[$bKey]['qty'] ?? 0.0) + (float) $line['qty'],
                 ];
             }
@@ -523,13 +528,17 @@ class StockTransferController extends Controller
         }
 
         foreach ($totalQtyByBatch as $bReq) {
-            $bStock = $batchService->getBatchStock($bReq['item_id'], $fromBranchId, $bReq['batch_no']);
+            $bStock = $batchService->getBatchStock($bReq['item_id'], $fromBranchId, $bReq['batch_no'], $bReq['exp_date'], $bReq['mrp']);
             $bAvail = (float) ($bStock['remaining_qty'] ?? 0);
             if (round($bReq['qty'], 4) > round($bAvail, 4)) {
                 $item = Item::find($bReq['item_id']);
                 $itemName = $item ? $item->name : "Item #{$bReq['item_id']}";
+                $batchDisplay = $bReq['batch_no'] ?: ($bReq['exp_date'] ? "Exp: {$bReq['exp_date']}" : "Default");
+                if (!empty($bReq['mrp'])) {
+                    $batchDisplay .= " (MRP: ₹{$bReq['mrp']})";
+                }
                 throw ValidationException::withMessages([
-                    'items' => "Insufficient batch stock for \"{$itemName}\" (Batch: {$bReq['batch_no']}). Available: {$bAvail}, requested: {$bReq['qty']}.",
+                    'items' => "Insufficient batch stock for \"{$itemName}\" (Batch: {$batchDisplay}). Available: {$bAvail}, requested: {$bReq['qty']}.",
                 ]);
             }
         }

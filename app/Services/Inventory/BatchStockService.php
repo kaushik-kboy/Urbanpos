@@ -167,7 +167,7 @@ class BatchStockService
                 $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
                 $batchSell = (float) ($p->sell_price ?? 0);
                 if ($batchSell <= 0) {
-                    $batchSell = $mrp > 0 ? $mrp : (float) ($item->sell_price ?? 0);
+                    $batchSell = (float) ($branchStock && $branchStock->sell_price > 0 ? $branchStock->sell_price : ($item->sell_price ?? ($mrp > 0 ? $mrp : 0)));
                 }
                 if ($mrp > 0 && $batchSell > $mrp) {
                     $batchSell = $mrp;
@@ -447,17 +447,43 @@ class BatchStockService
     /**
      * Resolves a single batch's inventory attributes and remaining quantity.
      */
-    public function getBatchStock(int $itemId, int $branchId, string $batchNo): ?array
+    public function getBatchStock(int $itemId, int $branchId, string $batchNo, ?string $expDate = null, ?float $mrp = null): ?array
     {
         $batches = $this->getItemBatches($itemId, $branchId);
 
-        $found = $batches->first(function ($b) use ($batchNo) {
-            return strcasecmp(trim((string)$b['batch_no']), trim($batchNo)) === 0
-                || strcasecmp(trim((string)($b['raw_batch_no'] ?? '')), trim($batchNo)) === 0;
+        $found = $batches->first(function ($b) use ($batchNo, $expDate, $mrp) {
+            $matchBNo = (strcasecmp(trim((string)$b['batch_no']), trim($batchNo)) === 0
+                || strcasecmp(trim((string)($b['raw_batch_no'] ?? '')), trim($batchNo)) === 0);
+            if (!$matchBNo) return false;
+
+            if ($expDate) {
+                $bExp = !empty($b['exp_date']) ? substr((string)$b['exp_date'], 0, 10) : '';
+                $cleanExp = substr($expDate, 0, 10);
+                if ($bExp && $cleanExp && $bExp !== $cleanExp) return false;
+            }
+
+            if ($mrp !== null && (float)$mrp > 0) {
+                $bMrp = (float)($b['mrp'] ?? 0);
+                if ($bMrp > 0 && abs($bMrp - (float)$mrp) > 0.01) return false;
+            }
+
+            return true;
         });
 
         if (!$found && in_array(strtoupper(trim($batchNo)), ['', 'DEFAULT', 'NO BATCH', 'LOT'], true)) {
-            $found = $batches->firstWhere('remaining_qty', '>', 0) ?? $batches->first();
+            $found = $batches->first(function ($b) use ($expDate, $mrp) {
+                if ($b['remaining_qty'] <= 0) return false;
+                if ($expDate) {
+                    $bExp = !empty($b['exp_date']) ? substr((string)$b['exp_date'], 0, 10) : '';
+                    $cleanExp = substr($expDate, 0, 10);
+                    if ($bExp && $cleanExp && $bExp !== $cleanExp) return false;
+                }
+                if ($mrp !== null && (float)$mrp > 0) {
+                    $bMrp = (float)($b['mrp'] ?? 0);
+                    if ($bMrp > 0 && abs($bMrp - (float)$mrp) > 0.01) return false;
+                }
+                return true;
+            }) ?? $batches->firstWhere('remaining_qty', '>', 0) ?? $batches->first();
         }
 
         return $found;
