@@ -462,6 +462,8 @@
 
             let mrpVal = parseFloat(item.mrp || 0) || 0;
             $row.find('.item-mrp').val(mrpVal > 0 ? mrpVal.toFixed(2) : '0.00');
+            let sellVal = parseFloat(item.sell_price || 0) || mrpVal;
+            $row.find('.item-sell-price').val(sellVal > 0 ? sellVal.toFixed(2) : '0.00');
 
             if (item.exp_date) {
                 let formattedExp = formatToDisplayDate(item.exp_date);
@@ -905,6 +907,11 @@
 
             if (batch.mrp !== undefined && parseFloat(batch.mrp) > 0) {
                 $row.find('.item-mrp').val(parseFloat(batch.mrp).toFixed(2));
+            }
+
+            let batchSell = parseFloat(batch.sell_price !== undefined ? batch.sell_price : (batch.mrp || 0)) || 0;
+            if (batchSell > 0) {
+                $row.find('.item-sell-price').val(batchSell.toFixed(2));
             }
 
             if (batch.exp_date) {

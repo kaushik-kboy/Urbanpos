@@ -308,4 +308,130 @@ class BatchStockAndItemPopDiscrepancyTest extends TestCase
         $this->assertEquals(15.0, (float) $batch2500['remaining_qty'], 'MRP 2500 batch must have 15 remaining');
         $this->assertEquals(19.0, (float) $batch3000['remaining_qty'], 'MRP 3000 batch must have 19 remaining');
     }
+
+    public function test_transferred_batches_preserve_individual_selling_prices_and_mrp_caps(): void
+    {
+        // Item in Master has high sell_price (e.g. 4000)
+        $item = Item::create([
+            'name' => 'Drools Cat Adult Ocean Fish 5KG',
+            'item_code' => 'DROOLS001',
+            'cost_price' => 1500,
+            'sell_price' => 4000,
+            'mrp' => 4000,
+            'status' => true,
+        ]);
+
+        $stockLedger = app(StockLedgerService::class);
+
+        // Branch 2 (Satellite) already has 10 units at 4000 MRP from purchase
+        $pi = PurchaseInvoice::create([
+            'invoice_number' => 'PI01/2627/000155',
+            'branch_id' => $this->branch2->id,
+            'supplier_id' => $this->supplier->id,
+            'invoice_date' => now()->toDateString(),
+            'status' => 'Received',
+            'subtotal' => 15000,
+            'total' => 15000,
+        ]);
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $pi->id,
+            'item_id' => $item->id,
+            'qty' => 10,
+            'cost_price' => 1500,
+            'sell_price' => 4000,
+            'mrp' => 4000,
+            'exp_date' => '2031-05-30',
+        ]);
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch2->id,
+            movementType: 'PURCHASE_RECEIPT',
+            qtyDelta: 10,
+            unitCost: 1500,
+            referenceType: PurchaseInvoice::class,
+            referenceId: $pi->id,
+            documentDate: now()->toDateString(),
+            expDate: '2031-05-30',
+            batchNo: '',
+            mrp: 4000,
+        );
+
+        // Motera transfers 4 items to Satellite with different MRPs (1500, 2000, 2500, 3000)
+        $st = \App\Models\StockTransfer::create([
+            'transfer_number' => 'ST02/2627/000002',
+            'from_branch_id' => $this->branch1->id,
+            'to_branch_id' => $this->branch2->id,
+            'transfer_date' => now()->toDateString(),
+            'status' => 'Received',
+            'total_value' => 4300,
+        ]);
+
+        $transferredBatches = [
+            ['exp' => '2033-05-30', 'mrp' => 1500.0, 'cost' => 850.0],
+            ['exp' => '2028-05-15', 'mrp' => 2000.0, 'cost' => 950.0],
+            ['exp' => '2034-05-30', 'mrp' => 2500.0, 'cost' => 1000.0],
+            ['exp' => '2034-05-30', 'mrp' => 3000.0, 'cost' => 1500.0],
+        ];
+
+        foreach ($transferredBatches as $tb) {
+            \App\Models\StockTransferItem::create([
+                'stock_transfer_id' => $st->id,
+                'item_id' => $item->id,
+                'qty' => 1,
+                'received_qty' => 1,
+                'unit_cost' => $tb['cost'],
+                'sell_price' => $tb['mrp'],
+                'mrp' => $tb['mrp'],
+                'exp_date' => $tb['exp'],
+            ]);
+
+            $stockLedger->post(
+                itemId: $item->id,
+                branchId: $this->branch2->id,
+                movementType: 'TRANSFER_IN',
+                qtyDelta: 1,
+                unitCost: $tb['cost'],
+                referenceType: \App\Models\StockTransfer::class,
+                referenceId: $st->id,
+                documentDate: now()->toDateString(),
+                expDate: $tb['exp'],
+                batchNo: '',
+                mrp: $tb['mrp'],
+            );
+        }
+
+        // Assert BatchStockService for Satellite (Branch 2):
+        // Each batch must show its OWN sell_price and mrp (1500, 2000, 2500, 3000, 4000)
+        // NOT all 4000!
+        $batchService = app(BatchStockService::class);
+        $batches = $batchService->getItemBatches($item->id, $this->branch2->id);
+
+        $this->assertCount(5, $batches);
+
+        $b1500 = $batches->firstWhere('mrp', 1500);
+        $b2000 = $batches->firstWhere('mrp', 2000);
+        $b2500 = $batches->firstWhere('mrp', 2500);
+        $b3000 = $batches->firstWhere('mrp', 3000);
+        $b4000 = $batches->firstWhere('mrp', 4000);
+
+        $this->assertNotNull($b1500);
+        $this->assertEquals(1500.0, (float) $b1500['sell_price']);
+        $this->assertEquals(1500.0, (float) $b1500['mrp']);
+
+        $this->assertNotNull($b2000);
+        $this->assertEquals(2000.0, (float) $b2000['sell_price']);
+        $this->assertEquals(2000.0, (float) $b2000['mrp']);
+
+        $this->assertNotNull($b2500);
+        $this->assertEquals(2500.0, (float) $b2500['sell_price']);
+        $this->assertEquals(2500.0, (float) $b2500['mrp']);
+
+        $this->assertNotNull($b3000);
+        $this->assertEquals(3000.0, (float) $b3000['sell_price']);
+        $this->assertEquals(3000.0, (float) $b3000['mrp']);
+
+        $this->assertNotNull($b4000);
+        $this->assertEquals(4000.0, (float) $b4000['sell_price']);
+        $this->assertEquals(4000.0, (float) $b4000['mrp']);
+    }
 }

@@ -202,6 +202,12 @@ class StockTransferController extends Controller
                     : null;
 
                 $mrp = isset($line['mrp']) && is_numeric($line['mrp']) ? (float) $line['mrp'] : (float) ($item->mrp ?: 0);
+                $sellPrice = isset($line['sell_price']) && is_numeric($line['sell_price']) && (float) $line['sell_price'] > 0
+                    ? (float) $line['sell_price']
+                    : ($mrp > 0 ? $mrp : (float) ($item->sell_price ?: 0));
+                if ($mrp > 0 && $sellPrice > $mrp) {
+                    $sellPrice = $mrp;
+                }
 
                 $stockTransfer->items()->create([
                     'item_id' => $item->id,
@@ -209,6 +215,7 @@ class StockTransferController extends Controller
                     'exp_date' => $expDate,
                     'qty' => $qty,
                     'unit_cost' => $unitCost,
+                    'sell_price' => $sellPrice,
                     'mrp' => $mrp,
                     'gst_percent' => $tax['gst_percent'] ?? 0,
                     'taxable_value' => $tax['taxable_value'] ?? 0,
@@ -403,12 +410,19 @@ class StockTransferController extends Controller
                     $fromStock = ItemStock::where('item_id', $line->item_id)
                         ->where('branch_id', $stockTransfer->from_branch_id)
                         ->first();
-                    $transferSellPrice = $fromStock && (float) $fromStock->sell_price > 0
-                        ? (float) $fromStock->sell_price
-                        : (float) ($line->item?->sell_price ?: 0);
                     $transferMrp = (float) ($line->mrp > 0
                         ? $line->mrp
                         : ($fromStock && (float) $fromStock->mrp > 0 ? $fromStock->mrp : ($line->item?->mrp ?: 0)));
+                    $transferSellPrice = (float) ($line->sell_price > 0
+                        ? $line->sell_price
+                        : ($transferMrp > 0
+                            ? $transferMrp
+                            : ($fromStock && (float) $fromStock->sell_price > 0
+                                ? $fromStock->sell_price
+                                : ($line->item?->sell_price ?: 0))));
+                    if ($transferMrp > 0 && $transferSellPrice > $transferMrp) {
+                        $transferSellPrice = $transferMrp;
+                    }
 
                     $destStock = ItemStock::firstOrCreate(
                         ['item_id' => $line->item_id, 'branch_id' => $stockTransfer->to_branch_id],

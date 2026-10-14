@@ -21,6 +21,9 @@
     $mrpVal = isset($line->mrp) && (float)$line->mrp > 0 
         ? number_format((float)$line->mrp, 2, '.', '') 
         : ($selectedItem ? number_format((float)$selectedItem->mrp, 2, '.', '') : '0.00');
+    $sellPriceVal = isset($line->sell_price) && (float)$line->sell_price > 0 
+        ? number_format((float)$line->sell_price, 2, '.', '') 
+        : ($mrpVal > 0 ? $mrpVal : ($selectedItem ? number_format((float)($selectedItem->sell_price ?: 0), 2, '.', '') : '0.00'));
     $unitCostVal = isset($line->unit_cost) && (float)$line->unit_cost > 0 
         ? number_format((float)$line->unit_cost, 2, '.', '') 
         : ($selectedItem ? number_format((float)($selectedItem->cost_price ?: ($selectedItem->landing_cost ?: ($selectedItem->sell_price ?: 0))), 2, '.', '') : '0.00');
@@ -54,6 +57,10 @@
                name="items[{{ $index }}][batch_no]"
                class="item-batch-no"
                value="{{ $batchNoVal }}">
+        <input type="hidden"
+               name="items[{{ $index }}][sell_price]"
+               class="item-sell-price"
+               value="{{ $sellPriceVal }}">
     </td>
     <td style="width: 150px;" data-col-key="expiry" title="Expiry date (Read-only)">
         <div class="input-group input-group-sm">

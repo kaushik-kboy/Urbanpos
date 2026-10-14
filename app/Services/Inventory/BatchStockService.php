@@ -165,12 +165,23 @@ class BatchStockService
             if ($p instanceof StockTransferItem) {
                 $cost = (float) (($p->unit_cost ?? 0) > 0 ? $p->unit_cost : ($item->cost_price ?? 0));
                 $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
-                $sell = (float) ($p->sell_price ?? ($item->sell_price ?? $mrp));
+                $batchSell = (float) ($p->sell_price ?? 0);
+                if ($batchSell <= 0) {
+                    $batchSell = $mrp > 0 ? $mrp : (float) ($item->sell_price ?? 0);
+                }
+                if ($mrp > 0 && $batchSell > $mrp) {
+                    $batchSell = $mrp;
+                }
+                $sell = $batchSell;
                 $inQty = (float) ($p->received_qty > 0 ? $p->received_qty : $p->qty);
             } else {
                 $cost = (float) (($p->cost_price ?? 0) > 0 ? $p->cost_price : ($item->cost_price ?? 0));
-                $sell = (float) (($p->sell_price ?? 0) > 0 ? $p->sell_price : ($item->sell_price ?? 0));
                 $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
+                $batchSell = (float) (($p->sell_price ?? 0) > 0 ? $p->sell_price : ($item->sell_price ?? 0));
+                if ($mrp > 0 && $batchSell > $mrp) {
+                    $batchSell = $mrp;
+                }
+                $sell = $batchSell;
                 $inQty = (float) ($p->qty ?? 0) + (float) ($p->free_qty ?? 0);
             }
 
