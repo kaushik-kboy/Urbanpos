@@ -264,6 +264,7 @@ class OpeningStockController extends Controller
                     referenceId: $openingStock->id,
                     documentDate: $openingStock->entry_date->toDateString(),
                     expDate: $line['exp_date'],
+                    mrp: !empty($line['mrp']) ? (float) $line['mrp'] : null,
                 );
             }
 

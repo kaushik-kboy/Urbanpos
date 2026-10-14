@@ -33,16 +33,29 @@ class BatchStockService
         }
 
         // 1. Query tracked batch stock from StockLedger for this branch & item
+        $hasMrp = \Illuminate\Support\Facades\Schema::hasColumn('stock_ledger', 'mrp');
+        $selectCols = "COALESCE(NULLIF(TRIM(batch_no), ''), '') as b_no, DATE(exp_date) as exp_date_val";
+        if ($hasMrp) {
+            $selectCols .= ", COALESCE(ROUND(mrp, 2), 0) as mrp_val";
+        }
+        $selectCols .= ", SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in";
+
+        $groupByCols = ['b_no', DB::raw('DATE(exp_date)')];
+        if ($hasMrp) {
+            $groupByCols[] = 'mrp';
+        }
+
         $ledgerRows = StockLedger::where('item_id', $itemId)
             ->where('branch_id', $branchId)
-            ->selectRaw("COALESCE(NULLIF(TRIM(batch_no), ''), '') as b_no, DATE(exp_date) as exp_date_val, SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in")
-            ->groupBy('b_no', DB::raw('DATE(exp_date)'))
+            ->selectRaw($selectCols)
+            ->groupBy($groupByCols)
             ->get();
 
         $ledgerBatchMap = [];
         foreach ($ledgerRows as $lr) {
             $bNo = $lr->b_no ? trim($lr->b_no) : ($lr->batch_no ? trim($lr->batch_no) : '');
             $expStr = $lr->exp_date_val ? trim((string) $lr->exp_date_val) : '';
+            $mrpVal = isset($lr->mrp_val) ? (float) $lr->mrp_val : 0.0;
 
             // If bNo is just a formatted date matching expStr (e.g. '30/05/2031' or '2031-05-30' or 'DEFAULT'), treat as unbatched expiry movement
             if ($bNo !== '' && $expStr !== '') {
@@ -55,18 +68,37 @@ class BatchStockService
                 }
             }
 
-            $key = $bNo !== '' ? $bNo : ($expStr !== '' ? $expStr : 'DEFAULT');
-            if (!isset($ledgerBatchMap[$key])) {
-                $ledgerBatchMap[$key] = [
+            $baseKey = $bNo !== '' ? $bNo : ($expStr !== '' ? $expStr : 'DEFAULT');
+            $exactKey = $mrpVal > 0 ? ($baseKey . '|' . round($mrpVal, 2)) : null;
+
+            if ($exactKey !== null) {
+                if (!isset($ledgerBatchMap[$exactKey])) {
+                    $ledgerBatchMap[$exactKey] = [
+                        'remaining' => (float) $lr->remaining_qty,
+                        'total_in' => (float) $lr->total_in,
+                        'exp_date' => $expStr,
+                        'batch_no' => $bNo,
+                        'mrp' => $mrpVal,
+                        'assigned' => 0.0,
+                    ];
+                } else {
+                    $ledgerBatchMap[$exactKey]['remaining'] += (float) $lr->remaining_qty;
+                    $ledgerBatchMap[$exactKey]['total_in'] += (float) $lr->total_in;
+                }
+            }
+
+            if (!isset($ledgerBatchMap[$baseKey])) {
+                $ledgerBatchMap[$baseKey] = [
                     'remaining' => (float) $lr->remaining_qty,
                     'total_in' => (float) $lr->total_in,
                     'exp_date' => $expStr,
                     'batch_no' => $bNo,
+                    'mrp' => 0.0,
                     'assigned' => 0.0,
                 ];
             } else {
-                $ledgerBatchMap[$key]['remaining'] += (float) $lr->remaining_qty;
-                $ledgerBatchMap[$key]['total_in'] += (float) $lr->total_in;
+                $ledgerBatchMap[$baseKey]['remaining'] += (float) $lr->remaining_qty;
+                $ledgerBatchMap[$baseKey]['total_in'] += (float) $lr->total_in;
             }
         }
 
@@ -208,7 +240,27 @@ class BatchStockService
             $raw = $b['raw_batch_no'] ?? '';
             $bNo = $b['batch_no'] ?? '';
             $exp = $b['exp_date'] ?? '';
-            $mk = ($raw !== '' && isset($ledgerBatchMap[$raw])) ? $raw : (($bNo !== '' && isset($ledgerBatchMap[$bNo])) ? $bNo : (($raw === '' && $exp !== '' && isset($ledgerBatchMap[$exp])) ? $exp : null));
+            $mrp = (float) ($b['mrp'] ?? 0);
+
+            $exactRaw = ($raw !== '' && $mrp > 0) ? ($raw . '|' . round($mrp, 2)) : null;
+            $exactExp = ($raw === '' && $exp !== '' && $mrp > 0) ? ($exp . '|' . round($mrp, 2)) : null;
+            $exactBNo = ($bNo !== '' && $mrp > 0) ? ($bNo . '|' . round($mrp, 2)) : null;
+
+            $mk = null;
+            if ($exactRaw !== null && isset($ledgerBatchMap[$exactRaw])) {
+                $mk = $exactRaw;
+            } elseif ($exactExp !== null && isset($ledgerBatchMap[$exactExp])) {
+                $mk = $exactExp;
+            } elseif ($exactBNo !== null && isset($ledgerBatchMap[$exactBNo])) {
+                $mk = $exactBNo;
+            } elseif ($raw !== '' && isset($ledgerBatchMap[$raw])) {
+                $mk = $raw;
+            } elseif ($bNo !== '' && isset($ledgerBatchMap[$bNo])) {
+                $mk = $bNo;
+            } elseif ($raw === '' && $exp !== '' && isset($ledgerBatchMap[$exp])) {
+                $mk = $exp;
+            }
+
             if ($mk !== null) {
                 $matchCounts[$mk] = ($matchCounts[$mk] ?? 0) + 1;
             }
@@ -221,10 +273,21 @@ class BatchStockService
             $raw = $bData['raw_batch_no'] ?? '';
             $bNo = $bData['batch_no'] ?? '';
             $exp = $bData['exp_date'] ?? '';
+            $mrp = (float) ($bData['mrp'] ?? 0);
             $pQty = (float) $bData['purchased_qty'];
 
+            $exactRaw = ($raw !== '' && $mrp > 0) ? ($raw . '|' . round($mrp, 2)) : null;
+            $exactExp = ($raw === '' && $exp !== '' && $mrp > 0) ? ($exp . '|' . round($mrp, 2)) : null;
+            $exactBNo = ($bNo !== '' && $mrp > 0) ? ($bNo . '|' . round($mrp, 2)) : null;
+
             $matchedKey = null;
-            if ($raw !== '' && isset($ledgerBatchMap[$raw])) {
+            if ($exactRaw !== null && isset($ledgerBatchMap[$exactRaw])) {
+                $matchedKey = $exactRaw;
+            } elseif ($exactExp !== null && isset($ledgerBatchMap[$exactExp])) {
+                $matchedKey = $exactExp;
+            } elseif ($exactBNo !== null && isset($ledgerBatchMap[$exactBNo])) {
+                $matchedKey = $exactBNo;
+            } elseif ($raw !== '' && isset($ledgerBatchMap[$raw])) {
                 $matchedKey = $raw;
             } elseif ($bNo !== '' && isset($ledgerBatchMap[$bNo])) {
                 $matchedKey = $bNo;
@@ -239,6 +302,10 @@ class BatchStockService
                 $alloc = $isLast ? $ledgerRem : min($pQty, $ledgerRem);
                 $bData['remaining_qty'] = $alloc;
                 $ledgerBatchMap[$matchedKey]['assigned'] += $alloc;
+                $baseKey = $raw !== '' ? $raw : ($exp !== '' ? $exp : $bNo);
+                if ($matchedKey !== $baseKey && $baseKey !== '' && isset($ledgerBatchMap[$baseKey])) {
+                    $ledgerBatchMap[$baseKey]['assigned'] += $alloc;
+                }
                 $namedBatchRemaining += $alloc;
             } elseif (!isset($unassignedKeys[$key])) {
                 $bData['remaining_qty'] = $pQty;
@@ -249,6 +316,9 @@ class BatchStockService
 
         // Also add any batches present in StockLedger not fully assigned to purchases
         foreach ($ledgerBatchMap as $key => $lData) {
+            if (str_contains($key, '|')) {
+                continue;
+            }
             $unassignedInLedger = max(0.0, $lData['remaining'] - ($lData['assigned'] ?? 0));
             if ($unassignedInLedger <= 0) {
                 continue; // Fully matched to actual purchases!

@@ -404,6 +404,7 @@ class PurchaseInvoiceController extends Controller
                     documentDate: $purchaseInvoice->invoice_date->toDateString(),
                     expDate: $line['exp_date'],
                     batchNo: $line['batch_no'] ?? null,
+                    mrp: (float) ($line['mrp'] ?? 0),
                 );
             }
 

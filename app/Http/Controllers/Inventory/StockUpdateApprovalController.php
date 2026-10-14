@@ -56,13 +56,14 @@ class StockUpdateApprovalController extends Controller
         }
 
         DB::transaction(function () use ($stockUpdate) {
-            $lines = $stockUpdate->items->map->only(['item_id', 'delta_qty', 'exp_date', 'batch_no', 'cost_price'])->all();
+            $lines = $stockUpdate->items->map->only(['item_id', 'delta_qty', 'exp_date', 'batch_no', 'cost_price', 'mrp'])->all();
             $this->stockUpdates->postLines($stockUpdate, collect($lines)->map(fn ($l) => [
                 'item_id' => $l['item_id'],
                 'delta_qty' => $l['delta_qty'],
                 'exp_date' => $l['exp_date']?->toDateString(),
                 'batch_no' => $l['batch_no'] ?? null,
                 'cost_price' => $l['cost_price'] ?? null,
+                'mrp' => $l['mrp'] ?? null,
             ])->all());
 
             $stockUpdate->update(['status' => 'Approved']);

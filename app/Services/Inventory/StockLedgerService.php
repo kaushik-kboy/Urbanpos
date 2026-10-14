@@ -44,6 +44,7 @@ class StockLedgerService
         ?int $reversalOf = null,
         ?string $expDate = null,
         ?string $batchNo = null,
+        ?float $mrp = null,
     ): StockLedger {
         if ($qtyDelta === 0.0) {
             throw new \InvalidArgumentException('StockLedgerService::post() called with a zero quantity delta.');
@@ -51,7 +52,7 @@ class StockLedgerService
 
         return DB::transaction(function () use (
             $itemId, $branchId, $movementType, $qtyDelta, $unitCost,
-            $referenceType, $referenceId, $documentDate, $userId, $reasonCode, $reversalOf, $expDate, $batchNo,
+            $referenceType, $referenceId, $documentDate, $userId, $reasonCode, $reversalOf, $expDate, $batchNo, $mrp,
         ) {
             $stock = ItemStock::firstOrCreate(
                 ['item_id' => $itemId, 'branch_id' => $branchId],
@@ -101,11 +102,14 @@ class StockLedgerService
                 'cost_price' => $newAvgCost,
             ]);
 
+            $resolvedMrp = $mrp !== null ? (float) $mrp : (float) (Item::find($itemId)?->mrp ?? 0);
+
             return StockLedger::create([
                 'item_id' => $itemId,
                 'branch_id' => $branchId,
                 'batch_no' => $batchNo,
                 'exp_date' => $expDate,
+                'mrp' => $resolvedMrp > 0 ? round($resolvedMrp, 2) : null,
                 'movement_type' => $movementType,
                 'reference_type' => $referenceType,
                 'reference_id' => $referenceId,
@@ -160,6 +164,8 @@ class StockLedgerService
                 reasonCode: 'REVERSAL',
                 reversalOf: $original->id,
                 expDate: $original->exp_date?->toDateString(),
+                batchNo: $original->batch_no,
+                mrp: $original->mrp ? (float) $original->mrp : null,
             );
         }
     }

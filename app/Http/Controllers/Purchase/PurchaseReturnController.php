@@ -585,6 +585,7 @@ class PurchaseReturnController extends Controller
     {
         foreach ($createdItems as $itemLine) {
             $originalCost = null;
+            $originalMrp = null;
             if ($purchaseReturn->purchase_invoice_id) {
                 $q = PurchaseInvoiceItem::where('purchase_invoice_id', $purchaseReturn->purchase_invoice_id)
                     ->where('item_id', $itemLine->item_id);
@@ -592,6 +593,7 @@ class PurchaseReturnController extends Controller
                     $q->where('batch_no', $itemLine->batch_no);
                 }
                 $originalCost = $q->value('cost_price');
+                $originalMrp = $q->value('mrp');
             }
 
             // Negative delta for stock out
@@ -606,6 +608,7 @@ class PurchaseReturnController extends Controller
                 documentDate: $purchaseReturn->return_date->toDateString(),
                 expDate: $itemLine->exp_date?->toDateString(),
                 batchNo: $itemLine->batch_no ?? null,
+                mrp: (float) (($itemLine->mrp && (float)$itemLine->mrp > 0) ? $itemLine->mrp : ($originalMrp ?: ($itemLine->item?->mrp ?? 0))),
             );
 
             $itemLine->update(['cost_at_return' => $ledgerRow->unit_cost]);

@@ -185,6 +185,7 @@ class StockTransferController extends Controller
                     documentDate: $data['header']['transfer_date'],
                     expDate: $expDate,
                     batchNo: $batchNo,
+                    mrp: (float) ($line['mrp'] ?? ($item->mrp ?? 0)),
                 );
 
                 $unitCost = (float) ($line['unit_cost'] ?? 0);
@@ -395,6 +396,7 @@ class StockTransferController extends Controller
                         documentDate: now()->toDateString(),
                         expDate: $expDate,
                         batchNo: $line->batch_no ?? null,
+                        mrp: (float) ($line->mrp > 0 ? $line->mrp : ($line->item?->mrp ?? 0)),
                     );
 
                     // Maintain branch pricing isolation: update destination branch ItemStock

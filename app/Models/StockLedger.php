@@ -10,7 +10,7 @@ class StockLedger extends Model
     protected $table = 'stock_ledger';
 
     protected $fillable = [
-        'item_id', 'branch_id', 'batch_no', 'exp_date', 'movement_type',
+        'item_id', 'branch_id', 'batch_no', 'exp_date', 'mrp', 'movement_type',
         'reference_type', 'reference_id',
         'qty_in', 'qty_out', 'unit_cost', 'value_in', 'value_out',
         'running_balance_qty', 'running_balance_value',
@@ -20,6 +20,7 @@ class StockLedger extends Model
 
     protected $casts = [
         'exp_date' => 'date',
+        'mrp' => 'decimal:2',
         'qty_in' => 'decimal:3',
         'qty_out' => 'decimal:3',
         'unit_cost' => 'decimal:2',

@@ -167,4 +167,145 @@ class BatchStockAndItemPopDiscrepancyTest extends TestCase
         $this->assertNotEmpty($items);
         $this->assertEquals(15.0, (float) $items[0]['qty']);
     }
+
+    public function test_batches_with_same_expiry_but_different_mrp_deduct_precisely_by_mrp(): void
+    {
+        $item = Item::create([
+            'name' => 'Drools Cat Adult Ocean Fish 5kg',
+            'item_code' => 'DROOLS-148',
+            'cost_price' => 1000,
+            'sell_price' => 2500,
+            'mrp' => 2500,
+            'is_active' => true,
+        ]);
+
+        $purchase = PurchaseInvoice::create([
+            'branch_id' => $this->branch1->id,
+            'supplier_id' => $this->supplier->id,
+            'invoice_number' => 'PI-TEST-87',
+            'invoice_date' => now()->toDateString(),
+            'status' => 'Received',
+            'total' => 50000,
+        ]);
+
+        // Purchase 1: 20 qty, Exp 2034-05-30, MRP 2500
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $purchase->id,
+            'item_id' => $item->id,
+            'qty' => 20,
+            'cost_price' => 1000,
+            'sell_price' => 2500,
+            'mrp' => 2500,
+            'exp_date' => '2034-05-30',
+            'batch_no' => '',
+        ]);
+
+        // Purchase 2: 20 qty, Exp 2034-05-30, MRP 3000
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $purchase->id,
+            'item_id' => $item->id,
+            'qty' => 20,
+            'cost_price' => 1500,
+            'sell_price' => 3000,
+            'mrp' => 3000,
+            'exp_date' => '2034-05-30',
+            'batch_no' => '',
+        ]);
+
+        $stockLedger = app(StockLedgerService::class);
+
+        // Ledger: Purchase 1 in
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch1->id,
+            movementType: 'PURCHASE_RECEIPT',
+            qtyDelta: 20,
+            unitCost: 1000,
+            referenceType: PurchaseInvoice::class,
+            referenceId: $purchase->id,
+            documentDate: now()->toDateString(),
+            expDate: '2034-05-30',
+            batchNo: '',
+            mrp: 2500,
+        );
+
+        // Ledger: Purchase 2 in
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch1->id,
+            movementType: 'PURCHASE_RECEIPT',
+            qtyDelta: 20,
+            unitCost: 1500,
+            referenceType: PurchaseInvoice::class,
+            referenceId: $purchase->id,
+            documentDate: now()->toDateString(),
+            expDate: '2034-05-30',
+            batchNo: '',
+            mrp: 3000,
+        );
+
+        // Sale: 4 sold from MRP 2500 batch
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch1->id,
+            movementType: 'SALE',
+            qtyDelta: -4,
+            unitCost: 1000,
+            referenceType: \App\Models\SalesBill::class,
+            referenceId: 101,
+            documentDate: now()->toDateString(),
+            expDate: '2034-05-30',
+            batchNo: '30/05/2034',
+            mrp: 2500,
+        );
+
+        // Transfer: 1 transferred from MRP 2500 batch
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch1->id,
+            movementType: 'TRANSFER_OUT',
+            qtyDelta: -1,
+            unitCost: 1000,
+            referenceType: \App\Models\StockTransfer::class,
+            referenceId: 201,
+            documentDate: now()->toDateString(),
+            expDate: '2034-05-30',
+            batchNo: '',
+            mrp: 2500,
+        );
+
+        // Transfer: 1 transferred from MRP 3000 batch
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch1->id,
+            movementType: 'TRANSFER_OUT',
+            qtyDelta: -1,
+            unitCost: 1500,
+            referenceType: \App\Models\StockTransfer::class,
+            referenceId: 202,
+            documentDate: now()->toDateString(),
+            expDate: '2034-05-30',
+            batchNo: '',
+            mrp: 3000,
+        );
+
+        // Assert ItemStock total = 20 + 20 - 4 - 1 - 1 = 34
+        $totalStock = (float) ItemStock::where('item_id', $item->id)->where('branch_id', $this->branch1->id)->value('quantity');
+        $this->assertEquals(34.0, $totalStock);
+
+        // Assert BatchStockService resolves:
+        // MRP 2500 batch: remaining = 20 - 4 - 1 = 15
+        // MRP 3000 batch: remaining = 20 - 1 = 19
+        $batchService = app(BatchStockService::class);
+        $batches = $batchService->getItemBatches($item->id, $this->branch1->id);
+
+        $batch2500 = $batches->firstWhere('mrp', 2500);
+        $batch3000 = $batches->firstWhere('mrp', 3000);
+
+        $this->assertNotNull($batch2500, 'Batch with MRP 2500 must exist');
+        $this->assertNotNull($batch3000, 'Batch with MRP 3000 must exist');
+
+        $this->assertEquals(15.0, (float) $batch2500['remaining_qty'], 'MRP 2500 batch must have 15 remaining');
+        $this->assertEquals(19.0, (float) $batch3000['remaining_qty'], 'MRP 3000 batch must have 19 remaining');
+    }
 }

@@ -385,6 +385,7 @@ class DamageStockController extends Controller
                 reasonCode: $damageStock->wastage_type,
                 expDate: $itemLine->exp_date?->toDateString(),
                 batchNo: $itemLine->batch_no ?? null,
+                mrp: (float) ($itemLine->mrp ?? ($itemLine->item?->mrp ?? 0)),
             );
         }
     }

@@ -803,6 +803,7 @@ class SalesBillController extends Controller
                 documentDate: $salesBill->bill_date->toDateString(),
                 expDate: $itemLine->exp_date?->toDateString(),
                 batchNo: $itemLine->batch_no ?? null,
+                mrp: (float) ($itemLine->mrp ?? 0),
             );
 
             $itemLine->update(['cost_at_sale' => $ledgerRow->unit_cost]);

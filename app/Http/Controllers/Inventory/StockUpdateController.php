@@ -320,6 +320,7 @@ class StockUpdateController extends Controller
                 reasonCode: 'PHYSICAL_COUNT',
                 expDate: $line['exp_date'] ?? null,
                 batchNo: $line['batch_no'] ?? null,
+                mrp: !empty($line['mrp']) ? (float) $line['mrp'] : null,
             );
         }
     }
