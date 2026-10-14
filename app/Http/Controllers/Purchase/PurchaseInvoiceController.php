@@ -166,7 +166,8 @@ class PurchaseInvoiceController extends Controller
             $options['convertedItems'] = $convertedItems;
         }
 
-        $options['nextGrnNumber'] = $this->nextGrnNumber(false); // preview only
+        $previewBranchId = session('active_branch_id', auth()->user()?->branch_id) ?: (\App\Models\Branch::value('id') ?: null);
+        $options['nextGrnNumber'] = $this->nextGrnNumber(false, $previewBranchId ? (int) $previewBranchId : null);
 
         return view('purchase.purchase-invoices.create', array_merge($options, [
             'sourceReceiptNote' => $sourceReceiptNote,
@@ -213,11 +214,12 @@ class PurchaseInvoiceController extends Controller
             $this->assertCreditLimit((int) $data['header']['supplier_id'], $totals['total']);
 
             // Auto-allocate fresh unique GRN inside transaction if not from Receipt Note
-            // or if the prefilled GRN number was taken by another system that saved concurrently
             if (empty($data['header']['purchase_receipt_note_id'])) {
-                if (empty($data['header']['grn_number']) || PurchaseInvoice::where('grn_number', $data['header']['grn_number'])->exists()) {
-                    $data['header']['grn_number'] = $this->nextGrnNumber();
-                }
+                $data['header']['grn_number'] = $this->nextGrnNumber(
+                    true,
+                    (int) ($data['header']['branch_id'] ?? null),
+                    $data['header']['invoice_date'] ?? null
+                );
             }
 
             $supplierGstin = \App\Models\Supplier::where('id', $data['header']['supplier_id'])->value('gst_no');

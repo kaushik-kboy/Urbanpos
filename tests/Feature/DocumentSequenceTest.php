@@ -187,4 +187,79 @@ class DocumentSequenceTest extends TestCase
         $sequence->refresh();
         $this->assertEquals(0, $sequence->last_number);
     }
+
+    public function test_consecutive_purchase_invoices_get_sequential_unique_grn_numbers(): void
+    {
+        $supplier = \App\Models\Supplier::create([
+            'name' => 'GRN Test Supplier',
+            'branch_id' => $this->branch->id,
+            'phone' => '9988776655',
+            'state' => 'Gujarat',
+            'status' => true,
+        ]);
+
+        $item = Item::create([
+            'name' => 'GRN Test Item',
+            'item_code' => 'GTI-001',
+            'cost_price' => 100,
+            'sell_price' => 150,
+            'status' => true,
+        ]);
+
+        $payload1 = [
+            'branch_id' => $this->branch->id,
+            'supplier_id' => $supplier->id,
+            'supplier_inv_no' => 'SINV-001',
+            'invoice_date' => now()->toDateString(),
+            'purchase_type' => 'Local',
+            'c_form' => 'No Forms',
+            'supplier_inv_amount' => 100,
+            'items' => [
+                [
+                    'item_id' => $item->id,
+                    'cost_price' => 100,
+                    'sell_price' => 150,
+                    'mrp' => 150,
+                    'qty' => 1,
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => 0,
+                ],
+            ],
+        ];
+
+        $res1 = $this->actingAs($this->user)->post(route('purchase.purchase-invoices.store'), $payload1);
+        $res1->assertSessionHasNoErrors();
+        $inv1 = \App\Models\PurchaseInvoice::where('supplier_inv_no', 'SINV-001')->firstOrFail();
+
+        $payload2 = [
+            'branch_id' => $this->branch->id,
+            'supplier_id' => $supplier->id,
+            'supplier_inv_no' => 'SINV-002',
+            'invoice_date' => now()->toDateString(),
+            'purchase_type' => 'Local',
+            'c_form' => 'No Forms',
+            'supplier_inv_amount' => 100,
+            'items' => [
+                [
+                    'item_id' => $item->id,
+                    'cost_price' => 100,
+                    'sell_price' => 150,
+                    'mrp' => 150,
+                    'qty' => 1,
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                    'gst_percent' => 0,
+                ],
+            ],
+        ];
+
+        $res2 = $this->actingAs($this->user)->post(route('purchase.purchase-invoices.store'), $payload2);
+        $res2->assertSessionHasNoErrors();
+        $inv2 = \App\Models\PurchaseInvoice::where('supplier_inv_no', 'SINV-002')->firstOrFail();
+
+        $this->assertNotEmpty($inv1->grn_number);
+        $this->assertNotEmpty($inv2->grn_number);
+        $this->assertNotEquals($inv1->grn_number, $inv2->grn_number, 'GRN numbers across consecutive invoices must never be duplicate!');
+    }
 }

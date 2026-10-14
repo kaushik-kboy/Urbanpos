@@ -207,10 +207,18 @@ class DocumentNumberingService
             $column = $targetMeta['column'] ?? null;
 
             // If counter is 0 or initial, check if existing records in DB already match this prefix to pre-align
-            if ($sequence->last_number == 0 && $modelClass && class_exists($modelClass) && $column) {
-                $latestMatching = $modelClass::where($column, 'like', $prefix . '%')->latest('id')->first();
-                if ($latestMatching && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)' . preg_quote($suffix, '/') . '$/', (string)$latestMatching->{$column}, $m)) {
-                    $sequence->last_number = max((int)$m[1], (int)$sequence->starting_number - 1);
+            if ($sequence->last_number == 0) {
+                if ($modelClass && class_exists($modelClass) && $column) {
+                    $latestMatching = $modelClass::where($column, 'like', $prefix . '%')->latest('id')->first();
+                    if ($latestMatching && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)' . preg_quote($suffix, '/') . '$/', (string)$latestMatching->{$column}, $m)) {
+                        $sequence->last_number = max((int)$m[1], (int)$sequence->starting_number - 1);
+                    }
+                }
+                if ($documentType === 'purchase_receipt_note') {
+                    $latestPi = \App\Models\PurchaseInvoice::where('grn_number', 'like', $prefix . '%')->latest('id')->first();
+                    if ($latestPi && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)' . preg_quote($suffix, '/') . '$/', (string)$latestPi->grn_number, $m)) {
+                        $sequence->last_number = max((int)$sequence->last_number, (int)$m[1]);
+                    }
                 }
             }
 
@@ -225,6 +233,9 @@ class DocumentNumberingService
                 $exists = false;
                 if ($modelClass && class_exists($modelClass) && $column) {
                     $exists = $modelClass::where($column, $candidate)->exists();
+                }
+                if (!$exists && $documentType === 'purchase_receipt_note') {
+                    $exists = \App\Models\PurchaseInvoice::where('grn_number', $candidate)->exists();
                 }
             } while ($exists);
 
@@ -255,6 +266,15 @@ class DocumentNumberingService
             ->first();
 
         if ($sequence) {
+            if ($sequence->last_number == 0 && $documentType === 'purchase_receipt_note') {
+                $prefix = $sequence->resolveTokens($sequence->prefix ?: '', $branch);
+                $latestPi = \App\Models\PurchaseInvoice::where('grn_number', 'like', $prefix . '%')->latest('id')->first();
+                if ($latestPi && preg_match('/^' . preg_quote($prefix, '/') . '(\d+)/', (string)$latestPi->grn_number, $m)) {
+                    $dummy = clone $sequence;
+                    $dummy->last_number = (int)$m[1];
+                    return $dummy->formatPreview($branch);
+                }
+            }
             return $sequence->formatPreview($branch);
         }
 
