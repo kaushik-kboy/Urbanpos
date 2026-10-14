@@ -777,9 +777,6 @@ class PurchaseInvoiceController extends Controller
         if ($branchId > 0) {
             $stock = (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0);
         }
-        if ($stock <= 0) {
-            $stock = (float) (ItemStock::where('item_id', $item->id)->sum('quantity') ?? 0);
-        }
 
         $latestExpDate = null;
         if ($item->batch_expiry_details && $item->batch_expiry_details !== 'Not Required') {

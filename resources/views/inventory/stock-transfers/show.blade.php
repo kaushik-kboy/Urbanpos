@@ -130,9 +130,9 @@
                             </td>
                             <td class="text-right align-middle font-weight-bold" data-col-key="mrp">{{ number_format((float) ($line->mrp ?: ($line->item?->mrp ?: 0)), 2) }}</td>
                             <td class="text-right align-middle" data-col-key="unit_cost">{{ number_format($unitCost, 2) }}</td>
-                            <td class="text-right align-middle font-weight-bold" data-col-key="qty">{{ number_format($line->qty, 3) }}</td>
+                            <td class="text-right align-middle font-weight-bold" data-col-key="qty">{{ (float)$line->qty == (int)$line->qty ? number_format($line->qty, 0) : number_format($line->qty, 3) }}</td>
                             <td class="text-right align-middle font-weight-bold text-primary" data-col-key="amount">{{ number_format($lineAmount, 2) }}</td>
-                            <td class="text-right align-middle" data-col-key="received_qty">{{ $line->received_qty !== null ? number_format($line->received_qty, 3) : '—' }}</td>
+                            <td class="text-right align-middle" data-col-key="received_qty">{{ $line->received_qty !== null ? ((float)$line->received_qty == (int)$line->received_qty ? number_format($line->received_qty, 0) : number_format($line->received_qty, 3)) : '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>

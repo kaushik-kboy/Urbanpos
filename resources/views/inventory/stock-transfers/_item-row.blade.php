@@ -15,7 +15,7 @@
             $expDateVal = (string) $line->exp_date;
         }
     }
-    $qtyVal = isset($line->qty) && $line->qty != 0 ? $line->qty : '';
+    $qtyVal = isset($line->qty) && $line->qty != 0 ? (int)$line->qty : '';
     $availableVal = isset($line->available_qty) ? number_format((float)$line->available_qty, 3, '.', '') : '0.000';
     $batchNoVal = data_get($line, 'batch_no', '');
     $mrpVal = isset($line->mrp) && (float)$line->mrp > 0 
@@ -80,12 +80,13 @@
     </td>
     <td style="min-width: 95px;" data-col-key="qty">
         <input type="number"
-               step="0.001"
-               min="0"
+               step="1"
+               min="1"
                name="items[{{ $index }}][qty]"
                value="{{ $qtyVal }}"
                class="form-control form-control-sm item-qty text-right font-weight-bold"
-               placeholder="0">
+               placeholder="0"
+               onkeypress="return event.charCode >= 48 && event.charCode <= 57">
     </td>
     <td style="min-width: 105px;" data-col-key="mrp">
         <input type="number"

@@ -93,6 +93,7 @@ class DocumentSequenceController extends Controller
             'suffix'          => 'nullable|string|max:50',
             'padding_zeros'   => 'required|integer|min:1|max:10',
             'starting_number' => 'required|integer|min:1',
+            'last_number'     => 'nullable|integer|min:0',
             'reset_frequency' => 'required|in:financial_year,yearly,monthly,never',
             'branch_id'       => 'nullable',
             'is_active'       => 'nullable|boolean',
@@ -119,8 +120,13 @@ class DocumentSequenceController extends Controller
         $sequence->reset_frequency = $validated['reset_frequency'];
         $sequence->is_active       = $request->boolean('is_active', true);
 
-        if (!$sequence->exists) {
+        if ($request->has('last_number') && $request->input('last_number') !== null && $request->input('last_number') !== '') {
+            $sequence->last_number = (int) $request->input('last_number');
+        } elseif (!$sequence->exists) {
             $sequence->last_number = 0;
+        }
+
+        if (!$sequence->exists) {
             $sequence->series = 'doc:' . $validated['document_type'] . ($branchId ? ":{$branchId}" : '');
             $sequence->last_reset_period = DocumentSequence::getCurrentPeriod($validated['reset_frequency']);
         }

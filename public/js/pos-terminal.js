@@ -154,7 +154,8 @@
     }
 
     function initState() {
-        state.branch_id = document.getElementById('posBranchSelect')?.value || 1;
+        const branchSelectVal = document.getElementById('posBranchSelect')?.value;
+        state.branch_id = branchSelectVal ? parseInt(branchSelectVal, 10) : ((typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) ? parseInt(window.CURRENT_USER_BRANCH_ID, 10) : null);
         if (window.INITIAL_CUSTOMER && window.INITIAL_CUSTOMER.id) {
             state.customer_id = window.INITIAL_CUSTOMER.id;
             const initPetId = $('#posTaggedPetId').val();
@@ -1350,7 +1351,7 @@
             return false;
         }
         try {
-            const branchId = state.branch_id || window.CURRENT_USER_BRANCH_ID || 1;
+            const branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
             const queryParam = item.id ? `item_id=${item.id}` : `q=${encodeURIComponent(item.code || item.item_code || '')}`;
             const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?${queryParam}&branch_id=${branchId}`;
             const resp = await fetch(url);
@@ -1394,7 +1395,7 @@
     async function chooseBatchForRow(idx) {
         const item = state.cart[idx];
         if (!item) return;
-        const branchId = state.branch_id || window.CURRENT_USER_BRANCH_ID || 1;
+        const branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
         const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?item_id=${item.id}&branch_id=${branchId}`;
         try {
             const resp = await fetch(url);
@@ -1435,7 +1436,7 @@
         state.last_scan_code = code;
 
         try {
-            const branchId = state.branch_id || window.CURRENT_USER_BRANCH_ID || 1;
+            const branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
             const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?q=${encodeURIComponent(code)}&query=${encodeURIComponent(code)}&exact_match_only=1&branch_id=${branchId}&limit=1`;
             const resp = await fetch(url);
             const data = await resp.json();
@@ -3733,7 +3734,7 @@
         });
 
         function fetchItems() {
-            let branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value) || window.CURRENT_USER_BRANCH_ID || 1;
+            let branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
             let srch = ($('#pos-isl-filter-name').val() || '').trim();
             let code = ($('#pos-isl-filter-code').val() || '').trim();
             let showAll = $('#pos-isl-filter-all-products').is(':checked') ? 1 : 0;

@@ -161,8 +161,8 @@
 
                         <div class="card-body">
                             <div class="row">
-                                {{-- Prefix Template --}}
-                                <div class="col-md-7 mb-3">
+                                {{-- Prefix Pattern --}}
+                                <div class="col-md-6 mb-3">
                                     <label class="font-weight-bold text-secondary small text-uppercase mb-1">
                                         Prefix Pattern <span class="text-danger">*</span>
                                     </label>
@@ -173,13 +173,13 @@
                                            required 
                                            placeholder="e.g. SB-{YEAR}- or MOT-{FY}-"
                                            data-key="{{ $key }}">
-                                    <small class="text-muted">Use {YEAR}, {YY}, {FY}, {FY_NUM}, {FY_LONG}, {BRANCH}, {MONTH}</small>
+                                    <small class="text-muted">Use {YEAR}, {YY}, {FY}, {FY_NUM}, {BRANCH}</small>
                                 </div>
 
-                                {{-- Starting / Next Number --}}
-                                <div class="col-md-5 mb-3">
+                                {{-- Starting Number --}}
+                                <div class="col-md-3 mb-3">
                                     <label class="font-weight-bold text-secondary small text-uppercase mb-1">
-                                        Starting Number <span class="text-danger">*</span>
+                                        Start # <span class="text-danger">*</span>
                                     </label>
                                     <input type="number" 
                                            name="starting_number" 
@@ -188,7 +188,22 @@
                                            min="1" 
                                            required
                                            data-key="{{ $key }}">
-                                    <small class="text-muted">Starts counter from here</small>
+                                    <small class="text-muted">Starting base</small>
+                                </div>
+
+                                {{-- Last Issued / Counter --}}
+                                <div class="col-md-3 mb-3">
+                                    <label class="font-weight-bold text-secondary small text-uppercase mb-1 text-primary">
+                                        Last Issued #
+                                    </label>
+                                    <input type="number" 
+                                           name="last_number" 
+                                           class="form-control font-weight-bold border-primary text-primary sequence-last-input" 
+                                           value="{{ $seq['last_number'] }}" 
+                                           min="0" 
+                                           data-key="{{ $key }}"
+                                           title="Current counter. Next issued bill will be this + 1">
+                                    <small class="text-muted">Next: <strong class="text-primary next-preview-num-{{ $key }}">{{ max((int)$seq['starting_number'], (int)$seq['last_number'] + 1) }}</strong></small>
                                 </div>
                             </div>
 
@@ -292,7 +307,7 @@
         });
     });
 
-    document.querySelectorAll('.sequence-start-input, .sequence-padding-input').forEach(input => {
+    document.querySelectorAll('.sequence-start-input, .sequence-last-input, .sequence-padding-input').forEach(input => {
         input.addEventListener('input', function() {
             updateLivePreview(this.dataset.key);
         });
@@ -328,7 +343,15 @@
 
         let prefix = card.querySelector('.sequence-prefix-input').value;
         const start = parseInt(card.querySelector('.sequence-start-input').value) || 1;
+        const lastInput = card.querySelector('.sequence-last-input');
+        const last = lastInput ? parseInt(lastInput.value) || 0 : 0;
         const padding = parseInt(card.querySelector('.sequence-padding-input').value) || 4;
+
+        const nextNum = Math.max(start, last + 1);
+        const nextNumEl = card.querySelector('.next-preview-num-' + key);
+        if (nextNumEl) {
+            nextNumEl.textContent = nextNum;
+        }
 
         const now = new Date();
         const year = now.getFullYear();
@@ -349,10 +372,11 @@
             .replace(/\{YEAR\}/gi, year)
             .replace(/\{YY\}/gi, yy)
             .replace(/\{FY\}/gi, fy)
+            .replace(/\{FY_NUM\}/gi, yy + (monthNum >= 4 ? String(year + 1).slice(-2) : yy))
             .replace(/\{BRANCH\}/gi, 'MOT')
             .replace(/\{MONTH\}/gi, month);
 
-        let numStr = String(start).padStart(padding, '0');
+        let numStr = String(nextNum).padStart(padding, '0');
         const badge = document.getElementById('preview-badge-' + key);
         if (badge) {
             badge.textContent = resolved + numStr;

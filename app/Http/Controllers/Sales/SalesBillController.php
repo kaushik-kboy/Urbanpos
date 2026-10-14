@@ -163,7 +163,7 @@ class SalesBillController extends Controller
     public function posTerminal(Request $request)
     {
         $options = $this->formOptions();
-        $options['nextBillNumber'] = $this->nextNumber();
+        $options['nextBillNumber'] = $this->previewNextNumber();
         $options['activeTillSession'] = \App\Models\TillSession::where('user_id', auth()->id())
             ->where('status', 'Open')
             ->latest()
@@ -253,7 +253,7 @@ class SalesBillController extends Controller
         }
 
         $options = array_merge($options, $this->formOptions(null, $convertedItems, $sourceCustId));
-        $options['nextBillNumber'] = $this->nextNumber();
+        $options['nextBillNumber'] = $this->previewNextNumber();
 
         return view('sales.sales-bills.create', $options);
     }
@@ -326,7 +326,7 @@ class SalesBillController extends Controller
             }
 
             $salesBill = SalesBill::create(array_merge($data['header'], $totals, [
-                'bill_number' => $this->nextNumber(),
+                'bill_number' => $this->nextNumber($data['header']['branch_id'] ?? null),
                 'customer_gstin' => $customerGstin ?: null,
             ]));
 
@@ -743,9 +743,6 @@ class SalesBillController extends Controller
                     ->where('branch_id', $branchId)
                     ->value('quantity') ?? 0);
             }
-            if ($stock <= 0) {
-                $stock = (float) (DB::table('item_stocks')->where('item_id', $item->id)->sum('quantity') ?? 0);
-            }
 
             return [
                 'id' => $item->id,
@@ -949,9 +946,19 @@ class SalesBillController extends Controller
         return response()->json(['success' => true]);
     }
 
-    private function nextNumber(): string
+    private function previewNextNumber(?int $branchId = null): string
     {
-        $branchId = (int) $this->resolveActiveBranchId();
+        $branchId = $branchId ?: (int) $this->resolveActiveBranchId();
+
+        return app(\App\Services\Accounting\DocumentNumberingService::class)->preview(
+            'sales_bill',
+            $branchId ? (int) $branchId : null
+        );
+    }
+
+    private function nextNumber(?int $branchId = null): string
+    {
+        $branchId = $branchId ?: (int) $this->resolveActiveBranchId();
 
         return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
             'sales_bill',
@@ -1650,10 +1657,7 @@ class SalesBillController extends Controller
         })->values()->all();
         $request->merge(['items' => $filteredItems]);
 
-        // Auto-assign next bill number on create if not provided (e.g. from POS or auto-number form)
-        if (!$request->filled('bill_number') && (!$ignoreId && !$request->route('sales_bill'))) {
-            $request->merge(['bill_number' => $this->nextNumber()]);
-        }
+        // Note: Final unique bill number is atomically assigned in store() to prevent burning sequence numbers on load/validate.
 
         // Auto-heal invalid, missing, or stale branch_id
         $branchId = $request->input('branch_id');

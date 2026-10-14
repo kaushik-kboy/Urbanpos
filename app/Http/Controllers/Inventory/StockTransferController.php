@@ -982,9 +982,12 @@ class StockTransferController extends Controller
             'items.*.item_id' => ['required', 'exists:items,id'],
             'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
-            'items.*.qty' => ['required', 'numeric', 'min:0.001'],
+            'items.*.qty' => ['required', 'integer', 'min:1'],
             'items.*.unit_cost' => ['nullable', 'numeric'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
+        ], [
+            'items.*.qty.integer' => 'Transfer Quantity must be a whole number (decimals are not permitted).',
+            'items.*.qty.min' => 'Transfer Quantity must be at least 1.',
         ]);
 
         $todayStr = now()->toDateString();

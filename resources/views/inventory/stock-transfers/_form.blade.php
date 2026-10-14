@@ -123,7 +123,7 @@
                 <tfoot class="bg-light font-weight-bold" style="position: sticky; bottom: 0; z-index: 10; border-top: 2px solid #dee2e6;">
                     <tr>
                         <td colspan="6" class="text-right align-middle">Total Qty:</td>
-                        <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty">0.000</td>
+                        <td class="text-right align-middle text-primary font-weight-bold" id="footer-total-qty">0</td>
                         <td colspan="2" class="text-right align-middle">Total Amount:</td>
                         <td class="text-right align-middle text-success font-weight-bold" id="footer-total-amount">0.00</td>
                         <td></td>
@@ -1315,7 +1315,7 @@
                 totalQty += qty;
                 totalAmount += rowAmount;
             });
-            $('#footer-total-qty').text(totalQty.toFixed(3));
+            $('#footer-total-qty').text(Math.round(totalQty));
             $('#footer-total-amount').text(totalAmount.toFixed(2));
             $('#display-st-total-cost').text(totalAmount.toFixed(2));
             let itemCount = $('#items-body tr.item-row').filter(function () {
@@ -1430,6 +1430,12 @@
             let q = parseFloat($thisInput.val()) || 0;
             let myBatchKey = getStRowBatchKey($thisRow);
 
+            let rawVal = $thisInput.val();
+            if (rawVal.indexOf('.') !== -1) {
+                rawVal = rawVal.replace(/\..*$/, '');
+                $thisInput.val(rawVal);
+            }
+
             if (itemId && !isNaN(q)) {
                 // Sum qty across ALL rows with same item + same distinct batch (including this row)
                 let totalUsed = 0;
@@ -1440,16 +1446,16 @@
                 });
 
                 if (avail > 0 && totalUsed > avail + 0.0001) {
-                    // Calculate max this row can accept
+                    // Calculate max this row can accept (integer only)
                     let usedByOthers = totalUsed - q;
-                    let maxThisRow = Math.max(0, avail - usedByOthers);
-                    $thisInput.val(maxThisRow.toFixed(3));
+                    let maxThisRow = Math.max(0, Math.floor(avail - usedByOthers));
+                    $thisInput.val(maxThisRow);
                     $thisInput.addClass('is-invalid border-danger text-danger');
                     let displayBatch = batchNo || expDate || '';
                     let batchLabel = displayBatch ? ` (Batch: ${displayBatch})` : '';
                     if (window.toastr) {
                         toastr.error(
-                            `Stock available for this batch${batchLabel} is only ${avail.toFixed(3)}. ` +
+                            `Stock available for this batch${batchLabel} is only ${Math.floor(avail)}. ` +
                             `Combined qty across all rows cannot exceed available stock!`,
                             'Stock Limit Exceeded'
                         );
