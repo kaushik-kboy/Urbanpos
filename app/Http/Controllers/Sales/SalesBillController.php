@@ -1089,8 +1089,8 @@ class SalesBillController extends Controller
                 COALESCE(i.item_code, '')  AS item_code,
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
                 COALESCE(st.quantity, 0)   AS qty,
-                COALESCE(NULLIF(i.sell_price, 0), 0) AS sell_price,
-                COALESCE(NULLIF(i.mrp, 0), 0)        AS mrp,
+                COALESCE(NULLIF(st.sell_price, 0), NULLIF(i.sell_price, 0), 0) AS sell_price,
+                COALESCE(NULLIF(st.mrp, 0), NULLIF(i.mrp, 0), 0)        AS mrp,
                 NULL                       AS exp_date,
                 COALESCE(gt.percentage, 0) AS gst_percent
             FROM items i
@@ -1127,11 +1127,32 @@ class SalesBillController extends Controller
             foreach (\Illuminate\Support\Facades\DB::select($eiSql, array_merge([$branchId], $ids)) as $e) {
                 $ei[$e->item_id] = $e;
             }
+
+            // Also check inward stock transfers for this branch if missing expiry
+            $missingBranchExpIds = array_values(array_filter($ids, fn ($id) => ! isset($ei[$id])));
+            if (! empty($missingBranchExpIds)) {
+                $phTransfer = implode(',', array_fill(0, count($missingBranchExpIds), '?'));
+                $stiSql = "
+                    SELECT sti.item_id,
+                           MIN(sti.exp_date) AS exp_date,
+                           MIN(sti.mrp) AS mrp
+                    FROM stock_transfer_items sti
+                    INNER JOIN stock_transfers sth ON sth.id = sti.stock_transfer_id AND sth.to_branch_id = ? AND sth.status = 'Received'
+                    WHERE sti.item_id IN ({$phTransfer})
+                      AND sti.exp_date IS NOT NULL
+                      AND CAST(sti.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                    GROUP BY sti.item_id
+                ";
+                foreach (\Illuminate\Support\Facades\DB::select($stiSql, array_merge([$branchId], $missingBranchExpIds)) as $te) {
+                    $ei[$te->item_id] = $te;
+                }
+            }
+
             foreach ($rows as $row) {
                 if (isset($ei[$row->id])) {
                     $row->exp_date = $ei[$row->id]->exp_date;
-                    if ((float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
-                    if ((float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
+                    if (isset($ei[$row->id]->sell_price) && (float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
+                    if (isset($ei[$row->id]->mrp) && (float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
                 }
             }
         }
@@ -1165,8 +1186,9 @@ class SalesBillController extends Controller
             if (empty($expRaw) && isset($expiryFallback[$row->id])) {
                 $fb     = $expiryFallback[$row->id];
                 $expRaw = $fb->exp_date;
-                if ((float) ($fb->sell_price ?? 0) > 0) $row->sell_price = $fb->sell_price;
-                if ((float) ($fb->mrp ?? 0) > 0)        $row->mrp        = $fb->mrp;
+                // Never let another branch's purchase price overwrite this branch's existing price
+                if ((float) ($row->sell_price ?? 0) <= 0 && (float) ($fb->sell_price ?? 0) > 0) $row->sell_price = $fb->sell_price;
+                if ((float) ($row->mrp ?? 0) <= 0 && (float) ($fb->mrp ?? 0) > 0)        $row->mrp        = $fb->mrp;
             }
 
             // Normalise expiry date
@@ -1297,9 +1319,16 @@ class SalesBillController extends Controller
 
         $defaultExp = !empty($batches) ? $batches[0]['exp_date'] : null;
         $defaultBatchNo = !empty($batches) ? $batches[0]['batch_no'] : null;
-        $defaultCost = !empty($batches) && $batches[0]['cost_price'] > 0 ? $batches[0]['cost_price'] : (float)($item->cost_price ?? 0);
-        $defaultSell = !empty($batches) && $batches[0]['sell_price'] > 0 ? $batches[0]['sell_price'] : (float)($item->sell_price ?? 0);
-        $defaultMrp  = !empty($batches) && $batches[0]['mrp'] > 0 ? $batches[0]['mrp'] : (float)($item->mrp ?? 0);
+        $branchStock = \App\Models\ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->first();
+        $defaultCost = !empty($batches) && $batches[0]['cost_price'] > 0 
+            ? $batches[0]['cost_price'] 
+            : ($branchStock && (float)$branchStock->cost_price > 0 ? (float)$branchStock->cost_price : (float)($item->cost_price ?? 0));
+        $defaultSell = !empty($batches) && $batches[0]['sell_price'] > 0 
+            ? $batches[0]['sell_price'] 
+            : ($branchStock && (float)$branchStock->sell_price > 0 ? (float)$branchStock->sell_price : (float)($item->sell_price ?? 0));
+        $defaultMrp  = !empty($batches) && $batches[0]['mrp'] > 0 
+            ? $batches[0]['mrp'] 
+            : ($branchStock && (float)$branchStock->mrp > 0 ? (float)$branchStock->mrp : (float)($item->mrp ?? 0));
 
         return response()->json([
             'found' => true,

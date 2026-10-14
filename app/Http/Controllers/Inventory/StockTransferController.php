@@ -396,6 +396,33 @@ class StockTransferController extends Controller
                         expDate: $expDate,
                         batchNo: $line->batch_no ?? null,
                     );
+
+                    // Maintain branch pricing isolation: update destination branch ItemStock
+                    $fromStock = ItemStock::where('item_id', $line->item_id)
+                        ->where('branch_id', $stockTransfer->from_branch_id)
+                        ->first();
+                    $transferSellPrice = $fromStock && (float) $fromStock->sell_price > 0
+                        ? (float) $fromStock->sell_price
+                        : (float) ($line->item?->sell_price ?: 0);
+                    $transferMrp = (float) ($line->mrp > 0
+                        ? $line->mrp
+                        : ($fromStock && (float) $fromStock->mrp > 0 ? $fromStock->mrp : ($line->item?->mrp ?: 0)));
+
+                    $destStock = ItemStock::firstOrCreate(
+                        ['item_id' => $line->item_id, 'branch_id' => $stockTransfer->to_branch_id],
+                        ['quantity' => 0]
+                    );
+                    $destStockUpdates = [
+                        'cost_price' => $unitCost,
+                        'landing_cost' => $unitCost,
+                    ];
+                    if ($transferSellPrice > 0) {
+                        $destStockUpdates['sell_price'] = $transferSellPrice;
+                    }
+                    if ($transferMrp > 0) {
+                        $destStockUpdates['mrp'] = $transferMrp;
+                    }
+                    $destStock->update($destStockUpdates);
                 }
 
                 $line->update(['received_qty' => $receivedQty]);

@@ -2052,6 +2052,26 @@
                     return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
                 }
             }
+            // Continuous 8 digits: DDMMYYYY
+            let m2 = val.match(/^(\d{2})(\d{2})(\d{4})$/);
+            if (m2) {
+                let d = parseInt(m2[1], 10);
+                let mo = parseInt(m2[2], 10);
+                let y = parseInt(m2[3], 10);
+                if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+                    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                }
+            }
+            // Continuous 6 digits: DDMMYY
+            let m3 = val.match(/^(\d{2})(\d{2})(\d{2})$/);
+            if (m3) {
+                let d = parseInt(m3[1], 10);
+                let mo = parseInt(m3[2], 10);
+                let y = 2000 + parseInt(m3[3], 10);
+                if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+                    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                }
+            }
             return null;
         }
 
@@ -2098,7 +2118,8 @@
         $(document).on('blur', '.pinv-exp-date', function (e) {
             let $input = $(this);
             let isValid = validatePinvExpDate($input, false);
-            if (!isValid && ($input.val() || $input.prop('required'))) {
+            // Only re-focus if user entered an invalid/past date (not if empty, so they can navigate)
+            if (!isValid && $input.val()) {
                 setTimeout(function () {
                     $input.focus();
                 }, 10);
@@ -2592,17 +2613,30 @@
                         return false;
                     }
                     let $exp = $(this).find('.pinv-exp-date');
-                    let expVal = $exp.val();
+                    let expVal = $.trim($exp.val());
                     let todayStr = getTodayIsoString();
-                    if (expVal && expVal < todayStr) {
-                        $exp.addClass('is-invalid border-danger');
-                        let errMsg = `Row #${idx + 1}: Expiry date (${expVal}) cannot be in the past!`;
-                        if (window.toastr) {
-                            toastr.error(errMsg, 'Invalid Expiry Date');
+                    if (expVal) {
+                        let ymd = parseToYmd(expVal);
+                        if (!ymd) {
+                            $exp.addClass('is-invalid border-danger');
+                            let errMsg = `Row #${idx + 1}: Expiry date (${expVal}) is not a valid date!`;
+                            if (window.toastr) {
+                                toastr.error(errMsg, 'Invalid Expiry Date');
+                            }
+                            $exp.focus();
+                            hasError = true;
+                            return false;
                         }
-                        $exp.focus();
-                        hasError = true;
-                        return false;
+                        if (ymd < todayStr) {
+                            $exp.addClass('is-invalid border-danger');
+                            let errMsg = `Row #${idx + 1}: Expiry date (${expVal}) cannot be in the past!`;
+                            if (window.toastr) {
+                                toastr.error(errMsg, 'Invalid Expiry Date');
+                            }
+                            $exp.focus();
+                            hasError = true;
+                            return false;
+                        }
                     }
                     if ($exp.prop('required') && !expVal) {
                         $exp.addClass('is-invalid border-danger');

@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\OpeningStockItem;
 use App\Models\PurchaseInvoiceItem;
 use App\Models\StockLedger;
+use App\Models\StockTransferItem;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -66,10 +67,19 @@ class BatchStockService
             ->orderBy('id', 'asc')
             ->get();
 
-        $allPurchases = $piItems->concat($osItems);
+        // 4. Fetch inward transfers received by this branch
+        $stItems = StockTransferItem::with('stockTransfer')
+            ->where('item_id', $itemId)
+            ->whereHas('stockTransfer', fn ($q) => $q->where('to_branch_id', $branchId)->where('status', 'Received'))
+            ->orderBy('id', 'asc')
+            ->get();
 
-        // Fallback: If no purchase records for this specific branch, check across all branches as metadata fallback
+        $allPurchases = $piItems->concat($osItems)->concat($stItems);
+
+        // Fallback: If no purchase or transfer records for this specific branch, check across all branches as metadata fallback for exp_date
+        $isCrossBranchFallback = false;
         if ($allPurchases->isEmpty()) {
+            $isCrossBranchFallback = true;
             $fallbackPi = PurchaseInvoiceItem::with('purchaseInvoice')
                 ->where('item_id', $itemId)
                 ->whereNotNull('exp_date')
@@ -87,6 +97,8 @@ class BatchStockService
             $allPurchases = $fallbackPi->concat($fallbackOs);
         }
 
+        $branchStock = \App\Models\ItemStock::where('item_id', $itemId)->where('branch_id', $branchId)->first();
+
         $batches = [];
         $unassignedKeys = [];
 
@@ -101,10 +113,24 @@ class BatchStockService
                 }
             }
 
-            $cost = (float) (($p->cost_price ?? 0) > 0 ? $p->cost_price : ($item->cost_price ?? 0));
-            $sell = (float) (($p->sell_price ?? 0) > 0 ? $p->sell_price : ($item->sell_price ?? 0));
-            $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
-            $inQty = (float) ($p->qty ?? 0) + (float) ($p->free_qty ?? 0);
+            if ($p instanceof StockTransferItem) {
+                $cost = (float) (($p->unit_cost ?? 0) > 0 ? $p->unit_cost : ($item->cost_price ?? 0));
+                $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
+                $sell = (float) ($p->sell_price ?? ($item->sell_price ?? $mrp));
+                $inQty = (float) ($p->received_qty > 0 ? $p->received_qty : $p->qty);
+            } else {
+                $cost = (float) (($p->cost_price ?? 0) > 0 ? $p->cost_price : ($item->cost_price ?? 0));
+                $sell = (float) (($p->sell_price ?? 0) > 0 ? $p->sell_price : ($item->sell_price ?? 0));
+                $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
+                $inQty = (float) ($p->qty ?? 0) + (float) ($p->free_qty ?? 0);
+            }
+
+            // If using cross-branch fallback, preserve this branch's own stock pricing if set
+            if ($isCrossBranchFallback && $branchStock) {
+                if ($branchStock->cost_price > 0) $cost = (float) $branchStock->cost_price;
+                if ($branchStock->sell_price > 0) $sell = (float) $branchStock->sell_price;
+                if ($branchStock->mrp > 0) $mrp = (float) $branchStock->mrp;
+            }
 
             if ($rawBNo !== '') {
                 $displayBatchNo = $rawBNo;
@@ -112,7 +138,7 @@ class BatchStockService
                 $key = 'B_' . $rawBNo . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2) . '|' . ($exp ?: '');
             } else {
                 if ($exp !== null) {
-                    // Purchases with same expiry date AND same sell price / MRP merge into one batch; different prices stay separate
+                    // Purchases/transfers with same expiry date AND same sell price / MRP merge into one batch; different prices stay separate
                     $key = 'EXP_' . $exp . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2);
                     $displayBatchNo = Carbon::parse($exp)->format('d/m/Y');
                 } else {
@@ -123,10 +149,14 @@ class BatchStockService
                     } elseif ($p instanceof OpeningStockItem && $p->openingStock) {
                         $osDate = $p->openingStock->opening_date ? Carbon::parse($p->openingStock->opening_date)->format('d/m/Y') : null;
                         $displayBatchNo = $osDate ? "Opening ({$osDate})" : 'Opening Stock';
+                    } elseif ($p instanceof StockTransferItem && $p->stockTransfer) {
+                        $stNum = $p->stockTransfer->transfer_number;
+                        $stDate = $p->stockTransfer->transfer_date ? Carbon::parse($p->stockTransfer->transfer_date)->format('d/m/Y') : null;
+                        $displayBatchNo = $stNum ? ($stNum . ($stDate ? " ({$stDate})" : '')) : ($stDate ? "Transfer {$stDate}" : ('Transfer #' . $p->id));
                     } else {
                         $displayBatchNo = 'Lot #' . $p->id;
                     }
-                    $key = 'PI_' . $p->id . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2);
+                    $key = 'SRC_' . (get_class($p) === 'App\Models\StockTransferItem' ? 'ST_' : (get_class($p) === 'App\Models\OpeningStockItem' ? 'OS_' : 'PI_')) . $p->id . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2);
                     $unassignedKeys[$key] = true;
                 }
             }
@@ -144,7 +174,7 @@ class BatchStockService
                     'mrp' => $mrp,
                     'purchased_qty' => $inQty,
                     'remaining_qty' => 0.0,
-                    'source' => 'purchase',
+                    'source' => ($p instanceof StockTransferItem ? 'transfer' : ($p instanceof OpeningStockItem ? 'opening' : 'purchase')),
                 ];
             } else {
                 $batches[$key]['purchased_qty'] += $inQty;

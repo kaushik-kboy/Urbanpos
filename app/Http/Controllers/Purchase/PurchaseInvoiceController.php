@@ -251,9 +251,17 @@ class PurchaseInvoiceController extends Controller
                         'mrp' => $line['mrp'] ?: null,
                     ], fn ($v) => $v !== null));
 
-                    ItemStock::where('item_id', $line['item_id'])
-                        ->where('branch_id', $purchaseInvoice->branch_id)
-                        ->update(['landing_cost' => $effectiveCost]);
+                    $itemStockData = array_filter([
+                        'cost_price' => $line['cost_price'] ?: null,
+                        'landing_cost' => $effectiveCost ?: null,
+                        'sell_price' => $line['sell_price'] ?: null,
+                        'mrp' => $line['mrp'] ?: null,
+                    ], fn ($v) => $v !== null);
+
+                    ItemStock::updateOrCreate(
+                        ['item_id' => $line['item_id'], 'branch_id' => $purchaseInvoice->branch_id],
+                        $itemStockData
+                    );
                 }
             } else {
                 $this->postStockAndItemMaster($purchaseInvoice, $lines);
@@ -406,9 +414,17 @@ class PurchaseInvoiceController extends Controller
                 'mrp' => $line['mrp'] ?: null,
             ], fn ($v) => $v !== null));
 
-            ItemStock::where('item_id', $line['item_id'])
-                ->where('branch_id', $purchaseInvoice->branch_id)
-                ->update(['landing_cost' => $effectiveCost]);
+            $itemStockData = array_filter([
+                'cost_price' => $line['cost_price'] ?: null,
+                'landing_cost' => $effectiveCost ?: null,
+                'sell_price' => $line['sell_price'] ?: null,
+                'mrp' => $line['mrp'] ?: null,
+            ], fn ($v) => $v !== null);
+
+            ItemStock::updateOrCreate(
+                ['item_id' => $line['item_id'], 'branch_id' => $purchaseInvoice->branch_id],
+                $itemStockData
+            );
         }
     }
 
@@ -780,14 +796,19 @@ class PurchaseInvoiceController extends Controller
             }
         }
 
+        $branchStock = $branchId > 0 ? ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->first() : null;
+        $resolvedCost = ($branchStock && (float) $branchStock->cost_price > 0) ? (float) $branchStock->cost_price : (float) ($item->cost_price ?? 0);
+        $resolvedSell = ($branchStock && (float) $branchStock->sell_price > 0) ? (float) $branchStock->sell_price : (float) ($item->sell_price ?? 0);
+        $resolvedMrp  = ($branchStock && (float) $branchStock->mrp > 0) ? (float) $branchStock->mrp : (float) ($item->mrp ?? 0);
+
         return response()->json([
             'id'                      => $item->id,
             'name'                    => $item->name,
             'item_code'               => $item->item_code,
             'ean_upc_code'            => $item->ean_upc_code,
-            'cost_price'              => (float) ($item->cost_price ?? 0),
-            'sell_price'              => (float) ($item->sell_price ?? 0),
-            'mrp'                     => (float) ($item->mrp ?? 0),
+            'cost_price'              => $resolvedCost,
+            'sell_price'              => $resolvedSell,
+            'mrp'                     => $resolvedMrp,
             'stock'                   => $stock,
             'qty'                     => $stock,
             'exp_date'                => $latestExpDate,

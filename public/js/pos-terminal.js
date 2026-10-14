@@ -308,26 +308,22 @@
                 const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
                 const availRemaining = Math.max(0, stock - otherRowsQty);
                 const availDisp = parseInt(availRemaining, 10);
+                const errMsg = availRemaining <= 0
+                    ? `Product "${item.name}" is out of stock (${availDisp} available).`
+                    : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
 
-                if (availRemaining > 0) {
-                    // Auto-cap to maximum available stock so user is not deadlocked
-                    val = parseInt(availRemaining, 10);
-                    $(this).val(val);
-                    state.cart[idx].qty = val;
-                    $cell.text(val);
-                    $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
-                    recalculateRow(idx, 'qty');
-                    showNotification(`Only ${availDisp} units available for "${item.name}". Quantity auto-adjusted to ${availDisp}.`, 'warning');
-                    return;
-                } else {
-                    state.cart[idx].qty = '';
-                    $(this).addClass('is-invalid border-danger text-danger');
-                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                    showNotification(`Product "${item.name}" is out of stock (${availDisp} available).`, 'danger');
-                    if (typeof sound !== 'undefined' && sound.error) sound.error();
-                    recalculateRow(idx, 'qty');
-                    return;
-                }
+                state.cart[idx].qty = '';
+                $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
+                $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                showNotification(errMsg, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                recalculateRow(idx, 'qty');
+                setTimeout(() => {
+                    if ($cell.find('input').length) {
+                        $cell.find('input').focus().select();
+                    }
+                }, 20);
+                return;
             }
 
             $(this).removeClass('is-invalid border-danger text-danger bg-warning-light');
@@ -358,21 +354,18 @@
                     const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
                     const availRemaining = Math.max(0, stock - otherRowsQty);
                     const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                    const errMsg = availRemaining <= 0
+                        ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
+                        : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
 
-                    if (availRemaining > 0) {
-                        val = availRemaining;
-                        $(this).val(val);
-                        state.cart[idx].qty = val;
-                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                        recalculateRow(idx, 'qty');
-                        showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
-                    } else {
-                        $(this).addClass('is-invalid border-danger text-danger');
-                        showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
-                        if (typeof sound !== 'undefined' && sound.error) sound.error();
-                        $(this).focus().select();
-                        return;
-                    }
+                    $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
+                    state.cart[idx].qty = '';
+                    recalculateRow(idx, 'qty');
+                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                    showNotification(errMsg, 'danger');
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    $(this).focus().select();
+                    return;
                 }
 
                 $(this).removeClass('is-invalid border-danger text-danger');
@@ -404,21 +397,18 @@
                     const otherRowsQty = getTotalCartQtyForItem(item.id, idx, item.batch_no || null);
                     const availRemaining = Math.max(0, stock - otherRowsQty);
                     const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                    const errMsg = availRemaining <= 0
+                        ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
+                        : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
 
-                    if (availRemaining > 0) {
-                        val = availRemaining;
-                        $(this).val(val);
-                        state.cart[idx].qty = val;
-                        $cell.text(val % 1 === 0 ? val : val.toFixed(2));
-                        recalculateRow(idx, 'qty');
-                        showNotification(`Only ${availDisp} units available for "${item.name}". Quantity adjusted to ${availDisp}.`, 'warning');
-                    } else {
-                        $(this).addClass('is-invalid border-danger text-danger');
-                        showNotification(`Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`, 'danger');
-                        if (typeof sound !== 'undefined' && sound.error) sound.error();
-                        $(this).focus().select();
-                        return;
-                    }
+                    $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
+                    state.cart[idx].qty = '';
+                    recalculateRow(idx, 'qty');
+                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+                    showNotification(errMsg, 'danger');
+                    if (typeof sound !== 'undefined' && sound.error) sound.error();
+                    $(this).focus().select();
+                    return;
                 }
 
                 $(this).removeClass('is-invalid border-danger text-danger');
@@ -941,23 +931,12 @@
                     ? `Cannot add item. Product is out of stock (${availDisp} available).`
                     : `Insufficient stock. Only ${availDisp} units are available (entered: ${val}).`;
 
-                if (e.type === 'change' && availRemaining > 0) {
-                    val = availRemaining;
-                    $(this).val(val).removeClass('is-invalid border-danger text-danger').attr('title', '');
-                    state.cart[idx].qty = val;
-                    recalculateRow(idx, 'qty');
-                    showNotification(`Quantity auto-adjusted to available stock (${availDisp} units).`, 'warning');
-                    return;
-                }
-
-                $(this).addClass('is-invalid border-danger text-danger').attr('title', errMsg);
+                $(this).addClass('is-invalid border-danger text-danger bg-warning-light').attr('title', errMsg);
                 state.cart[idx].qty = '';
                 recalculateRow(idx, 'qty');
                 payBtns.prop('disabled', true);
-                if (e.type === 'change') {
-                    if (typeof sound !== 'undefined' && sound.error) sound.error();
-                    showNotification(errMsg, 'danger');
-                }
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                showNotification(errMsg, 'danger');
                 return;
             }
 
@@ -3210,6 +3189,22 @@
             }
             if (typeof sound !== 'undefined' && sound.error) sound.error();
             return;
+        }
+
+        for (let i = 0; i < state.cart.length; i++) {
+            const it = state.cart[i];
+            if (isItemStockExceeded(it, it.qty, i)) {
+                const stock = getItemStock(it);
+                const otherRowsQty = getTotalCartQtyForItem(it.id, i, it.batch_no || null);
+                const availRemaining = Math.max(0, stock - otherRowsQty);
+                const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
+                const msg = `Stock Limit Exceeded: Only ${availDisp} units available for "${it.name}" (entered: ${it.qty}). Please correct quantity.`;
+                showNotification(msg, 'danger');
+                alert(msg);
+                openQuantityInput(i);
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                return;
+            }
         }
 
         if (!state.customer_id) {
