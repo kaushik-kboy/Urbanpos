@@ -112,8 +112,8 @@ class BatchStockService
                 $key = 'B_' . $rawBNo . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2) . '|' . ($exp ?: '');
             } else {
                 if ($exp !== null) {
-                    // Purchases with same expiry date merge into one batch, latest price wins
-                    $key = 'EXP_' . $exp;
+                    // Purchases with same expiry date AND same sell price / MRP merge into one batch; different prices stay separate
+                    $key = 'EXP_' . $exp . '|' . round($cost, 2) . '|' . round($sell, 2) . '|' . round($mrp, 2);
                     $displayBatchNo = Carbon::parse($exp)->format('d/m/Y');
                 } else {
                     if ($p instanceof PurchaseInvoiceItem && $p->purchaseInvoice) {

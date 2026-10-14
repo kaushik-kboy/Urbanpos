@@ -543,4 +543,92 @@ class StockBatchPurchaseSourceTest extends TestCase
         $this->assertEquals(15.0, (float) $activeBatches[0]['qty']);
         $this->assertEquals(1300.0, (float) $activeBatches[0]['sell_price']);
     }
+
+    /**
+     * TEST 13: Purchases with the same expiry date but different sell prices
+     * must remain separate batches in the popup (e.g. 4 @ 1200 and 6 @ 1300).
+     */
+    public function test_same_expiry_different_sell_prices_remain_separate_batches(): void
+    {
+        $item = Item::create([
+            'name' => 'Price Split Item',
+            'item_code' => 'PSI-001',
+            'status' => 1,
+            'cost_price' => 850.0,
+            'sell_price' => 1200.0,
+            'mrp' => 1200.0,
+        ]);
+
+        // Purchase line 1: 4 qty @ 1200, exp 2028-12-30 (batch_no is null/empty)
+        $this->postPurchaseWithPrices($item, 'PI-SPLIT-1', null, '2028-12-30', 850.0, 1200.0, 1200.0, 4.0);
+        // Purchase line 2: 6 qty @ 1300, exp 2028-12-30 (batch_no is null/empty)
+        $this->postPurchaseWithPrices($item, 'PI-SPLIT-2', null, '2028-12-30', 900.0, 1300.0, 1300.0, 6.0);
+
+        $batches = $this->batchService->getItemBatches($item->id, $this->branch->id);
+
+        $this->assertCount(2, $batches, 'Both price batches must remain separate despite identical expiry');
+        $prices = $batches->pluck('sell_price')->map(fn ($p) => (float) $p)->all();
+        $this->assertContains(1200.0, $prices);
+        $this->assertContains(1300.0, $prices);
+
+        $batch1200 = $batches->first(fn ($b) => (float) $b['sell_price'] === 1200.0);
+        $batch1300 = $batches->first(fn ($b) => (float) $b['sell_price'] === 1300.0);
+
+        $this->assertEquals(4.0, (float) $batch1200['remaining_qty']);
+        $this->assertEquals(6.0, (float) $batch1300['remaining_qty']);
+    }
+
+    protected function postPurchaseWithPrices($item, $invNo, $batchNo, $expDate, $cost, $mrp, $sell, $qty): void
+    {
+        $supplier = \App\Models\Supplier::firstOrCreate(
+            ['name' => 'Batch Price Test Supplier'],
+            ['branch_id' => $this->branch->id, 'gstin' => '24ABCDE1234F1Z5', 'state' => 'Gujarat', 'status' => 1]
+        );
+
+        $inv = \App\Models\PurchaseInvoice::create([
+            'invoice_number' => $invNo,
+            'invoice_date' => now()->format('Y-m-d'),
+            'supplier_id' => $supplier->id,
+            'branch_id' => $this->branch->id,
+            'total' => $cost * $qty,
+            'status' => 'Posted',
+        ]);
+
+        \App\Models\PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $inv->id,
+            'item_id' => $item->id,
+            'batch_no' => $batchNo,
+            'exp_date' => $expDate,
+            'qty' => $qty,
+            'free_qty' => 0,
+            'cost_price' => $cost,
+            'sell_price' => $sell,
+            'mrp' => $mrp,
+            'net_amount' => $cost * $qty,
+        ]);
+
+        $itemStock = \App\Models\ItemStock::firstOrNew([
+            'item_id' => $item->id,
+            'branch_id' => $this->branch->id,
+        ]);
+        $itemStock->quantity = (float)($itemStock->quantity ?? 0) + $qty;
+        $itemStock->save();
+
+        \App\Models\StockLedger::create([
+            'item_id' => $item->id,
+            'branch_id' => $this->branch->id,
+            'movement_type' => 'PURCHASE_RECEIPT',
+            'document_date' => now()->toDateString(),
+            'posted_at' => now(),
+            'batch_no' => $batchNo,
+            'exp_date' => $expDate,
+            'qty_in' => $qty,
+            'qty_out' => 0,
+            'unit_cost' => $cost,
+            'value_in' => $cost * $qty,
+            'running_balance_qty' => $itemStock->quantity,
+            'reference_type' => 'PurchaseInvoice',
+            'reference_id' => $inv->id,
+        ]);
+    }
 }
