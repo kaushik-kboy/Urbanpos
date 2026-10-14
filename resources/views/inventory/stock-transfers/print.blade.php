@@ -199,8 +199,8 @@
                     <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
                     <td class="font-bold">{{ $line->item?->name }}</td>
                     <td class="text-center">{{ $expDate ? $expDate->format('d-m-Y') : '—' }}</td>
-                    <td class="text-right font-bold">{{ number_format($line->qty, 3) }}</td>
-                    <td class="text-right">{{ $line->received_qty !== null ? number_format($line->received_qty, 3) : '—' }}</td>
+                    <td class="text-right font-bold">{{ number_format($line->qty, 0) }}</td>
+                    <td class="text-right">{{ $line->received_qty !== null ? number_format($line->received_qty, 0) : '—' }}</td>
                     <td class="text-right">₹{{ number_format((float) ($line->mrp ?: ($line->item?->mrp ?: 0)), 2) }}</td>
                     <td class="text-right">₹{{ number_format($unitCost, 2) }}</td>
                     <td class="text-right font-bold">₹{{ number_format($lineTotal, 2) }}</td>
@@ -210,8 +210,8 @@
         <tfoot>
             <tr style="background-color: #f9f9f9; font-weight: bold;">
                 <td colspan="4" class="text-right">Total:</td>
-                <td class="text-right">{{ number_format($stockTransfer->items->sum('qty'), 3) }}</td>
-                <td class="text-right">{{ $stockTransfer->items->whereNotNull('received_qty')->isNotEmpty() ? number_format($stockTransfer->items->sum('received_qty'), 3) : '—' }}</td>
+                <td class="text-right">{{ number_format($stockTransfer->items->sum('qty'), 0) }}</td>
+                <td class="text-right">{{ $stockTransfer->items->whereNotNull('received_qty')->isNotEmpty() ? number_format($stockTransfer->items->sum('received_qty'), 0) : '—' }}</td>
                 <td></td>
                 <td></td>
                 <td class="text-right">₹{{ number_format($stockTransfer->total_value, 2) }}</td>

@@ -1629,7 +1629,7 @@
 
             // 3. Update footer totals
             if (hasAny) {
-                $('#footer-total-qty').text(totalQty > 0 ? totalQty.toFixed(3) : '');
+                $('#footer-total-qty').text(totalQty > 0 ? Math.round(totalQty) : '');
                 $('#footer-total-cost').text(totalCost > 0 ? totalCost.toFixed(2) : '');
                 $('#footer-total-disc').text(totalDiscAmt > 0 ? totalDiscAmt.toFixed(2) : '');
                 $('#footer-total-gst').text(totalGstAmt > 0 ? totalGstAmt.toFixed(2) : '');

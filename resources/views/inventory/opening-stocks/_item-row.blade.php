@@ -53,11 +53,11 @@
     </td>
     <td style="width: 75px; min-width: 70px;">
         <input type="number" 
-               step="0.001" 
-               min="0" 
+               step="1" 
+               min="1" 
                name="items[{{ $rowId }}][qty]" 
-               value="{{ $qty }}" 
-               class="form-control form-control-sm item-qty text-right font-weight-bold px-1" 
+               value="{{ $qty ? (int)$qty : '' }}" 
+               class="form-control form-control-sm item-qty text-right font-weight-bold px-1" onkeypress="return event.charCode >= 48 && event.charCode <= 57" 
                placeholder="0">
     </td>
     <td style="width: 85px; min-width: 80px;">

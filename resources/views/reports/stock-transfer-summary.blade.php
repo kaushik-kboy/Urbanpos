@@ -92,7 +92,7 @@
                             <td>{{ $transfer->transfer_date->format('d-m-Y') }}</td>
                             <td>{{ $transfer->fromBranch?->name }}</td>
                             <td>{{ $transfer->toBranch?->name }}</td>
-                            <td class="text-right font-weight-bold">{{ number_format($transfer->total_qty, 2) }}</td>
+                            <td class="text-right font-weight-bold">{{ number_format($transfer->total_qty, 0) }}</td>
                             <td>{{ $transfer->dispatched_at ? $transfer->dispatched_at->format('d-m-Y H:i') : '-' }}</td>
                             <td>{{ $transfer->received_at ? $transfer->received_at->format('d-m-Y H:i') : '-' }}</td>
                             <td class="text-center">

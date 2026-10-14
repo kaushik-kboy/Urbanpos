@@ -29,11 +29,11 @@ class InventoryMoreController extends Controller
         $data = $request->validate([
             'branch_id' => ['required', 'exists:branches,id'],
             'bulk_item_id' => ['required', 'exists:items,id'],
-            'bulk_qty_taken' => ['required', 'numeric', 'min:0.01'],
+            'bulk_qty_taken' => ['required', 'integer', 'min:1'],
             'conversion_loss' => ['nullable', 'numeric', 'min:0'],
             'packs' => ['required', 'array', 'min:1'],
             'packs.*.item_id' => ['required', 'exists:items,id'],
-            'packs.*.qty' => ['required', 'numeric', 'min:0.01'],
+            'packs.*.qty' => ['required', 'integer', 'min:1'],
         ]);
 
         $branchId = (int) $data['branch_id'];
@@ -95,7 +95,7 @@ class InventoryMoreController extends Controller
             'kit_qty' => ['required', 'numeric', 'min:1'],
             'components' => ['required', 'array', 'min:1'],
             'components.*.item_id' => ['required', 'exists:items,id'],
-            'components.*.qty_per_kit' => ['required', 'numeric', 'min:0.01'],
+            'components.*.qty_per_kit' => ['required', 'integer', 'min:1'],
         ]);
 
         $branchId = (int) $data['branch_id'];
@@ -156,7 +156,7 @@ class InventoryMoreController extends Controller
             'unpack_qty' => ['required', 'numeric', 'min:1'],
             'components' => ['required', 'array', 'min:1'],
             'components.*.item_id' => ['required', 'exists:items,id'],
-            'components.*.qty_per_kit' => ['required', 'numeric', 'min:0.01'],
+            'components.*.qty_per_kit' => ['required', 'integer', 'min:1'],
         ]);
 
         $branchId = (int) $data['branch_id'];

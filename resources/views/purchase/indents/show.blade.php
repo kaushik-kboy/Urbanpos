@@ -213,10 +213,10 @@
                                     <td class="text-center">
                                         <span class="badge badge-light border">{{ number_format($line->current_stock, 2) }}</span>
                                     </td>
-                                    <td class="text-right font-weight-bold">{{ number_format($line->requested_qty, 2) }}</td>
+                                    <td class="text-right font-weight-bold">{{ number_format($line->requested_qty, 0) }}</td>
                                     <td class="text-right">
                                         @if ($line->approved_qty !== null)
-                                            <span class="text-success font-weight-bold">{{ number_format($line->approved_qty, 2) }}</span>
+                                            <span class="text-success font-weight-bold">{{ number_format($line->approved_qty, 0) }}</span>
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif
@@ -229,9 +229,9 @@
                         <tfoot class="thead-light font-weight-bold">
                             <tr>
                                 <td colspan="3" class="text-right">Totals:</td>
-                                <td class="text-right">{{ number_format($purchaseIndent->total_requested_qty, 2) }}</td>
+                                <td class="text-right">{{ number_format($purchaseIndent->total_requested_qty, 0) }}</td>
                                 <td class="text-right text-success">
-                                    {{ $purchaseIndent->total_approved_qty > 0 ? number_format($purchaseIndent->total_approved_qty, 2) : '—' }}
+                                    {{ $purchaseIndent->total_approved_qty > 0 ? number_format($purchaseIndent->total_approved_qty, 0) : '—' }}
                                 </td>
                                 <td></td>
                                 <td class="text-right text-primary">₹{{ number_format($purchaseIndent->total_estimated_amount, 2) }}</td>
@@ -282,9 +282,9 @@
                                             <td class="text-center align-middle">
                                                 <span class="badge badge-light border">{{ number_format($line->current_stock, 2) }}</span>
                                             </td>
-                                            <td class="text-right align-middle">{{ number_format($line->requested_qty, 2) }}</td>
+                                            <td class="text-right align-middle">{{ number_format($line->requested_qty, 0) }}</td>
                                             <td>
-                                                <input type="number" step="0.001" min="0" name="items[{{ $idx }}][approved_qty]"
+                                                <input type="number" step="1" min="0" name="items[{{ $idx }}][approved_qty]" onkeypress="return event.charCode >= 48 && event.charCode <= 57"
                                                        value="{{ old("items.{$idx}.approved_qty", $line->requested_qty) }}"
                                                        class="form-control form-control-sm text-right font-weight-bold" required>
                                             </td>

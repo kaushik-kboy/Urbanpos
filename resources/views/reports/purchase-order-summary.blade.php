@@ -93,7 +93,7 @@
                             <td>{{ $po->po_date->format('d-m-Y') }}</td>
                             <td>{{ $po->supplier?->name }}</td>
                             <td>{{ $po->branch?->name }}</td>
-                            <td class="text-right">{{ number_format($po->total_qty, 2) }}</td>
+                            <td class="text-right">{{ number_format($po->total_qty, 0) }}</td>
                             <td class="text-right">{{ number_format($po->freight, 2) }}</td>
                             <td class="text-right">{{ number_format($po->total_gst, 2) }}</td>
                             <td class="text-right font-weight-bold text-primary">{{ number_format($po->total, 2) }}</td>

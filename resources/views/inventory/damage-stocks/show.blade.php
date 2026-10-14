@@ -125,7 +125,7 @@
                                     {{ $line->exp_date ? $line->exp_date->format('d-m-Y') : '-' }}
                                 </td>
                                 <td class="text-right align-middle font-weight-bold text-primary">
-                                    {{ number_format($line->qty, 3) }}
+                                    {{ number_format($line->qty, 0) }}
                                 </td>
                                 <td class="text-right align-middle">₹{{ number_format($line->cost_price, 2) }}</td>
                                 <td class="text-right align-middle text-muted">₹{{ number_format($line->sell_price, 2) }}</td>
@@ -142,7 +142,7 @@
                         <tr>
                             <td colspan="4" class="text-right align-middle">Totals:</td>
                             <td class="text-right align-middle text-primary" style="font-size: 1rem;">
-                                {{ number_format($damageStock->total_qty, 3) }}
+                                {{ number_format($damageStock->total_qty, 0) }}
                             </td>
                             <td colspan="4"></td>
                             <td class="text-right align-middle text-secondary">

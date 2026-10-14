@@ -176,7 +176,7 @@ class StockUpdateApprovalAndFormValidationsLevelTest extends TestCase
                     'item_id' => $this->item->id,
                     'item_code' => 'OIL5W30',
                     'item_name' => 'Synthetic Engine Oil 5W30',
-                    'physical_qty' => '14.500',
+                    'physical_qty' => '14',
                     'exp_date' => '2027-05-20',
                     'sell_price' => '1500.00',
                     'mrp' => '1600.00',
@@ -198,7 +198,7 @@ class StockUpdateApprovalAndFormValidationsLevelTest extends TestCase
         $createPage->assertOk();
         $createPage->assertSee('OIL5W30');
         $createPage->assertSee('Synthetic Engine Oil 5W30');
-        $createPage->assertSee('14.500');
+        $createPage->assertSee('14');
         $createPage->assertSee('2027-05-20');
         $createPage->assertSee('1500.00');
         $createPage->assertSee('1600.00');

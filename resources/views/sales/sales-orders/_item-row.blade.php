@@ -43,7 +43,7 @@
                value="{{ $selectedItemId }}">
     </td>
     <td style="width: 100px;" data-col-key="qty">
-        <input type="number" step="0.001" name="items[{{ $index }}][qty]" value="{{ $qtyVal }}" class="form-control form-control-sm so-qty font-weight-bold text-right" autocomplete="off" placeholder="Qty">
+        <input type="number" step="1" min="1" name="items[{{ $index }}][qty]" value="{{ $qtyVal ? (int)$qtyVal : '' }}" class="form-control form-control-sm so-qty font-weight-bold text-right" autocomplete="off" placeholder="Qty" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
     </td>
     <td style="width: 120px;" data-col-key="sell_price">
         <input type="number" step="0.01" name="items[{{ $index }}][sell_price]" value="{{ $sellPriceVal }}" class="form-control form-control-sm so-sell-price text-right" autocomplete="off" placeholder="0.00">

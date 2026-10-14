@@ -73,7 +73,7 @@
                             <td>{{ $ds->entry_date->format('d-m-Y') }}</td>
                             <td>{{ $ds->branch?->name }}</td>
                             <td>{{ ucfirst($ds->wastage_type ?: 'Damage') }}</td>
-                            <td class="text-right font-weight-bold text-danger">{{ number_format($ds->total_qty, 2) }}</td>
+                            <td class="text-right font-weight-bold text-danger">{{ number_format($ds->total_qty, 0) }}</td>
                             <td class="text-right font-weight-bold text-danger">{{ number_format($ds->total_cost, 2) }}</td>
                             <td>{{ $ds->remarks ?: '-' }}</td>
                             <td class="text-center">

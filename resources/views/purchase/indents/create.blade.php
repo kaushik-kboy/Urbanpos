@@ -153,7 +153,7 @@
                 <span class="badge badge-light border stock-badge font-weight-normal px-2 py-1">0.00</span>
             </td>
             <td>
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][requested_qty]" class="form-control form-control-sm text-right qty-input" placeholder="0.00">
+                <input type="number" step="1" min="1" name="items[__INDEX__][requested_qty]" class="form-control form-control-sm text-right qty-input" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
             </td>
             <td>
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][estimated_cost]" class="form-control form-control-sm text-right cost-input" placeholder="0.00">
@@ -354,7 +354,7 @@
                 });
 
                 $('#summary-total-items').text(totalItems);
-                $('#summary-total-qty').text(totalQty.toFixed(2));
+                $('#summary-total-qty').text(Math.round(totalQty));
                 let estAmt = (Math.round(totalAmount * 100) / 100).toFixed(2);
                 $('#summary-total-amount').text('₹' + estAmt);
 

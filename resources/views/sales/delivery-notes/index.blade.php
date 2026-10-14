@@ -135,7 +135,7 @@
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
-                            <td class="text-right font-weight-bold">{{ number_format($dn->total_dispatched_qty, 2) }}</td>
+                            <td class="text-right font-weight-bold">{{ number_format($dn->total_dispatched_qty, 0) }}</td>
                             <td class="text-right font-weight-bold text-success">₹{{ number_format($dn->total_amount, 2) }}</td>
                             <td>
                                 @if ($dn->status === 'Dispatched')

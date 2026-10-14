@@ -122,7 +122,7 @@
                                 <td class="text-right align-middle font-weight-bold">{{ number_format($line->qty, 3) }}</td>
                                 <td class="text-right align-middle font-weight-bold text-primary">{{ number_format($lineAmount, 2) }}</td>
                                 <td style="max-width: 150px;" class="align-middle">
-                                    <input type="number" step="0.001" min="0" max="{{ $line->qty }}"
+                                    <input type="number" step="1" min="0" max="{{ (int)$line->qty }}" onkeypress="return event.charCode >= 48 && event.charCode <= 57"
                                            name="items[{{ $loop->index }}][received_qty]"
                                            value="{{ $line->qty }}"
                                            class="form-control form-control-sm text-right font-weight-bold" required>

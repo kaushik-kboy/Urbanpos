@@ -156,8 +156,8 @@
                     <td class="text-center">{{ $i + 1 }}</td>
                     <td>{{ $row->item?->name }}</td>
                     <td>{{ $row->item?->item_code ?? $row->item?->ean_upc_code ?? '-' }}</td>
-                    <td class="text-right">{{ number_format($row->qty, 2) }}</td>
-                    <td class="text-right">{{ $row->free_qty > 0 ? number_format($row->free_qty, 2) : '-' }}</td>
+                    <td class="text-right">{{ number_format($row->qty, 0) }}</td>
+                    <td class="text-right">{{ $row->free_qty > 0 ? number_format($row->free_qty, 0) : '-' }}</td>
                     <td class="text-right">{{ number_format($row->cost_price, 2) }}</td>
                     <td class="text-right">{{ $row->disc_amount > 0 ? number_format($row->disc_amount, 2) : '-' }}</td>
                     <td class="text-right">{{ number_format($row->gst_percent, 2) }}%</td>

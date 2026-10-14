@@ -170,11 +170,11 @@
                                     <div class="small text-muted font-italic">{{ $line->remarks }}</div>
                                 @endif
                             </td>
-                            <td class="text-center align-middle">{{ number_format($line->ordered_qty, 2) }}</td>
-                            <td class="text-center align-middle font-weight-bold">{{ number_format($line->received_qty, 2) }}</td>
-                            <td class="text-center align-middle font-weight-bold text-success">{{ number_format($line->accepted_qty, 2) }}</td>
+                            <td class="text-center align-middle">{{ number_format($line->ordered_qty, 0) }}</td>
+                            <td class="text-center align-middle font-weight-bold">{{ number_format($line->received_qty, 0) }}</td>
+                            <td class="text-center align-middle font-weight-bold text-success">{{ number_format($line->accepted_qty, 0) }}</td>
                             <td class="text-center align-middle {{ $line->rejected_qty > 0 ? 'text-danger font-weight-bold' : 'text-muted' }}">
-                                {{ number_format($line->rejected_qty, 2) }}
+                                {{ number_format($line->rejected_qty, 0) }}
                             </td>
                             <td class="text-right align-middle">₹{{ number_format($line->unit_cost, 2) }}</td>
                             <td class="text-right align-middle">{{ $line->mrp ? '₹'.number_format($line->mrp, 2) : '—' }}</td>
@@ -187,10 +187,10 @@
                 <tfoot class="bg-light font-weight-bold">
                     <tr>
                         <th colspan="2" class="text-right align-middle">Totals:</th>
-                        <th class="text-center align-middle">{{ number_format($purchaseReceiptNote->total_ordered_qty, 2) }}</th>
-                        <th class="text-center align-middle">{{ number_format($purchaseReceiptNote->total_received_qty, 2) }}</th>
-                        <th class="text-center align-middle text-success">{{ number_format($purchaseReceiptNote->total_accepted_qty, 2) }}</th>
-                        <th class="text-center align-middle text-danger">{{ number_format($purchaseReceiptNote->total_rejected_qty, 2) }}</th>
+                        <th class="text-center align-middle">{{ number_format($purchaseReceiptNote->total_ordered_qty, 0) }}</th>
+                        <th class="text-center align-middle">{{ number_format($purchaseReceiptNote->total_received_qty, 0) }}</th>
+                        <th class="text-center align-middle text-success">{{ number_format($purchaseReceiptNote->total_accepted_qty, 0) }}</th>
+                        <th class="text-center align-middle text-danger">{{ number_format($purchaseReceiptNote->total_rejected_qty, 0) }}</th>
                         <th colspan="4" class="text-right align-middle">Grand Total Goods Value:</th>
                         <th class="text-right align-middle text-primary h5 mb-0">₹{{ number_format($purchaseReceiptNote->total_amount, 2) }}</th>
                     </tr>

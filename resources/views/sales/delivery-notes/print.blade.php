@@ -133,8 +133,8 @@
                     </td>
                     <td class="text-center">{{ $line->batch_no ?: '—' }}</td>
                     <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
-                    <td class="text-right">{{ number_format($line->ordered_qty, 2) }}</td>
-                    <td class="text-right font-bold">{{ number_format($line->dispatched_qty, 2) }}</td>
+                    <td class="text-right">{{ number_format($line->ordered_qty, 0) }}</td>
+                    <td class="text-right font-bold">{{ number_format($line->dispatched_qty, 0) }}</td>
                     <td class="text-right">{{ number_format($line->unit_price, 2) }}</td>
                     <td class="text-right font-bold">{{ number_format($line->line_total, 2) }}</td>
                 </tr>
@@ -143,8 +143,8 @@
         <tfoot>
             <tr style="background-color: #f9f9f9; font-weight: bold;">
                 <td colspan="4" class="text-right">Totals:</td>
-                <td class="text-right">{{ number_format($salesDeliveryNote->total_ordered_qty, 2) }}</td>
-                <td class="text-right">{{ number_format($salesDeliveryNote->total_dispatched_qty, 2) }}</td>
+                <td class="text-right">{{ number_format($salesDeliveryNote->total_ordered_qty, 0) }}</td>
+                <td class="text-right">{{ number_format($salesDeliveryNote->total_dispatched_qty, 0) }}</td>
                 <td class="text-right">Total Valuation:</td>
                 <td class="text-right">₹{{ number_format($salesDeliveryNote->total_amount, 2) }}</td>
             </tr>

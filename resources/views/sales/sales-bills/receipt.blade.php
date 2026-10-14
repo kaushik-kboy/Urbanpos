@@ -381,7 +381,7 @@
                                 (GST {{ $item->gst_percent }}%)
                             @endif
                         </td>
-                        <td class="text-right font-bold">{{ number_format($item->qty, 3) }}</td>
+                        <td class="text-right font-bold">{{ number_format($item->qty, 0) }}</td>
                         <td class="text-right">₹{{ number_format($item->sell_price, 2) }}</td>
                         <td class="text-right font-bold">₹{{ number_format($item->net_amount, 2) }}</td>
                     </tr>

@@ -916,7 +916,7 @@
                 grandNet += net;
             });
 
-            $('#footer-total-qty').text(totalQty.toFixed(3));
+            $('#footer-total-qty').text(Math.round(totalQty));
             $('#footer-total-cost').text(totalCost.toFixed(2));
             $('#footer-total-tax').text(totalTax.toFixed(2));
             $('#footer-grand-net').text(grandNet.toFixed(2));

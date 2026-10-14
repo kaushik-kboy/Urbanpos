@@ -37,7 +37,7 @@
         <input type="date" name="items[{{ $rowId }}][exp_date]" value="{{ $expDate }}" class="form-control form-control-sm pr-exp-date px-1" style="min-width: 140px;">
     </td>
     <td style="width: 100px;" data-col-key="qty">
-        <input type="number" step="0.001" min="0" name="items[{{ $rowId }}][qty]" value="{{ $qty }}"
+        <input type="number" step="1" min="1" name="items[{{ $rowId }}][qty]" value="{{ $qty ? (int)$qty : '' }}" onkeypress="return event.charCode >= 48 && event.charCode <= 57"
                data-original-qty="{{ $originalQty }}"
                data-returned-qty="{{ $alreadyReturned }}"
                data-remaining-qty="{{ $remainingQty }}"

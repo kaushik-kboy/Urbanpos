@@ -125,10 +125,10 @@
                         <strong>{{ $item->item?->name }}</strong>
                         @if ($item->item?->code) [{{ $item->item->code }}] @endif
                     </td>
-                    <td class="text-center">{{ number_format($item->ordered_qty, 2) }}</td>
-                    <td class="text-center font-bold">{{ number_format($item->received_qty, 2) }}</td>
-                    <td class="text-center font-bold">{{ number_format($item->accepted_qty, 2) }}</td>
-                    <td class="text-center">{{ number_format($item->rejected_qty, 2) }}</td>
+                    <td class="text-center">{{ number_format($item->ordered_qty, 0) }}</td>
+                    <td class="text-center font-bold">{{ number_format($item->received_qty, 0) }}</td>
+                    <td class="text-center font-bold">{{ number_format($item->accepted_qty, 0) }}</td>
+                    <td class="text-center">{{ number_format($item->rejected_qty, 0) }}</td>
                     <td class="text-right">{{ number_format($item->unit_cost, 2) }}</td>
                     <td class="text-right">{{ $item->mrp ? number_format($item->mrp, 2) : '—' }}</td>
                     <td class="text-center">{{ $item->batch_no ?: '—' }}</td>
@@ -140,10 +140,10 @@
         <tfoot>
             <tr class="font-bold">
                 <td colspan="2" class="text-right">Totals:</td>
-                <td class="text-center">{{ number_format($purchaseReceiptNote->total_ordered_qty, 2) }}</td>
-                <td class="text-center">{{ number_format($purchaseReceiptNote->total_received_qty, 2) }}</td>
-                <td class="text-center">{{ number_format($purchaseReceiptNote->total_accepted_qty, 2) }}</td>
-                <td class="text-center">{{ number_format($purchaseReceiptNote->total_rejected_qty, 2) }}</td>
+                <td class="text-center">{{ number_format($purchaseReceiptNote->total_ordered_qty, 0) }}</td>
+                <td class="text-center">{{ number_format($purchaseReceiptNote->total_received_qty, 0) }}</td>
+                <td class="text-center">{{ number_format($purchaseReceiptNote->total_accepted_qty, 0) }}</td>
+                <td class="text-center">{{ number_format($purchaseReceiptNote->total_rejected_qty, 0) }}</td>
                 <td colspan="4" class="text-right">Grand Total:</td>
                 <td class="text-right">₹{{ number_format($purchaseReceiptNote->total_amount, 2) }}</td>
             </tr>

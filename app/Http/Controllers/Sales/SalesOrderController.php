@@ -311,7 +311,7 @@ class SalesOrderController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
-            'items.*.qty' => ['required', 'numeric', 'min:0.001'],
+            'items.*.qty' => ['required', 'integer', 'min:1'],
             'items.*.sell_price' => ['required', 'numeric', 'min:0'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
             'items.*.disc_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],

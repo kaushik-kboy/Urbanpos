@@ -1734,7 +1734,7 @@
                 }
             } else {
                 qtyCell.innerHTML = (qtyVal !== '' && !isNaN(parseFloat(qtyVal)) && parseFloat(qtyVal) > 0)
-                    ? (parseFloat(qtyVal) % 1 === 0 ? parseFloat(qtyVal) : parseFloat(qtyVal).toFixed(2))
+                    ? parseInt(qtyVal, 10)
                     : '<span class="text-danger font-weight-bold">Qty</span>';
             }
         }

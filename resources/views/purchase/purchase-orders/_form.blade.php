@@ -1051,7 +1051,7 @@
             }
 
             // Footer row
-            $('#po-footer-qty').text(totalQty % 1 === 0 ? totalQty : totalQty.toFixed(3));
+            $('#po-footer-qty').text(Math.round(totalQty));
             $('#po-footer-free').text(totalFree % 1 === 0 ? totalFree : totalFree.toFixed(3));
             $('#po-footer-disc').text(totalLineDisc.toFixed(2));
             $('#po-footer-net').text(totalNetAmt.toFixed(2));
@@ -1063,7 +1063,7 @@
             let totalAllDisc = totalLineDisc + totalHeaderDiscount;
             let grandTotal = totalNetAmt + freight + roundOff + extraCess - totalHeaderDiscount;
 
-            $('#po-summary-qty').text(totalQty % 1 === 0 ? totalQty : totalQty.toFixed(3));
+            $('#po-summary-qty').text(Math.round(totalQty));
             $('#po-summary-disc').text('₹' + totalAllDisc.toFixed(2));
             $('#po-summary-items').text('₹' + totalNetAmt.toFixed(2));
             $('#po-summary-grand').text('₹' + Math.max(0, grandTotal).toFixed(2));

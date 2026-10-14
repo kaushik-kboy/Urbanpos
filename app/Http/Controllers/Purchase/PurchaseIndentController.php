@@ -105,7 +105,7 @@ class PurchaseIndentController extends Controller
             'remarks' => ['nullable', 'string', 'max:500'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
-            'items.*.requested_qty' => ['required', 'numeric', 'min:0.001'],
+            'items.*.requested_qty' => ['required', 'integer', 'min:1'],
             'items.*.estimated_cost' => ['nullable', 'numeric', 'min:0'],
             'items.*.remarks' => ['nullable', 'string', 'max:255'],
         ];

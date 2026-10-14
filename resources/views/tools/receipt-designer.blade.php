@@ -720,7 +720,7 @@
                                                         [{{ $tItem->item?->item_code ?? 'ITM-01' }}]
                                                         <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $tItem->item?->hsn_code ?? '23091000' }})</span>
                                                     </td>
-                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($tItem->qty, 3) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($tItem->qty, 0) }}</td>
                                                     <td style="text-align: right;">₹{{ number_format($tItem->unit_cost, 2) }}</td>
                                                     <td style="text-align: right; font-weight: bold;">₹{{ number_format($tItem->qty * $tItem->unit_cost, 2) }}</td>
                                                 </tr>
@@ -835,7 +835,7 @@
                                                         [{{ $pItem->item?->item_code ?? 'ITM-01' }}]
                                                         <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $pItem->item?->hsn_code ?? '23091000' }})</span>
                                                     </td>
-                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($pItem->qty, 3) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($pItem->qty, 0) }}</td>
                                                     <td style="text-align: right;">₹{{ number_format($pItem->cost_price, 2) }}</td>
                                                     <td style="text-align: right; font-weight: bold;">₹{{ number_format($pItem->total_amount ?? ($pItem->qty * $pItem->cost_price), 2) }}</td>
                                                 </tr>
@@ -962,7 +962,7 @@
                                                         [{{ $srItem->item?->item_code ?? 'ITM-01' }}]
                                                         <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $srItem->item?->hsn_code ?? '23091000' }})</span>
                                                     </td>
-                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($srItem->qty ?? $srItem->quantity, 2) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($srItem->qty ?? $srItem->quantity, 0) }}</td>
                                                     <td style="text-align: right;">₹{{ number_format($srItem->unit_price ?? $srItem->rate, 2) }}</td>
                                                     <td style="text-align: right; font-weight: bold;">₹{{ number_format(($srItem->qty ?? $srItem->quantity) * ($srItem->unit_price ?? $srItem->rate), 2) }}</td>
                                                 </tr>
@@ -1055,7 +1055,7 @@
                                                         [{{ $prItem->item?->item_code ?? 'ITM-01' }}]
                                                         <span class="prev_hsn_tag" style="{{ $settings->show_hsn_code ? '' : 'display: none;' }}">(HSN: {{ $prItem->item?->hsn_code ?? '23091000' }})</span>
                                                     </td>
-                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($prItem->qty, 3) }}</td>
+                                                    <td style="text-align: right; font-weight: bold;">{{ number_format($prItem->qty, 0) }}</td>
                                                     <td style="text-align: right;">₹{{ number_format($prItem->cost_price, 2) }}</td>
                                                     <td style="text-align: right; font-weight: bold;">₹{{ number_format($prItem->total_amount ?? ($prItem->qty * $prItem->cost_price), 2) }}</td>
                                                 </tr>

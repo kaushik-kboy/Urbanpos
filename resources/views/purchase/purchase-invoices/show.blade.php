@@ -113,8 +113,8 @@
                                 <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
                                 <td class="font-weight-bold">{{ $line->item?->name }}</td>
                                 <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
-                                <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 3) }}</td>
-                                <td class="text-right">{{ $line->free_qty > 0 ? number_format($line->free_qty, 3) : '—' }}</td>
+                                <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 0) }}</td>
+                                <td class="text-right">{{ $line->free_qty > 0 ? number_format($line->free_qty, 0) : '—' }}</td>
                                 <td class="text-right">₹{{ number_format($line->cost_price, 2) }}</td>
                                 <td class="text-right font-weight-bold text-info">₹{{ number_format($lineLandingCost, 2) }}</td>
                                 <td class="text-right">₹{{ number_format($line->sell_price, 2) }}</td>

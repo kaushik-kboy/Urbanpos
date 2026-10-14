@@ -877,7 +877,7 @@ $(function() {
         let roundOff = parseFloat($('#so-round-off').val()) || 0;
         let grandTotal = totNet + roundOff;
 
-        $('#so-footer-qty').text(totQty.toFixed(2));
+        $('#so-footer-qty').text(Math.round(totQty));
         $('#so-footer-disc').text('₹' + totDisc.toFixed(2));
         $('#so-footer-net').text('₹' + totNet.toFixed(2));
 

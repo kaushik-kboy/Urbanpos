@@ -210,7 +210,7 @@
                                 {{ $item->item?->name ?? 'Item' }}
                             </td>
                             <td>{{ $item->exp_date ? $item->exp_date->format('d-m-Y') : '—' }}</td>
-                            <td class="text-right font-weight-bold">{{ number_format($item->qty, 3) }}</td>
+                            <td class="text-right font-weight-bold">{{ number_format($item->qty, 0) }}</td>
                             <td class="text-right">₹{{ number_format($item->sell_price, 2) }}</td>
                             <td class="text-right text-muted">₹{{ number_format($item->mrp, 2) }}</td>
                             <td class="text-right text-danger">

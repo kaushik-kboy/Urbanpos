@@ -216,10 +216,10 @@
                                            title="Product description (auto-filled on code entry)">
                                 </td>
                                 <td data-col-key="ordered">
-                                    <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ $ordered }}" readonly tabindex="-1">
+                                    <input type="number" step="1" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="{{ (int)$ordered }}" readonly tabindex="-1">
                                 </td>
                                 <td data-col-key="dispatched">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="{{ $dispatched }}" placeholder="0.00">
+                                    <input type="number" step="1" min="1" name="items[{{ $idx }}][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="{{ $dispatched ? (int)$dispatched : '' }}" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                                 </td>
                                 <td data-col-key="price">
                                     <input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm text-right row-price" value="{{ $price }}" placeholder="0.00">
@@ -297,10 +297,10 @@
                        title="Product description (auto-filled on code entry)">
             </td>
             <td data-col-key="ordered">
-                <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
+                <input type="number" step="1" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered" value="0" readonly tabindex="-1">
             </td>
             <td data-col-key="dispatched">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="" placeholder="0.00">
+                <input type="number" step="1" min="1" name="items[__INDEX__][dispatched_qty]" class="form-control form-control-sm text-right font-weight-bold text-primary row-dispatched" value="" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
             </td>
             <td data-col-key="price">
                 <input type="number" step="0.01" min="0" name="items[__INDEX__][unit_price]" class="form-control form-control-sm text-right row-price" value="0.00" placeholder="0.00">

@@ -71,7 +71,7 @@
                                     </select>
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" min="0.01" name="components[0][qty_per_kit]" class="form-control form-control-sm font-weight-bold" placeholder="e.g. 1" required>
+                                    <input type="number" step="1" min="1" name="components[0][qty_per_kit]" class="form-control form-control-sm font-weight-bold" placeholder="e.g. 1" required onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                                 </td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-xs btn-outline-danger btn-remove-comp"><i class="fas fa-trash"></i></button>
@@ -130,7 +130,7 @@
                     </select>
                 </td>
                 <td>
-                    <input type="number" step="0.01" min="0.01" name="components[${compIdx}][qty_per_kit]" class="form-control form-control-sm font-weight-bold" placeholder="Qty" required>
+                    <input type="number" step="1" min="1" name="components[${compIdx}][qty_per_kit]" class="form-control form-control-sm font-weight-bold" placeholder="Qty" required onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-xs btn-outline-danger btn-remove-comp"><i class="fas fa-trash"></i></button>

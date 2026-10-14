@@ -105,7 +105,7 @@
                             <td>{{ $idx + 1 }}</td>
                             <td class="font-weight-bold">{{ $item->item?->name ?? 'Unknown Item' }}</td>
                             <td>{{ $item->exp_date ? $item->exp_date->format('d-m-Y') : '—' }}</td>
-                            <td class="text-right font-weight-bold">{{ number_format($item->qty, 3) }}</td>
+                            <td class="text-right font-weight-bold">{{ number_format($item->qty, 0) }}</td>
                             <td class="text-right">₹{{ number_format($item->cost_price, 2) }}</td>
                             <td class="text-right text-danger">₹{{ number_format($item->disc_amount, 2) }}</td>
                             <td class="text-right">{{ $item->gst_percent }}%</td>

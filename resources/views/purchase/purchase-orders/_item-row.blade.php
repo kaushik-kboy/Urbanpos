@@ -91,8 +91,8 @@
                placeholder="0"
                title="Current stock in this branch">
     </td>
-    <td data-col-key="qty"><input type="number" step="0.001" min="0" name="items[{{ $rowId }}][qty]" value="{{ $qty }}" class="form-control form-control-sm po-qty text-right font-weight-bold" placeholder="Qty" autocomplete="off"></td>
-    <td data-col-key="free"><input type="number" step="0.001" min="0" name="items[{{ $rowId }}][free_qty]" value="{{ $freeQty }}" class="form-control form-control-sm po-free-qty text-right" placeholder="0" autocomplete="off" title="Free Quantity"></td>
+    <td data-col-key="qty"><input type="number" step="1" min="1" name="items[{{ $rowId }}][qty]" value="{{ $qty ? (int)$qty : '' }}" class="form-control form-control-sm po-qty text-right font-weight-bold" placeholder="Qty" autocomplete="off" onkeypress="return event.charCode >= 48 && event.charCode <= 57"></td>
+    <td data-col-key="free"><input type="number" step="1" min="0" name="items[{{ $rowId }}][free_qty]" value="{{ $freeQty ? (int)$freeQty : '' }}" class="form-control form-control-sm po-free-qty text-right" placeholder="0" autocomplete="off" title="Free Quantity" onkeypress="return event.charCode >= 48 && event.charCode <= 57"></td>
     <td data-col-key="cost"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm po-cost text-right font-weight-bold" placeholder="0.00" autocomplete="off"></td>
     <td data-col-key="landing_cost"><input type="text" readonly tabindex="-1" class="form-control form-control-sm po-landing-cost bg-light text-right font-weight-bold text-info" value="{{ $landingCostVal !== null && $landingCostVal > 0 ? number_format($landingCostVal, 2) : '' }}" placeholder="0.00" autocomplete="off" title="Landing Cost Price (Effective unit cost after free qty & discount)"></td>
     <td data-col-key="sell"><input type="number" step="0.01" min="0" name="items[{{ $rowId }}][sell_price]" value="{{ $sellPrice }}" class="form-control form-control-sm po-sell text-right" placeholder="0.00" autocomplete="off"></td>

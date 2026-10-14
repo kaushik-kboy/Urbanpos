@@ -99,7 +99,7 @@
                                         <i class="fas fa-map-marker-alt mr-1 text-muted"></i>{{ $transfer->toBranch?->name ?? 'N/A' }}
                                     </span>
                                 </td>
-                                <td class="text-right font-weight-bold align-middle">{{ number_format($transfer->total_qty, 3) }}</td>
+                                <td class="text-right font-weight-bold align-middle">{{ number_format($transfer->total_qty, 0) }}</td>
                                 <td class="text-center align-middle">
                                     @if ($transfer->status === 'Dispatched')
                                         <span class="badge badge-warning px-2 py-1">

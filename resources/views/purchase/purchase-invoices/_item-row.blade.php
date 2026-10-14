@@ -104,9 +104,9 @@
         <small class="pinv-exp-badge text-danger font-weight-bold {{ ($isExpRequired && !$expDateVal) ? '' : 'd-none' }}" style="font-size:0.68rem;"><i class="fas fa-exclamation-circle"></i> Required</small>
     </td>
     {{-- Qty --}}
-    <td class="px-1" style="width:65px; min-width:65px;" data-col-key="qty"><input type="number" step="1" min="1" name="items[{{ $index }}][qty]" value="{{ $qtyVal ? (int)$qtyVal : '' }}" class="form-control form-control-sm pinv-qty text-right px-1" autocomplete="off"></td>
+    <td class="px-1" style="width:65px; min-width:65px;" data-col-key="qty"><input type="number" step="1" min="1" name="items[{{ $index }}][qty]" value="{{ $qtyVal ? (int)$qtyVal : '' }}" class="form-control form-control-sm pinv-qty text-right px-1" autocomplete="off" onkeypress="return event.charCode >= 48 && event.charCode <= 57"></td>
     {{-- Free --}}
-    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="free"><input type="number" step="1" min="0" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal ? (int)$freeQtyVal : '' }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" placeholder="0" title="Free Quantity"></td>
+    <td class="px-0" style="width:45px; min-width:45px;" data-col-key="free"><input type="number" step="1" min="0" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal ? (int)$freeQtyVal : '' }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" placeholder="0" title="Free Quantity" onkeypress="return event.charCode >= 48 && event.charCode <= 57"></td>
     {{-- Cost Price --}}
     <td class="px-1" style="width:80px; min-width:80px;" data-col-key="cost_price"><input type="number" step="0.01" name="items[{{ $index }}][cost_price]" value="{{ $costPriceVal }}" class="form-control form-control-sm pinv-cost text-right px-1" autocomplete="off" title="Invoice Cost Price"></td>
     {{-- Landing Cost --}}

@@ -133,12 +133,12 @@
                                 @endphp
                                 <span class="badge badge-{{ $pClass }} px-2 py-1">{{ $indent->priority }}</span>
                             </td>
-                            <td>{{ number_format($indent->total_requested_qty, 2) }}</td>
+                            <td>{{ number_format($indent->total_requested_qty, 0) }}</td>
                             <td>
                                 @if ($indent->status === 'Pending')
                                     <span class="text-muted italic">—</span>
                                 @else
-                                    <span class="font-weight-bold text-success">{{ number_format($indent->total_approved_qty, 2) }}</span>
+                                    <span class="font-weight-bold text-success">{{ number_format($indent->total_approved_qty, 0) }}</span>
                                 @endif
                             </td>
                             <td>₹{{ number_format($indent->total_estimated_amount, 2) }}</td>

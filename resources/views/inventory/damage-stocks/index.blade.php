@@ -45,7 +45,7 @@
                 <div class="info-box-content">
                     <span class="info-box-text text-muted">Total Wastage Qty</span>
                     <span class="info-box-number text-dark font-weight-bold" style="font-size: 1.4rem;">
-                        {{ number_format($totalQty, 3) }}
+                        {{ number_format($totalQty, 0) }}
                     </span>
                 </div>
             </div>
@@ -177,7 +177,7 @@
                                     {{ $entry->branch?->name ?? 'N/A' }}
                                 </td>
                                 <td class="text-right align-middle font-weight-bold text-primary">
-                                    {{ number_format($entry->total_qty, 3) }}
+                                    {{ number_format($entry->total_qty, 0) }}
                                 </td>
                                 <td class="text-right align-middle font-weight-bold text-danger">
                                     ₹{{ number_format($entry->total_cost, 2) }}

@@ -205,16 +205,16 @@
                                     <input type="text" class="form-control form-control-sm prn-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" value="{{ $nameVal }}" placeholder="Product Description (auto-filled)">
                                 </td>
                                 <td data-col-key="ordered" style="width: 75px;">
-                                    <input type="number" step="0.001" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered px-1" value="{{ $ordered }}" readonly tabindex="-1">
+                                    <input type="number" step="1" name="items[{{ $idx }}][ordered_qty]" class="form-control form-control-sm text-right row-ordered px-1" value="{{ (int)$ordered }}" readonly tabindex="-1">
                                 </td>
                                 <td data-col-key="received" style="width: 85px;">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received px-1" value="{{ $received }}" placeholder="0.00">
+                                    <input type="number" step="1" min="0" name="items[{{ $idx }}][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received px-1" value="{{ $received ? (int)$received : '' }}" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                                 </td>
                                 <td data-col-key="accepted" style="width: 85px;">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted px-1" value="{{ $accepted }}" placeholder="0.00">
+                                    <input type="number" step="1" min="0" name="items[{{ $idx }}][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted px-1" value="{{ $accepted ? (int)$accepted : '' }}" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                                 </td>
                                 <td data-col-key="rejected" style="width: 75px;">
-                                    <input type="number" step="0.001" min="0" name="items[{{ $idx }}][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected px-1" value="{{ $rejected }}" readonly tabindex="-1">
+                                    <input type="number" step="1" min="0" name="items[{{ $idx }}][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected px-1" value="{{ (int)$rejected }}" readonly tabindex="-1">
                                 </td>
                                 <td data-col-key="cost" style="width: 90px;">
                                     <input type="number" step="0.0001" min="0" name="items[{{ $idx }}][unit_cost]" class="form-control form-control-sm text-right row-cost px-1" value="{{ $cost }}" placeholder="0.00">
@@ -283,16 +283,16 @@
                 <input type="text" class="form-control form-control-sm prn-item-desc bg-light font-weight-bold text-truncate" readonly tabindex="-1" placeholder="Product Description (auto-filled)">
             </td>
             <td data-col-key="ordered" style="width: 75px;">
-                <input type="number" step="0.001" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered px-1" value="0" readonly tabindex="-1">
+                <input type="number" step="1" name="items[__INDEX__][ordered_qty]" class="form-control form-control-sm text-right row-ordered px-1" value="0" readonly tabindex="-1">
             </td>
             <td data-col-key="received" style="width: 85px;">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received px-1" placeholder="0.00">
+                <input type="number" step="1" min="0" name="items[__INDEX__][received_qty]" class="form-control form-control-sm text-right font-weight-bold row-received px-1" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
             </td>
             <td data-col-key="accepted" style="width: 85px;">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted px-1" placeholder="0.00">
+                <input type="number" step="1" min="0" name="items[__INDEX__][accepted_qty]" class="form-control form-control-sm text-right font-weight-bold text-success row-accepted px-1" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
             </td>
             <td data-col-key="rejected" style="width: 75px;">
-                <input type="number" step="0.001" min="0" name="items[__INDEX__][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected px-1" value="0" readonly tabindex="-1">
+                <input type="number" step="1" min="0" name="items[__INDEX__][rejected_qty]" class="form-control form-control-sm text-right text-danger row-rejected px-1" value="0" readonly tabindex="-1">
             </td>
             <td data-col-key="cost" style="width: 90px;">
                 <input type="number" step="0.0001" min="0" name="items[__INDEX__][unit_cost]" class="form-control form-control-sm text-right row-cost px-1" placeholder="0.00">

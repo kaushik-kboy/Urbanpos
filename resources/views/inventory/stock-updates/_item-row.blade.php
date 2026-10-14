@@ -58,7 +58,7 @@
         <input type="number" step="0.01" name="items[{{ $idx }}][cost_price]" value="{{ $costPrice }}" class="form-control form-control-sm text-right su-cost-price bg-light" placeholder="0.00" readonly tabindex="-1">
     </td>
     <td style="width: 105px;" data-col-key="qty">
-        <input type="number" step="0.001" min="0" name="items[{{ $idx }}][physical_qty]" value="{{ $physicalQty }}" class="form-control form-control-sm text-right su-physical-qty font-weight-bold" placeholder="0.000">
+        <input type="number" step="1" min="0" name="items[{{ $idx }}][physical_qty]" value="{{ $physicalQty !== '' ? (int)$physicalQty : '' }}" class="form-control form-control-sm text-right su-physical-qty font-weight-bold" placeholder="0" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
     </td>
     <td class="align-middle text-muted small text-right su-current-stock" style="width: 95px;" data-col-key="current_stock">
         {{ is_numeric($systemQty) ? number_format((float)$systemQty, 3) : 'saved on submit' }}

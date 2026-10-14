@@ -369,7 +369,7 @@
                 grandTotal = roundedTotal;
             }
 
-            document.getElementById('footer-pr-qty').innerText = totalQty.toFixed(3);
+            document.getElementById('footer-pr-qty').innerText = Math.round(totalQty);
             document.getElementById('footer-pr-disc').innerText = '₹' + totalDisc.toFixed(2);
             document.getElementById('footer-pr-net').innerText = '₹' + totalNet.toFixed(2);
             document.getElementById('display-taxable').innerText = '₹' + totalTaxable.toFixed(2);

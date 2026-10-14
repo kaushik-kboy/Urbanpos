@@ -115,7 +115,7 @@
                                 @endif
                             </td>
                             <td>{{ $rn->supplier_challan_no ?: '—' }}</td>
-                            <td class="text-right font-weight-bold">{{ number_format($rn->total_accepted_qty, 2) }}</td>
+                            <td class="text-right font-weight-bold">{{ number_format($rn->total_accepted_qty, 0) }}</td>
                             <td class="text-right font-weight-bold">₹{{ number_format($rn->total_amount, 2) }}</td>
                             <td>
                                 @if ($rn->status === 'Received')

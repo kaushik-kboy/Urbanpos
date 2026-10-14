@@ -495,8 +495,8 @@ class PurchaseOrderController extends Controller
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'exists:items,id'],
-            'items.*.qty' => ['required', 'numeric', 'min:0.001'],
-            'items.*.free_qty' => ['nullable', 'numeric', 'min:0'],
+            'items.*.qty' => ['required', 'integer', 'min:1'],
+            'items.*.free_qty' => ['nullable', 'integer', 'min:0'],
             'items.*.cost_price' => ['required', 'numeric', 'min:0'],
             'items.*.sell_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],

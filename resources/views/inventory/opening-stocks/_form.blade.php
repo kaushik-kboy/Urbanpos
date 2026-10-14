@@ -672,7 +672,7 @@
                 grandNet += netAmt;
             });
 
-            $('#footer-total-qty').text(totalQty.toFixed(3));
+            $('#footer-total-qty').text(Math.round(totalQty));
             $('#footer-total-cost').text(totalCost.toFixed(2));
             $('#footer-total-disc').text(totalDisc.toFixed(2));
             $('#footer-total-scheme').text(totalScheme.toFixed(2));

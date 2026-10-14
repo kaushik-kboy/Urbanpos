@@ -160,4 +160,75 @@ class SequenceJumpAndStockTransferIntegerTest extends TestCase
 
         $response->assertSessionHasErrors(['items.0.qty']);
     }
+
+    public function test_sales_bill_rejects_decimal_quantity()
+    {
+        $customer = \App\Models\Customer::create([
+            'name' => 'John Doe',
+            'mobile' => '9998887776',
+            'status' => true,
+        ]);
+        $item = Item::create([
+            'name' => 'Whiskas',
+            'item_code' => 'WH001',
+            'cost_price' => 50,
+            'sell_price' => 80,
+            'status' => true,
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('sales.sales-bills.store'), [
+            'bill_date' => now()->format('Y-m-d H:i:s'),
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch1->id,
+            'invoice_type' => 'Retail Invoice',
+            'delivery_type' => 'Delivered',
+            'sales_type' => 'Local',
+            'items' => [
+                [
+                    'item_id' => $item->id,
+                    'qty' => 1.5,
+                    'sell_price' => 80,
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['items.0.qty']);
+    }
+
+    public function test_purchase_order_rejects_decimal_quantity()
+    {
+        $supplier = \App\Models\Supplier::create([
+            'name' => 'Pet Foods Ltd',
+            'status' => true,
+        ]);
+        $item = Item::create([
+            'name' => 'Drools',
+            'item_code' => 'DR001',
+            'cost_price' => 200,
+            'sell_price' => 300,
+            'status' => true,
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('purchase.purchase-orders.store'), [
+            'po_date' => now()->format('Y-m-d'),
+            'supplier_id' => $supplier->id,
+            'branch_id' => $this->branch1->id,
+            'purchase_type' => 'Local',
+            'c_form' => 'No Forms',
+            'status' => 'Open',
+            'items' => [
+                [
+                    'item_id' => $item->id,
+                    'qty' => 3.75,
+                    'cost_price' => 200,
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors(['items.0.qty']);
+    }
 }

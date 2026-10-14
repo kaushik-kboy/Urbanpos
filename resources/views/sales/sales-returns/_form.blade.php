@@ -1074,7 +1074,7 @@
                 grandTotal = roundedTotal;
             }
 
-            document.getElementById('footer-sr-qty').innerText = totalQty.toFixed(3);
+            document.getElementById('footer-sr-qty').innerText = Math.round(totalQty);
             document.getElementById('footer-sr-disc').innerText = '₹' + totalDisc.toFixed(2);
             document.getElementById('footer-sr-net').innerText = '₹' + totalNet.toFixed(2);
             document.getElementById('display-sr-taxable').innerText = '₹' + totalTaxable.toFixed(2);
@@ -2139,7 +2139,7 @@
                             </td>
                             <td class="text-right align-middle">${item.gst_percent}%</td>
                             <td class="text-right align-middle" style="width: 120px;">
-                                <input type="number" step="0.001" min="0.001" max="${remQty}"
+                                <input type="number" step="1" min="1" max="${Math.floor(remQty)}" onkeypress="return event.charCode >= 48 && event.charCode <= 57"
                                     class="form-control form-control-sm text-right sr-cph-item-qty font-weight-bold"
                                     value="${prefilledQty.toFixed(prefilledQty % 1 === 0 ? 0 : 3)}"
                                     ${!isReturnable ? 'disabled' : ''}

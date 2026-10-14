@@ -860,7 +860,7 @@ $(function() {
         let roundOff = parseFloat($('#sq-round-off').val()) || 0;
         let grandTotal = totNet + roundOff;
 
-        $('#sq-footer-qty').text(totQty.toFixed(2));
+        $('#sq-footer-qty').text(Math.round(totQty));
         $('#sq-footer-disc').text('₹' + totDisc.toFixed(2));
         $('#sq-footer-net').text('₹' + totNet.toFixed(2));
 

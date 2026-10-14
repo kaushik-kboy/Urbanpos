@@ -415,7 +415,7 @@
                                 <span style="font-size: 8px; color: #64748b; margin-left: 4px;">[Batch: {{ $line->batch_no }}@if($line->exp_date) Exp: {{ $line->exp_date->format('m/y') }}@endif]</span>
                             @endif
                         </td>
-                        <td style="text-align: right; border-right: 1px solid #e2e8f0; font-weight: 600;">{{ number_format($qty, 2) }}</td>
+                        <td style="text-align: right; border-right: 1px solid #e2e8f0; font-weight: 600;">{{ number_format($qty, 0) }}</td>
                         @if($receiptSettings->show_mrp ?? true)
                             <td style="text-align: right; border-right: 1px solid #e2e8f0;">{{ number_format($mrp, 2) }}</td>
                         @endif
@@ -440,7 +440,7 @@
             <tfoot>
                 <tr style="background: #f1f5f9; font-weight: 700; border-top: 1px solid #cbd5e1;">
                     <td colspan="{{ $leadCols }}" style="text-align: right; padding-right: 8px;">Total:</td>
-                    <td style="text-align: right;">{{ number_format($totalQty, 2) }}</td>
+                    <td style="text-align: right;">{{ number_format($totalQty, 0) }}</td>
                     @if(($receiptSettings->show_mrp ?? true) || ($receiptSettings->show_discount ?? true))
                         <td colspan="{{ (($receiptSettings->show_mrp ?? true) ? 1 : 0) + (($receiptSettings->show_discount ?? true) ? 1 : 0) }}"></td>
                     @endif

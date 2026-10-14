@@ -1063,7 +1063,7 @@
                     totalQty += qtyVal;
                 }
             });
-            $('#display-su-total-qty').text(totalQty.toFixed(3));
+            $('#display-su-total-qty').text(Math.round(totalQty));
             $('#su-total-items-badge').text(totalItems + (totalItems === 1 ? ' Item' : ' Items'));
         }
 

@@ -46,7 +46,7 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Qty Taken from Bulk (KG / Units)</label>
-                            <input type="number" step="0.01" min="0.01" name="bulk_qty_taken" class="form-control font-weight-bold" placeholder="e.g. 20" required>
+                            <input type="number" step="1" min="1" name="bulk_qty_taken" class="form-control font-weight-bold" placeholder="e.g. 20" required onkeypress="return event.charCode >= 48 && event.charCode <= 57">
                         </div>
                     </div>
                 </div>

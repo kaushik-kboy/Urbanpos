@@ -86,7 +86,7 @@
 
     {{-- Qty --}}
     <td style="width: 75px;">
-        <input type="number" step="0.001" min="0" name="items[{{ $idx }}][qty]" 
+        <input type="number" step="1" min="1" name="items[{{ $idx }}][qty]" onkeypress="return event.charCode >= 48 && event.charCode <= 57" 
                value="{{ $qty }}" 
                data-available-qty="{{ $availableQty }}"
                @if($item) max="{{ $availableQty }}" title="Available Stock: {{ number_format($availableQty, 3, '.', '') }}" placeholder="Max {{ number_format($availableQty, 3, '.', '') }}" @else placeholder="0.000" @endif 

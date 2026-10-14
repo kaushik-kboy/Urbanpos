@@ -404,7 +404,7 @@ class SalesDeliveryNoteController extends Controller
             'items.*.item_id' => ['required', 'exists:items,id'],
             'items.*.sales_order_item_id' => ['nullable', 'exists:sales_order_items,id'],
             'items.*.ordered_qty' => ['nullable', 'numeric', 'min:0'],
-            'items.*.dispatched_qty' => ['required', 'numeric', 'min:0.001'],
+            'items.*.dispatched_qty' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
             'items.*.batch_no' => ['nullable', 'string', 'max:100'],

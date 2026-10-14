@@ -55,7 +55,7 @@
                 </div>
                 <div class="col-md-3 mb-2">
                     <span class="text-muted d-block small">Total Items / Qty</span>
-                    <strong>{{ $purchaseOrder->items->count() }} items / {{ number_format($purchaseOrder->total_qty, 2) }} units</strong>
+                    <strong>{{ $purchaseOrder->items->count() }} items / {{ number_format($purchaseOrder->total_qty, 0) }} units</strong>
                 </div>
                 <div class="col-md-3 mb-2">
                     <span class="text-muted d-block small">Total Tax (GST)</span>
@@ -109,8 +109,8 @@
                                 <td class="text-center font-weight-bold text-muted">{{ $idx + 1 }}</td>
                                 <td><code>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</code></td>
                                 <td class="font-weight-bold">{{ $line->item?->name }}</td>
-                                <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 2) }}</td>
-                                <td class="text-right">{{ $line->free_qty > 0 ? number_format($line->free_qty, 2) : '—' }}</td>
+                                <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 0) }}</td>
+                                <td class="text-right">{{ $line->free_qty > 0 ? number_format($line->free_qty, 0) : '—' }}</td>
                                 <td class="text-right">₹{{ number_format($line->cost_price, 2) }}</td>
                                 <td class="text-right font-weight-bold text-info">₹{{ number_format((float)($line->effective_cost > 0 ? $line->effective_cost : $line->cost_price), 2) }}</td>
                                 <td class="text-right">{{ $line->disc_amount > 0 ? '₹' . number_format($line->disc_amount, 2) : '—' }}</td>
