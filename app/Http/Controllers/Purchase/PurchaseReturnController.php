@@ -196,10 +196,11 @@ class PurchaseReturnController extends Controller
                 \App\Models\Supplier::whereKey($data['header']['supplier_id'])->lockForUpdate()->first();
             }
 
+            // Reversal of existing return's stock delta MUST occur before checking stock availability for updated quantities
+            $this->stockLedger->reverseByReference(PurchaseReturn::class, $purchaseReturn->id);
+
             $this->assertReturnableEligibility($data['header'], $data['items'], $purchaseReturn->id);
             $this->assertStockAvailable($data['items'], (int) $data['header']['branch_id']);
-
-            $this->stockLedger->reverseByReference(PurchaseReturn::class, $purchaseReturn->id);
 
             $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
@@ -237,39 +238,115 @@ class PurchaseReturnController extends Controller
     public function invoiceItems(PurchaseInvoice $purchaseInvoice, Request $request)
     {
         $ignoreReturnId = $request->integer('ignore_return_id');
+        $branchId = (int) ($request->input('branch_id') ?: $purchaseInvoice->branch_id);
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
 
-        // Sum prior returns for this purchase invoice per item and batch
+        // Sum prior returns for this purchase invoice per item, batch, exp_date, and cost
         $priorReturns = DB::table('purchase_return_items as pri')
             ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
             ->where('pr.purchase_invoice_id', $purchaseInvoice->id)
             ->when($ignoreReturnId, fn ($q) => $q->where('pr.id', '!=', $ignoreReturnId))
-            ->groupBy('pri.item_id', 'pri.batch_no')
-            ->select('pri.item_id', 'pri.batch_no', DB::raw('SUM(pri.qty) as returned_qty'))
+            ->groupBy('pri.item_id', 'pri.batch_no', DB::raw('DATE(pri.exp_date)'), 'pri.cost_price')
+            ->select(
+                'pri.item_id',
+                'pri.batch_no',
+                DB::raw('DATE(pri.exp_date) as exp_val'),
+                'pri.cost_price',
+                DB::raw('SUM(pri.qty) as returned_qty')
+            )
             ->get();
 
         $alreadyReturnedMap = [];
         foreach ($priorReturns as $pr) {
             $bNo = !empty($pr->batch_no) ? trim($pr->batch_no) : '';
-            $alreadyReturnedMap["{$pr->item_id}___{$bNo}"] = (float) $pr->returned_qty;
+            $expVal = !empty($pr->exp_val) ? trim($pr->exp_val) : '';
+            $costVal = round((float) $pr->cost_price, 2);
+
+            $key = "{$pr->item_id}___{$bNo}___{$expVal}___{$costVal}";
+            $alreadyReturnedMap[$key] = (float) $pr->returned_qty;
+
+            $fbKey = "{$pr->item_id}___{$bNo}";
+            $alreadyReturnedMap[$fbKey] = ($alreadyReturnedMap[$fbKey] ?? 0.0) + (float) $pr->returned_qty;
         }
 
-        $items = $purchaseInvoice->items()->with('item')->get()->map(function ($line) use ($alreadyReturnedMap) {
+        $ignoredReturnItems = [];
+        if ($ignoreReturnId) {
+            $ignoredRows = DB::table('purchase_return_items as pri')
+                ->where('pri.purchase_return_id', $ignoreReturnId)
+                ->select('pri.item_id', 'pri.batch_no', DB::raw('DATE(pri.exp_date) as exp_val'), 'pri.cost_price', 'pri.qty')
+                ->get();
+            foreach ($ignoredRows as $irr) {
+                $b = !empty($irr->batch_no) ? trim($irr->batch_no) : '';
+                $e = !empty($irr->exp_val) ? trim($irr->exp_val) : '';
+                $c = round((float) $irr->cost_price, 2);
+                $k = "{$irr->item_id}___{$b}___{$e}___{$c}";
+                $ignoredReturnItems[$k] = ($ignoredReturnItems[$k] ?? 0.0) + (float) $irr->qty;
+
+                $fb = "{$irr->item_id}___{$b}";
+                $ignoredReturnItems[$fb] = ($ignoredReturnItems[$fb] ?? 0.0) + (float) $irr->qty;
+
+                $itK = (string) $irr->item_id;
+                $ignoredReturnItems[$itK] = ($ignoredReturnItems[$itK] ?? 0.0) + (float) $irr->qty;
+            }
+        }
+
+        $itemIds = $purchaseInvoice->items->pluck('item_id')->unique()->all();
+        $totalStocks = ItemStock::where('branch_id', $branchId)
+            ->whereIn('item_id', $itemIds)
+            ->pluck('quantity', 'item_id');
+
+        $allocatedStockMap = [];
+
+        $items = $purchaseInvoice->items()->with('item')->get()->map(function ($line) use (
+            $alreadyReturnedMap,
+            $ignoredReturnItems,
+            $batchService,
+            $branchId,
+            $totalStocks,
+            &$allocatedStockMap
+        ) {
             $originalQty = (float) $line->qty;
             $bNo = !empty($line->batch_no) ? trim($line->batch_no) : '';
-            $alreadyReturned = (float) ($alreadyReturnedMap["{$line->item_id}___{$bNo}"] ?? 0);
-            $remainingQty = max(0, round($originalQty - $alreadyReturned, 4));
+            $expStr = $line->exp_date ? $line->exp_date->format('Y-m-d') : null;
+            $costVal = round((float) $line->cost_price, 2);
+
+            $key = "{$line->item_id}___{$bNo}___{$expStr}___{$costVal}";
+            $alreadyReturned = (float) ($alreadyReturnedMap[$key] ?? ($alreadyReturnedMap["{$line->item_id}___{$bNo}"] ?? 0));
+            $invoiceRemaining = max(0, round($originalQty - $alreadyReturned, 4));
+
+            // Find batch stock in the returning branch
+            $bStock = $batchService->getBatchStock((int) $line->item_id, $branchId, $bNo, $expStr, (float) $line->mrp);
+            $totalItemStock = max(0, (float) ($totalStocks[$line->item_id] ?? 0));
+
+            $batchAvail = $bStock ? max(0, (float) ($bStock['remaining_qty'] ?? 0)) : $totalItemStock;
+            $batchAvail = min($batchAvail, $totalItemStock);
+
+            $ignoredQty = (float) ($ignoredReturnItems[$key] ?? ($ignoredReturnItems["{$line->item_id}___{$bNo}"] ?? ($ignoredReturnItems[(string)$line->item_id] ?? 0)));
+
+            $allocKey = "{$line->item_id}___" . ($bStock['batch_no'] ?? $bNo) . "___" . ($expStr ?? '') . "___" . round((float) $line->mrp, 2);
+            $alreadyAllocated = (float) ($allocatedStockMap[$allocKey] ?? 0);
+            $effectiveStock = max(0, round($batchAvail + $ignoredQty - $alreadyAllocated, 4));
+
+            // Returnable quantity cannot exceed remaining invoice quantity AND cannot exceed available physical stock!
+            $returnableQty = min($invoiceRemaining, $effectiveStock);
+            $allocatedStockMap[$allocKey] = $alreadyAllocated + $returnableQty;
+
+            $resolvedBatchNo = !empty($line->batch_no) ? $line->batch_no : ($bStock['batch_no'] ?? '');
 
             return [
                 'item_id' => $line->item_id,
-                'batch_no' => $line->batch_no ?? '',
+                'batch_no' => $resolvedBatchNo,
                 'item_name' => $line->item?->name ?? 'Unknown',
                 'item_code' => $line->item?->item_code ?? $line->item?->ean_upc_code ?? '',
-                'exp_date' => $line->exp_date ? $line->exp_date->format('Y-m-d') : null,
+                'exp_date' => $expStr,
                 'original_qty' => $originalQty,
                 'already_returned' => $alreadyReturned,
-                'remaining_qty' => $remainingQty,
-                'qty' => $remainingQty,
+                'invoice_remaining_qty' => $invoiceRemaining,
+                'available_stock' => $effectiveStock,
+                'remaining_qty' => $returnableQty,
+                'qty' => $returnableQty,
                 'cost_price' => (float) $line->cost_price,
+                'mrp' => (float) $line->mrp,
                 'disc_percent' => (float) $line->disc_percent,
                 'disc_amount' => (float) $line->disc_amount,
                 'gst_percent' => (float) $line->gst_percent,
@@ -288,10 +365,16 @@ class PurchaseReturnController extends Controller
     /**
      * AJAX endpoint: return purchase invoices for a supplier.
      */
-    public function supplierInvoices(Supplier $supplier)
+    public function supplierInvoices(Supplier $supplier, Request $request)
     {
-        $invoices = PurchaseInvoice::where('supplier_id', $supplier->id)
-            ->latest('invoice_date')
+        $query = PurchaseInvoice::where('supplier_id', $supplier->id)
+            ->where('status', '!=', 'Cancelled');
+
+        if ($branchId = $request->input('branch_id')) {
+            $query->where('branch_id', $branchId);
+        }
+
+        $invoices = $query->latest('invoice_date')
             ->get(['id', 'invoice_number', 'invoice_date', 'total'])
             ->map(fn ($inv) => [
                 'id' => $inv->id,
@@ -310,7 +393,8 @@ class PurchaseReturnController extends Controller
     {
         $supplierId = $request->input('supplier_id');
         $invoiceId  = $request->input('purchase_invoice_id');
-        $branchId   = (int) ($request->input('branch_id') ?: 3);
+        $invoiceObj = $invoiceId ? PurchaseInvoice::find($invoiceId) : null;
+        $branchId   = (int) ($request->input('branch_id') ?: ($invoiceObj?->branch_id ?: session('active_branch_id', auth()->user()?->branch_id ?: 1)));
         $search     = trim((string) $request->input('search', ''));
         $code       = trim((string) $request->input('code', ''));
 
@@ -392,32 +476,48 @@ class PurchaseReturnController extends Controller
                 ->where('branch_id', $branchId)
                 ->whereIn('item_id', $itemIds)
                 ->pluck('quantity', 'item_id');
+            $batchService = app(\App\Services\Inventory\BatchStockService::class);
 
             $result = [];
             foreach ($rows as $row) {
                 $stock = (float) ($stocks[$row->id] ?? 0);
                 $bNo = !empty($row->batch_no) ? trim($row->batch_no) : '';
+                $expDate = $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null;
+                $bStock = $batchService->getBatchStock((int) $row->id, $branchId, $bNo, $expDate, (float) $row->mrp);
+                $batchStock = $bStock ? (float) ($bStock['remaining_qty'] ?? 0) : $stock;
+
+                $ignoredQty = 0.0;
+                if ($ignoreReturnId) {
+                    $ignoredQty = (float) DB::table('purchase_return_items')
+                        ->where('purchase_return_id', $ignoreReturnId)
+                        ->where('item_id', $row->id)
+                        ->sum('qty');
+                }
+                $effectiveStock = max(0, min($batchStock, $stock) + $ignoredQty);
+
                 $invoicedQty = (float) ($row->invoiced_qty ?? 0);
                 $alreadyReturned = (float) ($alreadyReturnedMap["{$row->id}___{$bNo}"] ?? 0);
                 $remainingQty = max(0, round($invoicedQty - $alreadyReturned, 4));
+                $returnableQty = min($remainingQty, $effectiveStock);
 
                 $result[] = [
                     'id'               => (int) $row->id,
                     'name'             => $row->name,
                     'code'             => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
-                    'batch_no'         => $row->batch_no,
-                    'qty'              => $stock,
+                    'batch_no'         => !empty($row->batch_no) ? $row->batch_no : ($bStock['batch_no'] ?? ''),
+                    'qty'              => $effectiveStock,
+                    'available_stock'  => $effectiveStock,
                     'invoiced_qty'     => $invoicedQty,
                     'original_qty'     => $invoicedQty,
                     'already_returned' => $alreadyReturned,
-                    'remaining_qty'    => $remainingQty,
+                    'remaining_qty'    => $returnableQty,
                     'cost_price'       => (float) $row->cost_price,
                     'sell_price'       => (float) $row->sell_price,
                     'mrp'              => (float) $row->mrp,
                     'disc_percent'     => (float) $row->disc_percent,
                     'disc_amount'      => (float) $row->disc_amount,
                     'gst_percent'      => (float) $row->gst_percent,
-                    'exp_date'         => $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null,
+                    'exp_date'         => $expDate,
                 ];
             }
 
@@ -427,29 +527,34 @@ class PurchaseReturnController extends Controller
             ]);
         }
 
-        // Case 2: Supplier selected (No invoice) -> ONLY products purchased from THIS supplier
-        $query = DB::table('purchase_invoice_items as pii')
-            ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
-            ->join('items as i', 'i.id', '=', 'pii.item_id')
+        // Case 2: Supplier selected (No invoice) -> items belonging to this supplier (either item.supplier_id or via purchase history)
+        $query = DB::table('items as i')
             ->leftJoin('gst_taxes as gt', 'gt.id', '=', 'i.gst_tax_id')
-            ->where('pi.supplier_id', $supplierId)
-            ->where('pi.status', '!=', 'Cancelled')
             ->where('i.status', true)
-            ->groupBy('i.id', 'pii.batch_no', 'pii.exp_date', 'i.name', 'i.item_code', 'i.ean_upc_code', 'i.cost_price', 'i.sell_price', 'i.mrp', 'gt.percentage')
+            ->where(function ($sq) use ($supplierId) {
+                $sq->where('i.supplier_id', $supplierId)
+                    ->orWhereExists(function ($sub) use ($supplierId) {
+                        $sub->select(DB::raw(1))
+                            ->from('purchase_invoice_items as pii')
+                            ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
+                            ->whereColumn('pii.item_id', 'i.id')
+                            ->where('pi.supplier_id', $supplierId);
+                    });
+            })
             ->select([
                 'i.id',
                 'i.name',
                 'i.item_code',
                 'i.ean_upc_code',
-                'pii.batch_no',
-                'pii.exp_date',
-                DB::raw('COALESCE(MAX(pii.cost_price), i.cost_price, 0) as cost_price'),
+                'i.cost_price',
                 'i.sell_price',
                 'i.mrp',
                 DB::raw('0 as disc_percent'),
                 DB::raw('0 as disc_amount'),
-                DB::raw('COALESCE(MAX(pii.gst_percent), gt.percentage, 0) as gst_percent'),
-                DB::raw('SUM(pii.qty) as invoiced_qty'),
+                DB::raw('COALESCE(gt.percentage, 0) as gst_percent'),
+                DB::raw('NULL as exp_date'),
+                DB::raw('NULL as invoiced_qty'),
+                DB::raw('NULL as batch_no'),
             ]);
 
         if ($search !== '') {
@@ -464,21 +569,6 @@ class PurchaseReturnController extends Controller
 
         $rows = $query->limit(100)->get();
 
-        // Prior returns to this supplier
-        $priorReturns = DB::table('purchase_return_items as pri')
-            ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
-            ->where('pr.supplier_id', $supplierId)
-            ->when($ignoreReturnId, fn ($q) => $q->where('pr.id', '!=', $ignoreReturnId))
-            ->groupBy('pri.item_id', 'pri.batch_no')
-            ->select('pri.item_id', 'pri.batch_no', DB::raw('SUM(pri.qty) as returned_qty'))
-            ->get();
-
-        $alreadyReturnedMap = [];
-        foreach ($priorReturns as $pr) {
-            $bNo = !empty($pr->batch_no) ? trim($pr->batch_no) : '';
-            $alreadyReturnedMap["{$pr->item_id}___{$bNo}"] = (float) $pr->returned_qty;
-        }
-
         $itemIds = $rows->pluck('id')->all();
         $stocks = DB::table('item_stocks')
             ->where('branch_id', $branchId)
@@ -488,28 +578,24 @@ class PurchaseReturnController extends Controller
         $result = [];
         foreach ($rows as $row) {
             $stock = (float) ($stocks[$row->id] ?? 0);
-            $bNo = !empty($row->batch_no) ? trim($row->batch_no) : '';
-            $invoicedQty = (float) ($row->invoiced_qty ?? 0);
-            $alreadyReturned = (float) ($alreadyReturnedMap["{$row->id}___{$bNo}"] ?? 0);
-            $remainingQty = max(0, round($invoicedQty - $alreadyReturned, 4));
-
             $result[] = [
                 'id'               => (int) $row->id,
                 'name'             => $row->name,
                 'code'             => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
-                'batch_no'         => $row->batch_no,
+                'batch_no'         => null,
                 'qty'              => $stock,
-                'invoiced_qty'     => $invoicedQty,
-                'original_qty'     => $invoicedQty,
-                'already_returned' => $alreadyReturned,
-                'remaining_qty'    => $remainingQty,
+                'available_stock'  => $stock,
+                'invoiced_qty'     => null,
+                'original_qty'     => null,
+                'already_returned' => 0,
+                'remaining_qty'    => null,
                 'cost_price'       => (float) $row->cost_price,
                 'sell_price'       => (float) $row->sell_price,
                 'mrp'              => (float) $row->mrp,
                 'disc_percent'     => (float) $row->disc_percent,
                 'disc_amount'      => (float) $row->disc_amount,
                 'gst_percent'      => (float) $row->gst_percent,
-                'exp_date'         => $row->exp_date ? \Carbon\Carbon::parse($row->exp_date)->format('Y-m-d') : null,
+                'exp_date'         => null,
             ];
         }
 
@@ -636,11 +722,17 @@ class PurchaseReturnController extends Controller
             ? Item::whereIn('id', $existingIds)->orderBy('name')->pluck('name', 'id')
             : collect();
 
+        $activeBranchId = session('active_branch_id', auth()->user()?->branch_id);
+        $invoiceQuery = PurchaseInvoice::latest('invoice_date');
+        if ($activeBranchId) {
+            $invoiceQuery->where('branch_id', $activeBranchId);
+        }
+
         return [
             'suppliers'        => Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'branches'         => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
             'items'            => $items,
-            'purchaseInvoices' => PurchaseInvoice::latest('invoice_date')->take(100)->pluck('invoice_number', 'id'),
+            'purchaseInvoices' => $invoiceQuery->take(100)->pluck('invoice_number', 'id'),
         ];
     }
 
@@ -801,7 +893,7 @@ class PurchaseReturnController extends Controller
                     }
                     if (! $itemExists) {
                         throw ValidationException::withMessages([
-                            'items' => "The item '{$itemName}' does not belong to Purchase Invoice #{$invoice->invoice_number}.",
+                            'items' => "The item '{$itemName}' does not belong to the selected Purchase Invoice.",
                         ]);
                     } else {
                         throw ValidationException::withMessages([
@@ -817,11 +909,11 @@ class PurchaseReturnController extends Controller
                     $remDisp = ($remaining == (int) $remaining) ? (int) $remaining : $remaining;
                     if ($alreadyReturned > 0) {
                         throw ValidationException::withMessages([
-                            'items' => "Return quantity for '{$itemName}'{$batchLabel} cannot exceed the remaining returnable quantity of {$remDisp} (Purchased: {$origPurchased}, Previously Returned: {$alreadyReturned}).",
+                            'items' => "Return quantity cannot exceed the remaining returnable quantity of {$remDisp}.",
                         ]);
                     }
                     throw ValidationException::withMessages([
-                        'items' => "Return quantity for '{$itemName}'{$batchLabel} cannot exceed the purchased quantity of {$origPurchased} in Invoice #{$invoice->invoice_number}.",
+                        'items' => "Return quantity cannot be greater than the available purchase quantity.",
                     ]);
                 }
             }
@@ -871,13 +963,27 @@ class PurchaseReturnController extends Controller
 
             $eligibleSupplierQty = max(0, round($totalPurchasedFromSupplier - $totalReturnedToSupplier, 4));
 
-            if ($totalPurchasedFromSupplier <= 0) {
+            $belongsToSupplier = DB::table('items')
+                ->where('id', $itemId)
+                ->where(function ($q) use ($supplierId) {
+                    $q->where('supplier_id', $supplierId)
+                        ->orWhereExists(function ($sub) use ($supplierId) {
+                            $sub->select(DB::raw(1))
+                                ->from('purchase_invoice_items as pii')
+                                ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
+                                ->whereColumn('pii.item_id', 'items.id')
+                                ->where('pi.supplier_id', $supplierId);
+                        });
+                })
+                ->exists();
+
+            if (! $belongsToSupplier) {
                 throw ValidationException::withMessages([
-                    'items' => "The item '{$itemName}'{$batchLabel} has never been purchased from supplier '{$supplier->name}'. Returns must be against items actually purchased from the selected supplier.",
+                    'items' => "The item '{$itemName}' does not belong to the selected Supplier.",
                 ]);
             }
 
-            if (round($requestedQty, 4) > round($eligibleSupplierQty, 4)) {
+            if ($totalPurchasedFromSupplier > 0 && round($requestedQty, 4) > round($eligibleSupplierQty, 4)) {
                 $eligDisp = ($eligibleSupplierQty == (int) $eligibleSupplierQty) ? (int) $eligibleSupplierQty : $eligibleSupplierQty;
                 throw ValidationException::withMessages([
                     'items' => "Return quantity ({$requestedQty}) for '{$itemName}'{$batchLabel} exceeds the eligible returnable quantity ({$eligDisp}) purchased from supplier '{$supplier->name}' (Purchased: {$totalPurchasedFromSupplier}, Previously Returned: {$totalReturnedToSupplier}).",
@@ -949,18 +1055,28 @@ class PurchaseReturnController extends Controller
     private function assertStockAvailable(array $items, int $branchId): void
     {
         $totalQtyByItem = [];
-        $totalQtyByBatch = [];
+        $batchLines = [];
         $batchService = app(\App\Services\Inventory\BatchStockService::class);
 
         foreach ($items as $line) {
             $itemId = (int) $line['item_id'];
             $totalQtyByItem[$itemId] = ($totalQtyByItem[$itemId] ?? 0.0) + (float) $line['qty'];
 
-            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : null;
-            if ($batchNo) {
-                $bKey = "{$itemId}___{$batchNo}";
-                $totalQtyByBatch[$bKey] = ($totalQtyByBatch[$bKey] ?? 0.0) + (float) $line['qty'];
+            $batchNo = !empty($line['batch_no']) ? trim($line['batch_no']) : '';
+            $expDate = !empty($line['exp_date']) ? substr(trim($line['exp_date']), 0, 10) : '';
+            $mrp = isset($line['mrp']) ? (float)$line['mrp'] : null;
+
+            $bKey = "{$itemId}___{$batchNo}___{$expDate}___" . ($mrp ? round($mrp, 2) : '0');
+            if (!isset($batchLines[$bKey])) {
+                $batchLines[$bKey] = [
+                    'item_id' => $itemId,
+                    'batch_no' => $batchNo,
+                    'exp_date' => $expDate ?: null,
+                    'mrp' => $mrp,
+                    'qty' => 0.0,
+                ];
             }
+            $batchLines[$bKey]['qty'] += (float) $line['qty'];
         }
 
         foreach ($totalQtyByItem as $itemId => $totalRequested) {
@@ -977,17 +1093,26 @@ class PurchaseReturnController extends Controller
             }
         }
 
-        foreach ($totalQtyByBatch as $bKey => $requestedBatchQty) {
-            [$itemId, $batchNo] = explode('___', $bKey);
-            $itemId = (int) $itemId;
-            $bStock = $batchService->getBatchStock($itemId, $branchId, $batchNo);
-            $bAvail = (float) ($bStock['remaining_qty'] ?? 0);
-            if (round($requestedBatchQty, 4) > round($bAvail, 4)) {
-                $item = Item::find($itemId);
-                $itemName = $item ? $item->name : "Item #{$itemId}";
-                throw ValidationException::withMessages([
-                    'items' => "Insufficient batch stock for \"{$itemName}\" (Batch: {$batchNo}) at branch: available {$bAvail}, requested {$requestedBatchQty}.",
-                ]);
+        foreach ($batchLines as $bInfo) {
+            $itemId = $bInfo['item_id'];
+            $batchNo = $bInfo['batch_no'];
+            $expDate = $bInfo['exp_date'];
+            $mrp = $bInfo['mrp'];
+            $requestedBatchQty = $bInfo['qty'];
+
+            if ($batchNo !== '' || $expDate !== null) {
+                $bStock = $batchService->getBatchStock($itemId, $branchId, $batchNo, $expDate, $mrp);
+                if ($bStock) {
+                    $bAvail = (float) ($bStock['remaining_qty'] ?? 0);
+                    if (round($requestedBatchQty, 4) > round($bAvail, 4)) {
+                        $item = Item::find($itemId);
+                        $itemName = $item ? $item->name : "Item #{$itemId}";
+                        $label = $batchNo !== '' ? "Batch: {$batchNo}" : ($expDate ? "Exp: {$expDate}" : '');
+                        throw ValidationException::withMessages([
+                            'items' => "Insufficient batch stock for \"{$itemName}\" ({$label}) at branch: available {$bAvail}, requested {$requestedBatchQty}.",
+                        ]);
+                    }
+                }
             }
         }
     }

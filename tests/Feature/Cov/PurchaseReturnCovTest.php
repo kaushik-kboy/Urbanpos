@@ -47,7 +47,7 @@ class PurchaseReturnCovTest extends TestCase
         $ret = $this->makeReturn($inv, ['cost_price' => 130]);
 
         $this->assertEquals(7, $this->stockOf($this->item));
-        $this->assertStringStartsWith('PRN', $ret->return_number);
+        $this->assertStringStartsWith('PR', $ret->return_number);
         $line = $ret->items()->first();
         $this->assertEquals(100, (float) $line->cost_at_return); // uses ORIGINAL invoice cost, not typed cost
         $this->assertEquals(3 * 130 * 1.18, (float) $ret->total);

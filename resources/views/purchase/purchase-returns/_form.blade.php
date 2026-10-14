@@ -790,6 +790,7 @@
                             data-id="${it.id}"
                             data-code="${it.code || ''}"
                             data-batch="${it.batch_no || ''}"
+                            data-mrp="${it.mrp || 0}"
                             data-name="${it.name}"
                             data-cost="${it.cost_price || 0}"
                             data-gst="${it.gst_percent || 0}"
@@ -798,7 +799,8 @@
                             data-exp-date="${it.exp_date || ''}"
                             data-original-qty="${it.original_qty !== null && it.original_qty !== undefined ? it.original_qty : (it.invoiced_qty || '')}"
                             data-returned-qty="${it.already_returned || 0}"
-                            data-remaining-qty="${it.remaining_qty !== null && it.remaining_qty !== undefined ? it.remaining_qty : ''}">
+                            data-remaining-qty="${it.remaining_qty !== null && it.remaining_qty !== undefined ? it.remaining_qty : ''}"
+                            data-available-stock="${it.available_stock !== undefined ? it.available_stock : (it.qty || '')}">
                             <td data-col-key="seq" class="align-middle text-center text-muted">${idx + 1}</td>
                             <td data-col-key="name" class="align-middle font-weight-bold text-dark">
                                 ${it.name}
@@ -840,6 +842,7 @@
                 name: $tr.data('name'),
                 code: $tr.data('code'),
                 batch_no: $tr.data('batch') || '',
+                mrp: $tr.data('mrp') || 0,
                 cost_price: $tr.data('cost'),
                 gst_percent: $tr.data('gst'),
                 disc_percent: $tr.data('disc-percent'),
@@ -847,7 +850,8 @@
                 exp_date: $tr.data('exp-date'),
                 original_qty: $tr.data('original-qty'),
                 already_returned: $tr.data('returned-qty'),
-                remaining_qty: $tr.data('remaining-qty')
+                remaining_qty: $tr.data('remaining-qty'),
+                available_stock: $tr.data('available-stock')
             };
 
             if (!prActiveSearchRow || !itemData.id) return;
@@ -866,16 +870,25 @@
             $row.find('.pr-item-desc').val(itemData.name);
             $row.find('.pr-item-id').val(itemData.id);
             $row.find('.pr-batch-no').val(itemData.batch_no || '');
+            $row.find('.pr-mrp').val(itemData.mrp || '');
 
             let $qtyInput = $row.find('.pr-qty');
             if (itemData.original_qty !== '' && itemData.original_qty !== undefined) {
                 $qtyInput.attr('data-original-qty', itemData.original_qty);
                 $qtyInput.attr('data-returned-qty', itemData.already_returned || 0);
                 $qtyInput.attr('data-remaining-qty', itemData.remaining_qty);
+                if (itemData.available_stock !== '' && itemData.available_stock !== undefined) {
+                    $qtyInput.attr('data-available-stock', itemData.available_stock);
+                }
                 let defaultQty = (itemData.remaining_qty !== '' && parseFloat(itemData.remaining_qty) > 0) ? parseFloat(itemData.remaining_qty) : 1;
                 $qtyInput.val(defaultQty);
                 let remDisp = itemData.remaining_qty !== '' ? (parseFloat(itemData.remaining_qty) == parseInt(itemData.remaining_qty, 10) ? parseInt(itemData.remaining_qty, 10) : parseFloat(itemData.remaining_qty)) : '';
-                $row.find('.pr-remaining-qty-label').text(remDisp !== '' ? 'Remaining: ' + remDisp : '').show();
+                let labelText = remDisp !== '' ? 'Remaining: ' + remDisp : '';
+                if (itemData.available_stock !== '' && itemData.available_stock !== undefined && parseFloat(itemData.available_stock) < parseFloat(itemData.original_qty)) {
+                    let stockDisp = (parseFloat(itemData.available_stock) == parseInt(itemData.available_stock, 10)) ? parseInt(itemData.available_stock, 10) : parseFloat(itemData.available_stock);
+                    labelText = 'Max Return: ' + remDisp + ' (Stock: ' + stockDisp + ')';
+                }
+                $row.find('.pr-remaining-qty-label').text(labelText).show();
             }
 
             if (parseFloat(itemData.cost_price) > 0) {
@@ -1083,7 +1096,8 @@
 
             if (!supplierId) return;
 
-            fetch(`/purchase/purchase-returns/supplier-invoices/${supplierId}`, {
+            const branchId = $('#branch_id').val() || '';
+            fetch(`/purchase/purchase-returns/supplier-invoices/${supplierId}?branch_id=${branchId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => res.json())
@@ -1116,7 +1130,8 @@
                 hint.innerHTML = '<i class="fas fa-spinner fa-spin text-primary mr-1"></i> Loading items from selected invoice…';
             }
 
-            fetch(`/purchase/purchase-returns/invoice-items/${invId}`, {
+            const branchId = $('#branch_id').val() || '';
+            fetch(`/purchase/purchase-returns/invoice-items/${invId}?branch_id=${branchId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(res => res.json())
@@ -1147,6 +1162,10 @@
                         if (codeInput) codeInput.value = item.item_code || '';
                         const descInput = row.querySelector('.pr-item-desc');
                         if (descInput) descInput.value = item.item_name || '';
+                        const batchInput = row.querySelector('.pr-batch-no');
+                        if (batchInput) batchInput.value = item.batch_no || '';
+                        const mrpInput = row.querySelector('.pr-mrp');
+                        if (mrpInput && item.mrp) mrpInput.value = item.mrp;
 
                         const qtyInput = row.querySelector('.pr-qty');
                         if (qtyInput) {
@@ -1155,10 +1174,18 @@
                                 qtyInput.setAttribute('data-original-qty', item.original_qty);
                                 qtyInput.setAttribute('data-returned-qty', item.already_returned || 0);
                                 qtyInput.setAttribute('data-remaining-qty', item.remaining_qty !== undefined ? item.remaining_qty : '');
+                                if (item.available_stock !== undefined) {
+                                    qtyInput.setAttribute('data-available-stock', item.available_stock);
+                                }
                                 let remDisp = item.remaining_qty !== undefined ? (parseFloat(item.remaining_qty) == parseInt(item.remaining_qty, 10) ? parseInt(item.remaining_qty, 10) : parseFloat(item.remaining_qty)) : '';
                                 const remLabel = row.querySelector('.pr-remaining-qty-label');
                                 if (remLabel && remDisp !== '') {
-                                    remLabel.innerText = 'Remaining: ' + remDisp;
+                                    let labelText = 'Remaining: ' + remDisp;
+                                    if (item.available_stock !== undefined && item.available_stock !== null && parseFloat(item.available_stock) < parseFloat(item.original_qty)) {
+                                        let stockDisp = (parseFloat(item.available_stock) == parseInt(item.available_stock, 10)) ? parseInt(item.available_stock, 10) : parseFloat(item.available_stock);
+                                        labelText = 'Max Return: ' + remDisp + ' (Stock: ' + stockDisp + ')';
+                                    }
+                                    remLabel.innerText = labelText;
                                     remLabel.style.display = 'block';
                                 }
                             }
@@ -1213,13 +1240,15 @@
                 remainingQty = Math.max(0, origQty - returnedQty);
             }
 
-            // Sum quantities across all rows for this same item_id and batch_no
+            // Sum quantities across all rows for this same item_id, batch_no, and exp_date
             let currentBatch = $row.find('.pr-batch-no').val() || '';
+            let currentExp = $row.find('.pr-exp-date').val() || '';
             let totalRequestedForThisItem = 0;
             $('#pr-items-body tr.pr-item-row').each(function () {
                 let thisItemId = $(this).find('.pr-item-id').val();
                 let thisBatch = $(this).find('.pr-batch-no').val() || '';
-                if (thisItemId && String(thisItemId) === String(itemId) && thisBatch === currentBatch) {
+                let thisExp = $(this).find('.pr-exp-date').val() || '';
+                if (thisItemId && String(thisItemId) === String(itemId) && thisBatch === currentBatch && thisExp === currentExp) {
                     totalRequestedForThisItem += (parseFloat($(this).find('.pr-qty').val()) || 0);
                 }
             });
@@ -1235,7 +1264,15 @@
             if (isOverLimit) {
                 $input.addClass('is-invalid border-danger');
                 let remDisp = (remainingQty === parseInt(remainingQty, 10)) ? parseInt(remainingQty, 10) : remainingQty;
+                let availStockStr = $input.attr('data-available-stock');
                 let errMsg = `Maximum returnable quantity is ${remDisp}.`;
+                if (availStockStr !== undefined && availStockStr !== '' && availStockStr !== null) {
+                    let availStock = parseFloat(availStockStr);
+                    if (availStock < (origQty - returnedQty)) {
+                        let stockDisp = (availStock === parseInt(availStock, 10)) ? parseInt(availStock, 10) : availStock;
+                        errMsg = `Maximum returnable quantity is ${remDisp} (Current Stock: ${stockDisp}).`;
+                    }
+                }
 
                 $input.attr('title', errMsg);
                 $feedback.text(errMsg).css('display', 'block');

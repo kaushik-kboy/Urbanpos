@@ -28,6 +28,7 @@
     <td style="min-width: 140px;" data-col-key="code">
         <input type="hidden" name="items[{{ $rowId }}][item_id]" class="pr-item-id" value="{{ $itemId }}">
         <input type="hidden" name="items[{{ $rowId }}][batch_no]" class="pr-batch-no" value="{{ data_get($line, 'batch_no', '') }}">
+        <input type="hidden" name="items[{{ $rowId }}][mrp]" class="pr-mrp" value="{{ data_get($line, 'mrp', '') }}">
         <input type="text" class="form-control form-control-sm pr-item-code font-weight-bold text-uppercase" placeholder="Code / Barcode" value="{{ $itemCode }}" autocomplete="off" title="Press Tab or Enter to search item">
     </td>
     <td style="width: 180px; min-width: 160px;" data-col-key="item">
@@ -41,6 +42,7 @@
                data-original-qty="{{ $originalQty }}"
                data-returned-qty="{{ $alreadyReturned }}"
                data-remaining-qty="{{ $remainingQty }}"
+               data-available-stock="{{ data_get($line, 'available_stock', '') }}"
                class="form-control form-control-sm text-right pr-qty font-weight-bold" placeholder="0.000">
         <small class="text-muted d-block text-right pr-remaining-qty-label" style="font-size: 10px;"></small>
     </td>
