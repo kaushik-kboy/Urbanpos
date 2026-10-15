@@ -1300,11 +1300,6 @@ class SalesBillController extends Controller
                 ->with('gstTax:id,percentage')
                 ->first();
 
-            // Check primary key if numeric
-            if (! $item && is_numeric($query)) {
-                $item = Item::where('status', true)->with('gstTax:id,percentage')->find($query);
-            }
-
             // Check item name only if NOT exact_match_only
             if (! $item && ! $exactMatchOnly) {
                 $item = Item::where('status', true)

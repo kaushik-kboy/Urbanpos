@@ -358,19 +358,8 @@ class ChatOnClickWhatsAppService
             ];
 
             if (in_array($this->templateName, ['sales_invoice_satellite', 'sales_invoice_motera'])) {
-                $petName = $salesBill->pet?->name ?: ($salesBill->customer?->pets?->first()?->name ?: 'your pet');
-                $variables = [
-                    $petName,
-                    $billNumber,
-                    $totalAmount,
-                    $petName,
-                ];
-                foreach ($variables as $var) {
-                    $multipart[] = [
-                        'name'     => 'variables[]',
-                        'contents' => (string) $var,
-                    ];
-                }
+                // In Meta, sales_invoice_satellite and sales_invoice_motera were approved as static templates with 0 parameters.
+                // Sending variables[] causes Meta error 132000 ('Number of parameters does not match expected').
             } else {
                 // 8 Body variables matching urban_tax_invoice
                 $variables = [
