@@ -308,7 +308,7 @@
         <div class="divider"></div>
 
         <div class="text-center font-bold text-uppercase" style="font-size: 12px;">
-            {{ $salesBill->invoice_type ?? 'TAX INVOICE' }}
+            {{ $receiptSettings->document_title ?: ($salesBill->invoice_type ?? $receiptSettings->getDocumentTitle()) }}
         </div>
 
         <div class="divider"></div>

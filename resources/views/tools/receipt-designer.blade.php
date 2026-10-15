@@ -371,18 +371,23 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="font-weight-bold text-secondary small text-uppercase">Store Name / Header Title</label>
                                 <input type="text" name="store_name" id="input_store_name" class="form-control" value="{{ old('store_name', $settings->store_name) }}" placeholder="e.g. URBAN PETS">
                                 <small class="text-muted">Displays in bold capital letters at the top of every receipt.</small>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
+                                <label class="font-weight-bold text-primary small text-uppercase"><i class="fas fa-heading mr-1"></i> Document Title (Header Title)</label>
+                                <input type="text" name="document_title" id="input_document_title" class="form-control font-weight-bold border-primary" value="{{ old('document_title', $settings->document_title ?: $settings->getDocumentTitle()) }}" placeholder="e.g. TAX INVOICE, CREDIT NOTE, DEBIT NOTE">
+                                <small class="text-muted">Heading printed on invoice (Tax Invoice, Credit Note, Debit Note, Stock Transfer).</small>
+                            </div>
+                            <div class="col-md-2 mb-3">
                                 <label class="font-weight-bold text-secondary small text-uppercase">Office Title</label>
                                 <input type="text" name="header_office_title" id="input_header_office_title" class="form-control" value="{{ old('header_office_title', $settings->header_office_title ?? 'REGISTERED OFFICE') }}" placeholder="e.g. REGISTERED OFFICE">
-                                <small class="text-muted">Title above address in A4 split layout.</small>
+                                <small class="text-muted">Title above address in A4 layout.</small>
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="font-weight-bold text-secondary small text-uppercase">Tagline / Sub-heading</label>
+                            <div class="col-md-2 mb-3">
+                                <label class="font-weight-bold text-secondary small text-uppercase">Tagline</label>
                                 <input type="text" name="tagline" id="input_tagline" class="form-control" value="{{ old('tagline', $settings->tagline) }}" placeholder="e.g. Complete Pet Care & Supplies">
                             </div>
                         </div>
@@ -671,8 +676,8 @@
                             <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
 
                             @if($docType === 'stock_transfer')
-                                <div class="text-center font-weight-bold text-uppercase" style="font-size: 12px; letter-spacing: 1px;">
-                                    STOCK TRANSFER NOTE
+                                <div class="text-center font-weight-bold text-uppercase prev_doc_title" style="font-size: 12px; letter-spacing: 1px;">
+                                    {{ $settings->document_title ?: $settings->getDocumentTitle() }}
                                 </div>
 
                                 <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
@@ -1099,8 +1104,8 @@
                                     </div>
                                 </div>
                             @else
-                                <div class="text-center font-weight-bold text-uppercase" style="font-size: 12px; letter-spacing: 1px;">
-                                    TAX INVOICE
+                                <div class="text-center font-weight-bold text-uppercase prev_doc_title" style="font-size: 12px; letter-spacing: 1px;">
+                                    {{ $settings->document_title ?: $settings->getDocumentTitle() }}
                                 </div>
 
                                 <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
@@ -1283,8 +1288,8 @@
                                             <div class="prev_a4_gstin" style="font-size: 11px; font-weight: 700; color: var(--accent); margin-top: 2px;">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
                                         </div>
                                         <div style="flex: 0 0 40%; text-align: right;">
-                                            <div style="display: inline-block; background: var(--accent); color: #fff; padding: 4px 14px; font-weight: 800; font-size: 13px; letter-spacing: 1px; border-radius: 3px; text-transform: uppercase; margin-bottom: 6px;">
-                                                TAX INVOICE
+                                            <div class="prev_doc_title" style="display: inline-block; background: var(--accent); color: #fff; padding: 4px 14px; font-weight: 800; font-size: 13px; letter-spacing: 1px; border-radius: 3px; text-transform: uppercase; margin-bottom: 6px;">
+                                                {{ $settings->document_title ?: $settings->getDocumentTitle() }}
                                             </div>
                                             <table style="width: 100%; font-size: 10.5px; border-collapse: collapse; text-align: left; border: 1px solid #cbd5e1;">
                                                 <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
@@ -1327,8 +1332,8 @@
                                     </div>
                                     <div class="prev_a4_gstin" style="font-size: 11px; font-weight: 700; color: var(--accent); margin-top: 2px;">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
                                     <div style="margin-top: 6px;">
-                                        <span style="display: inline-block; background: #0f172a; color: #fff; padding: 2px 14px; font-weight: 700; font-size: 11.5px; letter-spacing: 1px; border-radius: 12px; text-transform: uppercase;">
-                                            TAX INVOICE
+                                        <span class="prev_doc_title" style="display: inline-block; background: #0f172a; color: #fff; padding: 2px 14px; font-weight: 700; font-size: 11.5px; letter-spacing: 1px; border-radius: 12px; text-transform: uppercase;">
+                                            {{ $settings->document_title ?: $settings->getDocumentTitle() }}
                                         </span>
                                     </div>
                                 </div>
@@ -1353,8 +1358,8 @@
                                             <div class="prev_a4_gstin" style="font-weight: 700; color: var(--accent);">GSTIN: {{ $settings->gstin ?: '24AABCU1234F1Z5' }}</div>
                                         </div>
                                     </div>
-                                    <div style="background: var(--accent); color: #fff; text-align: center; padding: 4px 0; font-weight: 800; font-size: 12px; letter-spacing: 1.5px; border-radius: 2px; text-transform: uppercase;">
-                                        TAX INVOICE
+                                    <div class="prev_doc_title" style="background: var(--accent); color: #fff; text-align: center; padding: 4px 0; font-weight: 800; font-size: 12px; letter-spacing: 1.5px; border-radius: 2px; text-transform: uppercase;">
+                                        {{ $settings->document_title ?: $settings->getDocumentTitle() }}
                                     </div>
                                 </div>
 
@@ -1375,8 +1380,8 @@
                                             <div class="prev_a4_logo_box" style="{{ $settings->show_logo ? '' : 'display: none;' }}; margin-bottom: 4px;">
                                                 <img class="prev_a4_logo_img" src="{{ $settings->logo_path ?: asset('images/urbanpets-logo.png') }}" onerror="this.src='{{ asset('images/urbanpets-logo.png') }}'" alt="Logo" style="width: {{ $settings->logo_width ?? 120 }}px; max-width: 100%; height: auto; object-fit: contain;">
                                             </div>
-                                            <div style="display: inline-block; background: var(--accent); color: #fff; padding: 3px 10px; font-weight: 800; font-size: 11px; letter-spacing: 1px; border-radius: 3px; text-transform: uppercase;">
-                                                TAX INVOICE
+                                            <div class="prev_doc_title" style="display: inline-block; background: var(--accent); color: #fff; padding: 3px 10px; font-weight: 800; font-size: 11px; letter-spacing: 1px; border-radius: 3px; text-transform: uppercase;">
+                                                {{ $settings->document_title ?: $settings->getDocumentTitle() }}
                                             </div>
                                         </div>
                                     </div>
@@ -1650,19 +1655,20 @@
     }
     @media print {
         body * {
-            visibility: hidden;
+            visibility: hidden !important;
         }
-        #receipt-preview-box, #receipt-preview-box * {
-            visibility: visible;
+        .print-target-active, .print-target-active * {
+            visibility: visible !important;
         }
-        #receipt-preview-box {
-            position: absolute;
-            left: 0;
-            top: 0;
+        .print-target-active {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
+            background: #fff !important;
         }
     }
 </style>
@@ -1827,6 +1833,11 @@
         const prevStore = document.getElementById('prev_store_name');
         if (prevStore) prevStore.textContent = val;
         document.querySelectorAll('.prev_a4_store_name').forEach(el => el.textContent = val);
+    });
+
+    document.getElementById('input_document_title')?.addEventListener('input', function() {
+        const val = (this.value || '').trim() || '{{ $settings->getDocumentTitle() }}';
+        document.querySelectorAll('.prev_doc_title').forEach(el => el.textContent = val.toUpperCase());
     });
 
     document.getElementById('input_header_office_title')?.addEventListener('input', function() {
@@ -2124,6 +2135,7 @@
         const trigger = (id, ev = 'input') => { document.getElementById(id)?.dispatchEvent(new Event(ev)); };
 
         setVal('input_store_name', 'URBAN PETS');
+        setVal('input_document_title', '{{ match($docType) { "sales_return" => "CREDIT NOTE", "purchase_invoice" => "PURCHASE INVOICE", "purchase_return" => "DEBIT NOTE", "stock_transfer" => "STOCK TRANSFER", default => "TAX INVOICE" } }}');
         setVal('input_header_office_title', 'REGISTERED OFFICE');
         setVal('input_tagline', 'Complete Pet Care & Supplies');
         setCheck('input_show_logo', false);
@@ -2156,6 +2168,7 @@
 
         // Trigger updates
         trigger('input_store_name');
+        trigger('input_document_title');
         trigger('input_header_office_title');
         trigger('input_tagline');
         trigger('input_phone');
@@ -2173,6 +2186,19 @@
     }
 
     function printSampleReceipt() {
+        const isA4 = currentPreviewMode === 'a4';
+        const thermalBox = document.getElementById('receipt-preview-box');
+        const a4Box = document.getElementById('a4-receipt-preview-box');
+
+        if (thermalBox) thermalBox.classList.remove('print-target-active');
+        if (a4Box) a4Box.classList.remove('print-target-active');
+
+        if (isA4 && a4Box) {
+            a4Box.classList.add('print-target-active');
+        } else if (thermalBox) {
+            thermalBox.classList.add('print-target-active');
+        }
+
         window.print();
     }
 

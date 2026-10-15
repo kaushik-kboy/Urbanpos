@@ -18,6 +18,7 @@ class ReceiptSetting extends Model
         'header_layout',
         'accent_color',
         'store_name',
+        'document_title',
         'header_office_title',
         'tagline',
         'logo_path',
@@ -164,6 +165,13 @@ class ReceiptSetting extends Model
             ],
             [
                 'store_name'             => $branch?->name                 ?? ($base?->store_name             ?? 'URBAN POS'),
+                'document_title'         => $base?->document_title         ?? match($documentType) {
+                    'sales_return'     => 'CREDIT NOTE',
+                    'purchase_invoice' => 'PURCHASE INVOICE',
+                    'purchase_return'  => 'DEBIT NOTE',
+                    'stock_transfer'   => 'STOCK TRANSFER',
+                    default            => 'TAX INVOICE',
+                },
                 'tagline'                => $base?->tagline                ?? 'Complete Pet Care & Supplies',
                 'logo_path'              => $base?->logo_path              ?? null,
                 'logo_width'             => $base?->logo_width             ?? 120,
@@ -241,6 +249,24 @@ class ReceiptSetting extends Model
     public function getHeaderOfficeTitle(): string
     {
         return $this->header_office_title ?: 'REGISTERED OFFICE';
+    }
+
+    /**
+     * Get customizable document / invoice title (e.g. TAX INVOICE, CREDIT NOTE, DEBIT NOTE, STOCK TRANSFER).
+     */
+    public function getDocumentTitle(): string
+    {
+        if (!empty($this->document_title)) {
+            return $this->document_title;
+        }
+
+        return match ($this->document_type) {
+            'sales_return'     => 'CREDIT NOTE',
+            'purchase_invoice' => 'PURCHASE INVOICE',
+            'purchase_return'  => 'DEBIT NOTE',
+            'stock_transfer'   => 'STOCK TRANSFER',
+            default            => 'TAX INVOICE',
+        };
     }
 
     /**

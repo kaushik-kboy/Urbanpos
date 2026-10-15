@@ -10,7 +10,6 @@
             <a href="{{ route('reports.index', ['group' => 'sales']) }}" class="btn btn-sm {{ request('group') === 'sales' ? 'btn-primary' : 'btn-outline-secondary' }}">Sales</a>
             <a href="{{ route('reports.index', ['group' => 'purchase']) }}" class="btn btn-sm {{ request('group') === 'purchase' ? 'btn-primary' : 'btn-outline-secondary' }}">Purchase</a>
             <a href="{{ route('reports.index', ['group' => 'inventory']) }}" class="btn btn-sm {{ request('group') === 'inventory' ? 'btn-primary' : 'btn-outline-secondary' }}">Inventory</a>
-            <a href="{{ route('reports.index', ['group' => 'masters']) }}" class="btn btn-sm {{ request('group') === 'masters' ? 'btn-primary' : 'btn-outline-secondary' }}">Masters</a>
             <a href="{{ route('reports.index', ['group' => 'audit']) }}" class="btn btn-sm {{ request('group') === 'audit' ? 'btn-primary' : 'btn-outline-secondary' }}">Audit</a>
             <a href="{{ route('reports.index', ['group' => 'finance']) }}" class="btn btn-sm {{ request('group') === 'finance' ? 'btn-primary' : 'btn-outline-secondary' }}">Finance</a>
         </div>
@@ -180,40 +179,7 @@
             </div>
         @endif
 
-        {{-- MASTERS REPORTS --}}
-        @if (!$group || $group === 'masters')
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card card-outline card-warning h-100 shadow-sm">
-                    <div class="card-header bg-light">
-                        <h3 class="card-title font-weight-bold text-warning"><i class="fas fa-database mr-2"></i> Masters Reports</h3>
-                    </div>
-                    <div class="card-body p-0">
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <a href="{{ route('reports.item-master') }}" class="font-weight-bold text-dark">Item Master Report</a>
-                                <span class="badge badge-warning badge-pill"><i class="fas fa-arrow-right"></i></span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <a href="{{ route('reports.supplier-master') }}" class="font-weight-bold text-dark">Supplier Master Report</a>
-                                <span class="badge badge-warning badge-pill"><i class="fas fa-arrow-right"></i></span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <a href="{{ route('reports.customer-master') }}" class="font-weight-bold text-dark">Customer Master Report</a>
-                                <span class="badge badge-warning badge-pill"><i class="fas fa-arrow-right"></i></span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <a href="{{ route('reports.customer-pet-details') }}" class="font-weight-bold text-dark">Customer Pet Details</a>
-                                <span class="badge badge-warning badge-pill"><i class="fas fa-arrow-right"></i></span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <a href="{{ route('reports.customer-loyalty') }}" class="font-weight-bold text-dark">Customer Loyalty Details</a>
-                                <span class="badge badge-warning badge-pill"><i class="fas fa-arrow-right"></i></span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        @endif
+
 
         {{-- AUDIT REPORTS --}}
         @if (!$group || $group === 'audit')

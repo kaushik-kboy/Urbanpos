@@ -167,7 +167,7 @@
             </div>
 
             <div style="display: inline-block; background: #0f172a; color: #fff; font-weight: 800; font-size: 12px; letter-spacing: 1.5px; padding: 4px 24px; border-radius: 4px; margin-top: 8px;">
-                TAX INVOICE
+                {{ $receiptSettings->getDocumentTitle() }}
             </div>
         </div>
 
@@ -210,7 +210,7 @@
 
         {{-- Full-width Colored Banner --}}
         <div style="background-color: var(--accent); color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 5px 12px; border-radius: 3px; font-weight: bold; margin-bottom: 10px;">
-            <span style="font-size: 13px; letter-spacing: 1px;">TAX INVOICE</span>
+            <span style="font-size: 13px; letter-spacing: 1px;">{{ $receiptSettings->getDocumentTitle() }}</span>
             <span style="font-size: 10px; opacity: 0.9;">Original for Recipient</span>
         </div>
 
@@ -232,7 +232,7 @@
         </div>
 
         <div style="background-color: var(--accent); color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 5px 12px; border-radius: 3px; font-weight: bold; margin-bottom: 10px;">
-            <span style="font-size: 13px; letter-spacing: 1px;">TAX INVOICE</span>
+            <span style="font-size: 13px; letter-spacing: 1px;">{{ $receiptSettings->getDocumentTitle() }}</span>
             <span style="font-size: 10px; opacity: 0.9;">Original for Recipient</span>
         </div>
 
@@ -260,7 +260,7 @@
             {{-- Right Column: TAX INVOICE Box & Metadata Grid --}}
             <div style="width: 42%;">
                 <div style="background: var(--accent); color: #fff; text-align: center; padding: 4px; border-radius: 3px 3px 0 0;">
-                    <div style="font-weight: 800; font-size: 13px; letter-spacing: 1px;">TAX INVOICE</div>
+                    <div style="font-weight: 800; font-size: 13px; letter-spacing: 1px;">{{ $receiptSettings->getDocumentTitle() }}</div>
                     <div style="font-size: 8.5px; opacity: 0.9; text-transform: uppercase;">Original for Recipient</div>
                 </div>
                 <div style="border: 1px solid var(--accent); border-top: none; padding: 4px 8px; font-size: 10px; background: #fff; border-radius: 0 0 3px 3px;">

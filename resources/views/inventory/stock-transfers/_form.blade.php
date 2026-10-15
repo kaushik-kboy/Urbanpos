@@ -1195,11 +1195,11 @@
             return true;
         }
 
-        // Standardized Barcode & Item Code Keydown / Tab / Enter Navigation (matching PO reference)
         $(document).off('keydown change input', '.item-code-input')
             .on('keydown', '.item-code-input', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
+                    e.stopPropagation();
                     let val = $.trim($(this).val());
                     let $row = $(this).closest('tr.item-row');
                     if (val) {
@@ -1207,6 +1207,7 @@
                     } else {
                         checkBranchAndOpenStModal($(this));
                     }
+                    return false;
                 } else if (e.key === 'Tab' && !e.shiftKey) {
                     let val = $.trim($(this).val());
                     let $row = $(this).closest('tr.item-row');
@@ -1533,31 +1534,56 @@
                     $(this).removeClass('is-invalid border-danger text-danger');
                 }
 
-                // If valid, advance to next row or add row and open search modal
+                // If valid, advance to next row or add row for barcode scanning
                 e.preventDefault();
+                e.stopPropagation();
                 let $nextRow = $currentRow.next('tr.item-row');
                 if (!$nextRow.length) {
                     $('#add-row').trigger('click');
                     let $newRow = $('#items-table tbody tr.item-row').last();
                     setTimeout(function () {
-                        $newRow.find('.item-code-input').focus();
-                        openItemModal($newRow, '');
-                    }, 60);
+                        $newRow.find('.item-code-input').focus().select();
+                    }, 50);
                 } else {
-                    $nextRow.find('.item-code-input').focus();
+                    $nextRow.find('.item-code-input').focus().select();
                 }
+                return false;
             }
         });
-
 
         $(document).on('change', '.item-qty', function () {
             validateStQty($(this), false);
         });
 
+        // Explicit Save Submit Guard (Task 2: prevent premature submit on scan or Enter)
+        let isExplicitSaveSubmit = false;
+
+        $(document).on('click', '#st-main-save-btn, button[type="submit"]', function () {
+            isExplicitSaveSubmit = true;
+        });
+
+        // Prevent Enter in any single-line input or select inside #transfer-form from submitting form
+        $('#transfer-form, form').on('keydown', 'input:not(textarea), select', function (e) {
+            if (e.key === 'Enter') {
+                if (!$(this).hasClass('item-code-input') && !$(this).hasClass('item-qty')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+        });
+
         // Form Submit Handler
         $('form').on('submit', function (e) {
+            if (!isExplicitSaveSubmit) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+
             let toBranch = $('#to_branch_id').val();
             if (!toBranch) {
+                isExplicitSaveSubmit = false;
                 e.preventDefault();
                 alert('Please select a destination (To) branch.');
                 $('#to_branch_id').select2('open');
@@ -1565,6 +1591,7 @@
             }
 
             if (!validateBranchSelection()) {
+                isExplicitSaveSubmit = false;
                 e.preventDefault();
                 return false;
             }
@@ -1622,11 +1649,13 @@
             });
 
             if (hasError) {
+                isExplicitSaveSubmit = false;
                 e.preventDefault();
                 return false;
             }
 
             if (validCount === 0) {
+                isExplicitSaveSubmit = false;
                 e.preventDefault();
                 alert('Please add at least one item before saving.');
                 $('#items-body tr.item-row:first .item-code-input').focus();
@@ -1665,6 +1694,7 @@
                 openItemModal($targetRow, $targetRow.find('.item-code-input').val());
             } else if (e.key === 'F6') {
                 e.preventDefault();
+                isExplicitSaveSubmit = true;
                 const form = document.getElementById('transfer-form');
                 if (form) $(form).trigger('submit');
             }

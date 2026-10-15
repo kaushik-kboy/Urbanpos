@@ -357,29 +357,45 @@ class ChatOnClickWhatsAppService
                 ],
             ];
 
-            // 8 Body variables matching urban_tax_invoice
-            $variables = [
-                $customerName,
-                $billNumber,
-                $billDate,
-                $branchName,
-                $totalItems,
-                $totalAmount,
-                $paymentModes,
-                $branchPhone,
-            ];
-            foreach ($variables as $var) {
+            if (in_array($this->templateName, ['sales_invoice_satellite', 'sales_invoice_motera'])) {
+                $petName = $salesBill->pet?->name ?: ($salesBill->customer?->pets?->first()?->name ?: 'your pet');
+                $variables = [
+                    $petName,
+                    $billNumber,
+                    $totalAmount,
+                    $petName,
+                ];
+                foreach ($variables as $var) {
+                    $multipart[] = [
+                        'name'     => 'variables[]',
+                        'contents' => (string) $var,
+                    ];
+                }
+            } else {
+                // 8 Body variables matching urban_tax_invoice
+                $variables = [
+                    $customerName,
+                    $billNumber,
+                    $billDate,
+                    $branchName,
+                    $totalItems,
+                    $totalAmount,
+                    $paymentModes,
+                    $branchPhone,
+                ];
+                foreach ($variables as $var) {
+                    $multipart[] = [
+                        'name'     => 'variables[]',
+                        'contents' => (string) $var,
+                    ];
+                }
+
+                // Dynamic Button URL parameter
                 $multipart[] = [
-                    'name'     => 'variables[]',
-                    'contents' => (string) $var,
+                    'name'     => 'button_url',
+                    'contents' => (string) $publicUrl,
                 ];
             }
-
-            // Dynamic Button URL parameter
-            $multipart[] = [
-                'name'     => 'button_url',
-                'contents' => (string) $publicUrl,
-            ];
         } else {
             $message = $this->formatInvoiceMessage($salesBill);
             $multipart = [

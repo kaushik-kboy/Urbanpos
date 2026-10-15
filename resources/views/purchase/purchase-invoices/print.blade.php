@@ -83,7 +83,7 @@
                 @if($receiptSettings->show_logo && $receiptSettings->logo_path)
                     <img src="{{ asset($receiptSettings->logo_path) }}" alt="{{ $receiptSettings->store_name }}" style="max-width: {{ $receiptSettings->logo_width ?? 120 }}px; height: auto; margin-bottom: 6px;"><br>
                 @endif
-                <div class="header-title">PURCHASE INVOICE</div>
+                <div class="header-title">{{ $receiptSettings->getDocumentTitle() }}</div>
                 <div class="font-bold" style="font-size: 14px;">{{ $receiptSettings->store_name ?: ($purchaseInvoice->branch?->name ?? config('app.name', 'UrbanPOS')) }}</div>
                 @if($receiptSettings->tagline)
                     <div style="font-size: 11px; color: #555; font-weight: bold;">{{ $receiptSettings->tagline }}</div>
