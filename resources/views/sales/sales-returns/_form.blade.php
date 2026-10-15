@@ -533,8 +533,8 @@
                 if (res && res.found && res.item) {
                     let it = res.item;
                     let batches = res.batches || [];
-                    $row.data('last-processed-code', query || it.item_code || it.ean_upc_code || it.id);
-                    $row.find('.sr-item-code').removeClass('is-invalid border-danger').val(it.item_code || it.ean_upc_code || it.id);
+                    $row.data('last-processed-code', query || it.item_code || it.ean_upc_code || '');
+                    $row.find('.sr-item-code').removeClass('is-invalid border-danger').val(it.item_code || it.ean_upc_code || query || '');
                     $row.find('.sr-item-desc').val(it.name + (it.item_code ? ' [' + it.item_code + ']' : ''));
                     $row.find('.sr-item-select').val(it.id);
                     let exp = batches.length && batches[0].exp_date ? batches[0].exp_date.toString().substring(0, 10) : (it.exp_date ? it.exp_date.toString().substring(0, 10) : '');
@@ -1465,7 +1465,7 @@
 
             const codeInput = row.querySelector('.sr-item-code');
             if (codeInput) {
-                codeInput.value = item.item_code || item.item_id;
+                codeInput.value = item.item_code || item.ean_upc_code || '';
                 codeInput.readOnly = true;
                 codeInput.title = 'Item from Sales Bill (cannot be changed)';
             }

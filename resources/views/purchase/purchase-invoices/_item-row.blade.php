@@ -20,7 +20,7 @@
     }
     $isExpRequired = $selectedItem && in_array($selectedItem->batch_expiry_details ?? '', ['Mandatory', 'Days', 'Month']);
     // Display actual item code (item_code / ean_upc_code)
-    $itemCodeVal = $selectedItem ? ($selectedItem->item_code ?: ($selectedItem->ean_upc_code ?: $selectedItem->id)) : ($line->code ?? '');
+    $itemCodeVal = $selectedItem ? ($selectedItem->item_code ?: ($selectedItem->ean_upc_code ?: ($line->code ?? ''))) : ($line->code ?? '');
 
     $costVal = isset($line->cost_price) && $line->cost_price != 0 ? (float)$line->cost_price : (float)($selectedItem->cost_price ?? 0);
     $sellVal = isset($line->sell_price) && $line->sell_price != 0 ? (float)$line->sell_price : (float)($selectedItem->sell_price ?? 0);

@@ -126,7 +126,7 @@ class ItemController extends Controller
                 }
                 $item->name = $copyName;
                 $item->ean_upc_code = Item::generateUniqueEanUpc();
-                $item->item_code = null;
+                $item->item_code = Item::generateUniqueItemCode();
 
                 // Ensure referenced foreign keys are still valid
                 if ($item->brand_id && !Brand::where('id', $item->brand_id)->exists()) {
@@ -164,7 +164,17 @@ class ItemController extends Controller
             }
         }
 
-        return view('master.items.create', array_merge(['item' => $item], $this->formOptions()));
+        $suggestedItemCode = $item?->item_code ?: Item::generateUniqueItemCode();
+
+        return view('master.items.create', array_merge(['item' => $item, 'suggestedItemCode' => $suggestedItemCode], $this->formOptions()));
+    }
+
+    public function generateItemCode()
+    {
+        return response()->json([
+            'success' => true,
+            'item_code' => Item::generateUniqueItemCode(),
+        ]);
     }
 
     public function generateBarcode()
@@ -338,6 +348,7 @@ class ItemController extends Controller
 
         $rules = [
             // General
+            'item_code' => ['nullable', 'string', 'max:50', \Illuminate\Validation\Rule::unique('items', 'item_code')->ignore($item?->id)],
             'ean_upc_code' => $eanRule,
             'name' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('items', 'name')->ignore($item?->id)],
             'alias' => ['nullable', 'string', 'max:255'],

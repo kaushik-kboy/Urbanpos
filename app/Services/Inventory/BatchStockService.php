@@ -123,7 +123,69 @@ class BatchStockService
             ->orderBy('id', 'asc')
             ->get();
 
-        $allPurchases = $piItems->concat($osItems)->concat($stItems);
+        // 5. Fetch from Closing Stock (imported GoFrugal TruePOS batches) strictly in this branch
+        $csRows = DB::table('closing_stocks')
+            ->where(function($q) use ($itemId, $item) {
+                $q->where('item_id', $itemId);
+                if ($item->item_code) {
+                    $q->orWhere('item_code', $item->item_code);
+                }
+            })
+            ->where('branch_id', $branchId)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $csItems = collect();
+        if ($csRows->isNotEmpty()) {
+            $consolidatedCs = [];
+            foreach ($csRows as $cs) {
+                $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
+                $exp = null;
+                if (!empty($cs->expiry_date)) {
+                    try {
+                        $exp = Carbon::parse($cs->expiry_date)->format('Y-m-d');
+                    } catch (\Throwable) {
+                        $exp = substr((string)$cs->expiry_date, 0, 10);
+                    }
+                }
+                $mrp = (float)($cs->mrp ?? 0);
+                $cost = (float)($cs->net_cost ?? 0);
+                $qty = (float)($cs->closing_stock ?? 0);
+
+                // Group key by (exp ?: rawBNo) + MRP for TruePOS parity
+                $groupKey = ($exp ?: ($rawBNo ?: 'DEFAULT')) . '|' . round($mrp, 2);
+
+                if (!isset($consolidatedCs[$groupKey])) {
+                    $consolidatedCs[$groupKey] = (object) [
+                        'id' => $cs->id,
+                        'batch_no' => $rawBNo ?: ($exp ? Carbon::parse($exp)->format('d/m/Y') : 'Initial Stock'),
+                        'raw_batch_no' => $rawBNo,
+                        'exp_date' => $exp,
+                        'cost_price' => $cost,
+                        'sell_price' => $mrp > 0 ? $mrp : (float)($item->sell_price ?? 0),
+                        'mrp' => $mrp,
+                        'qty' => $qty,
+                        'free_qty' => 0,
+                        'source' => 'closing_stock',
+                    ];
+                } else {
+                    $consolidatedCs[$groupKey]->qty += $qty;
+                    if (!empty($rawBNo) && empty($consolidatedCs[$groupKey]->raw_batch_no)) {
+                        $consolidatedCs[$groupKey]->raw_batch_no = $rawBNo;
+                        $consolidatedCs[$groupKey]->batch_no = $rawBNo;
+                    }
+                }
+            }
+
+            // Exclude non-positive if positive batches exist
+            $hasPositive = collect($consolidatedCs)->some(fn($c) => $c->qty > 0);
+            if ($hasPositive) {
+                $consolidatedCs = array_filter($consolidatedCs, fn($c) => $c->qty > 0);
+            }
+            $csItems = collect(array_values($consolidatedCs));
+        }
+
+        $allPurchases = $piItems->concat($osItems)->concat($stItems)->concat($csItems);
 
         // Fallback: If no purchase or transfer records for this specific branch, check across all branches as metadata fallback for exp_date
         $isCrossBranchFallback = false;
@@ -216,7 +278,7 @@ class BatchStockService
                     } else {
                         $displayBatchNo = 'Lot #' . $p->id;
                     }
-                    $key = 'SRC_' . (get_class($p) === 'App\Models\StockTransferItem' ? 'ST_' : (get_class($p) === 'App\Models\OpeningStockItem' ? 'OS_' : 'PI_')) . $p->id . '|' . round($mrp, 2);
+                    $key = 'SRC_' . (get_class($p) === 'App\Models\StockTransferItem' ? 'ST_' : (get_class($p) === 'App\Models\OpeningStockItem' ? 'OS_' : (isset($p->source) && $p->source === 'closing_stock' ? 'CS_' : 'PI_'))) . $p->id . '|' . round($mrp, 2);
                     $unassignedKeys[$key] = true;
                 }
             }
@@ -234,7 +296,7 @@ class BatchStockService
                     'mrp' => $mrp,
                     'purchased_qty' => $inQty,
                     'remaining_qty' => 0.0,
-                    'source' => ($p instanceof StockTransferItem ? 'transfer' : ($p instanceof OpeningStockItem ? 'opening' : 'purchase')),
+                    'source' => ($p instanceof StockTransferItem ? 'transfer' : ($p instanceof OpeningStockItem ? 'opening' : ($p->source ?? 'purchase'))),
                 ];
             } else {
                 $batches[$key]['purchased_qty'] += $inQty;

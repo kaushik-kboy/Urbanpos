@@ -277,7 +277,7 @@ class PurchaseOrderController extends Controller
 
         $items = $purchaseOrder->items->map(function ($poItem) {
             $item = $poItem->item;
-            $code = $item?->item_code ?: ($item?->ean_upc_code ?: ($item?->id ?: ''));
+            $code = $item?->item_code ?: ($item?->ean_upc_code ?: '');
             $desc = $item ? ($item->name . ($item->item_code ? ' [' . $item->item_code . ']' : '')) : '';
 
             return [

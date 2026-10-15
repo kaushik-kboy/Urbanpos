@@ -110,7 +110,7 @@
                             @endphp
                             <tr>
                                 <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
-                                <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
+                                <td><span class="badge badge-light border font-weight-bold">{{ $line->item?->item_code ?: ($line->item?->ean_upc_code ?: ($line->item?->id ? '#' . $line->item->id : '—')) }}</span></td>
                                 <td class="font-weight-bold">{{ $line->item?->name }}</td>
                                 <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
                                 <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 0) }}</td>

@@ -15,7 +15,7 @@
 
     // Resolve item for display
     $resolvedItem = $itemId ? \App\Models\Item::find($itemId) : null;
-    $itemCode = $itemId ?: ($resolvedItem ? $resolvedItem->id : '');
+    $itemCode = $resolvedItem ? ($resolvedItem->item_code ?: ($resolvedItem->ean_upc_code ?: '')) : (data_get($line, 'code') ?: '');
     $itemDesc = $resolvedItem ? ($resolvedItem->name . ($resolvedItem->item_code ? ' [' . $resolvedItem->item_code . ']' : '')) : '';
 @endphp
 <tr class="sr-item-row" data-row-index="{{ $rowId }}">

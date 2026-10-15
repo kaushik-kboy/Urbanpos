@@ -608,7 +608,7 @@
                     $row.find('input').attr('autocomplete', 'off');
 
                     $row.find('.pinv-item-select').val(it.item_id);
-                    $row.find('.pinv-item-code').val(it.item_code || it.code || it.item_id);
+                    $row.find('.pinv-item-code').val(it.item_code || it.code || '');
                     $row.find('.pinv-item-desc').val(it.name);
                     $row.find('.pinv-qty').val(it.qty > 0 ? it.qty : '');
                     $row.find('.pinv-free-qty').val(it.free_qty > 0 ? it.free_qty : '');

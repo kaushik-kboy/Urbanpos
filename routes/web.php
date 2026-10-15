@@ -123,6 +123,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     ];
 
     Route::get('items/generate-barcode', [ItemController::class, 'generateBarcode'])->name('items.generate-barcode');
+    Route::get('items/generate-item-code', [ItemController::class, 'generateItemCode'])->name('items.generate-item-code');
     Route::match(['get', 'post'], 'barcodes/print', [\App\Http\Controllers\Master\BarcodePrintController::class, 'printLabels'])->name('barcodes.print');
     Route::match(['get', 'post'], 'barcodes/direct-print', [\App\Http\Controllers\Master\BarcodePrintController::class, 'directPrint'])->name('barcodes.direct-print');
     Route::get('barcodes/tspl', [\App\Http\Controllers\Master\BarcodePrintController::class, 'downloadTspl'])->name('barcodes.tspl');

@@ -31,7 +31,18 @@ class Item extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (Item $item) {
+            if (empty($item->item_code) || (is_string($item->item_code) && trim($item->item_code) === '')) {
+                $item->item_code = self::generateUniqueItemCode();
+            }
+        });
+
         static::saving(function (Item $item) {
+            // Auto-generate unique item_code if empty
+            if (empty($item->item_code) || (is_string($item->item_code) && trim($item->item_code) === '')) {
+                $item->item_code = self::generateUniqueItemCode();
+            }
+
             // If cost_price is null/empty, fallback to landing_cost or 0
             if ($item->cost_price === null || $item->cost_price === '') {
                 $item->cost_price = ($item->landing_cost !== null && $item->landing_cost !== '') ? $item->landing_cost : 0;
@@ -70,7 +81,6 @@ class Item extends Model
                 'hsn_code',
                 'alias',
                 'ean_upc_code',
-                'item_code',
             ];
             foreach ($nullableAttributes as $attr) {
                 if ($item->$attr === '' || (is_string($item->$attr) && trim($item->$attr) === '')) {
@@ -78,6 +88,20 @@ class Item extends Model
                 }
             }
         });
+    }
+
+    public static function generateUniqueItemCode(): string
+    {
+        $driver = \Illuminate\Support\Facades\DB::connection()->getDriverName();
+        $rawCast = $driver === 'sqlite' ? 'CAST(item_code AS INTEGER)' : 'CAST(item_code AS UNSIGNED)';
+        $maxNumeric = (int) self::whereNotNull('item_code')->max(\Illuminate\Support\Facades\DB::raw($rawCast));
+        $next = max($maxNumeric + 1, 1);
+
+        while (self::where('item_code', (string) $next)->exists()) {
+            $next++;
+        }
+
+        return (string) $next;
     }
 
     public static function generateUniqueEanUpc(): string
@@ -133,5 +157,10 @@ class Item extends Model
     public function kitRecipe(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(KitRecipe::class, 'kit_item_id');
+    }
+
+    public function getCodeAttribute(): ?string
+    {
+        return $this->item_code ?: $this->ean_upc_code;
     }
 }

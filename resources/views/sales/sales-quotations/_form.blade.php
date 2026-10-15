@@ -421,8 +421,8 @@ $(function() {
         $.getJSON(SQ_LOOKUP_URL, params, function (res) {
             if (res && res.found && res.item) {
                 let it = res.item;
-                $row.data('last-processed-code', query || it.item_code || it.ean_upc_code || it.id);
-                $row.find('.sq-item-code').removeClass('is-invalid border-danger').val(it.item_code || it.ean_upc_code || it.id);
+                $row.data('last-processed-code', query || it.item_code || it.ean_upc_code || '');
+                $row.find('.sq-item-code').removeClass('is-invalid border-danger').val(it.item_code || it.ean_upc_code || query || '');
                 $row.find('.sq-item-desc').val(it.name + (it.item_code ? ' [' + it.item_code + ']' : ''));
                 $row.find('.sq-item-select').val(it.id);
 

@@ -127,8 +127,8 @@
                     <td class="text-center">{{ $idx + 1 }}</td>
                     <td class="text-left">
                         <div class="font-bold">{{ $line->item?->name }}</div>
-                        @if ($line->item?->item_code)
-                            <div style="font-size: 11px; color: #555;">Code: {{ $line->item->item_code }}</div>
+                        @if ($line->item?->code)
+                            <div style="font-size: 11px; color: #555;">Code: {{ $line->item->code }}</div>
                         @endif
                     </td>
                     <td class="text-center">{{ $line->batch_no ?: '—' }}</td>

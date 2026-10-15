@@ -20,14 +20,21 @@
             />
         </div>
         <div class="row g-2 form-fields-grid" id="item-general-fields-grid">
-            <div class="field-wrapper col-md-6" data-field="ean_upc_code" data-label="EAN/UPC Code" data-default-order="1" data-core="1">
+            <div class="field-wrapper col-md-6" data-field="item_code" data-label="Item Code" data-default-order="1" data-core="1">
+                <x-field name="item_code" label="Item Code" :value="old('item_code', $i->item_code ?? ($suggestedItemCode ?? ''))" placeholder="Auto-generated if left blank">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-generate-item-code" title="Generate Next Item Code">
+                        <i class="fas fa-sync-alt mr-1"></i> Next Code
+                    </button>
+                </x-field>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="ean_upc_code" data-label="EAN/UPC Code" data-default-order="2" data-core="1">
                 <x-field name="ean_upc_code" label="EAN/UPC Code" :value="$i->ean_upc_code ?? ''">
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-generate-barcode" title="Generate New Unique Barcode">
                         <i class="fas fa-barcode mr-1"></i> Generate
                     </button>
                 </x-field>
             </div>
-            <div class="field-wrapper col-md-6" data-field="name" data-label="Item Name" data-default-order="2" data-core="1">
+            <div class="field-wrapper col-md-6" data-field="name" data-label="Item Name" data-default-order="3" data-core="1">
                 <x-field name="name" label="Item Name" :value="$i->name ?? ''" />
             </div>
             <div class="field-wrapper col-md-6" data-field="alias" data-label="Alias" data-default-order="3">
@@ -434,6 +441,30 @@ $(document).ready(function () {
             error: function () {
                 $btn.prop('disabled', false).html(origHtml);
                 alert('Could not generate barcode. Please try again.');
+            }
+        });
+    });
+
+    // Item Code Generator Button
+    $('#btn-generate-item-code').on('click', function () {
+        var $btn = $(this);
+        var origHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>');
+
+        $.ajax({
+            url: "{{ route('master.items.generate-item-code') }}",
+            type: "GET",
+            dataType: "json",
+            success: function (res) {
+                $btn.prop('disabled', false).html(origHtml);
+                if (res && res.item_code) {
+                    $('#item_code').val(res.item_code).trigger('input');
+                    notifySuccess('Unique item code generated: ' + res.item_code);
+                }
+            },
+            error: function () {
+                $btn.prop('disabled', false).html(origHtml);
+                alert('Could not generate item code. Please try again.');
             }
         });
     });

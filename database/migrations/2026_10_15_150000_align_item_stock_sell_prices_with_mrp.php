@@ -19,18 +19,29 @@ return new class extends Migration
 
         // 2. Update items master table where stock has newer MRP than master item
         // Bring items.mrp and items.sell_price in sync with latest active branch stock
-        DB::statement("
-            UPDATE items i
-            INNER JOIN (
-                SELECT item_id, MAX(mrp) AS max_mrp
-                FROM item_stocks
-                WHERE mrp > 0
-                GROUP BY item_id
-            ) st ON st.item_id = i.id
-            SET i.mrp = st.max_mrp,
-                i.sell_price = st.max_mrp
-            WHERE st.max_mrp > i.mrp OR i.sell_price < st.max_mrp
-        ");
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::statement("
+                UPDATE items
+                SET mrp = (SELECT MAX(mrp) FROM item_stocks WHERE item_stocks.item_id = items.id AND mrp > 0),
+                    sell_price = (SELECT MAX(mrp) FROM item_stocks WHERE item_stocks.item_id = items.id AND mrp > 0)
+                WHERE id IN (
+                    SELECT item_id FROM item_stocks WHERE mrp > 0
+                )
+            ");
+        } else {
+            DB::statement("
+                UPDATE items i
+                INNER JOIN (
+                    SELECT item_id, MAX(mrp) AS max_mrp
+                    FROM item_stocks
+                    WHERE mrp > 0
+                    GROUP BY item_id
+                ) st ON st.item_id = i.id
+                SET i.mrp = st.max_mrp,
+                    i.sell_price = st.max_mrp
+                WHERE st.max_mrp > i.mrp OR i.sell_price < st.max_mrp
+            ");
+        }
 
         // 3. For any remaining items where sell_price < mrp, align sell_price = mrp
         DB::statement("

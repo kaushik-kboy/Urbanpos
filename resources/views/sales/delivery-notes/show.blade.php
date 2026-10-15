@@ -169,8 +169,8 @@
                             <td class="text-center">{{ $idx + 1 }}</td>
                             <td>
                                 <strong>{{ $line->item?->name }}</strong>
-                                @if ($line->item?->item_code)
-                                    <span class="badge badge-light border ml-1">{{ $line->item->item_code }}</span>
+                                @if ($line->item?->code)
+                                    <span class="badge badge-light border ml-1">{{ $line->item->code }}</span>
                                 @endif
                                 @if ($line->remarks)
                                     <div class="text-muted small font-italic">{{ $line->remarks }}</div>

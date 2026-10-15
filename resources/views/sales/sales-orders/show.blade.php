@@ -142,7 +142,7 @@
                             <tr>
                                 <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
                                 <td class="font-weight-bold">{{ $line->item?->name }}</td>
-                                <td><span class="badge badge-light border">{{ $line->item?->item_code ?: '-' }}</span></td>
+                                <td><span class="badge badge-light border">{{ $line->item?->item_code ?: ($line->item?->ean_upc_code ?: '-') }}</span></td>
                                 <td class="text-right font-weight-bold">{{ number_format($line->qty, 0) }}</td>
                                 <td class="text-right">₹{{ number_format($line->sell_price, 2) }}</td>
                                 <td class="text-right">₹{{ number_format($line->mrp, 2) }}</td>

@@ -90,7 +90,7 @@
                         @foreach ($salesReturn->items as $idx => $line)
                             <tr>
                                 <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
-                                <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
+                                <td><span class="badge badge-light border font-weight-bold">{{ $line->item?->item_code ?: ($line->item?->ean_upc_code ?: '—') }}</span></td>
                                 <td class="font-weight-bold">
                                     {{ $line->item?->name }}
                                     @if($line->salesBill)

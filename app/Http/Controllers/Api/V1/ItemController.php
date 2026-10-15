@@ -67,7 +67,9 @@ class ItemController extends Controller
      */
     public function byBarcode(Request $request, string $code)
     {
-        $item = Item::where('ean_upc_code', $code)->first();
+        $item = Item::where('ean_upc_code', $code)
+            ->orWhere('item_code', $code)
+            ->first();
 
         if (! $item) {
             return response()->json(['message' => 'No item found for this barcode.'], 404);

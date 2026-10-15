@@ -151,7 +151,7 @@
             @foreach ($purchaseInvoice->items as $idx => $line)
                 <tr>
                     <td class="text-center">{{ $idx + 1 }}</td>
-                    <td>{{ $line->item?->item_code ?? $line->item?->ean_upc_code ?? '—' }}</td>
+                    <td>{{ $line->item?->item_code ?: ($line->item?->ean_upc_code ?: ($line->item?->id ? '#' . $line->item->id : '—')) }}</td>
                     <td class="font-bold">{{ $line->item?->name }}</td>
                     <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
                     <td class="text-right font-bold">{{ number_format($line->qty, 0) }}</td>

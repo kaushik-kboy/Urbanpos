@@ -3117,11 +3117,11 @@
 
                     $row.data('item-data', item);
                     $row.data('batches', batches);
-                    $row.data('last-processed-code', query || item.item_code || item.id);
+                    $row.data('last-processed-code', query || item.item_code || item.ean_upc_code || '');
 
                     isSyncing = true;
-                    // Sync Code: display item_code if available, otherwise ean or id
-                    $code.val(item.item_code || item.ean_upc_code || item.id);
+                    // Sync Code: display item_code if available, otherwise ean
+                    $code.val(item.item_code || item.ean_upc_code || query || '');
                     $code.removeClass('is-invalid border-danger');
                     sbClearCodeError($row);
 
@@ -4247,7 +4247,7 @@
 
                     // Restore item fields
                     $newRow.find('.sb-item-select').val(it.item_id);
-                    $newRow.find('.sb-item-code').val(it.item_id || it.item_code);
+                    $newRow.find('.sb-item-code').val(it.item_code || it.code || '');
                     $newRow.find('.sb-item-desc').val(it.item_desc);
 
                     // Ensure qty is always a positive number (never negative)
