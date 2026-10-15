@@ -443,14 +443,14 @@ class ImportHistoricalTransactions extends Command
                 $itemCode = trim($row['Item code'] ?? '');
                 $itemId = $this->itemsMap[$itemCode] ?? null;
                 if ($itemId) {
+                    $mrp = $this->cleanNumber($row['MRP'] ?? $rate);
                     PurchaseInvoiceItem::updateOrCreate(
                         ['purchase_invoice_id' => $pi->id, 'item_id' => $itemId],
                         [
-                            'quantity' => $qty,
-                            'rate' => $rate,
-                            'amount' => $amt,
-                            'total' => $amt,
-                            'hsn_code' => $row['HSN Code'] ?? null,
+                            'qty' => $qty,
+                            'cost_price' => $rate,
+                            'net_amount' => $amt,
+                            'mrp' => $mrp > 0 ? $mrp : $rate,
                             'cgst_amount' => $cgst,
                             'sgst_amount' => $sgst,
                             'igst_amount' => $igst,
@@ -557,14 +557,15 @@ class ImportHistoricalTransactions extends Command
                 $itemCode = trim($row['Item code'] ?? '');
                 $itemId = $this->itemsMap[$itemCode] ?? null;
                 if ($itemId) {
+                    $unitCost = $qty > 0 ? ($amt / $qty) : 0;
                     StockTransferItem::create([
                         'stock_transfer_id' => $st->id,
                         'item_id' => $itemId,
-                        'quantity' => $qty,
-                        'rate' => $qty > 0 ? ($amt / $qty) : 0,
-                        'amount' => $amt,
+                        'qty' => $qty,
+                        'received_qty' => $qty,
+                        'unit_cost' => $unitCost,
                         'batch_no' => 'TO-' . date('dmy', strtotime($toDate)),
-                        'expiry_date' => !empty($row['Expiry date']) ? date('Y-m-d', strtotime($row['Expiry date'])) : null,
+                        'exp_date' => !empty($row['Expiry date']) ? date('Y-m-d', strtotime($row['Expiry date'])) : null,
                     ]);
                 }
 
