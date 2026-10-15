@@ -530,7 +530,7 @@
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing…');
         
         $.ajax({
-            url: '{{ route("barcodes.direct-print") }}',
+            url: '{{ route("master.barcodes.direct-print") }}',
             type: 'POST',
             data: $('#printForm').serialize(),
             dataType: 'json'
