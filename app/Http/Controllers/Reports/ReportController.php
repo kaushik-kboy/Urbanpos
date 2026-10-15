@@ -1572,9 +1572,11 @@ class ReportController extends Controller
         }
         $search = $request->input('search');
 
-        $isExport = in_array($request->query('export'), ['excel', 'xlsx', 'csv']);
+        $isExport = in_array(strtolower((string) $request->input('export', $request->query('export', ''))), ['excel', 'xlsx', 'csv']);
         if ($isExport) {
-            $request->merge(['per_page' => 100000]);
+            @ini_set('memory_limit', '512M');
+            @ini_set('max_execution_time', '300');
+            $request->merge(['per_page' => 100000, 'page' => 1]);
         }
 
         $reportData = $reportService->generate($request, $module);

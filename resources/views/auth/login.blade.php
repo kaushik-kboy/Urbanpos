@@ -11,23 +11,250 @@
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html, body.up-login-screen {
-            height: 100%;
+            height: 100vh;
+            max-height: 100vh;
             margin: 0;
             padding: 0;
+            overflow: hidden;
             font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-            background: #fff5ec url('{{ asset("images/login-bg.jpg") }}') no-repeat center center fixed !important;
-            background-size: cover !important;
-            overflow-x: hidden;
+            background: #fff5ec;
+            position: relative;
+        }
+
+        /* Animated breathing background layer */
+        .up-bg-animated-layer {
+            position: fixed;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: #fff5ec url('{{ asset("images/login-bg.jpg") }}') no-repeat center center;
+            background-size: cover;
+            animation: upPetBreathing 7.5s ease-in-out infinite;
+            transform-origin: 18% 78%; /* Centered on resting dog & cat */
+            z-index: 0;
+            will-change: transform;
+        }
+
+        @keyframes upPetBreathing {
+            0% {
+                transform: scale(1.0) translate(0, 0);
+            }
+            38% {
+                transform: scale(1.032) translate(4px, -3px);
+            }
+            50% {
+                transform: scale(1.030) translate(4px, -3px);
+            }
+            85% {
+                transform: scale(1.008) translate(-1px, 1px);
+            }
+            100% {
+                transform: scale(1.0) translate(0, 0);
+            }
+        }
+
+        /* Sunny aura / glow around the resting pets */
+        .up-pet-halo {
+            position: fixed;
+            bottom: 2%;
+            left: 2%;
+            width: 520px;
+            height: 380px;
+            border-radius: 50%;
+            background: radial-gradient(ellipse at 42% 62%, rgba(254, 215, 170, 0.45) 0%, rgba(253, 186, 116, 0.22) 42%, rgba(255, 247, 237, 0) 72%);
+            animation: upHaloPulse 4.5s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes upHaloPulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(1.12);
+                opacity: 0.95;
+            }
+        }
+
+        /* Ambient floating pet particles */
+        .up-pet-particles {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 580px;
+            height: 420px;
+            pointer-events: none;
+            z-index: 1;
+            overflow: visible;
+        }
+
+        .up-pet-particle {
+            position: absolute;
+            opacity: 0;
+            user-select: none;
+            animation: upFloatUp 5.8s ease-in-out infinite;
+            filter: drop-shadow(0 2px 6px rgba(234, 88, 12, 0.35));
+        }
+
+        .up-pet-particle.p1 {
+            left: 110px;
+            bottom: 155px;
+            font-size: 1.25rem;
+            animation-duration: 5.2s;
+            animation-delay: 0s;
+        }
+
+        .up-pet-particle.p2 {
+            left: 260px;
+            bottom: 140px;
+            font-size: 1.35rem;
+            animation-duration: 6.0s;
+            animation-delay: 1.6s;
+        }
+
+        .up-pet-particle.p3 {
+            left: 320px;
+            bottom: 95px;
+            font-size: 1.15rem;
+            animation-duration: 4.8s;
+            animation-delay: 3.0s;
+        }
+
+        .up-pet-particle.p4 {
+            left: 180px;
+            bottom: 110px;
+            font-size: 1.05rem;
+            animation-duration: 5.6s;
+            animation-delay: 2.2s;
+        }
+
+        .up-pet-particle.p5 {
+            left: 390px;
+            bottom: 60px;
+            font-size: 1.3rem;
+            animation-duration: 4.5s;
+            animation-delay: 0.7s;
+        }
+
+        .up-pet-particle.p6 {
+            left: 450px;
+            bottom: 120px;
+            font-size: 1.1rem;
+            animation-duration: 5.4s;
+            animation-delay: 2.8s;
+        }
+
+        @keyframes upFloatUp {
+            0% {
+                transform: translateY(15px) scale(0.65) rotate(-12deg);
+                opacity: 0;
+            }
+            20% {
+                opacity: 0.9;
+            }
+            75% {
+                opacity: 0.75;
+            }
+            100% {
+                transform: translateY(-90px) scale(1.18) rotate(18deg);
+                opacity: 0;
+            }
+        }
+
+        /* Tennis ball glowing pulse & ripple */
+        .up-tennis-ball-pulse {
+            position: fixed;
+            left: 335px;
+            bottom: 50px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.45) 0%, rgba(249, 115, 22, 0) 70%);
+            animation: upBallGlow 2.4s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .up-tennis-ring {
+            position: fixed;
+            left: 335px;
+            bottom: 50px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 2px solid rgba(249, 115, 22, 0.55);
+            animation: upBallRing 3.0s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes upBallGlow {
+            0% {
+                transform: scale(0.85);
+                opacity: 0.35;
+            }
+            100% {
+                transform: scale(1.4);
+                opacity: 0.95;
+            }
+        }
+
+        @keyframes upBallRing {
+            0% {
+                transform: scale(0.5);
+                opacity: 0.95;
+            }
+            100% {
+                transform: scale(2.6);
+                opacity: 0;
+            }
+        }
+
+        /* Interactive zone for pets */
+        .up-pet-interactive-zone {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 560px;
+            height: 450px;
+            z-index: 3;
+            cursor: pointer;
+        }
+
+        .up-sparkle-trail {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            user-select: none;
+            animation: upTrailFly 1.2s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+        }
+
+        @keyframes upTrailFly {
+            0% {
+                transform: scale(0.5) translate(0, 0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.3) translate(var(--tx, 0px), -60px) rotate(var(--rot, 15deg));
+                opacity: 0;
+            }
         }
 
         .up-auth-overlay {
-            min-height: 100vh;
+            height: 100vh;
+            max-height: 100vh;
             width: 100%;
+            overflow: hidden;
             display: flex;
             align-items: center;
-            padding: 2rem 5% 2rem 6%;
+            padding: 1.25rem 5% 1.25rem 5%;
             box-sizing: border-box;
             background: radial-gradient(circle at 82% 40%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 245, 235, 0.05) 100%);
+            position: relative;
+            z-index: 1;
         }
 
         .up-auth-container {
@@ -50,31 +277,33 @@
             flex-direction: column;
             align-items: flex-start;
             z-index: 2;
+            transform: translateY(-50px);
         }
 
         .up-hero-logo {
-            height: 52px;
+            height: 88px;
             width: auto;
             object-fit: contain;
-            margin-bottom: 0.85rem;
+            margin-bottom: 0.55rem;
             align-self: flex-start;
+            filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.05));
         }
 
         .up-hero-title {
-            font-size: 2.45rem;
+            font-size: 2.35rem;
             font-weight: 800;
             color: #111827;
             letter-spacing: -0.025em;
-            line-height: 1.18;
-            margin: 0 0 0.85rem 0;
+            line-height: 1.15;
+            margin: 0 0 0.38rem 0;
         }
 
         .up-hero-subtitle {
-            font-size: 1.08rem;
+            font-size: 1.02rem;
             color: #4B5563;
-            line-height: 1.55;
+            line-height: 1.42;
             max-width: 520px;
-            margin: 0 0 1.85rem 0;
+            margin: 0 0 0.95rem 0;
             font-weight: 500;
         }
 
@@ -82,8 +311,8 @@
         .up-pills-wrap {
             display: flex;
             flex-direction: column;
-            gap: 0.85rem;
-            margin-bottom: 1.5rem;
+            gap: 0.52rem;
+            margin-bottom: 0.75rem;
         }
 
         .up-pills-row {
@@ -94,12 +323,12 @@
         }
 
         .up-feature-pill {
-            background: rgba(255, 255, 255, 0.88);
+            background: rgba(255, 255, 255, 0.90);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.95);
-            border-radius: 14px;
-            padding: 5px 11px 5px 7px;
+            border-radius: 12px;
+            padding: 4px 11px 4px 6px;
             display: inline-flex;
             align-items: center;
             gap: 7px;
@@ -110,18 +339,18 @@
 
         .up-feature-pill:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.07);
             background: #ffffff;
         }
 
         .up-pill-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 9px;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.9rem;
+            font-size: 0.86rem;
             flex-shrink: 0;
         }
 
@@ -132,13 +361,13 @@
         }
 
         .up-pill-title {
-            font-size: 0.82rem;
+            font-size: 0.80rem;
             font-weight: 700;
             color: #1F2937;
         }
 
         .up-pill-sub {
-            font-size: 0.67rem;
+            font-size: 0.65rem;
             color: #6B7280;
             font-weight: 500;
         }
@@ -172,31 +401,80 @@
         .pill-del { border-left: 2px solid #0D9488; }
 
         .up-slogan-wrap {
-            margin-top: 1.5rem;
-            align-self: center;
-            padding-left: 8rem;
+            margin-top: 0.35rem;
+            align-self: flex-start;
+            padding-left: 17.5rem;
         }
 
         .up-cursive-slogan {
             font-family: 'Caveat', cursive, serif;
-            font-size: 1.7rem;
+            font-size: 1.95rem;
             font-weight: 700;
-            color: #EA580C;
+            background: linear-gradient(135deg, #EA580C 0%, #F97316 45%, #E11D48 85%, #EA580C 100%);
+            background-size: 250% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             letter-spacing: 0.02em;
-            transform: rotate(-2deg);
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 9px;
+            filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.95));
+            animation: upSloganFloat 3.2s ease-in-out infinite alternate, upSloganShimmer 5s ease infinite alternate;
+            cursor: default;
+            user-select: none;
+        }
+
+        @keyframes upSloganShimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 100% center; }
+        }
+
+        @keyframes upSloganFloat {
+            0% {
+                transform: rotate(-2.5deg) translateY(0);
+            }
+            50% {
+                transform: rotate(-1deg) translateY(-7px) scale(1.025);
+            }
+            100% {
+                transform: rotate(-2.5deg) translateY(0);
+            }
         }
 
         .up-cursive-slogan .heart-icon {
-            font-size: 1.3rem;
+            font-size: 1.55rem;
             line-height: 1;
+            color: #E11D48;
+            -webkit-text-fill-color: #E11D48;
+            display: inline-block;
+            transform-origin: center center;
+            animation: upHeartPulse 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes upHeartPulse {
+            0%, 100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 2px rgba(225, 29, 72, 0.4));
+            }
+            14% {
+                transform: scale(1.36);
+                filter: drop-shadow(0 0 8px rgba(225, 29, 72, 0.85));
+            }
+            28% {
+                transform: scale(1);
+            }
+            42% {
+                transform: scale(1.22);
+                filter: drop-shadow(0 0 6px rgba(225, 29, 72, 0.65));
+            }
+            70% {
+                transform: scale(1);
+            }
         }
 
         /* --- Right Side Login Card --- */
         .up-card-col {
-            width: 440px;
+            width: 430px;
             max-width: 100%;
             flex-shrink: 0;
             z-index: 2;
@@ -204,8 +482,8 @@
 
         .up-login-card {
             background: #FFFFFF;
-            border-radius: 28px;
-            padding: 2.5rem 2.4rem 2.2rem 2.4rem;
+            border-radius: 24px;
+            padding: 2rem 2.2rem 1.7rem 2.2rem;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(234, 88, 12, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.95);
             position: relative;
@@ -213,29 +491,29 @@
 
         .up-card-logo-wrap {
             text-align: center;
-            margin-bottom: 0.85rem;
+            margin-bottom: 0.65rem;
         }
 
         .up-card-logo {
-            height: 52px;
+            height: 68px;
             width: auto;
             object-fit: contain;
         }
 
         .up-card-title {
-            font-size: 1.75rem;
+            font-size: 1.65rem;
             font-weight: 800;
             color: #111827;
             text-align: center;
             letter-spacing: -0.02em;
-            margin: 0 0 0.25rem 0;
+            margin: 0 0 0.2rem 0;
         }
 
         .up-card-sub {
-            font-size: 0.92rem;
+            font-size: 0.88rem;
             color: #6B7280;
             text-align: center;
-            margin: 0 0 1.85rem 0;
+            margin: 0 0 1.35rem 0;
             font-weight: 500;
         }
 
@@ -441,6 +719,19 @@
 @stop
 
 @section('body')
+<div class="up-bg-animated-layer"></div>
+<div class="up-pet-halo"></div>
+<div class="up-pet-particles">
+    <div class="up-tennis-ball-pulse"></div>
+    <div class="up-tennis-ring"></div>
+    <span class="up-pet-particle p1">🐾</span>
+    <span class="up-pet-particle p2">💖</span>
+    <span class="up-pet-particle p3">✨</span>
+    <span class="up-pet-particle p4">🐾</span>
+    <span class="up-pet-particle p5">♡</span>
+    <span class="up-pet-particle p6">✨</span>
+</div>
+<div class="up-pet-interactive-zone" id="pet-interactive-zone" title="Pet friendly zone ♡"></div>
 <div class="up-auth-overlay">
     <div class="up-auth-container">
 
@@ -640,6 +931,33 @@
                 pwInput.setAttribute('type', isPassword ? 'text' : 'password');
                 toggleBtn.classList.toggle('fa-eye', !isPassword);
                 toggleBtn.classList.toggle('fa-eye-slash', isPassword);
+            });
+        }
+
+        // Interactive gentle paw/heart floating effect on hover over pets
+        const petZone = document.getElementById('pet-interactive-zone');
+        if (petZone) {
+            let lastSpawn = 0;
+            const petSymbols = ['🐾', '💖', '✨', '🐾', '♡'];
+            petZone.addEventListener('mousemove', function(e) {
+                const now = Date.now();
+                if (now - lastSpawn < 160) return; // throttle
+                lastSpawn = now;
+
+                const spark = document.createElement('span');
+                spark.className = 'up-sparkle-trail';
+                const sym = petSymbols[Math.floor(Math.random() * petSymbols.length)];
+                spark.textContent = sym;
+                spark.style.left = (e.clientX - 10) + 'px';
+                spark.style.top = (e.clientY - 10) + 'px';
+                spark.style.fontSize = (14 + Math.random() * 10) + 'px';
+                spark.style.setProperty('--tx', ((Math.random() - 0.5) * 50) + 'px');
+                spark.style.setProperty('--rot', ((Math.random() - 0.5) * 40) + 'deg');
+                document.body.appendChild(spark);
+
+                setTimeout(() => {
+                    spark.remove();
+                }, 1200);
             });
         }
     });

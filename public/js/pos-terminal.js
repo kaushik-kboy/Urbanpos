@@ -208,7 +208,7 @@
         const unfilledIdx = state.cart.findIndex((c, i) => i !== allowIdx && (c.qty === '' || c.qty === null || c.qty === undefined || isNaN(parseFloat(c.qty)) || parseFloat(c.qty) <= 0));
         if (unfilledIdx !== -1) {
             const it = state.cart[unfilledIdx];
-            showNotification(`Pehle "${it.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'danger');
+            showNotification(`Please enter quantity for "${it.name}" before proceeding.`, 'danger');
             if (typeof sound !== 'undefined' && sound.error) sound.error();
             focusRowQty(unfilledIdx);
             const $cell = $(`.pos-row-qty[data-idx="${unfilledIdx}"]`);
@@ -298,7 +298,7 @@
                 state.cart[idx].qty = '';
                 $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
                 $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                showNotification(`Pehle "${item.name}" ki quantity bhariye! Qty fill karege tab hi aage ja sakte hain.`, 'warning');
+                showNotification(`Please enter quantity for "${item.name}" before proceeding.`, 'warning');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
                 recalculateRow(idx, 'qty');
                 return;
@@ -344,7 +344,7 @@
                 ke.preventDefault();
                 if (rawVal === '' || isNaN(val) || val <= 0) {
                     $(this).addClass('is-invalid border-danger text-danger');
-                    showNotification('Pehle item ki quantity bhariye! Tab aage nahi ja sakta.', 'warning');
+                    showNotification('Please enter item quantity before proceeding.', 'warning');
                     if (typeof sound !== 'undefined' && sound.error) sound.error();
                     $(this).focus().select();
                     return;
@@ -356,7 +356,7 @@
                     const availRemaining = Math.max(0, stock - otherRowsQty);
                     const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                     const errMsg = availRemaining <= 0
-                        ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
+                        ? `Out of stock: "${item.name}" is currently unavailable (${availDisp} in stock).`
                         : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
 
                     $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
@@ -387,7 +387,7 @@
                 ke.preventDefault();
                 if (rawVal === '' || isNaN(val) || val <= 0) {
                     $(this).addClass('is-invalid border-danger text-danger');
-                    showNotification('Pehle item ki quantity bhariye!', 'warning');
+                    showNotification('Please enter item quantity before proceeding.', 'warning');
                     if (typeof sound !== 'undefined' && sound.error) sound.error();
                     $(this).focus().select();
                     return;
@@ -399,7 +399,7 @@
                     const availRemaining = Math.max(0, stock - otherRowsQty);
                     const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
                     const errMsg = availRemaining <= 0
-                        ? `Stock nahi hai! "${item.name}" out of stock hai (${availDisp} available).`
+                        ? `Out of stock: "${item.name}" is currently unavailable (${availDisp} in stock).`
                         : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
 
                     $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
@@ -680,7 +680,7 @@
                 for (let i = 0; i < state.cart.length; i++) {
                     const it = state.cart[i];
                     if (it.qty === '' || it.qty === null || it.qty === undefined || isNaN(parseFloat(it.qty)) || parseFloat(it.qty) <= 0) {
-                        showNotification(`Item "${it.name}" ki quantity bhariye! (Please enter quantity first)`, 'warning');
+                        showNotification(`Please enter quantity for "${it.name}".`, 'warning');
                         openQuantityInput(i);
                         if (typeof sound !== 'undefined' && sound.error) sound.error();
                         return;
@@ -3231,7 +3231,7 @@
         const invalidItem = state.cart.find(item => item.qty === '' || item.qty === null || item.qty === undefined || isNaN(parseFloat(item.qty)) || parseFloat(item.qty) <= 0);
         if (invalidItem) {
             const badIdx = state.cart.indexOf(invalidItem);
-            const msg = `Item "${invalidItem.name}" ki quantity bhariye! (Quantity must be entered and greater than 0)`;
+            const msg = `Please enter quantity for "${invalidItem.name}" (Quantity must be greater than 0).`;
             showNotification(msg, 'danger');
             alert(msg);
             openQuantityInput(badIdx);
@@ -3268,7 +3268,7 @@
 
         // Validate Payment Mode selected (Point 3)
         if (!state.tender_mode) {
-            const payMsg = 'Payment mode pehle select karo! (Please select a payment mode first)';
+            const payMsg = 'Please select a payment mode first.';
             showNotification(payMsg, 'warning');
             if (typeof toastr !== 'undefined') toastr.warning(payMsg, 'Payment Mode Required');
             alert(payMsg);
@@ -3450,7 +3450,7 @@
                 if (isNaN(cashVal) || cashVal < (totals.grandTotal - 0.05)) {
                     const validCash = isNaN(cashVal) ? 0 : cashVal;
                     const shortAmt = (totals.grandTotal - validCash).toFixed(2);
-                    const errMsg = `Cash Received (₹${validCash.toFixed(2)}) bill amount (₹${totals.grandTotal.toFixed(2)}) se kam hai! Shortage: ₹${shortAmt}. Pura payment collect karein ya Credit mode select karein.`;
+                    const errMsg = `Cash Received (₹${validCash.toFixed(2)}) is less than bill amount (₹${totals.grandTotal.toFixed(2)})! Shortage: ₹${shortAmt}. Please collect full payment or select Credit / Split mode.`;
                     showNotification(errMsg, 'danger');
                     if (typeof toastr !== 'undefined') toastr.error(errMsg, 'Underpayment Error');
                     alert(errMsg);

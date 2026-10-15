@@ -84,6 +84,7 @@ class ImportItemMaster extends Command
 
         $existingBarcodes = Item::whereNotNull('ean_upc_code')->pluck('id', 'ean_upc_code')->toArray();
         $existingNames = Item::pluck('id', 'name')->toArray();
+        $existingCodes = Item::whereNotNull('item_code')->where('item_code', '!=', '')->pluck('id', 'item_code')->toArray();
 
         $created = 0;
         $updated = 0;
@@ -216,22 +217,27 @@ class ImportItemMaster extends Command
                 $costPrice = $purNet > 0 ? $purNet : $landingCost;
                 $selling = $cleanNum($getValue('Selling'));
 
+                // Item Code
+                $itemCode = $getValue('Item') ?: ($getValue('Item code') ?: null);
+
                 // Barcode / EAN
                 $barcode = $getValue('ISBN');
                 if ($barcode === '') {
                     $barcode = $getValue('Unique Barcode Id');
                 }
                 $barcode = trim($barcode);
-                if ($barcode === '' || strtolower($barcode) === 'null') {
+                if ($barcode === '' || in_array(strtolower($barcode), ['null', '0', '00', '000', '-', 'na', 'n/a', 'none'])) {
                     $barcode = null;
                 }
 
                 // Check duplicate barcode if present
-                if ($barcode !== null && isset($existingBarcodes[$barcode])) {
-                    // Unique constraint on ean_upc_code: if barcode belongs to another item name, make barcode null or handle
-                    $existingId = $existingBarcodes[$barcode];
-                    if (! isset($existingNames[$itemName]) || $existingNames[$itemName] !== $existingId) {
-                        $barcode = null; // nullify barcode to avoid unique violation if assigned to another product
+                if ($barcode !== null) {
+                    $targetExistingId = ($itemCode && isset($existingCodes[$itemCode]))
+                        ? $existingCodes[$itemCode]
+                        : ($existingNames[$itemName] ?? null);
+
+                    if (isset($existingBarcodes[$barcode]) && $existingBarcodes[$barcode] !== $targetExistingId) {
+                        $barcode = null; // nullify duplicate barcode to avoid SQL unique violation
                     }
                 }
 
@@ -257,6 +263,7 @@ class ImportItemMaster extends Command
                 }
 
                 $itemData = [
+                    'item_code' => $itemCode,
                     'ean_upc_code' => $barcode,
                     'name' => $itemName,
                     'alias' => $getValue('Item alias') ?: null,
@@ -281,12 +288,22 @@ class ImportItemMaster extends Command
                     'hsn_code' => $getValue('HSN Code') ?: null,
                 ];
 
-                if (isset($existingNames[$itemName])) {
-                    Item::where('id', $existingNames[$itemName])->update($itemData);
+                $existingId = ($itemCode && isset($existingCodes[$itemCode]))
+                    ? $existingCodes[$itemCode]
+                    : ($existingNames[$itemName] ?? null);
+
+                if ($existingId) {
+                    Item::where('id', $existingId)->update($itemData);
+                    if ($barcode !== null) {
+                        $existingBarcodes[$barcode] = $existingId;
+                    }
                     $updated++;
                 } else {
                     $newItem = Item::create($itemData);
                     $existingNames[$itemName] = $newItem->id;
+                    if ($itemCode) {
+                        $existingCodes[$itemCode] = $newItem->id;
+                    }
                     if ($barcode !== null) {
                         $existingBarcodes[$barcode] = $newItem->id;
                     }

@@ -68,9 +68,18 @@ class ImportClosingStock extends Command
             $branchNameMap[strtoupper(trim($b->name))] = $b;
         }
 
+        $satelliteBranch = $branches->first(fn($b) => str_contains(strtoupper($b->name), 'SATELLITE') || str_contains(strtoupper($b->name), 'SERVICES'))
+            ?? $branches->first(fn($b) => $b->id == 2)
+            ?? $branches->first();
+
+        $moteraBranch = $branches->first(fn($b) => str_contains(strtoupper($b->name), 'MOTERA'))
+            ?? $branches->first(fn($b) => $b->id == 3)
+            ?? $branches->skip(1)->first()
+            ?? $branches->first();
+
         $storeIdMap = [
-            '225' => $branches->first(fn($b) => str_contains(strtoupper($b->name), 'SERVICES') || str_contains(strtoupper($b->name), 'SATELLITE')) ?? $branches->first(),
-            '32772' => $branches->first(fn($b) => str_contains(strtoupper($b->name), 'MOTERA')) ?? $branches->skip(1)->first(),
+            '225' => $satelliteBranch,
+            '32772' => $moteraBranch,
         ];
 
         $itemsByCode = Item::whereNotNull('item_code')->where('item_code', '!=', '')->pluck('id', 'item_code')->toArray();
@@ -158,12 +167,41 @@ class ImportClosingStock extends Command
                 $batchNo = $get('Batch no');
                 $expiryDate = $this->parseExpiryDate($get('Expiry date'));
 
+                // Skip pure 0 stock / 0 val batch rows to avoid importing 45,000 dead batches
+                if ($qty == 0.0 && $stockAmt == 0.0) {
+                    continue;
+                }
+
                 // Resolve Branch
                 $branch = $storeIdMap[$storeId] ?? ($branchNameMap[strtoupper($storeName)] ?? null);
                 $branchId = $branch ? $branch->id : null;
 
                 // Resolve Item
                 $itemId = $itemsByCode[$itemCode] ?? ($itemsByName[$itemName] ?? ($isbn !== '' && isset($itemsByBarcode[$isbn]) ? $itemsByBarcode[$isbn] : null));
+
+                // Auto-create missing item if not found so no GoFrugal SKUs are missed
+                if (! $itemId && $itemCode !== '') {
+                    $newItem = Item::create([
+                        'item_code'    => $itemCode,
+                        'name'         => $itemName ?: "Item {$itemCode}",
+                        'ean_upc_code' => $isbn ?: null,
+                        'alias'        => $get('Item alias') ?: null,
+                        'cost_price'   => $netCost,
+                        'landing_cost' => $netCost,
+                        'sell_price'   => $mrp > 0 ? $mrp : $netCost,
+                        'mrp'          => $mrp > 0 ? $mrp : $netCost,
+                        'status'       => strtolower($get('Status')) !== 'inactive',
+                        'product_type' => 'Standard',
+                    ]);
+                    $itemId = $newItem->id;
+                    $itemsByCode[$itemCode] = $itemId;
+                    if ($itemName !== '') {
+                        $itemsByName[$itemName] = $itemId;
+                    }
+                    if ($isbn !== '') {
+                        $itemsByBarcode[$isbn] = $itemId;
+                    }
+                }
 
                 $batchRows[] = [
                     'store_id' => $storeId,
@@ -271,7 +309,7 @@ class ImportClosingStock extends Command
                     $record = [
                         'item_id' => $itmId,
                         'branch_id' => $bId,
-                        'quantity' => max(0, round($dat['qty'], 3)),
+                        'quantity' => round($dat['qty'], 3),
                         'cost_price' => round($dat['cost'], 2),
                         'landing_cost' => round($dat['cost'], 2),
                         'sell_price' => round($sellPrice, 2),

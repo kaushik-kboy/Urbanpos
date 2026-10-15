@@ -169,10 +169,10 @@
                                 <i class="fas fa-file-alt mr-1 text-primary"></i> Label Sheet / Roll Format:
                             </label>
                             <select name="format" id="formatSelect" class="form-control form-control-sm font-weight-bold">
-                                <option value="a4_24" selected>★ A4 Sheet (24-Up: 3x8 - Desmat / Avery Laser)</option>
-                                <option value="a4_40">A4 Sheet (40-Up: 4x10 - Compact Laser)</option>
+                                <option value="50x38_2up" selected>★ 50x38 mm (2-Up Thermal Roll - Recommended)</option>
                                 <option value="50x25_2up">50x25 mm (2-Up Thermal Roll)</option>
-                                <option value="50x38_2up">50x38 mm (2-Up Thermal Roll)</option>
+                                <option value="a4_24">A4 Sheet (24-Up: 3x8 - Desmat / Avery Laser)</option>
+                                <option value="a4_40">A4 Sheet (40-Up: 4x10 - Compact Laser)</option>
                                 <option value="102x64">102x64 mm (1-Up Single Roll)</option>
                             </select>
                         </div>
@@ -202,6 +202,9 @@
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                         <span class="text-muted">Total Stickers: <strong id="totalLabels" class="text-primary font-weight-bold h5 mb-0">0</strong></span>
                         <div>
+                            <button type="button" class="btn btn-primary btn-lg font-weight-bold px-3 shadow-sm mr-2" id="btnDirectPrintStudio" disabled title="Directly print to TSC TE244 printer without browser dialog">
+                                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Direct Print (TSC)
+                            </button>
                             <button type="submit" class="btn btn-success btn-lg font-weight-bold px-4 shadow-sm" id="printSubmit" disabled>
                                 <i class="fas fa-print mr-2"></i> Print Barcode Labels
                             </button>
@@ -440,6 +443,7 @@
             $body.append($emptyRow);
             $totalLabels.text(0);
             $printSubmit.prop('disabled', true);
+            $('#btnDirectPrintStudio').prop('disabled', true);
             $printInputs.empty();
             return;
         }
@@ -493,6 +497,7 @@
 
         $totalLabels.text(total);
         $printSubmit.prop('disabled', false);
+        $('#btnDirectPrintStudio').prop('disabled', false);
 
         // Qty change
         $body.off('change', '.queue-qty-input').on('change', '.queue-qty-input', function () {
@@ -514,6 +519,33 @@
     $('#clearQueue').on('click', function () {
         queue = {};
         renderQueue();
+    });
+
+    // 1-Click Direct Print from Studio to TSC TE244
+    $('#btnDirectPrintStudio').on('click', function () {
+        const items = Object.values(queue);
+        if (items.length === 0) return;
+        const $btn = $(this);
+        const orig = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing…');
+        
+        $.ajax({
+            url: '{{ route("barcodes.direct-print") }}',
+            type: 'POST',
+            data: $('#printForm').serialize(),
+            dataType: 'json'
+        }).done(function (res) {
+            $btn.prop('disabled', false).html(orig);
+            if (res && res.success) {
+                alert('✅ ' + (res.message || 'Stickers printed directly!'));
+            } else {
+                alert('⚠️ ' + (res.message || 'Failed to print'));
+            }
+        }).fail(function (xhr) {
+            $btn.prop('disabled', false).html(orig);
+            const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error printing stickers directly';
+            alert('❌ ' + msg);
+        });
     });
 
     function escHtml(str) {

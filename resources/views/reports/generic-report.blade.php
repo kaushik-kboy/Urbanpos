@@ -128,9 +128,9 @@
                         <i class="fas fa-file-excel mr-1"></i> Export Excel
                     </a>
                 @endif
-                <button type="button" class="btn btn-sm btn-outline-success mr-2 shadow-sm" onclick="exportTableToCSV('reportDataTable', '{{ $module ?? 'report' }}')">
+                <a href="{{ request()->fullUrlWithQuery(['export' => 'csv', 'page' => null]) }}" class="btn btn-sm btn-outline-success mr-2 shadow-sm font-weight-bold" title="Download all records as CSV">
                     <i class="fas fa-file-csv mr-1"></i> Export CSV
-                </button>
+                </a>
                 <x-table-column-customizer :table-key="'reports.generic.' . ($module ?? $slug ?? 'default')" table-id="reportDataTable" button-class="btn btn-sm btn-light border text-secondary" />
             </div>
         </div>

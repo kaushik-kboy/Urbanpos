@@ -36,6 +36,9 @@ class DynamicReportService
     protected int $perPage = 50;
     public function generate(Request $request, string $module): array
     {
+        $requestedPerPage = (int) $request->input('per_page', 50);
+        $this->perPage = $requestedPerPage > 0 ? $requestedPerPage : 50;
+
         $rawFrom = $request->input('from');
         $rawTo = $request->input('to');
         try {
