@@ -268,6 +268,38 @@ class ItemCodeAutoGenerationAndPurchaseInvoiceViewTest extends TestCase
         $this->assertEquals(450, $response->json('batches.0.mrp'));
         $this->assertEquals(75, $response->json('batches.1.mrp'));
     }
+
+    public function test_item_master_search_prioritizes_exact_code_and_avoids_barcode_substrings(): void
+    {
+        // Item with code 11036
+        $item1 = Item::create([
+            'name' => 'Pedigree Adult Chicken and Liver Gravy 130G',
+            'item_code' => '11036',
+            'ean_upc_code' => '8853301013307',
+            'cost_price' => 35,
+            'sell_price' => 50,
+            'mrp' => 50,
+            'status' => true,
+        ]);
+
+        // Item whose 13-digit barcode happens to have 11036 in it
+        $item2 = Item::create([
+            'name' => 'Royal Canin Urinary 2 KG',
+            'item_code' => '1623',
+            'ean_upc_code' => '3182550711036',
+            'cost_price' => 900,
+            'sell_price' => 1200,
+            'mrp' => 1200,
+            'status' => true,
+        ]);
+
+        // Searching for '11036' should match ONLY item1
+        $response = $this->actingAs($this->admin)->get(route('master.items.index', ['name' => '11036']));
+        $response->assertOk();
+        $response->assertSee('Pedigree Adult Chicken and Liver Gravy 130G');
+        $response->assertDontSee('Royal Canin Urinary 2 KG');
+    }
 }
+
 
 

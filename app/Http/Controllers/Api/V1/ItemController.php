@@ -40,11 +40,17 @@ class ItemController extends Controller
         }
 
         if ($q !== '') {
-            $query->where(function ($sub) use ($q) {
-                $sub->where('item_code', 'like', "%{$q}%")
-                    ->orWhere('name', 'like', "%{$q}%")
-                    ->orWhere('ean_upc_code', 'like', "%{$q}%");
-            });
+            if (Item::where('item_code', $q)->exists()) {
+                $query->where('item_code', $q);
+            } elseif (Item::where('ean_upc_code', $q)->exists()) {
+                $query->where('ean_upc_code', $q);
+            } else {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('item_code', 'like', "{$q}%")
+                        ->orWhere('name', 'like', "%{$q}%")
+                        ->orWhere('ean_upc_code', 'like', "{$q}%");
+                });
+            }
         }
 
         $items = $query->orderBy('name')

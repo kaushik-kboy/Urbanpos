@@ -25,38 +25,47 @@ class ItemController extends Controller
 
         if ($request->filled('name')) {
             $rawTerm = trim($request->input('name'));
-            $tokens = preg_split('/\s+/', $rawTerm, -1, PREG_SPLIT_NO_EMPTY);
 
-            $query->where(function ($q) use ($rawTerm, $tokens) {
-                // Exact phrase match
-                $q->where('name', 'like', "%{$rawTerm}%")
-                  ->orWhere('alias', 'like', "%{$rawTerm}%")
-                  ->orWhere('item_code', 'like', "%{$rawTerm}%")
-                  ->orWhere('ean_upc_code', 'like', "%{$rawTerm}%");
+            // 1. Exact Item Code Match Priority: If the query matches an exact item_code, show that item exclusively!
+            if (Item::where('item_code', $rawTerm)->exists()) {
+                $query->where('item_code', $rawTerm);
+            } elseif (Item::where('ean_upc_code', $rawTerm)->exists()) {
+                // 2. Exact Barcode Match Priority
+                $query->where('ean_upc_code', $rawTerm);
+            } else {
+                $tokens = preg_split('/\s+/', $rawTerm, -1, PREG_SPLIT_NO_EMPTY);
 
-                // Multi-token match across name, alias, item_code, barcode
-                if (count($tokens) > 1) {
-                    $q->orWhere(function ($subQ) use ($tokens) {
-                        foreach ($tokens as $token) {
-                            $subQ->where(function ($tokenQ) use ($token) {
-                                $tokenQ->where('name', 'like', "%{$token}%")
-                                       ->orWhere('alias', 'like', "%{$token}%")
-                                       ->orWhere('item_code', 'like', "%{$token}%")
-                                       ->orWhere('ean_upc_code', 'like', "%{$token}%");
+                $query->where(function ($q) use ($rawTerm, $tokens) {
+                    // Phrase match on name/alias, prefix match on item_code/barcode (never middle-of-barcode substring)
+                    $q->where('name', 'like', "%{$rawTerm}%")
+                      ->orWhere('alias', 'like', "%{$rawTerm}%")
+                      ->orWhere('item_code', 'like', "{$rawTerm}%")
+                      ->orWhere('ean_upc_code', 'like', "{$rawTerm}%");
 
-                                // Support unit variations like 3kg <-> 3 kg
-                                if (preg_match('/^(\d+)(kg|g|gm|ml|l|ltr)$/i', $token, $m)) {
-                                    $alt = $m[1] . ' ' . $m[2];
-                                    $tokenQ->orWhere('name', 'like', "%{$alt}%");
-                                } elseif (is_numeric($token)) {
-                                    $tokenQ->orWhere('name', 'like', "%{$token}kg%")
-                                           ->orWhere('name', 'like', "%{$token} kg%");
-                                }
-                            });
-                        }
-                    });
-                }
-            });
+                    // Multi-token match across name, alias, item_code, barcode
+                    if (count($tokens) > 1) {
+                        $q->orWhere(function ($subQ) use ($tokens) {
+                            foreach ($tokens as $token) {
+                                $subQ->where(function ($tokenQ) use ($token) {
+                                    $tokenQ->where('name', 'like', "%{$token}%")
+                                           ->orWhere('alias', 'like', "%{$token}%")
+                                           ->orWhere('item_code', 'like', "{$token}%")
+                                           ->orWhere('ean_upc_code', 'like', "{$token}%");
+
+                                    // Support unit variations like 3kg <-> 3 kg
+                                    if (preg_match('/^(\d+)(kg|g|gm|ml|l|ltr)$/i', $token, $m)) {
+                                        $alt = $m[1] . ' ' . $m[2];
+                                        $tokenQ->orWhere('name', 'like', "%{$alt}%");
+                                    } elseif (is_numeric($token)) {
+                                        $tokenQ->orWhere('name', 'like', "%{$token}kg%")
+                                               ->orWhere('name', 'like', "%{$token} kg%");
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
         }
 
         $supplierId = $request->input('supplier_id', $request->input('supplier'));
