@@ -331,7 +331,7 @@ class PurchaseReturnController extends Controller
             $returnableQty = min($invoiceRemaining, $effectiveStock);
             $allocatedStockMap[$allocKey] = $alreadyAllocated + $returnableQty;
 
-            $resolvedBatchNo = !empty($line->batch_no) ? $line->batch_no : ($bStock['batch_no'] ?? '');
+            $resolvedBatchNo = !empty($line->batch_no) ? (string) $line->batch_no : '';
 
             return [
                 'item_id' => $line->item_id,
@@ -449,8 +449,8 @@ class PurchaseReturnController extends Controller
             }
             if ($code !== '') {
                 $query->where(function ($cq) use ($code) {
-                    $cq->where('i.item_code', 'like', "%{$code}%")
-                        ->orWhere('i.ean_upc_code', 'like', "%{$code}%");
+                    $cq->where('i.item_code', $code)
+                        ->orWhere('i.ean_upc_code', $code);
                 });
             }
 
@@ -504,7 +504,7 @@ class PurchaseReturnController extends Controller
                     'id'               => (int) $row->id,
                     'name'             => $row->name,
                     'code'             => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
-                    'batch_no'         => !empty($row->batch_no) ? $row->batch_no : ($bStock['batch_no'] ?? ''),
+                    'batch_no'         => !empty($row->batch_no) ? (string) $row->batch_no : '',
                     'qty'              => $effectiveStock,
                     'available_stock'  => $effectiveStock,
                     'invoiced_qty'     => $invoicedQty,
@@ -562,8 +562,8 @@ class PurchaseReturnController extends Controller
         }
         if ($code !== '') {
             $query->where(function ($cq) use ($code) {
-                $cq->where('i.item_code', 'like', "%{$code}%")
-                    ->orWhere('i.ean_upc_code', 'like', "%{$code}%");
+                $cq->where('i.item_code', $code)
+                    ->orWhere('i.ean_upc_code', $code);
             });
         }
 
@@ -633,16 +633,6 @@ class PurchaseReturnController extends Controller
         ]));
         $items = $this->itemList($subReq)->getData(true)['items'] ?? [];
 
-        $exactMatchOnly = $request->boolean('exact_match_only');
-
-        if (empty($items) && ! $exactMatchOnly) {
-            $subReq = Request::create('', 'GET', array_merge($request->all(), [
-                'code' => '',
-                'search' => $query,
-            ]));
-            $items = $this->itemList($subReq)->getData(true)['items'] ?? [];
-        }
-
         if (empty($items)) {
             $msg = ! empty($invoiceId)
                 ? "Item '{$query}' was not found in the selected Purchase Invoice."
@@ -650,7 +640,18 @@ class PurchaseReturnController extends Controller
             return response()->json(['success' => false, 'message' => $msg], 404);
         }
 
-        return response()->json(array_merge(['success' => true], $items[0]));
+        // Return exact match if found, otherwise first match of exact code
+        $matched = null;
+        foreach ($items as $it) {
+            if (strcasecmp((string)($it['code'] ?? ''), $query) === 0 ||
+                strcasecmp((string)($it['item_code'] ?? ''), $query) === 0 ||
+                strcasecmp((string)($it['ean_upc_code'] ?? ''), $query) === 0) {
+                $matched = $it;
+                break;
+            }
+        }
+
+        return response()->json(array_merge(['success' => true], $matched ?? $items[0]));
     }
 
     public function print(PurchaseReturn $purchaseReturn)
@@ -880,29 +881,36 @@ class PurchaseReturnController extends Controller
                 $itemName = $item ? $item->name : "Item #{$itemId}";
                 $batchLabel = $batchNo !== '' ? " (Batch: {$batchNo})" : '';
 
-                // If specific batch requested, must exist on invoice
+                // If specific batch requested, must exist on invoice or match unbatched invoice item
                 $origPurchased = $invoiceQtyMap[$key] ?? null;
+                $effectiveKey = $key;
                 if ($origPurchased === null) {
-                    // Check if item exists on invoice under empty batch or another batch
-                    $itemExists = false;
-                    foreach ($invoiceQtyMap as $ik => $iq) {
-                        if (str_starts_with($ik, "{$itemId}___")) {
-                            $itemExists = true;
-                            break;
-                        }
-                    }
-                    if (! $itemExists) {
-                        throw ValidationException::withMessages([
-                            'items' => "The item '{$itemName}' does not belong to the selected Purchase Invoice.",
-                        ]);
+                    // Check if item exists on invoice under empty batch (unbatched purchase)
+                    if (isset($invoiceQtyMap["{$itemId}___"])) {
+                        $origPurchased = $invoiceQtyMap["{$itemId}___"];
+                        $effectiveKey = "{$itemId}___";
                     } else {
-                        throw ValidationException::withMessages([
-                            'items' => "The batch '{$batchNo}' for item '{$itemName}' was not found in Purchase Invoice #{$invoice->invoice_number}.",
-                        ]);
+                        // Check if item exists on invoice under another batch
+                        $itemExists = false;
+                        foreach ($invoiceQtyMap as $ik => $iq) {
+                            if (str_starts_with($ik, "{$itemId}___")) {
+                                $itemExists = true;
+                                break;
+                            }
+                        }
+                        if (! $itemExists) {
+                            throw ValidationException::withMessages([
+                                'items' => "The item '{$itemName}' does not belong to the selected Purchase Invoice.",
+                            ]);
+                        } else {
+                            throw ValidationException::withMessages([
+                                'items' => "The batch '{$batchNo}' for item '{$itemName}' was not found in Purchase Invoice #{$invoice->invoice_number}.",
+                            ]);
+                        }
                     }
                 }
 
-                $alreadyReturned = $alreadyReturnedMap[$key] ?? 0.0;
+                $alreadyReturned = $alreadyReturnedMap[$key] ?? ($alreadyReturnedMap[$effectiveKey] ?? 0.0);
                 $remaining = max(0, round($origPurchased - $alreadyReturned, 4));
 
                 if (round($requestedQty, 4) > round($remaining, 4)) {

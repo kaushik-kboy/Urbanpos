@@ -38,8 +38,10 @@ class Item extends Model
         });
 
         static::saving(function (Item $item) {
-            // Auto-generate unique item_code if empty
-            if (empty($item->item_code) || (is_string($item->item_code) && trim($item->item_code) === '')) {
+            // Protect item_code: existing item code must NEVER change!
+            if ($item->exists && !empty($item->getOriginal('item_code'))) {
+                $item->item_code = $item->getOriginal('item_code');
+            } elseif (empty($item->item_code) || (is_string($item->item_code) && trim($item->item_code) === '')) {
                 $item->item_code = self::generateUniqueItemCode();
             }
 

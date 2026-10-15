@@ -636,9 +636,12 @@ class ReportController extends Controller
             $query->where('customer_category_id', $request->category_id);
         }
 
-        $branchId = $this->resolveBranchId($request);
-        if ($branchId) {
-            $query->where('branch_id', $branchId);
+        $branchId = $request->input('branch_id');
+        if ($branchId && $branchId !== 'all') {
+            $query->where(function ($q) use ($branchId) {
+                $q->where('branch_id', (int) $branchId)
+                  ->orWhereNull('branch_id');
+            });
         }
 
         if ($request->filled('status')) {

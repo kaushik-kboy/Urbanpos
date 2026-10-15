@@ -58,9 +58,22 @@ class BarcodePrintController extends Controller
         $tempFile = tempnam(sys_get_temp_dir(), 'tsc_');
         file_put_contents($tempFile, $tspl);
 
+        if (!function_exists('shell_exec') || stripos((string) ini_get('disable_functions'), 'shell_exec') !== false) {
+            @unlink($tempFile);
+            return response()->json([
+                'success' => false,
+                'message' => 'Direct USB printing is only available when running UrbanPOS locally on the POS machine. On cloud hosting, please click "Print via Chrome (Ctrl + P)".',
+            ], 400);
+        }
+
         $scriptPath = base_path('scripts/print_tspl_direct.py');
         $cmd = "python " . escapeshellarg($scriptPath) . " " . escapeshellarg($tempFile);
-        $output = shell_exec($cmd . " 2>&1");
+        $output = '';
+        try {
+            $output = (string) \shell_exec($cmd . " 2>&1");
+        } catch (\Throwable $e) {
+            $output = $e->getMessage();
+        }
         @unlink($tempFile);
 
         if ($output && str_contains($output, 'SUCCESS')) {

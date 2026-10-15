@@ -213,6 +213,7 @@ class ItemController extends Controller
     public function update(Request $request, Item $item)
     {
         $data = $this->sanitizeItemData($this->validateData($request, $item));
+        unset($data['item_code']);
         $item->update($data);
         if ($request->has('custom_fields')) {
             $item->syncCustomFields($request->input('custom_fields', []));
