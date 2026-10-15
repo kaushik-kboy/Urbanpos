@@ -1181,6 +1181,25 @@ class SalesBillController extends Controller
                 }
             }
 
+            // Also check imported TruePOS batches / closing_stocks via BatchStockService for this branch
+            $missingBranchCsIds = array_values(array_filter($ids, fn ($id) => ! isset($ei[$id])));
+            if (! empty($missingBranchCsIds)) {
+                $batchService = app(\App\Services\Inventory\BatchStockService::class);
+                foreach ($missingBranchCsIds as $mId) {
+                    $itemBatches = $batchService->getItemBatches($mId, $branchId);
+                    $posBatches = $itemBatches->filter(fn($b) => (float)($b['remaining_qty'] ?? 0) > 0);
+                    $activeBatch = $posBatches->first() ?: $itemBatches->first();
+                    if ($activeBatch) {
+                        $ei[$mId] = (object) [
+                            'item_id' => $mId,
+                            'exp_date' => $activeBatch['exp_date'] ?? null,
+                            'sell_price' => (float)($activeBatch['sell_price'] ?? 0),
+                            'mrp' => (float)($activeBatch['mrp'] ?? 0),
+                        ];
+                    }
+                }
+            }
+
             foreach ($rows as $row) {
                 if (isset($ei[$row->id])) {
                     $row->exp_date = $ei[$row->id]->exp_date;

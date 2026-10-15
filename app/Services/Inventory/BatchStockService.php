@@ -137,9 +137,24 @@ class BatchStockService
 
         $csItems = collect();
         if ($csRows->isNotEmpty()) {
+            // Calculate net quantity per named batch across all its entries to cancel out
+            // GoFrugal price revaluation entries (e.g. OS1: +139 @ 50, -139 @ 70 => net 0)
+            $namedBatchSums = [];
+            foreach ($csRows as $cs) {
+                $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
+                if ($rawBNo !== '') {
+                    $namedBatchSums[$rawBNo] = ($namedBatchSums[$rawBNo] ?? 0.0) + (float)($cs->closing_stock ?? 0);
+                }
+            }
+
             $consolidatedCs = [];
             foreach ($csRows as $cs) {
                 $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
+                // Skip rows belonging to named batches that have completely netted to zero or negative
+                if ($rawBNo !== '' && isset($namedBatchSums[$rawBNo]) && $namedBatchSums[$rawBNo] <= 0.0001) {
+                    continue;
+                }
+
                 $exp = null;
                 if (!empty($cs->expiry_date)) {
                     try {
@@ -178,9 +193,9 @@ class BatchStockService
             }
 
             // Exclude non-positive if positive batches exist
-            $hasPositive = collect($consolidatedCs)->some(fn($c) => $c->qty > 0);
+            $hasPositive = collect($consolidatedCs)->some(fn($c) => $c->qty > 0.0001);
             if ($hasPositive) {
-                $consolidatedCs = array_filter($consolidatedCs, fn($c) => $c->qty > 0);
+                $consolidatedCs = array_filter($consolidatedCs, fn($c) => $c->qty > 0.0001);
             }
             $csItems = collect(array_values($consolidatedCs));
         }
