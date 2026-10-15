@@ -137,21 +137,22 @@ class BatchStockService
 
         $csItems = collect();
         if ($csRows->isNotEmpty()) {
-            // Calculate net quantity per named batch across all its entries to cancel out
-            // GoFrugal price revaluation entries (e.g. OS1: +139 @ 50, -139 @ 70 => net 0)
-            $namedBatchSums = [];
+            // For identical raw_batch_no (e.g. OS1: +139 @ 50, -139 @ 70), calculate net stock for that batch_no
+            $rawBNoCounts = [];
+            $rawBNoSums = [];
             foreach ($csRows as $cs) {
                 $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
                 if ($rawBNo !== '') {
-                    $namedBatchSums[$rawBNo] = ($namedBatchSums[$rawBNo] ?? 0.0) + (float)($cs->closing_stock ?? 0);
+                    $rawBNoCounts[$rawBNo] = ($rawBNoCounts[$rawBNo] ?? 0) + 1;
+                    $rawBNoSums[$rawBNo] = ($rawBNoSums[$rawBNo] ?? 0.0) + (float)$cs->closing_stock;
                 }
             }
 
             $consolidatedCs = [];
             foreach ($csRows as $cs) {
                 $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
-                // Skip rows belonging to named batches that have completely netted to zero or negative
-                if ($rawBNo !== '' && isset($namedBatchSums[$rawBNo]) && $namedBatchSums[$rawBNo] <= 0.0001) {
+                // If multiple rows exist with the exact same batch_no and their sum <= 0, drop them (revaluation cancellation)
+                if ($rawBNo !== '' && ($rawBNoCounts[$rawBNo] ?? 0) > 1 && ($rawBNoSums[$rawBNo] ?? 0.0) <= 0.0001) {
                     continue;
                 }
 
