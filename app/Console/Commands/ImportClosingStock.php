@@ -305,7 +305,7 @@ class ImportClosingStock extends Command
 
             foreach ($stockAgg as $bId => $items) {
                 foreach ($items as $itmId => $dat) {
-                    $sellPrice = $itemsSellPrice[$itmId] ?? ($dat['mrp'] > 0 ? $dat['mrp'] : $dat['cost']);
+                    $sellPrice = ($dat['mrp'] > 0) ? $dat['mrp'] : ($itemsSellPrice[$itmId] ?? $dat['cost']);
                     $record = [
                         'item_id' => $itmId,
                         'branch_id' => $bId,
