@@ -560,6 +560,9 @@ class SalesBillController extends Controller
         $oldTotal = (float) $salesBill->total;
 
         DB::transaction(function () use ($data, $salesBill, $oldCustomerId, $oldTotal) {
+            // Ensure bill_number is completely immutable on update
+            $data['header']['bill_number'] = $salesBill->bill_number;
+
             $isDateReadonly = app(\App\Services\DynamicValidationService::class)->isFieldReadonly('sales_bills', 'bill_date');
             if ($isDateReadonly) {
                 $data['header']['bill_date'] = $salesBill->bill_date
@@ -1762,11 +1765,11 @@ class SalesBillController extends Controller
 
         if (!empty($header['bill_number']) && ($configs['bill_number']->is_unique ?? true)) {
             // On PUT/PATCH (edit), enforce strict uniqueness excluding current record
-            if ($request->isMethod('put') || $request->isMethod('patch')) {
-                $currentBill = $request->route('sales_bill');
-                $currentId = is_object($currentBill) ? $currentBill->id : (int)$currentBill;
+            if ($request->isMethod('put') || $request->isMethod('patch') || $ignoreId) {
+                $checkBill = $ignoreId ?: $request->route('sales_bill');
+                $checkId = is_object($checkBill) ? $checkBill->id : (int)$checkBill;
                 $duplicateBill = SalesBill::where('bill_number', $header['bill_number'])
-                    ->when($currentId, fn($q) => $q->where('id', '!=', $currentId))
+                    ->when($checkId, fn($q) => $q->where('id', '!=', $checkId))
                     ->exists();
 
                 if ($duplicateBill) {
