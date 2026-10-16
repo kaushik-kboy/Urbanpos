@@ -3478,9 +3478,11 @@
         // Build Payload matching backend expectations
         const payload = {
             _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || window.CSRF_TOKEN,
-            posting_key: 'pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-            bill_number: (window.NEXT_BILL_NUMBER || null),
-            bill_date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
+            posting_key: state.edit_id ? (window.EDIT_BILL?.posting_key || null) : ('pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)),
+            bill_number: state.edit_id ? (window.EDIT_BILL?.bill_number || null) : (window.NEXT_BILL_NUMBER || null),
+            bill_date: (state.edit_id && window.EDIT_BILL?.bill_date)
+                ? (new Date(window.EDIT_BILL.bill_date).toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }))
+                : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
             customer_id: state.customer_id,
             customer_pet_id: state.customer_pet_id || null,
             branch_id: state.branch_id,
