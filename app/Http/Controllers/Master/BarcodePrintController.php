@@ -58,9 +58,27 @@ class BarcodePrintController extends Controller
         $tempFile = tempnam(sys_get_temp_dir(), 'tsc_');
         file_put_contents($tempFile, $tspl);
 
+        // Check if shell_exec is disabled or if running in cloud environment
+        $isShellDisabled = !function_exists('shell_exec') || stripos((string) ini_get('disable_functions'), 'shell_exec') !== false;
+        $isCloud = request()->getHost() !== 'localhost' && request()->getHost() !== '127.0.0.1';
+
+        if ($isShellDisabled || $isCloud) {
+            return response()->json([
+                'success' => true,
+                'browser_print' => true,
+                'message' => 'Direct printing is handled via Chrome print preview on cloud servers. Opening print dialog...',
+                'count'   => count($labels),
+            ]);
+        }
+
         $scriptPath = base_path('scripts/print_tspl_direct.py');
         $cmd = "python " . escapeshellarg($scriptPath) . " " . escapeshellarg($tempFile);
-        $output = shell_exec($cmd . " 2>&1");
+        $output = '';
+        try {
+            $output = (string) @shell_exec($cmd . " 2>&1");
+        } catch (\Throwable $e) {
+            $output = $e->getMessage();
+        }
         @unlink($tempFile);
 
         if ($output && str_contains($output, 'SUCCESS')) {
@@ -71,10 +89,13 @@ class BarcodePrintController extends Controller
             ]);
         }
 
+        // Fallback to browser print on any printer communication issue
         return response()->json([
-            'success' => false,
-            'message' => 'Printer error: ' . trim($output ?? 'Unable to connect to printer'),
-        ], 500);
+            'success' => true,
+            'browser_print' => true,
+            'message' => 'Printer communication fallback: Please print using Chrome (Ctrl + P).',
+            'count'   => count($labels),
+        ]);
     }
 
     /**
@@ -187,7 +208,7 @@ class BarcodePrintController extends Controller
      */
     private function resolveLabelsAndStore(Request $request): array
     {
-        $format = $request->query('format', $request->input('format', 'a4_24'));
+        $format = $request->query('format', $request->input('format', '50x38_2up'));
         $storeName = config('app.name', 'UrbanPOS');
         $labels = [];
         $branchId = $request->input('branch_id');
