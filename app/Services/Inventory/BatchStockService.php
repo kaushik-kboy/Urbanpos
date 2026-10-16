@@ -38,7 +38,7 @@ class BatchStockService
         if ($hasMrp) {
             $selectCols .= ", COALESCE(ROUND(mrp, 2), 0) as mrp_val";
         }
-        $selectCols .= ", SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in";
+        $selectCols .= ", SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in, SUM(qty_out) as total_out";
 
         $groupByCols = ['b_no', DB::raw('DATE(exp_date)')];
         if ($hasMrp) {
@@ -76,6 +76,7 @@ class BatchStockService
                     $ledgerBatchMap[$exactKey] = [
                         'remaining' => (float) $lr->remaining_qty,
                         'total_in' => (float) $lr->total_in,
+                        'total_out' => (float) ($lr->total_out ?? 0),
                         'exp_date' => $expStr,
                         'batch_no' => $bNo,
                         'mrp' => $mrpVal,
@@ -84,6 +85,7 @@ class BatchStockService
                 } else {
                     $ledgerBatchMap[$exactKey]['remaining'] += (float) $lr->remaining_qty;
                     $ledgerBatchMap[$exactKey]['total_in'] += (float) $lr->total_in;
+                    $ledgerBatchMap[$exactKey]['total_out'] += (float) ($lr->total_out ?? 0);
                 }
             }
 
@@ -91,6 +93,7 @@ class BatchStockService
                 $ledgerBatchMap[$baseKey] = [
                     'remaining' => (float) $lr->remaining_qty,
                     'total_in' => (float) $lr->total_in,
+                    'total_out' => (float) ($lr->total_out ?? 0),
                     'exp_date' => $expStr,
                     'batch_no' => $bNo,
                     'mrp' => 0.0,
@@ -99,6 +102,7 @@ class BatchStockService
             } else {
                 $ledgerBatchMap[$baseKey]['remaining'] += (float) $lr->remaining_qty;
                 $ledgerBatchMap[$baseKey]['total_in'] += (float) $lr->total_in;
+                $ledgerBatchMap[$baseKey]['total_out'] += (float) ($lr->total_out ?? 0);
             }
         }
 
@@ -386,8 +390,20 @@ class BatchStockService
 
             if ($matchedKey !== null) {
                 $seenMatches[$matchedKey] = ($seenMatches[$matchedKey] ?? 0) + 1;
-                $isLast = ($seenMatches[$matchedKey] === $matchCounts[$matchedKey]);
-                $ledgerRem = max(0.0, $ledgerBatchMap[$matchedKey]['remaining'] - $ledgerBatchMap[$matchedKey]['assigned']);
+                $isLast = ($seenMatches[$matchedKey] === ($matchCounts[$matchedKey] ?? 1));
+                $lTotalIn = (float) ($ledgerBatchMap[$matchedKey]['total_in'] ?? 0);
+                $lTotalOut = (float) ($ledgerBatchMap[$matchedKey]['total_out'] ?? 0);
+                $lAssigned = (float) ($ledgerBatchMap[$matchedKey]['assigned'] ?? 0);
+
+                $isClosingOrOpening = ($bData['source'] ?? '') === 'closing_stock' || ($bData['source'] ?? '') === 'opening';
+                if ($isClosingOrOpening && $lTotalIn < $pQty) {
+                    // For batches imported from closing_stocks or opening_stock without full inward ledger rows,
+                    // StockLedger movements reflect net movements after migration: +$lTotalIn (returns) - $lTotalOut (sales).
+                    $ledgerRem = max(0.0, $pQty + $lTotalIn - $lTotalOut - $lAssigned);
+                } else {
+                    $ledgerRem = max(0.0, $ledgerBatchMap[$matchedKey]['remaining'] - $lAssigned);
+                }
+
                 $alloc = $isLast ? $ledgerRem : min($pQty, $ledgerRem);
                 $bData['remaining_qty'] = $alloc;
                 $ledgerBatchMap[$matchedKey]['assigned'] += $alloc;
