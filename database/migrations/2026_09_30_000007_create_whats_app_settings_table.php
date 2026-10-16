@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('header_title', 100)->default('URBAN PETS');
             $table->string('footer_message', 255)->default('Have an Awesome Day!');
             $table->string('support_phone', 30)->nullable();
-            $table->boolean('auto_send_on_bill')->default(true);
+            $table->boolean('auto_send_on_bill')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

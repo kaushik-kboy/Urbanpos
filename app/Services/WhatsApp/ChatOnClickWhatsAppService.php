@@ -49,7 +49,7 @@ class ChatOnClickWhatsAppService
         $this->footerMessage = $settings?->footer_message ?: 'Have an Awesome Day!';
         $this->supportPhone = $settings?->support_phone ?: null;
         $this->customMessage = $settings?->custom_message ?: null;
-        $this->autoSendOnBill = $settings ? (bool) $settings->auto_send_on_bill : true;
+        $this->autoSendOnBill = $settings ? (bool) $settings->auto_send_on_bill : false;
         $this->isActive = $settings ? (bool) $settings->is_active : true;
     }
 

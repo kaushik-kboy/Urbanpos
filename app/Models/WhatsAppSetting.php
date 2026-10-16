@@ -85,7 +85,7 @@ class WhatsAppSetting extends Model
                 'footer_message' => 'Have an Awesome Day!',
                 'support_phone' => '7383056626',
                 'custom_message' => null,
-                'auto_send_on_bill' => true,
+                'auto_send_on_bill' => false,
                 'is_active' => true,
             ]
         );

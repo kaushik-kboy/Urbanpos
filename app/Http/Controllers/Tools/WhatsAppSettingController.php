@@ -42,7 +42,7 @@ class WhatsAppSettingController extends Controller
                 'footer_message' => $base?->footer_message ?: 'Have an Awesome Day!',
                 'support_phone'  => $branch?->phone ?: ($base?->support_phone ?: '7383056626'),
                 'custom_message' => $base?->custom_message,
-                'auto_send_on_bill' => $base?->auto_send_on_bill ?? true,
+                'auto_send_on_bill' => $base?->auto_send_on_bill ?? false,
                 'is_active'      => $base?->is_active ?? true,
             ]);
         }

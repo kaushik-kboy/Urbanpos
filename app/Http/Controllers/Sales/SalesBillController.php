@@ -435,9 +435,8 @@ class SalesBillController extends Controller
         try {
             $waSettings = \App\Models\WhatsAppSetting::current($salesBill->branch_id);
             $custPhone = $salesBill->customer?->phone ?: $salesBill->customer?->mobile;
-            $shouldSend = $saveAction === 'whatsapp' 
-                || $request->boolean('send_whatsapp') 
-                || ($waSettings->is_active && $waSettings->auto_send_on_bill && !empty($custPhone));
+            // Only send WhatsApp invoice when user explicitly clicks Save & WhatsApp or requests it
+            $shouldSend = ($saveAction === 'whatsapp' || $request->boolean('send_whatsapp')) && !empty($custPhone);
 
             if ($shouldSend && $waSettings->is_active) {
                 $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
@@ -1372,7 +1371,9 @@ class SalesBillController extends Controller
             $batchStockSum += max(0, (float) ($b['qty'] ?? 0));
         }
         if (!empty($batches) && !$salesBillId) {
-            $stock = $batchStockSum;
+            if ($batchStockSum > 0 || $stock <= 0) {
+                $stock = $batchStockSum;
+            }
         }
 
         $defaultExp = !empty($batches) ? $batches[0]['exp_date'] : null;
