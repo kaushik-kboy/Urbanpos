@@ -92,6 +92,8 @@ Route::get('/', function () {
 });
 
 Auth::routes(['register' => false]);
+Route::get('register', fn () => redirect()->route('login'))->name('register');
+Route::post('register', fn () => abort(404));
 
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
