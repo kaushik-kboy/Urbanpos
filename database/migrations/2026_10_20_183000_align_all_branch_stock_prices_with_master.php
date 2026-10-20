@@ -63,15 +63,25 @@ return new class extends Migration
         }
 
         // 4. Align all remaining item_stocks where branch price is outdated (< master price)
-        DB::update("
-            UPDATE item_stocks ist
-            JOIN items i ON i.id = ist.item_id
-            SET ist.mrp = i.mrp,
-                ist.sell_price = i.sell_price,
-                ist.updated_at = NOW()
-            WHERE i.mrp > 0
-              AND (ist.mrp < i.mrp OR ist.sell_price < i.sell_price)
-        ");
+        $stocksToFix = DB::table('item_stocks')
+            ->join('items', 'items.id', '=', 'item_stocks.item_id')
+            ->where('items.mrp', '>', 0)
+            ->where(function ($q) {
+                $q->whereColumn('item_stocks.mrp', '<', 'items.mrp')
+                  ->orWhereColumn('item_stocks.sell_price', '<', 'items.sell_price');
+            })
+            ->select('item_stocks.id', 'items.mrp', 'items.sell_price')
+            ->get();
+
+        foreach ($stocksToFix as $st) {
+            DB::table('item_stocks')
+                ->where('id', $st->id)
+                ->update([
+                    'mrp'        => $st->mrp,
+                    'sell_price' => $st->sell_price,
+                    'updated_at' => now(),
+                ]);
+        }
     }
 
     /**
