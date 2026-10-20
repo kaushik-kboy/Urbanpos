@@ -191,11 +191,19 @@ class SalesBillController extends Controller
             $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments'])->findOrFail($request->input('edit_id'));
             $branchId = (int) $editBill->branch_id;
             $batchService = app(\App\Services\Inventory\BatchStockService::class);
+            $hasEditBillLedger = \App\Models\StockLedger::where(function ($q) {
+                    $q->where('reference_type', 'SalesBill')
+                      ->orWhere('reference_type', \App\Models\SalesBill::class);
+                })
+                ->where('reference_id', $editBill->id)
+                ->whereNull('reversal_of')
+                ->exists();
+
             foreach ($editBill->items as $billItem) {
                 $currentStock = (float) (\App\Models\ItemStock::where('item_id', $billItem->item_id)
                     ->where('branch_id', $branchId)
                     ->value('quantity') ?? 0);
-                $billItem->stock = $currentStock + (float) $billItem->qty;
+                $billItem->stock = max((float) $billItem->qty, $currentStock + (float) $billItem->qty);
 
                 $batches = $batchService->getItemBatches($billItem->item_id, $branchId, $editBill->id);
                 $matchingBatch = $batches->first(function ($b) use ($billItem) {
@@ -208,7 +216,9 @@ class SalesBillController extends Controller
                     }
                     return false;
                 }) ?? $batches->first();
-                $billItem->batch_stock = $matchingBatch ? (float)($matchingBatch['remaining_qty'] ?? 0) : $billItem->stock;
+
+                $baseBatchQty = $matchingBatch ? (float)($matchingBatch['remaining_qty'] ?? 0) : $billItem->stock;
+                $billItem->batch_stock = max((float) $billItem->qty, $baseBatchQty);
             }
             $options['editBill'] = $editBill;
             $defaultCustId = $editBill->customer_id;
@@ -508,11 +518,19 @@ class SalesBillController extends Controller
 
         $branchId = (int) $salesBill->branch_id;
         $batchService = app(\App\Services\Inventory\BatchStockService::class);
+        $hasSalesBillLedger = \App\Models\StockLedger::where(function ($q) {
+                $q->where('reference_type', 'SalesBill')
+                  ->orWhere('reference_type', \App\Models\SalesBill::class);
+            })
+            ->where('reference_id', $salesBill->id)
+            ->whereNull('reversal_of')
+            ->exists();
+
         foreach ($salesBill->items as $billItem) {
             $currentStock = (float) (\App\Models\ItemStock::where('item_id', $billItem->item_id)
                 ->where('branch_id', $branchId)
                 ->value('quantity') ?? 0);
-            $billItem->stock = $currentStock + (float) $billItem->qty;
+            $billItem->stock = max((float) $billItem->qty, $currentStock + (float) $billItem->qty);
 
             $batches = $batchService->getItemBatches($billItem->item_id, $branchId, $salesBill->id);
             $matchingBatch = $batches->first(function ($b) use ($billItem) {
@@ -525,7 +543,9 @@ class SalesBillController extends Controller
                 }
                 return false;
             }) ?? $batches->first();
-            $billItem->batch_stock = $matchingBatch ? (float)($matchingBatch['remaining_qty'] ?? 0) : $billItem->stock;
+
+            $baseBatchQty = $matchingBatch ? (float)($matchingBatch['remaining_qty'] ?? 0) : $billItem->stock;
+            $billItem->batch_stock = max((float) $billItem->qty, $baseBatchQty);
         }
 
         return view('sales.sales-bills.edit', array_merge(['salesBill' => $salesBill], $this->formOptions($salesBill, $salesBill->items, $salesBill->customer_id)));
@@ -606,7 +626,25 @@ class SalesBillController extends Controller
                 $data['header']['bill_date'] = \Carbon\Carbon::parse($data['header']['bill_date'], 'Asia/Kolkata')->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
             }
 
-            $this->stockLedger->reverseByReference(SalesBill::class, $salesBill->id);
+            $hasLedger = \App\Models\StockLedger::where(function ($q) {
+                    $q->where('reference_type', 'SalesBill')
+                      ->orWhere('reference_type', SalesBill::class);
+                })
+                ->where('reference_id', $salesBill->id)
+                ->whereNull('reversal_of')
+                ->exists();
+
+            if ($hasLedger) {
+                $this->stockLedger->reverseByReference(SalesBill::class, $salesBill->id);
+            } else {
+                // Legacy/imported bill: was never in stock_ledger. Temporarily restore ItemStock
+                // for the existing items so assertStockAvailable and postStock work accurately without double-deduction.
+                foreach ($salesBill->items as $oldItem) {
+                    \App\Models\ItemStock::where('item_id', $oldItem->item_id)
+                        ->where('branch_id', $salesBill->branch_id)
+                        ->increment('quantity', (float) $oldItem->qty);
+                }
+            }
 
             $lines = $this->computeLines($data['items'], $data['header']);
             $this->assertStockAvailable($lines, $data['header']['branch_id']);
@@ -1387,11 +1425,22 @@ class SalesBillController extends Controller
             ->value('quantity') ?? 0);
 
         $salesBillId = $request->input('sales_bill_id') ?: $request->input('edit_id');
+        $billBatchQtys = [];
         if ($salesBillId) {
             $alreadyInBill = (float) (\App\Models\SalesBillItem::where('sales_bill_id', $salesBillId)
                 ->where('item_id', $item->id)
                 ->sum('qty') ?? 0);
             $stock += $alreadyInBill;
+
+            $billItems = \App\Models\SalesBillItem::where('sales_bill_id', $salesBillId)
+                ->where('item_id', $item->id)
+                ->get();
+            foreach ($billItems as $bi) {
+                $bRaw = trim((string)($bi->batch_no ?? ''));
+                if ($bRaw !== '') {
+                    $billBatchQtys[$bRaw] = ($billBatchQtys[$bRaw] ?? 0.0) + (float) $bi->qty;
+                }
+            }
         }
 
         // 1. Fetch batch records from Purchase Invoices in this branch (and Opening Stock)
@@ -1402,14 +1451,19 @@ class SalesBillController extends Controller
         $hasActualBatchOrExpiry = collect($resolvedBatches)->some(fn($b) => !empty($b['raw_batch_no']) || !empty($b['exp_date']));
 
         $batches = [];
-        if ($item->batch_expiry_details !== 'Not Required' || $hasActualBatchOrExpiry) {
+        if ($item->batch_expiry_details !== 'Not Required' || $hasActualBatchOrExpiry || !empty($billBatchQtys)) {
             foreach ($resolvedBatches as $b) {
-                $bQty = (float) ($b['remaining_qty'] ?? 0);
-                if ($hasPositiveNamedBatches && !empty($b['raw_batch_no']) && $bQty <= 0) {
-                    continue; // When active named batches exist, exclude depleted named batches
-                }
                 $rawBatchNo = !empty($b['raw_batch_no']) ? trim($b['raw_batch_no']) : '';
                 $displayBatchNo = !empty($b['batch_no']) ? trim($b['batch_no']) : ($rawBatchNo ?: '');
+
+                $isBillBatch = isset($billBatchQtys[$rawBatchNo]) || isset($billBatchQtys[$displayBatchNo]);
+                unset($billBatchQtys[$rawBatchNo], $billBatchQtys[$displayBatchNo]);
+
+                $bQty = (float) ($b['remaining_qty'] ?? 0);
+                if ($hasPositiveNamedBatches && !empty($b['raw_batch_no']) && $bQty <= 0 && !$isBillBatch) {
+                    continue; // When active named batches exist, exclude depleted named batches unless part of this bill
+                }
+
                 $batches[] = [
                     'productname' => $item->name,
                     'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
@@ -1417,12 +1471,31 @@ class SalesBillController extends Controller
                     'raw_batch_no' => $rawBatchNo,
                     'exp_date' => $b['exp_date'],
                     'in_qty' => $b['purchased_qty'],
-                    'qty' => $b['remaining_qty'],
+                    'qty' => $bQty,
                     'cost_price' => $b['cost_price'],
                     'sell_price' => $b['sell_price'],
                     'mrp' => $b['mrp'],
                     'source' => $b['source'] ?? 'purchase',
                 ];
+            }
+
+            // Also include any batches that were present on the bill but not in current purchases
+            foreach ($billBatchQtys as $unmatchedBNo => $unmatchedQty) {
+                if ($unmatchedQty > 0) {
+                    $batches[] = [
+                        'productname' => $item->name,
+                        'code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                        'batch_no' => $unmatchedBNo,
+                        'raw_batch_no' => $unmatchedBNo,
+                        'exp_date' => null,
+                        'in_qty' => $unmatchedQty,
+                        'qty' => $unmatchedQty,
+                        'cost_price' => (float)($item->cost_price ?? 0),
+                        'sell_price' => (float)($item->sell_price ?? 0),
+                        'mrp' => (float)($item->mrp ?? 0),
+                        'source' => 'bill_item',
+                    ];
+                }
             }
         }
 

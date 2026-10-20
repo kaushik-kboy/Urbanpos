@@ -188,4 +188,101 @@ class SalesBillEditStockRestorationTest extends TestCase
         $newStock = (float) ItemStock::where('item_id', $this->item->id)->where('branch_id', $this->branch->id)->value('quantity');
         $this->assertEquals(1.0, $newStock);
     }
+
+    public function test_legacy_imported_sales_bill_edit_allows_saving_existing_items_without_stock_ledger_records(): void
+    {
+        $expDate = now()->addMonths(6)->toDateString();
+        $batchNo = 'LEGACY-B01';
+
+        // Item warehouse stock is 0
+        ItemStock::updateOrCreate(
+            ['item_id' => $this->item->id, 'branch_id' => $this->branch->id],
+            ['quantity' => 0, 'sell_price' => 100, 'cost_price' => 60, 'mrp' => 100]
+        );
+
+        // Create legacy sales bill directly in DB with NO StockLedger records
+        $legacyBill = SalesBill::create([
+            'bill_number' => 'SI01/2627/000094',
+            'bill_date' => now()->format('Y-m-d H:i:s'),
+            'customer_id' => $this->customer->id,
+            'branch_id' => $this->branch->id,
+            'invoice_type' => 'Retail Invoice',
+            'delivery_type' => 'Delivered',
+            'sales_type' => 'Local',
+            'payment_type' => 'Cash',
+            'subtotal' => 100,
+            'total' => 100,
+            'status' => 'Paid',
+        ]);
+
+        $legacyBill->items()->create([
+            'item_id' => $this->item->id,
+            'batch_no' => $batchNo,
+            'exp_date' => $expDate,
+            'qty' => 1,
+            'sell_price' => 100,
+            'mrp' => 100,
+            'cost_price' => 60,
+            'gst_percent' => 18,
+            'gst_amount' => 15.25,
+            'net_amount' => 100,
+        ]);
+
+        // Verify there are 0 StockLedger records for this bill
+        $this->assertEquals(0, \App\Models\StockLedger::where('reference_id', $legacyBill->id)->count());
+
+        // 1. Controller edit view should load and stock / batch_stock should be at least 1 (not 0)
+        $editResponse = $this->actingAs($this->owner)->get(route('sales.sales-bills.edit', $legacyBill))->assertOk();
+        $loadedBill = $editResponse->viewData('salesBill');
+        $lineItem = $loadedBill->items->first();
+        $this->assertEquals(1.0, (float) $lineItem->stock, 'Product stock should be at least 1 for existing bill item');
+        $this->assertEquals(1.0, (float) $lineItem->batch_stock, 'Batch stock should be at least 1 for existing bill item');
+
+        // 2. Lookup item endpoint with sales_bill_id should return stock >= 1 and include the batch
+        $lookupRes = $this->actingAs($this->owner)->getJson(route('sales.sales-bills.lookup-item', [
+            'item_id' => $this->item->id,
+            'branch_id' => $this->branch->id,
+            'sales_bill_id' => $legacyBill->id,
+        ]))->assertOk();
+
+        $lookupData = $lookupRes->json();
+        $this->assertEquals(1.0, (float) $lookupData['item']['stock']);
+        $this->assertNotEmpty($lookupData['batches']);
+        $this->assertEquals($batchNo, $lookupData['batches'][0]['batch_no']);
+        $this->assertEquals(1.0, (float) $lookupData['batches'][0]['qty']);
+
+        // 3. Update existing bill preserving the same quantity should succeed smoothly
+        $updateResponse = $this->actingAs($this->owner)->put(route('sales.sales-bills.update', $legacyBill), [
+            'bill_number' => $legacyBill->bill_number,
+            'bill_date' => now()->format('Y-m-d H:i:s'),
+            'customer_id' => $this->customer->id,
+            'branch_id' => $this->branch->id,
+            'invoice_type' => 'Retail Invoice',
+            'delivery_type' => 'Delivered',
+            'sales_type' => 'Local',
+            'payment_type' => 'Cash',
+            'items' => [
+                [
+                    'item_id' => $this->item->id,
+                    'batch_no' => $batchNo,
+                    'exp_date' => $expDate,
+                    'qty' => 1,
+                    'sell_price' => 100,
+                    'mrp' => 100,
+                    'disc_percent' => 0,
+                    'disc_amount' => 0,
+                ],
+            ],
+            'payments' => [
+                ['tender_type_id' => 1, 'amount' => 100],
+            ],
+        ]);
+
+        $this->assertEquals(302, $updateResponse->getStatusCode());
+        $updateResponse->assertSessionHasNoErrors();
+
+        // Warehouse stock should still be 0 (restored 1, then re-deducted 1)
+        $finalStock = (float) ItemStock::where('item_id', $this->item->id)->where('branch_id', $this->branch->id)->value('quantity');
+        $this->assertEquals(0.0, $finalStock);
+    }
 }

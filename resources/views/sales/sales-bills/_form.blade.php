@@ -2394,7 +2394,10 @@
                 let bLabel = getRowBatchLabel($row);
 
                 // 1. Strict Batch Stock Check across ALL rows
-                if (bKey && bStock !== null && !isNaN(bStock) && bStock >= 0) {
+                let origRowQty = parseFloat($row.data('original-qty') || $row.find('.sb-item-original-qty').val()) || 0;
+                let effectiveBStock = bStock !== null ? Math.max(bStock, origRowQty) : null;
+
+                if (bKey && effectiveBStock !== null && !isNaN(effectiveBStock) && effectiveBStock >= 0) {
                     let totalForBatch = 0;
                     $('#sb-items-body tr').each(function () {
                         if (getRowBatchKey($(this)) === bKey) {
@@ -2406,8 +2409,10 @@
                         if (getRowBatchKey($(this)) === bKey) {
                             let $q = $(this).find('.sb-qty');
                             let $r = $(this);
-                            if (totalForBatch > bStock + 0.0001) {
-                                let errMsg = bLabel + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(totalForBatch) + ' across rows)!';
+                            let rOrig = parseFloat($r.data('original-qty') || $r.find('.sb-item-original-qty').val()) || 0;
+                            let rEffectiveBStock = Math.max(effectiveBStock, rOrig);
+                            if (totalForBatch > rEffectiveBStock + 0.0001) {
+                                let errMsg = bLabel + ' has only ' + formatDigits(rEffectiveBStock) + ' available (entered ' + formatDigits(totalForBatch) + ' across rows)!';
                                 $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
                                 $r.find('.sb-qty-error-msg').text(errMsg).show();
                                 if ($(this)[0] === $row[0]) rowHasBatchError = true;
@@ -2420,7 +2425,8 @@
                 }
 
                 // 2. Strict Product Stock Check across ALL rows
-                if (stock >= 0) {
+                let effectiveProductStock = stock >= 0 ? Math.max(stock, origRowQty) : stock;
+                if (effectiveProductStock >= 0) {
                     let totalForItem = 0;
                     $('#sb-items-body tr').each(function () {
                         if ($(this).find('.sb-item-select').val() === itemId) {
@@ -2432,8 +2438,10 @@
                         if ($(this).find('.sb-item-select').val() === itemId) {
                             let $q = $(this).find('.sb-qty');
                             let $r = $(this);
-                            if (totalForItem > stock + 0.0001) {
-                                let errMsg = 'Maximum available quantity is ' + formatDigits(stock) + '.';
+                            let rOrig = parseFloat($r.data('original-qty') || $r.find('.sb-item-original-qty').val()) || 0;
+                            let rEffectiveStock = Math.max(effectiveProductStock, rOrig);
+                            if (totalForItem > rEffectiveStock + 0.0001) {
+                                let errMsg = 'Maximum available quantity is ' + formatDigits(rEffectiveStock) + '.';
                                 $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
                                 $r.find('.sb-qty-error-msg').text(errMsg).show();
                                 if ($(this)[0] === $row[0]) rowHasStockError = true;
@@ -2633,6 +2641,10 @@
                     let bStock = (bKey && batchStocks[bKey] !== undefined) ? batchStocks[bKey] : getRowBatchStock($row);
                     let bLabel = getRowBatchLabel($row);
 
+                    let origRowQty = parseFloat($row.data('original-qty') || $row.find('.sb-item-original-qty').val()) || 0;
+                    let effectiveBStock = bStock !== null ? Math.max(bStock, origRowQty) : null;
+                    let effectiveStock = stock !== null ? Math.max(stock, origRowQty) : null;
+
                     if (qty <= 0) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Quantity must be greater than 0.');
@@ -2641,24 +2653,24 @@
                             firstErrorMsg = `Row #${idx + 1}: Quantity must be greater than 0.`;
                             firstErrorEl = $qtyInput;
                         }
-                    } else if (!isAllowNegative && bStock !== null && bStock >= 0 && (bTotal > bStock + 0.0001)) {
-                        let errMsg = bLabel + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(bTotal) + ' across rows)!';
+                    } else if (!isAllowNegative && effectiveBStock !== null && effectiveBStock >= 0 && (bTotal > effectiveBStock + 0.0001)) {
+                        let errMsg = bLabel + ' has only ' + formatDigits(effectiveBStock) + ' available (entered ' + formatDigits(bTotal) + ' across rows)!';
                         $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
                         $row.find('.sb-qty-error-msg').text(errMsg).show();
                         hasError = true;
                         if (!firstErrorMsg) {
                             let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
-                            firstErrorMsg = `${itemName} [${bLabel}]: Quantity (${formatDigits(bTotal)}) exceeds available batch stock (${formatDigits(bStock)}).`;
+                            firstErrorMsg = `${itemName} [${bLabel}]: Quantity (${formatDigits(bTotal)}) exceeds available batch stock (${formatDigits(effectiveBStock)}).`;
                             firstErrorEl = $qtyInput;
                         }
-                    } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock + 0.0001) {
+                    } else if (!isAllowNegative && effectiveStock !== null && effectiveStock >= 0 && totalQty > effectiveStock + 0.0001) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
-                                 .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
-                        $row.find('.sb-qty-error-msg').text('Maximum available quantity is ' + formatDigits(stock) + '.').show();
+                                 .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(effectiveStock) + ')!');
+                        $row.find('.sb-qty-error-msg').text('Maximum available quantity is ' + formatDigits(effectiveStock) + '.').show();
                         hasError = true;
                         if (!firstErrorMsg) {
                             let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
-                            firstErrorMsg = `${itemName}: Quantity (${formatDigits(totalQty)}) exceeds available stock (${formatDigits(stock)}).`;
+                            firstErrorMsg = `${itemName}: Quantity (${formatDigits(totalQty)}) exceeds available stock (${formatDigits(effectiveStock)}).`;
                             firstErrorEl = $qtyInput;
                         }
                     } else {
@@ -3090,7 +3102,7 @@
             let $gst = $row.find('.sb-gst-percent');
             let $batchWrap = $row.find('.sb-batch-btn-wrap');
 
-            let billId = '{{ $bill->id ?? "" }}';
+            let billId = '{{ $bill->id ?? ($salesBill->id ?? "") }}';
             let params = { branch_id: branchId };
             if (billId) {
                 params.sales_bill_id = billId;
@@ -3171,19 +3183,32 @@
                         }
                     }
 
-                    if (batches.length >= 1) {
-                        let singleBatch = batches[0];
-                        $row.find('.sb-item-batch-no').val(singleBatch && singleBatch.batch_no ? singleBatch.batch_no : '');
-                        if (singleBatch && singleBatch.qty !== undefined && singleBatch.qty !== null) {
-                            let bQty = parseFloat(singleBatch.qty) || 0;
+                    if (!isInitial || !$row.find('.sb-item-batch-no').val()) {
+                        if (batches.length >= 1) {
+                            let singleBatch = batches[0];
+                            $row.find('.sb-item-batch-no').val(singleBatch && singleBatch.batch_no ? singleBatch.batch_no : '');
+                            if (singleBatch && singleBatch.qty !== undefined && singleBatch.qty !== null) {
+                                let bQty = parseFloat(singleBatch.qty) || 0;
+                                $row.find('.sb-item-batch-stock').val(bQty);
+                                $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
+                            }
+                        } else {
+                            $row.find('.sb-item-batch-no').val('');
+                            let bQty = parseFloat(item.stock) || 0;
                             $row.find('.sb-item-batch-stock').val(bQty);
                             $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
                         }
                     } else {
-                        $row.find('.sb-item-batch-no').val('');
-                        let bQty = parseFloat(item.stock) || 0;
-                        $row.find('.sb-item-batch-stock').val(bQty);
-                        $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
+                        // For existing line on edit, preserve current batch & ensure batch_stock incorporates live stock
+                        let existingBatchNo = ($row.find('.sb-item-batch-no').val() || '').trim();
+                        let matched = batches.find(b => (b.raw_batch_no || b.batch_no || '').trim().toLowerCase() === existingBatchNo.toLowerCase());
+                        if (matched && matched.qty !== undefined && matched.qty !== null) {
+                            let mQty = parseFloat(matched.qty) || 0;
+                            let curBStock = parseFloat($row.find('.sb-item-batch-stock').val()) || 0;
+                            let finalStock = Math.max(curBStock, mQty);
+                            $row.find('.sb-item-batch-stock').val(finalStock);
+                            $row.data('batch-stock', finalStock).attr('data-batch-stock', finalStock);
+                        }
                     }
 
                     if (batches.length === 1) {

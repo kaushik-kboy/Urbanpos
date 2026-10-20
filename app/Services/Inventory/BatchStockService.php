@@ -113,6 +113,64 @@ class BatchStockService
             }
         }
 
+        if ($excludeSalesBillId) {
+            $billHadItemInLedger = StockLedger::where(function ($q) {
+                    $q->where('reference_type', 'SalesBill')
+                      ->orWhere('reference_type', \App\Models\SalesBill::class);
+                })
+                ->where('reference_id', $excludeSalesBillId)
+                ->where('item_id', $itemId)
+                ->whereNull('reversal_of')
+                ->exists();
+
+            if (!$billHadItemInLedger) {
+                // This sales bill was not recorded in StockLedger (e.g. legacy/imported bill).
+                // Add back this bill's line item quantities to the corresponding batches in $ledgerBatchMap!
+                $billLines = \App\Models\SalesBillItem::where('sales_bill_id', $excludeSalesBillId)
+                    ->where('item_id', $itemId)
+                    ->get();
+                foreach ($billLines as $bl) {
+                    $bNo = trim((string)($bl->batch_no ?? ''));
+                    $expStr = !empty($bl->exp_date) ? substr((string)$bl->exp_date, 0, 10) : '';
+                    $mrpVal = (float)($bl->mrp ?? 0);
+                    $baseKey = $bNo !== '' ? $bNo : ($expStr !== '' ? $expStr : 'DEFAULT');
+                    $exactKey = $mrpVal > 0 ? ($baseKey . '|' . round($mrpVal, 2)) : null;
+
+                    if ($exactKey !== null) {
+                        if (!isset($ledgerBatchMap[$exactKey])) {
+                            $ledgerBatchMap[$exactKey] = [
+                                'remaining' => (float) $bl->qty,
+                                'total_in' => (float) $bl->qty,
+                                'is_sales_bill_line' => true,
+                                'exp_date' => $expStr,
+                                'batch_no' => $bNo,
+                                'mrp' => $mrpVal,
+                                'assigned' => 0.0,
+                            ];
+                        } else {
+                            $ledgerBatchMap[$exactKey]['remaining'] += (float) $bl->qty;
+                            $ledgerBatchMap[$exactKey]['total_in'] += (float) $bl->qty;
+                        }
+                    }
+
+                    if (!isset($ledgerBatchMap[$baseKey])) {
+                        $ledgerBatchMap[$baseKey] = [
+                            'remaining' => (float) $bl->qty,
+                            'total_in' => (float) $bl->qty,
+                            'is_sales_bill_line' => true,
+                            'exp_date' => $expStr,
+                            'batch_no' => $bNo,
+                            'mrp' => 0.0,
+                            'assigned' => 0.0,
+                        ];
+                    } else {
+                        $ledgerBatchMap[$baseKey]['remaining'] += (float) $bl->qty;
+                        $ledgerBatchMap[$baseKey]['total_in'] += (float) $bl->qty;
+                    }
+                }
+            }
+        }
+
         // 2. Fetch purchase batches strictly from Purchase Invoices in this branch
         $piItems = PurchaseInvoiceItem::with('purchaseInvoice')
             ->where('item_id', $itemId)
