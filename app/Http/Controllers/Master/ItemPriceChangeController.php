@@ -156,6 +156,15 @@ class ItemPriceChangeController extends Controller
                     $newValues
                 );
 
+                // Also update active closing stocks for this branch so batch pricing stays in sync
+                DB::table('closing_stocks')
+                    ->where('item_id', $item->id)
+                    ->where('branch_id', $branchId)
+                    ->where('closing_stock', '>', 0)
+                    ->update([
+                        'mrp' => $newValues['mrp']
+                    ]);
+
                 // Cost/price override is a spec-named auditable action — log per branch since
                 // each branch's ItemStock row is the actual value that changed.
                 $this->auditLogger->log('update', $stock, $oldValues, $newValues);

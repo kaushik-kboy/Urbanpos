@@ -51,7 +51,7 @@ class Customer extends Model
         }
 
         $more = static::query()->where('mobile', 'like', $like)->limit($probeCap)->pluck('id')
-            ->merge(static::query()->where('customer_code', 'like', $like)->limit($probeCap)->pluck('id'))
+            ->merge(static::query()->where('phone', 'like', $like)->limit($probeCap)->pluck('id'))
             ->merge(\Illuminate\Support\Facades\DB::table('customer_pets')->where('name', 'like', $like)->limit($probeCap)->pluck('customer_id'));
 
         return collect($ids)->merge($more)->unique()->values()->all();

@@ -25,7 +25,7 @@ class BatchStockService
      *
      * @return Collection<int, array>
      */
-    public function getItemBatches(int $itemId, int $branchId): Collection
+    public function getItemBatches(int $itemId, int $branchId, ?int $excludeSalesBillId = null): Collection
     {
         $item = Item::find($itemId);
         if (!$item) {
@@ -45,9 +45,20 @@ class BatchStockService
             $groupByCols[] = 'mrp';
         }
 
-        $ledgerRows = StockLedger::where('item_id', $itemId)
-            ->where('branch_id', $branchId)
-            ->selectRaw($selectCols)
+        $ledgerQuery = StockLedger::where('item_id', $itemId)
+            ->where('branch_id', $branchId);
+
+        if ($excludeSalesBillId) {
+            $ledgerQuery->where(function ($q) use ($excludeSalesBillId) {
+                $q->whereNull('reference_type')
+                  ->orWhere(function ($sub) use ($excludeSalesBillId) {
+                      $sub->whereNotIn('reference_type', ['SalesBill', \App\Models\SalesBill::class])
+                          ->orWhere('reference_id', '!=', $excludeSalesBillId);
+                  });
+            });
+        }
+
+        $ledgerRows = $ledgerQuery->selectRaw($selectCols)
             ->groupBy($groupByCols)
             ->get();
 
@@ -254,8 +265,19 @@ class BatchStockService
                 $inQty = (float) ($p->received_qty > 0 ? $p->received_qty : $p->qty);
             } else {
                 $cost = (float) (($p->cost_price ?? 0) > 0 ? $p->cost_price : ($item->cost_price ?? 0));
-                $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
-                $batchSell = (float) (($p->sell_price ?? 0) > 0 ? $p->sell_price : ($item->sell_price ?? 0));
+                
+                // 1. MRP: A batch's own recorded MRP is primary. Only fall back to branchStock/item if batch has no MRP.
+                $batchMrp = (float) ($p->mrp ?? 0);
+                $mrp = $batchMrp > 0 ? $batchMrp : (float) ($branchStock && (float)$branchStock->mrp > 0 ? $branchStock->mrp : ($item->mrp ?? 0));
+
+                // 2. Selling Price: Use batch sell_price, or branchStock sell_price, or item sell_price
+                $batchSell = (float) ($p->sell_price ?? 0);
+                if ($batchSell <= 0) {
+                    $batchSell = (float) ($branchStock && (float)$branchStock->sell_price > 0 ? $branchStock->sell_price : ($item->sell_price ?? 0));
+                }
+                if ($batchSell <= 0 && $mrp > 0) {
+                    $batchSell = $mrp;
+                }
                 if ($mrp > 0 && $batchSell > $mrp) {
                     $batchSell = $mrp;
                 }
@@ -387,7 +409,19 @@ class BatchStockService
             if ($matchedKey !== null) {
                 $seenMatches[$matchedKey] = ($seenMatches[$matchedKey] ?? 0) + 1;
                 $isLast = ($seenMatches[$matchedKey] === $matchCounts[$matchedKey]);
-                $ledgerRem = max(0.0, $ledgerBatchMap[$matchedKey]['remaining'] - $ledgerBatchMap[$matchedKey]['assigned']);
+
+                $lTotalIn = (float) ($ledgerBatchMap[$matchedKey]['total_in'] ?? 0);
+                $lNetRemaining = (float) ($ledgerBatchMap[$matchedKey]['remaining'] ?? 0);
+
+                // If stock_ledger recorded inward movements (total_in > 0), ledger remaining is standalone for new purchase invoices.
+                // But for imported closing_stock or un-receipted stock, stock_ledger only tracked post-migration transactions (-qty_out / +returns),
+                // so effective remaining is pQty + lNetRemaining!
+                $isClosingStock = ($bData['source'] ?? '') === 'closing_stock';
+                $effectiveBatchStock = ($isClosingStock || $lTotalIn <= 0.0001)
+                    ? max(0.0, $pQty + $lNetRemaining)
+                    : $lNetRemaining;
+
+                $ledgerRem = max(0.0, $effectiveBatchStock - ($ledgerBatchMap[$matchedKey]['assigned'] ?? 0));
                 $alloc = $isLast ? $ledgerRem : min($pQty, $ledgerRem);
                 $bData['remaining_qty'] = $alloc;
                 $ledgerBatchMap[$matchedKey]['assigned'] += $alloc;
@@ -407,6 +441,9 @@ class BatchStockService
         foreach ($ledgerBatchMap as $key => $lData) {
             if (str_contains($key, '|')) {
                 continue;
+            }
+            if (($lData['total_in'] ?? 0) <= 0.0001) {
+                continue; // Skip outward-only sales ledger entries
             }
             $unassignedInLedger = max(0.0, $lData['remaining'] - ($lData['assigned'] ?? 0));
             if ($unassignedInLedger <= 0) {
@@ -436,6 +473,13 @@ class BatchStockService
         $currentBranchStock = (float) (\App\Models\ItemStock::where('item_id', $itemId)
             ->where('branch_id', $branchId)
             ->value('quantity') ?? 0);
+
+        if ($excludeSalesBillId) {
+            $alreadyInBillStock = (float) (\App\Models\SalesBillItem::where('sales_bill_id', $excludeSalesBillId)
+                ->where('item_id', $itemId)
+                ->sum('qty') ?? 0);
+            $currentBranchStock += $alreadyInBillStock;
+        }
 
         if (empty($ledgerBatchMap) && !empty($batches)) {
             // FIFO allocation across purchases by expiry date
@@ -479,6 +523,31 @@ class BatchStockService
                 }
             }
             unset($bData);
+        } elseif ($unassignedAvailable > 0.0001) {
+            // Unbatched physical branch stock exists without explicit unassigned purchase lines.
+            // If there's a single active lot without batch_no or expiry, absorb it; otherwise provide Store Stock batch
+            $positiveBatchKeys = array_keys(array_filter($batches, fn($b) => (float)($b['remaining_qty'] ?? 0) > 0));
+            if (count($positiveBatchKeys) === 1 && empty($batches[$positiveBatchKeys[0]]['raw_batch_no']) && empty($batches[$positiveBatchKeys[0]]['exp_date'])) {
+                $targetKey = $positiveBatchKeys[0];
+                $batches[$targetKey]['remaining_qty'] += $unassignedAvailable;
+                $namedBatchRemaining += $unassignedAvailable;
+            } else {
+                $batches['BRANCH_STOCK'] = [
+                    'item_id' => $itemId,
+                    'item_code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
+                    'item_name' => $item->name,
+                    'batch_no' => 'Store Stock',
+                    'raw_batch_no' => '',
+                    'exp_date' => null,
+                    'cost_price' => (float) ($branchStock && $branchStock->cost_price > 0 ? $branchStock->cost_price : ($item->cost_price ?? 0)),
+                    'sell_price' => (float) ($branchStock && $branchStock->sell_price > 0 ? $branchStock->sell_price : ($item->sell_price ?? 0)),
+                    'mrp' => (float) ($branchStock && $branchStock->mrp > 0 ? $branchStock->mrp : ($item->mrp ?? 0)),
+                    'purchased_qty' => $unassignedAvailable,
+                    'remaining_qty' => $unassignedAvailable,
+                    'source' => 'branch_stock',
+                ];
+                $namedBatchRemaining += $unassignedAvailable;
+            }
         }
 
         // 3. If no batches exist but branch has physical stock (e.g. from transfer in or manual stock), provide default batch
@@ -490,9 +559,9 @@ class BatchStockService
                 'batch_no' => 'DEFAULT',
                 'raw_batch_no' => '',
                 'exp_date' => null,
-                'cost_price' => (float) ($item->cost_price ?? 0),
-                'sell_price' => (float) ($item->sell_price ?? 0),
-                'mrp' => (float) ($item->mrp ?? 0),
+                'cost_price' => (float) ($branchStock && $branchStock->cost_price > 0 ? $branchStock->cost_price : ($item->cost_price ?? 0)),
+                'sell_price' => (float) ($branchStock && $branchStock->sell_price > 0 ? $branchStock->sell_price : ($item->sell_price ?? 0)),
+                'mrp' => (float) ($branchStock && $branchStock->mrp > 0 ? $branchStock->mrp : ($item->mrp ?? 0)),
                 'purchased_qty' => $currentBranchStock,
                 'remaining_qty' => $currentBranchStock,
             ];
@@ -525,9 +594,9 @@ class BatchStockService
     /**
      * Resolves a single batch's inventory attributes and remaining quantity.
      */
-    public function getBatchStock(int $itemId, int $branchId, string $batchNo, ?string $expDate = null, ?float $mrp = null): ?array
+    public function getBatchStock(int $itemId, int $branchId, string $batchNo, ?string $expDate = null, ?float $mrp = null, ?int $excludeSalesBillId = null): ?array
     {
-        $batches = $this->getItemBatches($itemId, $branchId);
+        $batches = $this->getItemBatches($itemId, $branchId, $excludeSalesBillId);
 
         $found = $batches->first(function ($b) use ($batchNo, $expDate, $mrp) {
             $matchBNo = (strcasecmp(trim((string)$b['batch_no']), trim($batchNo)) === 0

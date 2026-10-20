@@ -200,7 +200,7 @@
                 <!-- Customer Search Select (ALWAYS VISIBLE as in Sales Bill) -->
                 <div id="posCustomerSearchWrapper" class="mb-2">
                     <select id="posCustomerSelect" class="form-control form-control-sm select2">
-                        <option value="">-- Search customer by name, mobile, pet... --</option>
+                        <option value="">-- Search customer by name or mobile --</option>
                         @if($defaultCustomer)
                             <option value="{{ $defaultCustomer->id }}" selected>{{ $defaultCustomer->mobile ? "{$defaultCustomer->name} ({$defaultCustomer->mobile})" : $defaultCustomer->name }}</option>
                         @endif
@@ -1162,6 +1162,76 @@
             </div>
             <div class="modal-footer py-2 px-3 bg-white justify-content-end">
                 <button type="button" class="btn btn-secondary btn-sm px-3 font-weight-bold" data-dismiss="modal">Close (Esc)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- POS Batch Split / Insufficient Batch Stock Modal -->
+<div class="modal fade" id="pos-batch-split-modal" tabindex="-1" role="dialog" aria-labelledby="posBatchSplitModalLabel" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 620px;">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-warning py-2 px-3 align-items-center text-dark">
+                <h5 class="modal-title font-weight-bold mb-0" id="posBatchSplitModalLabel" style="font-size: 1.1rem;">
+                    <i class="fas fa-boxes mr-2 text-dark"></i> Batch Stock Limit — Split Across Batches
+                </h5>
+                <button type="button" class="close text-dark" data-dismiss="modal" aria-label="Close" style="opacity: 0.9;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3 bg-light">
+                <div class="alert alert-light border py-2 mb-3 small">
+                    <div class="font-weight-bold text-dark" id="pos-split-modal-item-name" style="font-size: 1rem;"></div>
+                    <div class="text-muted mt-1">
+                        Requested Quantity: <strong class="text-primary font-weight-bold" id="pos-split-modal-req-qty"></strong> | 
+                        Current Batch (<span id="pos-split-modal-curr-batch"></span>): <strong class="text-danger font-weight-bold" id="pos-split-modal-curr-avail"></strong> available
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-white py-2 px-3 border-bottom d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold small text-dark"><i class="fas fa-layer-group text-primary mr-1"></i> Suggested Batch Distribution</span>
+                        <span class="badge badge-success font-weight-bold px-2 py-1" id="pos-split-modal-total-badge"></span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0" id="pos-split-modal-table">
+                                <thead class="bg-light text-dark small font-weight-bold">
+                                    <tr>
+                                        <th>Batch No</th>
+                                        <th class="text-center" style="width: 110px;">Expiry</th>
+                                        <th class="text-right" style="width: 90px;">Allocate Qty</th>
+                                        <th class="text-right" style="width: 90px;">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pos-split-modal-body">
+                                    <!-- Populated dynamically via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="small text-muted mb-0" id="pos-split-modal-note">
+                    <i class="fas fa-info-circle text-primary mr-1"></i>
+                    Clicking <strong>Split & Add</strong> will split this item into separate cart lines for each batch with their respective MRP and expiry dates.
+                </p>
+            </div>
+            <div class="modal-footer py-2 px-3 bg-white justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 font-weight-bold" id="pos-btn-split-manual">
+                        <i class="fas fa-list mr-1"></i>Select Batches Manually
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm px-2 font-weight-bold" id="pos-btn-split-keep-max">
+                        Keep Max Available
+                    </button>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary btn-sm px-3 font-weight-bold mr-1" data-dismiss="modal">Cancel (Esc)</button>
+                    <button type="button" class="btn btn-success btn-sm px-3 font-weight-bold shadow-sm" id="pos-btn-split-confirm">
+                        <i class="fas fa-check mr-1"></i>Split & Add (Enter)
+                    </button>
+                </div>
             </div>
         </div>
     </div>

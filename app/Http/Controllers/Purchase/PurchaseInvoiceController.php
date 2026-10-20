@@ -81,6 +81,7 @@ class PurchaseInvoiceController extends Controller
         }
 
         $allowedSorts = [
+            'grn_number' => 'grn_number',
             'invoice_number' => 'invoice_number',
             'invoice_date' => 'invoice_date',
             'supplier_inv_no' => 'supplier_inv_no',
@@ -92,7 +93,7 @@ class PurchaseInvoiceController extends Controller
             'purchase_type' => 'purchase_type',
             'id' => 'id',
         ];
-        $this->applySorting($query, $allowedSorts, ['invoice_date' => 'desc', 'id' => 'desc']);
+        $this->applySorting($query, $allowedSorts, ['grn_number' => 'desc', 'id' => 'desc']);
 
         $purchaseInvoices = $query->paginate(20)->withQueryString();
         $branches = (! $isGlobalAdmin && $user->branch_id)

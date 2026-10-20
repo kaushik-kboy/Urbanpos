@@ -87,9 +87,17 @@ class ChangeSellingController extends Controller
                     'mrp' => $mrp,
                 ]);
 
-                // Also update item master if missing
+                // Also update active closing stocks for this branch so batch pricing stays in sync
+                DB::table('closing_stocks')
+                    ->where('item_id', $itemId)
+                    ->where('branch_id', $branchId)
+                    ->where('closing_stock', '>', 0)
+                    ->update([
+                        'mrp' => $mrp
+                    ]);
+
+                // Also update item master default prices
                 Item::where('id', $itemId)
-                    ->where(fn ($q) => $q->whereNull('sell_price')->orWhere('sell_price', 0))
                     ->update(['sell_price' => $sellPrice, 'mrp' => $mrp]);
 
                 $updatedCount++;

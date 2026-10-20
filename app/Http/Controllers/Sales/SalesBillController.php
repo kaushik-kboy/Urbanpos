@@ -69,8 +69,7 @@ class SalesBillController extends Controller
                     $q->orWhereHas('customer', function ($cq) use ($term, $column) {
                         $cq->where(function ($w) use ($term, $column) {
                             if ($column === 'customer_name' || $column === 'all') {
-                                $w->orWhere('name', 'like', "%{$term}%")
-                                  ->orWhere('customer_code', 'like', "%{$term}%");
+                                $w->orWhere('name', 'like', "%{$term}%");
                             }
                             if ($column === 'mobile' || $column === 'all') {
                                 $w->orWhere('mobile', 'like', "%{$term}%")
@@ -190,6 +189,27 @@ class SalesBillController extends Controller
 
         if ($request->filled('edit_id')) {
             $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments'])->findOrFail($request->input('edit_id'));
+            $branchId = (int) $editBill->branch_id;
+            $batchService = app(\App\Services\Inventory\BatchStockService::class);
+            foreach ($editBill->items as $billItem) {
+                $currentStock = (float) (\App\Models\ItemStock::where('item_id', $billItem->item_id)
+                    ->where('branch_id', $branchId)
+                    ->value('quantity') ?? 0);
+                $billItem->stock = $currentStock + (float) $billItem->qty;
+
+                $batches = $batchService->getItemBatches($billItem->item_id, $branchId, $editBill->id);
+                $matchingBatch = $batches->first(function ($b) use ($billItem) {
+                    if ($billItem->batch_no && !empty($b['batch_no'])) {
+                        return trim((string)$b['batch_no']) === trim((string)$billItem->batch_no)
+                            || trim((string)($b['raw_batch_no'] ?? '')) === trim((string)$billItem->batch_no);
+                    }
+                    if ($billItem->exp_date && !empty($b['exp_date'])) {
+                        return substr((string)$b['exp_date'], 0, 10) === substr((string)$billItem->exp_date, 0, 10);
+                    }
+                    return false;
+                }) ?? $batches->first();
+                $billItem->batch_stock = $matchingBatch ? (float)($matchingBatch['remaining_qty'] ?? 0) : $billItem->stock;
+            }
             $options['editBill'] = $editBill;
             $defaultCustId = $editBill->customer_id;
             $options['defaultCustomerId'] = $defaultCustId;
@@ -487,11 +507,25 @@ class SalesBillController extends Controller
         $salesBill->load(['items.item.gstTax', 'customer', 'payments.tenderType', 'payments.tenderTypeValue']);
 
         $branchId = (int) $salesBill->branch_id;
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
         foreach ($salesBill->items as $billItem) {
             $currentStock = (float) (\App\Models\ItemStock::where('item_id', $billItem->item_id)
                 ->where('branch_id', $branchId)
                 ->value('quantity') ?? 0);
             $billItem->stock = $currentStock + (float) $billItem->qty;
+
+            $batches = $batchService->getItemBatches($billItem->item_id, $branchId, $salesBill->id);
+            $matchingBatch = $batches->first(function ($b) use ($billItem) {
+                if ($billItem->batch_no && !empty($b['batch_no'])) {
+                    return trim((string)$b['batch_no']) === trim((string)$billItem->batch_no)
+                        || trim((string)($b['raw_batch_no'] ?? '')) === trim((string)$billItem->batch_no);
+                }
+                if ($billItem->exp_date && !empty($b['exp_date'])) {
+                    return substr((string)$b['exp_date'], 0, 10) === substr((string)$billItem->exp_date, 0, 10);
+                }
+                return false;
+            }) ?? $batches->first();
+            $billItem->batch_stock = $matchingBatch ? (float)($matchingBatch['remaining_qty'] ?? 0) : $billItem->stock;
         }
 
         return view('sales.sales-bills.edit', array_merge(['salesBill' => $salesBill], $this->formOptions($salesBill, $salesBill->items, $salesBill->customer_id)));
@@ -1008,9 +1042,25 @@ class SalesBillController extends Controller
         $candJoins  = [];
         $candParams = [];
 
+        $editBillId = (int) ($request->input('sales_bill_id') ?: $request->input('edit_id') ?: 0);
+        $editBillItemIds = [];
+        $editBillItemQtys = [];
+        if ($editBillId > 0) {
+            $billLines = \App\Models\SalesBillItem::where('sales_bill_id', $editBillId)->get(['item_id', 'qty']);
+            foreach ($billLines as $bl) {
+                $editBillItemIds[] = (int) $bl->item_id;
+                $editBillItemQtys[(int) $bl->item_id] = ($editBillItemQtys[(int) $bl->item_id] ?? 0) + (float) $bl->qty;
+            }
+        }
+
         // By default show only products in stock (quantity > 0 or allow_negative_stock) unless show_all is checked
         if (! $showAll) {
-            $where[] = '(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1)';
+            if (!empty($editBillItemIds)) {
+                $idListStr = implode(',', $editBillItemIds);
+                $where[] = "(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1 OR i.id IN ({$idListStr}))";
+            } else {
+                $where[] = '(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1)';
+            }
         }
 
         // Filter by customer purchases if customer_id is provided (Task 6 for Sales Return)
@@ -1140,6 +1190,14 @@ class SalesBillController extends Controller
         $finalParams = array_merge($params, $orderParams);
         $rows = \Illuminate\Support\Facades\DB::select($sql, $finalParams);
 
+        if (! empty($editBillItemQtys)) {
+            foreach ($rows as $r) {
+                if (isset($editBillItemQtys[$r->id])) {
+                    $r->qty = (float)$r->qty + $editBillItemQtys[$r->id];
+                }
+            }
+        }
+
         // Branch-specific expiry/price, looked up ONLY for the (<=100) rows returned. It used to be a derived
         // table aggregating every purchase_invoice_items row before the join (cost grew with purchase history).
         if (! empty($rows)) {
@@ -1187,10 +1245,13 @@ class SalesBillController extends Controller
             $missingBranchCsIds = array_values(array_filter($ids, fn ($id) => ! isset($ei[$id])));
             if (! empty($missingBranchCsIds)) {
                 $batchService = app(\App\Services\Inventory\BatchStockService::class);
+                $todayDateStr = \Carbon\Carbon::today()->format('Y-m-d');
                 foreach ($missingBranchCsIds as $mId) {
                     $itemBatches = $batchService->getItemBatches($mId, $branchId);
                     $posBatches = $itemBatches->filter(fn($b) => (float)($b['remaining_qty'] ?? 0) > 0);
-                    $activeBatch = $posBatches->first() ?: $itemBatches->first();
+                    // Prioritize unexpired batch with positive stock; fallback to first positive batch, then first batch
+                    $unexpiredBatches = $posBatches->filter(fn($b) => empty($b['exp_date']) || $b['exp_date'] >= $todayDateStr);
+                    $activeBatch = $unexpiredBatches->first() ?: ($posBatches->first() ?: $itemBatches->first());
                     if ($activeBatch) {
                         $ei[$mId] = (object) [
                             'item_id' => $mId,
@@ -1325,16 +1386,17 @@ class SalesBillController extends Controller
             ->where('branch_id', $branchId)
             ->value('quantity') ?? 0);
 
-        if ($salesBillId = $request->input('sales_bill_id')) {
+        $salesBillId = $request->input('sales_bill_id') ?: $request->input('edit_id');
+        if ($salesBillId) {
             $alreadyInBill = (float) (\App\Models\SalesBillItem::where('sales_bill_id', $salesBillId)
                 ->where('item_id', $item->id)
-                ->value('qty') ?? 0);
+                ->sum('qty') ?? 0);
             $stock += $alreadyInBill;
         }
 
         // 1. Fetch batch records from Purchase Invoices in this branch (and Opening Stock)
         $batchService = app(\App\Services\Inventory\BatchStockService::class);
-        $resolvedBatches = $batchService->getItemBatches($item->id, $branchId);
+        $resolvedBatches = $batchService->getItemBatches($item->id, $branchId, $salesBillId ? (int) $salesBillId : null);
 
         $hasPositiveNamedBatches = collect($resolvedBatches)->some(fn($b) => !empty($b['raw_batch_no']) && (float)($b['remaining_qty'] ?? 0) > 0);
         $hasActualBatchOrExpiry = collect($resolvedBatches)->some(fn($b) => !empty($b['raw_batch_no']) || !empty($b['exp_date']));
@@ -1364,9 +1426,23 @@ class SalesBillController extends Controller
             }
         }
 
-        // Sort: chronological by expiry date (FIFO)
-        usort($batches, function ($a, $b) {
-            return strcmp($a['exp_date'] ?? '', $b['exp_date'] ?? '');
+        // Sort: prioritize unexpired batches first, then batches with expiry dates, then chronological by expiry date (FIFO)
+        $todayStr = \Carbon\Carbon::today()->format('Y-m-d');
+        usort($batches, function ($a, $b) use ($todayStr) {
+            $aExp = $a['exp_date'] ?? '';
+            $bExp = $b['exp_date'] ?? '';
+            $aExpired = $aExp !== '' && $aExp < $todayStr;
+            $bExpired = $bExp !== '' && $bExp < $todayStr;
+            if ($aExpired !== $bExpired) {
+                return $aExpired ? 1 : -1; // Unexpired comes first
+            }
+            if ($aExp !== '' && $bExp === '') {
+                return -1;
+            }
+            if ($aExp === '' && $bExp !== '') {
+                return 1;
+            }
+            return strcmp($aExp, $bExp);
         });
 
         $batchStockSum = 0.0;
@@ -1375,6 +1451,10 @@ class SalesBillController extends Controller
         }
         if (!empty($batches) && !$salesBillId) {
             if ($batchStockSum > 0 || $stock <= 0) {
+                $stock = $batchStockSum;
+            }
+        } elseif (!empty($batches) && $salesBillId) {
+            if ($batchStockSum > 0 && $batchStockSum > $stock) {
                 $stock = $batchStockSum;
             }
         }
@@ -1408,6 +1488,7 @@ class SalesBillController extends Controller
                 'exp_date' => $defaultExp,
                 'batch_no' => $defaultBatchNo,
                 'stock' => $stock,
+                'total_branch_stock' => $salesBillId ? $stock : (float) (\App\Models\ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0),
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
                 'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
                 'allow_negative_stock' => (bool) ($item->allow_negative_stock ?? false),
@@ -1456,15 +1537,15 @@ class SalesBillController extends Controller
             return response()->json(['results' => $customers]);
         }
 
-        $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q))->exists();
+        $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q))->exists();
         $customers = Customer::where('status', true)
             ->with(['pets.petType', 'pets.breed'])
             ->when($exactHit, function ($query) use ($q) {
-                // Exact customer_code / mobile (typed in full or scanned): index lookup, no substring scan.
-                $query->where(fn ($e) => $e->where('customer_code', $q)->orWhere('mobile', $q));
+                // Exact mobile / phone: index lookup, strictly no customer_code matching.
+                $query->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q));
             })
             ->when(! $exactHit, function ($query) use ($q) {
-                // Resolve matching ids with index-only probes first (Customer::pickerMatchIds), then fetch <= 30 rows.
+                // Resolve matching ids with index-only probes (only name, mobile, phone).
                 $query->whereIn('id', Customer::pickerMatchIds($q));
             })
             ->orderBy('name')

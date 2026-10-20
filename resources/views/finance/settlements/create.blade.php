@@ -226,7 +226,7 @@ $(function() {
     $('#party-select').select2({
         theme: 'bootstrap4',
         width: '100%',
-        placeholder: 'Search customer by name, mobile or code...',
+        placeholder: 'Search customer by name or mobile...',
         minimumInputLength: 1,
         ajax: {
             url: '{{ route("sales.sales-bills.customer-search") }}',

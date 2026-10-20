@@ -3041,8 +3041,10 @@
 
             if ((!batches || batches.length === 0) && itemId) {
                 let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
+                let billId = '{{ $bill->id ?? "" }}';
+                let billParam = billId ? `&sales_bill_id=${billId}` : '';
                 try {
-                    let resp = await fetch(`{{ route('sales.sales-bills.lookup-item') }}?item_id=${itemId}&branch_id=${branchId}`);
+                    let resp = await fetch(`{{ route('sales.sales-bills.lookup-item') }}?item_id=${itemId}&branch_id=${branchId}${billParam}`);
                     let data = await resp.json();
                     if (data && data.found) {
                         batches = data.batches || [];
