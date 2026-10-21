@@ -241,19 +241,20 @@ class ImportClosingStock extends Command
                 $fileVal += $stockAmt;
 
                 // Aggregate for item_stocks
+                $isDummyBatch = in_array(strtoupper(trim((string)$batchNo)), ['OP1', 'OS1']) || preg_match('/^MO\d*$/', strtoupper(trim((string)$batchNo)));
                 if ($branchId && $itemId) {
                     if (! isset($stockAgg[$branchId][$itemId])) {
                         $stockAgg[$branchId][$itemId] = [
                             'qty' => 0.0,
                             'cost' => $netCost,
-                            'mrp' => $mrp,
+                            'mrp' => !$isDummyBatch ? $mrp : 0.0,
                         ];
                     }
                     $stockAgg[$branchId][$itemId]['qty'] += $qty;
                     if ($netCost > 0) {
                         $stockAgg[$branchId][$itemId]['cost'] = $netCost;
                     }
-                    if ($mrp > 0) {
+                    if ($mrp > 0 && !$isDummyBatch) {
                         $stockAgg[$branchId][$itemId]['mrp'] = $mrp;
                     }
                 }

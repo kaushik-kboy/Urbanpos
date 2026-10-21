@@ -206,10 +206,32 @@ class BatchStockService
 
         $csItems = collect();
         if ($csRows->isNotEmpty()) {
+            $isDummyBatch = function(?string $b): bool {
+                if (empty($b)) return false;
+                $ub = strtoupper(trim($b));
+                if (in_array($ub, ['OP1', 'OS1'])) return true;
+                if (preg_match('/^MO\d*$/', $ub)) return true;
+                return false;
+            };
+
+            // Check if any real physical (non-dummy) batches exist
+            $hasPhysicalBatches = $csRows->some(fn($cs) => !$isDummyBatch($cs->batch_no) && (float)$cs->closing_stock > 0);
+
+            // Filter out dummy batches if physical batches exist, or always drop zero/negative dummy adjustments
+            $filteredCsRows = $csRows->filter(function($cs) use ($isDummyBatch, $hasPhysicalBatches) {
+                $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
+                if ($isDummyBatch($rawBNo)) {
+                    if ($hasPhysicalBatches || (float)$cs->closing_stock <= 0) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
             // For identical raw_batch_no (e.g. OS1: +139 @ 50, -139 @ 70), calculate net stock for that batch_no
             $rawBNoCounts = [];
             $rawBNoSums = [];
-            foreach ($csRows as $cs) {
+            foreach ($filteredCsRows as $cs) {
                 $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
                 if ($rawBNo !== '') {
                     $rawBNoCounts[$rawBNo] = ($rawBNoCounts[$rawBNo] ?? 0) + 1;
@@ -218,7 +240,7 @@ class BatchStockService
             }
 
             $consolidatedCs = [];
-            foreach ($csRows as $cs) {
+            foreach ($filteredCsRows as $cs) {
                 $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
                 // If multiple rows exist with the exact same batch_no and their sum <= 0, drop them (revaluation cancellation)
                 if ($rawBNo !== '' && ($rawBNoCounts[$rawBNo] ?? 0) > 1 && ($rawBNoSums[$rawBNo] ?? 0.0) <= 0.0001) {
