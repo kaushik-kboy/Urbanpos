@@ -44,6 +44,32 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']);
         });
 
+        // Granular Report Category & Menu Gates
+        Gate::define('access-reports-menu', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasAnyReportAccess($user);
+        });
+        Gate::define('access-sales-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Sales');
+        });
+        Gate::define('access-purchase-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Purchase');
+        });
+        Gate::define('access-inventory-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Inventory');
+        });
+        Gate::define('access-masters-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Masters');
+        });
+        Gate::define('access-audit-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Audit');
+        });
+        Gate::define('access-finance-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Finance');
+        });
+        Gate::define('access-production-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Production');
+        });
+
         // Ensure URLs, assets and routes use HTTPS when served over HTTPS or behind an SSL reverse proxy
         $isHttps = str_starts_with(config('app.url'), 'https://')
             || app()->environment('production')

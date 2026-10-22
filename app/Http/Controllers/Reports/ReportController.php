@@ -35,13 +35,32 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    protected function checkReportAccess(string $slug, string $action = 'view'): void
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401);
+        }
+        if (! \App\Services\Reports\ReportPermissionRegistry::canAccess($user, $slug, $action)) {
+            abort(403, "Unauthorized access. You do not have permission to {$action} the '{$slug}' report.");
+        }
+    }
+
     public function index()
     {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401);
+        }
+        if (! \App\Services\Reports\ReportPermissionRegistry::hasAnyReportAccess($user)) {
+            abort(403, 'Unauthorized access to reports center.');
+        }
         return view('reports.index');
     }
 
     public function salesSummary(Request $request)
     {
+        $this->checkReportAccess('sales-summary');
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
         $rows = collect();
@@ -1573,6 +1592,7 @@ class ReportController extends Controller
         $search = $request->input('search');
 
         $isExport = in_array(strtolower((string) $request->input('export', $request->query('export', ''))), ['excel', 'xlsx', 'csv']);
+        $this->checkReportAccess($module, $isExport ? 'export' : 'view');
         if ($isExport) {
             @ini_set('memory_limit', '512M');
             @ini_set('max_execution_time', '300');
