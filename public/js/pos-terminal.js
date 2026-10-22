@@ -1828,6 +1828,13 @@
                 return false;
             }
 
+            // Do not merge if discount rates differ (e.g. 20% vs 30% vs 100% Free)
+            const cDiscPct = parseFloat(c.disc_percent || 0);
+            const itemDiscPct = parseFloat(item.disc_percent || 0);
+            if (Math.abs(cDiscPct - itemDiscPct) > 0.01) {
+                return false;
+            }
+
             return true;
         });
 
@@ -2099,6 +2106,58 @@
         focusScanner();
     }
 
+    function splitRow(index) {
+        const item = state.cart[index];
+        if (!item) return;
+
+        const currentQty = parseFloat(item.qty) || 0;
+        const allowNeg = isAllowNegative(item.allow_negative_stock);
+        const stock = (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== '')
+            ? parseFloat(item.batch_stock)
+            : (item.stock !== undefined && item.stock !== null ? parseFloat(item.stock) : null);
+
+        const newRowIdx = index + 1;
+
+        if (currentQty <= 1) {
+            // If qty is 1, check stock before duplicating 1 more unit into cart
+            const totalRequested = getTotalCartQtyForItem(item, -1, item.batch_no || null, item.exp_date || null, item.mrp || null) + 1;
+            if (!allowNeg && stock !== null && totalRequested > stock + 0.0001) {
+                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
+                showNotification(`Cannot duplicate row. Insufficient stock (${availDisp} available).`, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                return;
+            }
+
+            const newItem = JSON.parse(JSON.stringify(item));
+            newItem.qty = 1;
+            newItem.disc_percent = 0;
+            newItem.disc_amount = 0;
+            state.cart.splice(newRowIdx, 0, newItem);
+            recalculateRow(newRowIdx, 'qty');
+            renderCart();
+            showNotification(`Added new line for "${item.name}" (Qty: 1). You can now apply different discount or make it free (B2G1).`, 'success');
+        } else {
+            // When currentQty > 1:
+            // Decrement 1 unit from existing row, create new row with Qty 1
+            state.cart[index].qty = currentQty - 1;
+            recalculateRow(index, 'qty');
+
+            const newItem = JSON.parse(JSON.stringify(item));
+            newItem.qty = 1;
+            newItem.disc_percent = 0;
+            newItem.disc_amount = 0;
+            state.cart.splice(newRowIdx, 0, newItem);
+            recalculateRow(newRowIdx, 'qty');
+
+            renderCart();
+            showNotification(`Split 1 unit of "${item.name}" into a new line!`, 'success');
+        }
+
+        setTimeout(() => {
+            openDiscountPercentInput(newRowIdx);
+        }, 120);
+    }
+
     function resetTerminalAll() {
         if (state.cart.length > 0 || state.customer_id) {
             if (!confirm('Are you sure you want to reset terminal? All items, customer, discounts, and payment modes will be cleared.')) {
@@ -2315,7 +2374,10 @@
                     <td class="text-right font-weight-bold text-success pos-row-net" data-idx="${idx}" style="width: 95px; font-size: 0.95rem;">
                         ₹ ${net.toFixed(2)}
                     </td>
-                    <td class="text-center" style="width: 35px;">
+                    <td class="text-center text-nowrap" style="width: 65px;">
+                        <button type="button" class="btn btn-xs btn-outline-primary shadow-none mr-1" title="Split into new row (Shift 1 qty to separate line for different discount / B2G1 free)" onclick="window.posEngine.splitRow(${idx})">
+                            <i class="fas fa-columns"></i>
+                        </button>
                         <button type="button" class="btn btn-xs btn-outline-danger shadow-none" title="Remove Item" onclick="window.posEngine.removeRow(${idx})">
                             <i class="fas fa-times"></i>
                         </button>
@@ -4276,6 +4338,7 @@
         updateQty: updateItemQty,
         setQty: setItemQty,
         removeRow: removeItem,
+        splitRow: splitRow,
         setSalesType: setSalesType,
         chooseBatchForRow: chooseBatchForRow,
         openAddCustomer: openAddCustomerModalWithTerm,

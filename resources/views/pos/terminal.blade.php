@@ -122,7 +122,7 @@
                             <th class="text-right" style="width: 75px;" title="Click row cell to edit discount %">Dis %</th>
                             <th class="text-right" style="width: 85px;" title="Click row cell to edit discount amount">Dis Amt</th>
                             <th class="text-right" style="width: 95px;">Net Amount</th>
-                            <th class="text-center" style="width: 35px;"></th>
+                            <th class="text-center" style="width: 65px;"></th>
                         </tr>
                     </thead>
                     <tbody id="posCartBody">

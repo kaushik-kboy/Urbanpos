@@ -96,7 +96,8 @@
         <input type="text" class="form-control form-control-sm sb-gst-tax-amount text-right bg-light font-weight-bold" readonly tabindex="-1" value="{{ $gstTaxAmtVal }}" placeholder="0.00" title="Included GST Amount">
     </td>
     <td style="width: 105px;" class="text-right align-middle font-weight-bold text-success sb-row-net" data-col-key="net_amt">{{ $netAmtVal }}</td>
-    <td style="width: 35px;" class="text-center align-middle" data-col-key="actions">
+    <td style="width: 65px;" class="text-center align-middle text-nowrap" data-col-key="actions">
+        <button type="button" tabindex="-1" class="btn btn-xs btn-outline-primary sb-split-row mr-1" title="Split into new row (for different discount or B2G1 free)"><i class="fas fa-columns"></i></button>
         <button type="button" tabindex="-1" class="btn btn-xs btn-outline-danger sb-remove-row"><i class="fas fa-times"></i></button>
     </td>
 </tr>

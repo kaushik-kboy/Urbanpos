@@ -654,7 +654,7 @@
                 <th style="width: 45px;" class="text-right" data-col-key="gst_percent">GST %</th>
                 <th style="width: 80px;" class="text-right" title="Included GST Amount" data-col-key="gst_amt">GST Amt</th>
                 <th style="width: 95px;" class="text-right" data-col-key="net_amt">Net Amount</th>
-                <th style="width: 32px;" class="text-center" data-col-key="actions"></th>
+                <th style="width: 65px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="sb-items-body">
@@ -3591,6 +3591,78 @@
             } else if (elRect.top < containerRect.top + headerHeight) {
                 container.scrollTop -= (containerRect.top + headerHeight - elRect.top) + 6;
             }
+        });
+
+        // 4.5. Split Row (for different discount or B2G1 free line)
+        $('#sb-items-body').on('click', '.sb-split-row', function () {
+            let $row = $(this).closest('tr');
+            let itemId = $row.find('.sb-item-select').val();
+            if (!itemId) return;
+
+            let currentQty = parseFloat($row.find('.sb-qty').val()) || 0;
+            let stock = parseFloat($row.attr('data-stock') || $row.find('.sb-item-stock-val').val()) || null;
+            let allowNeg = $row.attr('data-allow-negative-stock') === '1';
+
+            let totalUsed = 0;
+            $('#sb-items-body tr').each(function () {
+                if ($(this).find('.sb-item-select').val() == itemId) {
+                    totalUsed += parseFloat($(this).find('.sb-qty').val()) || 0;
+                }
+            });
+
+            if (currentQty > 1) {
+                $row.find('.sb-qty').val(currentQty - 1);
+                calculateRow($row, 'base');
+            } else {
+                if (!allowNeg && stock !== null && (totalUsed + 1) > (stock + 0.0001)) {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error('Cannot add new line: Insufficient stock (' + stock + ' available).');
+                    } else {
+                        alert('Cannot add new line: Insufficient stock (' + stock + ' available).');
+                    }
+                    return;
+                }
+            }
+
+            let html = $('#sb-row-template').html().replaceAll('__INDEX__', rowIndex);
+            let $newRow = $(html);
+            $newRow.find('input').attr('autocomplete', 'off');
+            rowIndex++;
+
+            $newRow.find('.sb-item-code').val($row.find('.sb-item-code').val());
+            $newRow.find('.sb-item-desc').val($row.find('.sb-item-desc').val());
+            $newRow.find('.sb-item-select').val(itemId);
+            $newRow.find('.sb-item-stock-val').val($row.find('.sb-item-stock-val').val());
+            $newRow.attr('data-stock', $row.attr('data-stock'));
+            $newRow.attr('data-batch-stock', $row.attr('data-batch-stock'));
+            $newRow.attr('data-allow-negative-stock', $row.attr('data-allow-negative-stock'));
+            $newRow.find('.sb-item-batch-no').val($row.find('.sb-item-batch-no').val());
+            $newRow.find('.sb-item-batch-stock').val($row.find('.sb-item-batch-stock').val());
+            $newRow.find('.sb-exp-date').val($row.find('.sb-exp-date').val());
+            $newRow.find('.sb-sell-price').val($row.find('.sb-sell-price').val());
+            $newRow.find('.sb-mrp').val($row.find('.sb-mrp').val());
+            $newRow.find('.sb-gst-percent').val($row.find('.sb-gst-percent').val());
+
+            $newRow.find('.sb-qty').val(1);
+            $newRow.find('.sb-disc-percent').val('');
+            $newRow.find('.sb-disc-amount').val('');
+
+            if ($row.data('batches')) {
+                $newRow.data('batches', $row.data('batches'));
+                if ($row.data('batches').length > 1) {
+                    $newRow.find('.sb-batch-btn-wrap').removeClass('d-none');
+                }
+            }
+
+            $row.after($newRow);
+            updateRowNumbers();
+            calculateRow($newRow, 'base');
+            calculateTotals();
+
+            if (typeof toastr !== 'undefined') {
+                toastr.success('Item split into new row! You can now apply different discount or make it free (B2G1).');
+            }
+            $newRow.find('.sb-disc-percent').focus().select();
         });
 
         // 5. Remove Row
