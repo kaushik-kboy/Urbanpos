@@ -2768,13 +2768,13 @@ class FormFieldValidationSeeder extends Seeder
             [
                 'module_key' => 'sales_bills',
                 'field_name' => 'sales_type',
-                'field_label' => 'Sales Type (Local/Interstate)',
+                'field_label' => 'Sales Bill Type',
                 'field_type' => 'select',
                 'is_required' => true,
                 'is_readonly' => false,
                 'block_future_date' => false,
                 'is_unique' => false,
-                'custom_error_message' => null,
+                'custom_error_message' => 'Sales Bill Type is required.',
                 'sort_order' => 9,
             ],
             [

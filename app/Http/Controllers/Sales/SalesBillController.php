@@ -1756,26 +1756,27 @@ class SalesBillController extends Controller
         $activeBranchId = (int) ($salesBill?->branch_id ?: $this->resolveActiveBranchId());
 
         $salesTypes = \App\Models\SalesType::where('status', true)
-            ->where(function ($q) use ($activeBranchId) {
-                $q->where('branch_id', $activeBranchId)
-                  ->orWhereNull('branch_id');
-            })
+            ->where('branch_id', $activeBranchId)
+            ->whereNotIn('name', ['Local', 'Interstate'])
             ->orderBy('name')
             ->pluck('name', 'name');
 
         if ($salesTypes->isEmpty()) {
-            $salesTypes = \App\Models\SalesType::where('status', true)->orderBy('name')->pluck('name', 'name');
+            $salesTypes = \App\Models\SalesType::where('status', true)
+                ->whereNotIn('name', ['Local', 'Interstate'])
+                ->orderBy('name')
+                ->pluck('name', 'name');
         }
 
         if ($salesTypes->isEmpty()) {
             $salesTypes = collect([
                 'Retail' => 'Retail',
-                'Local' => 'Local',
-                'Interstate' => 'Interstate',
+                'Home' => 'Home',
             ]);
         }
 
         $allBranchSalesTypes = \App\Models\SalesType::where('status', true)
+            ->whereNotIn('name', ['Local', 'Interstate'])
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'branch_id']);
 

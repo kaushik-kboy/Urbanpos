@@ -12,7 +12,7 @@
         customer_pet_id: null,
         branch_id: (typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) ? parseInt(window.CURRENT_USER_BRANCH_ID, 10) : null,
         invoice_type: 'Retail Invoice',
-        sales_type: 'Local',
+        sales_type: 'Retail',
         delivery_type: 'Delivered',
         bill_discount: 0,
         tender_mode: null, // Cash, UPI, Card, Split, Credit (No default mode)
@@ -160,15 +160,13 @@
             state.customer_id = window.INITIAL_CUSTOMER.id;
             const initPetId = $('#posTaggedPetId').val();
             state.customer_pet_id = initPetId ? parseInt(initPetId, 10) : null;
-            if (window.INITIAL_CUSTOMER.sales_type) {
-                setSalesType(window.INITIAL_CUSTOMER.sales_type);
-            }
+            // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), not customer tax type
         } else {
             state.customer_id = null;
             state.customer_pet_id = null;
         }
 
-        const initSalesType = window.EDIT_BILL?.sales_type || window.INITIAL_CUSTOMER?.sales_type || $('#posSalesTypeSelect').val() || 'Retail';
+        const initSalesType = window.EDIT_BILL?.sales_type || $('#posSalesTypeSelect').val() || 'Retail';
         setSalesType(initSalesType);
 
         if (window.EDIT_BILL) {
@@ -2242,8 +2240,8 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Reset Sales Type to default
-        setSalesType($('#posSalesTypeSelect option:first').val() || window.INITIAL_CUSTOMER?.sales_type || 'Retail');
+        // 6. Reset Sales Type to default branch type
+        setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
 
         // 7. Re-render UI
         renderCart();
@@ -2867,9 +2865,7 @@
 
     function updateSelectedCustomerUI(customer) {
         if (!customer) return;
-        if (customer.sales_type) {
-            setSalesType(customer.sales_type);
-        }
+        // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), customer does NOT change sales_type
         $('#posCustomerSearchWrapper').show();
         $('#posSelectedCustomerBox').show();
         $('#posCustomerInvoicesSection').show();
@@ -3878,7 +3874,7 @@
                 state.cash_received = 0;
                 state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
                 state.customer_id = null;
-                setSalesType(window.INITIAL_CUSTOMER?.sales_type || 'Local');
+                setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
                 $('#posCustomerSelect').val(null).trigger('change.select2');
                 $('#posSelectedCustomerBox').hide();
                 $('#posCustomerInvoicesSection').hide();

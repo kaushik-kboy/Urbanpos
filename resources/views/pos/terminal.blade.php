@@ -1548,9 +1548,9 @@
         if (!stSelect || !window.ALL_BRANCH_SALES_TYPES || !window.ALL_BRANCH_SALES_TYPES.length) return;
         const currentVal = stSelect.value;
         const bId = parseInt(branchId, 10);
-        let filtered = window.ALL_BRANCH_SALES_TYPES.filter(st => st.branch_id === null || parseInt(st.branch_id, 10) === bId);
+        let filtered = window.ALL_BRANCH_SALES_TYPES.filter(st => parseInt(st.branch_id, 10) === bId && !['local', 'interstate'].includes(String(st.name).toLowerCase()));
         if (!filtered.length) {
-            filtered = window.ALL_BRANCH_SALES_TYPES;
+            filtered = window.ALL_BRANCH_SALES_TYPES.filter(st => !['local', 'interstate'].includes(String(st.name).toLowerCase()));
         }
 
         stSelect.innerHTML = '';

@@ -98,18 +98,17 @@ class SalesTypeController extends Controller
     }
 
     /**
-     * API to get branch-specific sales types (for POS and Sales Bill forms)
+     * API to get branch-specific sales bill types (for POS and Sales Bill forms)
      */
     public function byBranch(Request $request): JsonResponse
     {
         $branchId = $request->input('branch_id');
 
-        $query = SalesType::where('status', true);
+        $query = SalesType::where('status', true)
+            ->whereNotIn('name', ['Local', 'Interstate']);
+
         if ($branchId) {
-            $query->where(function ($q) use ($branchId) {
-                $q->where('branch_id', $branchId)
-                  ->orWhereNull('branch_id');
-            });
+            $query->where('branch_id', $branchId);
         }
 
         $salesTypes = $query->orderBy('name')->get(['id', 'name', 'code', 'branch_id']);
@@ -122,7 +121,7 @@ class SalesTypeController extends Controller
 
     private function validateData(Request $request, ?SalesType $salesType = null): array
     {
-        $branchId = $request->input('branch_id') ?: null;
+        $branchId = $request->input('branch_id');
 
         return $request->validate([
             'name' => [
@@ -133,7 +132,7 @@ class SalesTypeController extends Controller
                     ->where(fn ($q) => $q->where('branch_id', $branchId))
                     ->ignore($salesType?->id),
             ],
-            'branch_id' => ['nullable', 'exists:branches,id'],
+            'branch_id' => ['required', 'exists:branches,id'],
             'code' => ['nullable', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:500'],
             'status' => ['required', 'boolean'],

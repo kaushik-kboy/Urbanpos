@@ -1494,21 +1494,10 @@
         const CIM_PAGE_SIZE = 10;
 
         function syncAndLockCustomerTypes(cType, sType) {
-            // 1. Sales Type (Locked from Customer Master, read-only)
-            let salesTypeVal = sType || 'Local';
-            let $st = $('select[name="sales_type"]');
-            if ($st.length) {
-                $st.val(salesTypeVal).trigger('change');
-                $st.prop('disabled', true);
-                if (!$('#hidden-sales-type').length) {
-                    $st.after('<input type="hidden" name="sales_type" id="hidden-sales-type" value="' + salesTypeVal + '">');
-                } else {
-                    $('#hidden-sales-type').val(salesTypeVal);
-                }
-                $('#sales-type-lock-indicator').removeClass('d-none');
-            }
+            // Note: Sales Bill Type is branch-specific (e.g. Retail, Home, Spa for Motera / B2B, IPC for Satellite).
+            // Customer selection does NOT lock or overwrite sales_type.
 
-            // 2. Invoice / Customer Type (Locked from Customer Master, read-only)
+            // Invoice / Customer Type (Locked from Customer Master, read-only)
             if (cType) {
                 let invType = 'Retail Invoice';
                 let cUpper = String(cType).toUpperCase();
@@ -1535,11 +1524,6 @@
         }
 
         function unlockCustomerTypes() {
-            let $st = $('select[name="sales_type"]');
-            $st.prop('disabled', false);
-            $('#hidden-sales-type').remove();
-            $('#sales-type-lock-indicator').addClass('d-none');
-
             let $it = $('select[name="invoice_type"]');
             $it.prop('disabled', false);
             $('#hidden-invoice-type').remove();

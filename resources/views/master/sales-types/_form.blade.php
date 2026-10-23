@@ -1,14 +1,14 @@
 <div class="form-group mb-3">
-    <label for="branch_id" class="font-weight-bold">Branch (Location)</label>
-    <select name="branch_id" id="branch_id" class="form-control select2">
-        <option value="">-- All Branches (Global) --</option>
+    <label for="branch_id" class="font-weight-bold">Branch (Location) <span class="text-danger">*</span></label>
+    <select name="branch_id" id="branch_id" class="form-control select2" required>
+        <option value="">-- Select Branch --</option>
         @if(isset($branches))
             @foreach($branches as $bId => $bName)
                 <option value="{{ $bId }}" @selected(old('branch_id', $salesType->branch_id ?? '') == $bId)>{{ $bName }}</option>
             @endforeach
         @endif
     </select>
-    <small class="form-text text-muted">Specific branch choose karein (jaise Motera: Retail, Home, Spa ya Satellite: B2B, IPC, Home, Retail).</small>
+    <small class="form-text text-muted">Branch select karein jahan yeh sales bill type use hoga (e.g., Motera: Retail, Home, Spa | Satellite: B2B, IPC, Home, Retail).</small>
 </div>
 
 <x-field name="name" label="Sales Bill Type Name" :value="$salesType->name ?? ''" required placeholder="e.g. Retail, Home, Spa, B2B, IPC" />

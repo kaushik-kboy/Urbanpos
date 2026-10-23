@@ -354,7 +354,6 @@ return [
                     'submenu' => [
                         ['text' => 'Customer Category', 'url' => 'master/customer-categories', 'icon' => 'fas fa-fw fa-user-tag', 'can' => 'customer-categories.create'],
                         ['text' => 'Customer Types', 'url' => 'master/customer-types', 'icon' => 'fas fa-fw fa-id-card', 'can' => 'customer-types.create'],
-                        ['text' => 'Sales Types', 'url' => 'master/sales-types', 'icon' => 'fas fa-fw fa-file-contract', 'can' => 'sales-types.create'],
                         ['text' => 'Customer', 'url' => 'master/customers', 'icon' => 'fas fa-fw fa-user', 'can' => 'customers.view'],
                         ['text' => 'Area', 'url' => 'master/areas', 'icon' => 'fas fa-fw fa-map-marker-alt', 'can' => 'areas.create'],
                         ['text' => 'Loyalty Program Info', 'url' => 'master/loyalty-programs', 'icon' => 'fas fa-fw fa-award', 'can' => 'loyalty-programs.create'],
@@ -396,6 +395,13 @@ return [
                         ['text' => 'Branch', 'url' => 'master/branches', 'icon' => 'fas fa-fw fa-store-alt', 'can' => 'branches.create'],
                         ['text' => 'Distribution Centre Mapping', 'url' => 'master/aux/distribution-centre-mapping', 'icon' => 'fas fa-fw fa-network-wired', 'can' => 'branches.create'],
                     ],
+                ],
+                [
+                    'text' => 'Sales Bill Type',
+                    'url' => 'master/sales-types',
+                    'icon' => 'fas fa-fw fa-file-invoice-dollar',
+                    'active' => ['master/sales-types*'],
+                    'can' => 'sales-types.create',
                 ],
                 [
                     'text' => 'Register',
