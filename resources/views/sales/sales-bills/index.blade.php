@@ -168,7 +168,7 @@
                                 @if(request('mode') === 'edit')
                                     <a href="{{ request('is_iframe') ? route('pos.terminal', ['edit_id' => $bill->id]) : route('sales.sales-bills.edit', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
                                 @else
-                                    <a href="{{ route('sales.sales-bills.show', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
+                                    <a href="{{ request('is_iframe') ? route('pos.terminal', ['view_id' => $bill->id]) : route('sales.sales-bills.show', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
                                 @endif
                             </td>
                             <td>
@@ -203,13 +203,16 @@
                                 <button type="button" class="btn btn-xs btn-outline-success btn-whatsapp-index mr-1" data-url="{{ route('sales.sales-bills.send-whatsapp', $bill) }}" data-phone="{{ $bill->customer?->phone ?: $bill->customer?->mobile }}" title="Send WhatsApp Bill to Client" onclick="sendWhatsAppFromIndex(this)">
                                     <i class="fab fa-whatsapp"></i>
                                 </button>
-                                <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-xs btn-outline-success" title="Thermal Receipt (80mm)">
+                                <a href="{{ route('sales.sales-bills.receipt', $bill) }}" target="_blank" class="btn btn-xs btn-outline-success mr-1" title="Thermal Receipt (80mm)">
                                     <i class="fas fa-receipt"></i>
+                                </a>
+                                <a href="{{ route('pos.terminal', ['view_id' => $bill->id]) }}" class="btn btn-xs btn-outline-primary mr-1" title="View in POS Terminal" target="_blank">
+                                    <i class="fas fa-cash-register"></i>
                                 </a>
                                 @endif
                                 
                                 @if(!request('is_iframe') || request('mode') === 'view' || !request()->has('mode'))
-                                <a href="{{ route('sales.sales-bills.show', $bill) }}" class="btn btn-xs btn-outline-info" title="View Details" @if(request('is_iframe')) target="_parent" @endif>
+                                <a href="{{ request('is_iframe') ? route('pos.terminal', ['view_id' => $bill->id]) : route('sales.sales-bills.show', $bill) }}" class="btn btn-xs btn-outline-info mr-1" title="View Details" @if(request('is_iframe')) target="_parent" @endif>
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 @endif

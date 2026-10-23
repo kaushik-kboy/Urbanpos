@@ -432,19 +432,28 @@
     <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="customer_id" data-default-order="2" data-core="1">
         <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
-                <label for="customer_id" class="font-weight-bold mb-0"><i class="fas fa-user text-primary mr-1"></i> Customer <span class="text-danger">*</span></label>
+                <label for="customer_id" class="font-weight-bold mb-0">
+                    <i class="fas fa-user text-primary mr-1"></i> Customer <span class="text-danger">*</span>
+                    @if(!empty($bill?->id))
+                        <span class="badge badge-warning text-dark font-weight-bold ml-1" title="Customer cannot be changed when editing bill"><i class="fas fa-lock mr-1"></i>Locked</span>
+                    @endif
+                </label>
+                @if(empty($bill?->id))
                 <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs py-0 font-weight-bold" style="font-size: 10px;">
                     <i class="fas fa-user-plus mr-1"></i> + New
                 </button>
+                @endif
             </div>
-            {{-- No `required` attr: customer can be added before or after items in sales bills --}}
-            <select name="customer_id" id="customer_id" class="form-control select2" data-sequential-optional="1">
+            {{-- Customer is strictly locked on edit --}}
+            <select name="customer_id" id="customer_id" class="form-control select2" data-sequential-optional="1" @if(!empty($bill?->id)) disabled style="background-color: #e9ecef !important; pointer-events: none; cursor: not-allowed;" @endif>
                 <option value="">-- Search Customer by Name or Mobile --</option>
                 @foreach ($customers as $id => $name)
                     <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
                 @endforeach
             </select>
-
+            @if(!empty($bill?->id))
+                <input type="hidden" name="customer_id" value="{{ $bill->customer_id }}">
+            @endif
         </div>
         <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between">
             <div>
@@ -556,18 +565,17 @@
         </div>
     </div>
 
-    {{-- Sales Type --}}
+    {{-- Sales Bill Type --}}
     <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="sales_type" data-default-order="8">
         <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <label class="font-weight-bold mb-0" for="sales_type">
-                    <i class="fas fa-map-marker-alt text-primary mr-1"></i> Sales Type <span class="text-danger">*</span>
+                    <i class="fas fa-tag text-primary mr-1"></i> Sales Bill Type <span class="text-danger">*</span>
                 </label>
-                <span class="text-warning small d-none" id="sales-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
             </div>
             <select name="sales_type" id="sales_type" class="form-control select2" required>
-                @foreach (($salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']) as $val => $txt)
-                    <option value="{{ $val }}" @selected(old('sales_type', $selectedSalesType ?? 'Local') == $val)>{{ $txt }}</option>
+                @foreach (($salesTypes ?? ['Retail' => 'Retail', 'Local' => 'Local']) as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('sales_type', $selectedSalesType ?? 'Retail') == $val)>{{ $txt }}</option>
                 @endforeach
             </select>
         </div>

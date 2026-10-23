@@ -73,9 +73,16 @@
             <div id="posClock" class="pos-meta-item font-weight-bold d-none d-lg-inline-flex">
                 00:00:00
             </div>
+            @if($posLockEnabled)
             <button type="button" class="btn btn-warning btn-sm mr-2 font-weight-bold shadow-none" id="btnPosLockScreen" onclick="if(window.lockPosScreen) window.lockPosScreen();" title="Lock Screen (Ctrl + L)">
                 <i class="fas fa-lock mr-1"></i> Lock (Ctrl+L)
             </button>
+            @endif
+            @if($isGlobalAdmin)
+            <button type="button" class="btn btn-sm mr-2 font-weight-bold shadow-none {{ $posLockEnabled ? 'btn-outline-warning text-white' : 'btn-outline-secondary text-light' }}" id="btnAdminToggleLock" onclick="toggleAdminPosLock()" title="Admin Control: POS Lock is {{ $posLockEnabled ? 'ON' : 'OFF' }} across all terminals. Click to toggle.">
+                <i class="fas fa-shield-alt mr-1"></i> Lock Feature: <span>{{ $posLockEnabled ? 'ON' : 'OFF' }}</span>
+            </button>
+            @endif
             <button type="button" class="btn btn-outline-light btn-sm mr-2 shadow-none" onclick="toggleFullscreen()" title="Toggle Fullscreen (F11)">
                 <i class="fas fa-expand"></i>
             </button>
@@ -84,6 +91,24 @@
             </a>
         </div>
     </header>
+    @if(isset($isViewOnly) && $isViewOnly && isset($editBill))
+    <div class="pos-view-mode-banner py-2 px-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(90deg, #1e293b, #0f172a); color: #38bdf8; border-bottom: 2px solid #0284c7;">
+        <div>
+            <i class="fas fa-eye mr-2 text-info"></i>
+            <strong class="text-white">Viewing POS Bill: #{{ $editBill->bill_number }}</strong>
+            <span class="badge badge-warning text-dark ml-2"><i class="fas fa-lock mr-1"></i> Read-Only View Mode</span>
+            <span class="text-light ml-2 small d-none d-md-inline">Date: {{ $editBill->bill_date?->format('d-m-Y h:i A') }} | Branch: {{ $editBill->branch?->name }} | Customer: {{ $editBill->customer?->name }}</span>
+        </div>
+        <div>
+            <a href="{{ route('sales.sales-bills.receipt', $editBill->id) }}" target="_blank" class="btn btn-warning btn-sm font-weight-bold py-1 px-3 mr-2 shadow-sm">
+                <i class="fas fa-print mr-1"></i> Print Bill
+            </a>
+            <a href="{{ route('pos.terminal') }}" class="btn btn-primary btn-sm font-weight-bold py-1 px-3 shadow-sm">
+                <i class="fas fa-plus-circle mr-1"></i> New Bill / Terminal
+            </a>
+        </div>
+    </div>
+    @endif
 
     <!-- Main 2-Pane Kiosk Layout -->
     <main class="pos-workspace">
@@ -186,25 +211,31 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <label class="font-weight-bold text-muted small text-uppercase mb-0">
                         <i class="fas fa-user mr-1 text-primary"></i> Customer
+                        @if(isset($editBill))
+                            <span class="badge badge-warning text-dark ml-1 font-weight-bold" style="font-size: 0.68rem;" title="Customer cannot be changed on edit"><i class="fas fa-lock"></i> Locked</span>
+                        @endif
                     </label>
                     <div class="d-flex align-items-center">
-                        <span class="text-muted mr-1 font-weight-bold" style="font-size: 0.72rem; text-transform: uppercase;">Tax Type:</span>
-                        <span id="posSalesTypeBadge" class="badge badge-light border font-weight-bold px-2 py-1 text-dark" style="font-size: 0.75rem;" title="Customer Locked (Read Only)">
-                            <i class="fas fa-lock mr-1 text-muted" style="font-size: 0.65rem;"></i>
-                            <span id="posSalesTypeText">{{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'Interstate (IGST)' : 'Local (GST)' }}</span>
-                        </span>
-                        <input type="hidden" id="posSalesTypeSelect" value="{{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'Interstate' : 'Local' }}">
+                        <label for="posSalesTypeSelect" class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.72rem; text-transform: uppercase;">Type <span class="text-danger">*</span>:</label>
+                        <select id="posSalesTypeSelect" class="form-control form-control-sm font-weight-bold px-2 py-0 text-dark" style="height: 28px; width: auto; font-size: 0.78rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Sales Bill Type (Branch-wise)">
+                            @foreach($salesTypes as $stKey => $stName)
+                                <option value="{{ $stName }}" @selected(isset($editBill) ? ($editBill->sales_type === $stName) : ($loop->first))>{{ $stName }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
                 <!-- Customer Search Select (ALWAYS VISIBLE as in Sales Bill) -->
                 <div id="posCustomerSearchWrapper" class="mb-2">
-                    <select id="posCustomerSelect" class="form-control form-control-sm select2">
+                    <select id="posCustomerSelect" class="form-control form-control-sm select2" {{ isset($editBill) ? 'disabled' : '' }}>
                         <option value="">-- Search customer by name or mobile --</option>
                         @if($defaultCustomer)
                             <option value="{{ $defaultCustomer->id }}" selected>{{ $defaultCustomer->mobile ? "{$defaultCustomer->name} ({$defaultCustomer->mobile})" : $defaultCustomer->name }}</option>
                         @endif
                     </select>
+                    @if(isset($editBill))
+                        <input type="hidden" id="posLockedCustomerId" value="{{ $editBill->customer_id }}">
+                    @endif
                 </div>
 
                 <!-- Selected Customer Profile Card -->
@@ -329,8 +360,20 @@
                     <span id="posSubtotal" class="font-weight-bold text-dark">₹ 0.00</span>
                 </div>
                 <div class="pos-summary-line">
-                    <span>Discount</span>
+                    <span>Item Discount</span>
                     <span id="posDiscount" class="text-danger">- ₹ 0.00</span>
+                </div>
+                <!-- Bill Discount Field (Point 2: Bill Discount field like sales bill) -->
+                <div class="pos-summary-line align-items-center py-1">
+                    <span class="text-danger font-weight-bold"><i class="fas fa-tag mr-1"></i> Bill Discount</span>
+                    <div style="width: 130px;">
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white px-1 font-weight-bold text-danger">₹</span>
+                            </div>
+                            <input type="number" step="0.01" min="0" id="posBillDiscount" class="form-control text-right text-danger font-weight-bold" placeholder="0.00" value="{{ isset($editBill) && $editBill->bill_discount > 0 ? (float)$editBill->bill_discount : '' }}" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Bill Discount (Amount deducted from total bill)">
+                        </div>
+                    </div>
                 </div>
                 <div class="pos-summary-line">
                     <span id="posTaxLabel">{{ (isset($editBill) && $editBill->sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)' }}</span>
@@ -340,6 +383,15 @@
                     <span>Round Off</span>
                     <span id="posRoundOff" class="text-muted">+ ₹ 0.00</span>
                 </div>
+            </div>
+
+            <!-- POS Remarks / Order Notes Field (Point 3: pos remarks ka field) -->
+            <div class="pos-remarks-card p-2 bg-white rounded border mb-2 shadow-sm">
+                <label for="posRemarks" class="small font-weight-bold text-muted mb-1 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-comment-alt text-info mr-1"></i> POS Remarks</span>
+                    <span class="text-muted font-weight-normal" style="font-size: 0.70rem;">Notes</span>
+                </label>
+                <input type="text" id="posRemarks" class="form-control form-control-sm" placeholder="Enter remarks or special instructions..." value="{{ isset($editBill) ? ($editBill->remarks ?? '') : '' }}" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} maxlength="255">
             </div>
 
             <!-- Grand Total LED Display Card -->
@@ -431,7 +483,20 @@
 
             <!-- Save Action Buttons (Task 5: Save, Save & WhatsApp, Save & Print, Cancel) -->
             <div class="pos-save-actions-wrap mt-2">
-                <div class="d-flex mb-2" style="gap: 6px;">
+                @if(isset($isViewOnly) && $isViewOnly && isset($editBill))
+                    <div class="pos-view-actions-card p-3 bg-light rounded border text-center my-2 shadow-sm">
+                        <div class="text-info font-weight-bold mb-2"><i class="fas fa-eye mr-1"></i> Bill #{{ $editBill->bill_number }} (Read Only)</div>
+                        <div class="d-flex mb-2" style="gap: 6px;">
+                            <a href="{{ route('sales.sales-bills.receipt', $editBill->id) }}" target="_blank" class="btn btn-warning font-weight-bold flex-fill py-2 shadow-sm">
+                                <i class="fas fa-print mr-1"></i> Print Receipt
+                            </a>
+                            <a href="{{ route('pos.terminal') }}" class="btn btn-primary font-weight-bold flex-fill py-2 shadow-sm">
+                                <i class="fas fa-plus mr-1"></i> New Sale
+                            </a>
+                        </div>
+                    </div>
+                @endif
+                <div class="d-flex mb-2" style="gap: 6px; {{ (isset($isViewOnly) && $isViewOnly) ? 'display: none !important;' : '' }}">
                     <button type="button" id="posBtnSaveOnly" class="btn btn-success font-weight-bold flex-fill py-2 shadow-sm" disabled title="Save Bill without print">
                         <i class="fas fa-save mr-1"></i> Save
                     </button>
@@ -439,10 +504,10 @@
                         <i class="fab fa-whatsapp mr-1"></i> Save & WhatsApp
                     </button>
                 </div>
-                <button type="button" id="posPayBtn" class="pos-pay-btn mb-2" disabled>
+                <button type="button" id="posPayBtn" class="pos-pay-btn mb-2" disabled style="{{ (isset($isViewOnly) && $isViewOnly) ? 'display: none !important;' : '' }}">
                     <i class="fas fa-print mr-2"></i> Save & Print (F6)
                 </button>
-                <button type="button" id="posBtnCancelTender" class="btn btn-outline-secondary btn-block btn-sm font-weight-bold py-1" title="Cancel / Reset tender">
+                <button type="button" id="posBtnCancelTender" class="btn btn-outline-secondary btn-block btn-sm font-weight-bold py-1" title="Cancel / Reset tender" style="{{ (isset($isViewOnly) && $isViewOnly) ? 'display: none !important;' : '' }}">
                     <i class="fas fa-times mr-1"></i> Cancel
                 </button>
             </div>
@@ -1445,8 +1510,67 @@
     window.NEXT_BILL_NUMBER = "{{ $nextBillNumber ?? '' }}";
     window.TENDER_TYPES = {!! json_encode($tenderTypes ?? []) !!};
     window.ALL_BRANCH_STAFF = {!! json_encode($allBranchStaff ?? []) !!};
+    window.ALL_BRANCH_SALES_TYPES = {!! json_encode($allBranchSalesTypes ?? []) !!};
     window.CURRENT_USER_BRANCH_ID = {{ (int) $activeBrId }};
     window.IS_GLOBAL_ADMIN = {{ $isGlobalAdmin ? 'true' : 'false' }};
+    window.POS_LOCK_ENABLED = {{ $posLockEnabled ? 'true' : 'false' }};
+    window.POS_TOGGLE_LOCK_URL = "{{ route('pos.toggle-lock-setting') }}";
+    window.IS_VIEW_ONLY = {{ (isset($isViewOnly) && $isViewOnly) ? 'true' : 'false' }};
+
+    function toggleAdminPosLock() {
+        if (!confirm('Toggle POS Screen Lock feature for all terminals?')) return;
+        const csrfToken = window.CSRF_TOKEN || $('meta[name="csrf-token"]').attr('content');
+        fetch(window.POS_TOGGLE_LOCK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({ _token: csrfToken })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert(data.message || 'Failed to toggle lock setting.');
+            }
+        })
+        .catch(err => {
+            alert('Network error while toggling lock setting.');
+        });
+    }
+
+    function syncPosBranchSalesTypes(branchId) {
+        const stSelect = document.getElementById('posSalesTypeSelect');
+        if (!stSelect || !window.ALL_BRANCH_SALES_TYPES || !window.ALL_BRANCH_SALES_TYPES.length) return;
+        const currentVal = stSelect.value;
+        const bId = parseInt(branchId, 10);
+        let filtered = window.ALL_BRANCH_SALES_TYPES.filter(st => st.branch_id === null || parseInt(st.branch_id, 10) === bId);
+        if (!filtered.length) {
+            filtered = window.ALL_BRANCH_SALES_TYPES;
+        }
+
+        stSelect.innerHTML = '';
+        filtered.forEach(st => {
+            const opt = document.createElement('option');
+            opt.value = st.name;
+            opt.textContent = st.name;
+            if (st.name === currentVal) {
+                opt.selected = true;
+            }
+            stSelect.appendChild(opt);
+        });
+
+        if (!stSelect.value && filtered.length > 0) {
+            stSelect.value = filtered[0].name;
+        }
+        if (window.posEngine && window.posEngine.setSalesType) {
+            window.posEngine.setSalesType(stSelect.value);
+        }
+    }
 
     // Update POS Biller / Staff options based on selected branch
     function syncPosBranchStaff(branchId) {
@@ -1488,6 +1612,7 @@
             branchSelect.addEventListener('change', function () {
                 const newBranchId = this.value;
                 syncPosBranchStaff(newBranchId);
+                syncPosBranchSalesTypes(newBranchId);
                 const csrfToken = window.CSRF_TOKEN || $('meta[name="csrf-token"]').attr('content');
                 fetch((window.APP_URL || '') + '/active-branch', {
                     method: 'POST',
@@ -1506,6 +1631,7 @@
                 });
             });
             syncPosBranchStaff(branchSelect.value);
+            syncPosBranchSalesTypes(branchSelect.value);
         }
 
         $('#posListModal').on('show.bs.modal', function () {

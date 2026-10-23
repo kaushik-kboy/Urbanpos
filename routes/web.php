@@ -127,8 +127,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::get('items/generate-barcode', [ItemController::class, 'generateBarcode'])->name('items.generate-barcode');
     Route::get('items/generate-item-code', [ItemController::class, 'generateItemCode'])->name('items.generate-item-code');
     Route::match(['get', 'post'], 'barcodes/print', [\App\Http\Controllers\Master\BarcodePrintController::class, 'printLabels'])->name('barcodes.print');
-    Route::match(['get', 'post'], 'barcodes/direct-print', [\App\Http\Controllers\Master\BarcodePrintController::class, 'directPrint'])->name('barcodes.direct-print');
     Route::get('barcodes/tspl', [\App\Http\Controllers\Master\BarcodePrintController::class, 'downloadTspl'])->name('barcodes.tspl');
+    Route::get('sales-types/by-branch', [\App\Http\Controllers\Master\SalesTypeController::class, 'byBranch'])->name('sales-types.by-branch');
 
     foreach ($masterResources as $uri => $controller) {
         $viewPermission = ($uri === 'customers') ? 'customers.view' : null;
@@ -336,6 +336,8 @@ Route::middleware('auth')->get('pos', [\App\Http\Controllers\Sales\SalesBillCont
 Route::middleware('auth')->get('pos/customer-favorites/{customerId}', [\App\Http\Controllers\Sales\SalesBillController::class, 'customerFavorites'])->name('pos.customer-favorites');
 Route::middleware('auth')->post('pos/verify-pin', [\App\Http\Controllers\Pos\PosLockController::class, 'verifyPin'])->name('pos.verify-pin');
 Route::middleware('auth')->post('pos/update-pin', [\App\Http\Controllers\Pos\PosLockController::class, 'updatePin'])->name('pos.update-pin');
+Route::middleware('auth')->post('pos/toggle-lock-setting', [\App\Http\Controllers\Pos\PosLockController::class, 'toggleLockSetting'])->name('pos.toggle-lock-setting');
+Route::middleware('auth')->get('sales-types/by-branch', [\App\Http\Controllers\Master\SalesTypeController::class, 'byBranch'])->name('sales-types.by-branch');
 
 Route::middleware('auth')->get('pos-ping', function () {
     return response()->json([
@@ -348,6 +350,8 @@ Route::middleware('auth')->get('einvoice/dashboard', [\App\Http\Controllers\GST\
 Route::middleware('auth')->get('tfa/einvoice/dashboard', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('tfa.einvoice.dashboard');
 
 Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
+    Route::get('pos-settings', [\App\Http\Controllers\Pos\PosLockController::class, 'settingsIndex'])->name('pos-settings.index');
+    Route::post('pos-settings', [\App\Http\Controllers\Pos\PosLockController::class, 'settingsUpdate'])->name('pos-settings.update');
     Route::get('form-validations', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'index'])->name('form-validations.index');
     Route::post('form-validations', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'update'])->name('form-validations.update');
     Route::post('form-validations/reset', [\App\Http\Controllers\Tools\FormFieldValidationController::class, 'reset'])->name('form-validations.reset');

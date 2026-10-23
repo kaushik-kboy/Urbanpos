@@ -15,7 +15,7 @@ class SalesBill extends Model
     protected $fillable = [
         'bill_number', 'bill_date', 'customer_id', 'customer_pet_id', 'customer_gstin', 'branch_id', 'user_id', 'sales_delivery_note_id', 'till_session_id', 'invoice_type', 'delivery_type',
         'delivery_time', 'sales_type', 'payment_type', 'item_disc_amount', 'disc_percent',
-        'disc_amount', 'round_off', 'total_gst', 'total_cgst', 'total_sgst', 'total_igst',
+        'bill_discount', 'disc_amount', 'round_off', 'total_gst', 'total_cgst', 'total_sgst', 'total_igst',
         'total_extra_cess', 'gst_calamity_cess',
         'total_qty', 'total_weight', 'total', 'remarks', 'message',
         'status', 'posting_key',

@@ -105,4 +105,76 @@ class PosLockController extends Controller
             'message' => 'POS PIN updated successfully.',
         ]);
     }
+
+    /**
+     * Admin view for POS Settings.
+     */
+    public function settingsIndex()
+    {
+        $this->assertAdmin();
+        $posLockEnabled = \App\Models\PosSetting::isLockEnabled();
+        return view('tools.pos-settings', compact('posLockEnabled'));
+    }
+
+    /**
+     * Admin update for POS Settings.
+     */
+    public function settingsUpdate(Request $request)
+    {
+        $this->assertAdmin();
+        $enabled = $request->boolean('pos_lock_enabled');
+        \App\Models\PosSetting::set('pos_lock_enabled', $enabled ? '1' : '0', 'Enable POS lock screen option');
+
+        return redirect()->route('tools.pos-settings.index')->with('success', 'POS Lock configuration updated successfully!');
+    }
+
+    /**
+     * AJAX toggle for POS lock option (Admin only).
+     */
+    public function toggleLockSetting(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        if (!$this->isAdminUser($user)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized. Only admins can toggle POS lock.'], 403);
+        }
+
+        $enabled = $request->has('enabled')
+            ? $request->boolean('enabled')
+            : ! \App\Models\PosSetting::isLockEnabled();
+
+        \App\Models\PosSetting::set('pos_lock_enabled', $enabled ? '1' : '0', 'Enable POS lock screen option');
+
+        return response()->json([
+            'success' => true,
+            'enabled' => $enabled,
+            'message' => $enabled
+                ? 'POS Lock enabled globally. Terminals will show lock option.'
+                : 'POS Lock disabled globally. Lock option removed from all terminals.',
+        ]);
+    }
+
+    private function assertAdmin(): void
+    {
+        $user = Auth::user();
+        if (!$user || !$this->isAdminUser($user)) {
+            abort(403, 'Unauthorized. Admin access required.');
+        }
+    }
+
+    private function isAdminUser($user): bool
+    {
+        if (!$user) return false;
+        if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['Admin', 'admin', 'Owner', 'Manager'])) {
+            return true;
+        }
+        if (!empty($user->is_admin) || $user->can('users.create')) {
+            return true;
+        }
+        return false;
+    }
 }
+

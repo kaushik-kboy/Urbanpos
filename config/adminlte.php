@@ -1048,6 +1048,7 @@ return [
                         ['text' => 'Asset LedgerMap', 'url' => 'tools/asset-ledger', 'icon' => 'fas fa-fw fa-landmark', 'can' => 'users.create'],
                         ['text' => 'Mail Server Configuration', 'url' => 'tools/mail-server', 'icon' => 'fas fa-fw fa-envelope', 'can' => 'users.create'],
                         ['text' => 'Category Wise Sequence', 'url' => 'tools/category-sequence', 'icon' => 'fas fa-fw fa-sort-numeric-down', 'can' => 'users.create'],
+                        ['text' => 'POS Screen Lock Settings', 'url' => 'tools/pos-settings', 'icon' => 'fas fa-fw fa-lock text-warning', 'active' => ['tools/pos-settings*'], 'can' => 'users.create'],
                         ['text' => 'Form Field Validations', 'url' => 'tools/form-validations', 'icon' => 'fas fa-fw fa-check-double', 'can' => 'form-validations.edit'],
                     ],
                 ],

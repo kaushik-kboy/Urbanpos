@@ -168,17 +168,44 @@
             state.customer_pet_id = null;
         }
 
-        const initSalesType = window.EDIT_BILL?.sales_type || window.INITIAL_CUSTOMER?.sales_type || $('#posSalesTypeSelect').val() || 'Local';
+        const initSalesType = window.EDIT_BILL?.sales_type || window.INITIAL_CUSTOMER?.sales_type || $('#posSalesTypeSelect').val() || 'Retail';
         setSalesType(initSalesType);
 
         if (window.EDIT_BILL) {
             state.edit_id = window.EDIT_BILL.id;
+            state.customer_id = window.EDIT_BILL.customer_id;
             state.customer_pet_id = window.EDIT_BILL.customer_pet_id || null;
             if (state.customer_pet_id) $('#posTaggedPetId').val(state.customer_pet_id);
             state.invoice_type = window.EDIT_BILL.invoice_type || 'Retail Invoice';
-            state.sales_type = window.EDIT_BILL.sales_type === 'Interstate' ? 'Interstate' : 'Local';
+            state.sales_type = window.EDIT_BILL.sales_type || 'Retail';
             setSalesType(state.sales_type);
             state.delivery_type = window.EDIT_BILL.delivery_type || 'Direct';
+
+            // Point 2 & 3: Bill discount and remarks initialization
+            state.bill_discount = window.EDIT_BILL.bill_discount ? parseFloat(window.EDIT_BILL.bill_discount) : 0;
+            if ($('#posBillDiscount').length && state.bill_discount > 0) {
+                $('#posBillDiscount').val(state.bill_discount);
+            }
+            if ($('#posRemarks').length && window.EDIT_BILL.remarks) {
+                $('#posRemarks').val(window.EDIT_BILL.remarks);
+            }
+
+            // Point 7: Customer can NEVER be changed on edit in POS
+            $('#posCustomerSelect').prop('disabled', true);
+            $('#posEditCustomerBtn').prop('disabled', true).hide();
+            $('#posCustomerSearchWrapper .select2-container').css('pointer-events', 'none');
+
+            // Point 6: POS View Mode handling
+            if (window.IS_VIEW_ONLY) {
+                if (scanInput) {
+                    scanInput.disabled = true;
+                    scanInput.placeholder = 'View-Only Mode: Reading Bill #' + (window.EDIT_BILL.bill_number || '');
+                }
+                $('#pos-btn-item-lookup, #posHoldBtn, #posRecallBtn, #posClearBtn').prop('disabled', true);
+                $('#posBillDiscount, #posRemarks, #posSalesTypeSelect, #posBillerSelect, #posBranchSelect').prop('disabled', true);
+                $('.pos-tender-btn').prop('disabled', true);
+            }
+
             state.cash_received = window.EDIT_BILL.payments && window.EDIT_BILL.payments.length > 0 ? parseFloat(window.EDIT_BILL.payments[0].amount) : 0;
             if (cashReceivedInput) cashReceivedInput.value = state.cash_received;
             
@@ -696,12 +723,22 @@
         document.getElementById('posRecallBtn')?.addEventListener('click', recallHeldBill);
         document.getElementById('posClearBtn')?.addEventListener('click', resetTerminalAll);
 
-        // Tax Type Change (Local GST vs Interstate IGST)
+        // Sales Bill Type Change (Branch-wise)
         $('#posSalesTypeSelect').on('change', function () {
+            if (window.IS_VIEW_ONLY) return;
             setSalesType(this.value);
             const totals = computeTotals();
             updateSummaryUI(totals);
-            showNotification(`Tax Type switched to ${state.sales_type === 'Interstate' ? 'Interstate (IGST)' : 'Local (GST)'}`, 'info');
+            showNotification(`Sales Bill Type set to ${state.sales_type}`, 'info');
+        });
+
+        // Bill Discount Input listener (Point 2: Bill discount like sales bill)
+        $('#posBillDiscount').on('input change', function () {
+            if (window.IS_VIEW_ONLY) return;
+            const val = Math.max(0, parseFloat($(this).val()) || 0);
+            state.bill_discount = val;
+            const totals = computeTotals();
+            updateSummaryUI(totals);
         });
 
         // Split modal handlers
@@ -2190,6 +2227,8 @@
         state.bill_discount = 0;
         state.cash_received = 0;
         if (cashReceivedInput) cashReceivedInput.value = '';
+        if ($('#posBillDiscount').length) $('#posBillDiscount').val('');
+        if ($('#posRemarks').length) $('#posRemarks').val('');
 
         // 4. Reset payment mode
         state.tender_mode = null;
@@ -2203,8 +2242,8 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Reset Tax Type to default
-        setSalesType(window.INITIAL_CUSTOMER?.sales_type || 'Local');
+        // 6. Reset Sales Type to default
+        setSalesType($('#posSalesTypeSelect option:first').val() || window.INITIAL_CUSTOMER?.sales_type || 'Retail');
 
         // 7. Re-render UI
         renderCart();
@@ -2215,21 +2254,23 @@
     const clearCart = resetTerminalAll;
     window.resetTerminalAll = resetTerminalAll;
 
-    // Set Tax / Sales Type (Local GST vs Interstate IGST) - Synced from Customer Master (Read Only)
+    // Set Sales Bill Type (Branch-wise, e.g. Retail, Spa, Home, B2B, IPC) & Tax
     function setSalesType(salesType) {
-        const normalized = (salesType === 'Interstate') ? 'Interstate' : 'Local';
+        if (!salesType) return;
+        const normalized = String(salesType).trim();
         state.sales_type = normalized;
         const $select = $('#posSalesTypeSelect');
-        if ($select.length) {
+        if ($select.length && $select.val() !== normalized) {
             $select.val(normalized);
         }
+        const isInterstate = normalized.toLowerCase() === 'interstate';
         const $text = $('#posSalesTypeText');
         const $badge = $('#posSalesTypeBadge');
         if ($text.length) {
-            $text.text(normalized === 'Interstate' ? 'Interstate (IGST)' : 'Local (GST)');
+            $text.text(normalized);
         }
         if ($badge.length) {
-            if (normalized === 'Interstate') {
+            if (isInterstate) {
                 $badge.removeClass('badge-light text-dark').addClass('badge-primary text-white');
             } else {
                 $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
@@ -2237,7 +2278,7 @@
         }
         const taxLabel = document.getElementById('posTaxLabel');
         if (taxLabel) {
-            taxLabel.textContent = (normalized === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
+            taxLabel.textContent = isInterstate ? 'Tax (IGST Included)' : 'Tax (GST Included)';
         }
         if (state.cart && state.cart.length > 0) {
             updateSummaryUI(computeTotals());
@@ -2275,6 +2316,8 @@
         return {
             subtotal,
             discount: totalDiscount,
+            itemDiscount: totalDiscount - (state.bill_discount || 0),
+            billDiscount: state.bill_discount || 0,
             tax: totalTax,
             roundOff: roundOff,
             grandTotal: roundedGrandTotal,
@@ -2398,7 +2441,7 @@
 
     function updateSummaryUI(totals) {
         if (subtotalEl) subtotalEl.textContent = '₹ ' + totals.subtotal.toFixed(2);
-        if (discountEl) discountEl.textContent = '- ₹ ' + totals.discount.toFixed(2);
+        if (discountEl) discountEl.textContent = '- ₹ ' + (totals.itemDiscount !== undefined ? totals.itemDiscount : totals.discount).toFixed(2);
         if (gstEl) gstEl.textContent = '₹ ' + totals.tax.toFixed(2);
         const taxLabel = document.getElementById('posTaxLabel');
         if (taxLabel) taxLabel.textContent = (state.sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
@@ -2562,7 +2605,11 @@
             });
 
             // Clear customer selection
-            $custSelect.on('select2:clear', function () {
+            $custSelect.on('select2:clear', function (e) {
+                if (state.edit_id && window.EDIT_BILL) {
+                    if (e) e.preventDefault();
+                    return false;
+                }
                 state.customer_id = null;
                 $('#posSelectedCustomerBox').hide();
                 $('#posCustomerInvoicesSection').hide();
@@ -2571,6 +2618,10 @@
 
             // Auto-focus search input whenever select2 opens (no need to click field again)
             $custSelect.on('select2:open', function () {
+                if (state.edit_id && window.EDIT_BILL) {
+                    $custSelect.select2('close');
+                    return;
+                }
                 setTimeout(function () {
                     const searchField = document.querySelector('.select2-container--open .select2-search__field');
                     if (searchField) {
@@ -2581,6 +2632,10 @@
 
             // Select customer
             $custSelect.on('select2:select change', function (e) {
+                if (state.edit_id && window.EDIT_BILL && window.EDIT_BILL.customer_id) {
+                    state.customer_id = window.EDIT_BILL.customer_id;
+                    return;
+                }
                 const data = e.params ? e.params.data : null;
                 const custId = $custSelect.val();
                 if (custId) {
@@ -3403,6 +3458,8 @@
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             customer_id: state.customer_id,
             sales_type: state.sales_type,
+            bill_discount: state.bill_discount || 0,
+            remarks: document.getElementById('posRemarks')?.value || '',
             cart: JSON.parse(JSON.stringify(state.cart)),
             total: computeTotals().grandTotal
         };
@@ -3410,6 +3467,9 @@
         state.held_bills.push(bill);
         saveHeldBills();
         state.cart = [];
+        state.bill_discount = 0;
+        if ($('#posBillDiscount').length) $('#posBillDiscount').val('');
+        if ($('#posRemarks').length) $('#posRemarks').val('');
         renderCart();
         sound.beep(1200, 0.1);
         showNotification('Bill placed on Hold successfully', 'info');
@@ -3425,6 +3485,9 @@
         const bill = state.held_bills.pop();
         saveHeldBills();
         state.cart = bill.cart;
+        state.bill_discount = bill.bill_discount || 0;
+        if ($('#posBillDiscount').length) $('#posBillDiscount').val(state.bill_discount > 0 ? state.bill_discount : '');
+        if ($('#posRemarks').length) $('#posRemarks').val(bill.remarks || '');
         if (bill.sales_type) {
             setSalesType(bill.sales_type);
         }
@@ -3466,6 +3529,11 @@
 
     // Submit Sale to Backend (Task 5: save, whatsapp, print)
     async function submitSale(action = 'print') {
+        if (window.IS_VIEW_ONLY) {
+            showNotification('Terminal is in View-Only Mode.', 'info');
+            return;
+        }
+
         if (state.cart.length === 0) {
             showNotification('Please add at least one item to cart.', 'warning');
             return;
@@ -3508,6 +3576,17 @@
             showNotification('Please select a customer for this bill.', 'warning');
             return;
         }
+
+        // Validate Sales Bill Type is compulsory (Point 4: sales bill type compulsory form validation)
+        const currentSalesType = state.sales_type || $('#posSalesTypeSelect').val();
+        if (!currentSalesType || !String(currentSalesType).trim()) {
+            const stMsg = 'Sales Bill Type is required. Please select a Sales Bill Type.';
+            showNotification(stMsg, 'warning');
+            alert(stMsg);
+            $('#posSalesTypeSelect').focus();
+            return;
+        }
+        state.sales_type = String(currentSalesType).trim();
 
         // Validate Payment Mode selected (Point 3)
         if (!state.tender_mode) {
@@ -3726,7 +3805,7 @@
             bill_date: (state.edit_id && window.EDIT_BILL?.bill_date)
                 ? (new Date(window.EDIT_BILL.bill_date).toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }))
                 : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
-            customer_id: state.customer_id,
+            customer_id: (state.edit_id && window.EDIT_BILL && window.EDIT_BILL.customer_id) ? window.EDIT_BILL.customer_id : state.customer_id,
             customer_pet_id: state.customer_pet_id || null,
             branch_id: state.branch_id,
             user_id: document.getElementById('posBillerSelect')?.value || null,
@@ -3737,6 +3816,8 @@
             save_action: action,
             send_whatsapp: action === 'whatsapp' ? 1 : 0,
             round_off: totals.roundOff,
+            bill_discount: parseFloat(state.bill_discount) || 0,
+            remarks: document.getElementById('posRemarks')?.value || '',
             items: state.cart.map(item => ({
                 item_id: item.id,
                 batch_no: item.batch_no || null,
@@ -4190,7 +4271,15 @@
     let posInactivityTimeout = null;
     const POS_INACTIVITY_LIMIT = 3 * 60 * 1000; // 3 minutes
 
+    function isLockFeatureEnabled() {
+        return window.POS_LOCK_ENABLED !== false && window.POS_LOCK_ENABLED !== 0 && window.POS_LOCK_ENABLED !== '0';
+    }
+
     function resetPosInactivityTimer() {
+        if (!isLockFeatureEnabled()) {
+            if (posInactivityTimeout) clearTimeout(posInactivityTimeout);
+            return;
+        }
         if (isPosLocked) return;
         if (posInactivityTimeout) clearTimeout(posInactivityTimeout);
         posInactivityTimeout = setTimeout(() => {
@@ -4204,6 +4293,9 @@
     resetPosInactivityTimer();
 
     function lockPosScreen() {
+        if (!isLockFeatureEnabled()) {
+            return;
+        }
         isPosLocked = true;
         enteredPosPin = '';
         updatePinDots();
@@ -4308,7 +4400,9 @@
     window.addEventListener('keydown', function (e) {
         if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
             e.preventDefault();
-            lockPosScreen();
+            if (isLockFeatureEnabled()) {
+                lockPosScreen();
+            }
             return;
         }
 

@@ -163,6 +163,7 @@ class SalesBillController extends Controller
     {
         $options = $this->formOptions();
         $options['nextBillNumber'] = $this->previewNextNumber();
+        $options['posLockEnabled'] = \App\Models\PosSetting::isLockEnabled();
         $options['activeTillSession'] = \App\Models\TillSession::where('user_id', auth()->id())
             ->where('status', 'Open')
             ->latest()
@@ -187,8 +188,12 @@ class SalesBillController extends Controller
             $options['customers']->put($walkInCust->id, $walkInCust->name);
         }
 
-        if ($request->filled('edit_id')) {
-            $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments'])->findOrFail($request->input('edit_id'));
+        $targetBillId = $request->input('view_id') ?: $request->input('edit_id');
+        $isViewOnly = $request->filled('view_id') || $request->input('mode') === 'view';
+        $options['isViewOnly'] = $isViewOnly;
+
+        if ($targetBillId) {
+            $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments'])->findOrFail($targetBillId);
             $branchId = (int) $editBill->branch_id;
             $batchService = app(\App\Services\Inventory\BatchStockService::class);
             $hasEditBillLedger = \App\Models\StockLedger::where(function ($q) {
@@ -612,6 +617,9 @@ class SalesBillController extends Controller
         $this->financialYearGuard->assertOpenForPosting($data['header']['bill_date']);
         $oldCustomerId = $salesBill->customer_id;
         $oldTotal = (float) $salesBill->total;
+
+        // Requirement 7: Customer can NEVER be changed on edit in Sales Bill or POS
+        $data['header']['customer_id'] = $salesBill->customer_id;
 
         DB::transaction(function () use ($data, $salesBill, $oldCustomerId, $oldTotal) {
             // Ensure bill_number is completely immutable on update
@@ -1741,15 +1749,31 @@ class SalesBillController extends Controller
             })->unique();
         }
 
-        $salesTypes = \App\Models\SalesType::where('status', true)->orderBy('name')->pluck('name', 'name');
+        $activeBranchId = (int) ($salesBill?->branch_id ?: $this->resolveActiveBranchId());
+
+        $salesTypes = \App\Models\SalesType::where('status', true)
+            ->where(function ($q) use ($activeBranchId) {
+                $q->where('branch_id', $activeBranchId)
+                  ->orWhereNull('branch_id');
+            })
+            ->orderBy('name')
+            ->pluck('name', 'name');
+
+        if ($salesTypes->isEmpty()) {
+            $salesTypes = \App\Models\SalesType::where('status', true)->orderBy('name')->pluck('name', 'name');
+        }
+
         if ($salesTypes->isEmpty()) {
             $salesTypes = collect([
+                'Retail' => 'Retail',
                 'Local' => 'Local',
                 'Interstate' => 'Interstate',
             ]);
         }
 
-        $activeBranchId = (int) ($salesBill?->branch_id ?: $this->resolveActiveBranchId());
+        $allBranchSalesTypes = \App\Models\SalesType::where('status', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'branch_id']);
 
         $branchStaff = User::where(function ($q) use ($activeBranchId) {
                 $q->where('branch_id', $activeBranchId)
@@ -1762,16 +1786,17 @@ class SalesBillController extends Controller
         $allBranchStaff = User::orderBy('name')->get(['id', 'name', 'branch_id']);
 
         return [
-            'customers'        => $customers,
-            'selectedCustomer' => $selectedCustomer,
-            'branches'         => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
-            'items'            => $items,
-            'tenderTypes'      => $tenderTypes,
-            'customerTypes'    => $customerTypes,
-            'salesTypes'       => $salesTypes,
-            'branchStaff'      => $branchStaff,
-            'allBranchStaff'   => $allBranchStaff,
-            'selectedStaffId'  => old('user_id', $salesBill?->user_id ?? auth()->id()),
+            'customers'           => $customers,
+            'selectedCustomer'    => $selectedCustomer,
+            'branches'            => Branch::where('status', true)->orderBy('name')->pluck('name', 'id'),
+            'items'               => $items,
+            'tenderTypes'         => $tenderTypes,
+            'customerTypes'       => $customerTypes,
+            'salesTypes'          => $salesTypes,
+            'allBranchSalesTypes' => $allBranchSalesTypes,
+            'branchStaff'         => $branchStaff,
+            'allBranchStaff'      => $allBranchStaff,
+            'selectedStaffId'     => old('user_id', $salesBill?->user_id ?? auth()->id()),
         ];
     }
 
@@ -1844,16 +1869,21 @@ class SalesBillController extends Controller
         $roundOff = (float) ($data['header']['round_off'] ?? 0);
         $totalExtraCess = (float) ($data['header']['total_extra_cess'] ?? 0);
         $gstCalamityCess = (float) ($data['header']['gst_calamity_cess'] ?? 0);
+        $billDiscount = max(0, (float) ($data['header']['bill_discount'] ?? 0));
+        $itemDisc = $collection->sum('disc_amount');
+        $totalDisc = $itemDisc + $billDiscount;
+        $netAfterBillDisc = max(0, $collection->sum('net_amount') - $billDiscount);
 
         return [
-            'item_disc_amount' => $collection->sum('disc_amount'),
-            'disc_amount' => $collection->sum('disc_amount'),
+            'item_disc_amount' => $itemDisc,
+            'bill_discount' => $billDiscount,
+            'disc_amount' => $totalDisc,
             'total_gst' => $collection->sum('gst_tax_amount'),
             'total_cgst' => $collection->sum('cgst_amount'),
             'total_sgst' => $collection->sum('sgst_amount'),
             'total_igst' => $collection->sum('igst_amount'),
             'total_qty' => $collection->sum('qty'),
-            'total' => round($collection->sum('net_amount') + $roundOff + $totalExtraCess + $gstCalamityCess, 2),
+            'total' => round($netAfterBillDisc + $roundOff + $totalExtraCess + $gstCalamityCess, 2),
             'round_off' => $roundOff,
             'total_extra_cess' => $totalExtraCess,
             'gst_calamity_cess' => $gstCalamityCess,
@@ -1895,10 +1925,11 @@ class SalesBillController extends Controller
             'invoice_type' => ['required', 'in:Retail Invoice,Tax Invoice,Exempted'],
             'delivery_type' => ['required', 'string', 'max:255'],
             'delivery_time' => ['nullable', 'date_format:H:i'],
-            'sales_type' => ['required', 'in:Local,Interstate'],
+            'sales_type' => ['required', 'string', 'max:100'],
             'payment_type' => ['nullable', 'string', 'max:255'],
             'till_session_id' => ['nullable', 'exists:till_sessions,id'],
             'round_off' => ['nullable', 'numeric'],
+            'bill_discount' => ['nullable', 'numeric', 'min:0'],
             'total_extra_cess' => ['nullable', 'numeric', 'min:0'],
             'gst_calamity_cess' => ['nullable', 'numeric', 'min:0'],
             'total_weight' => ['nullable', 'numeric', 'min:0'],
