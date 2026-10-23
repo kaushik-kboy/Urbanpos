@@ -362,7 +362,7 @@ class AnalyticsBuilderController extends Controller
                         MAX(sales_bills.bill_date) as last_date,
                         SUM(sales_bills.total_qty) as total_qty
                     ')
-                    ->groupBy('customers.id', 'customers.name', DB::raw('COALESCE(NULLIF(customers.mobile, ""), NULLIF(customers.phone, ""), "-")'));
+                    ->groupBy('customers.id', 'customers.name', 'customers.mobile', 'customers.phone');
 
                 if ($customerId) {
                     $query->where('sales_bills.customer_id', $customerId);
