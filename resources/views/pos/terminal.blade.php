@@ -619,10 +619,10 @@
                                     <label class="font-weight-600 small mb-1">Customer Id / Code</label>
                                     <input type="text" name="customer_code" id="posCust_customer_code" class="form-control form-control-sm" placeholder="Auto / Custom Code">
                                 </div>
-                                <div class="field-wrapper col-md-4 mb-3" data-field="sales_type" data-label="Sales Type" data-default-order="6">
-                                    <label class="font-weight-600 small mb-1">Sales Type</label>
+                                <div class="field-wrapper col-md-4 mb-3" data-field="sales_type" data-label="Tax Territory" data-default-order="6">
+                                    <label class="font-weight-600 small mb-1">Tax Territory</label>
                                     <select name="sales_type" id="posCust_sales_type" class="form-control form-control-sm">
-                                        <option value="Local" selected>Local</option>
+                                        <option value="Local" selected>Local (Intra-state)</option>
                                         <option value="Interstate">Interstate</option>
                                     </select>
                                 </div>
@@ -1502,7 +1502,7 @@
         'id' => $defaultCustomer->id,
         'name' => $defaultCustomer->name,
         'mobile' => $defaultCustomer->mobile ?? '',
-        'sales_type' => $defaultCustomer->sales_type ?? 'Local',
+        'sales_type' => $defaultCustomer->sales_type ?? 'Retail',
         'edit_url' => url("sales/sales-bills/quick-customer/{$defaultCustomer->id}"),
         'pets_summary' => $defaultPetSummary,
     ] : null) !!};
