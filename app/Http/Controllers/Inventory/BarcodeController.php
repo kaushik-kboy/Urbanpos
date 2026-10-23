@@ -168,6 +168,10 @@ class BarcodeController extends Controller
      */
     public function print(Request $request)
     {
+        if (empty($request->input('items')) && empty($request->input('ids')) && empty($request->input('item_id'))) {
+            return redirect()->route('inventory.barcode.index');
+        }
+
         return app(\App\Http\Controllers\Master\BarcodePrintController::class)->printLabels($request);
     }
 }

@@ -42,7 +42,9 @@ class ChangeSellingController extends Controller
             $query->where('category_value_id', $catValueId);
         }
         if ($search) {
-            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('ean_upc_code', 'like', "%{$search}%"));
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
+                ->orWhere('item_code', 'like', "%{$search}%")
+                ->orWhere('ean_upc_code', 'like', "%{$search}%"));
         }
 
         $items = $query->orderBy('name')->paginate($this->perPage());
@@ -96,8 +98,17 @@ class ChangeSellingController extends Controller
                         'mrp' => $mrp
                     ]);
 
-                // Also update item master default prices
+                // Also update stock_ledger for this item & branch so POS batch resolution stays in sync
+                if (\Illuminate\Support\Facades\Schema::hasTable('stock_ledger') && \Illuminate\Support\Facades\Schema::hasColumn('stock_ledger', 'mrp')) {
+                    DB::table('stock_ledger')
+                        ->where('item_id', $itemId)
+                        ->where('branch_id', $branchId)
+                        ->update(['mrp' => $mrp]);
+                }
+
+                // Also update item master default prices if missing or zero
                 Item::where('id', $itemId)
+                    ->where(fn ($q) => $q->whereNull('sell_price')->orWhere('sell_price', '<=', 0))
                     ->update(['sell_price' => $sellPrice, 'mrp' => $mrp]);
 
                 $updatedCount++;

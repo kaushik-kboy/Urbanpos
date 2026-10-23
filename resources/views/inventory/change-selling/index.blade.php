@@ -65,7 +65,8 @@
                     <table class="table table-sm table-striped table-hover mb-0" id="changeSellingTable">
                         <thead class="bg-white">
                             <tr>
-                                <th>#</th>
+                                <th style="width: 45px;">#</th>
+                                <th style="width: 120px;">Item Code</th>
                                 <th>Item Details</th>
                                 <th>Brand</th>
                                 <th class="text-right">Cost Price</th>
@@ -85,8 +86,13 @@
                                 <tr>
                                     <td>{{ $items->firstItem() + $idx }}</td>
                                     <td>
+                                        <span class="badge badge-light border text-monospace font-weight-bold px-2 py-1">
+                                            {{ $item->item_code ?: '—' }}
+                                        </span>
+                                    </td>
+                                    <td>
                                         <span class="font-weight-bold">{{ $item->name }}</span>
-                                        @if ($item->ean_upc_code)
+                                        @if ($item->ean_upc_code && $item->ean_upc_code !== $item->item_code)
                                             <br><small class="text-muted"><i class="fas fa-barcode mr-1"></i>{{ $item->ean_upc_code }}</small>
                                         @endif
                                     </td>
@@ -112,7 +118,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">No items found matching the selected filter.</td>
+                                    <td colspan="8" class="text-center text-muted py-4">No items found matching the selected filter.</td>
                                 </tr>
                             @endforelse
                         </tbody>

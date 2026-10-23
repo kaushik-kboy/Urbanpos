@@ -200,7 +200,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($salesBill->items as $idx => $item)
+                    @forelse ($salesBill->items as $idx => $item)
                         <tr>
                             <td class="text-center">{{ $idx + 1 }}</td>
                             <td class="text-monospace font-weight-bold text-muted small">
@@ -225,7 +225,16 @@
                             <td class="text-right text-primary">₹{{ number_format($item->gst_tax_amount, 2) }}</td>
                             <td class="text-right font-weight-bold text-dark">₹{{ number_format($item->net_amount, 2) }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="11" class="text-center py-4 bg-light">
+                                <div class="text-muted">
+                                    <i class="fas fa-history text-info mr-1"></i>
+                                    <strong>Historical Migration Record:</strong> This bill ({{ $salesBill->bill_number }}) was imported during legacy POS data migration as a header record. Line items were not included in the historical export, but the total bill amount (<strong>₹{{ number_format($salesBill->total, 2) }}</strong>) and financial ledgers are preserved.
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
                 </tbody>
                 <tfoot class="bg-light font-weight-bold">
                     <tr>

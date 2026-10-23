@@ -355,14 +355,14 @@ class AnalyticsBuilderController extends Controller
                     ->selectRaw('
                         customers.id as group_id,
                         customers.name as group_name,
-                        COALESCE(customers.phone, "-") as group_subtext,
+                        COALESCE(NULLIF(customers.mobile, ""), NULLIF(customers.phone, ""), "-") as group_subtext,
                         COUNT(sales_bills.id) as bill_count,
                         SUM(sales_bills.total) as total_sales,
                         SUM(sales_bills.disc_amount) as total_disc,
                         MAX(sales_bills.bill_date) as last_date,
                         SUM(sales_bills.total_qty) as total_qty
                     ')
-                    ->groupBy('customers.id', 'customers.name', 'customers.phone');
+                    ->groupBy('customers.id', 'customers.name', DB::raw('COALESCE(NULLIF(customers.mobile, ""), NULLIF(customers.phone, ""), "-")'));
 
                 if ($customerId) {
                     $query->where('sales_bills.customer_id', $customerId);
@@ -893,7 +893,7 @@ class AnalyticsBuilderController extends Controller
                 sales_bills.bill_number,
                 sales_bills.bill_date,
                 COALESCE(customers.name, "Walk-in Customer") as customer_name,
-                COALESCE(customers.phone, "-") as customer_mobile,
+                COALESCE(NULLIF(customers.mobile, ""), NULLIF(customers.phone, ""), "-") as customer_mobile,
                 COALESCE(branches.name, "Main") as branch_name,
                 sales_bill_items.qty,
                 sales_bill_items.sell_price,

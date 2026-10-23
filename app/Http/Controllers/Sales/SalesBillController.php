@@ -1312,8 +1312,12 @@ class SalesBillController extends Controller
             foreach ($rows as $row) {
                 if (isset($ei[$row->id])) {
                     $row->exp_date = $ei[$row->id]->exp_date;
-                    if (isset($ei[$row->id]->sell_price) && (float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
-                    if (isset($ei[$row->id]->mrp) && (float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
+                    if ((float) ($row->sell_price ?? 0) <= 0 && isset($ei[$row->id]->sell_price) && (float) ($ei[$row->id]->sell_price ?? 0) > 0) {
+                        $row->sell_price = $ei[$row->id]->sell_price;
+                    }
+                    if ((float) ($row->mrp ?? 0) <= 0 && isset($ei[$row->id]->mrp) && (float) ($ei[$row->id]->mrp ?? 0) > 0) {
+                        $row->mrp = $ei[$row->id]->mrp;
+                    }
                 }
                 if ($row->mrp > 0 && (float) $row->sell_price > (float) $row->mrp) {
                     $row->sell_price = $row->mrp;
@@ -1549,9 +1553,9 @@ class SalesBillController extends Controller
         $defaultSell = !empty($batches) && $batches[0]['sell_price'] > 0 
             ? $batches[0]['sell_price'] 
             : ($branchStock && (float)$branchStock->sell_price > 0 ? (float)$branchStock->sell_price : (float)($item->sell_price ?? 0));
-        $defaultMrp  = !empty($batches) && $batches[0]['mrp'] > 0 
-            ? $batches[0]['mrp'] 
-            : ($branchStock && (float)$branchStock->mrp > 0 ? (float)$branchStock->mrp : (float)($item->mrp ?? 0));
+        $defaultMrp  = ($branchStock && (float)$branchStock->mrp > 0)
+            ? (float)$branchStock->mrp
+            : (!empty($batches) && $batches[0]['mrp'] > 0 ? $batches[0]['mrp'] : (float)($item->mrp ?? 0));
         if ($defaultMrp > 0 && $defaultSell > $defaultMrp) {
             $defaultSell = $defaultMrp;
         }
