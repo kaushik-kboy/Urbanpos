@@ -13,6 +13,7 @@
         branch_id: (typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) ? parseInt(window.CURRENT_USER_BRANCH_ID, 10) : null,
         invoice_type: 'Retail Invoice',
         sales_type: 'Retail',
+        purchase_type: 'Local',
         delivery_type: 'Delivered',
         bill_discount: 0,
         tender_mode: null, // Cash, UPI, Card, Split, Credit (No default mode)
@@ -169,6 +170,13 @@
         const initSalesType = window.EDIT_BILL?.sales_type || $('#posSalesTypeSelect').val() || 'Retail';
         setSalesType(initSalesType);
 
+        const initPurchaseType = window.EDIT_BILL?.purchase_type || $('#posPurchaseTypeSelect').val() || window.INITIAL_CUSTOMER?.purchase_type || 'Local';
+        setPurchaseType(initPurchaseType);
+
+        $('#posPurchaseTypeSelect').on('change', function () {
+            setPurchaseType(this.value);
+        });
+
         if (window.EDIT_BILL) {
             state.edit_id = window.EDIT_BILL.id;
             state.customer_id = window.EDIT_BILL.customer_id;
@@ -177,6 +185,8 @@
             state.invoice_type = window.EDIT_BILL.invoice_type || 'Retail Invoice';
             state.sales_type = window.EDIT_BILL.sales_type || 'Retail';
             setSalesType(state.sales_type);
+            state.purchase_type = window.EDIT_BILL.purchase_type || 'Local';
+            setPurchaseType(state.purchase_type);
             state.delivery_type = window.EDIT_BILL.delivery_type || 'Direct';
 
             // Point 2 & 3: Bill discount and remarks initialization
@@ -2252,7 +2262,26 @@
     const clearCart = resetTerminalAll;
     window.resetTerminalAll = resetTerminalAll;
 
-    // Set Sales Bill Type (Branch-wise, e.g. Retail, Spa, Home, B2B, IPC) & Tax
+    // Set Purchase Type (Local vs Interstate) & Tax Mode
+    function setPurchaseType(purchaseType) {
+        if (!purchaseType) return;
+        const normalized = String(purchaseType).trim().toLowerCase() === 'interstate' ? 'Interstate' : 'Local';
+        state.purchase_type = normalized;
+        const $select = $('#posPurchaseTypeSelect');
+        if ($select.length && $select.val() !== normalized) {
+            $select.val(normalized);
+        }
+        const isInterstate = normalized === 'Interstate';
+        const taxLabel = document.getElementById('posTaxLabel');
+        if (taxLabel) {
+            taxLabel.textContent = isInterstate ? 'Tax (IGST Included)' : 'Tax (GST Included)';
+        }
+        if (state.cart && state.cart.length > 0) {
+            updateSummaryUI(computeTotals());
+        }
+    }
+
+    // Set Sales Bill Type (Branch-wise, e.g. Retail, Spa, Home, B2B, IPC)
     function setSalesType(salesType) {
         if (!salesType) return;
         const normalized = String(salesType).trim();
@@ -2274,12 +2303,8 @@
                 $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
             }
         }
-        const taxLabel = document.getElementById('posTaxLabel');
-        if (taxLabel) {
-            taxLabel.textContent = isInterstate ? 'Tax (IGST Included)' : 'Tax (GST Included)';
-        }
-        if (state.cart && state.cart.length > 0) {
-            updateSummaryUI(computeTotals());
+        if (isInterstate) {
+            setPurchaseType('Interstate');
         }
     }
 
@@ -2442,7 +2467,7 @@
         if (discountEl) discountEl.textContent = '- ₹ ' + (totals.itemDiscount !== undefined ? totals.itemDiscount : totals.discount).toFixed(2);
         if (gstEl) gstEl.textContent = '₹ ' + totals.tax.toFixed(2);
         const taxLabel = document.getElementById('posTaxLabel');
-        if (taxLabel) taxLabel.textContent = (state.sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
+        if (taxLabel) taxLabel.textContent = (state.purchase_type === 'Interstate' || state.sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
         if (roundOffEl) roundOffEl.textContent = (totals.roundOff >= 0 ? '+ ₹ ' : '- ₹ ') + Math.abs(totals.roundOff).toFixed(2);
         if (grandTotalEl) grandTotalEl.textContent = '₹ ' + totals.grandTotal.toFixed(2);
         if (itemsCountBadge) itemsCountBadge.textContent = `${totals.totalItems} units`;
@@ -2865,7 +2890,10 @@
 
     function updateSelectedCustomerUI(customer) {
         if (!customer) return;
-        // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), customer does NOT change sales_type
+        // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), customer sets purchase_type (Local/Interstate)
+        if (customer.purchase_type || customer.sales_type) {
+            setPurchaseType(customer.purchase_type || customer.sales_type);
+        }
         $('#posCustomerSearchWrapper').show();
         $('#posSelectedCustomerBox').show();
         $('#posCustomerInvoicesSection').show();
@@ -3454,6 +3482,7 @@
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             customer_id: state.customer_id,
             sales_type: state.sales_type,
+            purchase_type: state.purchase_type || 'Local',
             bill_discount: state.bill_discount || 0,
             remarks: document.getElementById('posRemarks')?.value || '',
             cart: JSON.parse(JSON.stringify(state.cart)),
@@ -3486,6 +3515,9 @@
         if ($('#posRemarks').length) $('#posRemarks').val(bill.remarks || '');
         if (bill.sales_type) {
             setSalesType(bill.sales_type);
+        }
+        if (bill.purchase_type) {
+            setPurchaseType(bill.purchase_type);
         }
         if (bill.customer_id) {
             state.customer_id = bill.customer_id;
@@ -3807,6 +3839,7 @@
             user_id: document.getElementById('posBillerSelect')?.value || null,
             invoice_type: state.invoice_type,
             sales_type: state.sales_type,
+            purchase_type: state.purchase_type || 'Local',
             delivery_type: state.delivery_type,
             payment_type: state.tender_mode,
             save_action: action,
@@ -4430,6 +4463,7 @@
         removeRow: removeItem,
         splitRow: splitRow,
         setSalesType: setSalesType,
+        setPurchaseType: setPurchaseType,
         chooseBatchForRow: chooseBatchForRow,
         openAddCustomer: openAddCustomerModalWithTerm,
         focusQty: focusRowQty,

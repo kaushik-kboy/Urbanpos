@@ -93,8 +93,16 @@
                     <span class="badge badge-light border">{{ $salesBill->invoice_type }}</span>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
-                    <span class="text-muted small d-block">Sales Type</span>
+                    <span class="text-muted small d-block">Sales Bill Type</span>
                     <span class="badge badge-info">{{ $salesBill->sales_type }}</span>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <span class="text-muted small d-block">Purchase Type</span>
+                    <span class="badge badge-secondary">{{ $salesBill->purchase_type ?? 'Local' }}</span>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <span class="text-muted small d-block">Billed By</span>
+                    <span class="badge badge-light border"><i class="fas fa-user-circle mr-1 text-secondary"></i>{{ $salesBill->user?->name ?: 'Staff' }}</span>
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <span class="text-muted small d-block">Delivery Type</span>

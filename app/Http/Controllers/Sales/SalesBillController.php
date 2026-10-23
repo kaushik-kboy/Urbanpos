@@ -45,7 +45,7 @@ class SalesBillController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesBill::with(['customer', 'branch', 'payments.tenderType']);
+        $query = SalesBill::with(['customer', 'branch', 'payments.tenderType', 'user:id,name']);
 
         if ($request->filled('search')) {
             $term = trim($request->input('search'));
@@ -126,6 +126,10 @@ class SalesBillController extends Controller
             'bill_date' => 'bill_date',
             'customer' => fn ($q, $dir) => $q->orderBy(
                 Customer::select('name')->whereColumn('customers.id', 'sales_bills.customer_id'),
+                $dir
+            ),
+            'user' => fn ($q, $dir) => $q->orderBy(
+                User::select('name')->whereColumn('users.id', 'sales_bills.user_id'),
                 $dir
             ),
             'total' => 'total',
@@ -1808,7 +1812,7 @@ class SalesBillController extends Controller
     private function computeLines(array $items, array $header): array
     {
         $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
-        $isInterstate = ($header['sales_type'] ?? null) === 'Interstate';
+        $isInterstate = ($header['purchase_type'] ?? null) === 'Interstate' || ($header['sales_type'] ?? null) === 'Interstate';
 
         return collect($items)->map(function ($line) use ($itemsById, $isInterstate) {
             $qty = (float) $line['qty'];
@@ -1931,6 +1935,7 @@ class SalesBillController extends Controller
             'delivery_type' => ['required', 'string', 'max:255'],
             'delivery_time' => ['nullable', 'date_format:H:i'],
             'sales_type' => ['required', 'string', 'max:100'],
+            'purchase_type' => ['nullable', 'string', 'max:50'],
             'payment_type' => ['nullable', 'string', 'max:255'],
             'till_session_id' => ['nullable', 'exists:till_sessions,id'],
             'round_off' => ['nullable', 'numeric'],

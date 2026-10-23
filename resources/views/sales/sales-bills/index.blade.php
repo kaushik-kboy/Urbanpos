@@ -155,6 +155,7 @@
                         <x-sortable-th column="customer" label="Customer" />
                         <th>Mobile</th>
                         <th>Branch</th>
+                        <x-sortable-th column="user" label="Billed By" />
                         <x-sortable-th column="invoice_type" label="Invoice Type" />
                         <x-sortable-th column="payment_mode" label="Payment Mode" />
                         <x-sortable-th column="total" label="Total" align="right" />
@@ -183,6 +184,11 @@
                             <td>{{ $bill->customer?->name ?: 'Walk-in' }}</td>
                             <td>{{ $bill->customer?->mobile }}</td>
                             <td>{{ $bill->branch?->name }}</td>
+                            <td>
+                                <span class="badge badge-light border text-dark font-weight-normal">
+                                    <i class="fas fa-user-circle mr-1 text-secondary"></i>{{ $bill->user?->name ?: 'Staff' }}
+                                </span>
+                            </td>
                             <td>{{ $bill->invoice_type }}</td>
                             <td>
                                 @php
@@ -225,7 +231,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-3">No sales bills yet.</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted py-3">No sales bills yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -215,13 +215,22 @@
                             <span class="badge badge-warning text-dark ml-1 font-weight-bold" style="font-size: 0.68rem;" title="Customer cannot be changed on edit"><i class="fas fa-lock"></i> Locked</span>
                         @endif
                     </label>
-                    <div class="d-flex align-items-center">
-                        <label for="posSalesTypeSelect" class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.72rem; text-transform: uppercase;">Type <span class="text-danger">*</span>:</label>
-                        <select id="posSalesTypeSelect" class="form-control form-control-sm font-weight-bold px-2 py-0 text-dark" style="height: 28px; width: auto; font-size: 0.78rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Sales Bill Type (Branch-wise)">
-                            @foreach($salesTypes as $stKey => $stName)
-                                <option value="{{ $stName }}" @selected(isset($editBill) ? ($editBill->sales_type === $stName) : ($loop->first))>{{ $stName }}</option>
-                            @endforeach
-                        </select>
+                    <div class="d-flex align-items-center" style="gap: 6px;">
+                        <div class="d-flex align-items-center">
+                            <label for="posSalesTypeSelect" class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.70rem; text-transform: uppercase;">Sales Type <span class="text-danger">*</span>:</label>
+                            <select id="posSalesTypeSelect" class="form-control form-control-sm font-weight-bold px-2 py-0 text-dark" style="height: 28px; width: auto; font-size: 0.78rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Sales Bill Type (Branch-wise)">
+                                @foreach($salesTypes as $stKey => $stName)
+                                    <option value="{{ $stName }}" @selected(isset($editBill) ? ($editBill->sales_type === $stName) : ($loop->first))>{{ $stName }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <label for="posPurchaseTypeSelect" class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.70rem; text-transform: uppercase;">Purchase Type:</label>
+                            <select id="posPurchaseTypeSelect" class="form-control form-control-sm font-weight-bold px-2 py-0 text-dark" style="height: 28px; width: auto; font-size: 0.78rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Purchase Type (Local / Interstate)">
+                                <option value="Local" @selected(isset($editBill) ? (($editBill->purchase_type ?? 'Local') === 'Local') : true)>Local</option>
+                                <option value="Interstate" @selected(isset($editBill) ? (($editBill->purchase_type ?? '') === 'Interstate') : false)>Interstate</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -619,8 +628,8 @@
                                     <label class="font-weight-600 small mb-1">Customer Id / Code</label>
                                     <input type="text" name="customer_code" id="posCust_customer_code" class="form-control form-control-sm" placeholder="Auto / Custom Code">
                                 </div>
-                                <div class="field-wrapper col-md-4 mb-3" data-field="sales_type" data-label="Tax Territory" data-default-order="6">
-                                    <label class="font-weight-600 small mb-1">Tax Territory</label>
+                                <div class="field-wrapper col-md-4 mb-3" data-field="sales_type" data-label="Purchase Type" data-default-order="6">
+                                    <label class="font-weight-600 small mb-1">Purchase Type</label>
                                     <select name="sales_type" id="posCust_sales_type" class="form-control form-control-sm">
                                         <option value="Local" selected>Local (Intra-state)</option>
                                         <option value="Interstate">Interstate</option>
@@ -1502,7 +1511,8 @@
         'id' => $defaultCustomer->id,
         'name' => $defaultCustomer->name,
         'mobile' => $defaultCustomer->mobile ?? '',
-        'sales_type' => $defaultCustomer->sales_type ?? 'Retail',
+        'sales_type' => 'Retail',
+        'purchase_type' => $defaultCustomer->sales_type ?? 'Local',
         'edit_url' => url("sales/sales-bills/quick-customer/{$defaultCustomer->id}"),
         'pets_summary' => $defaultPetSummary,
     ] : null) !!};

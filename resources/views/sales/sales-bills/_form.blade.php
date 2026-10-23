@@ -574,9 +574,24 @@
                 </label>
             </div>
             <select name="sales_type" id="sales_type" class="form-control select2" required>
-                @foreach (($salesTypes ?? ['Retail' => 'Retail', 'Local' => 'Local']) as $val => $txt)
+                @foreach (($salesTypes ?? ['Retail' => 'Retail', 'Home' => 'Home']) as $val => $txt)
                     <option value="{{ $val }}" @selected(old('sales_type', $selectedSalesType ?? 'Retail') == $val)>{{ $txt }}</option>
                 @endforeach
+            </select>
+        </div>
+    </div>
+
+    {{-- Purchase Type (Local / Interstate) --}}
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="purchase_type" data-default-order="8.5">
+        <div class="form-group mb-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="font-weight-bold mb-0" for="purchase_type">
+                    <i class="fas fa-map-marker-alt text-primary mr-1"></i> Purchase Type <span class="text-danger">*</span>
+                </label>
+            </div>
+            <select name="purchase_type" id="purchase_type" class="form-control select2" required>
+                <option value="Local" @selected(old('purchase_type', $bill->purchase_type ?? 'Local') === 'Local')>Local</option>
+                <option value="Interstate" @selected(old('purchase_type', $bill->purchase_type ?? '') === 'Interstate')>Interstate</option>
             </select>
         </div>
     </div>
@@ -1519,6 +1534,15 @@
                         $('#hidden-invoice-type').val(invType);
                     }
                     $('#invoice-type-lock-indicator').removeClass('d-none');
+                }
+            }
+
+            // Purchase Type (Tax territory: Local vs Interstate from Customer Master)
+            if (sType) {
+                let pTypeVal = String(sType).toLowerCase().includes('interstate') ? 'Interstate' : 'Local';
+                let $pt = $('select[name="purchase_type"]');
+                if ($pt.length) {
+                    $pt.val(pTypeVal).trigger('change');
                 }
             }
         }

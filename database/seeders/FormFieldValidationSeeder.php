@@ -2779,6 +2779,18 @@ class FormFieldValidationSeeder extends Seeder
             ],
             [
                 'module_key' => 'sales_bills',
+                'field_name' => 'purchase_type',
+                'field_label' => 'Purchase Type',
+                'field_type' => 'select',
+                'is_required' => true,
+                'is_readonly' => false,
+                'block_future_date' => false,
+                'is_unique' => false,
+                'custom_error_message' => 'Purchase Type is required.',
+                'sort_order' => 10,
+            ],
+            [
+                'module_key' => 'sales_bills',
                 'field_name' => 'payment_type',
                 'field_label' => 'Payment Mode (Cash/Card/UPI/Credit)',
                 'field_type' => 'select',
