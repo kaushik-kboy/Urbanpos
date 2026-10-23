@@ -581,18 +581,22 @@
         </div>
     </div>
 
-    {{-- Purchase Type (Local / Interstate) --}}
+    {{-- Purchase Type (Local / Interstate - Locked to Customer Master) --}}
     <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="purchase_type" data-default-order="8.5">
         <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <label class="font-weight-bold mb-0" for="purchase_type">
                     <i class="fas fa-map-marker-alt text-primary mr-1"></i> Purchase Type <span class="text-danger">*</span>
                 </label>
+                <span class="badge badge-light border text-secondary font-weight-normal py-0 px-1" title="Determined from Customer Master and cannot be changed" style="font-size: 0.72rem;">
+                    <i class="fas fa-lock mr-1"></i>Locked
+                </span>
             </div>
-            <select name="purchase_type" id="purchase_type" class="form-control select2" required>
+            <select id="purchase_type" class="form-control select2" disabled style="background-color: #e9ecef !important; pointer-events: none; cursor: not-allowed;" title="Purchase Type comes from Customer Master and cannot be changed">
                 <option value="Local" @selected(old('purchase_type', $bill->purchase_type ?? 'Local') === 'Local')>Local</option>
                 <option value="Interstate" @selected(old('purchase_type', $bill->purchase_type ?? '') === 'Interstate')>Interstate</option>
             </select>
+            <input type="hidden" name="purchase_type" id="hidden-purchase-type" value="{{ old('purchase_type', $bill->purchase_type ?? 'Local') }}">
         </div>
     </div>
 
@@ -1537,13 +1541,16 @@
                 }
             }
 
-            // Purchase Type (Tax territory: Local vs Interstate from Customer Master)
-            if (sType) {
-                let pTypeVal = String(sType).toLowerCase().includes('interstate') ? 'Interstate' : 'Local';
-                let $pt = $('select[name="purchase_type"]');
-                if ($pt.length) {
-                    $pt.val(pTypeVal).trigger('change');
-                }
+            // Purchase Type (Tax territory: Local vs Interstate strictly from Customer Master)
+            let pTypeVal = (sType && String(sType).toLowerCase().includes('interstate')) ? 'Interstate' : 'Local';
+            let $pt = $('#purchase_type');
+            if ($pt.length) {
+                $pt.val(pTypeVal).trigger('change');
+            }
+            if (!$('#hidden-purchase-type').length) {
+                $pt.after('<input type="hidden" name="purchase_type" id="hidden-purchase-type" value="' + pTypeVal + '">');
+            } else {
+                $('#hidden-purchase-type').val(pTypeVal);
             }
         }
 
@@ -1552,6 +1559,12 @@
             $it.prop('disabled', false);
             $('#hidden-invoice-type').remove();
             $('#invoice-type-lock-indicator').addClass('d-none');
+
+            let $pt = $('#purchase_type');
+            if ($pt.length) {
+                $pt.val('Local').trigger('change');
+            }
+            $('#hidden-purchase-type').val('Local');
         }
 
         function resetCustomerInvoices() {
@@ -1589,6 +1602,9 @@
         // Check on initial page load if customer is preselected
         @if(!empty($selectedCustomer))
             syncAndLockCustomerTypes('{{ $selectedCustomer->customer_type }}', '{{ $selectedCustomer->sales_type }}');
+        @elseif(!empty($bill?->customer))
+            syncAndLockCustomerTypes('{{ $bill->customer->customer_type }}', '{{ $bill->customer->sales_type }}');
+            fetchCustomerInvoices('{{ $bill->customer_id }}');
         @elseif(!empty($bill?->customer_id))
             fetchCustomerInvoices('{{ $bill->customer_id }}');
         @endif

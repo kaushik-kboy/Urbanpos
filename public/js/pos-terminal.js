@@ -173,10 +173,6 @@
         const initPurchaseType = window.EDIT_BILL?.purchase_type || $('#posPurchaseTypeSelect').val() || window.INITIAL_CUSTOMER?.purchase_type || 'Local';
         setPurchaseType(initPurchaseType);
 
-        $('#posPurchaseTypeSelect').on('change', function () {
-            setPurchaseType(this.value);
-        });
-
         if (window.EDIT_BILL) {
             state.edit_id = window.EDIT_BILL.id;
             state.customer_id = window.EDIT_BILL.customer_id;
@@ -2250,8 +2246,9 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Reset Sales Type to default branch type
+        // 6. Reset Sales Type to default branch type & Purchase Type to default customer
         setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
+        setPurchaseType(window.INITIAL_CUSTOMER?.purchase_type || 'Local');
 
         // 7. Re-render UI
         renderCart();
@@ -2262,7 +2259,7 @@
     const clearCart = resetTerminalAll;
     window.resetTerminalAll = resetTerminalAll;
 
-    // Set Purchase Type (Local vs Interstate) & Tax Mode
+    // Set Purchase Type (Local vs Interstate from Customer Master) & Tax Mode
     function setPurchaseType(purchaseType) {
         if (!purchaseType) return;
         const normalized = String(purchaseType).trim().toLowerCase() === 'interstate' ? 'Interstate' : 'Local';
@@ -2270,6 +2267,15 @@
         const $select = $('#posPurchaseTypeSelect');
         if ($select.length && $select.val() !== normalized) {
             $select.val(normalized);
+        }
+        const $badge = $('#posPurchaseTypeBadge');
+        if ($badge.length) {
+            $badge.text(normalized);
+            if (normalized === 'Interstate') {
+                $badge.removeClass('text-dark').addClass('text-primary font-weight-bolder');
+            } else {
+                $badge.removeClass('text-primary font-weight-bolder').addClass('text-dark');
+            }
         }
         const isInterstate = normalized === 'Interstate';
         const taxLabel = document.getElementById('posTaxLabel');
@@ -2290,21 +2296,13 @@
         if ($select.length && $select.val() !== normalized) {
             $select.val(normalized);
         }
-        const isInterstate = normalized.toLowerCase() === 'interstate';
         const $text = $('#posSalesTypeText');
         const $badge = $('#posSalesTypeBadge');
         if ($text.length) {
             $text.text(normalized);
         }
         if ($badge.length) {
-            if (isInterstate) {
-                $badge.removeClass('badge-light text-dark').addClass('badge-primary text-white');
-            } else {
-                $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
-            }
-        }
-        if (isInterstate) {
-            setPurchaseType('Interstate');
+            $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
         }
     }
 

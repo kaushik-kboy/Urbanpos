@@ -34,8 +34,8 @@
             <div class="field-wrapper col-md-6" data-field="customer_code" data-label="Customer Id" data-default-order="5">
                 <x-field name="customer_code" label="Customer Id" :value="$c->customer_code ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="sales_type" data-label="Sales Type" data-default-order="6">
-                <x-select name="sales_type" label="Sales Type" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$c->sales_type ?? 'Local'" />
+            <div class="field-wrapper col-md-6" data-field="sales_type" data-label="Purchase Type" data-default-order="6">
+                <x-select name="sales_type" label="Purchase Type (Local / Interstate)" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$c->sales_type ?? 'Local'" />
             </div>
             <div class="field-wrapper col-md-6" data-field="payment_mode" data-label="Payment Mode" data-default-order="7">
                 <x-select name="payment_mode" label="Payment Mode" :options="['Cash Only' => 'Cash Only', 'No Credit' => 'No Credit', 'Credit Only' => 'Credit Only', 'Both Cash and Credit' => 'Both Cash and Credit', 'Cash on Delivery' => 'Cash on Delivery']" :selected="$c->payment_mode ?? 'Cash Only'" />

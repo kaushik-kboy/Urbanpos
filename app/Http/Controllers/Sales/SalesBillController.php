@@ -1663,6 +1663,7 @@ class SalesBillController extends Controller
                     'mobile' => $c->mobile ?? '',
                     'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                     'sales_type' => $c->sales_type ?? 'Local',
+                    'purchase_type' => $c->sales_type ?? 'Local',
                     'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                     'pets' => $pets,
                     'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
@@ -1922,6 +1923,12 @@ class SalesBillController extends Controller
             $request->merge(['branch_id' => $fallbackBranchId]);
         }
 
+        // Purchase Type strictly originates from Customer Master and cannot be changed manually
+        $custId = $request->input('customer_id');
+        $cust = $custId ? Customer::find($custId) : null;
+        $customerPt = ($cust && in_array($cust->sales_type, ['Local', 'Interstate'])) ? $cust->sales_type : 'Local';
+        $request->merge(['purchase_type' => $customerPt]);
+
         $now = now()->setTimezone('Asia/Kolkata')->addMinutes(5)->format('Y-m-d H:i:s');
         $headerRules = [
             'bill_number' => ['nullable', 'string', 'max:100'],
@@ -1960,6 +1967,15 @@ class SalesBillController extends Controller
         $dynamicService->applyTo('sales_bills', $headerRules, $headerMessages, $currentId);
 
         $header = $request->validate($headerRules, $headerMessages);
+
+        // Purchase Type strictly originates from Customer Master and cannot be overridden manually in POS or Sales Bill
+        $billCustomer = Customer::find($header['customer_id'] ?? null);
+        if ($billCustomer) {
+            $custPt = $billCustomer->sales_type ?: 'Local';
+            $header['purchase_type'] = in_array($custPt, ['Local', 'Interstate']) ? $custPt : 'Local';
+        } else {
+            $header['purchase_type'] = in_array($header['purchase_type'] ?? '', ['Local', 'Interstate']) ? $header['purchase_type'] : 'Local';
+        }
 
         $configs = $dynamicService->getConfigsForModule('sales_bills');
 

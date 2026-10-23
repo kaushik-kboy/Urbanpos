@@ -225,8 +225,12 @@
                             </select>
                         </div>
                         <div class="d-flex align-items-center">
-                            <label for="posPurchaseTypeSelect" class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.70rem; text-transform: uppercase;">Purchase Type:</label>
-                            <select id="posPurchaseTypeSelect" class="form-control form-control-sm font-weight-bold px-2 py-0 text-dark" style="height: 28px; width: auto; font-size: 0.78rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Purchase Type (Local / Interstate)">
+                            <label class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.70rem; text-transform: uppercase;">Purchase Type:</label>
+                            <div class="d-flex align-items-center bg-light border rounded px-2" style="height: 28px; cursor: not-allowed;" title="Purchase Type is fixed from Customer Master and cannot be changed in POS">
+                                <i class="fas fa-lock text-secondary mr-1" style="font-size: 0.68rem;"></i>
+                                <span id="posPurchaseTypeBadge" class="font-weight-bold text-dark" style="font-size: 0.78rem;">{{ isset($editBill) ? ($editBill->purchase_type ?? 'Local') : (isset($defaultCustomer) ? ($defaultCustomer->sales_type ?? 'Local') : 'Local') }}</span>
+                            </div>
+                            <select id="posPurchaseTypeSelect" class="d-none" disabled>
                                 <option value="Local" @selected(isset($editBill) ? (($editBill->purchase_type ?? 'Local') === 'Local') : true)>Local</option>
                                 <option value="Interstate" @selected(isset($editBill) ? (($editBill->purchase_type ?? '') === 'Interstate') : false)>Interstate</option>
                             </select>
