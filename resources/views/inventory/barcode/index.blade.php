@@ -202,8 +202,8 @@
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                         <span class="text-muted">Total Stickers: <strong id="totalLabels" class="text-primary font-weight-bold h5 mb-0">0</strong></span>
                         <div>
-                            <button type="button" class="btn btn-primary btn-lg font-weight-bold px-3 shadow-sm mr-2" id="btnDirectPrintStudio" disabled title="Directly print to TSC TE244 printer without browser dialog">
-                                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Direct Print (TSC)
+                            <button type="button" class="btn btn-primary btn-lg font-weight-bold px-3 shadow-sm mr-2" id="btnDirectPrintStudio" disabled title="Calibrated settings ke sath Chrome print preview kholein">
+                                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Print (Chrome)
                             </button>
                             <button type="submit" class="btn btn-success btn-lg font-weight-bold px-4 shadow-sm" id="printSubmit" disabled>
                                 <i class="fas fa-print mr-2"></i> Print Barcode Labels
@@ -521,31 +521,22 @@
         renderQueue();
     });
 
-    // 1-Click Direct Print from Studio to TSC TE244
+    // 1-Click Print from Studio via Chrome
     $('#btnDirectPrintStudio').on('click', function () {
         const items = Object.values(queue);
         if (items.length === 0) return;
-        const $btn = $(this);
-        const orig = $btn.html();
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing…');
-        
-        $.ajax({
-            url: '{{ route("master.barcodes.direct-print") }}',
-            type: 'POST',
-            data: $('#printForm').serialize(),
-            dataType: 'json'
-        }).done(function (res) {
-            $btn.prop('disabled', false).html(orig);
-            if (res && res.success) {
-                alert('✅ ' + (res.message || 'Stickers printed directly!'));
-            } else {
-                alert('⚠️ ' + (res.message || 'Failed to print'));
-            }
-        }).fail(function (xhr) {
-            $btn.prop('disabled', false).html(orig);
-            const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error printing stickers directly';
-            alert('❌ ' + msg);
-        });
+
+        const $form = $('#printForm');
+        let $auto = $form.find('input[name="autoprint"]');
+        if (!$auto.length) {
+            $form.append('<input type="hidden" name="autoprint" value="1">');
+        } else {
+            $auto.val('1');
+        }
+        $form.submit();
+        setTimeout(function () {
+            $form.find('input[name="autoprint"]').remove();
+        }, 800);
     });
 
     function escHtml(str) {

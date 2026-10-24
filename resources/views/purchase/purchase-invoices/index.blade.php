@@ -90,7 +90,7 @@
                 <thead>
                     <tr>
                         <x-sortable-th column="supplier_inv_no" label="Supplier Inv No." />
-                        <th>GRN No</th>
+                        <x-sortable-th column="grn_number" label="GRN No" />
                         <x-sortable-th column="invoice_date" label="Invoice Date" />
                         <x-sortable-th column="supplier" label="Supplier" />
                         <th>Branch</th>

@@ -10,6 +10,7 @@ class SalesType extends Model
     use HasFactory;
 
     protected $fillable = [
+        'branch_id',
         'name',
         'code',
         'description',
@@ -19,4 +20,10 @@ class SalesType extends Model
     protected $casts = [
         'status' => 'boolean',
     ];
+
+    public function branch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
 }
+

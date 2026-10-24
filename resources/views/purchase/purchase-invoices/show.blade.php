@@ -126,7 +126,12 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="14" class="text-center py-3 text-muted">No items recorded on this invoice.</td>
+                                <td colspan="14" class="text-center py-4 bg-light">
+                                    <div class="text-muted">
+                                        <i class="fas fa-history text-info mr-1"></i>
+                                        <strong>Historical Migration Record:</strong> This purchase invoice ({{ $purchaseInvoice->invoice_number }}) was imported during legacy POS data migration as a header record. Line items were not included in the historical export, but the invoice total (<strong>₹{{ number_format($purchaseInvoice->total ?? 0, 2) }}</strong>) and supplier ledger are recorded.
+                                    </div>
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -114,7 +114,7 @@
                             </td>
                             <td data-col-key="updated_at">{{ $item->updated_at->format('d-m-Y H:i') }}</td>
                             <td class="text-right text-nowrap" data-col-key="actions">
-                                <a href="{{ route('master.barcodes.print', ['item_id' => $item->id, 'qty' => 1]) }}" target="_blank" class="btn btn-xs btn-outline-warning mr-1" title="Print Barcode Stickers"><i class="fas fa-barcode"></i></a>
+                                <a href="{{ route('master.barcodes.print', ['item_id' => $item->id, 'qty' => 1, 'format' => '50x38_2up']) }}" target="_blank" class="btn btn-xs btn-outline-warning mr-1" title="Print Barcode Stickers (TSC TE244)"><i class="fas fa-barcode"></i></a>
                                 <a href="{{ route('reports.smart-analytics', ['item_id' => $item->id]) }}" class="btn btn-xs btn-outline-info mr-1" title="View Sales History (360° Analytics)"><i class="fas fa-chart-line"></i></a>
                                 <a href="{{ route('master.items.create', ['copy_from' => $item->id]) }}" class="btn btn-xs btn-outline-primary mr-1" title="Copy Item (New Unique Barcode)"><i class="fas fa-copy"></i></a>
                                 <a href="{{ route('master.items.edit', $item) }}" class="btn btn-xs btn-outline-secondary" title="Edit Item"><i class="fas fa-pen"></i></a>

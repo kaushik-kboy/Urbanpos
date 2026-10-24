@@ -12,7 +12,8 @@
         customer_pet_id: null,
         branch_id: (typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) ? parseInt(window.CURRENT_USER_BRANCH_ID, 10) : null,
         invoice_type: 'Retail Invoice',
-        sales_type: 'Local',
+        sales_type: 'Retail',
+        purchase_type: 'Local',
         delivery_type: 'Delivered',
         bill_discount: 0,
         tender_mode: null, // Cash, UPI, Card, Split, Credit (No default mode)
@@ -160,25 +161,55 @@
             state.customer_id = window.INITIAL_CUSTOMER.id;
             const initPetId = $('#posTaggedPetId').val();
             state.customer_pet_id = initPetId ? parseInt(initPetId, 10) : null;
-            if (window.INITIAL_CUSTOMER.sales_type) {
-                setSalesType(window.INITIAL_CUSTOMER.sales_type);
-            }
+            // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), not customer tax type
         } else {
             state.customer_id = null;
             state.customer_pet_id = null;
         }
 
-        const initSalesType = window.EDIT_BILL?.sales_type || window.INITIAL_CUSTOMER?.sales_type || $('#posSalesTypeSelect').val() || 'Local';
+        const initSalesType = window.EDIT_BILL?.sales_type || $('#posSalesTypeSelect').val() || 'Retail';
         setSalesType(initSalesType);
+
+        const initPurchaseType = window.EDIT_BILL?.purchase_type || $('#posPurchaseTypeSelect').val() || window.INITIAL_CUSTOMER?.purchase_type || 'Local';
+        setPurchaseType(initPurchaseType);
 
         if (window.EDIT_BILL) {
             state.edit_id = window.EDIT_BILL.id;
+            state.customer_id = window.EDIT_BILL.customer_id;
             state.customer_pet_id = window.EDIT_BILL.customer_pet_id || null;
             if (state.customer_pet_id) $('#posTaggedPetId').val(state.customer_pet_id);
             state.invoice_type = window.EDIT_BILL.invoice_type || 'Retail Invoice';
-            state.sales_type = window.EDIT_BILL.sales_type === 'Interstate' ? 'Interstate' : 'Local';
+            state.sales_type = window.EDIT_BILL.sales_type || 'Retail';
             setSalesType(state.sales_type);
+            state.purchase_type = window.EDIT_BILL.purchase_type || 'Local';
+            setPurchaseType(state.purchase_type);
             state.delivery_type = window.EDIT_BILL.delivery_type || 'Direct';
+
+            // Point 2 & 3: Bill discount and remarks initialization
+            state.bill_discount = window.EDIT_BILL.bill_discount ? parseFloat(window.EDIT_BILL.bill_discount) : 0;
+            if ($('#posBillDiscount').length && state.bill_discount > 0) {
+                $('#posBillDiscount').val(state.bill_discount);
+            }
+            if ($('#posRemarks').length && window.EDIT_BILL.remarks) {
+                $('#posRemarks').val(window.EDIT_BILL.remarks);
+            }
+
+            // Point 7: Customer can NEVER be changed on edit in POS
+            $('#posCustomerSelect').prop('disabled', true);
+            $('#posEditCustomerBtn').prop('disabled', true).hide();
+            $('#posCustomerSearchWrapper .select2-container').css('pointer-events', 'none');
+
+            // Point 6: POS View Mode handling
+            if (window.IS_VIEW_ONLY) {
+                if (scanInput) {
+                    scanInput.disabled = true;
+                    scanInput.placeholder = 'View-Only Mode: Reading Bill #' + (window.EDIT_BILL.bill_number || '');
+                }
+                $('#pos-btn-item-lookup, #posHoldBtn, #posRecallBtn, #posClearBtn').prop('disabled', true);
+                $('#posBillDiscount, #posRemarks, #posSalesTypeSelect, #posBillerSelect, #posBranchSelect').prop('disabled', true);
+                $('.pos-tender-btn').prop('disabled', true);
+            }
+
             state.cash_received = window.EDIT_BILL.payments && window.EDIT_BILL.payments.length > 0 ? parseFloat(window.EDIT_BILL.payments[0].amount) : 0;
             if (cashReceivedInput) cashReceivedInput.value = state.cash_received;
             
@@ -186,13 +217,17 @@
                 id: i.item_id,
                 name: i.item ? i.item.name : 'Unknown Item',
                 code: i.item ? (i.item.item_code || i.item.ean_upc_code || '') : '',
+                batch_no: i.batch_no || '',
                 exp_date: i.exp_date ? (typeof i.exp_date === 'string' ? i.exp_date.substring(0, 10) : '') : '',
                 sell_price: parseFloat(i.sell_price) || 0,
                 mrp: parseFloat(i.mrp) || 0,
                 qty: parseFloat(i.qty) || 1,
                 gst_percent: i.item && i.item.gst_tax ? parseFloat(i.item.gst_tax.percentage || i.item.gst_tax.igst || 0) : 0,
                 disc_percent: parseFloat(i.disc_percent) || 0,
-                disc_amount: parseFloat(i.disc_amount) || 0
+                disc_amount: parseFloat(i.disc_amount) || 0,
+                allow_negative_stock: i.item ? (i.item.allow_negative_stock ? 1 : 0) : 0,
+                stock: (parseFloat(i.stock) || 0),
+                batch_stock: (parseFloat(i.batch_stock) || 0)
             }));
             
             // Re-render UI pieces on load
@@ -305,25 +340,7 @@
             }
 
             if (isItemStockExceeded(item, val, idx)) {
-                const stock = getItemStock(item);
-                const otherRowsQty = getTotalCartQtyForItem(item, idx, item.batch_no || null, item.exp_date || null, item.mrp || null);
-                const availRemaining = Math.max(0, stock - otherRowsQty);
-                const availDisp = parseInt(availRemaining, 10);
-                const errMsg = availRemaining <= 0
-                    ? `Product "${item.name}" is out of stock (${availDisp} available).`
-                    : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
-
-                state.cart[idx].qty = '';
-                $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
-                $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                showNotification(errMsg, 'danger');
-                if (typeof sound !== 'undefined' && sound.error) sound.error();
-                recalculateRow(idx, 'qty');
-                setTimeout(() => {
-                    if ($cell.find('input').length) {
-                        $cell.find('input').focus().select();
-                    }
-                }, 20);
+                promptBatchSplitIfAvailable(idx, val, $cell, $(this), null);
                 return;
             }
 
@@ -351,21 +368,14 @@
                 }
 
                 if (isItemStockExceeded(item, val, idx)) {
-                    const stock = getItemStock(item);
-                    const otherRowsQty = getTotalCartQtyForItem(item, idx, item.batch_no || null, item.exp_date || null, item.mrp || null);
-                    const availRemaining = Math.max(0, stock - otherRowsQty);
-                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-                    const errMsg = availRemaining <= 0
-                        ? `Out of stock: "${item.name}" is currently unavailable (${availDisp} in stock).`
-                        : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
-
-                    $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
-                    state.cart[idx].qty = '';
-                    recalculateRow(idx, 'qty');
-                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                    showNotification(errMsg, 'danger');
-                    if (typeof sound !== 'undefined' && sound.error) sound.error();
-                    $(this).focus().select();
+                    promptBatchSplitIfAvailable(idx, val, $cell, $(this), function () {
+                        if (ke.shiftKey) {
+                            if (idx > 0) openDiscountAmountInput(idx - 1);
+                            else focusScanner();
+                        } else {
+                            openDiscountPercentInput(idx);
+                        }
+                    });
                     return;
                 }
 
@@ -394,21 +404,9 @@
                 }
 
                 if (isItemStockExceeded(item, val, idx)) {
-                    const stock = getItemStock(item);
-                    const otherRowsQty = getTotalCartQtyForItem(item, idx, item.batch_no || null, item.exp_date || null, item.mrp || null);
-                    const availRemaining = Math.max(0, stock - otherRowsQty);
-                    const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-                    const errMsg = availRemaining <= 0
-                        ? `Out of stock: "${item.name}" is currently unavailable (${availDisp} in stock).`
-                        : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
-
-                    $(this).addClass('is-invalid border-danger text-danger bg-warning-light');
-                    state.cart[idx].qty = '';
-                    recalculateRow(idx, 'qty');
-                    $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
-                    showNotification(errMsg, 'danger');
-                    if (typeof sound !== 'undefined' && sound.error) sound.error();
-                    $(this).focus().select();
+                    promptBatchSplitIfAvailable(idx, val, $cell, $(this), function () {
+                        focusScanner();
+                    });
                     return;
                 }
 
@@ -729,12 +727,22 @@
         document.getElementById('posRecallBtn')?.addEventListener('click', recallHeldBill);
         document.getElementById('posClearBtn')?.addEventListener('click', resetTerminalAll);
 
-        // Tax Type Change (Local GST vs Interstate IGST)
+        // Sales Bill Type Change (Branch-wise)
         $('#posSalesTypeSelect').on('change', function () {
+            if (window.IS_VIEW_ONLY) return;
             setSalesType(this.value);
             const totals = computeTotals();
             updateSummaryUI(totals);
-            showNotification(`Tax Type switched to ${state.sales_type === 'Interstate' ? 'Interstate (IGST)' : 'Local (GST)'}`, 'info');
+            showNotification(`Sales Bill Type set to ${state.sales_type}`, 'info');
+        });
+
+        // Bill Discount Input listener (Point 2: Bill discount like sales bill)
+        $('#posBillDiscount').on('input change', function () {
+            if (window.IS_VIEW_ONLY) return;
+            const val = Math.max(0, parseFloat($(this).val()) || 0);
+            state.bill_discount = val;
+            const totals = computeTotals();
+            updateSummaryUI(totals);
         });
 
         // Split modal handlers
@@ -924,20 +932,7 @@
 
             // Real-time stock validation (across all rows for this item/batch)
             if (isItemStockExceeded(cartItem, val, idx)) {
-                const stock = getItemStock(cartItem);
-                const otherRowsQty = getTotalCartQtyForItem(cartItem, idx, cartItem.batch_no || null, cartItem.exp_date || null, cartItem.mrp || null);
-                const availRemaining = Math.max(0, stock - otherRowsQty);
-                const availDisp = (availRemaining === parseInt(availRemaining, 10)) ? parseInt(availRemaining, 10) : availRemaining;
-                const errMsg = availRemaining <= 0
-                    ? `Cannot add item. Product is out of stock (${availDisp} available).`
-                    : `Insufficient stock. Only ${availDisp} units are available (entered: ${val}).`;
-
-                $(this).addClass('is-invalid border-danger text-danger bg-warning-light').attr('title', errMsg);
-                state.cart[idx].qty = '';
-                recalculateRow(idx, 'qty');
-                payBtns.prop('disabled', true);
-                if (typeof sound !== 'undefined' && sound.error) sound.error();
-                showNotification(errMsg, 'danger');
+                promptBatchSplitIfAvailable(idx, val, $(this).closest('td'), $(this), null);
                 return;
             }
 
@@ -1345,6 +1340,229 @@
         $(this).addClass('table-primary batch-row-selected');
     });
 
+    // ============================================================
+    // POS BATCH SPLIT & AUTO-DISTRIBUTION ENGINE
+    // ============================================================
+    let currentSplitPlan = null;
+
+    async function promptBatchSplitIfAvailable(idx, val, $cell, $input, onValid) {
+        const item = state.cart[idx];
+        if (!item) return;
+
+        const branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
+        let batches = [];
+        let totalBranchStock = 0;
+
+        try {
+            const editBillParam = state.edit_id ? `&sales_bill_id=${state.edit_id}` : '';
+            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?item_id=${item.id}&branch_id=${branchId}${editBillParam}`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (data && data.found) {
+                batches = (Array.isArray(data.batches) ? data.batches : []).filter(b => {
+                    const q = parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0));
+                    return q > 0;
+                });
+                totalBranchStock = parseFloat(data.item?.total_branch_stock ?? (data.item?.stock ?? 0));
+            }
+        } catch (e) {
+            console.warn('Batch lookup for split failed:', e);
+        }
+
+        const currBatchNo = item.batch_no || '';
+        const currExpDate = item.exp_date || '';
+        const currBatchObj = batches.find(b => (b.batch_no || '') === currBatchNo && (b.exp_date || '') === currExpDate)
+            || batches.find(b => (b.batch_no || '') === currBatchNo)
+            || { qty: getItemStock(item) || 0, batch_no: currBatchNo, exp_date: currExpDate };
+
+        const otherCartQtySameBatch = getTotalCartQtyForItem(item, idx, currBatchNo || null, currExpDate || null, item.mrp || null);
+        const currBatchAvail = Math.max(0, parseFloat(currBatchObj.qty !== undefined ? currBatchObj.qty : (currBatchObj.remaining_qty || 0)) - otherCartQtySameBatch);
+
+        // Sum other available batches
+        const otherBatches = batches.filter(b => {
+            return (b.batch_no || '') !== currBatchNo || (b.exp_date || '') !== currExpDate;
+        });
+
+        let totalAvailAllBatches = currBatchAvail;
+        otherBatches.forEach(b => {
+            totalAvailAllBatches += Math.max(0, parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0)));
+        });
+
+        // If other batches exist and total available can fulfill more than current batch
+        if (otherBatches.length > 0 && totalAvailAllBatches > currBatchAvail) {
+            openBatchSplitModal(item, idx, val, currBatchAvail, batches, otherBatches, totalAvailAllBatches, $cell, $input, onValid);
+            return;
+        }
+
+        // If no other batches exist, show standard limit error
+        const availRemaining = currBatchAvail;
+        const availDisp = parseInt(availRemaining, 10);
+        const errMsg = availRemaining <= 0
+            ? `Product "${item.name}" is out of stock (${availDisp} available).`
+            : `Stock Limit Exceeded: Only ${availDisp} units available for "${item.name}". Entered quantity (${val}) cannot exceed available stock!`;
+
+        state.cart[idx].qty = '';
+        $input.addClass('is-invalid border-danger text-danger bg-warning-light');
+        $('#posPayBtn, #posBtnSaveOnly, #posBtnSaveWhatsApp').prop('disabled', true);
+        showNotification(errMsg, 'danger');
+        if (typeof sound !== 'undefined' && sound.error) sound.error();
+        recalculateRow(idx, 'qty');
+        setTimeout(() => {
+            if ($cell.find('input').length) {
+                $cell.find('input').focus().select();
+            }
+        }, 20);
+    }
+
+    function openBatchSplitModal(item, idx, reqQty, currBatchAvail, allBatches, otherBatches, totalAvail, $cell, $input, onValid) {
+        const $modal = $('#pos-batch-split-modal');
+        $('#pos-split-modal-item-name').text(item.name || 'Item');
+        $('#pos-split-modal-req-qty').text(reqQty + ' units');
+        $('#pos-split-modal-curr-batch').text(item.batch_no || 'Default Batch');
+        $('#pos-split-modal-curr-avail').text(currBatchAvail + ' units');
+
+        const plan = [];
+        let remainingNeeded = reqQty;
+
+        // Current batch allocation
+        if (currBatchAvail > 0) {
+            const alloc1 = Math.min(currBatchAvail, remainingNeeded);
+            plan.push({
+                is_current: true,
+                batch_no: item.batch_no || 'Current Batch',
+                raw_batch_no: item.raw_batch_no || item.batch_no || '',
+                exp_date: item.exp_date || '',
+                mrp: item.mrp || 0,
+                sell_price: item.sell_price || 0,
+                cost_price: item.cost_price || 0,
+                qty: alloc1,
+                batch_stock: currBatchAvail
+            });
+            remainingNeeded -= alloc1;
+        }
+
+        // Other batches allocation
+        otherBatches.forEach(b => {
+            if (remainingNeeded <= 0) return;
+            const bStock = Math.max(0, parseFloat(b.qty !== undefined ? b.qty : (b.remaining_qty || 0)));
+            if (bStock <= 0) return;
+            const alloc = Math.min(bStock, remainingNeeded);
+            plan.push({
+                is_current: false,
+                batch_no: b.batch_no || '',
+                raw_batch_no: b.raw_batch_no || b.batch_no || '',
+                exp_date: b.exp_date || '',
+                mrp: b.mrp || item.mrp || 0,
+                sell_price: b.sell_price || item.sell_price || 0,
+                cost_price: b.cost_price || item.cost_price || 0,
+                qty: alloc,
+                batch_stock: bStock
+            });
+            remainingNeeded -= alloc;
+        });
+
+        const totalAllocated = plan.reduce((sum, p) => sum + p.qty, 0);
+        $('#pos-split-modal-total-badge').text(`Total Allocated: ${totalAllocated} / ${reqQty}`);
+
+        let tbodyHtml = '';
+        plan.forEach(p => {
+            const expDisp = p.exp_date ? formatDmyDate(p.exp_date) : '—';
+            tbodyHtml += `
+                <tr>
+                    <td class="align-middle font-weight-bold">
+                        ${escapeHtml(p.batch_no)}
+                        ${p.is_current ? '<span class="badge badge-info ml-1">Current Row</span>' : '<span class="badge badge-success ml-1">Additional Row</span>'}
+                    </td>
+                    <td class="align-middle text-center small text-muted">${expDisp}</td>
+                    <td class="align-middle text-right font-weight-bold text-success" style="font-size: 1rem;">${p.qty}</td>
+                    <td class="align-middle text-right font-weight-bold text-dark">₹${parseFloat(p.sell_price || 0).toFixed(2)}</td>
+                </tr>
+            `;
+        });
+        $('#pos-split-modal-body').html(tbodyHtml);
+
+        currentSplitPlan = {
+            itemIdx: idx,
+            item: item,
+            plan: plan,
+            currBatchAvail: currBatchAvail,
+            $cell: $cell,
+            $input: $input,
+            onValid: onValid
+        };
+
+        $('#pos-btn-split-keep-max').text(`Keep ${currBatchAvail} Units Only`);
+
+        $modal.modal('show');
+        setTimeout(() => $('#pos-btn-split-confirm').focus(), 150);
+    }
+
+    $(document).on('click', '#pos-btn-split-confirm', function () {
+        if (!currentSplitPlan) return;
+        const { itemIdx, item, plan, onValid } = currentSplitPlan;
+        $('#pos-batch-split-modal').modal('hide');
+
+        const firstAlloc = plan[0];
+        if (firstAlloc) {
+            state.cart[itemIdx].qty = firstAlloc.qty;
+            state.cart[itemIdx].batch_no = firstAlloc.batch_no;
+            state.cart[itemIdx].raw_batch_no = firstAlloc.raw_batch_no || firstAlloc.batch_no;
+            state.cart[itemIdx].exp_date = firstAlloc.exp_date;
+            state.cart[itemIdx].mrp = firstAlloc.mrp;
+            state.cart[itemIdx].sell_price = firstAlloc.sell_price;
+            state.cart[itemIdx].batch_stock = firstAlloc.batch_stock;
+            recalculateRow(itemIdx, 'qty');
+        }
+
+        for (let i = 1; i < plan.length; i++) {
+            const alloc = plan[i];
+            const newItem = JSON.parse(JSON.stringify(item));
+            newItem.qty = alloc.qty;
+            newItem.batch_no = alloc.batch_no;
+            newItem.raw_batch_no = alloc.raw_batch_no || alloc.batch_no;
+            newItem.exp_date = alloc.exp_date;
+            newItem.mrp = alloc.mrp;
+            newItem.sell_price = alloc.sell_price;
+            newItem.cost_price = alloc.cost_price;
+            newItem.batch_stock = alloc.batch_stock;
+            state.cart.push(newItem);
+            const newIdx = state.cart.length - 1;
+            recalculateRow(newIdx, 'qty');
+        }
+
+        renderCart();
+        showNotification(`Quantity split across ${plan.length} batches successfully!`, 'success');
+        if (typeof onValid === 'function') onValid();
+        focusScanner();
+    });
+
+    $(document).on('click', '#pos-btn-split-keep-max', function () {
+        if (!currentSplitPlan) return;
+        const { itemIdx, currBatchAvail, onValid } = currentSplitPlan;
+        $('#pos-batch-split-modal').modal('hide');
+        state.cart[itemIdx].qty = currBatchAvail;
+        recalculateRow(itemIdx, 'qty');
+        renderCart();
+        showNotification(`Quantity set to maximum batch available (${currBatchAvail}).`, 'info');
+        if (typeof onValid === 'function') onValid();
+        focusScanner();
+    });
+
+    $(document).on('click', '#pos-btn-split-manual', function () {
+        if (!currentSplitPlan) return;
+        const { itemIdx } = currentSplitPlan;
+        $('#pos-batch-split-modal').modal('hide');
+        chooseBatchForRow(itemIdx);
+    });
+
+    $(document).on('keydown', '#pos-batch-split-modal', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            $('#pos-btn-split-confirm').trigger('click');
+        }
+    });
+
     // Helper: Lookup item details + batches and add to cart
     async function resolveAndAddItem(item) {
         if (typeof checkAndEnforceUnfilledQty === 'function' && !checkAndEnforceUnfilledQty()) {
@@ -1352,8 +1570,9 @@
         }
         try {
             const branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
+            const editBillParam = state.edit_id ? `&sales_bill_id=${state.edit_id}` : '';
             const queryParam = item.id ? `item_id=${item.id}` : `q=${encodeURIComponent(item.code || item.item_code || '')}`;
-            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?${queryParam}&branch_id=${branchId}`;
+            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?${queryParam}&branch_id=${branchId}${editBillParam}`;
             const resp = await fetch(url);
             const data = await resp.json();
             if (data && data.found && data.item) {
@@ -1396,7 +1615,8 @@
         const item = state.cart[idx];
         if (!item) return;
         const branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
-        const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?item_id=${item.id}&branch_id=${branchId}`;
+        const editBillParam = state.edit_id ? `&sales_bill_id=${state.edit_id}` : '';
+        const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?item_id=${item.id}&branch_id=${branchId}${editBillParam}`;
         try {
             const resp = await fetch(url);
             const data = await resp.json();
@@ -1436,8 +1656,9 @@
         state.last_scan_code = code;
 
         try {
+            const editBillParam = state.edit_id ? `&sales_bill_id=${state.edit_id}` : '';
             const branchId = state.branch_id || (document.getElementById('posBranchSelect')?.value ? parseInt(document.getElementById('posBranchSelect').value, 10) : null) || window.CURRENT_USER_BRANCH_ID || '';
-            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?q=${encodeURIComponent(code)}&query=${encodeURIComponent(code)}&exact_match_only=1&branch_id=${branchId}&limit=1`;
+            const url = `${window.APP_URL || ''}/sales/sales-bills/lookup-item?q=${encodeURIComponent(code)}&query=${encodeURIComponent(code)}&exact_match_only=1&branch_id=${branchId}&limit=1${editBillParam}`;
             const resp = await fetch(url);
             const data = await resp.json();
 
@@ -1488,7 +1709,8 @@
 
     async function searchItems(query) {
         try {
-            const url = `${window.APP_URL || ''}/sales/sales-bills/item-list?search=${encodeURIComponent(query)}&branch_id=${state.branch_id || ''}`;
+            const editBillParam = state.edit_id ? `&sales_bill_id=${state.edit_id}` : '';
+            const url = `${window.APP_URL || ''}/sales/sales-bills/item-list?search=${encodeURIComponent(query)}&branch_id=${state.branch_id || ''}${editBillParam}`;
             const resp = await fetch(url);
             const data = await resp.json();
             const items = data.items || (Array.isArray(data) ? data : []);
@@ -1644,6 +1866,13 @@
 
             const cSell = parseFloat(c.sell_price || c.unit_price || 0);
             if ((itemSell > 0 || cSell > 0) && Math.abs(cSell - itemSell) > 0.01) {
+                return false;
+            }
+
+            // Do not merge if discount rates differ (e.g. 20% vs 30% vs 100% Free)
+            const cDiscPct = parseFloat(c.disc_percent || 0);
+            const itemDiscPct = parseFloat(item.disc_percent || 0);
+            if (Math.abs(cDiscPct - itemDiscPct) > 0.01) {
                 return false;
             }
 
@@ -1918,6 +2147,58 @@
         focusScanner();
     }
 
+    function splitRow(index) {
+        const item = state.cart[index];
+        if (!item) return;
+
+        const currentQty = parseFloat(item.qty) || 0;
+        const allowNeg = isAllowNegative(item.allow_negative_stock);
+        const stock = (item.batch_stock !== undefined && item.batch_stock !== null && item.batch_stock !== '')
+            ? parseFloat(item.batch_stock)
+            : (item.stock !== undefined && item.stock !== null ? parseFloat(item.stock) : null);
+
+        const newRowIdx = index + 1;
+
+        if (currentQty <= 1) {
+            // If qty is 1, check stock before duplicating 1 more unit into cart
+            const totalRequested = getTotalCartQtyForItem(item, -1, item.batch_no || null, item.exp_date || null, item.mrp || null) + 1;
+            if (!allowNeg && stock !== null && totalRequested > stock + 0.0001) {
+                const availDisp = (stock === parseInt(stock, 10)) ? parseInt(stock, 10) : stock;
+                showNotification(`Cannot duplicate row. Insufficient stock (${availDisp} available).`, 'danger');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                return;
+            }
+
+            const newItem = JSON.parse(JSON.stringify(item));
+            newItem.qty = 1;
+            newItem.disc_percent = 0;
+            newItem.disc_amount = 0;
+            state.cart.splice(newRowIdx, 0, newItem);
+            recalculateRow(newRowIdx, 'qty');
+            renderCart();
+            showNotification(`Added new line for "${item.name}" (Qty: 1). You can now apply different discount or make it free (B2G1).`, 'success');
+        } else {
+            // When currentQty > 1:
+            // Decrement 1 unit from existing row, create new row with Qty 1
+            state.cart[index].qty = currentQty - 1;
+            recalculateRow(index, 'qty');
+
+            const newItem = JSON.parse(JSON.stringify(item));
+            newItem.qty = 1;
+            newItem.disc_percent = 0;
+            newItem.disc_amount = 0;
+            state.cart.splice(newRowIdx, 0, newItem);
+            recalculateRow(newRowIdx, 'qty');
+
+            renderCart();
+            showNotification(`Split 1 unit of "${item.name}" into a new line!`, 'success');
+        }
+
+        setTimeout(() => {
+            openDiscountPercentInput(newRowIdx);
+        }, 120);
+    }
+
     function resetTerminalAll() {
         if (state.cart.length > 0 || state.customer_id) {
             if (!confirm('Are you sure you want to reset terminal? All items, customer, discounts, and payment modes will be cleared.')) {
@@ -1950,6 +2231,8 @@
         state.bill_discount = 0;
         state.cash_received = 0;
         if (cashReceivedInput) cashReceivedInput.value = '';
+        if ($('#posBillDiscount').length) $('#posBillDiscount').val('');
+        if ($('#posRemarks').length) $('#posRemarks').val('');
 
         // 4. Reset payment mode
         state.tender_mode = null;
@@ -1963,8 +2246,9 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Reset Tax Type to default
-        setSalesType(window.INITIAL_CUSTOMER?.sales_type || 'Local');
+        // 6. Reset Sales Type to default branch type & Purchase Type to default customer
+        setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
+        setPurchaseType(window.INITIAL_CUSTOMER?.purchase_type || 'Local');
 
         // 7. Re-render UI
         renderCart();
@@ -1975,32 +2259,50 @@
     const clearCart = resetTerminalAll;
     window.resetTerminalAll = resetTerminalAll;
 
-    // Set Tax / Sales Type (Local GST vs Interstate IGST) - Synced from Customer Master (Read Only)
+    // Set Purchase Type (Local vs Interstate from Customer Master) & Tax Mode
+    function setPurchaseType(purchaseType) {
+        if (!purchaseType) return;
+        const normalized = String(purchaseType).trim().toLowerCase() === 'interstate' ? 'Interstate' : 'Local';
+        state.purchase_type = normalized;
+        const $select = $('#posPurchaseTypeSelect');
+        if ($select.length && $select.val() !== normalized) {
+            $select.val(normalized);
+        }
+        const $badge = $('#posPurchaseTypeBadge');
+        if ($badge.length) {
+            $badge.text(normalized);
+            if (normalized === 'Interstate') {
+                $badge.removeClass('text-dark').addClass('text-primary font-weight-bolder');
+            } else {
+                $badge.removeClass('text-primary font-weight-bolder').addClass('text-dark');
+            }
+        }
+        const isInterstate = normalized === 'Interstate';
+        const taxLabel = document.getElementById('posTaxLabel');
+        if (taxLabel) {
+            taxLabel.textContent = isInterstate ? 'Tax (IGST Included)' : 'Tax (GST Included)';
+        }
+        if (state.cart && state.cart.length > 0) {
+            updateSummaryUI(computeTotals());
+        }
+    }
+
+    // Set Sales Bill Type (Branch-wise, e.g. Retail, Spa, Home, B2B, IPC)
     function setSalesType(salesType) {
-        const normalized = (salesType === 'Interstate') ? 'Interstate' : 'Local';
+        if (!salesType) return;
+        const normalized = String(salesType).trim();
         state.sales_type = normalized;
         const $select = $('#posSalesTypeSelect');
-        if ($select.length) {
+        if ($select.length && $select.val() !== normalized) {
             $select.val(normalized);
         }
         const $text = $('#posSalesTypeText');
         const $badge = $('#posSalesTypeBadge');
         if ($text.length) {
-            $text.text(normalized === 'Interstate' ? 'Interstate (IGST)' : 'Local (GST)');
+            $text.text(normalized);
         }
         if ($badge.length) {
-            if (normalized === 'Interstate') {
-                $badge.removeClass('badge-light text-dark').addClass('badge-primary text-white');
-            } else {
-                $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
-            }
-        }
-        const taxLabel = document.getElementById('posTaxLabel');
-        if (taxLabel) {
-            taxLabel.textContent = (normalized === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
-        }
-        if (state.cart && state.cart.length > 0) {
-            updateSummaryUI(computeTotals());
+            $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
         }
     }
 
@@ -2035,6 +2337,8 @@
         return {
             subtotal,
             discount: totalDiscount,
+            itemDiscount: totalDiscount - (state.bill_discount || 0),
+            billDiscount: state.bill_discount || 0,
             tax: totalTax,
             roundOff: roundOff,
             grandTotal: roundedGrandTotal,
@@ -2134,7 +2438,10 @@
                     <td class="text-right font-weight-bold text-success pos-row-net" data-idx="${idx}" style="width: 95px; font-size: 0.95rem;">
                         ₹ ${net.toFixed(2)}
                     </td>
-                    <td class="text-center" style="width: 35px;">
+                    <td class="text-center text-nowrap" style="width: 65px;">
+                        <button type="button" class="btn btn-xs btn-outline-primary shadow-none mr-1" title="Split into new row (Shift 1 qty to separate line for different discount / B2G1 free)" onclick="window.posEngine.splitRow(${idx})">
+                            <i class="fas fa-columns"></i>
+                        </button>
                         <button type="button" class="btn btn-xs btn-outline-danger shadow-none" title="Remove Item" onclick="window.posEngine.removeRow(${idx})">
                             <i class="fas fa-times"></i>
                         </button>
@@ -2155,10 +2462,10 @@
 
     function updateSummaryUI(totals) {
         if (subtotalEl) subtotalEl.textContent = '₹ ' + totals.subtotal.toFixed(2);
-        if (discountEl) discountEl.textContent = '- ₹ ' + totals.discount.toFixed(2);
+        if (discountEl) discountEl.textContent = '- ₹ ' + (totals.itemDiscount !== undefined ? totals.itemDiscount : totals.discount).toFixed(2);
         if (gstEl) gstEl.textContent = '₹ ' + totals.tax.toFixed(2);
         const taxLabel = document.getElementById('posTaxLabel');
-        if (taxLabel) taxLabel.textContent = (state.sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
+        if (taxLabel) taxLabel.textContent = (state.purchase_type === 'Interstate' || state.sales_type === 'Interstate') ? 'Tax (IGST Included)' : 'Tax (GST Included)';
         if (roundOffEl) roundOffEl.textContent = (totals.roundOff >= 0 ? '+ ₹ ' : '- ₹ ') + Math.abs(totals.roundOff).toFixed(2);
         if (grandTotalEl) grandTotalEl.textContent = '₹ ' + totals.grandTotal.toFixed(2);
         if (itemsCountBadge) itemsCountBadge.textContent = `${totals.totalItems} units`;
@@ -2319,7 +2626,11 @@
             });
 
             // Clear customer selection
-            $custSelect.on('select2:clear', function () {
+            $custSelect.on('select2:clear', function (e) {
+                if (state.edit_id && window.EDIT_BILL) {
+                    if (e) e.preventDefault();
+                    return false;
+                }
                 state.customer_id = null;
                 $('#posSelectedCustomerBox').hide();
                 $('#posCustomerInvoicesSection').hide();
@@ -2328,6 +2639,10 @@
 
             // Auto-focus search input whenever select2 opens (no need to click field again)
             $custSelect.on('select2:open', function () {
+                if (state.edit_id && window.EDIT_BILL) {
+                    $custSelect.select2('close');
+                    return;
+                }
                 setTimeout(function () {
                     const searchField = document.querySelector('.select2-container--open .select2-search__field');
                     if (searchField) {
@@ -2338,6 +2653,10 @@
 
             // Select customer
             $custSelect.on('select2:select change', function (e) {
+                if (state.edit_id && window.EDIT_BILL && window.EDIT_BILL.customer_id) {
+                    state.customer_id = window.EDIT_BILL.customer_id;
+                    return;
+                }
                 const data = e.params ? e.params.data : null;
                 const custId = $custSelect.val();
                 if (custId) {
@@ -2569,8 +2888,9 @@
 
     function updateSelectedCustomerUI(customer) {
         if (!customer) return;
-        if (customer.sales_type) {
-            setSalesType(customer.sales_type);
+        // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), customer sets purchase_type (Local/Interstate)
+        if (customer.purchase_type || customer.sales_type) {
+            setPurchaseType(customer.purchase_type || customer.sales_type);
         }
         $('#posCustomerSearchWrapper').show();
         $('#posSelectedCustomerBox').show();
@@ -3160,6 +3480,9 @@
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             customer_id: state.customer_id,
             sales_type: state.sales_type,
+            purchase_type: state.purchase_type || 'Local',
+            bill_discount: state.bill_discount || 0,
+            remarks: document.getElementById('posRemarks')?.value || '',
             cart: JSON.parse(JSON.stringify(state.cart)),
             total: computeTotals().grandTotal
         };
@@ -3167,6 +3490,9 @@
         state.held_bills.push(bill);
         saveHeldBills();
         state.cart = [];
+        state.bill_discount = 0;
+        if ($('#posBillDiscount').length) $('#posBillDiscount').val('');
+        if ($('#posRemarks').length) $('#posRemarks').val('');
         renderCart();
         sound.beep(1200, 0.1);
         showNotification('Bill placed on Hold successfully', 'info');
@@ -3182,8 +3508,14 @@
         const bill = state.held_bills.pop();
         saveHeldBills();
         state.cart = bill.cart;
+        state.bill_discount = bill.bill_discount || 0;
+        if ($('#posBillDiscount').length) $('#posBillDiscount').val(state.bill_discount > 0 ? state.bill_discount : '');
+        if ($('#posRemarks').length) $('#posRemarks').val(bill.remarks || '');
         if (bill.sales_type) {
             setSalesType(bill.sales_type);
+        }
+        if (bill.purchase_type) {
+            setPurchaseType(bill.purchase_type);
         }
         if (bill.customer_id) {
             state.customer_id = bill.customer_id;
@@ -3223,6 +3555,11 @@
 
     // Submit Sale to Backend (Task 5: save, whatsapp, print)
     async function submitSale(action = 'print') {
+        if (window.IS_VIEW_ONLY) {
+            showNotification('Terminal is in View-Only Mode.', 'info');
+            return;
+        }
+
         if (state.cart.length === 0) {
             showNotification('Please add at least one item to cart.', 'warning');
             return;
@@ -3265,6 +3602,17 @@
             showNotification('Please select a customer for this bill.', 'warning');
             return;
         }
+
+        // Validate Sales Bill Type is compulsory (Point 4: sales bill type compulsory form validation)
+        const currentSalesType = state.sales_type || $('#posSalesTypeSelect').val();
+        if (!currentSalesType || !String(currentSalesType).trim()) {
+            const stMsg = 'Sales Bill Type is required. Please select a Sales Bill Type.';
+            showNotification(stMsg, 'warning');
+            alert(stMsg);
+            $('#posSalesTypeSelect').focus();
+            return;
+        }
+        state.sales_type = String(currentSalesType).trim();
 
         // Validate Payment Mode selected (Point 3)
         if (!state.tender_mode) {
@@ -3478,20 +3826,25 @@
         // Build Payload matching backend expectations
         const payload = {
             _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || window.CSRF_TOKEN,
-            posting_key: 'pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-            bill_number: (window.NEXT_BILL_NUMBER || null),
-            bill_date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
-            customer_id: state.customer_id,
+            posting_key: state.edit_id ? (window.EDIT_BILL?.posting_key || null) : ('pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)),
+            bill_number: state.edit_id ? (window.EDIT_BILL?.bill_number || null) : (window.NEXT_BILL_NUMBER || null),
+            bill_date: (state.edit_id && window.EDIT_BILL?.bill_date)
+                ? (new Date(window.EDIT_BILL.bill_date).toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }))
+                : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
+            customer_id: (state.edit_id && window.EDIT_BILL && window.EDIT_BILL.customer_id) ? window.EDIT_BILL.customer_id : state.customer_id,
             customer_pet_id: state.customer_pet_id || null,
             branch_id: state.branch_id,
             user_id: document.getElementById('posBillerSelect')?.value || null,
             invoice_type: state.invoice_type,
             sales_type: state.sales_type,
+            purchase_type: state.purchase_type || 'Local',
             delivery_type: state.delivery_type,
             payment_type: state.tender_mode,
             save_action: action,
             send_whatsapp: action === 'whatsapp' ? 1 : 0,
             round_off: totals.roundOff,
+            bill_discount: parseFloat(state.bill_discount) || 0,
+            remarks: document.getElementById('posRemarks')?.value || '',
             items: state.cart.map(item => ({
                 item_id: item.id,
                 batch_no: item.batch_no || null,
@@ -3552,7 +3905,7 @@
                 state.cash_received = 0;
                 state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
                 state.customer_id = null;
-                setSalesType(window.INITIAL_CUSTOMER?.sales_type || 'Local');
+                setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
                 $('#posCustomerSelect').val(null).trigger('change.select2');
                 $('#posSelectedCustomerBox').hide();
                 $('#posCustomerInvoicesSection').hide();
@@ -3805,6 +4158,7 @@
 
             let url = window.ISL_URL || '/sales/sales-bills/item-list';
             let params = { branch_id: branchId, search: srch, code: code, show_all: showAll };
+            if (state.edit_id) { params.sales_bill_id = state.edit_id; }
 
             $.getJSON(url, params, function (res) {
                 $('#pos-isl-loading').addClass('d-none');
@@ -3944,7 +4298,15 @@
     let posInactivityTimeout = null;
     const POS_INACTIVITY_LIMIT = 3 * 60 * 1000; // 3 minutes
 
+    function isLockFeatureEnabled() {
+        return window.POS_LOCK_ENABLED !== false && window.POS_LOCK_ENABLED !== 0 && window.POS_LOCK_ENABLED !== '0';
+    }
+
     function resetPosInactivityTimer() {
+        if (!isLockFeatureEnabled()) {
+            if (posInactivityTimeout) clearTimeout(posInactivityTimeout);
+            return;
+        }
         if (isPosLocked) return;
         if (posInactivityTimeout) clearTimeout(posInactivityTimeout);
         posInactivityTimeout = setTimeout(() => {
@@ -3958,6 +4320,9 @@
     resetPosInactivityTimer();
 
     function lockPosScreen() {
+        if (!isLockFeatureEnabled()) {
+            return;
+        }
         isPosLocked = true;
         enteredPosPin = '';
         updatePinDots();
@@ -4062,7 +4427,9 @@
     window.addEventListener('keydown', function (e) {
         if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
             e.preventDefault();
-            lockPosScreen();
+            if (isLockFeatureEnabled()) {
+                lockPosScreen();
+            }
             return;
         }
 
@@ -4092,7 +4459,9 @@
         updateQty: updateItemQty,
         setQty: setItemQty,
         removeRow: removeItem,
+        splitRow: splitRow,
         setSalesType: setSalesType,
+        setPurchaseType: setPurchaseType,
         chooseBatchForRow: chooseBatchForRow,
         openAddCustomer: openAddCustomerModalWithTerm,
         focusQty: focusRowQty,

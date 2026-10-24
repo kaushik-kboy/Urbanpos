@@ -432,19 +432,28 @@
     <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="customer_id" data-default-order="2" data-core="1">
         <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
-                <label for="customer_id" class="font-weight-bold mb-0"><i class="fas fa-user text-primary mr-1"></i> Customer <span class="text-danger">*</span></label>
+                <label for="customer_id" class="font-weight-bold mb-0">
+                    <i class="fas fa-user text-primary mr-1"></i> Customer <span class="text-danger">*</span>
+                    @if(!empty($bill?->id))
+                        <span class="badge badge-warning text-dark font-weight-bold ml-1" title="Customer cannot be changed when editing bill"><i class="fas fa-lock mr-1"></i>Locked</span>
+                    @endif
+                </label>
+                @if(empty($bill?->id))
                 <button type="button" id="btn-quick-add-customer" class="btn btn-outline-primary btn-xs py-0 font-weight-bold" style="font-size: 10px;">
                     <i class="fas fa-user-plus mr-1"></i> + New
                 </button>
+                @endif
             </div>
-            {{-- No `required` attr: customer can be added before or after items in sales bills --}}
-            <select name="customer_id" id="customer_id" class="form-control select2" data-sequential-optional="1">
+            {{-- Customer is strictly locked on edit --}}
+            <select name="customer_id" id="customer_id" class="form-control select2" data-sequential-optional="1" @if(!empty($bill?->id)) disabled style="background-color: #e9ecef !important; pointer-events: none; cursor: not-allowed;" @endif>
                 <option value="">-- Search Customer by Name or Mobile --</option>
                 @foreach ($customers as $id => $name)
                     <option value="{{ $id }}" @selected($selectedCust == $id)>{{ $name }}</option>
                 @endforeach
             </select>
-
+            @if(!empty($bill?->id))
+                <input type="hidden" name="customer_id" value="{{ $bill->customer_id }}">
+            @endif
         </div>
         <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between">
             <div>
@@ -556,20 +565,38 @@
         </div>
     </div>
 
-    {{-- Sales Type --}}
+    {{-- Sales Bill Type --}}
     <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="sales_type" data-default-order="8">
         <div class="form-group mb-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <label class="font-weight-bold mb-0" for="sales_type">
-                    <i class="fas fa-map-marker-alt text-primary mr-1"></i> Sales Type <span class="text-danger">*</span>
+                    <i class="fas fa-tag text-primary mr-1"></i> Sales Bill Type <span class="text-danger">*</span>
                 </label>
-                <span class="text-warning small d-none" id="sales-type-lock-indicator" title="Locked from Customer Master"><i class="fas fa-lock" title="Customer Locked"></i></span>
             </div>
             <select name="sales_type" id="sales_type" class="form-control select2" required>
-                @foreach (($salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']) as $val => $txt)
-                    <option value="{{ $val }}" @selected(old('sales_type', $selectedSalesType ?? 'Local') == $val)>{{ $txt }}</option>
+                @foreach (($salesTypes ?? ['Retail' => 'Retail', 'Home' => 'Home']) as $val => $txt)
+                    <option value="{{ $val }}" @selected(old('sales_type', $selectedSalesType ?? 'Retail') == $val)>{{ $txt }}</option>
                 @endforeach
             </select>
+        </div>
+    </div>
+
+    {{-- Purchase Type (Local / Interstate - Locked to Customer Master) --}}
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="purchase_type" data-default-order="8.5">
+        <div class="form-group mb-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="font-weight-bold mb-0" for="purchase_type">
+                    <i class="fas fa-map-marker-alt text-primary mr-1"></i> Purchase Type <span class="text-danger">*</span>
+                </label>
+                <span class="badge badge-light border text-secondary font-weight-normal py-0 px-1" title="Determined from Customer Master and cannot be changed" style="font-size: 0.72rem;">
+                    <i class="fas fa-lock mr-1"></i>Locked
+                </span>
+            </div>
+            <select id="purchase_type" class="form-control select2" disabled style="background-color: #e9ecef !important; pointer-events: none; cursor: not-allowed;" title="Purchase Type comes from Customer Master and cannot be changed">
+                <option value="Local" @selected(old('purchase_type', $bill->purchase_type ?? 'Local') === 'Local')>Local</option>
+                <option value="Interstate" @selected(old('purchase_type', $bill->purchase_type ?? '') === 'Interstate')>Interstate</option>
+            </select>
+            <input type="hidden" name="purchase_type" id="hidden-purchase-type" value="{{ old('purchase_type', $bill->purchase_type ?? 'Local') }}">
         </div>
     </div>
 
@@ -654,7 +681,7 @@
                 <th style="width: 45px;" class="text-right" data-col-key="gst_percent">GST %</th>
                 <th style="width: 80px;" class="text-right" title="Included GST Amount" data-col-key="gst_amt">GST Amt</th>
                 <th style="width: 95px;" class="text-right" data-col-key="net_amt">Net Amount</th>
-                <th style="width: 32px;" class="text-center" data-col-key="actions"></th>
+                <th style="width: 65px;" class="text-center" data-col-key="actions"></th>
             </tr>
         </thead>
         <tbody id="sb-items-body">
@@ -1486,21 +1513,10 @@
         const CIM_PAGE_SIZE = 10;
 
         function syncAndLockCustomerTypes(cType, sType) {
-            // 1. Sales Type (Locked from Customer Master, read-only)
-            let salesTypeVal = sType || 'Local';
-            let $st = $('select[name="sales_type"]');
-            if ($st.length) {
-                $st.val(salesTypeVal).trigger('change');
-                $st.prop('disabled', true);
-                if (!$('#hidden-sales-type').length) {
-                    $st.after('<input type="hidden" name="sales_type" id="hidden-sales-type" value="' + salesTypeVal + '">');
-                } else {
-                    $('#hidden-sales-type').val(salesTypeVal);
-                }
-                $('#sales-type-lock-indicator').removeClass('d-none');
-            }
+            // Note: Sales Bill Type is branch-specific (e.g. Retail, Home, Spa for Motera / B2B, IPC for Satellite).
+            // Customer selection does NOT lock or overwrite sales_type.
 
-            // 2. Invoice / Customer Type (Locked from Customer Master, read-only)
+            // Invoice / Customer Type (Locked from Customer Master, read-only)
             if (cType) {
                 let invType = 'Retail Invoice';
                 let cUpper = String(cType).toUpperCase();
@@ -1524,18 +1540,31 @@
                     $('#invoice-type-lock-indicator').removeClass('d-none');
                 }
             }
+
+            // Purchase Type (Tax territory: Local vs Interstate strictly from Customer Master)
+            let pTypeVal = (sType && String(sType).toLowerCase().includes('interstate')) ? 'Interstate' : 'Local';
+            let $pt = $('#purchase_type');
+            if ($pt.length) {
+                $pt.val(pTypeVal).trigger('change');
+            }
+            if (!$('#hidden-purchase-type').length) {
+                $pt.after('<input type="hidden" name="purchase_type" id="hidden-purchase-type" value="' + pTypeVal + '">');
+            } else {
+                $('#hidden-purchase-type').val(pTypeVal);
+            }
         }
 
         function unlockCustomerTypes() {
-            let $st = $('select[name="sales_type"]');
-            $st.prop('disabled', false);
-            $('#hidden-sales-type').remove();
-            $('#sales-type-lock-indicator').addClass('d-none');
-
             let $it = $('select[name="invoice_type"]');
             $it.prop('disabled', false);
             $('#hidden-invoice-type').remove();
             $('#invoice-type-lock-indicator').addClass('d-none');
+
+            let $pt = $('#purchase_type');
+            if ($pt.length) {
+                $pt.val('Local').trigger('change');
+            }
+            $('#hidden-purchase-type').val('Local');
         }
 
         function resetCustomerInvoices() {
@@ -1573,6 +1602,9 @@
         // Check on initial page load if customer is preselected
         @if(!empty($selectedCustomer))
             syncAndLockCustomerTypes('{{ $selectedCustomer->customer_type }}', '{{ $selectedCustomer->sales_type }}');
+        @elseif(!empty($bill?->customer))
+            syncAndLockCustomerTypes('{{ $bill->customer->customer_type }}', '{{ $bill->customer->sales_type }}');
+            fetchCustomerInvoices('{{ $bill->customer_id }}');
         @elseif(!empty($bill?->customer_id))
             fetchCustomerInvoices('{{ $bill->customer_id }}');
         @endif
@@ -2394,7 +2426,10 @@
                 let bLabel = getRowBatchLabel($row);
 
                 // 1. Strict Batch Stock Check across ALL rows
-                if (bKey && bStock !== null && !isNaN(bStock) && bStock >= 0) {
+                let origRowQty = parseFloat($row.data('original-qty') || $row.find('.sb-item-original-qty').val()) || 0;
+                let effectiveBStock = bStock !== null ? Math.max(bStock, origRowQty) : null;
+
+                if (bKey && effectiveBStock !== null && !isNaN(effectiveBStock) && effectiveBStock >= 0) {
                     let totalForBatch = 0;
                     $('#sb-items-body tr').each(function () {
                         if (getRowBatchKey($(this)) === bKey) {
@@ -2406,8 +2441,10 @@
                         if (getRowBatchKey($(this)) === bKey) {
                             let $q = $(this).find('.sb-qty');
                             let $r = $(this);
-                            if (totalForBatch > bStock + 0.0001) {
-                                let errMsg = bLabel + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(totalForBatch) + ' across rows)!';
+                            let rOrig = parseFloat($r.data('original-qty') || $r.find('.sb-item-original-qty').val()) || 0;
+                            let rEffectiveBStock = Math.max(effectiveBStock, rOrig);
+                            if (totalForBatch > rEffectiveBStock + 0.0001) {
+                                let errMsg = bLabel + ' has only ' + formatDigits(rEffectiveBStock) + ' available (entered ' + formatDigits(totalForBatch) + ' across rows)!';
                                 $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
                                 $r.find('.sb-qty-error-msg').text(errMsg).show();
                                 if ($(this)[0] === $row[0]) rowHasBatchError = true;
@@ -2420,7 +2457,8 @@
                 }
 
                 // 2. Strict Product Stock Check across ALL rows
-                if (stock >= 0) {
+                let effectiveProductStock = stock >= 0 ? Math.max(stock, origRowQty) : stock;
+                if (effectiveProductStock >= 0) {
                     let totalForItem = 0;
                     $('#sb-items-body tr').each(function () {
                         if ($(this).find('.sb-item-select').val() === itemId) {
@@ -2432,8 +2470,10 @@
                         if ($(this).find('.sb-item-select').val() === itemId) {
                             let $q = $(this).find('.sb-qty');
                             let $r = $(this);
-                            if (totalForItem > stock + 0.0001) {
-                                let errMsg = 'Maximum available quantity is ' + formatDigits(stock) + '.';
+                            let rOrig = parseFloat($r.data('original-qty') || $r.find('.sb-item-original-qty').val()) || 0;
+                            let rEffectiveStock = Math.max(effectiveProductStock, rOrig);
+                            if (totalForItem > rEffectiveStock + 0.0001) {
+                                let errMsg = 'Maximum available quantity is ' + formatDigits(rEffectiveStock) + '.';
                                 $q.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
                                 $r.find('.sb-qty-error-msg').text(errMsg).show();
                                 if ($(this)[0] === $row[0]) rowHasStockError = true;
@@ -2633,6 +2673,10 @@
                     let bStock = (bKey && batchStocks[bKey] !== undefined) ? batchStocks[bKey] : getRowBatchStock($row);
                     let bLabel = getRowBatchLabel($row);
 
+                    let origRowQty = parseFloat($row.data('original-qty') || $row.find('.sb-item-original-qty').val()) || 0;
+                    let effectiveBStock = bStock !== null ? Math.max(bStock, origRowQty) : null;
+                    let effectiveStock = stock !== null ? Math.max(stock, origRowQty) : null;
+
                     if (qty <= 0) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
                                  .attr('title', 'Quantity must be greater than 0.');
@@ -2641,24 +2685,24 @@
                             firstErrorMsg = `Row #${idx + 1}: Quantity must be greater than 0.`;
                             firstErrorEl = $qtyInput;
                         }
-                    } else if (!isAllowNegative && bStock !== null && bStock >= 0 && (bTotal > bStock + 0.0001)) {
-                        let errMsg = bLabel + ' has only ' + formatDigits(bStock) + ' available (entered ' + formatDigits(bTotal) + ' across rows)!';
+                    } else if (!isAllowNegative && effectiveBStock !== null && effectiveBStock >= 0 && (bTotal > effectiveBStock + 0.0001)) {
+                        let errMsg = bLabel + ' has only ' + formatDigits(effectiveBStock) + ' available (entered ' + formatDigits(bTotal) + ' across rows)!';
                         $qtyInput.addClass('border-danger text-danger is-invalid').attr('title', errMsg);
                         $row.find('.sb-qty-error-msg').text(errMsg).show();
                         hasError = true;
                         if (!firstErrorMsg) {
                             let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
-                            firstErrorMsg = `${itemName} [${bLabel}]: Quantity (${formatDigits(bTotal)}) exceeds available batch stock (${formatDigits(bStock)}).`;
+                            firstErrorMsg = `${itemName} [${bLabel}]: Quantity (${formatDigits(bTotal)}) exceeds available batch stock (${formatDigits(effectiveBStock)}).`;
                             firstErrorEl = $qtyInput;
                         }
-                    } else if (!isAllowNegative && stock !== null && stock >= 0 && totalQty > stock + 0.0001) {
+                    } else if (!isAllowNegative && effectiveStock !== null && effectiveStock >= 0 && totalQty > effectiveStock + 0.0001) {
                         $qtyInput.addClass('border-danger text-danger is-invalid')
-                                 .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(stock) + ')!');
-                        $row.find('.sb-qty-error-msg').text('Maximum available quantity is ' + formatDigits(stock) + '.').show();
+                                 .attr('title', 'Total qty (' + formatDigits(totalQty) + ') across all rows exceeds stock (' + formatDigits(effectiveStock) + ')!');
+                        $row.find('.sb-qty-error-msg').text('Maximum available quantity is ' + formatDigits(effectiveStock) + '.').show();
                         hasError = true;
                         if (!firstErrorMsg) {
                             let itemName = $row.find('.sb-item-desc').val() || `Row #${idx + 1}`;
-                            firstErrorMsg = `${itemName}: Quantity (${formatDigits(totalQty)}) exceeds available stock (${formatDigits(stock)}).`;
+                            firstErrorMsg = `${itemName}: Quantity (${formatDigits(totalQty)}) exceeds available stock (${formatDigits(effectiveStock)}).`;
                             firstErrorEl = $qtyInput;
                         }
                     } else {
@@ -3041,8 +3085,10 @@
 
             if ((!batches || batches.length === 0) && itemId) {
                 let branchId = $('[name="branch_id"]').val() || localStorage.getItem('urbanpos_active_branch_id') || 1;
+                let billId = '{{ $bill->id ?? "" }}';
+                let billParam = billId ? `&sales_bill_id=${billId}` : '';
                 try {
-                    let resp = await fetch(`{{ route('sales.sales-bills.lookup-item') }}?item_id=${itemId}&branch_id=${branchId}`);
+                    let resp = await fetch(`{{ route('sales.sales-bills.lookup-item') }}?item_id=${itemId}&branch_id=${branchId}${billParam}`);
                     let data = await resp.json();
                     if (data && data.found) {
                         batches = data.batches || [];
@@ -3088,7 +3134,7 @@
             let $gst = $row.find('.sb-gst-percent');
             let $batchWrap = $row.find('.sb-batch-btn-wrap');
 
-            let billId = '{{ $bill->id ?? "" }}';
+            let billId = '{{ $bill->id ?? ($salesBill->id ?? "") }}';
             let params = { branch_id: branchId };
             if (billId) {
                 params.sales_bill_id = billId;
@@ -3169,19 +3215,32 @@
                         }
                     }
 
-                    if (batches.length >= 1) {
-                        let singleBatch = batches[0];
-                        $row.find('.sb-item-batch-no').val(singleBatch && singleBatch.batch_no ? singleBatch.batch_no : '');
-                        if (singleBatch && singleBatch.qty !== undefined && singleBatch.qty !== null) {
-                            let bQty = parseFloat(singleBatch.qty) || 0;
+                    if (!isInitial || !$row.find('.sb-item-batch-no').val()) {
+                        if (batches.length >= 1) {
+                            let singleBatch = batches[0];
+                            $row.find('.sb-item-batch-no').val(singleBatch && singleBatch.batch_no ? singleBatch.batch_no : '');
+                            if (singleBatch && singleBatch.qty !== undefined && singleBatch.qty !== null) {
+                                let bQty = parseFloat(singleBatch.qty) || 0;
+                                $row.find('.sb-item-batch-stock').val(bQty);
+                                $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
+                            }
+                        } else {
+                            $row.find('.sb-item-batch-no').val('');
+                            let bQty = parseFloat(item.stock) || 0;
                             $row.find('.sb-item-batch-stock').val(bQty);
                             $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
                         }
                     } else {
-                        $row.find('.sb-item-batch-no').val('');
-                        let bQty = parseFloat(item.stock) || 0;
-                        $row.find('.sb-item-batch-stock').val(bQty);
-                        $row.data('batch-stock', bQty).attr('data-batch-stock', bQty);
+                        // For existing line on edit, preserve current batch & ensure batch_stock incorporates live stock
+                        let existingBatchNo = ($row.find('.sb-item-batch-no').val() || '').trim();
+                        let matched = batches.find(b => (b.raw_batch_no || b.batch_no || '').trim().toLowerCase() === existingBatchNo.toLowerCase());
+                        if (matched && matched.qty !== undefined && matched.qty !== null) {
+                            let mQty = parseFloat(matched.qty) || 0;
+                            let curBStock = parseFloat($row.find('.sb-item-batch-stock').val()) || 0;
+                            let finalStock = Math.max(curBStock, mQty);
+                            $row.find('.sb-item-batch-stock').val(finalStock);
+                            $row.data('batch-stock', finalStock).attr('data-batch-stock', finalStock);
+                        }
                     }
 
                     if (batches.length === 1) {
@@ -3564,6 +3623,78 @@
             } else if (elRect.top < containerRect.top + headerHeight) {
                 container.scrollTop -= (containerRect.top + headerHeight - elRect.top) + 6;
             }
+        });
+
+        // 4.5. Split Row (for different discount or B2G1 free line)
+        $('#sb-items-body').on('click', '.sb-split-row', function () {
+            let $row = $(this).closest('tr');
+            let itemId = $row.find('.sb-item-select').val();
+            if (!itemId) return;
+
+            let currentQty = parseFloat($row.find('.sb-qty').val()) || 0;
+            let stock = parseFloat($row.attr('data-stock') || $row.find('.sb-item-stock-val').val()) || null;
+            let allowNeg = $row.attr('data-allow-negative-stock') === '1';
+
+            let totalUsed = 0;
+            $('#sb-items-body tr').each(function () {
+                if ($(this).find('.sb-item-select').val() == itemId) {
+                    totalUsed += parseFloat($(this).find('.sb-qty').val()) || 0;
+                }
+            });
+
+            if (currentQty > 1) {
+                $row.find('.sb-qty').val(currentQty - 1);
+                calculateRow($row, 'base');
+            } else {
+                if (!allowNeg && stock !== null && (totalUsed + 1) > (stock + 0.0001)) {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error('Cannot add new line: Insufficient stock (' + stock + ' available).');
+                    } else {
+                        alert('Cannot add new line: Insufficient stock (' + stock + ' available).');
+                    }
+                    return;
+                }
+            }
+
+            let html = $('#sb-row-template').html().replaceAll('__INDEX__', rowIndex);
+            let $newRow = $(html);
+            $newRow.find('input').attr('autocomplete', 'off');
+            rowIndex++;
+
+            $newRow.find('.sb-item-code').val($row.find('.sb-item-code').val());
+            $newRow.find('.sb-item-desc').val($row.find('.sb-item-desc').val());
+            $newRow.find('.sb-item-select').val(itemId);
+            $newRow.find('.sb-item-stock-val').val($row.find('.sb-item-stock-val').val());
+            $newRow.attr('data-stock', $row.attr('data-stock'));
+            $newRow.attr('data-batch-stock', $row.attr('data-batch-stock'));
+            $newRow.attr('data-allow-negative-stock', $row.attr('data-allow-negative-stock'));
+            $newRow.find('.sb-item-batch-no').val($row.find('.sb-item-batch-no').val());
+            $newRow.find('.sb-item-batch-stock').val($row.find('.sb-item-batch-stock').val());
+            $newRow.find('.sb-exp-date').val($row.find('.sb-exp-date').val());
+            $newRow.find('.sb-sell-price').val($row.find('.sb-sell-price').val());
+            $newRow.find('.sb-mrp').val($row.find('.sb-mrp').val());
+            $newRow.find('.sb-gst-percent').val($row.find('.sb-gst-percent').val());
+
+            $newRow.find('.sb-qty').val(1);
+            $newRow.find('.sb-disc-percent').val('');
+            $newRow.find('.sb-disc-amount').val('');
+
+            if ($row.data('batches')) {
+                $newRow.data('batches', $row.data('batches'));
+                if ($row.data('batches').length > 1) {
+                    $newRow.find('.sb-batch-btn-wrap').removeClass('d-none');
+                }
+            }
+
+            $row.after($newRow);
+            updateRowNumbers();
+            calculateRow($newRow, 'base');
+            calculateTotals();
+
+            if (typeof toastr !== 'undefined') {
+                toastr.success('Item split into new row! You can now apply different discount or make it free (B2G1).');
+            }
+            $newRow.find('.sb-disc-percent').focus().select();
         });
 
         // 5. Remove Row

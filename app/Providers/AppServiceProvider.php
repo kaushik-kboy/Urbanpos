@@ -28,12 +28,12 @@ class AppServiceProvider extends ServiceProvider
         date_default_timezone_set('Asia/Kolkata');
         Paginator::useBootstrapFour();
 
-        // Super-admin bypass is limited to explicit super-user roles (and the seeded user id 1).
+        // Super-admin bypass is limited to explicit super-user roles.
         // Manager is deliberately NOT here: it must go through the seeded permission set so
         // Owner-only actions (users, financial years, item price edits) stay blocked.
         // Never match on name/email substrings - any user could otherwise self-elevate.
         Gate::before(function ($user, string $ability) {
-            if ($user->id === 1 || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator'])) {
+            if ($user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator'])) {
                 return true;
             }
             return null;
@@ -41,7 +41,33 @@ class AppServiceProvider extends ServiceProvider
 
         // Gate for management tools (backups, health, validations)
         Gate::define('manage-tools', function ($user) {
-            return $user->id === 1 || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']);
+            return $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']);
+        });
+
+        // Granular Report Category & Menu Gates
+        Gate::define('access-reports-menu', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasAnyReportAccess($user);
+        });
+        Gate::define('access-sales-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Sales');
+        });
+        Gate::define('access-purchase-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Purchase');
+        });
+        Gate::define('access-inventory-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Inventory');
+        });
+        Gate::define('access-masters-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Masters');
+        });
+        Gate::define('access-audit-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Audit');
+        });
+        Gate::define('access-finance-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Finance');
+        });
+        Gate::define('access-production-reports', function ($user) {
+            return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Production');
         });
 
         // Ensure URLs, assets and routes use HTTPS when served over HTTPS or behind an SSL reverse proxy

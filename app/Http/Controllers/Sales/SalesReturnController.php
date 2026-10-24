@@ -41,8 +41,8 @@ class SalesReturnController extends Controller
                     ->orWhereHas('salesBill', fn ($bq) => $bq->where('bill_number', 'like', "%{$term}%"))
                     ->orWhereHas('customer', function ($cq) use ($term) {
                         $cq->where('name', 'like', "%{$term}%")
-                            ->orWhere('phone', 'like', "%{$term}%")
-                            ->orWhere('customer_code', 'like', "%{$term}%");
+                            ->orWhere('mobile', 'like', "%{$term}%")
+                            ->orWhere('phone', 'like', "%{$term}%");
                     });
             });
         }

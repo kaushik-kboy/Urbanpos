@@ -35,13 +35,32 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    protected function checkReportAccess(string $slug, string $action = 'view'): void
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401);
+        }
+        if (! \App\Services\Reports\ReportPermissionRegistry::canAccess($user, $slug, $action)) {
+            abort(403, "Unauthorized access. You do not have permission to {$action} the '{$slug}' report.");
+        }
+    }
+
     public function index()
     {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401);
+        }
+        if (! \App\Services\Reports\ReportPermissionRegistry::hasAnyReportAccess($user)) {
+            abort(403, 'Unauthorized access to reports center.');
+        }
         return view('reports.index');
     }
 
     public function salesSummary(Request $request)
     {
+        $this->checkReportAccess('sales-summary');
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
         $rows = collect();
@@ -228,8 +247,8 @@ class ReportController extends Controller
                 'freight'          => $freight,
                 'total_bills'      => $totalBills,
                 'gst_tax_amt'      => $tax,
-                'sgst_tax_amt'     => $sgst,
-                'cgst_tax_amt'     => $cgst,
+                'sgst_tax_amt'     => $igst > 0 ? $sgst : round(max(0.0, $tax - $igst) / 2, 2),
+                'cgst_tax_amt'     => $igst > 0 ? $cgst : round(max(0.0, $tax - $igst) / 2, 2),
                 'igst_tax_amt'     => $igst,
                 'gst_cess_amt'     => $cess,
                 'redeemed_point'   => $redeemedPoint,
@@ -1576,6 +1595,7 @@ class ReportController extends Controller
         $search = $request->input('search');
 
         $isExport = in_array(strtolower((string) $request->input('export', $request->query('export', ''))), ['excel', 'xlsx', 'csv']);
+        $this->checkReportAccess($module, $isExport ? 'export' : 'view');
         if ($isExport) {
             @ini_set('memory_limit', '512M');
             @ini_set('max_execution_time', '300');

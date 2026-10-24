@@ -22,10 +22,6 @@ class DatabaseBackupController extends Controller
             abort(401);
         }
 
-        if ((int) $user->id === 1) {
-            return;
-        }
-
         if ($user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])) {
             return;
         }

@@ -104,24 +104,35 @@
             margin: 0 auto;
         }
         .format-50x25_2up .label-prices {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             font-size: 7.5pt;
             font-weight: 700;
-            line-height: 1.1;
-            border-top: 0.8px solid #000;
-            padding-top: 0.5mm;
+            border-top: 1px solid #000;
+            padding-top: 0.3mm;
+            margin: 0;
+        }
+        .format-50x25_2up .label-prices-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            width: 100%;
         }
         .format-50x25_2up .label-mrp {
-            font-size: 7pt;
+            font-size: 6.5pt;
             text-decoration: line-through;
             color: #334155;
+            white-space: nowrap;
+        }
+        .format-50x25_2up .label-mrp-plain {
+            font-size: 6.5pt;
+            font-weight: 700;
+            color: #334155;
+            white-space: nowrap;
         }
         .format-50x25_2up .label-sell {
             font-size: 10.5pt;
             font-weight: 900;
             color: #000;
+            white-space: nowrap;
         }
 
         /* ── 50x38mm 2-Up ─────────────────────────────────────────────────── */
@@ -189,19 +200,30 @@
             border-top: 1px solid #000;
             padding-top: 0.5mm;
             margin: 0;
+        }
+        .format-50x38_2up .label-prices-flex {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
+            width: 100%;
         }
         .format-50x38_2up .label-mrp {
-            font-size: 7pt;
+            font-size: 7.5pt;
             text-decoration: line-through;
             color: #334155;
+            white-space: nowrap;
+        }
+        .format-50x38_2up .label-mrp-plain {
+            font-size: 7.5pt;
+            font-weight: 700;
+            color: #334155;
+            white-space: nowrap;
         }
         .format-50x38_2up .label-sell {
             font-size: 11.5pt;
             font-weight: 900;
             color: #000;
+            white-space: nowrap;
         }
 
         /* ── Scale Size Modifiers (Normal / Large / Extra Large) ───────────── */
@@ -534,6 +556,23 @@
             transform: rotate(270deg);
         }
 
+        @page {
+            margin: 0mm !important;
+            @if($format === '50x38_2up')
+            size: 102mm 38mm;
+            @elseif($format === '50x25_2up')
+            size: 102mm 25mm;
+            @elseif($format === '50x50_2up')
+            size: 102mm 50mm;
+            @elseif($format === '102x64')
+            size: 102mm 64mm;
+            @elseif($format === '50x25')
+            size: 50mm 25mm;
+            @elseif(in_array($format, ['a4', 'a4_24', 'a4_40']))
+            size: 210mm 297mm;
+            @endif
+        }
+
         /* ── Print Media Queries ───────────────────────────────────────────── */
         @media print {
             .print-toolbar, .print-instructions, .no-print {
@@ -836,9 +875,9 @@
                 <i class="fas fa-vial mr-1"></i> Test 1 Row (2 Stickers)
             </button>
 
-            {{-- 1-Click Direct Print to TSC TE244 --}}
-            <button type="button" class="btn btn-primary font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="directPrintTsc()" title="Bina Chrome dialog khole seedha TSC TE244 printer par print karein">
-                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Direct Print (TSC TE244)
+            {{-- 1-Click Direct Print to TSC TE244 via Chrome --}}
+            <button type="button" class="btn btn-primary font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="window.print()" title="Chrome print dialog kholein calibrated TSC settings ke saath">
+                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Print (Chrome)
             </button>
 
             {{-- Main Print via Browser Dialog --}}
@@ -960,16 +999,22 @@
                                     <div class="label-barcode-wrap">
                                         <svg class="label-barcode-svg" data-barcode="{{ $lbl['barcode'] }}"></svg>
                                     </div>
-                                    <div class="label-prices">
+                                    <div class="label-prices label-prices-flex">
+                                        @php
+                                            $mrpVal = (float)($lbl['mrp'] ?? 0);
+                                            $sellVal = (float)($lbl['sell_price'] ?? 0);
+                                            $mDec = ($mrpVal == (int)$mrpVal) ? 0 : 2;
+                                            $sDec = ($sellVal == (int)$sellVal) ? 0 : 2;
+                                        @endphp
                                         @if($opts['show_mrp'])
-                                            @if($lbl['mrp'] > $lbl['sell_price'])
-                                                <span class="label-mrp">MRP: ₹{{ number_format($lbl['mrp'], 2) }}</span>
+                                            @if($mrpVal > $sellVal)
+                                                <span class="label-mrp">MRP: ₹{{ number_format($mrpVal, $mDec) }}</span>
                                             @else
-                                                <span class="small font-weight-bold text-muted" style="font-size: 5pt;">INCL. TAX</span>
+                                                <span class="label-mrp-plain">MRP: ₹{{ number_format($mrpVal, $mDec) }}</span>
                                             @endif
                                         @endif
                                         @if($opts['show_sell'])
-                                            <span class="label-sell">₹{{ number_format($lbl['sell_price'], 2) }}</span>
+                                            <span class="label-sell">₹{{ number_format($sellVal, $sDec) }}</span>
                                         @endif
                                         @if($opts['show_exp'] && !empty($lbl['exp_date']))
                                             <span class="label-exp">{{ substr($lbl['exp_date'], 5) }}</span>
@@ -1256,32 +1301,16 @@
         });
 
         function directPrintTsc() {
-            const $btn = $('#btnDirectPrint');
-            const originalHtml = $btn.html();
-            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing to TSC…');
-
-            const url = '{{ route("master.barcodes.direct-print") }}' + window.location.search;
-
-            $.ajax({
-                url: url,
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                dataType: 'json'
-            }).done(function (res) {
-                $btn.prop('disabled', false).html(originalHtml);
-                if (res && res.success) {
-                    alert('✅ ' + (res.message || 'Stickers printed successfully!'));
-                } else {
-                    alert('⚠️ ' + (res.message || 'Failed to print stickers'));
-                }
-            }).fail(function (xhr) {
-                $btn.prop('disabled', false).html(originalHtml);
-                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error printing stickers directly';
-                alert('❌ ' + msg);
-            });
+            window.print();
         }
+
+        $(document).ready(function () {
+            @if(request()->boolean('autoprint') || request()->has('autoprint') || request()->has('direct'))
+            setTimeout(function () {
+                window.print();
+            }, 450);
+            @endif
+        });
     </script>
 </body>
 </html>

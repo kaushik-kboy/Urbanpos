@@ -37,8 +37,11 @@
             <button type="button" class="btn btn-outline-success btn-sm font-weight-bold mr-2 mb-1" id="btn-perm-select-all">
                 <i class="fas fa-check-double mr-1"></i> Select All (Global)
             </button>
-            <button type="button" class="btn btn-outline-secondary btn-sm font-weight-bold mr-2 mb-1" id="btn-perm-deselect-all">
-                <i class="fas fa-times mr-1"></i> Deselect All
+            <button type="button" class="btn btn-outline-info btn-sm font-weight-bold mr-2 mb-1" id="btn-perm-expand-all">
+                <i class="fas fa-expand-alt mr-1"></i> Expand All
+            </button>
+            <button type="button" class="btn btn-outline-dark btn-sm font-weight-bold mr-2 mb-1" id="btn-perm-collapse-all">
+                <i class="fas fa-compress-alt mr-1"></i> Collapse All
             </button>
             <span class="badge badge-primary px-3 py-2 font-weight-bold mb-1 shadow-sm" style="font-size: 0.9rem;" id="perm-selected-counter">
                 0 Selected
@@ -68,18 +71,28 @@
 <!-- Permission Groups Accordions / Cards -->
 <div class="row" id="permission-groups-container">
     @foreach ($permissionGroups as $groupKey => $group)
+        @php
+            $isReportGroup = str_starts_with($groupKey, 'reports-');
+        @endphp
         <div class="col-12 mb-4 perm-group-wrapper" data-group-key="{{ $groupKey }}">
-            <div class="card card-outline card-secondary shadow-sm mb-0">
+            <div class="card card-outline {{ $isReportGroup ? 'card-primary' : 'card-secondary' }} shadow-sm mb-0">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center flex-wrap">
                         <i class="{{ $group['icon'] }} fa-lg mr-2"></i>
                         <h6 class="font-weight-bold text-dark mb-0 perm-group-title" style="font-size: 1.05rem;">
                             {{ $group['label'] }}
                         </h6>
+                        @if($isReportGroup)
+                            <span class="badge badge-info ml-2 px-2 py-1 font-weight-bold" style="font-size: 0.75rem;">Reports</span>
+                        @endif
+                        <span class="badge badge-light border ml-2 text-muted font-weight-normal" style="font-size: 0.75rem;">{{ count($group['modules']) }} items</span>
                     </div>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-xs btn-outline-primary font-weight-bold btn-group-toggle-all mr-1" data-group="{{ $groupKey }}">
+                    <div class="card-tools d-flex align-items-center">
+                        <button type="button" class="btn btn-xs btn-outline-primary font-weight-bold btn-group-toggle-all mr-2" data-group="{{ $groupKey }}">
                             <i class="fas fa-check mr-1"></i> Toggle All
+                        </button>
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
                         </button>
                     </div>
                 </div>
@@ -181,6 +194,16 @@ $(document).ready(function () {
     $('#btn-perm-deselect-all').on('click', function () {
         $('.perm-checkbox:visible').prop('checked', false);
         updateCounter();
+    });
+
+    // Expand All Cards
+    $('#btn-perm-expand-all').on('click', function () {
+        $('.perm-group-wrapper .card.collapsed-card').find('[data-card-widget="collapse"]').click();
+    });
+
+    // Collapse All Cards
+    $('#btn-perm-collapse-all').on('click', function () {
+        $('.perm-group-wrapper .card:not(.collapsed-card)').find('[data-card-widget="collapse"]').click();
     });
 
     // Module Group Toggle All

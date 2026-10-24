@@ -207,20 +207,7 @@ class RoleController extends Controller
                     'till' => ['label' => 'Cash Drawer Shift Management', 'actions' => ['open' => 'Open Shift Float', 'close' => 'Close Shift Cash Count']],
                 ]
             ],
-            'reports' => [
-                'label' => 'Reports & Business Intelligence',
-                'icon' => 'fas fa-chart-line text-primary',
-                'modules' => [
-                    'reports-dashboard' => ['label' => 'Executive Reports Dashboard', 'actions' => ['view' => 'View Dashboard']],
-                    'reports-sales' => ['label' => 'Sales, Invoices & Margin Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
-                    'reports-purchase' => ['label' => 'Purchase, Vendor & Inward Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
-                    'reports-inventory' => ['label' => 'Stock, Transit & Movement Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
-                    'reports-finance' => ['label' => 'Finance, Day Book & General Ledger Reports', 'actions' => ['view' => 'View Reports', 'export' => 'Export CSV/Excel']],
-                    'reports-audit' => ['label' => 'Audit Trail & Login History Reports', 'actions' => ['view' => 'View Audit Reports']],
-                    'reports-analytics-builder' => ['label' => 'Custom Report Studio (Dynamic Builder)', 'actions' => ['view' => 'View Studio', 'create' => 'Generate & Save', 'cancel' => 'Delete Custom Reports']],
-                    'reports-smart-analytics' => ['label' => 'Smart Item & Customer 360° Analytics', 'actions' => ['view' => 'View Analytics', 'export' => 'Export Analytics']],
-                ]
-            ],
+            ...(\App\Services\Reports\ReportPermissionRegistry::getPermissionGroups()),
             'compliance' => [
                 'label' => 'GST, E-Way Bill & E-Invoice Compliance',
                 'icon' => 'fas fa-file-invoice text-success',

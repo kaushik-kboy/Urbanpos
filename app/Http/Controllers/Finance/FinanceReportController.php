@@ -14,8 +14,20 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class FinanceReportController extends Controller
 {
+    protected function checkReportAccess(string $slug, string $action = 'view'): void
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401);
+        }
+        if (! \App\Services\Reports\ReportPermissionRegistry::canAccess($user, $slug, $action)) {
+            abort(403, "Unauthorized access. You do not have permission to {$action} the '{$slug}' report.");
+        }
+    }
+
     public function index()
     {
+        $this->checkReportAccess('finance-all');
         return view('finance.reports.index');
     }
 
@@ -46,6 +58,7 @@ class FinanceReportController extends Controller
 
     public function generalLedger(Request $request)
     {
+        $this->checkReportAccess('general-ledger');
         $ledgerId = $request->input('ledger_id');
         $from = $request->input('from', now()->startOfMonth()->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
@@ -112,6 +125,7 @@ class FinanceReportController extends Controller
 
     public function dayBook(Request $request)
     {
+        $this->checkReportAccess('day-book');
         $from = $request->input('from', now()->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
         $branchId = $request->input('branch_id');
@@ -188,6 +202,7 @@ class FinanceReportController extends Controller
 
     public function trialBalance(Request $request)
     {
+        $this->checkReportAccess('trial-balance');
         $asOf = $request->input('as_of', now()->format('Y-m-d'));
 
         $ledgers = Ledger::orderBy('ledger_group')->orderBy('name')->get()->map(function (Ledger $ledger) use ($asOf) {
@@ -235,6 +250,7 @@ class FinanceReportController extends Controller
 
     public function profitLoss(Request $request)
     {
+        $this->checkReportAccess('profit-loss');
         $from = $request->input('from', now()->startOfYear()->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
         $branchId = $request->input('branch_id');
@@ -326,6 +342,7 @@ class FinanceReportController extends Controller
 
     public function cashBankBook(Request $request)
     {
+        $this->checkReportAccess('cash-bank-book');
         $from = $request->input('from', now()->startOfMonth()->format('Y-m-d'));
         $to = $request->input('to', now()->format('Y-m-d'));
         $accountType = $request->input('account_type', 'All');
@@ -418,6 +435,7 @@ class FinanceReportController extends Controller
 
     public function outstandingAging(Request $request)
     {
+        $this->checkReportAccess('outstanding-aging');
         $partyType = $request->input('party_type', 'Customer') === 'Supplier' ? 'Supplier' : 'Customer';
         $branchId = $request->input('branch_id');
         $asOfDate = $request->input('as_of_date', now()->format('Y-m-d'));

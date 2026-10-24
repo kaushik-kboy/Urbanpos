@@ -1,13 +1,16 @@
 @extends('adminlte::page')
 
-@section('title', 'Sales Types Master')
+@section('title', 'Sales Bill Types Master')
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-file-contract mr-2 text-primary"></i>Sales Types Master</h1>
         <div>
-            <a href="{{ route('master.sales-types.create') }}" class="btn btn-primary font-weight-bold">
-                <i class="fas fa-plus mr-1"></i> Add Sales Type
+            <h1 class="m-0 text-dark font-weight-bold"><i class="fas fa-file-contract mr-2 text-primary"></i>Sales Bill Types Master</h1>
+            <p class="text-muted small mb-0">Branch-wise Sales Bill Types configuration (e.g., Motera: Retail, Home, Spa | Satellite: B2B, IPC, Home, Retail).</p>
+        </div>
+        <div>
+            <a href="{{ route('master.sales-types.create') }}" class="btn btn-primary font-weight-bold shadow-sm">
+                <i class="fas fa-plus mr-1"></i> Add Sales Bill Type
             </a>
         </div>
     </div>
@@ -42,8 +45,26 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-3 mb-2 mb-md-0">
+                    <select name="branch_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                        <option value="all">-- All Branches --</option>
+                        @if(isset($branches))
+                            @foreach($branches as $bId => $bName)
+                                <option value="{{ $bId }}" @selected(request('branch_id') == $bId)>{{ $bName }}</option>
+                            @endforeach
+                        @endif
+                        <option value="global" @selected(request('branch_id') === 'global')>Global (All Branches)</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2 mb-md-0">
+                    <select name="status" class="form-control form-control-sm" onchange="this.form.submit()">
+                        <option value="all">-- All Status --</option>
+                        <option value="1" @selected(request('status') === '1')>Active</option>
+                        <option value="0" @selected(request('status') === '0')>Inactive</option>
+                    </select>
+                </div>
                 <div class="col-md-2">
-                    @if(request('search'))
+                    @if(request('search') || request('branch_id') || request('status'))
                         <a href="{{ route('master.sales-types.index') }}" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-times mr-1"></i> Clear
                         </a>
@@ -58,8 +79,9 @@
             <table class="table table-hover table-striped mb-0">
                 <thead class="thead-light">
                     <tr>
-                        <th style="width: 60px;">#</th>
-                        <th>Name</th>
+                        <th style="width: 50px;">#</th>
+                        <th>Sales Bill Type</th>
+                        <th>Branch</th>
                         <th>Code</th>
                         <th>Description</th>
                         <th style="width: 100px;">Status</th>
@@ -70,8 +92,17 @@
                     @forelse($salesTypes as $index => $type)
                         <tr>
                             <td>{{ $salesTypes->firstItem() + $index }}</td>
-                            <td class="font-weight-bold text-dark">{{ $type->name }}</td>
-                            <td><span class="badge badge-light border">{{ $type->code ?: '—' }}</span></td>
+                            <td class="font-weight-bold text-dark">
+                                <i class="fas fa-tag text-primary mr-1"></i> {{ $type->name }}
+                            </td>
+                            <td>
+                                @if($type->branch)
+                                    <span class="badge badge-info px-2 py-1"><i class="fas fa-store mr-1"></i>{{ $type->branch->name }}</span>
+                                @else
+                                    <span class="badge badge-secondary px-2 py-1"><i class="fas fa-globe mr-1"></i>Global (All Branches)</span>
+                                @endif
+                            </td>
+                            <td><span class="badge badge-light border font-monospace">{{ $type->code ?: '—' }}</span></td>
                             <td class="text-muted small">{{ $type->description ?: '—' }}</td>
                             <td>
                                 @if($type->status)
@@ -88,8 +119,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">
-                                <i class="fas fa-info-circle mr-1"></i> No Sales Types found.
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="fas fa-info-circle mr-1"></i> No Sales Bill Types found.
                             </td>
                         </tr>
                     @endforelse

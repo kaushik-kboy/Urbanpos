@@ -32,7 +32,7 @@
         $expDateVal = is_string($line->exp_date) ? $line->exp_date : optional($line->exp_date)->format('Y-m-d');
     }
 @endphp
-<tr data-stock="{{ $lineStock }}" data-batch-stock="{{ $line->batch_stock ?? '' }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
+<tr data-stock="{{ $lineStock }}" data-batch-stock="{{ $line->batch_stock ?? '' }}" data-original-qty="{{ $line->qty ?? 0 }}" data-allow-negative-stock="{{ !empty($selectedItem?->allow_negative_stock) ? '1' : '0' }}">
     <td class="text-center align-middle font-weight-bold sb-sr-no" data-col-key="seq">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
     <td style="min-width: 110px;" data-col-key="code">
         <input type="text" class="form-control form-control-sm sb-item-code font-weight-bold" value="{{ $itemCodeVal }}" autocomplete="off" placeholder="Code / Barcode" title="Code / Barcode">
@@ -52,6 +52,7 @@
         <input type="hidden" name="items[{{ $index }}][stock]" class="sb-item-stock-val" value="{{ $lineStock }}">
         <input type="hidden" name="items[{{ $index }}][batch_no]" class="sb-item-batch-no" value="{{ $line->batch_no ?? '' }}">
         <input type="hidden" name="items[{{ $index }}][batch_stock]" class="sb-item-batch-stock" value="{{ $line->batch_stock ?? '' }}">
+        <input type="hidden" name="items[{{ $index }}][original_qty]" class="sb-item-original-qty" value="{{ $line->qty ?? 0 }}">
     </td>
     <td style="width: 135px;" data-col-key="expiry" title="Expiry date (Read-only)">
         <div class="input-group input-group-sm">
@@ -95,7 +96,8 @@
         <input type="text" class="form-control form-control-sm sb-gst-tax-amount text-right bg-light font-weight-bold" readonly tabindex="-1" value="{{ $gstTaxAmtVal }}" placeholder="0.00" title="Included GST Amount">
     </td>
     <td style="width: 105px;" class="text-right align-middle font-weight-bold text-success sb-row-net" data-col-key="net_amt">{{ $netAmtVal }}</td>
-    <td style="width: 35px;" class="text-center align-middle" data-col-key="actions">
+    <td style="width: 65px;" class="text-center align-middle text-nowrap" data-col-key="actions">
+        <button type="button" tabindex="-1" class="btn btn-xs btn-outline-primary sb-split-row mr-1" title="Split into new row (for different discount or B2G1 free)"><i class="fas fa-columns"></i></button>
         <button type="button" tabindex="-1" class="btn btn-xs btn-outline-danger sb-remove-row"><i class="fas fa-times"></i></button>
     </td>
 </tr>
