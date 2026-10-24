@@ -251,17 +251,11 @@ class CustomerController extends Controller
             ]);
         }
 
-        $salesTypesQuery = SalesType::where('status', true);
-        if ($customer?->sales_type) {
-            $salesTypesQuery->orWhere('name', $customer->sales_type);
-        }
-        $salesTypes = $salesTypesQuery->orderBy('name')->pluck('name', 'name');
-        if ($salesTypes->isEmpty()) {
-            $salesTypes = collect([
-                'Local' => 'Local',
-                'Interstate' => 'Interstate',
-            ]);
-        }
+        // Customer's sales_type represents Tax Territory (Local vs Interstate)
+        $salesTypes = collect([
+            'Local' => 'Local (Intra-state)',
+            'Interstate' => 'Interstate',
+        ]);
 
         $user = auth()->user();
         $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
@@ -291,12 +285,22 @@ class CustomerController extends Controller
             $activeCustomerTypes = ['RETAIL INVOICE', 'TAX INVOICE', 'EXEMPTED', 'E-COMMERCE'];
         }
 
-        $activeSalesTypes = SalesType::where('status', true)->pluck('name')->toArray();
-        if ($customer?->sales_type) {
-            $activeSalesTypes[] = $customer->sales_type;
+        // Normalize sales_type if sent as "Local (Intra-state)" or similar
+        if ($request->has('sales_type')) {
+            $st = trim((string) $request->input('sales_type'));
+            if (stripos($st, 'local') !== false) {
+                $request->merge(['sales_type' => 'Local']);
+            } elseif (stripos($st, 'inter') !== false) {
+                $request->merge(['sales_type' => 'Interstate']);
+            }
         }
-        if (empty($activeSalesTypes)) {
-            $activeSalesTypes = ['Local', 'Interstate'];
+
+        // Customer's sales_type represents Tax Territory (Local vs Interstate) as defined in customers enum.
+        $allowedSalesTypes = ['Local', 'Interstate'];
+        $dbSalesTypes = SalesType::where('status', true)->pluck('name')->toArray();
+        $allowedSalesTypes = array_unique(array_merge($allowedSalesTypes, $dbSalesTypes));
+        if ($customer?->sales_type) {
+            $allowedSalesTypes[] = $customer->sales_type;
         }
 
         $rules = [
@@ -305,7 +309,7 @@ class CustomerController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'customer_category_id' => ['nullable', 'exists:customer_categories,id'],
             'customer_code' => ['nullable', 'string', 'max:100'],
-            'sales_type' => ['required', Rule::in($activeSalesTypes)],
+            'sales_type' => ['required', Rule::in($allowedSalesTypes)],
             'payment_mode' => ['required', 'in:Cash Only,No Credit,Credit Only,Both Cash and Credit,Cash on Delivery'],
             'credit_limit' => ['required', 'numeric', 'min:0'],
             'credit_balance' => ['required', 'numeric', 'min:0'],

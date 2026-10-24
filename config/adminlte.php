@@ -1063,6 +1063,7 @@ return [
                     'icon' => 'fas fa-fw fa-plug',
                     'can' => ['whatsapp-settings.edit', 'einvoices.view', 'gst-returns.view', 'users.create'],
                     'submenu' => [
+                        ['text' => 'Module & Menu Integration', 'url' => 'tools/module-integrations', 'icon' => 'fas fa-fw fa-toggle-on text-primary', 'active' => ['tools/module-integrations*'], 'can' => 'users.create'],
                         ['text' => 'WhatsApp Integration', 'url' => 'tools/whatsapp-settings', 'icon' => 'fab fa-fw fa-whatsapp text-success', 'active' => ['tools/whatsapp-settings*'], 'can' => ['whatsapp-settings.edit', 'whatsapp-settings.send']],
                         ['text' => 'GoFrugal Alert', 'url' => 'tools/integrations-alert', 'icon' => 'fas fa-fw fa-bell', 'can' => 'users.create'],
                         ['text' => 'GST Efiling', 'url' => 'tools/integrations-gst', 'icon' => 'fas fa-fw fa-cloud-upload-alt', 'can' => ['einvoices.view', 'gst-returns.view']],
@@ -1225,6 +1226,7 @@ return [
 
     'filters' => [
         JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter::class,
+        \App\Services\Menu\MenuVisibilityFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter::class,
         JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter::class,

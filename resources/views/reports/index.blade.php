@@ -3,15 +3,20 @@
 @section('title', 'Reports Center')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-chart-pie mr-2 text-primary"></i> Reports Center</h1>
-        <div>
-            <a href="{{ route('reports.index') }}" class="btn btn-sm {{ !request('group') ? 'btn-primary' : 'btn-outline-secondary' }}">All</a>
-            <a href="{{ route('reports.index', ['group' => 'sales']) }}" class="btn btn-sm {{ request('group') === 'sales' ? 'btn-primary' : 'btn-outline-secondary' }}">Sales</a>
-            <a href="{{ route('reports.index', ['group' => 'purchase']) }}" class="btn btn-sm {{ request('group') === 'purchase' ? 'btn-primary' : 'btn-outline-secondary' }}">Purchase</a>
-            <a href="{{ route('reports.index', ['group' => 'inventory']) }}" class="btn btn-sm {{ request('group') === 'inventory' ? 'btn-primary' : 'btn-outline-secondary' }}">Inventory</a>
-            <a href="{{ route('reports.index', ['group' => 'audit']) }}" class="btn btn-sm {{ request('group') === 'audit' ? 'btn-primary' : 'btn-outline-secondary' }}">Audit</a>
-            <a href="{{ route('reports.index', ['group' => 'finance']) }}" class="btn btn-sm {{ request('group') === 'finance' ? 'btn-primary' : 'btn-outline-secondary' }}">Finance</a>
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+        <h1 class="mb-2 mb-md-0"><i class="fas fa-chart-pie mr-2 text-primary"></i> Reports Center</h1>
+        <div class="d-flex flex-wrap align-items-center">
+            <div class="btn-group mr-2 mb-2 mb-md-0">
+                <a href="{{ route('reports.index') }}" class="btn btn-sm {{ !request('group') ? 'btn-primary' : 'btn-outline-secondary' }}">All</a>
+                <a href="{{ route('reports.index', ['group' => 'sales']) }}" class="btn btn-sm {{ request('group') === 'sales' ? 'btn-primary' : 'btn-outline-secondary' }}">Sales</a>
+                <a href="{{ route('reports.index', ['group' => 'purchase']) }}" class="btn btn-sm {{ request('group') === 'purchase' ? 'btn-primary' : 'btn-outline-secondary' }}">Purchase</a>
+                <a href="{{ route('reports.index', ['group' => 'inventory']) }}" class="btn btn-sm {{ request('group') === 'inventory' ? 'btn-primary' : 'btn-outline-secondary' }}">Inventory</a>
+                <a href="{{ route('reports.index', ['group' => 'audit']) }}" class="btn btn-sm {{ request('group') === 'audit' ? 'btn-primary' : 'btn-outline-secondary' }}">Audit</a>
+                <a href="{{ route('reports.index', ['group' => 'finance']) }}" class="btn btn-sm {{ request('group') === 'finance' ? 'btn-primary' : 'btn-outline-secondary' }}">Finance</a>
+            </div>
+            <a href="{{ route('tools.module-integrations.index') }}" class="btn btn-sm btn-outline-primary shadow-sm font-weight-bold mb-2 mb-md-0">
+                <i class="fas fa-sliders-h mr-1"></i> Customize Visible Reports
+            </a>
         </div>
     </div>
 @stop

@@ -448,6 +448,13 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('gofrugal-sync', [\App\Http\Controllers\Tools\GofrugalSyncController::class, 'index'])->name('gofrugal-sync');
     Route::post('gofrugal-sync/trigger', [\App\Http\Controllers\Tools\GofrugalSyncController::class, 'triggerSync'])->name('gofrugal-sync.trigger');
 
+    // Module & Menu Integration Manager
+    Route::get('module-integrations', [\App\Http\Controllers\Tools\MenuIntegrationController::class, 'index'])->name('module-integrations.index');
+    Route::post('module-integrations/toggle', [\App\Http\Controllers\Tools\MenuIntegrationController::class, 'toggle'])->name('module-integrations.toggle');
+    Route::post('module-integrations/bulk', [\App\Http\Controllers\Tools\MenuIntegrationController::class, 'bulkToggle'])->name('module-integrations.bulk');
+    Route::post('module-integrations/preset', [\App\Http\Controllers\Tools\MenuIntegrationController::class, 'applyPreset'])->name('module-integrations.preset');
+    Route::post('module-integrations/reset', [\App\Http\Controllers\Tools\MenuIntegrationController::class, 'reset'])->name('module-integrations.reset');
+
     Route::get('{module}', [ToolsController::class, 'renderModule'])->name('module');
 });
 
