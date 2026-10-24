@@ -1589,9 +1589,7 @@ class ReportController extends Controller
     {
         $branches = $this->getBranchesForUser();
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
-        if ($branchId) {
-            $request->merge(['branch_id' => $branchId]);
-        }
+        $request->merge(['branch_id' => $branchId ?: 'all']);
         $search = $request->input('search');
 
         $isExport = in_array(strtolower((string) $request->input('export', $request->query('export', ''))), ['excel', 'xlsx', 'csv']);
@@ -1691,7 +1689,11 @@ class ReportController extends Controller
             return true;
         }
 
-        if ($user->email === 'admin@urbanpos.com' || $user->branch_id === null) {
+        if ($user->email === 'admin@urbanpos.com'
+            || $user->branch_id === null
+            || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])
+            || $user->can('reports.view')
+            || $user->can('reports-sales.view')) {
             return true;
         }
 

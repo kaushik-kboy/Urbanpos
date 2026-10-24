@@ -18,8 +18,9 @@ class EnsureActiveBranch
             $firstActiveBranchId = $firstActiveBranch ? (int) $firstActiveBranch->id : 1;
 
             $isGlobalAdmin = $user->branch_id === null
-                || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator'])
-                || $user->email === 'admin@urbanpos.com';
+                || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])
+                || $user->email === 'admin@urbanpos.com'
+                || $user->can('reports.view');
 
             if (! $isGlobalAdmin && $user->branch_id !== null) {
                 // If user is locked to a specific branch, force it if valid, else first active
@@ -27,7 +28,7 @@ class EnsureActiveBranch
                 $activeId = $userBranchValid ? (int) $user->branch_id : $firstActiveBranchId;
                 session(['active_branch_id' => $activeId]);
             } else {
-                // User has access to switch branches (Owner/Admin)
+                // User has access to switch branches (Owner/Admin/Manager)
                 $currentActive = session('active_branch_id');
                 $isValid = $currentActive && Branch::where('id', $currentActive)->where('status', true)->exists();
                 if (! $isValid) {
@@ -35,12 +36,15 @@ class EnsureActiveBranch
                 }
             }
 
-            // Auto-heal incoming query/filter branch_id if present but invalid/stale/empty on GET
+            // Auto-heal incoming query/filter branch_id if present but invalid/stale/empty on GET.
+            // Report routes support 'all', '0', or empty to mean consolidated/all branches; never overwrite report filters.
             if ($request->isMethod('GET') && $request->has('branch_id')) {
-                $rawBranch = $request->input('branch_id');
-                if (empty($rawBranch) || $rawBranch === 'all' || $rawBranch === '0' || ! Branch::where('id', $rawBranch)->where('status', true)->exists()) {
-                    $healedBranchId = session('active_branch_id') ?: $firstActiveBranchId;
-                    $request->merge(['branch_id' => $healedBranchId]);
+                if (! $request->is('reports*') && ! $request->is('*/reports*')) {
+                    $rawBranch = $request->input('branch_id');
+                    if (empty($rawBranch) || $rawBranch === 'all' || $rawBranch === '0' || ! Branch::where('id', $rawBranch)->where('status', true)->exists()) {
+                        $healedBranchId = session('active_branch_id') ?: $firstActiveBranchId;
+                        $request->merge(['branch_id' => $healedBranchId]);
+                    }
                 }
             }
         }

@@ -67,10 +67,10 @@
                         <label class="small font-weight-bold text-muted mb-1">Branch / Location</label>
                         <select name="branch_id" class="form-control form-control-sm" {{ $branches->count() <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
                             @if($branches->count() > 1)
-                                <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Branches / Locations</option>
+                                <option value="all" @selected(empty($branchId) || request('branch_id') === 'all')>All Branches / Locations</option>
                             @endif
                             @foreach ($branches as $id => $name)
-                                <option value="{{ $id }}" @selected((string)($branchId ?? '') === (string)$id)>{{ $name }}</option>
+                                <option value="{{ $id }}" @selected(!empty($branchId) && (string)$branchId === (string)$id)>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>

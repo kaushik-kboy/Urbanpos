@@ -52,7 +52,12 @@ class DynamicReportService
             $to = now()->format('Y-m-d');
         }
         $user = auth()->user();
-        $isGlobalAdmin = ! $user || $user->email === 'admin@urbanpos.com' || $user->branch_id === null;
+        $isGlobalAdmin = ! $user
+            || $user->email === 'admin@urbanpos.com'
+            || $user->branch_id === null
+            || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])
+            || $user->can('reports.view')
+            || $user->can('reports-sales.view');
 
         if (! $isGlobalAdmin && $user && $user->branch_id) {
             $branchId = (string) $user->branch_id;
