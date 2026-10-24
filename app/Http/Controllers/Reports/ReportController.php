@@ -470,11 +470,16 @@ class ReportController extends Controller
             return $this->exportQueryToCsv($query, [
                 'Invoice Date' => '', 'Invoice No' => '', 'Supplier' => '', 'GST No' => '', 'Taxable Amount' => '', 'GST %' => '', 'CGST' => '', 'SGST' => '', 'IGST' => '', 'Freight' => '', 'TCS' => '', 'Total Amount' => '', 'Branch' => '',
             ], 'purchase-detail-report.csv', function ($invoice) {
-                $taxable = $invoice->items->sum(fn ($i) => (float) $i->net_amount - (float) $i->gst_tax_amount);
-                $taxPercents = $invoice->items->pluck('gst_percent')->filter(fn ($p) => !is_null($p))->unique()->sort()->implode(', ');
-                $cgst = (float) ($invoice->total_cgst ?: $invoice->items->sum('cgst_amount'));
-                $sgst = (float) ($invoice->total_sgst ?: $invoice->items->sum('sgst_amount'));
-                $igst = (float) ($invoice->total_igst ?: $invoice->items->sum('igst_amount'));
+                $hasItems = $invoice->items && $invoice->items->isNotEmpty();
+                $taxable = $hasItems
+                    ? $invoice->items->sum(fn ($i) => (float) $i->net_amount - (float) $i->gst_tax_amount)
+                    : max(0.0, (float) $invoice->total - (float) $invoice->total_gst - (float) $invoice->freight - (float) $invoice->tcs_amount - (float) $invoice->round_off);
+                $taxPercents = $hasItems
+                    ? $invoice->items->pluck('gst_percent')->filter(fn ($p) => !is_null($p))->unique()->sort()->implode(', ')
+                    : ($taxable > 0 && (float) $invoice->total_gst > 0 ? (string) round(((float) $invoice->total_gst / $taxable) * 100, 1) : '');
+                $cgst = (float) ($invoice->total_cgst ?: ($hasItems ? $invoice->items->sum('cgst_amount') : 0));
+                $sgst = (float) ($invoice->total_sgst ?: ($hasItems ? $invoice->items->sum('sgst_amount') : 0));
+                $igst = (float) ($invoice->total_igst ?: ($hasItems ? $invoice->items->sum('igst_amount') : 0));
 
                 return [[
                     $invoice->invoice_date->format('d-m-Y'),

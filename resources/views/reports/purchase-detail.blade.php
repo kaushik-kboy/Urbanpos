@@ -22,7 +22,15 @@
                     <label class="small font-weight-bold mb-1">To Date</label>
                     <input type="date" name="to" value="{{ $to }}" class="form-control form-control-sm">
                 </div>
-                <input type="hidden" name="branch_id" value="{{ $branchId }}">
+                <div class="col-md-2 col-sm-6 mb-2">
+                    <label class="small font-weight-bold mb-1">Branch</label>
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="all" @selected(empty($branchId) || request('branch_id') === 'all')>All Branches</option>
+                        @foreach ($branches as $id => $name)
+                            <option value="{{ $id }}" @selected(!empty($branchId) && (string)$branchId === (string)$id)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Supplier</label>
                     <select name="supplier_id" class="form-control form-control-sm">
@@ -41,7 +49,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4 col-sm-12 mb-2">
+                <div class="col-md-3 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply</button>
                     <a href="{{ route('reports.purchase-detail') }}" class="btn btn-outline-secondary btn-sm mr-1"><i class="fas fa-undo"></i> Reset</a>
                     <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm"><i class="fas fa-file-excel mr-1"></i> Export Excel</button>
@@ -84,11 +92,16 @@
                 <tbody>
                     @forelse ($invoices as $invoice)
                         @php
-                            $taxable = $invoice->items->sum(fn ($i) => (float) $i->net_amount - (float) $i->gst_tax_amount);
-                            $taxPercents = $invoice->items->pluck('gst_percent')->filter(fn ($p) => !is_null($p))->unique()->sort()->implode(', ');
-                            $cgst = (float) ($invoice->total_cgst ?: $invoice->items->sum('cgst_amount'));
-                            $sgst = (float) ($invoice->total_sgst ?: $invoice->items->sum('sgst_amount'));
-                            $igst = (float) ($invoice->total_igst ?: $invoice->items->sum('igst_amount'));
+                            $hasItems = $invoice->items && $invoice->items->isNotEmpty();
+                            $taxable = $hasItems
+                                ? $invoice->items->sum(fn ($i) => (float) $i->net_amount - (float) $i->gst_tax_amount)
+                                : max(0.0, (float) $invoice->total - (float) $invoice->total_gst - (float) $invoice->freight - (float) $invoice->tcs_amount - (float) $invoice->round_off);
+                            $taxPercents = $hasItems
+                                ? $invoice->items->pluck('gst_percent')->filter(fn ($p) => !is_null($p))->unique()->sort()->implode(', ')
+                                : ($taxable > 0 && (float) $invoice->total_gst > 0 ? (string) round(((float) $invoice->total_gst / $taxable) * 100, 1) : '');
+                            $cgst = (float) ($invoice->total_cgst ?: ($hasItems ? $invoice->items->sum('cgst_amount') : 0));
+                            $sgst = (float) ($invoice->total_sgst ?: ($hasItems ? $invoice->items->sum('sgst_amount') : 0));
+                            $igst = (float) ($invoice->total_igst ?: ($hasItems ? $invoice->items->sum('igst_amount') : 0));
                             $gstNo = $invoice->supplier_gstin ?: $invoice->supplier?->gst_no;
                         @endphp
                         <tr>
@@ -97,7 +110,7 @@
                             <td>{{ $invoice->supplier?->name ?? 'Unknown Supplier' }}</td>
                             <td><small class="text-muted">{{ $gstNo ?: '—' }}</small></td>
                             <td class="text-right">{{ number_format($taxable, 2) }}</td>
-                            <td class="text-right">{{ $taxPercents ?: '0' }}%</td>
+                            <td class="text-right">{{ $taxPercents !== '' ? $taxPercents . '%' : '0%' }}</td>
                             <td class="text-right">{{ number_format($cgst, 2) }}</td>
                             <td class="text-right">{{ number_format($sgst, 2) }}</td>
                             <td class="text-right">{{ number_format($igst, 2) }}</td>

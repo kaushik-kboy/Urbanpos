@@ -3127,9 +3127,10 @@
                 $('#posCust_customer_code').val(c.customer_code || '');
                 $('#posCust_sales_type').val(c.sales_type || 'Local');
                 $('#posCust_payment_mode').val(c.payment_mode || 'Cash Only');
-                $('#posCust_credit_limit').val(c.credit_limit !== undefined && c.credit_limit !== null ? c.credit_limit : 1000000);
+                $('#posCust_credit_limit').val(c.credit_limit !== undefined && c.credit_limit !== null ? c.credit_limit : 0);
                 $('#posCust_credit_balance').val(c.credit_balance !== undefined && c.credit_balance !== null ? c.credit_balance : 0);
                 $('#posCust_monthly_credit_balance').val(c.monthly_credit_balance !== undefined && c.monthly_credit_balance !== null ? c.monthly_credit_balance : 0);
+                $('#posCust_credit_days').val(c.credit_days !== undefined && c.credit_days !== null ? c.credit_days : 0);
                 $('#posCust_branch_id').val(c.branch_id || '');
                 if (!window.IS_GLOBAL_ADMIN && window.CURRENT_USER_BRANCH_ID) {
                     $('#posCust_branch_id').val(window.CURRENT_USER_BRANCH_ID);

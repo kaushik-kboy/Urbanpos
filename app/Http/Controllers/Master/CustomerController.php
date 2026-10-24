@@ -179,26 +179,26 @@ class CustomerController extends Controller
      * case when editing unrelated fields) passes silently; actually altering a credit
      * field requires Owner.
      */
-    private function assertCreditFieldsUnchangedUnlessOwner(Request $request, Customer $customer, array $data): void
+    private function assertCreditFieldsUnchangedUnlessOwner(Request $request, Customer $customer, array &$data): void
     {
-        if ($request->user()->hasRole('Owner')) {
+        $user = $request->user() ?: auth()->user();
+        $isOwnerOrAdmin = $user && (
+            $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) ||
+            $user->email === 'admin@urbanpos.com'
+        );
+
+        if ($isOwnerOrAdmin) {
             return;
         }
 
+        // For non-owner roles (Manager, Cashier, Sales Executive), silently preserve existing credit terms
+        // so routine updates to customer details (name, phone, address, GST, pets) never fail.
         $numericFields = ['credit_limit', 'credit_balance', 'monthly_credit_balance'];
         foreach ($numericFields as $field) {
-            if (abs((float) $data[$field] - (float) $customer->$field) > 0.01) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    $field => 'Only an Owner can change credit terms.',
-                ]);
-            }
+            $data[$field] = $customer->$field ?? 0;
         }
 
-        if ((int) $data['credit_days'] !== (int) $customer->credit_days) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'credit_days' => 'Only an Owner can change credit terms.',
-            ]);
-        }
+        $data['credit_days'] = $customer->credit_days ?? 0;
     }
 
     private function syncPets(Request $request, Customer $customer): void

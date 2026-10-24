@@ -55,7 +55,8 @@ class PurchaseDetailExport implements FromQuery, WithHeadings, WithMapping, Shou
             ->groupBy(
                 'pi.id', 'pi.invoice_number', 'pi.invoice_date',
                 's.name', 'pi.supplier_gstin', 's.gst_no', 's.state',
-                'pi.total', 'pi.freight', 'pi.tcs_amount'
+                'pi.total', 'pi.total_gst', 'pi.total_cgst', 'pi.total_sgst', 'pi.total_igst',
+                'pi.freight', 'pi.tcs_amount', 'pi.round_off'
             )
             ->orderBy('pi.invoice_date')->orderBy('pi.id')
             ->selectRaw("
@@ -65,14 +66,20 @@ class PurchaseDetailExport implements FromQuery, WithHeadings, WithMapping, Shou
                 COALESCE(s.name, 'Unknown Supplier') as supplier_name,
                 {$gstinExpr} as gst_no,
                 s.state as state_name,
-                SUM(COALESCE(pii.net_amount, 0) - COALESCE(pii.gst_tax_amount, 0)) as taxable_amount,
-                GROUP_CONCAT(DISTINCT CASE WHEN pii.gst_percent IS NOT NULL THEN pii.gst_percent END) as tax_percent_list,
+                COALESCE(
+                    NULLIF(SUM(COALESCE(pii.net_amount, 0) - COALESCE(pii.gst_tax_amount, 0)), 0),
+                    GREATEST(0, pi.total - COALESCE(pi.total_gst, 0) - COALESCE(pi.freight, 0) - COALESCE(pi.tcs_amount, 0) - COALESCE(pi.round_off, 0))
+                ) as taxable_amount,
+                COALESCE(
+                    NULLIF(GROUP_CONCAT(DISTINCT CASE WHEN pii.gst_percent IS NOT NULL THEN pii.gst_percent END), ''),
+                    CASE WHEN pi.total_gst > 0 THEN ROUND((pi.total_gst / NULLIF(GREATEST(0, pi.total - COALESCE(pi.total_gst, 0) - COALESCE(pi.freight, 0) - COALESCE(pi.tcs_amount, 0)), 0)) * 100, 1) END
+                ) as tax_percent_list,
                 GROUP_CONCAT(DISTINCT CASE WHEN pii.sgst_amount > 0 THEN pii.gst_percent / 2.0 END) as sgst_percent_list,
-                SUM(COALESCE(pii.sgst_amount, 0)) as sgst_tax_amt,
+                COALESCE(NULLIF(SUM(COALESCE(pii.sgst_amount, 0)), 0), pi.total_sgst, 0) as sgst_tax_amt,
                 GROUP_CONCAT(DISTINCT CASE WHEN pii.cgst_amount > 0 THEN pii.gst_percent / 2.0 END) as cgst_percent_list,
-                SUM(COALESCE(pii.cgst_amount, 0)) as cgst_tax_amt,
+                COALESCE(NULLIF(SUM(COALESCE(pii.cgst_amount, 0)), 0), pi.total_cgst, 0) as cgst_tax_amt,
                 GROUP_CONCAT(DISTINCT CASE WHEN pii.igst_amount > 0 THEN pii.gst_percent END) as igst_percent_list,
-                SUM(COALESCE(pii.igst_amount, 0)) as igst_tax_amt,
+                COALESCE(NULLIF(SUM(COALESCE(pii.igst_amount, 0)), 0), pi.total_igst, 0) as igst_tax_amt,
                 pi.total as total_amount,
                 pi.freight as freight_charges,
                 pi.tcs_amount as tcs_amt
