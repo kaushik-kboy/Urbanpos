@@ -403,6 +403,7 @@ class ImportHistoricalTransactions extends Command
 
         DB::beginTransaction();
         try {
+            $affectedInvoiceIds = [];
             foreach ($this->parseCsv($filePath) as $row) {
                 $grnNo = $row['GRN No'] ?? null;
                 if (!$grnNo || !is_numeric($grnNo)) continue;
@@ -412,15 +413,23 @@ class ImportHistoricalTransactions extends Command
 
                 $invNo = 'GRN-' . $grnNo;
                 $supplierId = $this->resolveSupplier($row['Supplier Name'] ?? null);
-                $branchId = $this->resolveBranch($row['Store'] ?? '');
+                $branchId = $this->resolveBranch($row['Store'] ?? ($row['Branch Area'] ?? ''));
 
-                $qty = (int) $this->cleanNumber($row['Received Qty'] ?? 1);
-                $rate = $this->cleanNumber($row['Purchase Rate'] ?? 0);
-                $amt = $this->cleanNumber($row['Total amount'] ?? ($qty * $rate));
+                $qty = (float) $this->cleanNumber($row['Received Qty'] ?? 1);
+                $rate = $this->cleanNumber($row['Purchase rate'] ?? ($row['Purchase Rate'] ?? ($row['Net cost'] ?? 0)));
+                $amt = $this->cleanNumber($row['Purchase amount'] ?? ($row['Local Purchase amount'] ?? ($row['Total amount'] ?? ($qty * $rate))));
+                $mrp = $this->cleanNumber($row['MRP'] ?? ($row['Selling'] ?? $rate));
+                $sellPrice = $this->cleanNumber($row['Selling'] ?? ($row['MRP'] ?? 0));
+                $effectiveCost = $this->cleanNumber($row['Net cost'] ?? ($row['Packed price'] ?? $rate));
+                $expDate = !empty($row['Expiry date']) ? date('Y-m-d', strtotime($row['Expiry date'])) : null;
+                $gstPerc = $this->cleanNumber($row['GST Perc'] ?? ($row['Tax%'] ?? 0));
+                $gstTaxAmt = $this->cleanNumber($row['GST TaxAmt'] ?? ($row['Tax amount'] ?? 0));
+                $discAmt = $this->cleanNumber($row['Disc. Amount'] ?? 0);
+                $discPerc = $this->cleanNumber($row['Discount %'] ?? 0);
                 $cgst = $this->cleanNumber($row['CGST TaxAmt'] ?? 0);
                 $sgst = $this->cleanNumber($row['SGST TaxAmt'] ?? 0);
                 $igst = $this->cleanNumber($row['IGST TaxAmt'] ?? 0);
-                $totalGst = $cgst + $sgst + $igst;
+                $totalGst = $gstTaxAmt > 0 ? $gstTaxAmt : ($cgst + $sgst + $igst);
 
                 $pi = PurchaseInvoice::firstOrCreate(
                     ['invoice_number' => $invNo],
@@ -443,23 +452,54 @@ class ImportHistoricalTransactions extends Command
                 $itemCode = trim($row['Item code'] ?? '');
                 $itemId = $this->itemsMap[$itemCode] ?? null;
                 if ($itemId) {
-                    $mrp = $this->cleanNumber($row['MRP'] ?? $rate);
                     PurchaseInvoiceItem::updateOrCreate(
                         ['purchase_invoice_id' => $pi->id, 'item_id' => $itemId],
                         [
                             'qty' => $qty,
+                            'free_qty' => 0,
                             'cost_price' => $rate,
-                            'net_amount' => $amt,
+                            'effective_cost' => $effectiveCost > 0 ? $effectiveCost : $rate,
+                            'sell_price' => $sellPrice,
                             'mrp' => $mrp > 0 ? $mrp : $rate,
+                            'disc_percent' => $discPerc,
+                            'disc_amount' => $discAmt,
+                            'gst_percent' => $gstPerc,
+                            'gst_tax_amount' => $totalGst,
                             'cgst_amount' => $cgst,
                             'sgst_amount' => $sgst,
                             'igst_amount' => $igst,
+                            'net_amount' => $amt,
+                            'exp_date' => $expDate,
                         ]
                     );
                 }
 
+                $affectedInvoiceIds[] = $pi->id;
                 $count++;
             }
+
+            // Sync aggregate totals for all affected invoices
+            foreach (array_unique($affectedInvoiceIds) as $piId) {
+                $piRecord = PurchaseInvoice::find($piId);
+                if ($piRecord && $piRecord->items()->exists()) {
+                    $itemNetSum = (float) $piRecord->items()->sum('net_amount');
+                    $itemQtySum = (float) $piRecord->items()->sum('qty');
+                    $itemGstSum = (float) $piRecord->items()->sum('gst_tax_amount');
+                    $itemCgstSum = (float) $piRecord->items()->sum('cgst_amount');
+                    $itemSgstSum = (float) $piRecord->items()->sum('sgst_amount');
+                    $itemIgstSum = (float) $piRecord->items()->sum('igst_amount');
+
+                    $piRecord->update([
+                        'total' => $itemNetSum > 0 ? $itemNetSum : $piRecord->total,
+                        'total_qty' => $itemQtySum > 0 ? $itemQtySum : $piRecord->total_qty,
+                        'total_gst' => $itemGstSum > 0 ? $itemGstSum : $piRecord->total_gst,
+                        'total_cgst' => $itemCgstSum > 0 ? $itemCgstSum : $piRecord->total_cgst,
+                        'total_sgst' => $itemSgstSum > 0 ? $itemSgstSum : $piRecord->total_sgst,
+                        'total_igst' => $itemIgstSum > 0 ? $itemIgstSum : $piRecord->total_igst,
+                    ]);
+                }
+            }
+
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
