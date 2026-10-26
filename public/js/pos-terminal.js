@@ -1182,6 +1182,9 @@
         if (b.exp_date) item.exp_date = b.exp_date;
         if (b.sell_price && parseFloat(b.sell_price) > 0) item.sell_price = parseFloat(b.sell_price);
         if (b.mrp && parseFloat(b.mrp) > 0) item.mrp = parseFloat(b.mrp);
+        if (item.mrp > 0 && item.sell_price > item.mrp) {
+            item.sell_price = item.mrp;
+        }
     }
 
     function highlightPosBatchNavRow($row) {
@@ -1928,6 +1931,12 @@
                 return false;
             }
 
+            const finalMrp = parseFloat(item.mrp || item.sell_price || 0);
+            let finalSell = parseFloat(item.sell_price || item.mrp || 0);
+            if (finalMrp > 0 && finalSell > finalMrp) {
+                finalSell = finalMrp;
+            }
+
             const newItem = {
                 id: itemId,
                 name: item.name || item.productname || 'Unknown Item',
@@ -1935,8 +1944,8 @@
                 batch_no: batchNo,
                 batch_stock: (item.batch_stock !== undefined && item.batch_stock !== null) ? parseFloat(item.batch_stock) : null,
                 exp_date: expDate,
-                sell_price: parseFloat(item.sell_price || item.mrp || 0),
-                mrp: parseFloat(item.mrp || item.sell_price || 0),
+                sell_price: finalSell,
+                mrp: finalMrp,
                 qty: '',
                 stock: availableStock,
                 allow_negative_stock: allowNeg,

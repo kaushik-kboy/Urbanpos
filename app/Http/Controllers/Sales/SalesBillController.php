@@ -1543,18 +1543,26 @@ class SalesBillController extends Controller
             }
         }
 
-        $defaultExp = !empty($batches) ? $batches[0]['exp_date'] : null;
-        $defaultBatchNo = !empty($batches) ? ($batches[0]['raw_batch_no'] ?? '') : null;
         $branchStock = \App\Models\ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->first();
-        $defaultCost = !empty($batches) && $batches[0]['cost_price'] > 0 
-            ? $batches[0]['cost_price'] 
-            : ($branchStock && (float)$branchStock->cost_price > 0 ? (float)$branchStock->cost_price : (float)($item->cost_price ?? 0));
-        $defaultSell = !empty($batches) && $batches[0]['sell_price'] > 0 
-            ? $batches[0]['sell_price'] 
-            : ($branchStock && (float)$branchStock->sell_price > 0 ? (float)$branchStock->sell_price : (float)($item->sell_price ?? 0));
-        $defaultMrp  = ($branchStock && (float)$branchStock->mrp > 0)
-            ? (float)$branchStock->mrp
-            : (!empty($batches) && $batches[0]['mrp'] > 0 ? $batches[0]['mrp'] : (float)($item->mrp ?? 0));
+        $todayDateStr = \Carbon\Carbon::today()->format('Y-m-d');
+        $posBatches = array_values(array_filter($batches, fn($b) => (float)($b['qty'] ?? 0) > 0));
+        $unexpBatches = array_values(array_filter($posBatches, fn($b) => empty($b['exp_date']) || $b['exp_date'] >= $todayDateStr));
+        $activeBatch = !empty($unexpBatches) ? $unexpBatches[0] : (!empty($posBatches) ? $posBatches[0] : (!empty($batches) ? $batches[0] : null));
+
+        if ($activeBatch) {
+            $defaultExp = $activeBatch['exp_date'] ?? null;
+            $defaultBatchNo = $activeBatch['raw_batch_no'] ?? ($activeBatch['batch_no'] ?? null);
+            $defaultCost = (float)($activeBatch['cost_price'] ?? 0) > 0 ? (float)$activeBatch['cost_price'] : ($branchStock && (float)$branchStock->cost_price > 0 ? (float)$branchStock->cost_price : (float)($item->cost_price ?? 0));
+            $defaultMrp  = (float)($activeBatch['mrp'] ?? 0) > 0 ? (float)$activeBatch['mrp'] : ($branchStock && (float)$branchStock->mrp > 0 ? (float)$branchStock->mrp : (float)($item->mrp ?? 0));
+            $defaultSell = (float)($activeBatch['sell_price'] ?? 0) > 0 ? (float)$activeBatch['sell_price'] : ($branchStock && (float)$branchStock->sell_price > 0 ? (float)$branchStock->sell_price : (float)($item->sell_price ?? 0));
+        } else {
+            $defaultExp = null;
+            $defaultBatchNo = null;
+            $defaultCost = $branchStock && (float)$branchStock->cost_price > 0 ? (float)$branchStock->cost_price : (float)($item->cost_price ?? 0);
+            $defaultMrp  = $branchStock && (float)$branchStock->mrp > 0 ? (float)$branchStock->mrp : (float)($item->mrp ?? 0);
+            $defaultSell = $branchStock && (float)$branchStock->sell_price > 0 ? (float)$branchStock->sell_price : (float)($item->sell_price ?? 0);
+        }
+
         if ($defaultMrp > 0 && $defaultSell > $defaultMrp) {
             $defaultSell = $defaultMrp;
         }
@@ -1812,8 +1820,12 @@ class SalesBillController extends Controller
 
         return collect($items)->map(function ($line) use ($itemsById, $isInterstate) {
             $qty = (float) $line['qty'];
-            $sellPrice = (float) $line['sell_price'];
             $item = $itemsById[$line['item_id']];
+            $mrp = isset($line['mrp']) && (float) $line['mrp'] > 0 ? (float) $line['mrp'] : (float) ($item->mrp ?? 0);
+            $sellPrice = (float) $line['sell_price'];
+            if ($mrp > 0 && $sellPrice > $mrp) {
+                $sellPrice = $mrp;
+            }
 
             $discPercent = (float) ($line['disc_percent'] ?? 0);
             $discAmount = (float) ($line['disc_amount'] ?? 0);
@@ -1855,7 +1867,7 @@ class SalesBillController extends Controller
                 'exp_date' => $lineExp,
                 'qty' => $qty,
                 'sell_price' => $sellPrice,
-                'mrp' => (float) ($line['mrp'] ?? 0),
+                'mrp' => $mrp,
                 'disc_percent' => $discPercent,
                 'disc_amount' => $tax['disc_amount'],
                 'gst_percent' => $tax['gst_percent'],
