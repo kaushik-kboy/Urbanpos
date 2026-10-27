@@ -853,7 +853,8 @@ class EInvoiceDashboardController extends Controller
         if ($bills->count() === 1) {
             $bill = $bills->first();
             $payload = $service->buildPayload($bill);
-            $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            // NIC Government Bulk Upload ALWAYS expects an array of invoices root element
+            $json = json_encode([$payload], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             $filename = "EINV_" . preg_replace('/[^A-Za-z0-9]/', '_', $bill->bill_number) . "_" . now()->format('Ymd_His') . ".json";
         } else {
             $batchList = [];
@@ -952,5 +953,119 @@ class EInvoiceDashboardController extends Controller
         $settings->update($validated);
 
         return redirect()->back()->with('status', 'GST E-Invoice & E-Filing settings updated successfully!');
+    }
+
+    /**
+     * Manually record/update Government IRN & Ack details for a sales bill.
+     */
+    public function updateManualIrn(Request $request, SalesBill $salesBill)
+    {
+        $validated = $request->validate([
+            'irn'            => 'required|string|size:64',
+            'ack_no'         => 'nullable|string|max:35',
+            'ack_date'       => 'nullable|date',
+            'signed_qr_code' => 'nullable|string',
+        ]);
+
+        $salesBill->update([
+            'irn'                => trim($validated['irn']),
+            'ack_no'             => $validated['ack_no'] ? trim($validated['ack_no']) : null,
+            'ack_date'           => $validated['ack_date'] ? \Carbon\Carbon::parse($validated['ack_date']) : now(),
+            'signed_qr_code'     => $validated['signed_qr_code'] ?: null,
+            'einvoice_status'    => 'Completed',
+            'einvoice_error'     => null,
+            'einvoice_synced_at' => now(),
+        ]);
+
+        return redirect()->back()->with('status', "Government IRN successfully recorded for Bill #{$salesBill->bill_number}!");
+    }
+
+    /**
+     * Import official Government E-Invoice response (JSON or CSV) to auto-sync IRNs in bulk.
+     */
+    public function importPortalResponse(Request $request)
+    {
+        $request->validate([
+            'response_file' => 'required|file|max:10240',
+        ]);
+
+        $file = $request->file('response_file');
+        $ext = strtolower($file->getClientOriginalExtension());
+        $synced = 0;
+        $errors = [];
+
+        if ($ext === 'json') {
+            $content = file_get_contents($file->getRealPath());
+            $data = json_decode($content, true);
+            $items = isset($data['data']) ? $data['data'] : (isset($data['SuccessList']) ? $data['SuccessList'] : (is_array($data) ? $data : []));
+
+            foreach ($items as $row) {
+                $docNo = $row['DocNo'] ?? $row['docNo'] ?? $row['document_number'] ?? null;
+                $irn = $row['Irn'] ?? $row['irn'] ?? null;
+                $ackNo = $row['AckNo'] ?? $row['ackNo'] ?? null;
+                $ackDt = $row['AckDt'] ?? $row['ackDt'] ?? now();
+                $signedQr = $row['SignedQRCode'] ?? $row['signedQRCode'] ?? null;
+
+                if ($docNo && $irn) {
+                    $bill = SalesBill::where('bill_number', trim($docNo))->first();
+                    if ($bill) {
+                        $bill->update([
+                            'irn'                => trim($irn),
+                            'ack_no'             => $ackNo ? (string) $ackNo : null,
+                            'ack_date'           => \Carbon\Carbon::parse($ackDt),
+                            'signed_qr_code'     => $signedQr,
+                            'einvoice_status'    => 'Completed',
+                            'einvoice_error'     => null,
+                            'einvoice_synced_at' => now(),
+                        ]);
+                        $synced++;
+                    } else {
+                        $errors[] = "Bill {$docNo} not found in system.";
+                    }
+                }
+            }
+        } elseif (in_array($ext, ['csv', 'txt'])) {
+            $handle = fopen($file->getRealPath(), 'r');
+            $header = fgetcsv($handle);
+            $docIdx = false; $irnIdx = false; $ackIdx = false; $dateIdx = false;
+            foreach ($header as $idx => $col) {
+                $clean = strtolower(trim(str_replace([' ', '_', '-'], '', $col)));
+                if (in_array($clean, ['docno', 'invoiceno', 'billno', 'documentno', 'billnumber'])) $docIdx = $idx;
+                if (in_array($clean, ['irn', 'irnno', 'irnhash'])) $irnIdx = $idx;
+                if (in_array($clean, ['ackno', 'acknowledgementno', 'acknumber'])) $ackIdx = $idx;
+                if (in_array($clean, ['ackdate', 'ackdt', 'date'])) $dateIdx = $idx;
+            }
+
+            if ($docIdx !== false && $irnIdx !== false) {
+                while (($row = fgetcsv($handle)) !== false) {
+                    $docNo = $row[$docIdx] ?? null;
+                    $irn = $row[$irnIdx] ?? null;
+                    $ackNo = $ackIdx !== false ? ($row[$ackIdx] ?? null) : null;
+                    $ackDt = $dateIdx !== false ? ($row[$dateIdx] ?? now()) : now();
+
+                    if ($docNo && $irn && strlen(trim($irn)) >= 60) {
+                        $bill = SalesBill::where('bill_number', trim($docNo))->first();
+                        if ($bill) {
+                            $bill->update([
+                                'irn'                => trim($irn),
+                                'ack_no'             => $ackNo ? trim($ackNo) : null,
+                                'ack_date'           => \Carbon\Carbon::parse($ackDt),
+                                'einvoice_status'    => 'Completed',
+                                'einvoice_error'     => null,
+                                'einvoice_synced_at' => now(),
+                            ]);
+                            $synced++;
+                        }
+                    }
+                }
+            }
+            fclose($handle);
+        }
+
+        if ($synced > 0) {
+            return redirect()->back()->with('status', "Official Government E-Invoice Response synced: {$synced} bills updated with verified IRN & Ack details!");
+        }
+
+        return redirect()->back()->with('error', "No matching bills could be synced from the uploaded file. Please check file format.");
     }
 }

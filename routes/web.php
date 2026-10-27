@@ -405,7 +405,9 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('einvoice/details/{salesBill}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'billDetails'])->name('einvoice.details');
     Route::post('einvoice/generate-irn', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'generateIrn'])->name('einvoice.generate-irn');
     Route::post('einvoice/cancel-irn/{salesBill}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'cancelIrn'])->name('einvoice.cancel-irn');
+    Route::post('einvoice/manual-irn/{salesBill}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'updateManualIrn'])->name('einvoice.manual-irn');
     Route::post('einvoice/export-json', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportJson'])->name('einvoice.export-json');
+    Route::post('einvoice/import-response', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'importPortalResponse'])->name('einvoice.import-response');
     Route::get('einvoice/download-errors', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'downloadErrors'])->name('einvoice.download-errors');
     Route::post('einvoice/settings', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'updateSettings'])->name('einvoice.settings');
 

@@ -11,6 +11,9 @@
             <p class="text-muted small mb-0">Government GST Returns (GSTR-1, 3B, 2, 2A, 2B, 9) &amp; Automated E-Invoice Upload (&gt; ₹{{ number_format($settings->auto_upload_threshold, 0) }})</p>
         </div>
         <div class="mt-2 mt-md-0 d-flex align-items-center flex-wrap">
+            <button type="button" class="btn btn-outline-success btn-sm shadow-sm mr-2 mb-1" data-toggle="modal" data-target="#importGovtResponseModal">
+                <i class="fas fa-file-import mr-1"></i> Sync Govt Response (JSON/CSV)
+            </button>
             <button type="button" class="btn btn-outline-dark btn-sm shadow-sm mr-2 mb-1" data-toggle="modal" data-target="#settingsModal">
                 <i class="fas fa-cog mr-1"></i> API Settings
             </button>
@@ -458,9 +461,14 @@
                                             <strong>{{ $bill->einvoice_error ?? 'Validation failed at portal schema check.' }}</strong>
                                         </td>
                                         <td class="text-center" onclick="event.stopPropagation();">
-                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" onclick="quickUpload({{ $bill->id }})">
-                                                <i class="fas fa-redo-alt mr-1"></i> Retry
-                                            </button>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" onclick="quickUpload({{ $bill->id }})" title="Retry API Upload">
+                                                    <i class="fas fa-redo-alt mr-1"></i> Retry
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 ml-1" title="Enter Government IRN manually" onclick="openManualIrnModal({{ $bill->id }}, '{{ $bill->bill_number }}')">
+                                                    <i class="fas fa-edit mr-1"></i> IRN
+                                                </button>
+                                            </div>
                                         </td>
                                     @else
                                         <td class="text-center">
@@ -471,9 +479,14 @@
                                             @endif
                                         </td>
                                         <td class="text-center" onclick="event.stopPropagation();">
-                                            <button type="button" class="btn btn-primary btn-sm py-0 px-2" onclick="quickUpload({{ $bill->id }})">
-                                                <i class="fas fa-paper-plane mr-1"></i> Push IRN
-                                            </button>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-primary btn-sm py-0 px-2" onclick="quickUpload({{ $bill->id }})" title="Push to Portal">
+                                                    <i class="fas fa-paper-plane mr-1"></i> Push
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 ml-1" title="Enter Government IRN manually" onclick="openManualIrnModal({{ $bill->id }}, '{{ $bill->bill_number }}')">
+                                                    <i class="fas fa-edit mr-1"></i> Enter IRN
+                                                </button>
+                                            </div>
                                         </td>
                                     @endif
                                 </tr>
@@ -1029,6 +1042,93 @@
             </div>
         </div>
     </div>
+
+    {{-- MODAL 8: Sync Government E-Invoice Response (Offline JSON / CSV) --}}
+    <div class="modal fade" id="importGovtResponseModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content shadow-lg border-0">
+                <form method="POST" action="{{ route('tools.einvoice.import-response') }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-header bg-success text-white py-3">
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-file-import mr-2"></i>Sync Govt Portal Response (Free Workflow)</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-4 bg-light">
+                        <div class="alert alert-info py-2 small mb-3">
+                            <strong><i class="fas fa-info-circle mr-1"></i> 100% Free Government Workflow (No GSP Fee):</strong><br>
+                            1. Select invoices on this screen &amp; click <strong>"Export as JSON (Offline)"</strong>.<br>
+                            2. Log in to <a href="https://einvoice1.gst.gov.in" target="_blank" class="font-weight-bold text-dark">einvoice1.gst.gov.in</a> &rarr; <strong>Bulk Upload</strong> &rarr; Upload the exported JSON.<br>
+                            3. Download the official Government Response file (JSON or CSV) and upload it here.<br>
+                            4. UrbanPOS will auto-link the official 64-character IRNs &amp; Ack numbers instantly!
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold">Select Government Response File (.json, .csv) <span class="text-danger">*</span></label>
+                            <div class="custom-file">
+                                <input type="file" name="response_file" class="custom-file-input" id="govtResponseFile" accept=".json,.csv,.txt" required>
+                                <label class="custom-file-label" for="govtResponseFile">Choose response file...</label>
+                            </div>
+                            <span class="form-text text-muted small mt-1">Accepts official NIC Government IRP response JSON or CSV.</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-white">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-success btn-sm font-weight-bold px-3">
+                            <i class="fas fa-cloud-upload-alt mr-1"></i> Process &amp; Sync IRNs
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL 9: Manual Single IRN Entry Modal --}}
+    <div class="modal fade" id="manualIrnModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content shadow-lg border-0">
+                <form id="manualIrnForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-header bg-primary text-white py-3">
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i>Record Government IRN</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-4 bg-light">
+                        <div class="p-2 bg-white rounded border mb-3">
+                            <span class="small text-muted font-weight-bold">Invoice Number:</span>
+                            <span id="manualBillNumberText" class="font-weight-bold text-primary ml-2">--</span>
+                        </div>
+
+                        <div class="form-group mb-2">
+                            <label class="small font-weight-bold">Government IRN (64-character Hash) <span class="text-danger">*</span></label>
+                            <input type="text" name="irn" id="manualIrnInput" class="form-control form-control-sm font-family-monospace" placeholder="e.g. 52c92e9db9bbdf8c634a41dd13a21396b27d49e6f3aa51e60cb5038c35bb5dbd" minlength="64" maxlength="64" required>
+                            <span class="form-text text-muted small">Generated directly on the Government IRP portal.</span>
+                        </div>
+
+                        <div class="form-group mb-2">
+                            <label class="small font-weight-bold">Acknowledgement Number (Ack No)</label>
+                            <input type="text" name="ack_no" id="manualAckNoInput" class="form-control form-control-sm" placeholder="e.g. 112600000024520" maxlength="35">
+                        </div>
+
+                        <div class="form-group mb-2">
+                            <label class="small font-weight-bold">Acknowledgement Date</label>
+                            <input type="datetime-local" name="ack_date" id="manualAckDateInput" class="form-control form-control-sm">
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold">Signed QR Code String (Optional)</label>
+                            <textarea name="signed_qr_code" id="manualQrCodeInput" rows="2" class="form-control form-control-sm" placeholder="JWT QR code string if available"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-white">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm font-weight-bold px-3">
+                            <i class="fas fa-check-circle mr-1"></i> Save Government IRN
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('js')
@@ -1269,5 +1369,27 @@ function openCancelIrnModal(billId, billNumber, irn) {
     $('#cancelIrnForm').attr('action', '{{ url("tools/einvoice/cancel-irn") }}/' + billId);
     $('#cancelIrnModal').modal('show');
 }
+
+// 9. Open Manual IRN Record Modal
+function openManualIrnModal(billId, billNumber) {
+    $('#manualBillNumberText').text(billNumber);
+    $('#manualIrnInput').val('');
+    $('#manualAckNoInput').val('');
+    $('#manualQrCodeInput').val('');
+    
+    // Set default datetime to now
+    const now = new Date();
+    const localIso = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    $('#manualAckDateInput').val(localIso);
+
+    $('#manualIrnForm').attr('action', '{{ url("tools/einvoice/manual-irn") }}/' + billId);
+    $('#manualIrnModal').modal('show');
+}
+
+// Update file label on file selection
+$('.custom-file-input').on('change', function() {
+    let fileName = $(this).val().split('\\').pop();
+    $(this).next('.custom-file-label').addClass("selected").html(fileName);
+});
 </script>
 @stop
