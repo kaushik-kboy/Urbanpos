@@ -5,6 +5,7 @@ namespace App\Services\GST;
 use App\Models\GstSetting;
 use App\Models\SalesBill;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -68,14 +69,19 @@ class EInvoiceService
             foreach ($bill->items as $line) {
                 $product = $line->item;
                 $hsn = (string) ($product?->hsn_code ?: '2309');
-                $qty = (float) $line->qty;
-                $rate = (float) $line->sell_price;
+                $qty = max(1.0, (float) $line->qty);
+                $netAmt = (float) ($line->net_amount ?: $line->total_amount ?: ($line->qty * $line->sell_price));
+                $taxAmt = (float) ($line->gst_tax_amount ?: $line->tax_amount ?: ($line->cgst_amount + $line->sgst_amount + $line->igst_amount));
+                $assAmt = round($netAmt - $taxAmt, 2);
+                if ($assAmt <= 0 && (float) ($line->taxable_amount ?? 0) > 0) {
+                    $assAmt = (float) $line->taxable_amount;
+                }
+                $rate = round($assAmt / $qty, 2);
                 $totAmt = round($qty * $rate, 2);
                 $disc = round((float) ($line->disc_amount ?? 0), 2);
-                $assAmt = round((float) $line->net_amount - (float) $line->gst_tax_amount, 2);
                 $totalAssVal += $assAmt;
 
-                $gstRate = (float) $line->gst_percent;
+                $gstRate = (float) ($line->gst_percent ?: ($assAmt > 0 ? round(($taxAmt / $assAmt) * 100, 2) : 18.0));
                 $cgstAmt = $isInterstate ? 0.0 : round((float) $line->cgst_amount, 2);
                 $sgstAmt = $isInterstate ? 0.0 : round((float) $line->sgst_amount, 2);
                 $igstAmt = $isInterstate ? round((float) $line->igst_amount, 2) : 0.0;
@@ -98,10 +104,10 @@ class EInvoiceService
                     'SgstAmt' => $sgstAmt,
                     'CesRt' => 0.0,
                     'CesAmt' => 0.0,
-                    'CesNonAdvlAmt' => 0.0,
+                    'CesNonAdValAmt' => 0.0,
                     'StateCesRt' => 0.0,
                     'StateCesAmt' => 0.0,
-                    'StateCesNonAdvlAmt' => 0.0,
+                    'StateCesNonAdValAmt' => 0.0,
                     'OthChrg' => 0.0,
                     'TotItemVal' => round($assAmt + $cgstAmt + $sgstAmt + $igstAmt, 2),
                 ];
@@ -130,10 +136,10 @@ class EInvoiceService
                 'SgstAmt' => $isInterstate ? 0.0 : round((float) $bill->total_sgst, 2),
                 'CesRt' => 0.0,
                 'CesAmt' => 0.0,
-                'CesNonAdvlAmt' => 0.0,
+                'CesNonAdValAmt' => 0.0,
                 'StateCesRt' => 0.0,
                 'StateCesAmt' => 0.0,
-                'StateCesNonAdvlAmt' => 0.0,
+                'StateCesNonAdValAmt' => 0.0,
                 'OthChrg' => 0.0,
                 'TotItemVal' => round((float) $bill->total, 2),
             ];
@@ -323,23 +329,47 @@ class EInvoiceService
 
             // If Live GSP API is configured
             if ($settings->gsp_provider !== 'mock' && !empty($settings->client_id) && !empty($settings->client_secret)) {
-                $endpoint = $settings->is_sandbox 
-                    ? 'https://api-sandbox.co.in/gsp/v1.1/invoice/cancel'
-                    : 'https://api.einvoice.gst.gov.in/gsp/v1.1/invoice/cancel';
+                if ($settings->gsp_provider === 'sandbox') {
+                    $sessionToken = $this->getSandboxEInvoiceSessionToken($settings);
+                    $endpoint = ($settings->is_sandbox ? 'https://test-api.sandbox.co.in' : 'https://api.sandbox.co.in')
+                        . "/gst/compliance/e-invoice/tax-payer/invoice/{$bill->irn}/cancel";
 
-                $response = Http::withHeaders([
-                    'client_id' => $settings->client_id,
-                    'client_secret' => $settings->client_secret,
-                    'gstin' => $settings->gstin,
-                    'Content-Type' => 'application/json',
-                ])->timeout(15)->post($endpoint, [
-                    'Irn' => $bill->irn,
-                    'CnlRsn' => $reasonCode,
-                    'CnlRem' => $remarks,
-                ]);
+                    $response = Http::withHeaders([
+                        'Content-Type' => 'application/json',
+                        'authorization' => $sessionToken,
+                        'x-api-key' => $settings->client_id,
+                        'x-api-version' => '1.0.0',
+                        'x-source' => 'primary',
+                    ])->timeout(20)->post($endpoint, [
+                        'Irn' => $bill->irn,
+                        'CnlRsn' => $reasonCode,
+                        'CnlRem' => $remarks,
+                    ]);
 
-                if (!$response->successful()) {
-                    throw new \Exception($response->json('message') ?? 'Government IRP rejected IRN cancellation.');
+                    $body = $response->json();
+                    if (!$response->successful() || ($body['data']['Status'] ?? 1) === 0) {
+                        $err = $body['data']['ErrorDetails'][0]['ErrorMessage'] ?? $body['message'] ?? 'Government IRP rejected IRN cancellation.';
+                        throw new \Exception($err);
+                    }
+                } else {
+                    $endpoint = $settings->is_sandbox 
+                        ? 'https://api-sandbox.co.in/gsp/v1.1/invoice/cancel'
+                        : 'https://api.einvoice.gst.gov.in/gsp/v1.1/invoice/cancel';
+
+                    $response = Http::withHeaders([
+                        'client_id' => $settings->client_id,
+                        'client_secret' => $settings->client_secret,
+                        'gstin' => $settings->gstin,
+                        'Content-Type' => 'application/json',
+                    ])->timeout(15)->post($endpoint, [
+                        'Irn' => $bill->irn,
+                        'CnlRsn' => $reasonCode,
+                        'CnlRem' => $remarks,
+                    ]);
+
+                    if (!$response->successful()) {
+                        throw new \Exception($response->json('message') ?? 'Government IRP rejected IRN cancellation.');
+                    }
                 }
             }
 
@@ -376,9 +406,135 @@ class EInvoiceService
     /**
      * Call Live GSP Endpoint (Zoho Corporation / ClearTax / Sandbox / Masters India / NIC Direct).
      */
+    /**
+     * Get or cache Sandbox.co.in access token.
+     */
+    public function getSandboxAccessToken(GstSetting $settings): ?string
+    {
+        $cacheKey = 'sandbox_token_' . md5($settings->client_id . $settings->client_secret);
+        return Cache::remember($cacheKey, 82800, function () use ($settings) {
+            $authUrl = $settings->is_sandbox
+                ? 'https://test-api.sandbox.co.in/authenticate'
+                : 'https://api.sandbox.co.in/authenticate';
+
+            try {
+                $response = Http::withHeaders([
+                    'x-api-key' => $settings->client_id,
+                    'x-api-secret' => $settings->client_secret,
+                    'x-api-version' => '1.0',
+                ])->timeout(10)->post($authUrl);
+
+                if ($response->successful()) {
+                    return $response->json('data.access_token') ?? $response->json('access_token');
+                }
+
+                Log::error('Sandbox.co.in auth error: ' . $response->body());
+                return null;
+            } catch (\Throwable $e) {
+                Log::error('Sandbox.co.in auth exception: ' . $e->getMessage());
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Get or cache Sandbox.co.in Government E-Invoice Taxpayer Session Token.
+     */
+    public function getSandboxEInvoiceSessionToken(GstSetting $settings): ?string
+    {
+        $cacheKey = 'sandbox_einv_session_' . md5($settings->gstin . $settings->username);
+        return Cache::remember($cacheKey, 18000, function () use ($settings) {
+            $baseToken = $this->getSandboxAccessToken($settings);
+            if (!$baseToken) {
+                return null;
+            }
+
+            $authUrl = ($settings->is_sandbox ? 'https://test-api.sandbox.co.in' : 'https://api.sandbox.co.in')
+                . '/gst/compliance/e-invoice/tax-payer/authenticate?force=true';
+
+            try {
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'authorization' => $baseToken,
+                    'x-api-key' => $settings->client_id,
+                    'x-api-version' => '1.0.0',
+                    'x-source' => 'primary',
+                ])->timeout(15)->post($authUrl, [
+                    'username' => $settings->username,
+                    'password' => $settings->password,
+                    'gstin' => $settings->gstin,
+                ]);
+
+                if ($response->successful()) {
+                    $body = $response->json();
+                    if (($body['data']['Status'] ?? 0) === 1 && !empty($body['data']['access_token'])) {
+                        return $body['data']['access_token'];
+                    }
+                    $errMsg = $body['data']['ErrorDetails'][0]['ErrorMessage'] ?? $response->body();
+                    Log::error("Sandbox taxpayer session error: {$errMsg}");
+                    return null;
+                }
+
+                Log::error('Sandbox taxpayer session HTTP error: ' . $response->body());
+                return null;
+            } catch (\Throwable $e) {
+                Log::error('Sandbox taxpayer session exception: ' . $e->getMessage());
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Call Live GSP Endpoint (Sandbox / Zoho / ClearTax / Masters India / NIC Direct).
+     */
     protected function callLiveGspApi(GstSetting $settings, array $payload): array
     {
-        // Provider-tailored endpoints
+        if ($settings->gsp_provider === 'sandbox') {
+            $sessionToken = $this->getSandboxEInvoiceSessionToken($settings);
+            if (!$sessionToken) {
+                return [
+                    'success' => false,
+                    'error' => 'Could not establish Government E-Invoice session with Sandbox. Check credentials.',
+                ];
+            }
+
+            $endpoint = $settings->is_sandbox
+                ? 'https://test-api.sandbox.co.in/gst/compliance/e-invoice/tax-payer/invoice'
+                : 'https://api.sandbox.co.in/gst/compliance/e-invoice/tax-payer/invoice';
+
+            try {
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'authorization' => $sessionToken,
+                    'x-api-key' => $settings->client_id,
+                    'x-api-version' => '1.0.0',
+                ])->timeout(20)->post($endpoint, $payload);
+
+                $body = $response->json();
+                if ($response->successful() && ($body['code'] ?? 200) === 200) {
+                    $invData = $body['data']['Data'] ?? $body['data'] ?? $body;
+                    if (isset($invData['Status']) && $invData['Status'] === 0) {
+                        $err = $invData['ErrorDetails'][0]['ErrorMessage'] ?? 'Rejected by Government IRP';
+                        return ['success' => false, 'error' => $err];
+                    }
+
+                    return [
+                        'success' => true,
+                        'irn' => $invData['Irn'] ?? $invData['irn'] ?? '',
+                        'ack_no' => (string) ($invData['AckNo'] ?? $invData['ack_no'] ?? ''),
+                        'ack_date' => $invData['AckDt'] ?? now(),
+                        'signed_qr_code' => $invData['SignedQRCode'] ?? $invData['signed_qr_code'] ?? '',
+                    ];
+                }
+
+                $err = $body['data']['ErrorDetails'][0]['ErrorMessage'] ?? $body['message'] ?? $response->body();
+                return ['success' => false, 'error' => $err];
+            } catch (\Throwable $e) {
+                return ['success' => false, 'error' => 'Sandbox Gateway Timeout: ' . $e->getMessage()];
+            }
+        }
+
+        // Provider-tailored endpoints for Zoho / ClearTax / Masters India / Direct
         $endpoint = match ($settings->gsp_provider) {
             'zoho' => $settings->is_sandbox
                 ? 'https://books.zoho.com/api/v3/gst/sandbox/einvoice'
@@ -395,12 +551,14 @@ class EInvoiceService
         };
 
         try {
-            $response = Http::withHeaders([
+            $headers = [
                 'client_id' => $settings->client_id,
                 'client_secret' => $settings->client_secret,
                 'gstin' => $settings->gstin,
                 'Content-Type' => 'application/json',
-            ])->timeout(15)->post($endpoint, $payload);
+            ];
+
+            $response = Http::withHeaders($headers)->timeout(15)->post($endpoint, $payload);
 
             if ($response->successful()) {
                 $data = $response->json();

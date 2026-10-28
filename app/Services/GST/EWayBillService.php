@@ -5,6 +5,7 @@ namespace App\Services\GST;
 use App\Models\GstSetting;
 use App\Models\SalesBill;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -475,7 +476,11 @@ class EWayBillService
             : 'https://ewaybillgst.gov.in/apicall/';
 
         // Provider-specific base URL overrides
-        if ($settings->gsp_provider === 'cleartax') {
+        if ($settings->gsp_provider === 'sandbox') {
+            $baseUrl = $settings->is_sandbox
+                ? 'https://api-sandbox.co.in/gsp/eway/'
+                : 'https://api.sandbox.co.in/gsp/eway/';
+        } elseif ($settings->gsp_provider === 'cleartax') {
             $baseUrl = $settings->is_sandbox
                 ? 'https://api-sandbox.cleartax.in/gsp/eway/'
                 : 'https://api.cleartax.in/gsp/eway/';
@@ -486,13 +491,40 @@ class EWayBillService
         }
 
         try {
-            $response = Http::withHeaders([
-                'client_id'     => $settings->client_id,
-                'client_secret' => $settings->client_secret,
-                'gstin'         => $settings->gstin,
-                'username'      => $settings->username,
-                'Content-Type'  => 'application/json',
-            ])->timeout(15)->post($baseUrl . $action, $data);
+            $headers = ['Content-Type' => 'application/json'];
+
+            if ($settings->gsp_provider === 'sandbox') {
+                $cacheKey = 'sandbox_token_' . md5($settings->client_id . $settings->client_secret);
+                $token = Cache::get($cacheKey);
+                if (!$token) {
+                    $authUrl = $settings->is_sandbox
+                        ? 'https://test-api.sandbox.co.in/authenticate'
+                        : 'https://api.sandbox.co.in/authenticate';
+                    $authRes = Http::withHeaders([
+                        'x-api-key' => $settings->client_id,
+                        'x-api-secret' => $settings->client_secret,
+                        'x-api-version' => '1.0',
+                    ])->timeout(10)->post($authUrl);
+                    if ($authRes->successful()) {
+                        $token = $authRes->json('data.access_token') ?? $authRes->json('access_token');
+                        Cache::put($cacheKey, $token, 82800);
+                    }
+                }
+                if ($token) {
+                    $headers['Authorization'] = $token;
+                }
+                $headers['x-api-key'] = $settings->client_id;
+                $headers['x-api-version'] = '1.0';
+                $headers['gstin'] = $settings->gstin;
+                $headers['username'] = $settings->username;
+            } else {
+                $headers['client_id'] = $settings->client_id;
+                $headers['client_secret'] = $settings->client_secret;
+                $headers['gstin'] = $settings->gstin;
+                $headers['username'] = $settings->username;
+            }
+
+            $response = Http::withHeaders($headers)->timeout(15)->post($baseUrl . $action, $data);
 
             if ($response->successful()) {
                 $body = $response->json();

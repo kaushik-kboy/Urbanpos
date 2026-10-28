@@ -952,9 +952,8 @@
                             <div class="col-md-6 form-group">
                                 <label class="small font-weight-bold">GSP Provider Integration</label>
                                 <select name="gsp_provider" class="form-control form-control-sm font-weight-bold">
-                                    <option value="mock" {{ $settings->gsp_provider === 'mock' ? 'selected' : '' }}>Built-in Sandbox / Mock Generator (Pre-production SHA-256)</option>
-                                    <option value="zoho" {{ $settings->gsp_provider === 'zoho' ? 'selected' : '' }}>Zoho Corporation GSP (As used in GoFrugal TFA)</option>
-                                    <option value="sandbox" {{ $settings->gsp_provider === 'sandbox' ? 'selected' : '' }}>Official NIC Sandbox GSP Gateway</option>
+                                    <option value="mock" {{ $settings->gsp_provider === 'mock' ? 'selected' : '' }}>Built-in Mock Generator (Pre-production SHA-256)</option>
+                                    <option value="sandbox" {{ $settings->gsp_provider === 'sandbox' ? 'selected' : '' }}>Sandbox.co.in GSP Gateway (Fast & Economical - Recommended)</option>
                                     <option value="cleartax" {{ $settings->gsp_provider === 'cleartax' ? 'selected' : '' }}>ClearTax GSP API</option>
                                     <option value="masters_india" {{ $settings->gsp_provider === 'masters_india' ? 'selected' : '' }}>Masters India GSP API</option>
                                     <option value="nic_direct" {{ $settings->gsp_provider === 'nic_direct' ? 'selected' : '' }}>NIC Direct Government IRP</option>
