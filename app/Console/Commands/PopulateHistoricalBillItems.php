@@ -1136,6 +1136,112 @@ class PopulateHistoricalBillItems extends Command
                 $this->line("    Total Qty: {$totalQty} units | GST: ₹" . number_format($totalGst, 2) . " | Net: ₹" . number_format(199657, 2));
             }
 
+            // -------------------------------------------------------------
+            // 3. SALES BILL: CO-225-29932 (ID: 19535)
+            // -------------------------------------------------------------
+            $salesBill29932 = SalesBill::where('bill_number', 'CO-225-29932')
+                ->orWhere('bill_number', 'like', '%29932')
+                ->orWhere('id', 19535)
+                ->first();
+
+            if (!$salesBill29932) {
+                $this->warn("\n[!] Sales Bill CO-225-29932 not found in database. Skipping.");
+            } else {
+                $this->info("\n[3] Processing Sales Bill: {$salesBill29932->bill_number} (ID: {$salesBill29932->id})");
+
+                $itemDrools = Item::where('item_code', '11361')->firstOrFail();
+                $itemFido = Item::where('item_code', '11149')->firstOrFail();
+
+                // Snapshot stocks before
+                $stockDroolsBefore = (float)DB::table('item_stocks')->where('item_id', $itemDrools->id)->sum('quantity');
+                $stockFidoBefore = (float)DB::table('item_stocks')->where('item_id', $itemFido->id)->sum('quantity');
+                $stockLedgerBefore = DB::table('stock_ledger')->count();
+
+                $this->line("    Stock Before -> Drools Veg 20KG (ID: {$itemDrools->id}): {$stockDroolsBefore}");
+                $this->line("    Stock Before -> Fido Munchy Sticks (ID: {$itemFido->id}): {$stockFidoBefore}");
+
+                // Clear any existing dummy/placeholder items for this bill
+                DB::table('sales_bill_items')->where('sales_bill_id', $salesBill29932->id)->delete();
+
+                $bill29932Items = [
+                    [
+                        'sales_bill_id' => $salesBill29932->id,
+                        'item_id' => $itemDrools->id,
+                        'batch_no' => '26-12-2027',
+                        'exp_date' => '2027-12-26',
+                        'qty' => 2.000,
+                        'sell_price' => 4200.00,
+                        'cost_at_sale' => 0.00,
+                        'mrp' => 4200.00,
+                        'disc_percent' => 0.00,
+                        'disc_amount' => 3600.00,
+                        'gst_percent' => 18.00,
+                        'gst_tax_amount' => 732.20,
+                        'cgst_amount' => 366.10,
+                        'sgst_amount' => 366.10,
+                        'igst_amount' => 0.00,
+                        'net_amount' => 4800.00,
+                        'created_at' => Carbon::parse('2026-02-13 14:43:00'),
+                        'updated_at' => Carbon::now(),
+                    ],
+                    [
+                        'sales_bill_id' => $salesBill29932->id,
+                        'item_id' => $itemFido->id,
+                        'batch_no' => '30-03-2027',
+                        'exp_date' => '2027-03-30',
+                        'qty' => 1.000,
+                        'sell_price' => 250.00,
+                        'cost_at_sale' => 0.00,
+                        'mrp' => 250.00,
+                        'disc_percent' => 99.99,
+                        'disc_amount' => 249.98,
+                        'gst_percent' => 18.00,
+                        'gst_tax_amount' => 0.00,
+                        'cgst_amount' => 0.00,
+                        'sgst_amount' => 0.00,
+                        'igst_amount' => 0.00,
+                        'net_amount' => 0.02,
+                        'created_at' => Carbon::parse('2026-02-13 14:43:00'),
+                        'updated_at' => Carbon::now(),
+                    ],
+                ];
+
+                DB::table('sales_bill_items')->insert($bill29932Items);
+                $this->info("    [+] Inserted " . count($bill29932Items) . " lines into sales_bill_items.");
+
+                // Update bill header totals to match exact TruePOS figures
+                DB::table('sales_bills')->where('id', $salesBill29932->id)->update([
+                    'total_qty' => 3.000,
+                    'item_disc_amount' => 3849.98,
+                    'disc_amount' => 0.00,
+                    'total_gst' => 732.20,
+                    'total_cgst' => 366.10,
+                    'total_sgst' => 366.10,
+                    'total_igst' => 0.00,
+                    'round_off' => -0.02,
+                    'total' => 4800.00,
+                    'remarks' => 'P',
+                    'message' => 'IPC',
+                    'updated_at' => Carbon::now(),
+                ]);
+
+                // Verify stock after
+                $stockDroolsAfter = (float)DB::table('item_stocks')->where('item_id', $itemDrools->id)->sum('quantity');
+                $stockFidoAfter = (float)DB::table('item_stocks')->where('item_id', $itemFido->id)->sum('quantity');
+                $stockLedgerAfter = DB::table('stock_ledger')->count();
+
+                $this->line("    Stock After  -> Drools Veg 20KG: {$stockDroolsAfter} (Diff: 0.000)");
+                $this->line("    Stock After  -> Fido Munchy Sticks: {$stockFidoAfter} (Diff: 0.000)");
+
+                if ($stockDroolsAfter !== $stockDroolsBefore || $stockFidoAfter !== $stockFidoBefore) {
+                    throw new \Exception("FATAL: Stock changed unexpectedly for sales bill 29932 items!");
+                }
+
+                if ($stockLedgerAfter !== $stockLedgerBefore) {
+                    throw new \Exception("FATAL: Stock Ledger count changed unexpectedly!");
+                }
+            }
+
             DB::commit();
             $this->info("\n[SUCCESS] All historical items populated with 100% verified ZERO stock impact!");
             return 0;
