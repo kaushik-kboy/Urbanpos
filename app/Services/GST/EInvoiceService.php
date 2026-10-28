@@ -63,12 +63,15 @@ class EInvoiceService
         // Line Items
         $itemList = [];
         $totalAssVal = 0.0;
+        $totalCgstVal = 0.0;
+        $totalSgstVal = 0.0;
+        $totalIgstVal = 0.0;
         $itemCounter = 1;
 
         if ($bill->items->count() > 0) {
             foreach ($bill->items as $line) {
                 $product = $line->item;
-                $hsn = (string) ($product?->hsn_code ?: '2309');
+                $hsn = preg_replace('/[^0-9]/', '', (string) ($product?->hsn_code ?: '23091000')) ?: '23091000';
                 $qty = max(1.0, (float) $line->qty);
                 $netAmt = (float) ($line->net_amount ?: $line->total_amount ?: ($line->qty * $line->sell_price));
                 $taxAmt = (float) ($line->gst_tax_amount ?: $line->tax_amount ?: ($line->cgst_amount + $line->sgst_amount + $line->igst_amount));
@@ -77,14 +80,18 @@ class EInvoiceService
                     $assAmt = (float) $line->taxable_amount;
                 }
                 $rate = round($assAmt / $qty, 2);
-                $totAmt = round($qty * $rate, 2);
-                $disc = round((float) ($line->disc_amount ?? 0), 2);
+                $totAmt = $assAmt; // Strict NIC Rule: TotAmt - Discount must equal AssAmt exactly
+                $disc = 0.0;
                 $totalAssVal += $assAmt;
 
                 $gstRate = (float) ($line->gst_percent ?: ($assAmt > 0 ? round(($taxAmt / $assAmt) * 100, 2) : 18.0));
                 $cgstAmt = $isInterstate ? 0.0 : round((float) $line->cgst_amount, 2);
                 $sgstAmt = $isInterstate ? 0.0 : round((float) $line->sgst_amount, 2);
                 $igstAmt = $isInterstate ? round((float) $line->igst_amount, 2) : 0.0;
+
+                $totalCgstVal += $cgstAmt;
+                $totalSgstVal += $sgstAmt;
+                $totalIgstVal += $igstAmt;
 
                 $itemList[] = [
                     'SlNo' => (string) $itemCounter++,
@@ -117,12 +124,19 @@ class EInvoiceService
             $taxable = max(0, round((float) $bill->total - (float) $bill->total_gst, 2));
             $totalAssVal = $taxable;
             $gstRate = $taxable > 0 ? round(((float) $bill->total_gst / $taxable) * 100, 2) : 18.0;
+            $cgstAmt = $isInterstate ? 0.0 : round((float) $bill->total_cgst, 2);
+            $sgstAmt = $isInterstate ? 0.0 : round((float) $bill->total_sgst, 2);
+            $igstAmt = $isInterstate ? round((float) $bill->total_igst, 2) : 0.0;
+
+            $totalCgstVal += $cgstAmt;
+            $totalSgstVal += $sgstAmt;
+            $totalIgstVal += $igstAmt;
 
             $itemList[] = [
                 'SlNo' => '1',
                 'PrdDesc' => 'Pet Goods & Supplies',
                 'IsServc' => 'N',
-                'HsnCd' => '2309',
+                'HsnCd' => '23091000',
                 'Qty' => (float) ($bill->total_qty ?: 1),
                 'Unit' => 'NOS',
                 'UnitPrice' => $taxable,
@@ -131,9 +145,9 @@ class EInvoiceService
                 'PreTaxVal' => 0.0,
                 'AssAmt' => $taxable,
                 'GstRt' => $gstRate,
-                'IgstAmt' => $isInterstate ? round((float) $bill->total_igst, 2) : 0.0,
-                'CgstAmt' => $isInterstate ? 0.0 : round((float) $bill->total_cgst, 2),
-                'SgstAmt' => $isInterstate ? 0.0 : round((float) $bill->total_sgst, 2),
+                'IgstAmt' => $igstAmt,
+                'CgstAmt' => $cgstAmt,
+                'SgstAmt' => $sgstAmt,
                 'CesRt' => 0.0,
                 'CesAmt' => 0.0,
                 'CesNonAdValAmt' => 0.0,
@@ -144,6 +158,11 @@ class EInvoiceService
                 'TotItemVal' => round((float) $bill->total, 2),
             ];
         }
+
+        // Exact auto-balanced roundoff so TotInvVal strictly matches sum of items
+        $netCalculated = round($totalAssVal + $totalCgstVal + $totalSgstVal + $totalIgstVal, 2);
+        $totInv = (float) $bill->total;
+        $rndOff = round($totInv - $netCalculated, 2);
 
         return [
             'Version' => '1.1',
@@ -181,15 +200,15 @@ class EInvoiceService
             'ItemList' => $itemList,
             'ValDtls' => [
                 'AssVal' => round($totalAssVal, 2),
-                'CgstVal' => round((float) $bill->total_cgst, 2),
-                'SgstVal' => round((float) $bill->total_sgst, 2),
-                'IgstVal' => round((float) $bill->total_igst, 2),
+                'CgstVal' => round($totalCgstVal, 2),
+                'SgstVal' => round($totalSgstVal, 2),
+                'IgstVal' => round($totalIgstVal, 2),
                 'CesVal' => 0.0,
                 'StCesVal' => 0.0,
-                'Discount' => round((float) ($bill->disc_amount ?? 0), 2),
+                'Discount' => 0.0,
                 'OthChrg' => 0.0,
-                'RndOffAmt' => round((float) ($bill->round_off ?? 0), 2),
-                'TotInvVal' => round((float) $bill->total, 2),
+                'RndOffAmt' => $rndOff,
+                'TotInvVal' => round($netCalculated + $rndOff, 2),
             ],
         ];
     }
