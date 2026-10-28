@@ -141,10 +141,14 @@ class PopulateHistoricalBillItems extends Command
                     'total_qty' => 25.000,
                     'item_disc_amount' => 40498.80,
                     'disc_amount' => 0.00,
-                    'tax_amount' => 5949.33,
+                    'total_gst' => 5949.33,
+                    'total_cgst' => 2974.67,
+                    'total_sgst' => 2974.66,
+                    'total_igst' => 0.00,
                     'round_off' => -0.20,
                     'total' => 39001.00,
                     'remarks' => 'K',
+                    'message' => 'DELIVERY',
                     'updated_at' => Carbon::now(),
                 ]);
 
@@ -1102,10 +1106,14 @@ class PopulateHistoricalBillItems extends Command
                 DB::table('purchase_invoices')->where('id', $purchaseInvoice->id)->update([
                     'total_qty' => $totalQty,
                     'total_gst' => $totalGst,
+                    'total_igst' => $totalGst,
+                    'total_cgst' => 0.00,
+                    'total_sgst' => 0.00,
                     'disc_amount' => $totalDisc,
                     'total' => 199657.00, // Exact TruePOS total
                     'round_off' => 0.00,
                     'remarks' => 'COUNT BY KAVERI  PURCHASE BY KAVERI',
+                    'message' => '.',
                     'updated_at' => Carbon::now(),
                 ]);
 
