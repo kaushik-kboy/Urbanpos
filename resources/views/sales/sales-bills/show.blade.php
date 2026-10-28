@@ -208,7 +208,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($salesBill->items as $idx => $item)
+                    @forelse ($salesBill->resolved_items as $idx => $item)
                         <tr>
                             <td class="text-center">{{ $idx + 1 }}</td>
                             <td class="text-monospace font-weight-bold text-muted small">
@@ -216,6 +216,9 @@
                             </td>
                             <td class="font-weight-bold">
                                 {{ $item->item?->name ?? 'Item' }}
+                                @if ($item->is_synthetic ?? false)
+                                    <span class="badge badge-info ml-1" style="font-size: 10px;"><i class="fas fa-history mr-1"></i>Consolidated Legacy Record</span>
+                                @endif
                             </td>
                             <td>{{ $item->exp_date ? $item->exp_date->format('d-m-Y') : '—' }}</td>
                             <td class="text-right font-weight-bold">{{ number_format($item->qty, 0) }}</td>
@@ -247,7 +250,7 @@
                 <tfoot class="bg-light font-weight-bold">
                     <tr>
                         <td colspan="4" class="text-right">Totals:</td>
-                        <td class="text-right text-primary">{{ number_format($salesBill->items->sum('qty'), 3) }}</td>
+                        <td class="text-right text-primary">{{ number_format($salesBill->resolved_items->sum('qty'), 3) }}</td>
                         <td colspan="2"></td>
                         <td class="text-right text-danger">₹{{ number_format($salesBill->disc_amount, 2) }}</td>
                         <td></td>

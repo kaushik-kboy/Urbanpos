@@ -101,7 +101,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($purchaseInvoice->items as $idx => $line)
+                        @forelse ($purchaseInvoice->resolved_items as $idx => $line)
                             @php
                                 $lineTotalUnits = $line->qty + $line->free_qty;
                                 $lineLandingCost = $line->effective_cost > 0
@@ -111,7 +111,12 @@
                             <tr>
                                 <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
                                 <td><span class="badge badge-light border font-weight-bold">{{ $line->item?->item_code ?: ($line->item?->ean_upc_code ?: ($line->item?->id ? '#' . $line->item->id : '—')) }}</span></td>
-                                <td class="font-weight-bold">{{ $line->item?->name }}</td>
+                                <td class="font-weight-bold">
+                                    {{ $line->item?->name }}
+                                    @if ($line->is_synthetic ?? false)
+                                        <span class="badge badge-info ml-1" style="font-size: 10px;"><i class="fas fa-history mr-1"></i>Consolidated Legacy Record</span>
+                                    @endif
+                                </td>
                                 <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
                                 <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 0) }}</td>
                                 <td class="text-right">{{ $line->free_qty > 0 ? number_format($line->free_qty, 0) : '—' }}</td>
@@ -138,12 +143,12 @@
                     <tfoot class="bg-light font-weight-bold">
                         <tr>
                             <td colspan="4" class="text-right">Totals:</td>
-                            <td class="text-right text-primary">{{ number_format($purchaseInvoice->items->sum('qty') + $purchaseInvoice->items->sum('free_qty'), 3) }}</td>
+                            <td class="text-right text-primary">{{ number_format($purchaseInvoice->resolved_items->sum(fn($i) => (float)$i->qty + (float)$i->free_qty), 3) }}</td>
                             <td colspan="5"></td>
-                            <td class="text-right text-danger">₹{{ number_format($purchaseInvoice->items->sum('disc_amount'), 2) }}</td>
+                            <td class="text-right text-danger">₹{{ number_format($purchaseInvoice->resolved_items->sum('disc_amount'), 2) }}</td>
                             <td></td>
                             <td class="text-right">₹{{ number_format($purchaseInvoice->total_gst, 2) }}</td>
-                            <td class="text-right text-success">₹{{ number_format($purchaseInvoice->items->sum('net_amount'), 2) }}</td>
+                            <td class="text-right text-success">₹{{ number_format($purchaseInvoice->resolved_items->sum('net_amount'), 2) }}</td>
                         </tr>
                     </tfoot>
                 </table>

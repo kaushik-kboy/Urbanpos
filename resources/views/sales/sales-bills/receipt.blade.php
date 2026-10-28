@@ -362,7 +362,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($salesBill->items as $idx => $item)
+                @foreach ($salesBill->resolved_items as $idx => $item)
                     <tr>
                         <td colspan="4" class="font-bold" style="padding-top: 3px;">
                             {{ $idx + 1 }}. {{ $item->item?->name ?? 'Item' }}
