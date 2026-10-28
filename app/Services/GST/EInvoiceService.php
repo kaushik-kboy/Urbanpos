@@ -85,9 +85,19 @@ class EInvoiceService
                 $totalAssVal += $assAmt;
 
                 $gstRate = (float) ($line->gst_percent ?: ($assAmt > 0 ? round(($taxAmt / $assAmt) * 100, 2) : 18.0));
-                $cgstAmt = $isInterstate ? 0.0 : round((float) $line->cgst_amount, 2);
-                $sgstAmt = $isInterstate ? 0.0 : round((float) $line->sgst_amount, 2);
-                $igstAmt = $isInterstate ? round((float) $line->igst_amount, 2) : 0.0;
+                
+                if ($isInterstate) {
+                    $cgstAmt = 0.0;
+                    $sgstAmt = 0.0;
+                    $igstAmt = (float) $line->igst_amount > 0 ? round((float) $line->igst_amount, 2) : round($taxAmt, 2);
+                } else {
+                    $igstAmt = 0.0;
+                    // Strict NIC Rule: For intrastate transactions, SGST and CGST amounts MUST be strictly equal.
+                    // Retail POS item records with 1-paisa rounding difference (e.g. 40.72 vs 40.71) are equalized.
+                    $halfTax = round($taxAmt / 2, 2);
+                    $cgstAmt = $halfTax;
+                    $sgstAmt = $halfTax;
+                }
 
                 $totalCgstVal += $cgstAmt;
                 $totalSgstVal += $sgstAmt;
@@ -124,9 +134,17 @@ class EInvoiceService
             $taxable = max(0, round((float) $bill->total - (float) $bill->total_gst, 2));
             $totalAssVal = $taxable;
             $gstRate = $taxable > 0 ? round(((float) $bill->total_gst / $taxable) * 100, 2) : 18.0;
-            $cgstAmt = $isInterstate ? 0.0 : round((float) $bill->total_cgst, 2);
-            $sgstAmt = $isInterstate ? 0.0 : round((float) $bill->total_sgst, 2);
-            $igstAmt = $isInterstate ? round((float) $bill->total_igst, 2) : 0.0;
+            
+            if ($isInterstate) {
+                $cgstAmt = 0.0;
+                $sgstAmt = 0.0;
+                $igstAmt = (float) $bill->total_igst > 0 ? round((float) $bill->total_igst, 2) : round((float) $bill->total_gst, 2);
+            } else {
+                $igstAmt = 0.0;
+                $halfTax = round((float) $bill->total_gst / 2, 2);
+                $cgstAmt = $halfTax;
+                $sgstAmt = $halfTax;
+            }
 
             $totalCgstVal += $cgstAmt;
             $totalSgstVal += $sgstAmt;
