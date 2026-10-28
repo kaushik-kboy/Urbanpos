@@ -359,7 +359,9 @@ class SalesBillController extends Controller
             // GSTR-1 posting-time snapshot: classify B2B/B2C off what the
             // customer's GSTIN actually was right now, not whatever it might
             // be later if edited — see docs/GSTR1-AUDIT.md.
-            $customerGstin = \App\Models\Customer::where('id', $data['header']['customer_id'])->value('gst_no');
+            $customerGstin = !empty($data['header']['customer_gstin']) 
+                ? trim((string) $data['header']['customer_gstin']) 
+                : \App\Models\Customer::where('id', $data['header']['customer_id'])->value('gst_no');
             if (empty($data['header']['user_id'])) {
                 $data['header']['user_id'] = auth()->id();
             }
@@ -444,6 +446,7 @@ class SalesBillController extends Controller
             $einvService = app(\App\Services\GST\EInvoiceService::class);
             if ($einvService->isEligibleForAutoUpload($salesBill)) {
                 $einvResult = $einvService->uploadToGovernment($salesBill);
+                $salesBill->refresh();
                 if ($einvResult['success']) {
                     $einvoiceNotice = ' | Govt E-Invoice IRN generated automatically!';
                 } else {

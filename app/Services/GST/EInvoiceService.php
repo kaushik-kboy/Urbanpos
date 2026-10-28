@@ -23,6 +23,10 @@ class EInvoiceService
      */
     public function isEligibleForAutoUpload(SalesBill $bill, ?GstSetting $settings = null): bool
     {
+        if (!empty($bill->irn) && strlen($bill->irn) === 64) {
+            return false;
+        }
+
         $settings = $settings ?: GstSetting::current();
         if (!$settings->auto_upload_enabled) {
             return false;
