@@ -376,7 +376,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($salesBill->resolved_items as $idx => $line)
+                @forelse($salesBill->items as $idx => $line)
                     @php
                         $itemObj = $line->item;
                         $itemCode = $itemObj?->item_code ?: ($line->item_code ?? '-');

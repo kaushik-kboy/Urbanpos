@@ -208,7 +208,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($salesBill->resolved_items as $idx => $item)
+                    @forelse ($salesBill->items as $idx => $item)
                         <tr>
                             <td class="text-center">{{ $idx + 1 }}</td>
                             <td class="text-monospace font-weight-bold text-muted small">
@@ -216,9 +216,6 @@
                             </td>
                             <td class="font-weight-bold">
                                 {{ $item->item?->name ?? 'Item' }}
-                                @if ($item->is_synthetic ?? false)
-                                    <span class="badge badge-info ml-1" style="font-size: 10px;"><i class="fas fa-history mr-1"></i>Consolidated Legacy Record</span>
-                                @endif
                             </td>
                             <td>{{ $item->exp_date ? $item->exp_date->format('d-m-Y') : '—' }}</td>
                             <td class="text-right font-weight-bold">{{ number_format($item->qty, 0) }}</td>
@@ -239,9 +236,24 @@
                     @empty
                         <tr>
                             <td colspan="11" class="text-center py-4 bg-light">
-                                <div class="text-muted">
-                                    <i class="fas fa-history text-info mr-1"></i>
-                                    <strong>Historical Migration Record:</strong> This bill ({{ $salesBill->bill_number }}) was imported during legacy POS data migration as a header record. Line items were not included in the historical export, but the total bill amount (<strong>₹{{ number_format($salesBill->total, 2) }}</strong>) and financial ledgers are preserved.
+                                <div class="alert alert-light border d-inline-block text-left px-4 py-3 mb-0" style="max-width: 750px;">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="fas fa-history text-info fa-lg mr-2"></i>
+                                        <span class="font-weight-bold text-dark">Historical Migration Record (Legacy TruePOS)</span>
+                                    </div>
+                                    <div class="small text-muted mb-2">
+                                        This sales bill ({{ $salesBill->bill_number }}) was imported from legacy TruePOS summary ledger. Detailed item-by-item breakdown was not part of the legacy TruePOS export, but the customer ledger, payment details, and total bill amount are intact.
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                        <span class="small font-weight-bold text-dark">
+                                            Total Qty: {{ number_format($salesBill->total_qty, 0) }} units &nbsp;|&nbsp; Payment: {{ $salesBill->payment_type }} &nbsp;|&nbsp; Total: <span class="text-success">₹{{ number_format($salesBill->total, 2) }}</span>
+                                        </span>
+                                        @if($salesBill->status !== 'Cancelled')
+                                            <a href="{{ route('sales.sales-bills.edit', $salesBill) }}" class="btn btn-xs btn-outline-primary ml-3 font-weight-bold">
+                                                <i class="fas fa-edit mr-1"></i> Edit / Enter Line Items
+                                            </a>
+                                        @endif
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -250,7 +262,7 @@
                 <tfoot class="bg-light font-weight-bold">
                     <tr>
                         <td colspan="4" class="text-right">Totals:</td>
-                        <td class="text-right text-primary">{{ number_format($salesBill->resolved_items->sum('qty'), 3) }}</td>
+                        <td class="text-right text-primary">{{ number_format($salesBill->items->sum('qty') ?: ($salesBill->total_qty ?? 0), 3) }}</td>
                         <td colspan="2"></td>
                         <td class="text-right text-danger">₹{{ number_format($salesBill->disc_amount, 2) }}</td>
                         <td></td>

@@ -40,17 +40,26 @@
                     <input type="hidden" name="direction" value="{{ request('direction') }}">
                 @endif
                 @if(request('is_iframe'))
-                    <div class="col-md-5 col-sm-6 mb-2">
+                    <div class="col-md-4 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Search</label>
                         <div class="input-group input-group-sm">
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile..." value="{{ request('search') }}" autofocus>
+                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile, Amount..." value="{{ request('search') }}" autofocus>
                             <div class="input-group-append">
                                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
                                 <a href="{{ route('sales.sales-bills.index', ['is_iframe' => 1, 'mode' => request('mode')]) }}" class="btn btn-secondary" title="Reset Search"><i class="fas fa-undo"></i></a>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 col-sm-6 mb-2">
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Amount</label>
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">₹</span>
+                            </div>
+                            <input type="number" step="0.01" name="amount" class="form-control form-control-sm" placeholder="Amount" value="{{ request('amount') }}" onchange="this.form.submit()">
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Payment Mode</label>
                         <select name="payment_mode" class="form-control form-control-sm" onchange="this.form.submit()">
                             <option value="">All Payment Modes</option>
@@ -59,10 +68,17 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="col-md-3 col-sm-6 mb-2 d-flex align-items-end justify-content-end">
+                        <x-table-column-customizer table-key="sales.sales-bills" table-id="salesBillsTable" button-class="btn btn-sm btn-outline-secondary font-weight-bold" button-text="Customize Columns" />
+                    </div>
                 @else
                     <div class="col-md-2 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Search</label>
-                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile..." value="{{ request('search') }}">
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile, Amount..." value="{{ request('search') }}">
+                    </div>
+                    <div class="col-md-1 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Amount</label>
+                        <input type="number" step="0.01" name="amount" class="form-control form-control-sm" placeholder="₹ Amount" value="{{ request('amount') }}">
                     </div>
                     <div class="col-md-2 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">From Date</label>

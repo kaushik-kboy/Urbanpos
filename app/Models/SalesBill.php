@@ -90,46 +90,11 @@ class SalesBill extends Model
     }
 
     /**
-     * Get line items, falling back to a consolidated synthetic item for historical records.
+     * Get line items for the bill.
      */
     public function getResolvedItemsAttribute()
     {
-        if ($this->items && $this->items->count() > 0) {
-            return $this->items;
-        }
-
-        $taxable = max(0, round((float) $this->total - (float) $this->total_gst, 2));
-        $qty = max(1.0, (float) ($this->total_qty ?: 1));
-        $rate = $taxable > 0 ? round($taxable / $qty, 2) : round((float) $this->total / $qty, 2);
-        $gstPercent = $taxable > 0 ? round(((float) $this->total_gst / $taxable) * 100, 2) : 0.0;
-
-        $desc = 'Pet Supplies & Merchandise';
-        if (!empty($this->message) && $this->message !== '.') {
-            $desc .= ' (' . $this->message . ')';
-        }
-
-        $synthetic = new SalesBillItem([
-            'sales_bill_id' => $this->id,
-            'qty' => $qty,
-            'sell_price' => round((float) $this->total / $qty, 2),
-            'mrp' => round((float) $this->total / $qty, 2),
-            'disc_amount' => (float) ($this->disc_amount ?? 0),
-            'disc_percent' => (float) ($this->disc_percent ?? 0),
-            'gst_percent' => $gstPercent,
-            'gst_tax_amount' => (float) ($this->total_gst ?? 0),
-            'cgst_amount' => (float) ($this->total_cgst ?? 0),
-            'sgst_amount' => (float) ($this->total_sgst ?? 0),
-            'igst_amount' => (float) ($this->total_igst ?? 0),
-            'net_amount' => (float) $this->total,
-        ]);
-        $synthetic->setRelation('item', new Item([
-            'name' => $desc,
-            'item_code' => $this->bill_number ?: ('BILL-' . $this->id),
-            'hsn_code' => '23091000',
-        ]));
-        $synthetic->is_synthetic = true;
-
-        return collect([$synthetic]);
+        return $this->items ?? collect();
     }
 
     public function salesReturns(): HasMany

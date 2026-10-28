@@ -101,7 +101,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($purchaseInvoice->resolved_items as $idx => $line)
+                        @forelse ($purchaseInvoice->items as $idx => $line)
                             @php
                                 $lineTotalUnits = $line->qty + $line->free_qty;
                                 $lineLandingCost = $line->effective_cost > 0
@@ -113,9 +113,6 @@
                                 <td><span class="badge badge-light border font-weight-bold">{{ $line->item?->item_code ?: ($line->item?->ean_upc_code ?: ($line->item?->id ? '#' . $line->item->id : '—')) }}</span></td>
                                 <td class="font-weight-bold">
                                     {{ $line->item?->name }}
-                                    @if ($line->is_synthetic ?? false)
-                                        <span class="badge badge-info ml-1" style="font-size: 10px;"><i class="fas fa-history mr-1"></i>Consolidated Legacy Record</span>
-                                    @endif
                                 </td>
                                 <td class="text-center">{{ optional($line->exp_date)->format('d-m-Y') ?: '—' }}</td>
                                 <td class="text-right font-weight-bold text-primary">{{ number_format($line->qty, 0) }}</td>
@@ -132,9 +129,24 @@
                         @empty
                             <tr>
                                 <td colspan="14" class="text-center py-4 bg-light">
-                                    <div class="text-muted">
-                                        <i class="fas fa-history text-info mr-1"></i>
-                                        <strong>Historical Migration Record:</strong> This purchase invoice ({{ $purchaseInvoice->invoice_number }}) was imported during legacy POS data migration as a header record. Line items were not included in the historical export, but the invoice total (<strong>₹{{ number_format($purchaseInvoice->total ?? 0, 2) }}</strong>) and supplier ledger are recorded.
+                                    <div class="alert alert-light border d-inline-block text-left px-4 py-3 mb-0" style="max-width: 800px;">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="fas fa-history text-info fa-lg mr-2"></i>
+                                            <span class="font-weight-bold text-dark">Historical Migration Record (Legacy TruePOS)</span>
+                                        </div>
+                                        <div class="small text-muted mb-2">
+                                            This purchase invoice ({{ $purchaseInvoice->invoice_number }}) was imported from legacy TruePOS summary ledger. Detailed item-by-item breakdown was not part of the legacy TruePOS export, but the financial ledger, supplier invoice number ({{ $purchaseInvoice->supplier_inv_no ?: 'N/A' }}), tax details, and total invoice amount are intact.
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                            <span class="small font-weight-bold text-dark">
+                                                Total Qty: {{ number_format($purchaseInvoice->total_qty, 0) }} units &nbsp;|&nbsp; Tax: ₹{{ number_format($purchaseInvoice->total_gst, 2) }} &nbsp;|&nbsp; Total: <span class="text-success">₹{{ number_format($purchaseInvoice->total, 2) }}</span>
+                                            </span>
+                                            @if($purchaseInvoice->status !== 'Cancelled')
+                                                <a href="{{ route('purchase.purchase-invoices.edit', $purchaseInvoice) }}" class="btn btn-xs btn-outline-primary ml-3 font-weight-bold">
+                                                    <i class="fas fa-edit mr-1"></i> Edit / Enter Line Items
+                                                </a>
+                                            @endif
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -143,12 +155,12 @@
                     <tfoot class="bg-light font-weight-bold">
                         <tr>
                             <td colspan="4" class="text-right">Totals:</td>
-                            <td class="text-right text-primary">{{ number_format($purchaseInvoice->resolved_items->sum(fn($i) => (float)$i->qty + (float)$i->free_qty), 3) }}</td>
+                            <td class="text-right text-primary">{{ number_format($purchaseInvoice->items->sum(fn($i) => (float)$i->qty + (float)$i->free_qty) ?: ($purchaseInvoice->total_qty ?? 0), 3) }}</td>
                             <td colspan="5"></td>
-                            <td class="text-right text-danger">₹{{ number_format($purchaseInvoice->resolved_items->sum('disc_amount'), 2) }}</td>
+                            <td class="text-right text-danger">₹{{ number_format($purchaseInvoice->items->sum('disc_amount') ?: ($purchaseInvoice->disc_amount ?? 0), 2) }}</td>
                             <td></td>
                             <td class="text-right">₹{{ number_format($purchaseInvoice->total_gst, 2) }}</td>
-                            <td class="text-right text-success">₹{{ number_format($purchaseInvoice->resolved_items->sum('net_amount'), 2) }}</td>
+                            <td class="text-right text-success">₹{{ number_format($purchaseInvoice->items->sum('net_amount') ?: ($purchaseInvoice->total ?? 0), 2) }}</td>
                         </tr>
                     </tfoot>
                 </table>

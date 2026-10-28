@@ -52,16 +52,25 @@ class SalesBillController extends Controller
             $column = $request->input('search_column', 'all');
 
             // Full bill number typed/scanned: unique-index lookup instead of a substring scan of every bill.
+            $numericTerm = preg_replace('/[^\d.]/', '', $term);
             $exactBill = in_array($column, ['bill_number', 'all'], true) && SalesBill::where('bill_number', $term)->exists();
             if ($exactBill) {
                 $query->where('bill_number', $term);
             } else
-            $query->where(function ($q) use ($term, $column) {
+            $query->where(function ($q) use ($term, $column, $numericTerm) {
                 if ($column === 'bill_number' || $column === 'all') {
                     $q->orWhere('bill_number', 'like', "%{$term}%");
                 }
-                if ($column === 'amount') {
-                    $q->orWhere('total', 'like', "%{$term}%");
+                if ($column === 'amount' || $column === 'all') {
+                    if (is_numeric($term)) {
+                        $q->orWhere('total', (float) $term)
+                          ->orWhere('total', 'like', "%{$term}%");
+                    } elseif (is_numeric($numericTerm) && $numericTerm !== '') {
+                        $q->orWhere('total', (float) $numericTerm)
+                          ->orWhere('total', 'like', "%{$numericTerm}%");
+                    } elseif (preg_match('/^[0-9.]+$/', $term)) {
+                        $q->orWhere('total', 'like', "%{$term}%");
+                    }
                 }
                 if (in_array($column, ['customer_name', 'mobile', 'all'])) {
                     // The OR-group MUST be nested: a bare leading orWhere inside whereHas detaches the
@@ -79,6 +88,17 @@ class SalesBillController extends Controller
                     });
                 }
             });
+        }
+
+        if ($request->filled('amount')) {
+            $amtTerm = preg_replace('/[^\d.]/', '', trim($request->input('amount')));
+            if (is_numeric($amtTerm) && $amtTerm !== '') {
+                $amt = (float) $amtTerm;
+                $query->where(function ($q) use ($amt, $amtTerm) {
+                    $q->where('total', $amt)
+                      ->orWhere('total', 'like', "{$amtTerm}%");
+                });
+            }
         }
 
         if ($request->filled('date_from')) {

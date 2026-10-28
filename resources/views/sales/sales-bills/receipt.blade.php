@@ -362,7 +362,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($salesBill->resolved_items as $idx => $item)
+                @forelse ($salesBill->items as $idx => $item)
                     <tr>
                         <td colspan="4" class="font-bold" style="padding-top: 3px;">
                             {{ $idx + 1 }}. {{ $item->item?->name ?? 'Item' }}
@@ -393,7 +393,13 @@
                             </td>
                         </tr>
                     @endif
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="4" class="text-center store-sub" style="padding: 8px 0; color: #666;">
+                            (Historical Migrated Bill - Total Amount: ₹{{ number_format($salesBill->total, 2) }})
+                        </td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
 
@@ -403,7 +409,7 @@
         <table class="totals-table">
             <tr>
                 <td class="text-left">Total Items / Qty:</td>
-                <td class="text-right font-bold">{{ count($salesBill->items) }} / {{ number_format($salesBill->items->sum('qty'), 3) }}</td>
+                <td class="text-right font-bold">{{ count($salesBill->items) ?: 1 }} / {{ number_format($salesBill->items->sum('qty') ?: ($salesBill->total_qty ?? 1), 3) }}</td>
             </tr>
             @if ($receiptSettings->show_discount && $salesBill->disc_amount > 0)
                 <tr>
