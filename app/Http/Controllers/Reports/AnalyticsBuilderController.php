@@ -65,6 +65,9 @@ class AnalyticsBuilderController extends Controller
 
         [$from, $to, $dateRangeLabel] = $this->resolveDateRange($request);
         $branchId = $request->input('branch_id');
+        if ($branchId === 'all' || $branchId === '0' || empty($branchId)) {
+            $branchId = null;
+        }
         $itemId = $request->input('item_id');
         $supplierId = $request->input('supplier_id');
         $customerId = $request->input('customer_id');
@@ -144,6 +147,9 @@ class AnalyticsBuilderController extends Controller
         $metrics = (array) $request->input('metrics', ['qty', 'sales_value', 'margin', 'bill_count']);
         [$from, $to] = $this->resolveDateRange($request);
         $branchId = $request->input('branch_id');
+        if ($branchId === 'all' || $branchId === '0' || empty($branchId)) {
+            $branchId = null;
+        }
         $itemId = $request->input('item_id');
         $supplierId = $request->input('supplier_id');
         $customerId = $request->input('customer_id');
@@ -956,6 +962,9 @@ class AnalyticsBuilderController extends Controller
         $subId = $request->input('sub_id'); // e.g. supplier_id for item_supplier sourcing
         [$from, $to] = $this->resolveDateRange($request);
         $branchId = $request->input('branch_id');
+        if ($branchId === 'all' || $branchId === '0' || empty($branchId)) {
+            $branchId = null;
+        }
 
         $records = [];
         $title = 'Transaction Breakdown';
@@ -1215,6 +1224,92 @@ class AnalyticsBuilderController extends Controller
             'title' => $title,
             'summary' => $summary,
             'records' => $records,
+        ]);
+    }
+
+    /**
+     * Export transaction breakdown drilldown to genuine Excel (.xls).
+     */
+    public function drilldownExport(Request $request): StreamedResponse
+    {
+        $drilldownResp = $this->drilldown($request);
+        $data = $drilldownResp->getData(true);
+
+        $title = $data['title'] ?? 'Transaction Breakdown';
+        $safeTitle = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $title);
+        $filename = "Breakdown_{$safeTitle}_" . date('Ymd_His') . '.xls';
+
+        $records = $data['records'] ?? [];
+        $groupBy = $data['group_by'] ?? 'item';
+
+        return response()->streamDownload(function () use ($title, $records, $groupBy) {
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Transactions</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            echo '<style>th { background-color: #1f497d; color: #ffffff; font-weight: bold; border: 1px solid #999; padding: 6px 10px; } td { border: 1px solid #ddd; padding: 5px 8px; font-size: 11pt; } .text-right { text-align: right; } .text-center { text-align: center; } h3 { color: #1f497d; font-family: Arial, sans-serif; }</style>';
+            echo '</head><body>';
+            echo '<h3>' . htmlspecialchars($title) . '</h3>';
+            echo '<table border="1">';
+
+            if ($groupBy === 'item_supplier') {
+                echo '<thead><tr><th>#</th><th>Invoice / GRN No</th><th>Invoice Date</th><th>Branch</th><th class="text-right">Inward Qty</th><th class="text-right">Cost Price (₹)</th><th class="text-right">Net Value (₹)</th></tr></thead><tbody>';
+                foreach ($records as $idx => $r) {
+                    echo '<tr>';
+                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['invoice_number'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? '')) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars(number_format((float) ($r['qty'] ?? 0), 2)) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_cost'] ?? '')) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
+                    echo '</tr>';
+                }
+            } elseif ($groupBy === 'customer') {
+                echo '<thead><tr><th>#</th><th>Bill Number</th><th>Bill Date</th><th>Branch</th><th class="text-center">Total Qty</th><th class="text-center">Payment Mode</th><th class="text-right">Bill Total (₹)</th></tr></thead><tbody>';
+                foreach ($records as $idx => $r) {
+                    echo '<tr>';
+                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['bill_number'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? '')) . '</td>';
+                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['total_qty'] ?? '')) . '</td>';
+                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['payment_type'] ?? 'Cash')) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
+                    echo '</tr>';
+                }
+            } elseif ($groupBy === 'supplier') {
+                echo '<thead><tr><th>#</th><th>Invoice Number</th><th>Invoice Date</th><th>Branch</th><th class="text-center">Total Qty</th><th class="text-center">Status</th><th class="text-right">Invoice Total (₹)</th></tr></thead><tbody>';
+                foreach ($records as $idx => $r) {
+                    echo '<tr>';
+                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['invoice_number'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? '')) . '</td>';
+                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['total_qty'] ?? '')) . '</td>';
+                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['status'] ?? 'Active')) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
+                    echo '</tr>';
+                }
+            } else {
+                echo '<thead><tr><th>#</th><th>Bill Number</th><th>Date & Time</th><th>Customer</th><th>Branch</th><th class="text-right">Qty</th><th class="text-right">Unit Rate (₹)</th><th class="text-right">Total Amount (₹)</th></tr></thead><tbody>';
+                foreach ($records as $idx => $r) {
+                    echo '<tr>';
+                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['bill_number'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['customer_name'] ?? '')) . '</td>';
+                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? 'Main')) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars(number_format((float) ($r['qty'] ?? 1), 2)) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_rate'] ?? '-')) . '</td>';
+                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
+                    echo '</tr>';
+                }
+            }
+
+            echo '</tbody></table></body></html>';
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
 }

@@ -308,7 +308,7 @@
                     <div class="col-md-2 mb-2">
                         <label class="small text-muted mb-1"><i class="fas fa-store-alt mr-1"></i> Branch:</label>
                         <select class="form-control form-control-sm" id="branch_id" name="branch_id">
-                            <option value="">All Branches</option>
+                            <option value="">All Branches (Combined)</option>
                             @foreach($branches as $bId => $bName)
                                 <option value="{{ $bId }}">{{ $bName }}</option>
                             @endforeach
@@ -459,7 +459,7 @@
 
     {{-- 4. RESULTS VIEWPORT (TABLE VIEW) --}}
     <div class="card shadow-sm border-0 mb-4" id="results-card">
-        <div class="card-header bg-white py-2 d-flex flex-wrap justify-content-between align-items-center">
+        <div class="card-header bg-white py-2 d-flex flex-wrap justify-content-between align-items-center" style="position: relative; z-index: 1050;">
             <div class="d-flex align-items-center mb-1 mb-md-0">
                 <h6 class="card-title font-weight-bold text-dark mb-0 mr-2">
                     <i class="fas fa-list-alt text-primary mr-1"></i> <span id="report-title-display">Generated Report Results</span>
@@ -470,11 +470,11 @@
             </div>
             <div class="d-flex align-items-center flex-wrap">
                 <!-- Customize Columns Dropdown -->
-                <div class="dropdown mr-2" id="columns-customizer-wrapper">
+                <div class="dropdown mr-2" id="columns-customizer-wrapper" style="position: relative; z-index: 1051;">
                     <button class="btn btn-xs btn-outline-secondary dropdown-toggle font-weight-bold" type="button" id="btnCustomizeColumns" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Customize visible table columns">
                         <i class="fas fa-columns mr-1 text-primary"></i> Customize Columns
                     </button>
-                    <div class="dropdown-menu dropdown-menu-right p-2 shadow-sm" id="columns-customizer-menu" style="min-width: 230px; max-height: 320px; overflow-y: auto;">
+                    <div class="dropdown-menu dropdown-menu-right p-2 shadow-lg" id="columns-customizer-menu" style="min-width: 260px; max-height: 380px; overflow-y: auto; z-index: 1060 !important; box-shadow: 0 0.5rem 1.25rem rgba(0,0,0,0.25) !important;">
                         <div class="d-flex justify-content-between align-items-center pb-1 mb-2 border-bottom">
                             <span class="small font-weight-bold text-dark"><i class="fas fa-eye mr-1 text-info"></i> Visible Columns</span>
                             <button type="button" class="btn btn-link btn-xs text-primary p-0 font-weight-bold" id="btn-reset-columns">Reset All</button>
@@ -583,19 +583,29 @@
 <div class="modal fade" id="drilldownModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
-            <div class="modal-header bg-dark text-white py-2">
-                <h5 class="modal-title font-weight-bold" id="drilldownModalTitle">
+            <div class="modal-header bg-dark text-white py-2 d-flex justify-content-between align-items-center">
+                <h5 class="modal-title font-weight-bold mb-0" id="drilldownModalTitle">
                     <i class="fas fa-list-ol mr-2 text-warning"></i> Transaction Breakdown
                 </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-sm btn-success font-weight-bold mr-3 shadow-xs" id="btn-export-drilldown-excel" title="Download all transactions as real Excel spreadsheet (.xls)">
+                        <i class="fas fa-file-excel mr-1"></i> Download Excel (.xls)
+                    </button>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size: 20px; line-height: 1;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
             </div>
             <div class="modal-body p-0">
                 <div class="p-3 bg-light border-bottom d-flex flex-wrap justify-content-between align-items-center">
                     <div id="drilldown-summary-text" class="font-weight-bold text-dark h6 mb-0"></div>
-                    <div class="small text-muted">
-                        <i class="fas fa-external-link-alt text-primary mr-1"></i> All transaction links open in a new tab without closing this report.
+                    <div class="d-flex align-items-center">
+                        <span class="small text-muted mr-3">
+                            <i class="fas fa-external-link-alt text-primary mr-1"></i> Links open in new tab
+                        </span>
+                        <button type="button" class="btn btn-xs btn-outline-success font-weight-bold btn-trigger-drilldown-excel" title="Download Excel (.xls)">
+                            <i class="fas fa-file-excel mr-1"></i> Export Excel (.xls)
+                        </button>
                     </div>
                 </div>
                 <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
@@ -607,7 +617,10 @@
                     </table>
                 </div>
             </div>
-            <div class="modal-footer py-2">
+            <div class="modal-footer py-2 d-flex justify-content-between">
+                <button type="button" class="btn btn-success btn-sm font-weight-bold" id="btn-export-drilldown-excel-footer">
+                    <i class="fas fa-file-excel mr-1"></i> Download as Excel (.xls)
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -1144,6 +1157,11 @@ $(document).ready(function() {
         }
     }).on('change', function() {
         syncFilterDependencyBadges();
+    });
+
+    // Branch selection change listener: auto-update report immediately
+    $('#branch_id').on('change', function() {
+        runLiveReport();
     });
 
     syncFilterDependencyBadges();
@@ -2103,6 +2121,87 @@ $(document).ready(function() {
             });
         }
     }
+
+    // EXPORT DRILLDOWN TRANSACTION BREAKDOWN TO EXCEL (.xls)
+    function exportDrilldownTableToExcel() {
+        let rawTitle = $('#drilldownModalTitle').text().replace(/Transaction Breakdown:\s*/i, '').trim();
+        if (!rawTitle) rawTitle = 'Transactions';
+        let safeTitle = rawTitle.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        let filename = `Transaction_Breakdown_${safeTitle}_${new Date().toISOString().slice(0,10)}.xls`;
+
+        let $table = $('#drilldown-table');
+        if ($table.find('tbody tr').length === 0 || $table.find('tbody tr td').hasClass('text-muted')) {
+            alert('No transaction data available to export.');
+            return;
+        }
+
+        let $clone = $table.clone();
+        // Remove Action column (last th and last td of every row)
+        $clone.find('tr').each(function() {
+            $(this).find('th:last-child, td:last-child').remove();
+        });
+        // Remove font-awesome icons
+        $clone.find('i').remove();
+
+        let tableHtml = $clone[0].outerHTML;
+
+        let excelDoc = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+                  xmlns:x="urn:schemas-microsoft-com:office:excel" 
+                  xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+                <!--[if gte mso 9]>
+                <xml>
+                    <x:ExcelWorkbook>
+                        <x:ExcelWorksheets>
+                            <x:ExcelWorksheet>
+                                <x:Name>${safeTitle.slice(0, 31)}</x:Name>
+                                <x:WorksheetOptions>
+                                    <x:DisplayGridlines/>
+                                </x:WorksheetOptions>
+                            </x:ExcelWorksheet>
+                        </x:ExcelWorksheets>
+                    </x:ExcelWorkbook>
+                </xml>
+                <![endif]-->
+                <style>
+                    body { font-family: Calibri, Arial, sans-serif; }
+                    table { border-collapse: collapse; width: 100%; }
+                    th { background-color: #1f497d; color: #ffffff; font-weight: bold; border: 1px solid #999999; padding: 6px 10px; text-align: left; }
+                    td { border: 1px solid #d9d9d9; padding: 5px 8px; font-size: 11pt; }
+                    .text-right { text-align: right; }
+                    .text-center { text-align: center; }
+                    .report-title { font-size: 15pt; font-weight: bold; color: #1f497d; margin-bottom: 6px; }
+                    .report-sub { font-size: 10pt; color: #666666; margin-bottom: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="report-title">Transaction Breakdown: ${rawTitle}</div>
+                <div class="report-sub">Exported on: ${new Date().toLocaleString()} | UrbanPOS Analytics</div>
+                ${tableHtml}
+            </body>
+            </html>
+        `;
+
+        let blob = new Blob(['\ufeff', excelDoc], {
+            type: 'application/vnd.ms-excel;charset=utf-8'
+        });
+
+        let downloadUrl = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+    }
+
+    $(document).on('click', '#btn-export-drilldown-excel, #btn-export-drilldown-excel-footer, .btn-trigger-drilldown-excel', function(e) {
+        e.preventDefault();
+        exportDrilldownTableToExcel();
+    });
 
     // Auto-run initial preset if passed in query string or load default
     @if($initialPreset)
