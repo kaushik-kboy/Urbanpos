@@ -44,7 +44,14 @@ class ChatOnClickWhatsAppService
         $this->authKey = $settings?->auth_key ?: config('services.chatonclick.authkey');
         $configuredTemplate = config('services.chatonclick.template_name');
         $this->templateName = !empty($settings?->template_name) ? trim($settings->template_name) : (!empty($configuredTemplate) ? trim($configuredTemplate) : null);
-        $this->templateLang = $settings?->template_lang ?: config('services.chatonclick.template_lang', 'en');
+        if (empty($this->templateName)) {
+            if ($branchId === 2 || str_contains(strtolower($settings?->header_title ?? ''), 'satellite')) {
+                $this->templateName = 'sales_invoice_satellite';
+            } elseif ($branchId === 3 || str_contains(strtolower($settings?->header_title ?? ''), 'motera')) {
+                $this->templateName = 'sales_invoice_motera';
+            }
+        }
+        $this->templateLang = !empty($settings?->template_lang) ? trim($settings->template_lang) : 'en_US';
         $this->headerTitle = $settings?->header_title ?: 'URBAN PETS';
         $this->footerMessage = $settings?->footer_message ?: 'Have an Awesome Day!';
         $this->supportPhone = $settings?->support_phone ?: null;
@@ -313,7 +320,7 @@ class ChatOnClickWhatsAppService
             ];
         }
 
-        $knownRejected = ['sales_invoice_satellite', 'sales_invoice_motera', 'urban_tax_invoice'];
+        $knownRejected = ['urban_tax_invoice'];
         $isTemplateUnsupported = !empty($this->templateName) && (
             in_array(strtolower($this->templateName), $knownRejected)
             || \Illuminate\Support\Facades\Cache::get('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName)
@@ -362,8 +369,12 @@ class ChatOnClickWhatsAppService
             ];
 
             if (in_array($this->templateName, ['sales_invoice_satellite', 'sales_invoice_motera'])) {
-                // In Meta, sales_invoice_satellite and sales_invoice_motera were approved as static templates with 0 parameters.
-                // Sending variables[] causes Meta error 132000 ('Number of parameters does not match expected').
+                // In Meta, sales_invoice_satellite and sales_invoice_motera are static templates with 0 parameters.
+                // Attach the public digital bill URL in the file parameter so receipt is attached.
+                $multipart[] = [
+                    'name'     => 'file',
+                    'contents' => (string) $publicUrl,
+                ];
             } else {
                 // 8 Body variables matching urban_tax_invoice
                 $variables = [
@@ -463,6 +474,17 @@ class ChatOnClickWhatsAppService
                 Log::info("WhatsApp bill dispatched for Bill #{$salesBill->bill_number} to {$cleanPhone}", [
                     'wamid' => $json['data']['mid'] ?? null,
                 ]);
+
+                // Also send itemized text message so customer receives real breakdown if window open
+                try {
+                    $directMsg = $this->formatInvoiceMessage($salesBill);
+                    \Illuminate\Support\Facades\Http::asMultipart()->timeout(10)->post($this->url . '/api/whatsapp/message', [
+                        ['name' => 'appkey', 'contents' => $this->appKey],
+                        ['name' => 'authkey', 'contents' => $this->authKey],
+                        ['name' => 'to', 'contents' => $cleanPhone],
+                        ['name' => 'message', 'contents' => $directMsg],
+                    ]);
+                } catch (\Throwable $te) {}
 
                 return [
                     'success' => true,
