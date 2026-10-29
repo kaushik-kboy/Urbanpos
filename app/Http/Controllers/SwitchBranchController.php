@@ -43,6 +43,18 @@ class SwitchBranchController extends Controller
             $branchId = $user->branch_id;
         }
 
+        if ($isGlobalAdmin && ($branchId === 'all' || $branchId === '' || $branchId === '0')) {
+            $request->session()->put('active_branch_id', 'all');
+
+            return response()->json([
+                'success' => true,
+                'status' => 'ok',
+                'branch_id' => 'all',
+                'active_branch_id' => 'all',
+                'branch_name' => 'All Branches',
+            ]);
+        }
+
         $branch = Branch::find($branchId);
         if (! $branch) {
             $branch = Branch::where('status', true)->first();

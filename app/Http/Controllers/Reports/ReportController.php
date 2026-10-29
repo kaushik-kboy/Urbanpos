@@ -1731,7 +1731,7 @@ class ReportController extends Controller
         }
 
         $sessionBranch = session('active_branch_id');
-        if ($sessionBranch && $sessionBranch !== 'all') {
+        if ($sessionBranch && $sessionBranch !== 'all' && is_numeric($sessionBranch)) {
             return (int) $sessionBranch;
         }
 

@@ -46,15 +46,18 @@
                     if (!empty($reqBranch) && $reqBranch !== 'all' && $allBranches->contains('id', (int)$reqBranch)) {
                         $activeBranchId = (int) $reqBranch;
                         session(['active_branch_id' => $activeBranchId]);
+                    } elseif ($reqBranch === 'all') {
+                        $activeBranchId = 'all';
+                        session(['active_branch_id' => 'all']);
                     } else {
                         $activeBranchId = session('active_branch_id');
-                        if (!$activeBranchId || !$allBranches->contains('id', (int)$activeBranchId)) {
+                        if ($activeBranchId !== 'all' && (!$activeBranchId || !$allBranches->contains('id', (int)$activeBranchId))) {
                             $activeBranchId = ($user?->branch_id && $allBranches->contains('id', (int)$user->branch_id)) ? (int)$user->branch_id : ($allBranches->first()?->id ?? 1);
                             session(['active_branch_id' => $activeBranchId]);
                         }
                     }
                 }
-                $activeBranchObj = $allBranches->firstWhere('id', (int)$activeBranchId) ?? $allBranches->first();
+                $activeBranchObj = $activeBranchId === 'all' ? null : ($allBranches->firstWhere('id', (int)$activeBranchId) ?? $allBranches->first());
             @endphp
             <li class="nav-item d-flex align-items-center mr-2" id="top-navbar-branch-wrapper">
                 <span class="badge badge-primary px-2 py-1 mr-1 font-weight-bold" style="font-size: 0.85rem;">
@@ -66,8 +69,11 @@
                     </span>
                 @else
                     <select id="top-navbar-branch-select" class="form-control form-control-sm font-weight-bold text-dark border-primary shadow-sm" style="width: auto; height: calc(1.5em + .5rem + 2px); min-width: 190px;">
+                        @if($isGlobalAdmin)
+                            <option value="all" {{ (string)$activeBranchId === 'all' ? 'selected' : '' }}>All Branches (Combined)</option>
+                        @endif
                         @foreach ($allBranches as $b)
-                            <option value="{{ $b->id }}" {{ (int)$activeBranchId === (int)$b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                            <option value="{{ $b->id }}" {{ (string)$activeBranchId === (string)$b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                         @endforeach
                     </select>
                 @endif

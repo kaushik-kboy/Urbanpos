@@ -65,9 +65,14 @@ class PurchaseInvoiceController extends Controller
         if (! $isGlobalAdmin && $user->branch_id) {
             $query->where('branch_id', $user->branch_id);
         } else {
-            if ($request->filled('branch_id') && $request->input('branch_id') !== 'all') {
-                $query->where('branch_id', $request->input('branch_id'));
-            } elseif ($request->session()->has('active_branch_id') && $request->session()->get('active_branch_id') !== 'all' && is_numeric($request->session()->get('active_branch_id'))) {
+            $rawBranch = $request->input('branch_id');
+            if ($request->has('branch_id') && ($rawBranch === 'all' || $rawBranch === '' || $rawBranch === '0')) {
+                // User explicitly selected All Branches: do not filter by branch
+            } elseif ($request->filled('branch_id') && is_numeric($rawBranch) && (int) $rawBranch > 0) {
+                $query->where('branch_id', (int) $rawBranch);
+            } elseif ($request->session()->get('active_branch_id') === 'all') {
+                // Global active branch is All Branches: do not filter
+            } elseif ($request->session()->has('active_branch_id') && is_numeric($request->session()->get('active_branch_id'))) {
                 $query->where('branch_id', (int) $request->session()->get('active_branch_id'));
             }
         }

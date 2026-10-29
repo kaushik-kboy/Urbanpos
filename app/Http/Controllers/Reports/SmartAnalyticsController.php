@@ -45,13 +45,14 @@ class SmartAnalyticsController extends Controller
     {
         $request->validate([
             'item_id' => 'required|exists:items,id',
-            'branch_id' => 'nullable|integer',
+            'branch_id' => 'nullable',
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date',
         ]);
 
         $itemId = (int) $request->input('item_id');
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $rawBranch = $request->input('branch_id');
+        $branchId = ($request->filled('branch_id') && is_numeric($rawBranch) && (int)$rawBranch > 0) ? (int)$rawBranch : null;
         $fromDate = $request->input('from_date') ? Carbon::parse($request->input('from_date'))->startOfDay() : now()->startOfMonth()->startOfDay();
         $toDate = $request->input('to_date') ? Carbon::parse($request->input('to_date'))->endOfDay() : now()->endOfDay();
 
@@ -150,13 +151,14 @@ class SmartAnalyticsController extends Controller
     {
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'branch_id' => 'nullable|integer',
+            'branch_id' => 'nullable',
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date',
         ]);
 
         $customerId = (int) $request->input('customer_id');
-        $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
+        $rawBranch = $request->input('branch_id');
+        $branchId = ($request->filled('branch_id') && is_numeric($rawBranch) && (int)$rawBranch > 0) ? (int)$rawBranch : null;
         $fromDate = $request->input('from_date') ? Carbon::parse($request->input('from_date'))->startOfDay() : now()->startOfMonth()->startOfDay();
         $toDate = $request->input('to_date') ? Carbon::parse($request->input('to_date'))->endOfDay() : now()->endOfDay();
 

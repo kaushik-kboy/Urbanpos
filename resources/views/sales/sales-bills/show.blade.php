@@ -23,12 +23,24 @@
             </button>
             @php
                 $showReceiptSettings = \App\Models\ReceiptSetting::forDocument('sales_bill', $salesBill->branch_id);
+                $custPhoneRaw = preg_replace('/[^0-9]/', '', $salesBill->customer?->phone ?: ($salesBill->customer?->mobile ?: ''));
+                if (strlen($custPhoneRaw) === 10) {
+                    $custPhoneFormatted = '91' . $custPhoneRaw;
+                } else {
+                    $custPhoneFormatted = $custPhoneRaw;
+                }
+                $waService = app(\App\Services\WhatsApp\ChatOnClickWhatsAppService::class);
+                $waMsgText = urlencode($waService->formatInvoiceMessage($salesBill));
+                $waWebLink = !empty($custPhoneFormatted) ? "https://api.whatsapp.com/send?phone={$custPhoneFormatted}&text={$waMsgText}" : '#';
             @endphp
             <a href="{{ route('sales.sales-bills.receipt', $salesBill) }}" target="_blank" class="btn btn-success btn-sm mr-1 shadow-sm font-weight-bold">
                 <i class="fas fa-receipt mr-1"></i> Print Receipt ({{ strtoupper($showReceiptSettings->paper_size ?? '80mm') }})
             </a>
-            <button type="button" id="btn-show-send-whatsapp" class="btn btn-success btn-sm mr-1 shadow-sm font-weight-bold" onclick="sendWhatsAppInvoiceShow()" style="background-color: #25d366; border-color: #25d366;" title="Send Digital Bill via WhatsApp">
-                <i class="fab fa-whatsapp mr-1"></i> Send WhatsApp
+            <a href="{{ $waWebLink }}" target="_blank" class="btn btn-sm mr-1 shadow-sm font-weight-bold text-white" style="background-color: #128c7e; border-color: #075e54;" title="1-Click Open in WhatsApp Web / App (100% Instant Delivery, No Template Required)">
+                <i class="fab fa-whatsapp mr-1"></i> WhatsApp Web
+            </a>
+            <button type="button" id="btn-show-send-whatsapp" class="btn btn-success btn-sm mr-1 shadow-sm font-weight-bold" onclick="sendWhatsAppInvoiceShow()" style="background-color: #25d366; border-color: #25d366;" title="Send Digital Bill via WhatsApp Cloud API">
+                <i class="fas fa-paper-plane mr-1"></i> WhatsApp API
             </button>
             <a href="{{ route('sales.sales-bills.receipt', ['salesBill' => $salesBill, 'autoprint' => 1]) }}" target="_blank" class="btn btn-outline-secondary btn-sm mr-1 font-weight-bold">
                 <i class="fas fa-print mr-1"></i> Direct Print Slip
@@ -695,7 +707,7 @@ function sendWhatsAppInvoiceShow() {
         btn.disabled = false;
         btn.innerHTML = origHtml;
         if (data.success) {
-            alert('✅ ' + data.message);
+            alert('✅ ' + data.message + '\n\n💡 Tip: If this customer has not messaged the store in the last 24 hours, Meta Cloud API may hold direct messages. You can click the "WhatsApp Web" button above to send directly to their WhatsApp with 100% guarantee.');
         } else {
             alert('⚠️ ' + (data.error || 'Failed to send WhatsApp message'));
         }

@@ -63,18 +63,26 @@ class Controller extends BaseController
         $req = $request ?: request();
         $raw = $req ? $req->input('branch_id') : null;
 
-        if ($raw !== null && $raw !== '') {
-            if ($allowAll && $raw === 'all') {
+        if ($raw !== null) {
+            $rawStr = trim((string) $raw);
+            if ($allowAll && ($rawStr === 'all' || $rawStr === '' || $rawStr === '0')) {
                 return 'all';
             }
-            if (is_numeric($raw)) {
-                return (int) $raw;
+            if (is_numeric($rawStr) && (int) $rawStr > 0) {
+                return (int) $rawStr;
             }
         }
 
         $sessionBranch = session('active_branch_id');
+        if ($sessionBranch === 'all' && $allowAll) {
+            return 'all';
+        }
         if ($sessionBranch && $sessionBranch !== 'all' && is_numeric($sessionBranch)) {
             return (int) $sessionBranch;
+        }
+
+        if ($allowAll && $isGlobalAdmin) {
+            return 'all';
         }
 
         if ($user && $user->branch_id) {

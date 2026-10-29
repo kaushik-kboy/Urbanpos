@@ -243,8 +243,22 @@
             <a href="{{ route('sales.sales-bills.show', $salesBill) }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left" style="margin-right: 5px;"></i> Back to Bill
             </a>
+            @php
+                $rCustPhoneRaw = preg_replace('/[^0-9]/', '', $salesBill->customer?->phone ?: ($salesBill->customer?->mobile ?: ''));
+                if (strlen($rCustPhoneRaw) === 10) {
+                    $rCustPhoneFormatted = '91' . $rCustPhoneRaw;
+                } else {
+                    $rCustPhoneFormatted = $rCustPhoneRaw;
+                }
+                $rWaService = app(\App\Services\WhatsApp\ChatOnClickWhatsAppService::class);
+                $rWaMsgText = urlencode($rWaService->formatInvoiceMessage($salesBill));
+                $rWaWebLink = !empty($rCustPhoneFormatted) ? "https://api.whatsapp.com/send?phone={$rCustPhoneFormatted}&text={$rWaMsgText}" : '#';
+            @endphp
+            <a href="{{ $rWaWebLink }}" target="_blank" class="btn" style="background-color: #128c7e; color: #fff; font-weight: bold;" title="1-Click WhatsApp Web">
+                <i class="fab fa-whatsapp" style="margin-right: 5px;"></i> WhatsApp Web
+            </a>
             <button id="btn-whatsapp-send" type="button" class="btn btn-success" onclick="sendWhatsAppInvoice()">
-                <i class="fab fa-whatsapp" style="margin-right: 5px; font-size: 14px;"></i> WhatsApp
+                <i class="fas fa-paper-plane" style="margin-right: 5px; font-size: 14px;"></i> WhatsApp API
             </button>
         @else
             <span style="font-size: 11px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 5px 8px; border-radius: 4px;">
@@ -642,7 +656,7 @@
                 btn.disabled = false;
                 btn.innerHTML = origHtml;
                 if (data.success) {
-                    alert('✅ ' + data.message);
+                    alert('✅ ' + data.message + '\n\n💡 Tip: If this customer has not messaged the store in the last 24 hours, Meta Cloud API may hold direct messages. You can click the "WhatsApp Web" button to send directly to their WhatsApp with 100% guarantee.');
                 } else {
                     alert('⚠️ ' + (data.error || 'Failed to send WhatsApp message'));
                 }
