@@ -1767,12 +1767,20 @@
             const price = parseFloat(item.sell_price || item.mrp || 0).toFixed(2);
             const stock = parseFloat(item.qty || 0);
             const stockBadge = stock > 0 ? `<span class="badge badge-success">${stock} in stock</span>` : `<span class="badge badge-danger">0 in stock</span>`;
+            let otherStocksHtml = '';
+            if (Array.isArray(item.other_stocks) && item.other_stocks.length > 0) {
+                otherStocksHtml = item.other_stocks.map(function (ost) {
+                    let ostQty = parseFloat(ost.stock || 0);
+                    let bCls = ostQty > 0 ? 'badge-info text-white' : 'badge-light text-muted border';
+                    return `<span class="badge ${bCls} ml-1" title="Stock at ${escapeHtml(ost.branch_name)}"><i class="fas fa-store mr-1"></i>${escapeHtml(ost.branch_name)}: ${ostQty}</span>`;
+                }).join(' ');
+            }
             const expBadge = item.exp_date ? `<span class="badge badge-info ml-1"><i class="far fa-calendar-alt mr-1"></i>${formatDmyDate(item.exp_date)}</span>` : '';
             html += `
                 <div class="pos-search-item" data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}'>
                     <div>
                         <strong class="text-dark">${escapeHtml(item.name)}</strong>
-                        <div class="small text-muted">ID: <code>${item.id}</code> &bull; Code: <code>${escapeHtml(item.item_code || item.code || '-')}</code> &bull; ${stockBadge} ${expBadge}</div>
+                        <div class="small text-muted">ID: <code>${item.id}</code> &bull; Code: <code>${escapeHtml(item.item_code || item.code || '-')}</code> &bull; ${stockBadge} ${otherStocksHtml} ${expBadge}</div>
                     </div>
                     <div class="text-right">
                         <strong class="text-primary" style="font-size: 1.05rem;">₹ ${price}</strong>
@@ -1924,8 +1932,15 @@
             const proposedTotal = currentItemTotal + 1;
             if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
+                let otherStockHint = '';
+                if (Array.isArray(item.other_stocks) && item.other_stocks.length > 0) {
+                    let availBranches = item.other_stocks.filter(s => parseFloat(s.stock || 0) > 0);
+                    if (availBranches.length > 0) {
+                        otherStockHint = ' | Available in other branch: ' + availBranches.map(s => `${s.branch_name} (${parseFloat(s.stock)})`).join(', ');
+                    }
+                }
                 const errMsg = availableStock <= 0
-                    ? `Cannot add item. "${item.name || state.cart[existingIdx].name || 'Item'}" is out of stock (${availDisp} available).`
+                    ? `Cannot add item. "${item.name || state.cart[existingIdx].name || 'Item'}" is out of stock (${availDisp} available).${otherStockHint}`
                     : `Insufficient stock for "${item.name || state.cart[existingIdx].name || 'Item'}". Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
@@ -1948,8 +1963,15 @@
             const proposedTotal = currentItemTotal + 1;
             if (!allowNeg && availableStock !== null && proposedTotal > availableStock + 0.0001) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
+                let otherStockHint = '';
+                if (Array.isArray(item.other_stocks) && item.other_stocks.length > 0) {
+                    let availBranches = item.other_stocks.filter(s => parseFloat(s.stock || 0) > 0);
+                    if (availBranches.length > 0) {
+                        otherStockHint = ' | Available in other branch: ' + availBranches.map(s => `${s.branch_name} (${parseFloat(s.stock)})`).join(', ');
+                    }
+                }
                 const errMsg = availableStock <= 0
-                    ? `Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).`
+                    ? `Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).${otherStockHint}`
                     : `Insufficient stock for "${item.name || item.productname || 'Item'}". Only ${availDisp} units are available.`;
                 showNotification(errMsg, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
@@ -1958,7 +1980,14 @@
 
             if (availableStock !== null && availableStock <= 0) {
                 const availDisp = (availableStock === parseInt(availableStock, 10)) ? parseInt(availableStock, 10) : availableStock;
-                showNotification(`Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).`, 'danger');
+                let otherStockHint = '';
+                if (Array.isArray(item.other_stocks) && item.other_stocks.length > 0) {
+                    let availBranches = item.other_stocks.filter(s => parseFloat(s.stock || 0) > 0);
+                    if (availBranches.length > 0) {
+                        otherStockHint = ' | Available in other branch: ' + availBranches.map(s => `${s.branch_name} (${parseFloat(s.stock)})`).join(', ');
+                    }
+                }
+                showNotification(`Cannot add item. "${item.name || item.productname || 'Item'}" is out of stock (${availDisp} available).${otherStockHint}`, 'danger');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
                 return false;
             }
@@ -4334,6 +4363,23 @@
                         ? `<span class="badge badge-warning px-2 py-1 font-weight-bold">0</span>`
                         : `<span class="badge badge-success px-2 py-1 font-weight-bold">${stockNum}</span>`);
 
+                let otherStocksBadges = '';
+                let availableInOtherBranches = [];
+                if (Array.isArray(it.other_stocks) && it.other_stocks.length > 0) {
+                    it.other_stocks.forEach(function (ost) {
+                        let ostQty = parseFloat(ost.stock || 0);
+                        let ostBadgeClass = ostQty > 0 ? 'badge-info text-white' : 'badge-light text-muted border';
+                        otherStocksBadges += `<div class="mt-1" style="font-size: 0.72rem; line-height: 1.2;">
+                            <span class="badge ${ostBadgeClass} px-1 py-0 shadow-xs" title="Stock at ${escapeHtml(ost.branch_name)}">
+                                <i class="fas fa-store mr-1"></i>${escapeHtml(ost.branch_name)}: <strong>${ostQty}</strong>
+                            </span>
+                        </div>`;
+                        if (ostQty > 0) {
+                            availableInOtherBranches.push(`${escapeHtml(ost.branch_name)} (${ostQty})`);
+                        }
+                    });
+                }
+
                 let isBlocked = isOutOfStock || isExpired;
                 let rowClass = isBlocked ? 'isl-item-row isl-item-disabled text-muted bg-light' : 'isl-item-row';
                 let rowStyle = isBlocked ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
@@ -4349,6 +4395,10 @@
                             <i class="fas fa-cart-plus mr-1"></i>Add
                            </button>`);
 
+                let otherAvailNotice = (isOutOfStock && availableInOtherBranches.length > 0)
+                    ? `<div class="small text-info font-weight-bold mt-1"><i class="fas fa-truck mr-1"></i>Available in other branch: ${availableInOtherBranches.join(', ')}</div>`
+                    : '';
+
                 html += `
                     <tr class="${rowClass} ${idx === 0 && !isBlocked ? 'table-primary' : ''}" style="${rowStyle}"
                         data-item='${JSON.stringify(it).replace(/'/g, "&#39;")}'>
@@ -4357,8 +4407,9 @@
                         <td data-col-key="name" class="align-middle font-weight-bold text-dark">
                             ${escapeHtml(it.name)}
                             ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : '')}
+                            ${otherAvailNotice}
                         </td>
-                        <td data-col-key="qty" class="align-middle text-right">${qtyBadge}</td>
+                        <td data-col-key="qty" class="align-middle text-right">${qtyBadge}${otherStocksBadges}</td>
                         <td data-col-key="sell_price" class="align-middle text-right font-weight-bold text-primary">₹${parseFloat(it.sell_price || 0).toFixed(2)}</td>
                         <td data-col-key="mrp" class="align-middle text-right text-muted">₹${parseFloat(it.mrp || 0).toFixed(2)}</td>
                         <td data-col-key="action" class="align-middle text-center">${actionBtn}</td>
@@ -4376,7 +4427,15 @@
                 if ($(this).hasClass('isl-item-disabled')) {
                     e.preventDefault();
                     e.stopPropagation();
-                    showNotification('This product is out of stock (0 quantity) and cannot be added to cart.', 'warning');
+                    let itData = $(this).data('item') || {};
+                    let otherInfo = '';
+                    if (Array.isArray(itData.other_stocks) && itData.other_stocks.length > 0) {
+                        let avail = itData.other_stocks.filter(s => parseFloat(s.stock || 0) > 0);
+                        if (avail.length > 0) {
+                            otherInfo = ' | Available in other branch: ' + avail.map(s => s.branch_name + ' (' + parseFloat(s.stock) + ')').join(', ');
+                        }
+                    }
+                    showNotification('This product is out of stock (0 quantity) in this branch.' + otherInfo, 'warning');
                     if (typeof sound !== 'undefined' && sound.error) sound.error();
                     return;
                 }

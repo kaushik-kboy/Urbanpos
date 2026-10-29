@@ -53,6 +53,7 @@
         <input type="hidden" name="items[{{ $index }}][batch_no]" class="sb-item-batch-no" value="{{ $line->batch_no ?? '' }}">
         <input type="hidden" name="items[{{ $index }}][batch_stock]" class="sb-item-batch-stock" value="{{ $line->batch_stock ?? '' }}">
         <input type="hidden" name="items[{{ $index }}][original_qty]" class="sb-item-original-qty" value="{{ $line->qty ?? 0 }}">
+        <div class="sb-item-other-stocks mt-1 d-none" style="font-size: 0.75rem;"></div>
     </td>
     <td style="width: 135px;" data-col-key="expiry" title="Expiry date (Read-only)">
         <div class="input-group input-group-sm">

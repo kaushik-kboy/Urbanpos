@@ -1455,6 +1455,27 @@ class SalesBillController extends Controller
             }
         }
 
+        $otherStocksByItem = [];
+        if (! empty($rows)) {
+            $itemIds = array_map(fn ($r) => (int) $r->id, $rows);
+            $branchStocks = \Illuminate\Support\Facades\DB::table('item_stocks')
+                ->join('branches', 'item_stocks.branch_id', '=', 'branches.id')
+                ->whereIn('item_stocks.item_id', $itemIds)
+                ->where('branches.status', 1)
+                ->select('item_stocks.item_id', 'item_stocks.branch_id', 'branches.name as branch_name', 'item_stocks.quantity')
+                ->get();
+
+            foreach ($branchStocks as $bs) {
+                if ((int) $bs->branch_id !== (int) $branchId) {
+                    $otherStocksByItem[$bs->item_id][] = [
+                        'branch_id' => (int) $bs->branch_id,
+                        'branch_name' => $bs->branch_name,
+                        'stock' => (float) $bs->quantity,
+                    ];
+                }
+            }
+        }
+
         $result = [];
         foreach ($rows as $row) {
             $expRaw = $row->exp_date ?? null;
@@ -1488,6 +1509,7 @@ class SalesBillController extends Controller
                 'exp_date'             => $exp,
                 'qty'                  => (float) $row->qty,
                 'stock'                => (float) $row->qty,
+                'other_stocks'         => $otherStocksByItem[$row->id] ?? [],
                 'sell_price'           => (float) $row->sell_price,
                 'mrp'                  => (float) $row->mrp,
                 'gst_percent'          => (float) $row->gst_percent,
@@ -1672,6 +1694,21 @@ class SalesBillController extends Controller
             $defaultSell = $defaultMrp;
         }
 
+        $otherStocks = \Illuminate\Support\Facades\DB::table('item_stocks')
+            ->join('branches', 'item_stocks.branch_id', '=', 'branches.id')
+            ->where('item_stocks.item_id', $item->id)
+            ->where('branches.status', 1)
+            ->where('item_stocks.branch_id', '!=', $branchId)
+            ->select('item_stocks.branch_id', 'branches.name as branch_name', 'item_stocks.quantity')
+            ->get()
+            ->map(fn ($s) => [
+                'branch_id' => (int) $s->branch_id,
+                'branch_name' => $s->branch_name,
+                'stock' => (float) $s->quantity,
+            ])
+            ->values()
+            ->all();
+
         return response()->json([
             'found' => true,
             'item' => [
@@ -1686,10 +1723,12 @@ class SalesBillController extends Controller
                 'batch_no' => $defaultBatchNo,
                 'stock' => $stock,
                 'total_branch_stock' => $salesBillId ? $stock : (float) (\App\Models\ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0),
+                'other_stocks' => $otherStocks,
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
                 'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
                 'allow_negative_stock' => (bool) ($item->allow_negative_stock ?? false),
             ],
+            'other_stocks' => $otherStocks,
             'batches' => $batches,
         ]);
     }

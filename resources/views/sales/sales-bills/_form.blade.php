@@ -2120,6 +2120,24 @@
                 let isOutOfStock = parseFloat(it.qty) <= 0 && !isAllowNeg;
                 let isBlocked = isOutOfStock || isExpired;
                 let qtyClass = isOutOfStock ? 'text-danger font-weight-bold' : (parseFloat(it.qty) <= 0 ? 'text-warning font-weight-bold' : 'text-success font-weight-bold');
+
+                let otherStocksBadges = '';
+                let availableInOtherBranches = [];
+                if (Array.isArray(it.other_stocks) && it.other_stocks.length > 0) {
+                    it.other_stocks.forEach(function (ost) {
+                        let ostQty = parseFloat(ost.stock || 0);
+                        let ostBadgeClass = ostQty > 0 ? 'badge-info text-white' : 'badge-light text-muted border';
+                        otherStocksBadges += `<div class="mt-1" style="font-size: 0.72rem; line-height: 1.2;">
+                            <span class="badge ${ostBadgeClass} px-1 py-0 shadow-xs" title="Stock at ${ost.branch_name}">
+                                <i class="fas fa-store mr-1"></i>${ost.branch_name}: <strong>${ostQty}</strong>
+                            </span>
+                        </div>`;
+                        if (ostQty > 0) {
+                            availableInOtherBranches.push(`${ost.branch_name} (${ostQty})`);
+                        }
+                    });
+                }
+
                 let rowClass = isBlocked ? 'isl-item-row isl-item-disabled text-muted bg-light' : 'isl-item-row';
                 let rowStyle = isBlocked ? 'cursor: not-allowed; opacity: 0.6;' : 'cursor: pointer;';
                 let actionBtn = isExpired
@@ -2135,6 +2153,10 @@
                             <i class="fas fa-check mr-1"></i>Select
                            </button>`);
 
+                let otherAvailNotice = (isOutOfStock && availableInOtherBranches.length > 0)
+                    ? `<div class="small text-info font-weight-bold mt-1"><i class="fas fa-truck mr-1"></i>Available in other branch: ${availableInOtherBranches.join(', ')}</div>`
+                    : '';
+
                 html += `
                     <tr class="${rowClass}" style="${rowStyle}"
                         data-id="${it.id}"
@@ -2144,11 +2166,15 @@
                         data-gst="${it.gst_percent}"
                         data-qty="${it.qty}"
                         data-allow-negative="${isAllowNeg ? '1' : '0'}"
-                        data-exp="${it.exp_date || ''}">
+                        data-exp="${it.exp_date || ''}"
+                        data-other-hint="${availableInOtherBranches.length > 0 ? 'Available in other branch: ' + availableInOtherBranches.join(', ') : ''}">
                         <td data-col-key="seq" class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
-                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">${it.name} ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}</td>
+                        <td data-col-key="name" class="align-middle font-weight-bold text-dark">
+                            ${it.name} ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}
+                            ${otherAvailNotice}
+                        </td>
                         <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
-                        <td data-col-key="qty" class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}</td>
+                        <td data-col-key="qty" class="align-middle text-right ${qtyClass}">${formatDigits(it.qty)}${otherStocksBadges}</td>
                         <td data-col-key="sell_price" class="align-middle text-right font-weight-bold text-success">${it.sell_price > 0 ? '\u20b9' + parseFloat(it.sell_price).toFixed(2) : '\u2014'}</td>
                         <td data-col-key="mrp" class="align-middle text-right text-muted">${it.mrp > 0 ? '\u20b9' + parseFloat(it.mrp).toFixed(2) : '\u2014'}</td>
                         <td data-col-key="action" class="align-middle text-center">
@@ -2179,6 +2205,8 @@
             let $row = $(this).hasClass('isl-item-row') ? $(this) : $(this).closest('tr');
             let allowNeg = $row.data('allow-negative') == 1 || $row.data('allow-negative-stock') == 1;
             if ($row.hasClass('isl-item-disabled') || (parseFloat($row.data('qty')) <= 0 && !allowNeg)) {
+                let otherHint = $row.data('other-hint') || '';
+                toastr.warning('This item is out of stock in this branch (0 quantity).' + (otherHint ? ' ' + otherHint : ''));
                 return false;
             }
             let itemId   = $row.data('id');
@@ -3180,6 +3208,28 @@
                     $select.val(item.id);
                     isSyncing = false;
 
+                    // Display Other Branches' Available Stock badges
+                    let otherStocks = item.other_stocks || res.other_stocks || [];
+                    let $otherBox = $row.find('.sb-item-other-stocks');
+                    if ($otherBox.length) {
+                        if (Array.isArray(otherStocks) && otherStocks.length > 0) {
+                            let badgesHtml = otherStocks.map(function(st) {
+                                let sQty = parseFloat(st.stock || 0);
+                                let bClass = sQty > 0 ? 'badge-info text-white' : 'badge-light text-muted border';
+                                return `<span class="badge ${bClass} mr-1 px-1 py-0 shadow-xs" title="Stock at ${st.branch_name}">
+                                    <i class="fas fa-store mr-1"></i>${st.branch_name}: <strong>${sQty}</strong>
+                                </span>`;
+                            }).join('');
+                            let curBranchStock = item.stock ? parseFloat(item.stock) : 0;
+                            if (curBranchStock <= 0) {
+                                badgesHtml = `<span class="badge badge-danger text-white mr-1 px-1 py-0 shadow-xs"><i class="fas fa-exclamation-circle mr-1"></i>0 in this branch</span> ` + badgesHtml;
+                            }
+                            $otherBox.html(badgesHtml).removeClass('d-none');
+                        } else {
+                            $otherBox.empty().addClass('d-none');
+                        }
+                    }
+
                     // Store Product Stock for validation
                     let stockNum = item.stock ? parseFloat(item.stock) : 0;
                     $row.attr('data-stock', stockNum);
@@ -3286,6 +3336,7 @@
                     $code.addClass('is-invalid border-danger');
                     $select.val('');
                     $desc.val('');
+                    $row.find('.sb-item-other-stocks').empty().addClass('d-none');
                     $row.find('.sb-item-stock-val').val(0);
                     $row.attr('data-stock', 0);
 
