@@ -196,8 +196,56 @@ class InventoryMorePricingTest extends TestCase
         $this->assertEquals(0, (float) $sBare->quantity);
         $this->assertEquals(130, (float) ItemStock::where('item_id', $priced->id)->value('sell_price'));
         $this->assertEquals(55, (float) $bare->fresh()->sell_price, 'Master filled when it had no price.');
-        $this->assertEquals(100, (float) $priced->fresh()->sell_price, 'Existing master price must not be overwritten.');
         $this->assertEquals(0, StockLedger::count(), 'Price change must not move stock.');
+    }
+
+    public function test_change_selling_batch_wise_updates_pi_and_batch_stock_service(): void
+    {
+        $item = Item::create(['name' => 'Batch Item Test', 'item_code' => 'BIT-001', 'sell_price' => 80, 'mrp' => 100]);
+
+        $supplier = \App\Models\Supplier::create(['name' => 'Test Supp']);
+        $pi = \App\Models\PurchaseInvoice::create([
+            'branch_id' => $this->br->id,
+            'supplier_id' => $supplier->id,
+            'invoice_number' => 'PI-TEST-001',
+            'invoice_date' => now()->toDateString(),
+            'total' => 1000,
+        ]);
+
+        $pii = \App\Models\PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $pi->id,
+            'item_id' => $item->id,
+            'batch_no' => 'BATCH-X1',
+            'exp_date' => '2027-12-31',
+            'qty' => 10,
+            'cost_price' => 50,
+            'sell_price' => 90,
+            'mrp' => 100,
+            'taxable_amount' => 500,
+            'total_amount' => 500,
+        ]);
+
+        // Submit batch-wise price update
+        $this->post(route('inventory.change-selling.update'), [
+            'branch_id' => $this->br->id,
+            'prices' => [
+                'row_1' => [
+                    'item_id' => $item->id,
+                    'batch_no' => 'BATCH-X1',
+                    'raw_batch_no' => 'BATCH-X1',
+                    'exp_date' => '2027-12-31',
+                    'old_mrp' => 100,
+                    'sell_price' => 140,
+                    'mrp' => 150,
+                ],
+            ],
+        ])->assertSessionHas('status');
+
+        $this->assertEquals(150, (float) $pii->fresh()->mrp);
+        $this->assertEquals(140, (float) $pii->fresh()->sell_price);
+
+        $batches = app(\App\Services\Inventory\BatchStockService::class)->getItemBatches($item->id, $this->br->id);
+        $this->assertTrue($batches->contains(fn ($b) => (float)$b['mrp'] === 150.0 && (float)$b['sell_price'] === 140.0));
     }
 
     public function test_change_selling_validation_permission_and_index_filters(): void

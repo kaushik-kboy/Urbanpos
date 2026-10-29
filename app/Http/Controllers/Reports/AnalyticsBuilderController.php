@@ -85,8 +85,8 @@ class AnalyticsBuilderController extends Controller
             'date_preset' => $request->input('date_preset', 'this_month'),
             'date_from' => $from ? $from->format('Y-m-d') : null,
             'date_to' => $to ? $to->format('Y-m-d') : null,
-            'date_from_formatted' => $from ? $from->format('d-M-Y') : null,
-            'date_to_formatted' => $to ? $to->format('d-M-Y') : null,
+            'date_from_formatted' => $from ? $from->format('d-m-Y') : null,
+            'date_to_formatted' => $to ? $to->format('d-m-Y') : null,
             'date_range_label' => $dateRangeLabel,
         ], $result));
     }
@@ -99,7 +99,7 @@ class AnalyticsBuilderController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
-            'group_by' => 'required|string|in:item,customer,category,brand,cashier,payment_mode,date,item_supplier,supplier',
+            'group_by' => 'required|string|in:item,customer,category,subcategory,department,brand,cashier,payment_mode,date,item_supplier,supplier',
             'metrics' => 'required|array',
             'filters' => 'nullable|array',
         ]);
@@ -263,7 +263,7 @@ class AnalyticsBuilderController extends Controller
             $r->formatted_qty = number_format($r->total_qty, 2);
             $r->formatted_amount = '₹ ' . number_format($r->total_amount, 2);
             $r->formatted_last_cost = '₹ ' . number_format($r->last_cost_price ?? $r->avg_cost_price ?? 0, 2);
-            $r->formatted_last_date = $r->last_date ? Carbon::parse($r->last_date)->format('d-M-Y') : 'N/A';
+            $r->formatted_last_date = $r->last_date ? Carbon::parse($r->last_date)->format('d-m-Y') : 'N/A';
 
             $totalQty += (float) $r->total_qty;
             $totalAmount += (float) $r->total_amount;
@@ -399,6 +399,30 @@ class AnalyticsBuilderController extends Controller
                     ->groupBy('item_category_values.id', 'item_category_values.name');
 
                 $groupLabel = 'Category';
+                $subtextLabel = '';
+                break;
+
+            case 'subcategory':
+            case 'department':
+                $query = DB::table('sales_bill_items')
+                    ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                    ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
+                    ->leftJoin('item_category_values', 'items.department_value_id', '=', 'item_category_values.id')
+                    ->where('sales_bills.status', '!=', 'Cancelled')
+                    ->selectRaw('
+                        COALESCE(item_category_values.id, 0) as group_id,
+                        COALESCE(item_category_values.name, "Unassigned Subcategory") as group_name,
+                        "" as group_subtext,
+                        SUM(sales_bill_items.qty) as total_qty,
+                        SUM(sales_bill_items.net_amount) as total_sales,
+                        SUM(sales_bill_items.disc_amount) as total_disc,
+                        SUM(sales_bill_items.net_amount - (COALESCE(sales_bill_items.cost_at_sale, items.cost_price, 0) * sales_bill_items.qty)) as total_profit,
+                        COUNT(DISTINCT sales_bills.id) as bill_count,
+                        MAX(sales_bills.bill_date) as last_date
+                    ')
+                    ->groupBy('item_category_values.id', 'item_category_values.name');
+
+                $groupLabel = 'Sub-Category / Department';
                 $subtextLabel = '';
                 break;
 
@@ -609,7 +633,7 @@ class AnalyticsBuilderController extends Controller
             $r->formatted_disc = '₹ ' . number_format($disc, 2);
             $r->formatted_profit = '₹ ' . number_format($profit, 2) . ' (' . number_format($marginPct, 1) . '%)';
             $r->formatted_aov = '₹ ' . number_format($aov, 2);
-            $r->formatted_last_date = $r->last_date ? Carbon::parse($r->last_date)->format('d-M-Y H:i') : '-';
+            $r->formatted_last_date = $r->last_date ? Carbon::parse($r->last_date)->format('d-m-Y H:i') : '-';
 
             $totalQty += $qty;
             $totalSales += $sales;
@@ -618,7 +642,7 @@ class AnalyticsBuilderController extends Controller
             $totalBills += $bills;
         }
 
-        // Item / category / brand rows each count a bill once per group, so a bill holding several groups
+        // Item / category / brand / subcategory rows each count a bill once per group, so a bill holding several groups
         // would be counted repeatedly in the footer. Use the distinct number of bills for the overall figures.
         if (!in_array($groupBy, ['supplier', 'customer', 'cashier', 'payment_mode', 'date'], true)) {
             $distinct = DB::table('sales_bill_items')
@@ -630,7 +654,7 @@ class AnalyticsBuilderController extends Controller
             if ($branchId) {
                 $distinct->where('sales_bills.branch_id', $branchId);
             }
-            if ($itemId && !in_array($groupBy, ['category', 'brand'], true)) {
+            if ($itemId && !in_array($groupBy, ['category', 'subcategory', 'department', 'brand'], true)) {
                 $distinct->where('sales_bill_items.item_id', $itemId);
             }
             $totalBills = (int) $distinct->distinct()->count('sales_bills.id');
@@ -693,43 +717,43 @@ class AnalyticsBuilderController extends Controller
             case 'today':
                 $from = Carbon::today()->startOfDay();
                 $to = Carbon::today()->endOfDay();
-                $label = 'Today (' . $from->format('d-M-Y') . ')';
+                $label = 'Today (' . $from->format('d-m-Y') . ')';
                 break;
 
             case 'yesterday':
                 $from = Carbon::yesterday()->startOfDay();
                 $to = Carbon::yesterday()->endOfDay();
-                $label = 'Yesterday (' . $from->format('d-M-Y') . ')';
+                $label = 'Yesterday (' . $from->format('d-m-Y') . ')';
                 break;
 
             case 'this_week':
                 $from = Carbon::now()->startOfWeek();
                 $to = Carbon::now()->endOfWeek();
-                $label = 'This Week (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = 'This Week (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
 
             case 'last_7_days':
                 $from = Carbon::now()->subDays(6)->startOfDay();
                 $to = Carbon::now()->endOfDay();
-                $label = 'Last 7 Days (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = 'Last 7 Days (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
 
             case 'last_month':
                 $from = Carbon::now()->subMonth()->startOfMonth();
                 $to = Carbon::now()->subMonth()->endOfMonth();
-                $label = 'Last Month (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = 'Last Month (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
 
             case 'last_30_days':
                 $from = Carbon::now()->subDays(29)->startOfDay();
                 $to = Carbon::now()->endOfDay();
-                $label = 'Last 30 Days (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = 'Last 30 Days (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
 
             case 'this_quarter':
                 $from = Carbon::now()->startOfQuarter();
                 $to = Carbon::now()->endOfQuarter();
-                $label = 'This Quarter (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = 'This Quarter (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
 
             case 'this_fy':
@@ -743,7 +767,7 @@ class AnalyticsBuilderController extends Controller
                     $to = Carbon::create($year + 1, 3, 31)->endOfDay();
                     $fyTitle = $year . '-' . substr((string) ($year + 1), -2);
                 }
-                $label = "This FY {$fyTitle} (" . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = "This FY {$fyTitle} (" . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
 
             case 'last_fy':
@@ -756,7 +780,7 @@ class AnalyticsBuilderController extends Controller
                     $to = Carbon::create($year, 3, 31)->endOfDay();
                     $fyTitle = ($year - 1) . '-' . substr((string) $year, -2);
                 }
-                $label = "Last FY {$fyTitle} (" . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = "Last FY {$fyTitle} (" . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
 
             case 'all_time':
@@ -769,7 +793,7 @@ class AnalyticsBuilderController extends Controller
             default:
                 $from = Carbon::now()->startOfMonth();
                 $to = Carbon::now()->endOfMonth();
-                $label = 'This Month (' . $from->format('d-M-Y') . ' to ' . $to->format('d-M-Y') . ')';
+                $label = 'This Month (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
                 break;
         }
 
@@ -782,6 +806,9 @@ class AnalyticsBuilderController extends Controller
     public function searchItems(Request $request): JsonResponse
     {
         $term = trim((string) ($request->query('q') ?? $request->query('term', '')));
+        $supplierId = $request->query('supplier_id');
+        $customerId = $request->query('customer_id');
+
         $query = Item::query();
 
         if ($term !== '') {
@@ -789,6 +816,33 @@ class AnalyticsBuilderController extends Controller
                 $q->where('name', 'LIKE', "%{$term}%")
                   ->orWhere('item_code', 'LIKE', "%{$term}%")
                   ->orWhere('ean_upc_code', 'LIKE', "%{$term}%");
+            });
+        }
+
+        // Dependent filter 1: Supplier -> Only items supplied by this supplier
+        if ($supplierId) {
+            $query->where(function ($q) use ($supplierId) {
+                $q->where('supplier_id', $supplierId)
+                  ->orWhereExists(function ($sub) use ($supplierId) {
+                      $sub->select(DB::raw(1))
+                          ->from('purchase_invoice_items')
+                          ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
+                          ->whereColumn('purchase_invoice_items.item_id', 'items.id')
+                          ->where('purchase_invoices.supplier_id', $supplierId)
+                          ->where('purchase_invoices.status', '!=', 'Cancelled');
+                  });
+            });
+        }
+
+        // Dependent filter 2: Customer -> Only items bought by this customer
+        if ($customerId) {
+            $query->whereExists(function ($sub) use ($customerId) {
+                $sub->select(DB::raw(1))
+                    ->from('sales_bill_items')
+                    ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                    ->whereColumn('sales_bill_items.item_id', 'items.id')
+                    ->where('sales_bills.customer_id', $customerId)
+                    ->where('sales_bills.status', '!=', 'Cancelled');
             });
         }
 
@@ -804,10 +858,13 @@ class AnalyticsBuilderController extends Controller
 
     /**
      * Live search for suppliers (Select2 format).
+     * Supports dependent filtering by item_id (only suppliers who supply the selected item).
      */
     public function searchSuppliers(Request $request): JsonResponse
     {
         $term = trim((string) ($request->query('q') ?? $request->query('term', '')));
+        $itemId = $request->query('item_id');
+
         $query = Supplier::query();
 
         if ($term !== '') {
@@ -815,6 +872,25 @@ class AnalyticsBuilderController extends Controller
                 $q->where('name', 'LIKE', "%{$term}%")
                   ->orWhere('mobile', 'LIKE', "%{$term}%")
                   ->orWhere('city', 'LIKE', "%{$term}%");
+            });
+        }
+
+        // Dependent filter: Item -> Only suppliers who supply this item
+        if ($itemId) {
+            $query->where(function ($q) use ($itemId) {
+                $q->whereExists(function ($sub) use ($itemId) {
+                    $sub->select(DB::raw(1))
+                        ->from('items')
+                        ->whereColumn('items.supplier_id', 'suppliers.id')
+                        ->where('items.id', $itemId);
+                })->orWhereExists(function ($sub) use ($itemId) {
+                    $sub->select(DB::raw(1))
+                        ->from('purchase_invoices')
+                        ->join('purchase_invoice_items', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
+                        ->whereColumn('purchase_invoices.supplier_id', 'suppliers.id')
+                        ->where('purchase_invoice_items.item_id', $itemId)
+                        ->where('purchase_invoices.status', '!=', 'Cancelled');
+                });
             });
         }
 
@@ -830,10 +906,13 @@ class AnalyticsBuilderController extends Controller
 
     /**
      * Live search for customers (Select2 format).
+     * Supports dependent filtering by item_id (only customers who purchased the selected item).
      */
     public function searchCustomers(Request $request): JsonResponse
     {
         $term = trim((string) ($request->query('q') ?? $request->query('term', '')));
+        $itemId = $request->query('item_id');
+
         $query = Customer::query();
 
         if ($term !== '') {
@@ -842,6 +921,18 @@ class AnalyticsBuilderController extends Controller
                   ->orWhere('mobile', 'LIKE', "%{$term}%")
                   ->orWhere('phone', 'LIKE', "%{$term}%")
                   ->orWhere('customer_code', 'LIKE', "%{$term}%");
+            });
+        }
+
+        // Dependent filter: Item -> Only customers who bought this item
+        if ($itemId) {
+            $query->whereExists(function ($sub) use ($itemId) {
+                $sub->select(DB::raw(1))
+                    ->from('sales_bills')
+                    ->join('sales_bill_items', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                    ->whereColumn('sales_bills.customer_id', 'customers.id')
+                    ->where('sales_bill_items.item_id', $itemId)
+                    ->where('sales_bills.status', '!=', 'Cancelled');
             });
         }
 
@@ -907,7 +998,7 @@ class AnalyticsBuilderController extends Controller
             $totalQty = 0;
             $totalAmount = 0;
             foreach ($items as $it) {
-                $it->formatted_date = Carbon::parse($it->bill_date)->format('d-M-Y H:i');
+                $it->formatted_date = Carbon::parse($it->bill_date)->format('d-m-Y H:i');
                 $it->formatted_rate = '₹ ' . number_format($it->sell_price, 2);
                 $it->formatted_amount = '₹ ' . number_format($it->net_amount, 2);
                 $it->view_url = route('sales.sales-bills.show', $it->bill_id);
@@ -959,7 +1050,7 @@ class AnalyticsBuilderController extends Controller
             $totalQty = 0;
             $totalAmount = 0;
             foreach ($invoices as $inv) {
-                $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-M-Y');
+                $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-m-Y');
                 $inv->formatted_cost = '₹ ' . number_format($inv->cost_price, 2);
                 $inv->formatted_amount = '₹ ' . number_format($inv->net_amount, 2);
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
@@ -1015,7 +1106,7 @@ class AnalyticsBuilderController extends Controller
             $totalQty = 0;
             $totalAmount = 0;
             foreach ($invoices as $inv) {
-                $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-M-Y');
+                $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-m-Y');
                 $inv->formatted_amount = '₹ ' . number_format($inv->total, 2);
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
                 $totalQty += (float) $inv->total_qty;
@@ -1061,7 +1152,7 @@ class AnalyticsBuilderController extends Controller
 
             $totalAmount = 0;
             foreach ($bills as $b) {
-                $b->formatted_date = Carbon::parse($b->bill_date)->format('d-M-Y H:i');
+                $b->formatted_date = Carbon::parse($b->bill_date)->format('d-m-Y H:i');
                 $b->formatted_amount = '₹ ' . number_format($b->total, 2);
                 $b->view_url = route('sales.sales-bills.show', $b->bill_id);
                 $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);
@@ -1104,7 +1195,7 @@ class AnalyticsBuilderController extends Controller
 
             $totalAmount = 0;
             foreach ($bills as $b) {
-                $b->formatted_date = Carbon::parse($b->bill_date)->format('d-M-Y H:i');
+                $b->formatted_date = Carbon::parse($b->bill_date)->format('d-m-Y H:i');
                 $b->formatted_amount = '₹ ' . number_format($b->total, 2);
                 $b->view_url = route('sales.sales-bills.show', $b->bill_id);
                 $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);

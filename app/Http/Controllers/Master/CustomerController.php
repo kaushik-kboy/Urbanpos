@@ -138,6 +138,19 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer)
     {
+        $request->mergeIfMissing([
+            'status' => $customer->status ?? true,
+            'gst_type' => $customer->gst_type ?? 'Unregistered',
+            'sms_consent' => $customer->sms_consent ?? false,
+            'payment_mode' => $customer->payment_mode ?? 'Cash Only',
+            'sales_type' => $customer->sales_type ?? 'Local',
+            'customer_type' => $customer->customer_type ?? (\App\Models\CustomerType::where('status', true)->value('name') ?? 'Regular'),
+            'credit_limit' => $customer->credit_limit ?? 0,
+            'credit_balance' => $customer->credit_balance ?? 0,
+            'monthly_credit_balance' => $customer->monthly_credit_balance ?? 0,
+            'credit_days' => $customer->credit_days ?? 0,
+        ]);
+
         $data = $this->validateData($request, $customer);
         $user = $request->user();
         if ($user && $user->branch_id !== null && ! $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) && $user->email !== 'admin@urbanpos.com') {

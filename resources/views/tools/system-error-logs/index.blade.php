@@ -35,6 +35,14 @@
             <a href="{{ route('tools.system-error-logs.export', request()->query()) }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
                 <i class="fas fa-file-csv mr-1"></i> Export CSV
             </a>
+            @if($unresolvedCount > 0)
+                <form action="{{ route('tools.system-error-logs.resolve-all') }}" method="POST" class="d-inline" onsubmit="return confirm('Mark all {{ $unresolvedCount }} unresolved errors as Resolved?');">
+                    @csrf
+                    <button type="submit" class="btn btn-success btn-sm shadow-sm font-weight-bold">
+                        <i class="fas fa-check-double mr-1"></i> Mark All Resolved ({{ $unresolvedCount }})
+                    </button>
+                </form>
+            @endif
             <button type="button" class="btn btn-outline-danger btn-sm shadow-sm font-weight-bold" data-toggle="modal" data-target="#clearOldModal">
                 <i class="fas fa-trash-alt mr-1"></i> Clean Old Logs
             </button>

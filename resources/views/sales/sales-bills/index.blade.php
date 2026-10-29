@@ -40,7 +40,7 @@
                     <input type="hidden" name="direction" value="{{ request('direction') }}">
                 @endif
                 @if(request('is_iframe'))
-                    <div class="col-md-4 col-sm-6 mb-2">
+                    <div class="col-md-3 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Search</label>
                         <div class="input-group input-group-sm">
                             <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile, Amount..." value="{{ request('search') }}" autofocus>
@@ -59,7 +59,20 @@
                             <input type="number" step="0.01" name="amount" class="form-control form-control-sm" placeholder="Amount" value="{{ request('amount') }}" onchange="this.form.submit()">
                         </div>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Sales Type</label>
+                        <select name="sales_type" class="form-control form-control-sm" onchange="this.form.submit()">
+                            <option value="">All Sales Types</option>
+                            <option value="B2B" @selected(request('sales_type') == 'B2B')>B2B</option>
+                            <option value="B2C" @selected(request('sales_type') == 'B2C')>B2C (Retail)</option>
+                            @foreach ($salesTypes ?? ['B2B', 'B2C', 'Retail', 'Home', 'IPC'] as $st)
+                                @if(!in_array($st, ['B2B', 'B2C']))
+                                    <option value="{{ $st }}" @selected(request('sales_type') == $st)>{{ $st }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Payment Mode</label>
                         <select name="payment_mode" class="form-control form-control-sm" onchange="this.form.submit()">
                             <option value="">All Payment Modes</option>
@@ -110,19 +123,32 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2 col-sm-6 mb-2">
+                    <div class="col-md-1 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Customer</label>
                         <select name="customer_id" class="form-control form-control-sm">
-                            <option value="">All Customers</option>
+                            <option value="">All</option>
                             @foreach ($customers as $id => $name)
                                 <option value="{{ $id }}" @selected(request('customer_id') == $id)>{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-1 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">Sales Type</label>
+                        <select name="sales_type" class="form-control form-control-sm">
+                            <option value="">All</option>
+                            <option value="B2B" @selected(request('sales_type') == 'B2B')>B2B</option>
+                            <option value="B2C" @selected(request('sales_type') == 'B2C')>B2C (Retail)</option>
+                            @foreach ($salesTypes ?? ['B2B', 'B2C', 'Retail', 'Home', 'IPC'] as $st)
+                                @if(!in_array($st, ['B2B', 'B2C']))
+                                    <option value="{{ $st }}" @selected(request('sales_type') == $st)>{{ $st }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-1 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Type</label>
                         <select name="invoice_type" class="form-control form-control-sm">
-                            <option value="">All Types</option>
+                            <option value="">All</option>
                             @foreach ($invoiceTypes as $type)
                                 <option value="{{ $type }}" @selected(request('invoice_type') == $type)>{{ $type }}</option>
                             @endforeach
@@ -172,6 +198,7 @@
                         <th>Mobile</th>
                         <th>Branch</th>
                         <x-sortable-th column="user" label="Billed By" />
+                        <x-sortable-th column="sales_type" label="Sales Type" />
                         <x-sortable-th column="invoice_type" label="Invoice Type" />
                         <x-sortable-th column="payment_mode" label="Payment Mode" />
                         <x-sortable-th column="total" label="Total" align="right" />
@@ -204,6 +231,20 @@
                                 <span class="badge badge-light border text-dark font-weight-normal">
                                     <i class="fas fa-user-circle mr-1 text-secondary"></i>{{ $bill->user?->name ?: 'Staff' }}
                                 </span>
+                            </td>
+                            <td>
+                                @php
+                                    $st = $bill->sales_type ?: 'Retail';
+                                    $stUpper = strtoupper($st);
+                                    $stClass = match($stUpper) {
+                                        'B2B' => 'badge-primary',
+                                        'B2C', 'RETAIL' => 'badge-success',
+                                        'HOME' => 'badge-warning text-dark',
+                                        'IPC' => 'badge-info',
+                                        default => 'badge-secondary'
+                                    };
+                                @endphp
+                                <span class="badge {{ $stClass }} px-2 py-1 font-weight-bold">{{ $st }}</span>
                             </td>
                             <td>{{ $bill->invoice_type }}</td>
                             <td>
@@ -240,9 +281,15 @@
                                 @endif
 
                                 @if(!request('is_iframe') || request('mode') === 'edit')
-                                <a href="{{ request('is_iframe') ? route('pos.terminal', ['edit_id' => $bill->id]) : route('sales.sales-bills.edit', $bill) }}" class="btn btn-xs btn-outline-secondary" title="Edit" @if(request('is_iframe')) target="_parent" @endif>
-                                    <i class="fas fa-pen"></i>
-                                </a>
+                                    @if ($bill->hasIrn())
+                                        <span class="btn btn-xs btn-light text-muted border-0 mr-1" title="Govt E-Invoice IRN generated. Bill cannot be edited.">
+                                            <i class="fas fa-lock text-secondary"></i>
+                                        </span>
+                                    @else
+                                        <a href="{{ request('is_iframe') ? route('pos.terminal', ['edit_id' => $bill->id]) : route('sales.sales-bills.edit', $bill) }}" class="btn btn-xs btn-outline-secondary" title="Edit" @if(request('is_iframe')) target="_parent" @endif>
+                                            <i class="fas fa-pen"></i>
+                                        </a>
+                                    @endif
                                 @endif
                             </td>
                         </tr>

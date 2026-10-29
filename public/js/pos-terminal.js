@@ -486,6 +486,12 @@
     }
 
     function openSellPriceInput(idx) {
+        if (window.IS_SELL_PRICE_READONLY) {
+            if (typeof showNotification === 'function') {
+                showNotification('Selling price is locked as read-only.', 'warning');
+            }
+            return;
+        }
         if (isNaN(idx) || !state.cart[idx]) return;
         const $cell = $(`.pos-row-sell-price[data-idx="${idx}"]`);
         if (!$cell.length) return;
@@ -694,6 +700,23 @@
                         return;
                     }
                 }
+                if (btn.dataset.mode === 'Credit') {
+                    if (state.customer_is_credit_allowed === false) {
+                        const custName = $('#posSelectedCustName').text().trim() || 'Selected Customer';
+                        const mode = state.customer_payment_mode || 'No Credit';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Credit Not Allowed',
+                                text: `Credit sale is not allowed for customer "${custName}" (Payment Mode: ${mode}).`,
+                                confirmButtonColor: '#3085d6'
+                            });
+                        } else {
+                            alert(`Credit sale is not allowed for customer "${custName}" (Payment Mode: ${mode}).`);
+                        }
+                        return;
+                    }
+                }
                 document.querySelectorAll('.pos-tender-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 state.tender_mode = btn.dataset.mode;
@@ -842,6 +865,14 @@
         });
 
         $(document).on('click', '.pos-row-sell-price', function (e) {
+            if (window.IS_SELL_PRICE_READONLY) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof showNotification === 'function') {
+                    showNotification('Selling price is locked as read-only.', 'info');
+                }
+                return;
+            }
             const idx = parseInt($(this).data('idx'));
             if (!checkAndEnforceUnfilledQty(idx)) {
                 e.preventDefault();
@@ -880,6 +911,7 @@
         });
 
         $(document).on('focus', '.pos-row-sell-price', function (e) {
+            if (window.IS_SELL_PRICE_READONLY) return;
             if (e.target === this) {
                 const idx = parseInt($(this).data('idx'));
                 openSellPriceInput(idx);
@@ -2432,7 +2464,7 @@
                     <td class="text-center font-weight-bold text-dark pos-row-qty" data-idx="${idx}" tabindex="0" style="width: 70px; cursor: pointer;" title="Click or Tab to edit quantity">
                         ${qtyDisp}
                     </td>
-                    <td class="text-right font-weight-bold text-dark pos-row-sell-price" data-idx="${idx}" tabindex="0" style="width: 80px; cursor: pointer;" title="Click or Tab to edit selling price">
+                    <td class="text-right font-weight-bold text-dark pos-row-sell-price ${window.IS_SELL_PRICE_READONLY ? 'pos-sell-price-readonly' : ''}" data-idx="${idx}" ${window.IS_SELL_PRICE_READONLY ? '' : 'tabindex="0"'} style="width: 80px; ${window.IS_SELL_PRICE_READONLY ? 'cursor: default;' : 'cursor: pointer;'}" ${window.IS_SELL_PRICE_READONLY ? 'title="Selling price is read-only"' : 'title="Click or Tab to edit selling price"'}>
                         ₹ ${item.sell_price.toFixed(2)}
                     </td>
                     <td class="text-right text-muted small" style="width: 80px;">
@@ -2844,12 +2876,21 @@
                     loadCustomerLoyalty(newCustId);
                     loadCustomerInvoices(newCustId);
                     showNotification(`Customer "${custName}" ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: isEdit ? 'Customer Updated' : 'Customer Created',
+                            text: `Customer "${custName}" saved successfully!`,
+                            timer: 2500,
+                            showConfirmButton: false
+                        });
+                    }
                 },
                 error: function (xhr) {
                     $submitBtn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Customer');
                     if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
                         const errors = xhr.responseJSON.errors;
-                        let errorListHtml = '<ul class="mb-0 pl-3">';
+                        let errorListHtml = '<ul class="mb-0 pl-3 text-left">';
                         let firstInvalidInput = null;
                         for (const [field, messages] of Object.entries(errors)) {
                             const fieldSelector = field.includes('.') 
@@ -2867,6 +2908,15 @@
                         $('#posCustFormAlertText').html(errorListHtml);
                         $('#posCustFormAlert').removeClass('d-none');
 
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Validation Error',
+                                html: errorListHtml,
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+
                         // Switch to the tab containing the first invalid input
                         if (firstInvalidInput && firstInvalidInput.length) {
                             const pane = firstInvalidInput.closest('.tab-pane');
@@ -2882,6 +2932,15 @@
                             : 'An error occurred while saving customer.';
                         $('#posCustFormAlertText').text(msg);
                         $('#posCustFormAlert').removeClass('d-none');
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Save Failed',
+                                text: msg,
+                                confirmButtonColor: '#d33'
+                            });
+                        }
                     }
                 }
             });
@@ -2908,6 +2967,22 @@
         $('#posSelectedCustName').text(customer.name || 'Walk-in Customer');
         $('#posSelectedCustMobile span').text(customer.mobile || 'No mobile');
         $('#posEditCustomerBtn').attr('data-id', customer.id);
+
+        if (typeof customer.is_credit_allowed !== 'undefined') {
+            state.customer_is_credit_allowed = Boolean(customer.is_credit_allowed);
+        } else if (customer.payment_mode) {
+            const pm = customer.payment_mode.toLowerCase().trim();
+            state.customer_is_credit_allowed = !['no credit', 'cash only'].includes(pm);
+        } else {
+            state.customer_is_credit_allowed = true;
+        }
+        state.customer_payment_mode = customer.payment_mode || '';
+
+        if (state.customer_is_credit_allowed === false && state.tender_mode === 'Credit') {
+            state.tender_mode = null;
+            document.querySelectorAll('.pos-tender-btn').forEach(b => b.classList.remove('active'));
+            toggleTenderControls();
+        }
 
         // Update Pet Tagging & Selection Chips (F1 Shortcut)
         const pets = customer.pets || [];
@@ -3635,7 +3710,17 @@
             return;
         }
 
-        // Validate Discounts <= 100% (Point 2)
+        // Validate customer mobile when Save & WhatsApp is clicked
+        if (action === 'whatsapp') {
+            let custMobile = (state.customer && (state.customer.mobile || state.customer.phone)) ? (state.customer.mobile || state.customer.phone) : (window.INITIAL_CUSTOMER?.mobile || '');
+            custMobile = (custMobile || '').replace(/\D/g, '');
+            if (!custMobile) {
+                showNotification('Customer mobile number is required to send WhatsApp invoice. Please select or add a customer.', 'warning');
+                if (typeof sound !== 'undefined' && sound.error) sound.error();
+                $('#posCustomerSelect').select2('open');
+                return;
+            }
+        }
         for (let i = 0; i < state.cart.length; i++) {
             const itm = state.cart[i];
             const base = (itm.qty || 1) * (itm.sell_price || 0);
@@ -3686,7 +3771,12 @@
             payBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
         }
         if (btnSaveOnly) btnSaveOnly.disabled = true;
-        if (btnSaveWhatsApp) btnSaveWhatsApp.disabled = true;
+        if (btnSaveWhatsApp) {
+            btnSaveWhatsApp.disabled = true;
+            if (action === 'whatsapp') {
+                btnSaveWhatsApp.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Sending...';
+            }
+        }
 
         // Re-check latest stock from backend/database right before checkout/payment
         try {
@@ -3731,7 +3821,10 @@
                     payBtn.innerHTML = '<i class="fas fa-print mr-2"></i> Save & Print (F6)';
                 }
                 if (btnSaveOnly) btnSaveOnly.disabled = false;
-                if (btnSaveWhatsApp) btnSaveWhatsApp.disabled = false;
+                if (btnSaveWhatsApp) {
+                    btnSaveWhatsApp.disabled = false;
+                    btnSaveWhatsApp.innerHTML = '<i class="fab fa-whatsapp mr-1"></i> Save & WhatsApp';
+                }
                 return;
             }
         } catch (stockCheckEx) {
@@ -3739,6 +3832,29 @@
         }
 
         const totals = computeTotals();
+
+        const isUsingCredit = (state.tender_mode === 'Credit') || (state.tender_mode === 'Split' && parseFloat(state.split_payments?.credit || 0) > 0);
+        if (isUsingCredit && state.customer_is_credit_allowed === false) {
+            const custName = $('#posSelectedCustName').text().trim() || 'Selected Customer';
+            const mode = state.customer_payment_mode || 'No Credit';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Credit Not Allowed',
+                    text: `Credit sale is not allowed for customer "${custName}" (Payment Mode: ${mode}).`,
+                    confirmButtonColor: '#3085d6'
+                });
+            } else {
+                alert(`Credit sale is not allowed for customer "${custName}" (Payment Mode: ${mode}).`);
+            }
+            if (payBtn) {
+                payBtn.disabled = false;
+                payBtn.innerHTML = '<i class="fas fa-print mr-2"></i> Save & Print (F6)';
+            }
+            if (btnSaveOnly) btnSaveOnly.disabled = false;
+            if (btnSaveWhatsApp) btnSaveWhatsApp.disabled = false;
+            return;
+        }
 
         // Build payments array matching backend expectations
         let payments = [];
@@ -3896,17 +4012,12 @@
                 if (action === 'print' && billId) {
                     window.open(`${window.APP_URL || ''}/sales/sales-bills/${billId}/receipt`, '_blank');
                 } else if (action === 'whatsapp' && billId) {
-                    let custMobile = (state.customer && state.customer.mobile) ? state.customer.mobile : (window.INITIAL_CUSTOMER?.mobile || '');
-                    custMobile = (custMobile || '').replace(/\D/g, '');
-                    if (custMobile) {
-                        if (custMobile.length === 10) custMobile = '91' + custMobile;
-                        const billNo = result.bill_number || billId;
-                        const receiptUrl = `${window.APP_URL || ''}/sales/sales-bills/${billId}/receipt`;
-                        const custName = (state.customer ? state.customer.name : '') || 'Customer';
-                        const text = encodeURIComponent(`Hello ${custName}, thank you for your purchase! Your invoice #${billNo} for Rs. ${totals.grandTotal.toFixed(2)} is ready: ${receiptUrl}`);
-                        window.open(`https://api.whatsapp.com/send?phone=${custMobile}&text=${text}`, '_blank');
+                    // WhatsApp invoice is dispatched directly from backend via ChatOnClick API
+                    if (result.whatsapp_sent === false && result.whatsapp_error) {
+                        showNotification(`Bill #${result.bill_number || billId} saved! WhatsApp: ${result.whatsapp_error}`, 'warning');
                     } else {
-                        showNotification(`Bill #${result.bill_number || ''} saved! Customer has no mobile number for WhatsApp.`, 'info');
+                        const successText = result.message || `Bill #${result.bill_number || billId} saved and WhatsApp invoice sent!`;
+                        showNotification(successText, 'success');
                     }
                 }
 
@@ -3944,7 +4055,10 @@
                 payBtn.innerHTML = '<i class="fas fa-print mr-2"></i> Save & Print (F6)';
             }
             if (btnSaveOnly) btnSaveOnly.disabled = state.cart.length === 0;
-            if (btnSaveWhatsApp) btnSaveWhatsApp.disabled = state.cart.length === 0;
+            if (btnSaveWhatsApp) {
+                btnSaveWhatsApp.disabled = state.cart.length === 0;
+                btnSaveWhatsApp.innerHTML = '<i class="fab fa-whatsapp mr-1"></i> Save & WhatsApp';
+            }
             focusScanner();
         }
     }

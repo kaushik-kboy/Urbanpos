@@ -122,6 +122,23 @@ class SalesBillController extends Controller
             $query->where('invoice_type', $request->input('invoice_type'));
         }
 
+        if ($request->filled('sales_type')) {
+            $st = trim($request->input('sales_type'));
+            if ($st !== '' && strtolower($st) !== 'all') {
+                if (strcasecmp($st, 'B2C') === 0) {
+                    $query->where(function ($q) {
+                        $q->where('sales_type', 'B2C')
+                          ->orWhere('sales_type', 'Retail')
+                          ->orWhereNull('sales_type');
+                    });
+                } elseif (strcasecmp($st, 'B2B') === 0) {
+                    $query->where('sales_type', 'B2B');
+                } else {
+                    $query->where('sales_type', $st);
+                }
+            }
+        }
+
         if ($request->filled('payment_mode')) {
             $pm = trim($request->input('payment_mode'));
             if ($pm !== '' && strtolower($pm) !== 'all') {
@@ -153,6 +170,7 @@ class SalesBillController extends Controller
                 $dir
             ),
             'total' => 'total',
+            'sales_type' => 'sales_type',
             'invoice_type' => 'invoice_type',
             'payment_mode' => 'payment_type',
             'id' => 'id',
@@ -179,8 +197,13 @@ class SalesBillController extends Controller
         $invoiceTypes = ['Retail Invoice', 'Tax Invoice', 'Exempted'];
         $dbTenders = TenderType::where('status', true)->pluck('name')->all();
         $paymentModes = array_values(array_unique(array_merge(['Cash', 'Card', 'UPI', 'Credit', 'Split'], $dbTenders)));
+        $salesTypes = ['B2B', 'B2C', 'Retail', 'Home', 'IPC'];
+        if (\Illuminate\Support\Facades\Schema::hasTable('sales_types')) {
+            $dbTypes = \App\Models\SalesType::where('status', true)->pluck('name')->all();
+            $salesTypes = array_values(array_unique(array_merge(['B2B', 'B2C'], $dbTypes, ['Retail', 'Home', 'IPC'])));
+        }
 
-        return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes', 'paymentModes', 'branchFilter'));
+        return view('sales.sales-bills.index', compact('salesBills', 'branches', 'customers', 'invoiceTypes', 'paymentModes', 'salesTypes', 'branchFilter'));
     }
 
     public function posTerminal(Request $request)
@@ -218,6 +241,10 @@ class SalesBillController extends Controller
 
         if ($targetBillId) {
             $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments'])->findOrFail($targetBillId);
+            if (!$isViewOnly && $editBill->hasIrn()) {
+                return redirect()->route('pos.terminal')
+                    ->with('error', "Bill #{$editBill->bill_number} has an active Government E-Invoice IRN and cannot be edited.");
+            }
             $branchId = (int) $editBill->branch_id;
             $batchService = app(\App\Services\Inventory\BatchStockService::class);
             $hasEditBillLedger = \App\Models\StockLedger::where(function ($q) {
@@ -374,6 +401,7 @@ class SalesBillController extends Controller
 
             $totals = $this->computeTotals($lines, $data);
 
+            $this->assertCreditPaymentAllowed((int) $data['header']['customer_id'], $data);
             $this->assertCreditLimit((int) $data['header']['customer_id'], $totals['total']);
 
             // GSTR-1 posting-time snapshot: classify B2B/B2C off what the
@@ -494,6 +522,7 @@ class SalesBillController extends Controller
 
         $saveAction = $request->input('save_action', 'save');
         $whatsappNotice = '';
+        $waResult = null;
         try {
             $waSettings = \App\Models\WhatsAppSetting::current($salesBill->branch_id);
             $custPhone = $salesBill->customer?->phone ?: $salesBill->customer?->mobile;
@@ -504,6 +533,8 @@ class SalesBillController extends Controller
                 $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
                 if ($waResult['success'] ?? false) {
                     $whatsappNotice = ' | WhatsApp invoice sent to +' . $waResult['phone'];
+                } elseif (!empty($waResult['error'])) {
+                    $whatsappNotice = ' | WhatsApp notice: ' . $waResult['error'];
                 }
             }
         } catch (\Throwable $e) {
@@ -522,6 +553,9 @@ class SalesBillController extends Controller
                 'ack_date' => $salesBill->ack_date ? $salesBill->ack_date->format('d/m/Y h:i A') : null,
                 'einvoice_status' => $salesBill->einvoice_status,
                 'einvoice_qr_url' => $salesBill->hasIrn() ? $salesBill->getEinvoiceQrUrl() : null,
+                'whatsapp_sent' => $waResult['success'] ?? null,
+                'whatsapp_error' => $waResult['error'] ?? null,
+                'whatsapp_notice' => $whatsappNotice,
                 'message' => "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$ewayNotice}{$whatsappNotice}",
             ]);
         }
@@ -546,6 +580,11 @@ class SalesBillController extends Controller
 
     public function edit(SalesBill $salesBill)
     {
+        if ($salesBill->hasIrn()) {
+            return redirect()->route('sales.sales-bills.show', $salesBill)
+                ->with('error', "Bill #{$salesBill->bill_number} has an active Government E-Invoice IRN and cannot be edited as per GST compliance.");
+        }
+
         $salesBill->load(['items.item.gstTax', 'customer', 'payments.tenderType', 'payments.tenderTypeValue']);
 
         $branchId = (int) $salesBill->branch_id;
@@ -638,6 +677,10 @@ class SalesBillController extends Controller
 
     public function update(Request $request, SalesBill $salesBill)
     {
+        if ($salesBill->hasIrn()) {
+            abort(403, "Bill #{$salesBill->bill_number} has an active Government E-Invoice IRN and cannot be edited as per GST compliance.");
+        }
+
         $salesBill->assertEditable();
 
         $data = $this->validateData($request, $salesBill->id);
@@ -685,6 +728,7 @@ class SalesBillController extends Controller
             $this->assertStockAvailable($lines, $data['header']['branch_id']);
             $totals = $this->computeTotals($lines, $data);
 
+            $this->assertCreditPaymentAllowed((int) $data['header']['customer_id'], $data);
             $this->assertCreditLimit((int) $data['header']['customer_id'], $totals['total'], $oldCustomerId, $oldTotal);
 
             $salesBill->update(array_merge($data['header'], $totals));
@@ -758,7 +802,8 @@ class SalesBillController extends Controller
 
         $bills = $billsQuery
             ->withCount('items')
-            ->orderByDesc('id')
+            ->orderBy('bill_date', 'desc')
+            ->orderBy('id', 'desc')
             ->limit(100)
             ->get(['id', 'bill_number', 'bill_date', 'created_at', 'total', 'invoice_type', 'status'])
             ->map(function ($bill) {
@@ -811,6 +856,8 @@ class SalesBillController extends Controller
             'customer_mobile' => $customer->mobile ?? '',
             'customer_type' => $customer->customer_type ?? 'RETAIL INVOICE',
             'sales_type' => $customer->sales_type ?? 'Local',
+            'payment_mode' => $customer->payment_mode ?? 'Cash Only',
+            'is_credit_allowed' => $customer->isCreditAllowed(),
             'customer_edit_url' => url("master/customers/{$customer->id}/edit"),
             'pets' => $pets,
             'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
@@ -961,6 +1008,41 @@ class SalesBillController extends Controller
             }
         } elseif (count($payments) > 1) {
             $salesBill->update(['payment_type' => 'Split']);
+        }
+    }
+
+    /**
+     * Prevents saving a bill with Credit tender/payment if customer has "No Credit" or "Cash Only" payment mode.
+     */
+    private function assertCreditPaymentAllowed(int $customerId, array $data): void
+    {
+        $isCredit = false;
+
+        $paymentType = $data['header']['payment_type'] ?? '';
+        if (strcasecmp((string) $paymentType, 'Credit') === 0) {
+            $isCredit = true;
+        }
+
+        if (!empty($data['payments'])) {
+            foreach ($data['payments'] as $p) {
+                if ((float) ($p['amount'] ?? 0) > 0) {
+                    $tt = TenderType::find($p['tender_type_id'] ?? 0);
+                    if ($tt && (strcasecmp((string) $tt->name, 'Credit') === 0 || strcasecmp((string) $tt->type, 'Credit') === 0)) {
+                        $isCredit = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($isCredit) {
+            $customer = Customer::find($customerId);
+            if ($customer && ! $customer->isCreditAllowed()) {
+                $mode = $customer->payment_mode ?: 'No Credit';
+                throw ValidationException::withMessages([
+                    'payment_type' => "Credit sale is not allowed for customer '{$customer->name}' (Payment Mode: {$mode}).",
+                ]);
+            }
         }
     }
 
@@ -1644,6 +1726,8 @@ class SalesBillController extends Controller
                         'mobile' => $c->mobile ?? '',
                         'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                         'sales_type' => $c->sales_type ?? 'Local',
+                        'payment_mode' => $c->payment_mode ?? 'Cash Only',
+                        'is_credit_allowed' => $c->isCreditAllowed(),
                         'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                         'pets' => $pets,
                     ];
@@ -1690,6 +1774,8 @@ class SalesBillController extends Controller
                     'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                     'sales_type' => $c->sales_type ?? 'Local',
                     'purchase_type' => $c->sales_type ?? 'Local',
+                    'payment_mode' => $c->payment_mode ?? 'Cash Only',
+                    'is_credit_allowed' => $c->isCreditAllowed(),
                     'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                     'pets' => $pets,
                     'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
@@ -1729,6 +1815,18 @@ class SalesBillController extends Controller
 
     public function quickCustomerUpdate(Request $request, Customer $customer)
     {
+        $request->mergeIfMissing([
+            'status' => $customer->status ?? true,
+            'gst_type' => $customer->gst_type ?? 'Unregistered',
+            'sms_consent' => $customer->sms_consent ?? false,
+            'payment_mode' => $customer->payment_mode ?? 'Cash Only',
+            'sales_type' => $customer->sales_type ?? 'Local',
+            'customer_type' => $customer->customer_type ?? (\App\Models\CustomerType::where('status', true)->value('name') ?? 'Regular'),
+            'credit_limit' => $customer->credit_limit ?? 0,
+            'credit_balance' => $customer->credit_balance ?? 0,
+            'monthly_credit_balance' => $customer->monthly_credit_balance ?? 0,
+            'credit_days' => $customer->credit_days ?? 0,
+        ]);
         return app(\App\Http\Controllers\Master\CustomerController::class)->update($request, $customer);
     }
 
@@ -2056,11 +2154,20 @@ class SalesBillController extends Controller
         foreach ($validated['items'] as $idx => $line) {
             $qty = (float) ($line['qty'] ?? 0);
             $sellPrice = (float) ($line['sell_price'] ?? 0);
+            $mrp = (float) ($line['mrp'] ?? 0);
             $discAmount = (float) ($line['disc_amount'] ?? 0);
             $gross = round($qty * $sellPrice, 2);
             if ($gross > 0 && $discAmount > $gross) {
                 throw ValidationException::withMessages([
                     "items.{$idx}.disc_amount" => ["Row #" . ($idx + 1) . ": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross})."],
+                ]);
+            }
+            if ($mrp > 0 && $sellPrice > $mrp) {
+                $err = !empty($configs['sell_price']->custom_error_message)
+                    ? $configs['sell_price']->custom_error_message
+                    : "Row #" . ($idx + 1) . ": Selling price (₹{$sellPrice}) cannot exceed MRP (₹{$mrp}).";
+                throw ValidationException::withMessages([
+                    "items.{$idx}.sell_price" => [$err],
                 ]);
             }
         }

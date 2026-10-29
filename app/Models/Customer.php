@@ -57,6 +57,12 @@ class Customer extends Model
         return collect($ids)->merge($more)->unique()->values()->all();
     }
 
+    public function isCreditAllowed(): bool
+    {
+        $mode = strtolower(trim((string) $this->payment_mode));
+        return !in_array($mode, ['no credit', 'cash only'], true);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(CustomerCategory::class, 'customer_category_id');

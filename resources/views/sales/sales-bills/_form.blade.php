@@ -1585,6 +1585,10 @@
                     if (res.customer_type || res.sales_type) {
                         syncAndLockCustomerTypes(res.customer_type, res.sales_type);
                     }
+                    if (res.payment_mode) {
+                        window.SELECTED_CUSTOMER_PAYMENT_MODE = res.payment_mode;
+                        window.SELECTED_CUSTOMER_IS_CREDIT_ALLOWED = (res.is_credit_allowed !== false);
+                    }
                     if (res.invoices) {
                         customerInvoicesData = res.invoices;
                         filteredInvoices = [...customerInvoicesData];
@@ -4016,6 +4020,26 @@
             let outstanding = Math.max(0, Math.round((tenderBillTotal - tendered) * 100) / 100);
             if (outstanding > 0) {
                 credit += outstanding;
+            }
+
+            if (credit > 0) {
+                let custOption = $('#customer_id').find('option:selected');
+                let custPaymentMode = (window.SELECTED_CUSTOMER_PAYMENT_MODE || custOption.data('payment-mode') || '').toLowerCase().trim();
+                let isCreditAllowed = (window.SELECTED_CUSTOMER_IS_CREDIT_ALLOWED !== false) && !['no credit', 'cash only'].includes(custPaymentMode);
+                if (!isCreditAllowed) {
+                    let msg = `Credit sale is not allowed for this customer (Payment Mode: ${(window.SELECTED_CUSTOMER_PAYMENT_MODE || 'No Credit').toUpperCase()}).`;
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Credit Not Allowed',
+                            text: msg,
+                            confirmButtonColor: '#3085d6'
+                        });
+                    } else {
+                        alert(msg);
+                    }
+                    return;
+                }
             }
 
             // If cash tendered > bill total, cap cash payment amount at bill total (minus other modes)

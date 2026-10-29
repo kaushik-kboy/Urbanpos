@@ -173,7 +173,8 @@
                             <select class="form-control form-control-sm font-weight-bold text-dark" id="group_by" name="group_by" style="font-size: 0.82rem;">
                                 <optgroup label="🛍️ Sales Dimensions">
                                     <option value="item" selected>📦 By Item / Product</option>
-                                    <option value="category">📂 By Category / Sub-category</option>
+                                    <option value="category">📂 By Category</option>
+                                    <option value="subcategory">📑 By Sub-Category / Department</option>
                                     <option value="brand">🏷️ By Brand / Manufacturer</option>
                                     <option value="customer">👤 By Customer (Sales & Visits)</option>
                                 </optgroup>
@@ -192,8 +193,10 @@
                         <!-- 1-Click Dimension Quick Pills -->
                         <div class="d-flex flex-wrap mb-1" id="quick-groupby-pills">
                             <button type="button" class="btn btn-xs btn-primary font-weight-bold mr-1 mb-1 groupby-pill active" data-group="item">📦 Item</button>
-                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="customer">👤 Customer</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="brand">🏷️ Brand</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="category">📂 Category</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="subcategory">📑 Subcategory</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="customer">👤 Customer</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="item_supplier">🚚 Sourcing</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="supplier">🏭 Supplier</button>
                             <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mr-1 mb-1 groupby-pill" data-group="payment_mode">💳 Pay Mode</button>
@@ -314,7 +317,10 @@
 
                     {{-- Specific Item Filter --}}
                     <div class="col-md-3 mb-2" id="filter-item-col">
-                        <label class="small text-muted mb-1"><i class="fas fa-barcode mr-1"></i> Filter Specific Item:</label>
+                        <label class="small text-muted mb-1">
+                            <i class="fas fa-barcode mr-1"></i> Filter Specific Item:
+                            <span id="item-dep-badge" class="badge badge-info ml-1 d-none font-weight-normal"><i class="fas fa-link mr-1"></i>Filtered</span>
+                        </label>
                         <select class="form-control form-control-sm select2-ajax" id="item_id" name="item_id">
                             @if($initialItem)
                                 <option value="{{ $initialItem->id }}" selected>[{{ $initialItem->item_code }}] {{ $initialItem->name }} (₹{{ $initialItem->sell_price }})</option>
@@ -326,7 +332,10 @@
 
                     {{-- Specific Supplier Filter --}}
                     <div class="col-md-2 mb-2" id="filter-supplier-col">
-                        <label class="small text-muted mb-1"><i class="fas fa-truck mr-1"></i> Filter Supplier:</label>
+                        <label class="small text-muted mb-1">
+                            <i class="fas fa-truck mr-1"></i> Filter Supplier:
+                            <span id="supplier-dep-badge" class="badge badge-info ml-1 d-none font-weight-normal" title="Showing only suppliers associated with the selected item"><i class="fas fa-link mr-1"></i>Linked to Item</span>
+                        </label>
                         <select class="form-control form-control-sm select2-ajax" id="supplier_id" name="supplier_id">
                             @if($initialSupplier)
                                 <option value="{{ $initialSupplier->id }}" selected>{{ $initialSupplier->name }} ({{ $initialSupplier->city }})</option>
@@ -338,7 +347,10 @@
 
                     {{-- Specific Customer Filter --}}
                     <div class="col-md-3 mb-2" id="filter-customer-col">
-                        <label class="small text-muted mb-1"><i class="fas fa-user mr-1"></i> Filter Customer:</label>
+                        <label class="small text-muted mb-1">
+                            <i class="fas fa-user mr-1"></i> Filter Customer:
+                            <span id="customer-dep-badge" class="badge badge-info ml-1 d-none font-weight-normal" title="Showing only customers who purchased the selected item"><i class="fas fa-link mr-1"></i>Linked to Item</span>
+                        </label>
                         <select class="form-control form-control-sm select2-ajax" id="customer_id" name="customer_id">
                             @if($initialCustomer)
                                 <option value="{{ $initialCustomer->id }}" selected>{{ $initialCustomer->name }} {{ ($initialCustomer->mobile ?: $initialCustomer->phone) ? '(' . ($initialCustomer->mobile ?: $initialCustomer->phone) . ')' : '' }}</option>
@@ -456,7 +468,22 @@
                     <i class="fas fa-calendar-alt mr-1"></i> <span id="display-date-range-text">This Month</span>
                 </span>
             </div>
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center flex-wrap">
+                <!-- Customize Columns Dropdown -->
+                <div class="dropdown mr-2" id="columns-customizer-wrapper">
+                    <button class="btn btn-xs btn-outline-secondary dropdown-toggle font-weight-bold" type="button" id="btnCustomizeColumns" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Customize visible table columns">
+                        <i class="fas fa-columns mr-1 text-primary"></i> Customize Columns
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right p-2 shadow-sm" id="columns-customizer-menu" style="min-width: 230px; max-height: 320px; overflow-y: auto;">
+                        <div class="d-flex justify-content-between align-items-center pb-1 mb-2 border-bottom">
+                            <span class="small font-weight-bold text-dark"><i class="fas fa-eye mr-1 text-info"></i> Visible Columns</span>
+                            <button type="button" class="btn btn-link btn-xs text-primary p-0 font-weight-bold" id="btn-reset-columns">Reset All</button>
+                        </div>
+                        <div id="columns-checkbox-list">
+                            <span class="text-muted small">Run report to see columns</span>
+                        </div>
+                    </div>
+                </div>
                 <span class="badge badge-light border mr-2 font-weight-bold" id="result-count-badge">0 records</span>
                 <div class="d-inline-flex" id="quick-date-helpers">
                     <button type="button" class="btn btn-xs btn-outline-success font-weight-bold quick-switch-date mr-1" data-preset="last_month" title="Switch to Last Month (Sep 2026)">
@@ -1018,6 +1045,28 @@ $(document).ready(function() {
     let chartType = 'bar';
     let lastResponseData = null;
 
+    // Sync Dependent Badges
+    function syncFilterDependencyBadges() {
+        let itemId = $('#item_id').val();
+        let supplierId = $('#supplier_id').val();
+        let customerId = $('#customer_id').val();
+
+        if (itemId) {
+            $('#supplier-dep-badge').removeClass('d-none');
+            $('#customer-dep-badge').removeClass('d-none');
+        } else {
+            $('#supplier-dep-badge').addClass('d-none');
+            $('#customer-dep-badge').addClass('d-none');
+        }
+
+        if (supplierId || customerId) {
+            let label = supplierId && customerId ? 'Linked to Supplier & Customer' : (supplierId ? 'Linked to Supplier' : 'Linked to Customer');
+            $('#item-dep-badge').html('<i class="fas fa-link mr-1"></i>' + label).removeClass('d-none');
+        } else {
+            $('#item-dep-badge').addClass('d-none');
+        }
+    }
+
     // Initialize Select2 AJAX for Item search (by Code, Barcode, or Name)
     $('#item_id').select2({
         theme: 'bootstrap4',
@@ -1029,13 +1078,20 @@ $(document).ready(function() {
             dataType: 'json',
             delay: 250,
             data: function (params) {
-                return { q: params.term || '', term: params.term || '' };
+                return {
+                    q: params.term || '',
+                    term: params.term || '',
+                    supplier_id: $('#supplier_id').val() || '',
+                    customer_id: $('#customer_id').val() || ''
+                };
             },
             processResults: function (data) {
                 return { results: data.results };
             },
             cache: true
         }
+    }).on('change', function() {
+        syncFilterDependencyBadges();
     });
 
     // Initialize Select2 AJAX for Supplier search
@@ -1049,13 +1105,19 @@ $(document).ready(function() {
             dataType: 'json',
             delay: 250,
             data: function (params) {
-                return { q: params.term || '', term: params.term || '' };
+                return {
+                    q: params.term || '',
+                    term: params.term || '',
+                    item_id: $('#item_id').val() || ''
+                };
             },
             processResults: function (data) {
                 return { results: data.results };
             },
             cache: true
         }
+    }).on('change', function() {
+        syncFilterDependencyBadges();
     });
 
     // Initialize Select2 AJAX for Customer search
@@ -1069,14 +1131,22 @@ $(document).ready(function() {
             dataType: 'json',
             delay: 250,
             data: function (params) {
-                return { q: params.term || '', term: params.term || '' };
+                return {
+                    q: params.term || '',
+                    term: params.term || '',
+                    item_id: $('#item_id').val() || ''
+                };
             },
             processResults: function (data) {
                 return { results: data.results };
             },
             cache: true
         }
+    }).on('change', function() {
+        syncFilterDependencyBadges();
     });
+
+    syncFilterDependencyBadges();
 
     // Calculate exact dates for all presets (Today, Yesterday, Week, Last 7D, Month, Last Month, 30D, FY, All Time)
     function getPresetDates(preset) {
@@ -1236,6 +1306,8 @@ $(document).ready(function() {
             desc = 'Aggregates each customer\'s total purchase value, number of visits, and average order value.';
         } else if (val === 'category') {
             desc = 'Summarizes sales, revenue, and gross margins grouped by Product Category.';
+        } else if (val === 'subcategory' || val === 'department') {
+            desc = 'Summarizes sales, revenue, and product counts grouped by Subcategory / Department.';
         } else if (val === 'brand') {
             desc = 'Analyzes performance and brand-wise revenue across manufacturers.';
         } else if (val === 'payment_mode') {
@@ -1351,13 +1423,16 @@ $(document).ready(function() {
         }
 
         // 2. Build Header
-        let headHtml = '<tr><th class="text-center" style="width: 45px;">#</th>';
+        let headHtml = '<tr><th class="text-center" style="width: 45px;" data-col-key="__index">#</th>';
         resp.columns.forEach(function(col) {
             let alignClass = (col.key.includes('qty') || col.key.includes('sales') || col.key.includes('amount') || col.key.includes('profit') || col.key.includes('cost') || col.key.includes('disc') || col.key.includes('aov')) ? 'text-right' : (col.key === 'bill_count' || col.key === 'invoice_count' || col.key.includes('date') || col.key === 'is_primary_supplier' ? 'text-center' : 'text-left');
-            headHtml += `<th class="${alignClass}">${col.label}</th>`;
+            headHtml += `<th class="${alignClass}" data-col-key="${col.key}">${col.label}</th>`;
         });
-        headHtml += '<th class="text-center" style="width: 90px;">Action</th></tr>';
+        headHtml += '<th class="text-center" style="width: 90px;" data-col-key="__action">Action</th></tr>';
         $head.html(headHtml);
+
+        // Populate customize columns dropdown
+        updateColumnsCustomizer(resp.columns);
 
         // 3. Build Body Rows
         if (!resp.rows || resp.rows.length === 0) {
@@ -1388,7 +1463,7 @@ $(document).ready(function() {
         }
 
         resp.rows.forEach(function(row, idx) {
-            let rowHtml = `<tr><td class="text-center font-weight-bold text-muted">${idx + 1}</td>`;
+            let rowHtml = `<tr><td class="text-center font-weight-bold text-muted" data-col-key="__index">${idx + 1}</td>`;
             resp.columns.forEach(function(col) {
                 let val = row[col.key] !== undefined ? row[col.key] : '';
                 let alignClass = (col.key.includes('qty') || col.key.includes('sales') || col.key.includes('amount') || col.key.includes('profit') || col.key.includes('cost') || col.key.includes('disc') || col.key.includes('aov')) ? 'text-right' : (col.key === 'bill_count' || col.key === 'invoice_count' || col.key.includes('date') || col.key === 'is_primary_supplier' ? 'text-center' : 'text-left');
@@ -1425,7 +1500,7 @@ $(document).ready(function() {
                     }
                 }
 
-                rowHtml += `<td class="${alignClass}">${val}</td>`;
+                rowHtml += `<td class="${alignClass}" data-col-key="${col.key}">${val}</td>`;
             });
 
             // Action column with Drilldown button
@@ -1433,7 +1508,7 @@ $(document).ready(function() {
             let targetSubId = row.supplier_id || '';
             let targetName = row.group_name || row.item_name;
             rowHtml += `
-                <td class="text-center">
+                <td class="text-center" data-col-key="__action">
                     <button type="button" class="btn btn-xs btn-info btn-drilldown font-weight-bold px-2" 
                             data-group="${resp.group_by}" 
                             data-id="${targetId}" 
@@ -1448,7 +1523,82 @@ $(document).ready(function() {
             rowHtml += '</tr>';
             $body.append(rowHtml);
         });
+
+        // Apply saved column visibility preferences
+        applyColumnVisibility();
     }
+
+    // Helper functions for Column Customizer
+    function getHiddenColumns() {
+        try {
+            let saved = localStorage.getItem('analytics_builder_hidden_cols');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function setHiddenColumns(hiddenCols) {
+        try {
+            localStorage.setItem('analytics_builder_hidden_cols', JSON.stringify(hiddenCols));
+        } catch (e) {}
+    }
+
+    function updateColumnsCustomizer(columns) {
+        let $list = $('#columns-checkbox-list').empty();
+        if (!columns || columns.length === 0) {
+            $list.html('<span class="text-muted small">No columns available</span>');
+            return;
+        }
+
+        let hiddenCols = getHiddenColumns();
+
+        columns.forEach(function(col) {
+            let isChecked = !hiddenCols.includes(col.key);
+            let itemHtml = `
+                <div class="custom-control custom-checkbox py-1">
+                    <input type="checkbox" class="custom-control-input col-toggle-check" id="col-toggle-${col.key}" data-col-key="${col.key}" ${isChecked ? 'checked' : ''}>
+                    <label class="custom-control-label small" for="col-toggle-${col.key}" style="cursor: pointer;">${col.label}</label>
+                </div>
+            `;
+            $list.append(itemHtml);
+        });
+    }
+
+    function applyColumnVisibility() {
+        let hiddenCols = getHiddenColumns();
+        $('#analytics-table [data-col-key]').each(function() {
+            let key = $(this).data('col-key');
+            if (key === '__index' || key === '__action') return;
+            if (hiddenCols.includes(key)) {
+                $(this).hide();
+            } else {
+                $(this).show();
+            }
+        });
+    }
+
+    $(document).on('change', '.col-toggle-check', function() {
+        let key = $(this).data('col-key');
+        let isChecked = $(this).is(':checked');
+        let hiddenCols = getHiddenColumns();
+
+        if (isChecked) {
+            hiddenCols = hiddenCols.filter(k => k !== key);
+        } else {
+            if (!hiddenCols.includes(key)) hiddenCols.push(key);
+        }
+
+        setHiddenColumns(hiddenCols);
+        applyColumnVisibility();
+    });
+
+    $('#btn-reset-columns').on('click', function(e) {
+        e.preventDefault();
+        setHiddenColumns([]);
+        $('.col-toggle-check').prop('checked', true);
+        applyColumnVisibility();
+    });
 
     // Render Chart.js
     function renderReportChart(resp) {

@@ -49,7 +49,7 @@ class WhatsAppSettingTest extends TestCase
         $response = $this->actingAs($this->user)
             ->post(route('tools.whatsapp-settings.update'), $payload);
 
-        $response->assertRedirect(route('tools.whatsapp-settings.index'));
+        $response->assertRedirect(route('tools.whatsapp-settings.index', ['branch_id' => 'global']));
         $response->assertSessionHas('status');
 
         $setting = WhatsAppSetting::current();

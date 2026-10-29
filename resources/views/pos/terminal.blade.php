@@ -35,10 +35,12 @@
             @php
                 $user = auth()->user();
                 $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+                $firstBrKey = ($branches instanceof \Illuminate\Support\Collection) ? $branches->keys()->first() : (is_array($branches) ? (array_key_first($branches) ?? 1) : 1);
+                $firstBrVal = ($branches instanceof \Illuminate\Support\Collection) ? $branches->first() : (is_array($branches) ? (reset($branches) ?: 'Branch') : 'Branch');
                 $activeBrId = (! $isGlobalAdmin && $user?->branch_id)
                     ? (int) $user->branch_id
-                    : (int) (session('active_branch_id') ?: ($user?->branch_id ?: ($branches->keys()->first() ?? 1)));
-                $activeBrName = $branches[$activeBrId] ?? ($user?->branch?->name ?? ($branches->first() ?? 'Branch'));
+                    : (int) (session('active_branch_id') ?: ($user?->branch_id ?: ($firstBrKey ?? 1)));
+                $activeBrName = $branches[$activeBrId] ?? ($user?->branch?->name ?? ($firstBrVal ?? 'Branch'));
             @endphp
             <div class="pos-meta-item d-none d-md-inline-flex align-items-center" title="Store Branch">
                 <i class="fas fa-store text-info mr-1"></i>
@@ -1530,6 +1532,14 @@
     window.POS_LOCK_ENABLED = {{ $posLockEnabled ? 'true' : 'false' }};
     window.POS_TOGGLE_LOCK_URL = "{{ route('pos.toggle-lock-setting') }}";
     window.IS_VIEW_ONLY = {{ (isset($isViewOnly) && $isViewOnly) ? 'true' : 'false' }};
+    @php
+        $dynSvc = app(\App\Services\DynamicValidationService::class);
+        $isSellPriceReadonly = $dynSvc->isFieldReadonly('sales_bills', 'sell_price');
+        $salesBillConfigs = $dynSvc->getConfigsForModule('sales_bills')->values();
+    @endphp
+    window.DYNAMIC_FORM_MODULE = 'sales_bills';
+    window.DYNAMIC_FORM_CONFIGS = {!! $salesBillConfigs->toJson() !!};
+    window.IS_SELL_PRICE_READONLY = {{ $isSellPriceReadonly ? 'true' : 'false' }};
 
     function toggleAdminPosLock() {
         if (!confirm('Toggle POS Screen Lock feature for all terminals?')) return;

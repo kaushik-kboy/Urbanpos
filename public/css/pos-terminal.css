@@ -305,6 +305,14 @@ input[type="number"],
     cursor: pointer;
 }
 
+.pos-row-sell-price.pos-sell-price-readonly,
+.pos-row-sell-price.pos-sell-price-readonly:hover,
+.pos-row-sell-price.pos-sell-price-readonly:focus {
+    background-color: transparent !important;
+    cursor: default !important;
+    outline: none !important;
+}
+
 /* Bottom Quick Action Bar on Left Pane */
 .pos-action-bar {
     height: 54px;

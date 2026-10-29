@@ -185,6 +185,27 @@ class SystemErrorLogController extends Controller
     }
 
     /**
+     * Mark all unresolved error logs as Resolved.
+     */
+    public function resolveAll(Request $request)
+    {
+        $count = SystemErrorLog::where('status', 'Unresolved')->update([
+            'status'      => 'Resolved',
+            'resolved_at' => now(),
+            'resolved_by' => Auth::id(),
+        ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "All {$count} unresolved error logs marked as resolved.",
+            ]);
+        }
+
+        return redirect()->back()->with('success', "All {$count} unresolved error logs have been marked as resolved.");
+    }
+
+    /**
      * Clear resolved error logs older than X days (default 30 days).
      */
     public function clearOld(Request $request)

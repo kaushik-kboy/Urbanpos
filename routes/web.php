@@ -388,6 +388,7 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('system-error-logs/export', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'export'])->name('system-error-logs.export');
     Route::post('system-error-logs/test', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'triggerTest'])->name('system-error-logs.test');
     Route::get('system-error-logs/{id}', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'show'])->name('system-error-logs.show');
+    Route::post('system-error-logs/resolve-all', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'resolveAll'])->name('system-error-logs.resolve-all');
     Route::post('system-error-logs/{id}/resolve', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'resolve'])->name('system-error-logs.resolve');
     Route::post('system-error-logs/clear-old', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'clearOld'])->name('system-error-logs.clear-old');
     Route::post('client-error-logs', [\App\Http\Controllers\Tools\SystemErrorLogController::class, 'logClientError'])->name('client-error-logs');

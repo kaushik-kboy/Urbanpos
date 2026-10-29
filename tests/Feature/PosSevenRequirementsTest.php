@@ -294,4 +294,33 @@ class PosSevenRequirementsTest extends TestCase
         $this->assertEquals($this->customerA->id, $bill->customer_id);
         $this->assertNotEquals($this->customerB->id, $bill->customer_id);
     }
+
+    public function test_einvoiced_bill_with_irn_cannot_be_edited(): void
+    {
+        $this->actingAs($this->admin);
+
+        $einvoiceBill = SalesBill::create([
+            'bill_number' => 'UB/2026-27/00105',
+            'bill_date' => now(),
+            'branch_id' => $this->moteraBranch->id,
+            'customer_id' => $this->customerA->id,
+            'invoice_type' => 'Tax Invoice',
+            'delivery_type' => 'Direct',
+            'sales_type' => 'B2B',
+            'total' => 500.00,
+            'irn' => str_repeat('a', 64), // Simulated active IRN
+            'einvoice_status' => 'Completed',
+            'posting_key' => 'pos_einvoice_lock_test',
+            'status' => 'Posted',
+        ]);
+
+        // 1. GET edit route must redirect with error
+        $getResp = $this->get(route('sales.sales-bills.edit', $einvoiceBill->id));
+        $getResp->assertRedirect(route('sales.sales-bills.show', $einvoiceBill->id))
+            ->assertSessionHas('error');
+
+        // 2. PUT update route must abort 403 Forbidden
+        $putResp = $this->put(route('sales.sales-bills.update', $einvoiceBill->id), []);
+        $putResp->assertForbidden();
+    }
 }

@@ -37,9 +37,15 @@
                 <a href="{{ route('sales.sales-returns.create', ['customer_id' => $salesBill->customer_id, 'sales_bill_id' => $salesBill->id]) }}" class="btn btn-warning btn-sm mr-1 shadow-sm font-weight-bold" title="Create Sales Return for this Bill">
                     <i class="fas fa-undo mr-1"></i> Sales Return
                 </a>
-                <a href="{{ route('sales.sales-bills.edit', $salesBill) }}" class="btn btn-outline-primary btn-sm mr-1">
-                    <i class="fas fa-pen mr-1"></i> Edit
-                </a>
+                @if ($salesBill->hasIrn())
+                    <span class="badge badge-info px-2 py-2 mr-1 font-weight-bold align-self-center shadow-xs" title="Govt E-Invoice IRN generated. Bill is locked from editing.">
+                        <i class="fas fa-lock mr-1"></i> E-Invoiced (Locked)
+                    </span>
+                @else
+                    <a href="{{ route('sales.sales-bills.edit', $salesBill) }}" class="btn btn-outline-primary btn-sm mr-1">
+                        <i class="fas fa-pen mr-1"></i> Edit
+                    </a>
+                @endif
                 <form action="{{ route('sales.sales-bills.destroy', $salesBill) }}" method="POST" class="d-inline" onsubmit="return confirm('Cancel this sales bill? Stock will be restored and journal entry reversed.')">
                     @csrf
                     @method('DELETE')
@@ -249,9 +255,15 @@
                                             Total Qty: {{ number_format($salesBill->total_qty, 0) }} units &nbsp;|&nbsp; Payment: {{ $salesBill->payment_type }} &nbsp;|&nbsp; Total: <span class="text-success">₹{{ number_format($salesBill->total, 2) }}</span>
                                         </span>
                                         @if($salesBill->status !== 'Cancelled')
-                                            <a href="{{ route('sales.sales-bills.edit', $salesBill) }}" class="btn btn-xs btn-outline-primary ml-3 font-weight-bold">
-                                                <i class="fas fa-edit mr-1"></i> Edit / Enter Line Items
-                                            </a>
+                                            @if($salesBill->hasIrn())
+                                                <span class="badge badge-info ml-3 py-1 px-2 font-weight-bold" title="Govt E-Invoice IRN generated. Bill is locked from editing.">
+                                                    <i class="fas fa-lock mr-1"></i> E-Invoiced (Locked)
+                                                </span>
+                                            @else
+                                                <a href="{{ route('sales.sales-bills.edit', $salesBill) }}" class="btn btn-xs btn-outline-primary ml-3 font-weight-bold">
+                                                    <i class="fas fa-edit mr-1"></i> Edit / Enter Line Items
+                                                </a>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>

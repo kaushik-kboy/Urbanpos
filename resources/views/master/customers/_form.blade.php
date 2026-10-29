@@ -195,8 +195,8 @@
             />
         </div>
         <div id="pet-rows">
-            @forelse (($c->pets ?? collect())->all() ?: [null] as $index => $pet)
-                @if ($pet || ! ($c->pets ?? null)?->count())
+            @forelse (($c->pets ?? collect()) as $index => $pet)
+                @if ($pet)
                     <div class="pet-row border rounded p-3 mb-3 bg-light shadow-sm">
                         <input type="hidden" name="pets[{{ $index }}][id]" value="{{ $pet->id ?? '' }}">
                         <input type="hidden" name="pets[{{ $index }}][_delete]" class="pet-delete-flag" value="0">
@@ -212,7 +212,7 @@
                                 <x-field name="pets[{{ $index }}][name]" label="Name" :value="$pet->name ?? ''" />
                             </div>
                             <div class="field-wrapper col-md-6" data-field="gender" data-label="Gender" data-default-order="4">
-                                <x-select name="pets[{{ $index }}][gender]" label="Gender" :options="['' => 'None', 'Male' => 'Male', 'Female' => 'Female']" :selected="$pet->gender ?? ''" required />
+                                <x-select name="pets[{{ $index }}][gender]" label="Gender" :options="['' => 'None', 'Male' => 'Male', 'Female' => 'Female']" :selected="$pet->gender ?? ''" />
                             </div>
                             <div class="field-wrapper col-md-6" data-field="age" data-label="Age" data-default-order="5">
                                 <x-field name="pets[{{ $index }}][age]" label="Age" :value="$pet->age ?? ''" />
@@ -289,7 +289,7 @@
                 <div class="form-group row">
                     <label class="col-sm-3 col-form-label">Gender <span class="text-danger">*</span></label>
                     <div class="col-sm-6">
-                        <select name="pets[__INDEX__][gender]" class="form-control" required>
+                        <select name="pets[__INDEX__][gender]" class="form-control">
                             <option value="">None</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
@@ -331,6 +331,15 @@
     (function () {
         let petIndex = {{ ($c->pets ?? collect())->count() ?: 1 }};
         let lastPetMeta = null;
+
+        // Auto-switch to tab containing invalid input so browser HTML5 validation works cleanly
+        $('form').on('invalid', 'input, select, textarea', function () {
+            const $tabPane = $(this).closest('.tab-pane');
+            if ($tabPane.length && !$tabPane.hasClass('active')) {
+                const tabId = $tabPane.attr('id');
+                $(`a[href="#${tabId}"]`).tab('show');
+            }
+        });
 
         function syncPetRowLayout($grid, metaList) {
             if (!metaList || !metaList.length) return;

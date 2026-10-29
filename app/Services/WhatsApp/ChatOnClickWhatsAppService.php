@@ -313,7 +313,11 @@ class ChatOnClickWhatsAppService
             ];
         }
 
-        $isTemplateUnsupported = !empty($this->templateName) && \Illuminate\Support\Facades\Cache::get('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName);
+        $knownRejected = ['sales_invoice_satellite', 'sales_invoice_motera', 'urban_tax_invoice'];
+        $isTemplateUnsupported = !empty($this->templateName) && (
+            in_array(strtolower($this->templateName), $knownRejected)
+            || \Illuminate\Support\Facades\Cache::get('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName)
+        );
 
         if (!empty($this->templateName) && !$isTemplateUnsupported) {
             $customerName = trim($salesBill->customer?->name ?: 'Customer');
