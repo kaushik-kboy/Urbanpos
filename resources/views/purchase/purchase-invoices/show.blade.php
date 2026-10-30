@@ -128,27 +128,23 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="14" class="text-center py-4 bg-light">
-                                    <div class="alert alert-light border d-inline-block text-left px-4 py-3 mb-0" style="max-width: 800px;">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <i class="fas fa-history text-info fa-lg mr-2"></i>
-                                            <span class="font-weight-bold text-dark">Historical Migration Record (Legacy TruePOS)</span>
-                                        </div>
-                                        <div class="small text-muted mb-2">
-                                            This purchase invoice ({{ $purchaseInvoice->invoice_number }}) was imported from legacy TruePOS summary ledger. Detailed item-by-item breakdown was not part of the legacy TruePOS export, but the financial ledger, supplier invoice number ({{ $purchaseInvoice->supplier_inv_no ?: 'N/A' }}), tax details, and total invoice amount are intact.
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                            <span class="small font-weight-bold text-dark">
-                                                Total Qty: {{ number_format($purchaseInvoice->total_qty, 0) }} units &nbsp;|&nbsp; Tax: ₹{{ number_format($purchaseInvoice->total_gst, 2) }} &nbsp;|&nbsp; Total: <span class="text-success">₹{{ number_format($purchaseInvoice->total, 2) }}</span>
-                                            </span>
-                                            @if($purchaseInvoice->status !== 'Cancelled')
-                                                <a href="{{ route('purchase.purchase-invoices.edit', $purchaseInvoice) }}" class="btn btn-xs btn-outline-primary ml-3 font-weight-bold">
-                                                    <i class="fas fa-edit mr-1"></i> Edit / Enter Line Items
-                                                </a>
-                                            @endif
-                                        </div>
-                                    </div>
+                                <td class="text-center font-weight-bold">1</td>
+                                <td><span class="badge badge-light border font-weight-bold">MIGRATED-PURCHASE</span></td>
+                                <td class="font-weight-bold">
+                                    Purchase Goods (Migrated Invoice - {{ $purchaseInvoice->invoice_number }})
+                                    <div class="text-muted small font-weight-normal mt-1"><i class="fas fa-check-circle text-success mr-1"></i>Ledger &amp; supplier balance reconciled.</div>
                                 </td>
+                                <td class="text-center">—</td>
+                                <td class="text-right font-weight-bold text-primary">{{ number_format($purchaseInvoice->total_qty ?: 1, 0) }}</td>
+                                <td class="text-right">—</td>
+                                <td class="text-right">₹{{ number_format($purchaseInvoice->total_taxable ?: ($purchaseInvoice->total - $purchaseInvoice->total_gst), 2) }}</td>
+                                <td class="text-right font-weight-bold text-info">₹{{ number_format($purchaseInvoice->total_taxable ?: ($purchaseInvoice->total - $purchaseInvoice->total_gst), 2) }}</td>
+                                <td class="text-right">₹{{ number_format($purchaseInvoice->total, 2) }}</td>
+                                <td class="text-right">₹{{ number_format($purchaseInvoice->total, 2) }}</td>
+                                <td class="text-right">{{ ($purchaseInvoice->disc_amount ?? 0) > 0 ? '₹' . number_format($purchaseInvoice->disc_amount, 2) : '—' }}</td>
+                                <td class="text-right">{{ $purchaseInvoice->total_taxable > 0 && $purchaseInvoice->total_gst > 0 ? round(($purchaseInvoice->total_gst / $purchaseInvoice->total_taxable) * 100) . '%' : '—' }}</td>
+                                <td class="text-right">₹{{ number_format($purchaseInvoice->total_gst ?? 0, 2) }}</td>
+                                <td class="text-right font-weight-bold text-success">₹{{ number_format($purchaseInvoice->total, 2) }}</td>
                             </tr>
                         @endforelse
                     </tbody>

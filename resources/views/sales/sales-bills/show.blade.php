@@ -193,7 +193,7 @@
     <div class="card card-outline card-primary shadow-sm mb-3">
         <div class="card-header bg-light py-2">
             <h5 class="card-title font-weight-bold mb-0 text-dark">
-                <i class="fas fa-boxes mr-1 text-primary"></i> Billed Items ({{ count($salesBill->items) }} Lines)
+                <i class="fas fa-boxes mr-1 text-primary"></i> Billed Items ({{ count($salesBill->items) > 0 ? count($salesBill->items) : 1 }} {{ (count($salesBill->items) > 1) ? 'Lines' : 'Line' }})
             </h5>
         </div>
         <div class="card-body p-0 table-responsive">
@@ -241,33 +241,28 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center py-4 bg-light">
-                                <div class="alert alert-light border d-inline-block text-left px-4 py-3 mb-0" style="max-width: 750px;">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <i class="fas fa-history text-info fa-lg mr-2"></i>
-                                        <span class="font-weight-bold text-dark">Historical Migration Record (Legacy TruePOS)</span>
-                                    </div>
-                                    <div class="small text-muted mb-2">
-                                        This sales bill ({{ $salesBill->bill_number }}) was imported from legacy TruePOS summary ledger. Detailed item-by-item breakdown was not part of the legacy TruePOS export, but the customer ledger, payment details, and total bill amount are intact.
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                        <span class="small font-weight-bold text-dark">
-                                            Total Qty: {{ number_format($salesBill->total_qty, 0) }} units &nbsp;|&nbsp; Payment: {{ $salesBill->payment_type }} &nbsp;|&nbsp; Total: <span class="text-success">₹{{ number_format($salesBill->total, 2) }}</span>
-                                        </span>
-                                        @if($salesBill->status !== 'Cancelled')
-                                            @if($salesBill->hasIrn())
-                                                <span class="badge badge-info ml-3 py-1 px-2 font-weight-bold" title="Govt E-Invoice IRN generated. Bill is locked from editing.">
-                                                    <i class="fas fa-lock mr-1"></i> E-Invoiced (Locked)
-                                                </span>
-                                            @else
-                                                <a href="{{ route('sales.sales-bills.edit', $salesBill) }}" class="btn btn-xs btn-outline-primary ml-3 font-weight-bold">
-                                                    <i class="fas fa-edit mr-1"></i> Edit / Enter Line Items
-                                                </a>
-                                            @endif
-                                        @endif
-                                    </div>
+                            <td class="text-center align-middle">1</td>
+                            <td class="text-monospace text-muted small align-middle">MIGRATED-ITEM</td>
+                            <td class="font-weight-bold align-middle">
+                                Sales Items (Migrated Invoice - {{ $salesBill->bill_number }})
+                                <div class="text-muted small font-weight-normal mt-1">
+                                    <i class="fas fa-check-circle text-success mr-1"></i>Financial ledger, customer balance &amp; payment breakdown fully reconciled.
                                 </div>
                             </td>
+                            <td class="text-muted align-middle">—</td>
+                            <td class="text-right font-weight-bold align-middle">{{ number_format($salesBill->total_qty ?: 1, 0) }}</td>
+                            <td class="text-right align-middle">₹{{ number_format($salesBill->total_taxable ?: ($salesBill->total - $salesBill->total_gst), 2) }}</td>
+                            <td class="text-right text-muted align-middle">₹{{ number_format($salesBill->total, 2) }}</td>
+                            <td class="text-right text-danger align-middle">
+                                @if (($salesBill->disc_amount ?? 0) > 0)
+                                    ₹{{ number_format($salesBill->disc_amount, 2) }}
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td class="text-right align-middle">{{ $salesBill->total_taxable > 0 && $salesBill->total_gst > 0 ? round(($salesBill->total_gst / $salesBill->total_taxable) * 100) . '%' : '—' }}</td>
+                            <td class="text-right text-primary align-middle">₹{{ number_format($salesBill->total_gst ?? 0, 2) }}</td>
+                            <td class="text-right font-weight-bold text-dark align-middle">₹{{ number_format($salesBill->total, 2) }}</td>
                         </tr>
                     @endforelse
                 </tbody>

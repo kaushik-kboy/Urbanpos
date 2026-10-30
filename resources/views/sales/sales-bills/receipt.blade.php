@@ -395,9 +395,20 @@
                     @endif
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center store-sub" style="padding: 8px 0; color: #666;">
-                            (Historical Migrated Bill - Total Amount: ₹{{ number_format($salesBill->total, 2) }})
+                        <td colspan="4" class="font-bold" style="padding-top: 3px;">
+                            1. Sales Items (Migrated Bill)
                         </td>
+                    </tr>
+                    <tr>
+                        <td class="store-sub" style="color: #444;">
+                            [MIGRATED-ITEM]
+                            @if ($salesBill->total_gst > 0 && $salesBill->total_taxable > 0)
+                                (GST {{ round(($salesBill->total_gst / $salesBill->total_taxable) * 100) }}%)
+                            @endif
+                        </td>
+                        <td class="text-right font-bold">{{ number_format($salesBill->total_qty ?: 1, 0) }}</td>
+                        <td class="text-right">₹{{ number_format($salesBill->total_taxable ?: ($salesBill->total - $salesBill->total_gst), 2) }}</td>
+                        <td class="text-right font-bold">₹{{ number_format($salesBill->total, 2) }}</td>
                     </tr>
                 @endforelse
             </tbody>
