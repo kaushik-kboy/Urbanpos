@@ -43,10 +43,7 @@ class ChatOnClickWhatsAppService
         $this->appKey = $settings?->app_key ?: config('services.chatonclick.appkey');
         $this->authKey = $settings?->auth_key ?: config('services.chatonclick.authkey');
         $configuredTemplate = config('services.chatonclick.template_name');
-        $this->templateName = !empty($settings?->template_name) ? trim($settings->template_name) : (!empty($configuredTemplate) ? trim($configuredTemplate) : 'urban_tax_invoice_v2');
-        if (empty($this->templateName)) {
-            $this->templateName = 'urban_tax_invoice_v2';
-        }
+        $this->templateName = !empty($settings?->template_name) ? trim($settings->template_name) : (!empty($configuredTemplate) ? trim($configuredTemplate) : null);
         $this->templateLang = !empty($settings?->template_lang) ? trim($settings->template_lang) : 'en_US';
         $this->headerTitle = $settings?->header_title ?: 'URBAN PETS';
         $this->footerMessage = $settings?->footer_message ?: 'Have an Awesome Day!';
@@ -113,15 +110,21 @@ class ChatOnClickWhatsAppService
     public function getPublicReceiptUrl(SalesBill $salesBill): string
     {
         $hash = $this->generateReceiptHash($salesBill);
-        $appUrl = config('app.url');
-        if (!empty($appUrl) && !str_contains($appUrl, 'localhost')) {
-            return rtrim($appUrl, '/') . "/receipt/v/{$salesBill->id}/{$hash}";
+        $base = config('services.chatonclick.public_base_url') ?: config('app.url');
+        if (empty($base) || str_contains($base, 'localhost') || str_contains($base, '127.0.0.1')) {
+            try {
+                $reqHost = request()->getSchemeAndHttpHost();
+                if (!empty($reqHost) && !str_contains($reqHost, 'localhost') && !str_contains($reqHost, '127.0.0.1')) {
+                    $base = $reqHost;
+                } else {
+                    $base = 'https://pos.indianpetcompany.com';
+                }
+            } catch (\Throwable $e) {
+                $base = 'https://pos.indianpetcompany.com';
+            }
         }
 
-        return route('sales-bills.public-receipt', [
-            'salesBill' => $salesBill->id,
-            'hash'      => $hash,
-        ]);
+        return rtrim($base, '/') . "/receipt/v/{$salesBill->id}/{$hash}";
     }
 
     /**
@@ -316,11 +319,13 @@ class ChatOnClickWhatsAppService
             ];
         }
 
-        $knownRejected = ['urban_tax_invoice'];
+        $knownRejected = ['sales_invoice_satellite', 'sales_invoice_motera'];
         $isTemplateUnsupported = !empty($this->templateName) && (
             in_array(strtolower($this->templateName), $knownRejected)
             || \Illuminate\Support\Facades\Cache::get('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName)
         );
+
+        $directWhatsappUrl = "https://api.whatsapp.com/send?phone={$cleanPhone}&text=" . urlencode($this->formatInvoiceMessage($salesBill));
 
         if (!empty($this->templateName) && !$isTemplateUnsupported) {
             $customerName = trim($salesBill->customer?->name ?: 'Customer');
@@ -478,10 +483,11 @@ class ChatOnClickWhatsAppService
                 if ($fallbackResp->successful() && ($fallbackJson['success'] ?? false) && ($fallbackJson['data']['status'] ?? '') !== 'failed') {
                     Log::info("WhatsApp bill dispatched via direct message fallback for Bill #{$salesBill->bill_number} to {$cleanPhone}");
                     return [
-                        'success' => true,
-                        'phone'   => $cleanPhone,
-                        'wamid'   => $fallbackJson['data']['mid'] ?? null,
-                        'message' => "WhatsApp bill successfully sent to +{$cleanPhone}",
+                        'success'             => true,
+                        'phone'               => $cleanPhone,
+                        'wamid'               => $fallbackJson['data']['mid'] ?? null,
+                        'message'             => "WhatsApp bill successfully sent to +{$cleanPhone}",
+                        'direct_whatsapp_url' => $directWhatsappUrl,
                     ];
                 }
             }
@@ -494,8 +500,10 @@ class ChatOnClickWhatsAppService
                         : "ChatOnClick reported message dispatch failed.";
                     Log::warning("WhatsApp dispatch failed on ChatOnClick: " . $templateErr);
                     return [
-                        'success' => false,
-                        'error'   => $templateErr,
+                        'success'             => false,
+                        'error'               => $templateErr,
+                        'phone'               => $cleanPhone,
+                        'direct_whatsapp_url' => $directWhatsappUrl,
                     ];
                 }
 
@@ -503,22 +511,25 @@ class ChatOnClickWhatsAppService
                     'wamid' => $json['data']['mid'] ?? null,
                 ]);
 
-                // Also send itemized text message so customer receives real breakdown if window open
-                try {
-                    $directMsg = $this->formatInvoiceMessage($salesBill);
-                    \Illuminate\Support\Facades\Http::asMultipart()->timeout(10)->post($this->url . '/api/whatsapp/message', [
-                        ['name' => 'appkey', 'contents' => $this->appKey],
-                        ['name' => 'authkey', 'contents' => $this->authKey],
-                        ['name' => 'to', 'contents' => $cleanPhone],
-                        ['name' => 'message', 'contents' => $directMsg],
-                    ]);
-                } catch (\Throwable $te) {}
+                // If a Meta template was dispatched, also send itemized text message so customer receives real breakdown
+                if (!empty($this->templateName) && !$isTemplateUnsupported) {
+                    try {
+                        $directMsg = $this->formatInvoiceMessage($salesBill);
+                        \Illuminate\Support\Facades\Http::asMultipart()->timeout(10)->post($this->url . '/api/whatsapp/message', [
+                            ['name' => 'appkey', 'contents' => $this->appKey],
+                            ['name' => 'authkey', 'contents' => $this->authKey],
+                            ['name' => 'to', 'contents' => $cleanPhone],
+                            ['name' => 'message', 'contents' => $directMsg],
+                        ]);
+                    } catch (\Throwable $te) {}
+                }
 
                 return [
-                    'success' => true,
-                    'phone'   => $cleanPhone,
-                    'wamid'   => $json['data']['mid'] ?? null,
-                    'message' => "WhatsApp bill successfully sent to +{$cleanPhone}",
+                    'success'             => true,
+                    'phone'               => $cleanPhone,
+                    'wamid'               => $json['data']['mid'] ?? null,
+                    'message'             => "WhatsApp bill successfully sent to +{$cleanPhone}",
+                    'direct_whatsapp_url' => $directWhatsappUrl,
                 ];
             }
 
@@ -529,15 +540,19 @@ class ChatOnClickWhatsAppService
             ]);
 
             return [
-                'success' => false,
-                'error'   => $errorMessage,
+                'success'             => false,
+                'error'               => $errorMessage,
+                'phone'               => $cleanPhone,
+                'direct_whatsapp_url' => $directWhatsappUrl,
             ];
         } catch (\Throwable $e) {
             Log::error("ChatOnClick HTTP exception for Bill #{$salesBill->bill_number}: " . $e->getMessage());
 
             return [
-                'success' => false,
-                'error'   => 'Network error connecting to WhatsApp service: ' . $e->getMessage(),
+                'success'             => false,
+                'error'               => 'Network error connecting to WhatsApp service: ' . $e->getMessage(),
+                'phone'               => $cleanPhone,
+                'direct_whatsapp_url' => $directWhatsappUrl,
             ];
         }
     }

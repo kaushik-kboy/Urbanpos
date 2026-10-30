@@ -692,7 +692,12 @@ function sendWhatsAppInvoiceShow() {
         if (data.success) {
             alert('✅ ' + data.message);
         } else {
-            alert('⚠️ ' + (data.error || 'Failed to send WhatsApp message'));
+            const errMsg = data.error || 'Failed to send WhatsApp message';
+            if (data.direct_whatsapp_url && confirm('⚠️ ' + errMsg + '\n\nWould you like to open WhatsApp Web / Desktop directly to send the bill?')) {
+                window.open(data.direct_whatsapp_url, '_blank');
+            } else {
+                alert('⚠️ ' + errMsg);
+            }
         }
     })
     .catch(err => {

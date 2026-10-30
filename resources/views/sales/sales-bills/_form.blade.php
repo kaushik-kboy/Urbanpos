@@ -4193,6 +4193,9 @@
             });
 
             $form.append(`<input type="hidden" name="save_action" value="${actionType}">`);
+            if (actionType === 'whatsapp') {
+                $form.append('<input type="hidden" name="send_whatsapp" value="1">');
+            }
 
             // Use native form submit with double-submission lock
             if (window.PosScanGuard) {

@@ -36,11 +36,12 @@ return [
     ],
 
     'chatonclick' => [
-        'url'           => env('CHATONCLICK_URL', 'https://chatonclick.com'),
-        'appkey'        => env('CHATONCLICK_APPKEY'),
-        'authkey'       => env('CHATONCLICK_AUTHKEY'),
-        'template_name' => env('CHATONCLICK_TEMPLATE_NAME', null),
-        'template_lang' => env('CHATONCLICK_TEMPLATE_LANG', 'en_US'),
+        'url'              => env('CHATONCLICK_URL', 'https://chatonclick.com'),
+        'appkey'           => env('CHATONCLICK_APPKEY'),
+        'authkey'          => env('CHATONCLICK_AUTHKEY'),
+        'template_name'    => env('CHATONCLICK_TEMPLATE_NAME', null),
+        'template_lang'    => env('CHATONCLICK_TEMPLATE_LANG', 'en_US'),
+        'public_base_url'  => env('CHATONCLICK_PUBLIC_BASE_URL', env('APP_PUBLIC_URL', 'https://pos.indianpetcompany.com')),
     ],
 
 ];

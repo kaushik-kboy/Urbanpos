@@ -159,11 +159,13 @@
         state.branch_id = branchSelectVal ? parseInt(branchSelectVal, 10) : ((typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) ? parseInt(window.CURRENT_USER_BRANCH_ID, 10) : null);
         if (window.INITIAL_CUSTOMER && window.INITIAL_CUSTOMER.id) {
             state.customer_id = window.INITIAL_CUSTOMER.id;
+            state.customer = window.INITIAL_CUSTOMER;
             const initPetId = $('#posTaggedPetId').val();
             state.customer_pet_id = initPetId ? parseInt(initPetId, 10) : null;
             // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), not customer tax type
         } else {
             state.customer_id = null;
+            state.customer = null;
             state.customer_pet_id = null;
         }
 
@@ -176,6 +178,9 @@
         if (window.EDIT_BILL) {
             state.edit_id = window.EDIT_BILL.id;
             state.customer_id = window.EDIT_BILL.customer_id;
+            if (window.EDIT_BILL.customer) {
+                state.customer = window.EDIT_BILL.customer;
+            }
             state.customer_pet_id = window.EDIT_BILL.customer_pet_id || null;
             if (state.customer_pet_id) $('#posTaggedPetId').val(state.customer_pet_id);
             state.invoice_type = window.EDIT_BILL.invoice_type || 'Retail Invoice';
@@ -2281,6 +2286,7 @@
 
         // 2. Clear customer
         state.customer_id = null;
+        state.customer = null;
         state.customer_pet_id = null;
         const $custSelect = $('#posCustomerSelect');
         if ($custSelect.length) {
@@ -2702,6 +2708,7 @@
                     return false;
                 }
                 state.customer_id = null;
+                state.customer = null;
                 $('#posSelectedCustomerBox').hide();
                 $('#posCustomerInvoicesSection').hide();
                 $('#posLoyaltyBadge').hide();
@@ -2725,6 +2732,7 @@
             $custSelect.on('select2:select change', function (e) {
                 if (state.edit_id && window.EDIT_BILL && window.EDIT_BILL.customer_id) {
                     state.customer_id = window.EDIT_BILL.customer_id;
+                    if (window.EDIT_BILL.customer) state.customer = window.EDIT_BILL.customer;
                     return;
                 }
                 const data = e.params ? e.params.data : null;
@@ -2732,15 +2740,18 @@
                 if (custId) {
                     state.customer_id = custId;
                     if (data && data.name) {
-                        updateSelectedCustomerUI({
+                        const custPayload = {
                             id: custId,
                             name: data.name,
-                            mobile: data.mobile || '',
+                            mobile: data.mobile || data.phone || '',
+                            phone: data.phone || data.mobile || '',
                             sales_type: data.sales_type || 'Local',
                             edit_url: data.edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                             pets: data.pets || [],
                             pets_summary: data.pets_summary || ''
-                        });
+                        };
+                        state.customer = custPayload;
+                        updateSelectedCustomerUI(custPayload);
                     } else {
                         fetchCustomerDetailsAndInvoices(custId);
                     }
@@ -2985,6 +2996,10 @@
 
     function updateSelectedCustomerUI(customer) {
         if (!customer) return;
+        state.customer = customer;
+        if (!state.customer_id && customer.id) {
+            state.customer_id = customer.id;
+        }
         // Sales Bill Type is branch-wise (Retail, Spa, Home, etc.), customer sets purchase_type (Local/Interstate)
         if (customer.purchase_type || customer.sales_type) {
             setPurchaseType(customer.purchase_type || customer.sales_type);
@@ -3297,7 +3312,8 @@
                 updateSelectedCustomerUI({
                     id: custId,
                     name: data.customer_name,
-                    mobile: data.customer_mobile,
+                    mobile: data.customer_mobile || data.customer_phone || '',
+                    phone: data.customer_phone || data.customer_mobile || '',
                     sales_type: data.sales_type || 'Local',
                     edit_url: data.customer_edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                     pets: data.pets || [],
@@ -3741,10 +3757,22 @@
 
         // Validate customer mobile when Save & WhatsApp is clicked
         if (action === 'whatsapp') {
-            let custMobile = (state.customer && (state.customer.mobile || state.customer.phone)) ? (state.customer.mobile || state.customer.phone) : (window.INITIAL_CUSTOMER?.mobile || '');
+            let custMobile = '';
+            if (state.customer && (state.customer.mobile || state.customer.phone)) {
+                custMobile = state.customer.mobile || state.customer.phone;
+            } else if (window.INITIAL_CUSTOMER && (window.INITIAL_CUSTOMER.mobile || window.INITIAL_CUSTOMER.phone)) {
+                custMobile = window.INITIAL_CUSTOMER.mobile || window.INITIAL_CUSTOMER.phone;
+            } else if (window.EDIT_BILL && window.EDIT_BILL.customer && (window.EDIT_BILL.customer.mobile || window.EDIT_BILL.customer.phone)) {
+                custMobile = window.EDIT_BILL.customer.mobile || window.EDIT_BILL.customer.phone;
+            } else {
+                const domMob = $('#posSelectedCustMobile span').text().trim();
+                if (domMob && domMob !== 'No mobile') {
+                    custMobile = domMob;
+                }
+            }
             custMobile = (custMobile || '').replace(/\D/g, '');
-            if (!custMobile) {
-                showNotification('Customer mobile number is required to send WhatsApp invoice. Please select or add a customer.', 'warning');
+            if (!custMobile || custMobile.length < 10) {
+                showNotification('Customer mobile number is required to send WhatsApp invoice. Please select or add a customer with a valid 10-digit number.', 'warning');
                 if (typeof sound !== 'undefined' && sound.error) sound.error();
                 $('#posCustomerSelect').select2('open');
                 return;
@@ -4044,6 +4072,9 @@
                     // WhatsApp invoice is dispatched directly from backend via ChatOnClick API
                     if (result.whatsapp_sent === false && result.whatsapp_error) {
                         showNotification(`Bill #${result.bill_number || billId} saved! WhatsApp: ${result.whatsapp_error}`, 'warning');
+                        if (result.auto_whatsapp_url) {
+                            window.open(result.auto_whatsapp_url, '_blank');
+                        }
                     } else {
                         const successText = result.message || `Bill #${result.bill_number || billId} saved and WhatsApp invoice sent!`;
                         showNotification(successText, 'success');
@@ -4055,6 +4086,7 @@
                 state.cash_received = 0;
                 state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
                 state.customer_id = null;
+                state.customer = null;
                 setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
                 $('#posCustomerSelect').val(null).trigger('change.select2');
                 $('#posSelectedCustomerBox').hide();

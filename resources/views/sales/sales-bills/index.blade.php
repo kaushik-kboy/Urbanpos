@@ -18,6 +18,15 @@
         </script>
     @endif
     @if (session('auto_whatsapp_url'))
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fab fa-whatsapp mr-1 text-success"></i> <strong>WhatsApp Invoice:</strong> Digital receipt is ready.
+            <a href="{{ session('auto_whatsapp_url') }}" target="_blank" class="btn btn-sm btn-success font-weight-bold ml-2">
+                <i class="fab fa-whatsapp mr-1"></i> Open WhatsApp Web / App
+            </a>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
         <script>
             window.open("{{ session('auto_whatsapp_url') }}", "_blank");
         </script>
@@ -334,7 +343,12 @@ function sendWhatsAppFromIndex(btn) {
         if (data.success) {
             alert('✅ ' + data.message);
         } else {
-            alert('⚠️ ' + (data.error || 'Failed to dispatch WhatsApp message'));
+            const errMsg = data.error || 'Failed to dispatch WhatsApp message';
+            if (data.direct_whatsapp_url && confirm('⚠️ ' + errMsg + '\n\nWould you like to open WhatsApp Web / App directly to send the bill?')) {
+                window.open(data.direct_whatsapp_url, '_blank');
+            } else {
+                alert('⚠️ ' + errMsg);
+            }
         }
     })
     .catch(err => {

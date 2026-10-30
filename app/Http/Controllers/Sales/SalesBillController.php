@@ -523,11 +523,20 @@ class SalesBillController extends Controller
         $saveAction = $request->input('save_action', 'save');
         $whatsappNotice = '';
         $waResult = null;
+        $autoWhatsappUrl = null;
         try {
             $waSettings = \App\Models\WhatsAppSetting::current($salesBill->branch_id);
             $custPhone = $salesBill->customer?->phone ?: $salesBill->customer?->mobile;
-            // Only send WhatsApp invoice when user explicitly clicks Save & WhatsApp or requests it
-            $shouldSend = ($saveAction === 'whatsapp' || $request->boolean('send_whatsapp')) && !empty($custPhone);
+            $cleanCustPhone = $this->whatsAppService->sanitizePhone($custPhone);
+
+            if ($cleanCustPhone) {
+                $publicReceiptUrl = $this->whatsAppService->getPublicReceiptUrl($salesBill);
+                $msg = urlencode("Hello " . ($salesBill->customer->name ?? 'Customer') . ", thank you for your purchase! Your invoice #{$salesBill->bill_number} for Rs. " . number_format($salesBill->total, 2) . " is ready: " . $publicReceiptUrl);
+                $autoWhatsappUrl = "https://api.whatsapp.com/send?phone={$cleanCustPhone}&text={$msg}";
+            }
+
+            // Send WhatsApp invoice when user explicitly clicks Save & WhatsApp or requests it, OR when auto_send_on_bill is enabled in settings
+            $shouldSend = ($saveAction === 'whatsapp' || $request->boolean('send_whatsapp') || ($waSettings->auto_send_on_bill && $waSettings->is_active)) && !empty($cleanCustPhone);
 
             if ($shouldSend && $waSettings->is_active) {
                 $waResult = $this->whatsAppService->sendSalesBillInvoice($salesBill);
@@ -556,6 +565,7 @@ class SalesBillController extends Controller
                 'whatsapp_sent' => $waResult['success'] ?? null,
                 'whatsapp_error' => $waResult['error'] ?? null,
                 'whatsapp_notice' => $whatsappNotice,
+                'auto_whatsapp_url' => $autoWhatsappUrl,
                 'message' => "Sales Bill {$salesBill->bill_number} created successfully.{$einvoiceNotice}{$ewayNotice}{$whatsappNotice}",
             ]);
         }
@@ -565,14 +575,8 @@ class SalesBillController extends Controller
 
         if ($saveAction === 'print') {
             $redirect->with('auto_print_url', route('sales.sales-bills.receipt', $salesBill));
-        } elseif ($saveAction === 'whatsapp') {
-            $mobile = preg_replace('/\D/', '', $salesBill->customer?->mobile ?? '');
-            if ($mobile) {
-                if (strlen($mobile) === 10) $mobile = '91' . $mobile;
-                $publicUrl = route('sales.sales-bills.receipt', $salesBill);
-                $msg = urlencode("Hello " . ($salesBill->customer->name ?? 'Customer') . ", thank you for your purchase! Your invoice #{$salesBill->bill_number} for Rs. " . number_format($salesBill->total, 2) . " is ready: " . $publicUrl);
-                $redirect->with('auto_whatsapp_url', "https://api.whatsapp.com/send?phone={$mobile}&text={$msg}");
-            }
+        } elseif ($saveAction === 'whatsapp' && $autoWhatsappUrl) {
+            $redirect->with('auto_whatsapp_url', $autoWhatsappUrl);
         }
 
         return $redirect;
@@ -664,6 +668,13 @@ class SalesBillController extends Controller
         $overridePhone = $request->input('phone');
         $result = $this->whatsAppService->sendSalesBillInvoice($salesBill, $overridePhone, force: true);
 
+        if (empty($result['direct_whatsapp_url'])) {
+            $cleanPhone = $result['phone'] ?? $this->whatsAppService->sanitizePhone($overridePhone ?: ($salesBill->customer?->phone ?: $salesBill->customer?->mobile));
+            if ($cleanPhone) {
+                $result['direct_whatsapp_url'] = "https://api.whatsapp.com/send?phone={$cleanPhone}&text=" . urlencode($this->whatsAppService->formatInvoiceMessage($salesBill));
+            }
+        }
+
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json($result, $result['success'] ? 200 : 422);
         }
@@ -672,7 +683,8 @@ class SalesBillController extends Controller
             return back()->with('status', $result['message']);
         }
 
-        return back()->withErrors(['whatsapp' => $result['error']]);
+        return back()->withErrors(['whatsapp' => $result['error']])
+            ->with('direct_whatsapp_url', $result['direct_whatsapp_url'] ?? null);
     }
 
     public function update(Request $request, SalesBill $salesBill)
