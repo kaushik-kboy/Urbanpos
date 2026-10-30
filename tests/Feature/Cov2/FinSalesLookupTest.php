@@ -221,7 +221,7 @@ class FinSalesLookupTest extends TestCase
         $this->seedStock($i, 8);
 
         $r = $this->lookup(['item_id' => $i->id]);
-        $this->assertSame('2026-12-31', $r['item']['exp_date']);
+        $this->assertSame('2027-06-30', $r['item']['exp_date']);
         $this->assertCount(2, $r['batches']);
         [$first, $second] = $r['batches'];
         $this->assertSame('2026-12-31', $first['exp_date']);

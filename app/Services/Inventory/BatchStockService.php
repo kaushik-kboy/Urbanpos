@@ -657,12 +657,46 @@ class BatchStockService
             $batchTotal = array_sum(array_column($batches, 'remaining_qty'));
             if ($batchTotal > $currentBranchStock) {
                 $excess = $batchTotal - $currentBranchStock;
-                $revKeys = array_reverse(array_keys($batches));
-                foreach ($revKeys as $rk) {
+                $todayStr = Carbon::today()->format('Y-m-d');
+
+                // FIFO excess deduction: historical sales/depletion consumed expired & older batches first.
+                // Sort batch keys so that expired batches and older batches are deducted first,
+                // ensuring remaining physical stock is preserved on active, unexpired batches.
+                $deductKeys = array_keys($batches);
+                usort($deductKeys, function ($ka, $kb) use ($batches, $todayStr) {
+                    $ba = $batches[$ka];
+                    $bb = $batches[$kb];
+                    $expA = !empty($ba['exp_date']) ? substr((string)$ba['exp_date'], 0, 10) : '';
+                    $expB = !empty($bb['exp_date']) ? substr((string)$bb['exp_date'], 0, 10) : '';
+
+                    $isExpA = ($expA !== '' && $expA < $todayStr);
+                    $isExpB = ($expB !== '' && $expB < $todayStr);
+
+                    // 1. Expired batches are deducted first
+                    if ($isExpA !== $isExpB) {
+                        return $isExpA ? -1 : 1;
+                    }
+
+                    // 2. Older expiry dates are deducted before newer expiry dates
+                    if ($expA !== '' && $expB !== '') {
+                        if ($expA !== $expB) {
+                            return strcmp($expA, $expB);
+                        }
+                    } elseif ($expA !== '' && $expB === '') {
+                        return -1;
+                    } elseif ($expA === '' && $expB !== '') {
+                        return 1;
+                    }
+
+                    return 0;
+                });
+
+                foreach ($deductKeys as $dk) {
                     if ($excess <= 0) break;
-                    $cur = (float) $batches[$rk]['remaining_qty'];
+                    $cur = (float) $batches[$dk]['remaining_qty'];
+                    if ($cur <= 0) continue;
                     $ded = min($cur, $excess);
-                    $batches[$rk]['remaining_qty'] = max(0.0, round($cur - $ded, 3));
+                    $batches[$dk]['remaining_qty'] = max(0.0, round($cur - $ded, 3));
                     $excess -= $ded;
                 }
             }
