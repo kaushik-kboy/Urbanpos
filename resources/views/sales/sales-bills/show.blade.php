@@ -244,15 +244,15 @@
                             <td class="text-center align-middle">1</td>
                             <td class="text-monospace text-muted small align-middle">MIGRATED-ITEM</td>
                             <td class="font-weight-bold align-middle">
-                                Sales Items (Migrated Invoice - {{ $salesBill->bill_number }})
+                                Sales Items (Migrated Bill Total: ₹{{ number_format($salesBill->total, 2) }})
                                 <div class="text-muted small font-weight-normal mt-1">
-                                    <i class="fas fa-check-circle text-success mr-1"></i>Financial ledger, customer balance &amp; payment breakdown fully reconciled.
+                                    <i class="fas fa-check-circle text-success mr-1"></i>Legacy TruePOS summary ledger reconciled. Customer ledger &amp; net total intact.
                                 </div>
                             </td>
                             <td class="text-muted align-middle">—</td>
                             <td class="text-right font-weight-bold align-middle">{{ number_format($salesBill->total_qty ?: 1, 0) }}</td>
-                            <td class="text-right align-middle">₹{{ number_format($salesBill->total_taxable ?: ($salesBill->total - $salesBill->total_gst), 2) }}</td>
-                            <td class="text-right text-muted align-middle">₹{{ number_format($salesBill->total, 2) }}</td>
+                            <td class="text-right text-muted align-middle">—</td>
+                            <td class="text-right text-muted align-middle">—</td>
                             <td class="text-right text-danger align-middle">
                                 @if (($salesBill->disc_amount ?? 0) > 0)
                                     ₹{{ number_format($salesBill->disc_amount, 2) }}

@@ -1357,31 +1357,65 @@ class SalesBillController extends Controller
         // table aggregating every purchase_invoice_items row before the join (cost grew with purchase history).
         if (! empty($rows)) {
             $ids = array_map(fn ($r) => $r->id, $rows);
-            $ph0 = implode(',', array_fill(0, count($ids), '?'));
-            $eiSql = "
-                SELECT pi2.item_id,
-                       MIN(pi2.exp_date) AS exp_date,
-                       {$sellPriceSub},
-                       {$mrpSub}
-                FROM purchase_invoice_items pi2
-                INNER JOIN purchase_invoices pih ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
-                WHERE pi2.item_id IN ({$ph0})
-                  AND pi2.exp_date IS NOT NULL
-                  AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
-                GROUP BY pi2.item_id
-            ";
+            $batchService = app(\App\Services\Inventory\BatchStockService::class);
+            $todayDateStr = \Carbon\Carbon::today()->format('Y-m-d');
             $ei = [];
-            foreach (\Illuminate\Support\Facades\DB::select($eiSql, array_merge([$branchId], $ids)) as $e) {
-                $ei[$e->item_id] = $e;
+
+            // 1. Resolve active batches via BatchStockService first for accurate stock-backed expiry & prices.
+            // This ensures expiry is based on actual remaining stock (remaining_qty > 0) and unexpired batches,
+            // avoiding false "EXPIRED" flags caused by depleted 0-stock historical purchase batches.
+            foreach ($ids as $mId) {
+                $itemBatches = $batchService->getItemBatches($mId, $branchId);
+                if ($itemBatches->isNotEmpty()) {
+                    $posBatches = $itemBatches->filter(fn($b) => (float)($b['remaining_qty'] ?? 0) > 0);
+                    // Prioritize unexpired batch with positive stock; fallback to positive batch, then unexpired batch, then first batch
+                    $unexpiredBatches = $posBatches->filter(fn($b) => empty($b['exp_date']) || $b['exp_date'] >= $todayDateStr);
+                    $activeBatch = $unexpiredBatches->first() ?: ($posBatches->first() ?: $itemBatches->filter(fn($b) => empty($b['exp_date']) || $b['exp_date'] >= $todayDateStr)->first() ?: $itemBatches->first());
+                    if ($activeBatch) {
+                        $ei[$mId] = (object) [
+                            'item_id' => $mId,
+                            'exp_date' => $activeBatch['exp_date'] ?? null,
+                            'sell_price' => (float)($activeBatch['sell_price'] ?? 0),
+                            'mrp' => (float)($activeBatch['mrp'] ?? 0),
+                        ];
+                    }
+                }
             }
 
-            // Also check inward stock transfers for this branch if missing expiry
+            // 2. For any item without resolved batches, fall back to purchase invoices (prioritizing unexpired)
             $missingBranchExpIds = array_values(array_filter($ids, fn ($id) => ! isset($ei[$id])));
             if (! empty($missingBranchExpIds)) {
-                $phTransfer = implode(',', array_fill(0, count($missingBranchExpIds), '?'));
+                $ph0 = implode(',', array_fill(0, count($missingBranchExpIds), '?'));
+                $eiSql = "
+                    SELECT pi2.item_id,
+                           COALESCE(
+                               MIN(CASE WHEN pi2.exp_date >= '{$todayDateStr}' THEN pi2.exp_date ELSE NULL END),
+                               MIN(pi2.exp_date)
+                           ) AS exp_date,
+                           {$sellPriceSub},
+                           {$mrpSub}
+                    FROM purchase_invoice_items pi2
+                    INNER JOIN purchase_invoices pih ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
+                    WHERE pi2.item_id IN ({$ph0})
+                      AND pi2.exp_date IS NOT NULL
+                      AND CAST(pi2.exp_date AS CHAR) NOT IN ('', '0000-00-00')
+                    GROUP BY pi2.item_id
+                ";
+                foreach (\Illuminate\Support\Facades\DB::select($eiSql, array_merge([$branchId], $missingBranchExpIds)) as $e) {
+                    $ei[$e->item_id] = $e;
+                }
+            }
+
+            // 3. Also check inward stock transfers for this branch if still missing expiry
+            $missingBranchTransferIds = array_values(array_filter($ids, fn ($id) => ! isset($ei[$id])));
+            if (! empty($missingBranchTransferIds)) {
+                $phTransfer = implode(',', array_fill(0, count($missingBranchTransferIds), '?'));
                 $stiSql = "
                     SELECT sti.item_id,
-                           MIN(sti.exp_date) AS exp_date,
+                           COALESCE(
+                               MIN(CASE WHEN sti.exp_date >= '{$todayDateStr}' THEN sti.exp_date ELSE NULL END),
+                               MIN(sti.exp_date)
+                           ) AS exp_date,
                            COALESCE(NULLIF(MIN(sti.sell_price), 0), MIN(sti.mrp)) AS sell_price,
                            MIN(sti.mrp) AS mrp
                     FROM stock_transfer_items sti
@@ -1391,30 +1425,8 @@ class SalesBillController extends Controller
                       AND CAST(sti.exp_date AS CHAR) NOT IN ('', '0000-00-00')
                     GROUP BY sti.item_id
                 ";
-                foreach (\Illuminate\Support\Facades\DB::select($stiSql, array_merge([$branchId], $missingBranchExpIds)) as $te) {
+                foreach (\Illuminate\Support\Facades\DB::select($stiSql, array_merge([$branchId], $missingBranchTransferIds)) as $te) {
                     $ei[$te->item_id] = $te;
-                }
-            }
-
-            // Also check imported TruePOS batches / closing_stocks via BatchStockService for this branch
-            $missingBranchCsIds = array_values(array_filter($ids, fn ($id) => ! isset($ei[$id])));
-            if (! empty($missingBranchCsIds)) {
-                $batchService = app(\App\Services\Inventory\BatchStockService::class);
-                $todayDateStr = \Carbon\Carbon::today()->format('Y-m-d');
-                foreach ($missingBranchCsIds as $mId) {
-                    $itemBatches = $batchService->getItemBatches($mId, $branchId);
-                    $posBatches = $itemBatches->filter(fn($b) => (float)($b['remaining_qty'] ?? 0) > 0);
-                    // Prioritize unexpired batch with positive stock; fallback to first positive batch, then first batch
-                    $unexpiredBatches = $posBatches->filter(fn($b) => empty($b['exp_date']) || $b['exp_date'] >= $todayDateStr);
-                    $activeBatch = $unexpiredBatches->first() ?: ($posBatches->first() ?: $itemBatches->first());
-                    if ($activeBatch) {
-                        $ei[$mId] = (object) [
-                            'item_id' => $mId,
-                            'exp_date' => $activeBatch['exp_date'] ?? null,
-                            'sell_price' => (float)($activeBatch['sell_price'] ?? 0),
-                            'mrp' => (float)($activeBatch['mrp'] ?? 0),
-                        ];
-                    }
                 }
             }
 
@@ -1434,14 +1446,18 @@ class SalesBillController extends Controller
             }
         }
 
-        // Fallback: for rows without branch-specific expiry, try all branches
+        // Fallback: for rows without branch-specific expiry, try all branches (prioritizing unexpired)
         $noExpIds = collect($rows)->filter(fn ($r) => empty($r->exp_date))->pluck('id')->all();
         $expiryFallback = [];
         if (! empty($noExpIds)) {
+            $todayDateStr = \Carbon\Carbon::today()->format('Y-m-d');
             $ph = implode(',', array_fill(0, count($noExpIds), '?'));
             $fbSql = "
                 SELECT pi2.item_id,
-                       MIN(pi2.exp_date) AS exp_date,
+                       COALESCE(
+                           MIN(CASE WHEN pi2.exp_date >= '{$todayDateStr}' THEN pi2.exp_date ELSE NULL END),
+                           MIN(pi2.exp_date)
+                       ) AS exp_date,
                        {$sellPriceSub},
                        {$mrpSub}
                 FROM purchase_invoice_items pi2
