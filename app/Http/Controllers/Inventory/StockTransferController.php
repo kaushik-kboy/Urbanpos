@@ -640,6 +640,8 @@ class StockTransferController extends Controller
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
+        $todayDateStr = \Carbon\Carbon::today()->format('Y-m-d');
+
         $sql = "
             SELECT
                 i.id,
@@ -655,7 +657,10 @@ class StockTransferController extends Controller
                    ON st.item_id = i.id AND st.branch_id = ?
             LEFT JOIN (
                 SELECT pi2.item_id,
-                       MIN(pi2.exp_date) AS exp_date
+                       COALESCE(
+                           MIN(CASE WHEN pi2.exp_date >= '{$todayDateStr}' THEN pi2.exp_date ELSE NULL END),
+                           MIN(pi2.exp_date)
+                       ) AS exp_date
                 FROM purchase_invoice_items pi2
                 INNER JOIN purchase_invoices pih
                         ON pih.id = pi2.purchase_invoice_id AND pih.branch_id = ?
@@ -678,7 +683,10 @@ class StockTransferController extends Controller
             $ph = implode(',', array_fill(0, count($noExpIds), '?'));
             $fbSql = "
                 SELECT pi2.item_id,
-                       MIN(pi2.exp_date) AS exp_date
+                       COALESCE(
+                           MIN(CASE WHEN pi2.exp_date >= '{$todayDateStr}' THEN pi2.exp_date ELSE NULL END),
+                           MIN(pi2.exp_date)
+                       ) AS exp_date
                 FROM purchase_invoice_items pi2
                 WHERE pi2.item_id IN ({$ph})
                   AND pi2.exp_date IS NOT NULL
