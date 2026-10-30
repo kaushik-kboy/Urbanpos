@@ -43,13 +43,9 @@ class ChatOnClickWhatsAppService
         $this->appKey = $settings?->app_key ?: config('services.chatonclick.appkey');
         $this->authKey = $settings?->auth_key ?: config('services.chatonclick.authkey');
         $configuredTemplate = config('services.chatonclick.template_name');
-        $this->templateName = !empty($settings?->template_name) ? trim($settings->template_name) : (!empty($configuredTemplate) ? trim($configuredTemplate) : null);
+        $this->templateName = !empty($settings?->template_name) ? trim($settings->template_name) : (!empty($configuredTemplate) ? trim($configuredTemplate) : 'urban_tax_invoice_v2');
         if (empty($this->templateName)) {
-            if ($branchId === 2 || str_contains(strtolower($settings?->header_title ?? ''), 'satellite')) {
-                $this->templateName = 'sales_invoice_satellite';
-            } elseif ($branchId === 3 || str_contains(strtolower($settings?->header_title ?? ''), 'motera')) {
-                $this->templateName = 'sales_invoice_motera';
-            }
+            $this->templateName = 'urban_tax_invoice_v2';
         }
         $this->templateLang = !empty($settings?->template_lang) ? trim($settings->template_lang) : 'en_US';
         $this->headerTitle = $settings?->header_title ?: 'URBAN PETS';
@@ -375,8 +371,40 @@ class ChatOnClickWhatsAppService
                     'name'     => 'file',
                     'contents' => (string) $publicUrl,
                 ];
+            } elseif ($this->templateName === 'urban_tax_invoice_v2') {
+                // Meta approved urban_tax_invoice_v2 variables in exact order:
+                // {{1}} = Net Amount Paid: Rs. {{1}}
+                // {{2}} = (via {{2}}) - Payment mode
+                // {{3}} = contact us at {{3}} anytime - Helpline Phone
+                // {{4}} = Dear {{4}} - Customer Name
+                // {{5}} = Bill No: {{5}} - Bill Number
+                // {{6}} = Date: {{6}} - Date
+                // {{7}} = Store: {{7}} - Branch Name
+                // {{8}} = Total Items: {{8}} - Items count
+                $variables = [
+                    $totalAmount,
+                    $paymentModes,
+                    $branchPhone,
+                    $customerName,
+                    $billNumber,
+                    $billDate,
+                    $branchName,
+                    $totalItems,
+                ];
+                foreach ($variables as $var) {
+                    $multipart[] = [
+                        'name'     => 'variables[]',
+                        'contents' => (string) $var,
+                    ];
+                }
+
+                // Dynamic Button URL parameter (URL in template: https://pos.indianpetcompany.com/guest/receipt/{{1}})
+                $multipart[] = [
+                    'name'     => 'button_url',
+                    'contents' => (string) $salesBill->id,
+                ];
             } else {
-                // 8 Body variables matching urban_tax_invoice
+                // Generic 8 Body variables fallback
                 $variables = [
                     $customerName,
                     $billNumber,

@@ -554,6 +554,12 @@ Route::middleware('auth')->prefix('user/dashboard-preferences')->name('user.dash
 // Public guest route for customer WhatsApp invoice/receipt view (no login required)
 Route::get('receipt/v/{salesBill}/{hash}', [\App\Http\Controllers\Sales\SalesBillController::class, 'publicReceipt'])
     ->name('sales-bills.public-receipt');
+Route::get('guest/receipt/{salesBill}', function ($salesBillId) {
+    $bill = \App\Models\SalesBill::findOrFail($salesBillId);
+    $service = app(\App\Services\WhatsApp\ChatOnClickWhatsAppService::class);
+    $hash = $service->generateReceiptHash($bill);
+    return redirect()->route('sales-bills.public-receipt', ['salesBill' => $bill->id, 'hash' => $hash]);
+})->name('sales-bills.guest-receipt');
 
 // Public route to download the UrbanPOS Android Mobile App APK
 Route::get('/downloads/urbanpos.apk', function () {
