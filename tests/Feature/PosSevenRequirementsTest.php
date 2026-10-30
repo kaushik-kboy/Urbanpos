@@ -202,6 +202,20 @@ class PosSevenRequirementsTest extends TestCase
     }
 
     /**
+     * Test POS Terminal has compulsory unselected Sales Type placeholder
+     */
+    public function test_pos_terminal_renders_compulsory_sales_type_placeholder(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->get(route('pos.terminal'));
+        $response->assertOk();
+        $response->assertSee('id="posSalesTypeSelect"', false);
+        $response->assertSee('-- Select Sales Type --');
+        $response->assertSee('value=""', false);
+    }
+
+    /**
      * Requirement 6: POS View in Terminal (Read-only terminal view)
      */
     public function test_pos_view_in_terminal_renders_view_mode(): void

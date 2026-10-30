@@ -12,7 +12,7 @@
         customer_pet_id: null,
         branch_id: (typeof window !== 'undefined' && window.CURRENT_USER_BRANCH_ID) ? parseInt(window.CURRENT_USER_BRANCH_ID, 10) : null,
         invoice_type: 'Retail Invoice',
-        sales_type: 'Retail',
+        sales_type: '',
         purchase_type: 'Local',
         delivery_type: 'Delivered',
         bill_discount: 0,
@@ -169,7 +169,7 @@
             state.customer_pet_id = null;
         }
 
-        const initSalesType = window.EDIT_BILL?.sales_type || $('#posSalesTypeSelect').val() || 'Retail';
+        const initSalesType = window.EDIT_BILL?.sales_type || $('#posSalesTypeSelect').val() || '';
         setSalesType(initSalesType);
 
         const initPurchaseType = window.EDIT_BILL?.purchase_type || $('#posPurchaseTypeSelect').val() || window.INITIAL_CUSTOMER?.purchase_type || 'Local';
@@ -184,7 +184,7 @@
             state.customer_pet_id = window.EDIT_BILL.customer_pet_id || null;
             if (state.customer_pet_id) $('#posTaggedPetId').val(state.customer_pet_id);
             state.invoice_type = window.EDIT_BILL.invoice_type || 'Retail Invoice';
-            state.sales_type = window.EDIT_BILL.sales_type || 'Retail';
+            state.sales_type = window.EDIT_BILL.sales_type || '';
             setSalesType(state.sales_type);
             state.purchase_type = window.EDIT_BILL.purchase_type || 'Local';
             setPurchaseType(state.purchase_type);
@@ -758,10 +758,13 @@
         // Sales Bill Type Change (Branch-wise)
         $('#posSalesTypeSelect').on('change', function () {
             if (window.IS_VIEW_ONLY) return;
+            $(this).removeClass('is-invalid border-danger');
             setSalesType(this.value);
             const totals = computeTotals();
             updateSummaryUI(totals);
-            showNotification(`Sales Bill Type set to ${state.sales_type}`, 'info');
+            if (state.sales_type) {
+                showNotification(`Sales Bill Type set to ${state.sales_type}`, 'info');
+            }
         });
 
         // Bill Discount Input listener (Point 2: Bill discount like sales bill)
@@ -2322,8 +2325,8 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Reset Sales Type to default branch type & Purchase Type to default customer
-        setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
+        // 6. Reset Sales Type to unselected placeholder & Purchase Type to default customer
+        setSalesType('');
         setPurchaseType(window.INITIAL_CUSTOMER?.purchase_type || 'Local');
 
         // 7. Re-render UI
@@ -2365,7 +2368,22 @@
 
     // Set Sales Bill Type (Branch-wise, e.g. Retail, Spa, Home, B2B, IPC)
     function setSalesType(salesType) {
-        if (!salesType) return;
+        if (!salesType) {
+            state.sales_type = '';
+            const $select = $('#posSalesTypeSelect');
+            if ($select.length && $select.val() !== '') {
+                $select.val('');
+            }
+            const $text = $('#posSalesTypeText');
+            const $badge = $('#posSalesTypeBadge');
+            if ($text.length) {
+                $text.text('-- Select Sales Type --');
+            }
+            if ($badge.length) {
+                $badge.text('-- Select --').removeClass('badge-primary badge-success badge-info badge-warning').addClass('badge-secondary text-white');
+            }
+            return;
+        }
         const normalized = String(salesType).trim();
         state.sales_type = normalized;
         const $select = $('#posSalesTypeSelect');
@@ -2378,7 +2396,7 @@
             $text.text(normalized);
         }
         if ($badge.length) {
-            $badge.removeClass('badge-primary text-white').addClass('badge-light text-dark');
+            $badge.text(normalized).removeClass('badge-secondary text-white').addClass('badge-light text-dark');
         }
     }
 
@@ -3643,6 +3661,8 @@
         if ($('#posRemarks').length) $('#posRemarks').val(bill.remarks || '');
         if (bill.sales_type) {
             setSalesType(bill.sales_type);
+        } else {
+            setSalesType('');
         }
         if (bill.purchase_type) {
             setPurchaseType(bill.purchase_type);
@@ -3738,10 +3758,11 @@
         if (!currentSalesType || !String(currentSalesType).trim()) {
             const stMsg = 'Sales Bill Type is required. Please select a Sales Bill Type.';
             showNotification(stMsg, 'warning');
+            $('#posSalesTypeSelect').addClass('is-invalid border-danger').focus();
             alert(stMsg);
-            $('#posSalesTypeSelect').focus();
             return;
         }
+        $('#posSalesTypeSelect').removeClass('is-invalid border-danger');
         state.sales_type = String(currentSalesType).trim();
 
         // Validate Payment Mode selected (Point 3)
@@ -4087,7 +4108,7 @@
                 state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'GPAY' };
                 state.customer_id = null;
                 state.customer = null;
-                setSalesType($('#posSalesTypeSelect option:first').val() || 'Retail');
+                setSalesType('');
                 $('#posCustomerSelect').val(null).trigger('change.select2');
                 $('#posSelectedCustomerBox').hide();
                 $('#posCustomerInvoicesSection').hide();

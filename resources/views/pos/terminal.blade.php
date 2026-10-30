@@ -221,8 +221,9 @@
                         <div class="d-flex align-items-center">
                             <label for="posSalesTypeSelect" class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.70rem; text-transform: uppercase;">Sales Type <span class="text-danger">*</span>:</label>
                             <select id="posSalesTypeSelect" class="form-control form-control-sm font-weight-bold px-2 py-0 text-dark" style="height: 28px; width: auto; font-size: 0.78rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Sales Bill Type (Branch-wise)">
+                                <option value="" @selected(!isset($editBill) || empty($editBill->sales_type))>-- Select Sales Type --</option>
                                 @foreach($salesTypes as $stKey => $stName)
-                                    <option value="{{ $stName }}" @selected(isset($editBill) ? ($editBill->sales_type === $stName) : ($loop->first))>{{ $stName }}</option>
+                                    <option value="{{ $stName }}" @selected(isset($editBill) && ($editBill->sales_type === $stName))>{{ $stName }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -1578,18 +1579,25 @@
         }
 
         stSelect.innerHTML = '';
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = '-- Select Sales Type --';
+        stSelect.appendChild(defaultOpt);
+
         filtered.forEach(st => {
             const opt = document.createElement('option');
             opt.value = st.name;
             opt.textContent = st.name;
-            if (st.name === currentVal) {
+            if (currentVal && st.name === currentVal) {
                 opt.selected = true;
             }
             stSelect.appendChild(opt);
         });
 
-        if (!stSelect.value && filtered.length > 0) {
-            stSelect.value = filtered[0].name;
+        if (currentVal && filtered.some(st => st.name === currentVal)) {
+            stSelect.value = currentVal;
+        } else {
+            stSelect.value = '';
         }
         if (window.posEngine && window.posEngine.setSalesType) {
             window.posEngine.setSalesType(stSelect.value);
