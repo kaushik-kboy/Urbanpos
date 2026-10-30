@@ -292,7 +292,7 @@ class BatchStockService
             $csItems = collect(array_values($consolidatedCs));
         }
 
-        $allPurchases = $piItems->concat($osItems)->concat($stItems)->concat($csItems);
+        $allPurchases = $csItems->concat($osItems)->concat($piItems)->concat($stItems);
 
         // Fallback: If no purchase or transfer records for this specific branch, check across all branches as metadata fallback for exp_date
         $isCrossBranchFallback = false;
@@ -686,6 +686,15 @@ class BatchStockService
                         return -1;
                     } elseif ($expA === '' && $expB !== '') {
                         return 1;
+                    }
+
+                    // 3. For identical expiry dates, older inward sources are consumed first:
+                    // closing_stock (initial migration) -> opening stock -> purchase -> transfer (newest replenishment)
+                    $sourceOrder = ['closing_stock' => 1, 'closing' => 1, 'opening' => 2, 'purchase' => 3, 'transfer' => 4];
+                    $srcA = $sourceOrder[$ba['source'] ?? 'purchase'] ?? 3;
+                    $srcB = $sourceOrder[$bb['source'] ?? 'purchase'] ?? 3;
+                    if ($srcA !== $srcB) {
+                        return $srcA <=> $srcB;
                     }
 
                     return 0;

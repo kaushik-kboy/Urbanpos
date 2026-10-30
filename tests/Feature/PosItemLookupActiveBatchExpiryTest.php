@@ -206,4 +206,75 @@ class PosItemLookupActiveBatchExpiryTest extends TestCase
         $this->assertEquals(0.0, (float)$expiredBatch['remaining_qty']);
         $this->assertEquals(5.0, (float)$validBatch['remaining_qty']);
     }
+
+    public function test_fresh_stock_transfer_batch_takes_precedence_over_older_closing_stock_with_same_expiry(): void
+    {
+        $branchFrom = Branch::create(['name' => 'Motera Transfer Branch', 'code' => 'MOT01', 'state' => 'Gujarat', 'status' => true]);
+        $branchTo   = Branch::create(['name' => 'Satellite Transfer Branch', 'code' => 'SAT01', 'state' => 'Gujarat', 'status' => true]);
+
+        $item = Item::create([
+            'name' => 'Drools Adult Chicken and Egg 20KG',
+            'item_code' => 'TEST7018',
+            'status' => 1,
+            'sell_price' => 3799.00,
+            'mrp' => 3799.00,
+        ]);
+
+        // Branch physical stock in Satellite is 2
+        ItemStock::create([
+            'item_id' => $item->id,
+            'branch_id' => $branchTo->id,
+            'quantity' => 2.000,
+            'sell_price' => 3599.00,
+            'mrp' => 3599.00,
+        ]);
+
+        // 1. Legacy Closing Stock imported with MRP 3799
+        \Illuminate\Support\Facades\DB::table('closing_stocks')->insert([
+            'item_id' => $item->id,
+            'item_code' => $item->item_code,
+            'branch_id' => $branchTo->id,
+            'batch_no' => 'D7018-2738',
+            'expiry_date' => '2028-08-30',
+            'closing_stock' => 2.000,
+            'mrp' => 3799.00,
+            'net_cost' => 1940.39,
+        ]);
+
+        // 2. Fresh Inward Stock Transfer received with MRP 3599
+        $st = \App\Models\StockTransfer::create([
+            'transfer_number' => 'ST-TEST-0041',
+            'transfer_date' => '2026-10-30',
+            'from_branch_id' => $branchFrom->id,
+            'to_branch_id' => $branchTo->id,
+            'status' => 'Received',
+            'total_qty' => 2.000,
+            'total_value' => 7198.00,
+        ]);
+        \App\Models\StockTransferItem::create([
+            'stock_transfer_id' => $st->id,
+            'item_id' => $item->id,
+            'batch_no' => '2028-08-30',
+            'exp_date' => '2028-08-30',
+            'qty' => 2.000,
+            'received_qty' => 2.000,
+            'unit_cost' => 2287.50,
+            'sell_price' => 3599.00,
+            'mrp' => 3599.00,
+        ]);
+
+        $batchService = app(\App\Services\Inventory\BatchStockService::class);
+        $batches = $batchService->getItemBatches($item->id, $branchTo->id);
+
+        $csBatch = $batches->firstWhere('batch_no', 'D7018-2738');
+        $stBatch = $batches->firstWhere('batch_no', '2028-08-30');
+
+        $this->assertNotNull($csBatch);
+        $this->assertNotNull($stBatch);
+        // Older closing stock was consumed first; freshly transferred batch has the active stock of 2 with MRP 3599
+        $this->assertEquals(0.0, (float)$csBatch['remaining_qty']);
+        $this->assertEquals(2.0, (float)$stBatch['remaining_qty']);
+        $this->assertEquals(3599.00, (float)$stBatch['mrp']);
+        $this->assertEquals(3599.00, (float)$stBatch['sell_price']);
+    }
 }
