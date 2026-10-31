@@ -94,4 +94,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
         });
     });
+
+    // --- Internal POS Sync Routes (Internal service-to-service calls) ---
+    Route::get('/internal/pos-sync/daily-bills', [\App\Http\Controllers\Api\V1\Internal\DailyBillsExportController::class, 'dailyBills']);
 });
