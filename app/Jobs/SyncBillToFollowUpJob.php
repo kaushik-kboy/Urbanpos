@@ -32,6 +32,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
     public function __construct(
         public int $salesBillId
     ) {
+        $this->onConnection(config('services.followup_sync.connection', 'sync'));
     }
 
     /**
