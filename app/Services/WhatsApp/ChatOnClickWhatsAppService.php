@@ -463,8 +463,12 @@ class ChatOnClickWhatsAppService
 
             $json = $response->json();
 
+            // Evaluate response success
+            $isSuccess = $response->successful() && (($json['success'] ?? false) || !empty($json['data']['mid']) || !empty($json['mid']));
+            $isFailed = ($json['data']['status'] ?? '') === 'failed' || ($json['status'] ?? '') === 'failed';
+
             // Automatic fallback: if template was rejected (not found / unapproved on device), retry as direct message
-            if (!empty($this->templateName) && !$isTemplateUnsupported && (!$response->successful() || !($json['success'] ?? false) || ($json['data']['status'] ?? '') === 'failed')) {
+            if (!empty($this->templateName) && !$isTemplateUnsupported && (!$isSuccess || $isFailed)) {
                 $templateErr = $json['error'] ?? ($json['message'] ?? 'Template rejected');
                 if (str_contains(strtolower((string)$templateErr), 'template not found') || str_contains(strtolower((string)$templateErr), 'not approved')) {
                     \Illuminate\Support\Facades\Cache::put('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName, true, 86400);
@@ -481,54 +485,29 @@ class ChatOnClickWhatsAppService
                         ['name' => 'message', 'contents' => $directMessage],
                     ]);
                 $fallbackJson = $fallbackResp->json();
-                if ($fallbackResp->successful() && ($fallbackJson['success'] ?? false) && ($fallbackJson['data']['status'] ?? '') !== 'failed') {
+                $fallbackSuccess = $fallbackResp->successful() && (($fallbackJson['success'] ?? false) || !empty($fallbackJson['data']['mid']) || !empty($fallbackJson['mid']));
+                $fallbackFailed = ($fallbackJson['data']['status'] ?? '') === 'failed' || ($fallbackJson['status'] ?? '') === 'failed';
+                if ($fallbackSuccess && !$fallbackFailed) {
                     Log::info("WhatsApp bill dispatched via direct message fallback for Bill #{$salesBill->bill_number} to {$cleanPhone}");
                     return [
                         'success'             => true,
                         'phone'               => $cleanPhone,
-                        'wamid'               => $fallbackJson['data']['mid'] ?? null,
+                        'wamid'               => $fallbackJson['data']['mid'] ?? ($fallbackJson['mid'] ?? null),
                         'message'             => "WhatsApp bill successfully sent to +{$cleanPhone}",
                         'direct_whatsapp_url' => $directWhatsappUrl,
                     ];
                 }
             }
 
-            if ($response->successful() && ($json['success'] ?? false)) {
-                $deliveryStatus = $json['data']['status'] ?? 'sent';
-                if ($deliveryStatus === 'failed') {
-                    $templateErr = !empty($this->templateName) 
-                        ? "Template '{$this->templateName}' failed to deliver on ChatOnClick. Please verify the template is approved on ChatOnClick, or remove Template Name from Settings to use Direct Message mode."
-                        : "ChatOnClick reported message dispatch failed.";
-                    Log::warning("WhatsApp dispatch failed on ChatOnClick: " . $templateErr);
-                    return [
-                        'success'             => false,
-                        'error'               => $templateErr,
-                        'phone'               => $cleanPhone,
-                        'direct_whatsapp_url' => $directWhatsappUrl,
-                    ];
-                }
-
+            if ($isSuccess && !$isFailed) {
                 Log::info("WhatsApp bill dispatched for Bill #{$salesBill->bill_number} to {$cleanPhone}", [
-                    'wamid' => $json['data']['mid'] ?? null,
+                    'wamid' => $json['data']['mid'] ?? ($json['mid'] ?? null),
                 ]);
-
-                // If a Meta template was dispatched, also send itemized text message so customer receives real breakdown
-                if (!empty($this->templateName) && !$isTemplateUnsupported) {
-                    try {
-                        $directMsg = $this->formatInvoiceMessage($salesBill);
-                        \Illuminate\Support\Facades\Http::asMultipart()->timeout(10)->post($this->url . '/api/whatsapp/message', [
-                            ['name' => 'appkey', 'contents' => $this->appKey],
-                            ['name' => 'authkey', 'contents' => $this->authKey],
-                            ['name' => 'to', 'contents' => $cleanPhone],
-                            ['name' => 'message', 'contents' => $directMsg],
-                        ]);
-                    } catch (\Throwable $te) {}
-                }
 
                 return [
                     'success'             => true,
                     'phone'               => $cleanPhone,
-                    'wamid'               => $json['data']['mid'] ?? null,
+                    'wamid'               => $json['data']['mid'] ?? ($json['mid'] ?? null),
                     'message'             => "WhatsApp bill successfully sent to +{$cleanPhone}",
                     'direct_whatsapp_url' => $directWhatsappUrl,
                 ];
