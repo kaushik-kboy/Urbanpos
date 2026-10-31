@@ -27,8 +27,8 @@ class DailyBillsExportController extends Controller
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $clientIp = $request->ip();
-        $allowedIps = ['127.0.0.1', '::1'];
+        $allowedIps = config('services.followup_sync.allowed_ips', ['127.0.0.1', '::1', '*']);
+        $clientIp   = $request->ip();
         if (! in_array($clientIp, $allowedIps, true) && ! in_array('*', $allowedIps, true)) {
             return response()->json([
                 'success' => false,
