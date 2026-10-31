@@ -83,7 +83,15 @@ class SyncBillToFollowUpJob implements ShouldQueue
         $fullAddress  = ! empty($addressParts) ? implode(', ', $addressParts) : null;
 
         // Delivery specifics
-        $deliveryType = (string) ($bill->delivery_type ?? 'Delivered');
+        $salesType    = trim((string) ($bill->sales_type ?? ''));
+        $deliveryType = trim((string) ($bill->delivery_type ?? 'Delivered'));
+
+        // Either sales_type or delivery_type indicates Home Delivery
+        $isHomeDelivery = (strcasecmp($salesType, 'Home') === 0
+            || strcasecmp($salesType, 'Home Delivery') === 0
+            || strcasecmp($deliveryType, 'Home Delivery') === 0);
+
+        $effectiveDeliveryType = $isHomeDelivery ? 'Home Delivery' : $deliveryType;
         $deliveryDate = $bill->delivery_time 
             ? Carbon::parse($bill->delivery_time)->format('Y-m-d') 
             : ($bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d') : now()->toDateString());
@@ -114,7 +122,8 @@ class SyncBillToFollowUpJob implements ShouldQueue
             'customer_address' => $fullAddress,
             'branch_name'      => $bill->branch?->name ?: null,
             'branch_code'      => $bill->branch?->erp_code ?: null,
-            'delivery_type'    => $deliveryType,
+            'sales_type'       => $salesType,
+            'delivery_type'    => $effectiveDeliveryType,
             'delivery_date'    => $deliveryDate,
             'payment_status'   => $paymentStatus,
             'notes'            => $notes ?: null,
