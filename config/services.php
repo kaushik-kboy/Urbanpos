@@ -44,5 +44,11 @@ return [
         'public_base_url'  => env('CHATONCLICK_PUBLIC_BASE_URL', env('APP_PUBLIC_URL', 'https://pos.indianpetcompany.com')),
     ],
 
+    'followup_sync' => [
+        'enabled' => env('FOLLOWUP_SYNC_ENABLED', true),
+        'url'     => env('FOLLOWUP_API_URL', 'https://urban.indianpetcompany.com/api/v1/internal/pos-sync/bill'),
+        'token'   => env('FOLLOWUP_SYNC_TOKEN'),
+    ],
+
 ];
 

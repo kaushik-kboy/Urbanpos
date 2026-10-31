@@ -550,6 +550,13 @@ class SalesBillController extends Controller
             \Illuminate\Support\Facades\Log::error("WhatsApp dispatch failed for bill {$salesBill->bill_number}: " . $e->getMessage());
         }
 
+        // Async sync to Follow-up CRM (urban.indianpetcompany.com)
+        try {
+            \App\Jobs\SyncBillToFollowUpJob::dispatch($salesBill->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to dispatch SyncBillToFollowUpJob for bill {$salesBill->bill_number}: " . $e->getMessage());
+        }
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
