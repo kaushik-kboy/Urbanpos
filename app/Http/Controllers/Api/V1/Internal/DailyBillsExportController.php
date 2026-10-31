@@ -82,6 +82,8 @@ class DailyBillsExportController extends Controller
                 'customer_name' => $custName ?: 'Walk-in Customer',
                 'mobile'        => $cleanPhone,
                 'payment_mode'  => $mode,
+                'sales_type'    => $bill->sales_type,
+                'delivery_type' => $bill->delivery_type,
                 'amount'        => (float) $bill->total,
                 'branch_id'     => $bill->branch_id,
                 'branch_name'   => $bill->branch?->name,
