@@ -93,13 +93,29 @@
             </a>
         </div>
     </header>
-    @if(isset($isViewOnly) && $isViewOnly && isset($editBill))
+    @if(isset($editBill))
     <div class="pos-view-mode-banner py-2 px-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(90deg, #1e293b, #0f172a); color: #38bdf8; border-bottom: 2px solid #0284c7;">
         <div>
-            <i class="fas fa-eye mr-2 text-info"></i>
-            <strong class="text-white">Viewing POS Bill: #{{ $editBill->bill_number }}</strong>
-            <span class="badge badge-warning text-dark ml-2"><i class="fas fa-lock mr-1"></i> Read-Only View Mode</span>
+            <i class="fas {{ (isset($isViewOnly) && $isViewOnly) ? 'fa-eye text-info' : 'fa-edit text-warning' }} mr-2"></i>
+            <strong class="text-white">{{ (isset($isViewOnly) && $isViewOnly) ? 'Viewing POS Bill:' : 'Editing POS Bill:' }} #{{ $editBill->bill_number }}</strong>
+            @if(isset($isViewOnly) && $isViewOnly)
+                <span class="badge badge-warning text-dark ml-2"><i class="fas fa-lock mr-1"></i> Read-Only View Mode</span>
+            @else
+                <span class="badge badge-info text-white ml-2"><i class="fas fa-pen mr-1"></i> Edit Mode</span>
+            @endif
             <span class="text-light ml-2 small d-none d-md-inline">Date: {{ $editBill->bill_date?->format('d-m-Y h:i A') }} | Branch: {{ $editBill->branch?->name }} | Customer: {{ $editBill->customer?->name }}</span>
+            @if($editBill->payments && $editBill->payments->count() > 1)
+                <span class="badge badge-warning text-dark ml-2 py-1 px-2 font-weight-bold" style="font-size: 0.82rem;">
+                    <i class="fas fa-layer-group mr-1"></i>Split:
+                    @foreach($editBill->payments as $p)
+                        {{ $p->tenderType?->name ?? 'Mode' }}: ₹{{ number_format($p->amount, 2) }}{{ !$loop->last ? ' | ' : '' }}
+                    @endforeach
+                </span>
+            @elseif($editBill->payment_type)
+                <span class="badge badge-secondary ml-2 py-1 px-2 font-weight-bold" style="font-size: 0.82rem;">
+                    Mode: {{ $editBill->payment_type }}
+                </span>
+            @endif
         </div>
         <div>
             <a href="{{ route('sales.sales-bills.receipt', $editBill->id) }}" target="_blank" class="btn btn-warning btn-sm font-weight-bold py-1 px-3 mr-2 shadow-sm">

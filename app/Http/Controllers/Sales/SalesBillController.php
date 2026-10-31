@@ -240,7 +240,7 @@ class SalesBillController extends Controller
         $options['isViewOnly'] = $isViewOnly;
 
         if ($targetBillId) {
-            $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments'])->findOrFail($targetBillId);
+            $editBill = \App\Models\SalesBill::with(['items.item.gstTax', 'customer.pets.petType', 'branch', 'payments.tenderType', 'payments.tenderTypeValue'])->findOrFail($targetBillId);
             if (!$isViewOnly && $editBill->hasIrn()) {
                 return redirect()->route('pos.terminal')
                     ->with('error', "Bill #{$editBill->bill_number} has an active Government E-Invoice IRN and cannot be edited.");

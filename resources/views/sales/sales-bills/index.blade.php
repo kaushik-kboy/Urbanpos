@@ -49,10 +49,10 @@
                     <input type="hidden" name="direction" value="{{ request('direction') }}">
                 @endif
                 @if(request('is_iframe'))
-                    <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="col-md-2 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Search</label>
                         <div class="input-group input-group-sm">
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search Bill No, Customer, Mobile, Amount..." value="{{ request('search') }}" autofocus>
+                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search..." value="{{ request('search') }}" autofocus>
                             <div class="input-group-append">
                                 <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
                                 <a href="{{ route('sales.sales-bills.index', ['is_iframe' => 1, 'mode' => request('mode')]) }}" class="btn btn-secondary" title="Reset Search"><i class="fas fa-undo"></i></a>
@@ -60,12 +60,20 @@
                         </div>
                     </div>
                     <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">From Date</label>
+                        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}" onchange="this.form.submit()">
+                    </div>
+                    <div class="col-md-2 col-sm-6 mb-2">
+                        <label class="small font-weight-bold mb-1">To Date</label>
+                        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}" onchange="this.form.submit()">
+                    </div>
+                    <div class="col-md-1 col-sm-6 mb-2">
                         <label class="small font-weight-bold mb-1">Amount</label>
                         <div class="input-group input-group-sm">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">₹</span>
                             </div>
-                            <input type="number" step="0.01" name="amount" class="form-control form-control-sm" placeholder="Amount" value="{{ request('amount') }}" onchange="this.form.submit()">
+                            <input type="number" step="0.01" name="amount" class="form-control form-control-sm" placeholder="₹" value="{{ request('amount') }}" onchange="this.form.submit()">
                         </div>
                     </div>
                     <div class="col-md-2 col-sm-6 mb-2">
@@ -90,8 +98,8 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 col-sm-6 mb-2 d-flex align-items-end justify-content-end">
-                        <x-table-column-customizer table-key="sales.sales-bills" table-id="salesBillsTable" button-class="btn btn-sm btn-outline-secondary font-weight-bold" button-text="Customize Columns" />
+                    <div class="col-md-1 col-sm-6 mb-2 d-flex align-items-end justify-content-end">
+                        <x-table-column-customizer table-key="sales.sales-bills" table-id="salesBillsTable" button-class="btn btn-sm btn-outline-secondary font-weight-bold" button-text="Columns" />
                     </div>
                 @else
                     <div class="col-md-2 col-sm-6 mb-2">
@@ -259,12 +267,24 @@
                             <td>
                                 @php
                                     $payMode = ($bill->payment_type && strtolower(trim($bill->payment_type)) !== 'none') ? $bill->payment_type : null;
+                                    $hasSplit = strtolower($payMode ?? '') === 'split' || ($bill->relationLoaded('payments') && $bill->payments->count() > 1);
                                     if (!$payMode && $bill->relationLoaded('payments') && $bill->payments->count()) {
                                         $payMode = $bill->payments->map(fn($p) => $p->tenderType?->name)->filter()->unique()->implode(', ');
                                     }
                                     $payMode = $payMode ?: 'Cash';
                                 @endphp
-                                <span class="badge badge-info px-2 py-1">{{ $payMode }}</span>
+                                @if($hasSplit && $bill->relationLoaded('payments') && $bill->payments->count() > 1)
+                                    <div class="d-flex flex-column" style="gap: 2px;">
+                                        <span class="badge badge-warning px-2 py-1 font-weight-bold" style="font-size: 0.78rem;">
+                                            <i class="fas fa-layer-group mr-1"></i>Split
+                                        </span>
+                                        <span class="text-muted small" style="font-size: 0.74rem; line-height: 1.2;">
+                                            {{ $bill->payments->map(fn($p) => ($p->tenderType?->name ?? 'Mode') . ': ₹' . number_format($p->amount, 0))->implode(' | ') }}
+                                        </span>
+                                    </div>
+                                @else
+                                    <span class="badge badge-info px-2 py-1">{{ $payMode }}</span>
+                                @endif
                             </td>
                             <td class="font-weight-bold text-success">₹{{ number_format($bill->total, 2) }}</td>
                             <td class="text-right text-nowrap">

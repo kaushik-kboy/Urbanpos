@@ -427,10 +427,11 @@ class ChatOnClickWhatsAppService
                     ];
                 }
 
-                // Dynamic Button URL parameter
+                // Dynamic Button URL parameter (Meta template expects bill id / hash token)
+                $buttonSuffix = $salesBill->id . '/' . $this->generateReceiptHash($salesBill);
                 $multipart[] = [
                     'name'     => 'button_url',
-                    'contents' => (string) $publicUrl,
+                    'contents' => (string) $buttonSuffix,
                 ];
             }
         } else {

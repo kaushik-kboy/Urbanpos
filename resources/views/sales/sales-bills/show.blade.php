@@ -116,7 +116,16 @@
                 </div>
                 <div class="col-md-3 col-sm-6 mb-2">
                     <span class="text-muted small d-block">Payment Mode</span>
-                    <strong>{{ $salesBill->payment_type ?? 'None' }}</strong>
+                    @if ($salesBill->payments && $salesBill->payments->count() > 1)
+                        <strong class="text-dark">
+                            <span class="badge badge-warning px-2 py-1 mr-1"><i class="fas fa-layer-group mr-1"></i>Split</span>
+                            <span class="small font-weight-bold text-dark">
+                                ({{ $salesBill->payments->map(fn($p) => ($p->tenderType?->name ?? 'Mode') . ': ₹' . number_format($p->amount, 2))->implode(', ') }})
+                            </span>
+                        </strong>
+                    @else
+                        <strong>{{ $salesBill->payment_type ?? 'None' }}</strong>
+                    @endif
                 </div>
             </div>
             @if ($salesBill->remarks)
