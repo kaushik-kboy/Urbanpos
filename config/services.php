@@ -45,9 +45,10 @@ return [
     ],
 
     'followup_sync' => [
-        'enabled' => env('FOLLOWUP_SYNC_ENABLED', true),
-        'url'     => env('FOLLOWUP_API_URL', 'https://urban.indianpetcompany.com/api/v1/internal/pos-sync/bill'),
-        'token'   => env('FOLLOWUP_SYNC_TOKEN'),
+        'enabled'     => env('FOLLOWUP_SYNC_ENABLED', true),
+        'url'         => env('FOLLOWUP_API_URL', env('INDIAN_PET_SYNC_URL', 'https://urban.indianpetcompany.com/api/v1/internal/pos-sync/bill')),
+        'token'       => env('FOLLOWUP_SYNC_TOKEN', env('INTERNAL_SYNC_TOKEN')),
+        'allowed_ips' => array_filter(array_map('trim', explode(',', env('INTERNAL_SYNC_ALLOWED_IPS', '127.0.0.1,::1,*')))),
     ],
 
 ];
