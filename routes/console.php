@@ -9,5 +9,12 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('pos:heartbeat')->hourly();
-Schedule::command('pos:backup')->dailyAt('02:00');
-Schedule::command('db:backup --clean')->dailyAt('01:00');
+
+// Nightly Automated Database Backup at 11:00 PM IST (23:00)
+Schedule::command('pos:backup --type=nightly')
+    ->dailyAt('23:00')
+    ->timezone('Asia/Kolkata');
+
+Schedule::command('db:backup --clean')
+    ->dailyAt('23:00')
+    ->timezone('Asia/Kolkata');

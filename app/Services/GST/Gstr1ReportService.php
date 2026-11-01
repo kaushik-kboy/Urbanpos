@@ -2,8 +2,10 @@
 
 namespace App\Services\GST;
 
+use App\Models\Branch;
 use App\Models\SalesBill;
 use App\Models\SalesReturn;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -35,8 +37,7 @@ class Gstr1ReportService
     public function __construct(
         private readonly string $fromDate,
         private readonly string $toDate,
-    ) {
-    }
+    ) {}
 
     /** GSTIN expression: posting-time snapshot, falling back to the live customer record only when no snapshot was taken (pre-migration rows). */
     private function gstinExpr(string $docAlias = 'sales_bills', string $custAlias = 'customers'): string
@@ -123,16 +124,16 @@ class Gstr1ReportService
             ->where('sales_bills.total', '>=', self::B2CL_THRESHOLD)
             ->where(function ($q) {
                 $q->where('sales_bills.sales_type', 'Interstate')
-                  ->orWhere('sales_bills.total_igst', '>', 0);
+                    ->orWhere('sales_bills.total_igst', '>', 0);
             })
-            ->selectRaw("
+            ->selectRaw('
                 sales_bills.bill_number as invoice_number,
                 sales_bills.bill_date as invoice_date,
                 sales_bills.sales_type as pos_type,
                 sales_bills.total as invoice_value,
                 (sales_bills.total - sales_bills.total_gst) as taxable_value,
                 sales_bills.total_igst as igst
-            ")
+            ')
             ->orderBy('sales_bills.bill_date')
             ->get();
 
@@ -162,10 +163,10 @@ class Gstr1ReportService
         $query->whereRaw("{$gstin} IS NULL")
             ->where(function ($q) {
                 $q->where('sales_bills.total', '<', self::B2CL_THRESHOLD)
-                  ->orWhere(function ($q2) {
-                      $q2->where('sales_bills.sales_type', '!=', 'Interstate')
-                         ->where('sales_bills.total_igst', '<=', 0);
-                  });
+                    ->orWhere(function ($q2) {
+                        $q2->where('sales_bills.sales_type', '!=', 'Interstate')
+                            ->where('sales_bills.total_igst', '<=', 0);
+                    });
             });
     }
 
@@ -267,9 +268,12 @@ class Gstr1ReportService
         // main aggregate query itself — not worth doubling the cost of every
         // HSN page load just for an exact "of N" figure).
         $rows = $base()
-            ->selectRaw("
+            ->selectRaw('
                 items.hsn_code as hsn,
                 sales_bill_items.gst_percent as rate,
+                MIN(COALESCE(items.name, "Unknown Item")) as sample_item_name,
+                COUNT(DISTINCT items.id) as item_count,
+                GROUP_CONCAT(DISTINCT items.name) as group_names,
                 SUM(sales_bill_items.qty) as qty,
                 SUM(sales_bill_items.net_amount) as total,
                 SUM(CASE WHEN sales_bill_items.gst_percent = 0 THEN sales_bill_items.net_amount ELSE 0 END) as nil,
@@ -277,7 +281,7 @@ class Gstr1ReportService
                 SUM(sales_bill_items.igst_amount) as igst,
                 SUM(sales_bill_items.cgst_amount) as cgst,
                 SUM(sales_bill_items.sgst_amount) as sgst
-            ")
+            ')
             ->groupBy('hsn', 'rate')
             ->orderByRaw('SUM(sales_bill_items.net_amount - sales_bill_items.gst_tax_amount) DESC')
             ->limit(self::HSN_ROW_CAP + 1)
@@ -291,20 +295,39 @@ class Gstr1ReportService
             'missing_hsn_qty' => (float) $aggregates->missing_hsn_qty,
             'has_more_groups' => $hasMore,
             'row_cap' => self::HSN_ROW_CAP,
-            'rows' => $rows->map(fn ($r) => [
-                'hsn' => $r->hsn ?? null,
-                'name' => $r->hsn === null ? '(!) HSN not set on item master — not fabricated, see limitation note' : null,
-                'uom' => 'UNT-UNITS',
-                'qty' => (float) $r->qty,
-                'total' => round((float) $r->total, 2),
-                'rate' => (float) $r->rate,
-                'nil' => round((float) $r->nil, 2),
-                'taxable' => round((float) $r->taxable, 2),
-                'igst' => round((float) $r->igst, 2),
-                'cgst' => round((float) $r->cgst, 2),
-                'sgst' => round((float) $r->sgst, 2),
-                'cess' => 0.00, // Cess is genuinely unsupported: no cess column exists anywhere in this schema.
-            ])->values()->all(),
+            'rows' => $rows->map(function ($r) {
+                $nameList = ! empty($r->group_names) ? array_unique(array_filter(array_map('trim', explode(',', (string) $r->group_names)))) : [];
+                $topNames = ! empty($nameList) ? implode(', ', array_slice($nameList, 0, 3)) : ($r->sample_item_name ?: 'Unknown Item');
+
+                if ($r->hsn === null) {
+                    $name = '(!) HSN not set on item master (not fabricated): '.$topNames;
+                    if ($r->item_count > 3) {
+                        $name .= ' (+'.($r->item_count - 3).' more items)';
+                    }
+                } else {
+                    $name = $topNames;
+                    if ($r->item_count > 3) {
+                        $name .= ' (+'.($r->item_count - 3).' more items)';
+                    }
+                }
+
+                return [
+                    'hsn' => $r->hsn ?? null,
+                    'name' => $name,
+                    'item_count' => (int) $r->item_count,
+                    'sample_name' => $r->sample_item_name,
+                    'uom' => 'UNT-UNITS',
+                    'qty' => (float) $r->qty,
+                    'total' => round((float) $r->total, 2),
+                    'rate' => (float) $r->rate,
+                    'nil' => round((float) $r->nil, 2),
+                    'taxable' => round((float) $r->taxable, 2),
+                    'igst' => round((float) $r->igst, 2),
+                    'cgst' => round((float) $r->cgst, 2),
+                    'sgst' => round((float) $r->sgst, 2),
+                    'cess' => 0.00, // Cess is genuinely unsupported: no cess column exists anywhere in this schema.
+                ];
+            })->values()->all(),
         ];
     }
 
@@ -366,8 +389,8 @@ class Gstr1ReportService
                 'total' => round((float) $r->note_value, 2),
             ])->values()->all(),
             'note' => 'This schema only represents credit-note-like sales returns issued by this business. '
-                . 'There is no debit-note concept (a document the customer would issue back to this business) '
-                . 'in the current data model — reported as unsupported rather than invented.',
+                .'There is no debit-note concept (a document the customer would issue back to this business) '
+                .'in the current data model — reported as unsupported rather than invented.',
         ];
     }
 
@@ -388,16 +411,55 @@ class Gstr1ReportService
     // -----------------------------------------------------------------
     public function nilRated(): array
     {
-        $amount = round((float) $this->billsBaseQuery()
+        // 1. Items sold with 0% GST (nil rated) during the selected period
+        $zeroItems = DB::table('sales_bill_items')
+            ->join('sales_bills', 'sales_bills.id', '=', 'sales_bill_items.sales_bill_id')
+            ->join('items', 'items.id', '=', 'sales_bill_items.item_id')
+            ->whereDate('sales_bills.bill_date', '>=', $this->fromDate)
+            ->whereDate('sales_bills.bill_date', '<=', $this->toDate)
+            ->where('sales_bills.status', '!=', 'Cancelled')
+            ->where('sales_bill_items.gst_percent', 0)
+            ->select(
+                'items.name as item_name',
+                'items.hsn_code',
+                DB::raw('COUNT(DISTINCT sales_bills.id) as bill_count'),
+                DB::raw('SUM(sales_bill_items.qty) as total_qty'),
+                DB::raw('SUM(sales_bill_items.net_amount) as total_amount')
+            )
+            ->groupBy('items.name', 'items.hsn_code')
+            ->orderByDesc('total_amount')
+            ->get();
+
+        // 2. Any entire bills marked as Exempted that did not have itemized 0% items
+        $exemptBillsSum = (float) $this->billsBaseQuery()
             ->where('sales_bills.invoice_type', 'Exempted')
-            ->sum('sales_bills.total'), 2);
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('sales_bill_items')
+                    ->whereColumn('sales_bill_items.sales_bill_id', 'sales_bills.id')
+                    ->where('sales_bill_items.gst_percent', 0);
+            })
+            ->sum('sales_bills.total');
+
+        $itemsTotal = (float) $zeroItems->sum('total_amount');
+        $totalCombined = round($itemsTotal + $exemptBillsSum, 2);
+
+        $rows = $zeroItems->map(fn ($item) => [
+            'name' => $item->item_name,
+            'hsn' => $item->hsn_code ?: 'N/A',
+            'qty' => round((float) $item->total_qty, 3),
+            'bills' => (int) $item->bill_count,
+            'amount' => round((float) $item->total_amount, 2),
+            'rate' => 0.0,
+            'type' => 'Nil Rated (0% GST)',
+        ])->toArray();
 
         return [
-            'combined_amount' => $amount,
-            'supported_breakdown' => false,
-            'limitation' => 'sales_bills.invoice_type only has a single "Exempted" value — the schema cannot '
-                . 'currently distinguish Nil-rated vs Exempt vs Non-GST supplies. This figure is the combined '
-                . 'total for that one bucket, not a guess at any specific one of the three.',
+            'combined_amount' => $totalCombined,
+            'supported_breakdown' => true,
+            'count' => count($rows),
+            'rows' => $rows,
+            'limitation' => 'Statutory GSTR-1 Table 8: Aggregated supplies with 0% GST rate and exempted supplies.',
         ];
     }
 
@@ -414,7 +476,7 @@ class Gstr1ReportService
             'tax' => 0.0,
             'rows' => [],
             'limitation' => 'No export concept exists in this schema (no export_type, shipping-bill, or port fields '
-                . 'anywhere). Reported as NOT SUPPORTED rather than treating any domestic sale as an export.',
+                .'anywhere). Reported as NOT SUPPORTED rather than treating any domestic sale as an export.',
         ];
     }
 
@@ -426,8 +488,8 @@ class Gstr1ReportService
             'tax' => 0.0,
             'rows' => [],
             'limitation' => 'No advance-payment table exists. sales_bill_payments records tender/payment AT the '
-                . 'time of an already-created invoice, which is not the same thing as GST advance received before '
-                . 'a supply — a normal paid/partially-paid bill is never treated as an advance.',
+                .'time of an already-created invoice, which is not the same thing as GST advance received before '
+                .'a supply — a normal paid/partially-paid bill is never treated as an advance.',
         ];
     }
 
@@ -443,29 +505,88 @@ class Gstr1ReportService
     }
 
     // -----------------------------------------------------------------
-    // Documents Issued — real document numbers, grouped by series prefix
+    // Documents Issued — real document numbers, grouped branch-wise
     // -----------------------------------------------------------------
     public function documentsIssued(): array
     {
-        $billSeries = $this->documentSeriesFor(
+        $branches = Branch::orderBy('id')->get();
+        $series = [];
+
+        foreach ($branches as $branch) {
+            $billSeries = $this->documentSeriesFor(
+                SalesBill::query()
+                    ->where('branch_id', $branch->id)
+                    ->whereDate('bill_date', '>=', $this->fromDate)
+                    ->whereDate('bill_date', '<=', $this->toDate),
+                'bill_number',
+                'status',
+                'Sales Invoice',
+                $branch->name
+            );
+
+            $returnSeries = $this->documentSeriesFor(
+                SalesReturn::query()
+                    ->where('branch_id', $branch->id)
+                    ->whereDate('return_date', '>=', $this->fromDate)
+                    ->whereDate('return_date', '<=', $this->toDate),
+                'return_number',
+                'status',
+                'Credit Note (Sales Return)',
+                $branch->name
+            );
+
+            $series = array_merge($series, $billSeries, $returnSeries);
+        }
+
+        // Also include bills/returns with null or 0 branch_id if any exist
+        $unassignedBills = $this->documentSeriesFor(
             SalesBill::query()
+                ->where(function ($q) {
+                    $q->whereNull('branch_id')->orWhere('branch_id', 0);
+                })
                 ->whereDate('bill_date', '>=', $this->fromDate)
                 ->whereDate('bill_date', '<=', $this->toDate),
             'bill_number',
             'status',
-            'Sales Invoice'
+            'Sales Invoice',
+            'Main / Unassigned'
         );
-
-        $returnSeries = $this->documentSeriesFor(
+        $unassignedReturns = $this->documentSeriesFor(
             SalesReturn::query()
+                ->where(function ($q) {
+                    $q->whereNull('branch_id')->orWhere('branch_id', 0);
+                })
                 ->whereDate('return_date', '>=', $this->fromDate)
                 ->whereDate('return_date', '<=', $this->toDate),
             'return_number',
             'status',
-            'Credit Note (Sales Return)'
+            'Credit Note (Sales Return)',
+            'Main / Unassigned'
         );
+        $series = array_merge($series, $unassignedBills, $unassignedReturns);
 
-        $series = array_merge($billSeries, $returnSeries);
+        // Fallback for tests or setups without Branch records
+        if (empty($series)) {
+            $billSeries = $this->documentSeriesFor(
+                SalesBill::query()
+                    ->whereDate('bill_date', '>=', $this->fromDate)
+                    ->whereDate('bill_date', '<=', $this->toDate),
+                'bill_number',
+                'status',
+                'Sales Invoice',
+                'All Branches'
+            );
+            $returnSeries = $this->documentSeriesFor(
+                SalesReturn::query()
+                    ->whereDate('return_date', '>=', $this->fromDate)
+                    ->whereDate('return_date', '<=', $this->toDate),
+                'return_number',
+                'status',
+                'Credit Note (Sales Return)',
+                'All Branches'
+            );
+            $series = array_merge($billSeries, $returnSeries);
+        }
 
         return [
             'total_issued' => array_sum(array_column($series, 'total')),
@@ -474,8 +595,8 @@ class Gstr1ReportService
         ];
     }
 
-    /** @param \Illuminate\Database\Eloquent\Builder $query */
-    private function documentSeriesFor($query, string $numberColumn, string $statusColumn, string $label): array
+    /** @param Builder $query */
+    private function documentSeriesFor($query, string $numberColumn, string $statusColumn, string $label, string $branchName = ''): array
     {
         $all = $query->orderBy($numberColumn)->pluck($statusColumn, $numberColumn);
         if ($all->isEmpty()) {
@@ -486,7 +607,9 @@ class Gstr1ReportService
         $cancelled = $all->filter(fn ($status) => $status === 'Cancelled')->count();
 
         return [[
-            'label' => $label,
+            'branch' => $branchName,
+            'label' => ! empty($branchName) ? "{$label} ({$branchName})" : $label,
+            'doc_type' => $label,
             'first' => $numbers->first(),
             'last' => $numbers->last(),
             'total' => $numbers->count(),
@@ -541,21 +664,21 @@ class Gstr1ReportService
                 $rt = $invTaxable > 0 ? round(($invGst / $invTaxable) * 100, 1) : 18.0;
 
                 $invList[] = [
-                    'inum'    => (string) $inv['ref'],
-                    'idt'     => date('d-m-Y', strtotime($inv['date'])),
-                    'val'     => (float) $inv['total'],
-                    'pos'     => (string) $pos,
-                    'rchrg'   => 'N',
+                    'inum' => (string) $inv['ref'],
+                    'idt' => date('d-m-Y', strtotime($inv['date'])),
+                    'val' => (float) $inv['total'],
+                    'pos' => (string) $pos,
+                    'rchrg' => 'N',
                     'inv_typ' => 'R',
-                    'itms'    => [
+                    'itms' => [
                         [
-                            'num'     => 1,
+                            'num' => 1,
                             'itm_det' => [
                                 'txval' => $invTaxable,
-                                'rt'    => $rt,
-                                'iamt'  => (float) $inv['igst'],
-                                'camt'  => (float) $inv['cgst'],
-                                'samt'  => (float) $inv['sgst'],
+                                'rt' => $rt,
+                                'iamt' => (float) $inv['igst'],
+                                'camt' => (float) $inv['cgst'],
+                                'samt' => (float) $inv['sgst'],
                                 'csamt' => 0.0,
                             ],
                         ],
@@ -564,8 +687,8 @@ class Gstr1ReportService
             }
             $b2bData[] = [
                 'ctin' => $ctin,
-                'cfs'  => 'Y',
-                'inv'  => $invList,
+                'cfs' => 'Y',
+                'inv' => $invList,
             ];
         }
 
@@ -574,14 +697,14 @@ class Gstr1ReportService
         foreach ($this->b2cs()['rows'] as $r) {
             $b2csData[] = [
                 'sply_ty' => ($r['igst'] > 0) ? 'INTER' : 'INTRA',
-                'pos'     => $defaultPos,
-                'typ'     => 'OE',
-                'rt'      => (float) $r['rate'],
-                'txval'   => (float) $r['taxable'],
-                'iamt'    => (float) $r['igst'],
-                'camt'    => (float) $r['cgst'],
-                'samt'    => (float) $r['sgst'],
-                'csamt'   => 0.0,
+                'pos' => $defaultPos,
+                'typ' => 'OE',
+                'rt' => (float) $r['rate'],
+                'txval' => (float) $r['taxable'],
+                'iamt' => (float) $r['igst'],
+                'camt' => (float) $r['cgst'],
+                'samt' => (float) $r['sgst'],
+                'csamt' => 0.0,
             ];
         }
 
@@ -592,24 +715,24 @@ class Gstr1ReportService
             $pos = substr($ctin, 0, 2) ?: $defaultPos;
             $cdnrData[] = [
                 'ctin' => $ctin,
-                'cfs'  => 'Y',
-                'nt'   => [
+                'cfs' => 'Y',
+                'nt' => [
                     [
                         'nt_num' => (string) $r['ref'],
-                        'nt_dt'  => date('d-m-Y', strtotime($r['date'])),
-                        'ntty'   => 'C',
-                        'val'    => (float) $r['total'],
-                        'pos'    => (string) $pos,
-                        'rchrg'  => 'N',
-                        'itms'   => [
+                        'nt_dt' => date('d-m-Y', strtotime($r['date'])),
+                        'ntty' => 'C',
+                        'val' => (float) $r['total'],
+                        'pos' => (string) $pos,
+                        'rchrg' => 'N',
+                        'itms' => [
                             [
-                                'num'     => 1,
+                                'num' => 1,
                                 'itm_det' => [
                                     'txval' => (float) $r['taxable'],
-                                    'rt'    => 18.0,
-                                    'iamt'  => (float) $r['igst'],
-                                    'camt'  => (float) $r['cgst'],
-                                    'samt'  => (float) $r['sgst'],
+                                    'rt' => 18.0,
+                                    'iamt' => (float) $r['igst'],
+                                    'camt' => (float) $r['cgst'],
+                                    'samt' => (float) $r['sgst'],
                                     'csamt' => 0.0,
                                 ],
                             ],
@@ -625,17 +748,17 @@ class Gstr1ReportService
         $allHsn = array_merge($this->hsnB2b()['rows'], $this->hsnB2c()['rows']);
         foreach ($allHsn as $h) {
             $hsnList[] = [
-                'num'    => $hsnNum++,
+                'num' => $hsnNum++,
                 'hsn_sc' => (string) ($h['hsn'] ?: '9999'),
-                'desc'   => substr($h['name'] ?: 'Pet Supplies Retail', 0, 30),
-                'uqc'    => 'UNT',
-                'qty'    => (float) $h['qty'],
-                'val'    => (float) $h['total'],
-                'txval'  => (float) $h['taxable'],
-                'iamt'   => (float) $h['igst'],
-                'camt'   => (float) $h['cgst'],
-                'samt'   => (float) $h['sgst'],
-                'csamt'  => 0.0,
+                'desc' => substr($h['name'] ?: 'Pet Supplies Retail', 0, 30),
+                'uqc' => 'UNT',
+                'qty' => (float) $h['qty'],
+                'val' => (float) $h['total'],
+                'txval' => (float) $h['taxable'],
+                'iamt' => (float) $h['igst'],
+                'camt' => (float) $h['cgst'],
+                'samt' => (float) $h['sgst'],
+                'csamt' => 0.0,
             ];
         }
 
@@ -646,13 +769,13 @@ class Gstr1ReportService
             $docsData[] = [
                 'doc_num' => $docNum++,
                 'doc_typ' => $d['label'],
-                'docs'    => [
+                'docs' => [
                     [
-                        'num'       => 1,
-                        'from'      => (string) $d['first'],
-                        'to'        => (string) $d['last'],
-                        'totnum'    => (int) $d['total'],
-                        'canc'      => (int) $d['cancelled'],
+                        'num' => 1,
+                        'from' => (string) $d['first'],
+                        'to' => (string) $d['last'],
+                        'totnum' => (int) $d['total'],
+                        'canc' => (int) $d['cancelled'],
                         'net_issue' => (int) $d['net_issued'],
                     ],
                 ],
@@ -660,14 +783,14 @@ class Gstr1ReportService
         }
 
         return [
-            'gstin'     => $gstin,
-            'fp'        => $fp,
-            'version'   => 'GSTR1_V2.0',
-            'hash'      => 'hash',
-            'b2b'       => $b2bData,
-            'b2cs'      => $b2csData,
-            'cdnr'      => $cdnrData,
-            'hsn'       => ['data' => $hsnList],
+            'gstin' => $gstin,
+            'fp' => $fp,
+            'version' => 'GSTR1_V2.0',
+            'hash' => 'hash',
+            'b2b' => $b2bData,
+            'b2cs' => $b2csData,
+            'cdnr' => $cdnrData,
+            'hsn' => ['data' => $hsnList],
             'doc_issue' => ['doc_det' => $docsData],
         ];
     }

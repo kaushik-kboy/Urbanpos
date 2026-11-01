@@ -106,7 +106,7 @@
                         @endphp
                         <tr>
                             <td>{{ $invoice->invoice_date?->format('d-m-Y') }}</td>
-                            <td><span class="font-weight-bold">{{ $invoice->invoice_number }}</span></td>
+                            <td><span class="font-weight-bold">{{ !empty($invoice->supplier_inv_no) ? $invoice->supplier_inv_no : $invoice->invoice_number }}</span></td>
                             <td>{{ $invoice->supplier?->name ?? 'Unknown Supplier' }}</td>
                             <td><small class="text-muted">{{ $gstNo ?: '—' }}</small></td>
                             <td class="text-right">{{ number_format($taxable, 2) }}</td>

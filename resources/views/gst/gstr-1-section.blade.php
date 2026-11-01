@@ -13,11 +13,11 @@
         </small>
     </div>
     <div class="d-flex align-items-center mt-2 mt-md-0">
-        <a href="{{ route('tools.gst.gstr-1.page') }}" class="btn btn-outline-secondary btn-sm mr-2 shadow-sm font-weight-bold">
+        <a href="{{ route('tools.gst.gstr-1.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-outline-secondary btn-sm mr-2 shadow-sm font-weight-bold">
             <i class="fas fa-arrow-left mr-1"></i> Back to GSTR-1 (12 Cards)
         </a>
-        <a href="{{ route('reports.gst-sales-summary') }}" class="btn btn-outline-success btn-sm shadow-sm font-weight-bold">
-            <i class="fas fa-file-excel mr-1"></i> Export Excel Register
+        <a href="{{ route('tools.gst.gstr-1.section.export', ['section' => $section, 'from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-success btn-sm shadow-sm font-weight-bold">
+            <i class="fas fa-file-excel mr-1"></i> Download Excel (.xlsx)
         </a>
     </div>
 </div>
@@ -34,11 +34,14 @@
     {{-- 1. Card Header with Breadcrumbs & Sync Bar --}}
     <div class="card-header py-2 px-3 d-flex flex-wrap justify-content-between align-items-center bg-white border-bottom">
         <div class="d-flex align-items-center mb-1 mb-md-0" style="font-size: 13px;">
-            <a href="{{ route('tools.integrations-gst', ['view' => 'returns']) }}" class="text-primary font-weight-bold" style="text-decoration: none;">dashboard</a>
+            <a href="{{ route('tools.integrations-gst', ['view' => 'returns', 'from_date' => $fromDate, 'to_date' => $toDate]) }}" class="text-primary font-weight-bold" style="text-decoration: none;">dashboard</a>
             <span class="text-muted mx-2">&gt;</span>
-            <a href="{{ route('tools.gst.gstr-1.page') }}" class="text-primary font-weight-bold" style="text-decoration: none;">gstr 1</a>
+            <a href="{{ route('tools.gst.gstr-1.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="text-primary font-weight-bold" style="text-decoration: none;">gstr 1</a>
             <span class="text-muted mx-2">&gt;</span>
             <span class="font-weight-bold" style="color: #d39e00 !important;">{{ str_replace('-', ' ', $sectionLabel) }}</span>
+            <span class="badge badge-light border px-2 py-1 ml-3 text-dark">
+                <i class="far fa-calendar-alt text-primary mr-1"></i> {{ date('d M Y', strtotime($fromDate)) }} to {{ date('d M Y', strtotime($toDate)) }}
+            </span>
         </div>
 
         <div class="d-flex align-items-center">
@@ -61,7 +64,7 @@
             <button type="button" class="btn btn-sm text-warning mr-1 p-1" onclick="$('#searchBarContainer').slideToggle(150); $('#hsnSearchInput').focus();" title="Search HSN" style="font-size: 15px; background: transparent; border: none;">
                 <i class="fas fa-search text-warning"></i>
             </button>
-            <a href="{{ route('reports.gst-sales-summary') }}" class="btn btn-sm text-success p-1" title="Export Excel Register" style="font-size: 15px; background: transparent; border: none;">
+            <a href="{{ route('tools.gst.gstr-1.section.export', ['section' => $section, 'from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-sm text-success p-1" title="Download Excel (.xlsx)" style="font-size: 15px; background: transparent; border: none;">
                 <i class="fas fa-file-excel text-success"></i>
             </a>
         </div>
@@ -70,9 +73,11 @@
     {{-- Collapsible Search Bar --}}
     <div id="searchBarContainer" class="px-4 py-2 bg-light border-bottom" style="{{ empty($search) ? 'display: none;' : '' }}">
         <form method="GET" action="{{ route('tools.gst.gstr-1.section', ['section' => $section]) }}" class="form-inline">
+            <input type="hidden" name="from_date" value="{{ $fromDate }}">
+            <input type="hidden" name="to_date" value="{{ $toDate }}">
             <input type="text" id="hsnSearchInput" name="search" value="{{ $search }}" placeholder="Search HSN Code or Rate..." class="form-control form-control-sm mr-2" style="width: 250px;">
             <button type="submit" class="btn btn-primary btn-sm mr-2">Search</button>
-            <a href="{{ route('tools.gst.gstr-1.section', ['section' => $section]) }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            <a href="{{ route('tools.gst.gstr-1.section', ['section' => $section, 'from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-outline-secondary btn-sm">Reset</a>
         </form>
     </div>
 
@@ -115,7 +120,7 @@
                     @forelse ($rows as $row)
                         <tr>
                             <td class="font-weight-bold text-dark" style="padding: 9px 12px;">{{ $row['hsn'] ?? '(missing)' }}</td>
-                            <td class="text-muted" style="padding: 9px 12px;">{{ $row['name'] ?: '-' }}</td>
+                            <td class="font-weight-normal text-dark" style="padding: 9px 12px;">{{ $row['name'] ?: '-' }}</td>
                             <td class="text-center font-weight-bold" style="padding: 9px 12px;">{{ $row['uom'] }}</td>
                             <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['qty'], 2) }}</td>
                             <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['total'], 2) }}</td>
@@ -251,9 +256,10 @@
             <table class="table table-hover table-bordered mb-0 align-middle" style="font-size: 11.5px;">
                 <thead>
                     <tr style="background-color: #f5a623; color: #212529;">
-                        <th style="padding: 11px 12px;">Document Series</th>
-                        <th style="padding: 11px 12px;">First No</th>
-                        <th style="padding: 11px 12px;">Last No</th>
+                        <th style="padding: 11px 12px;"><i class="fas fa-store mr-1"></i> Branch</th>
+                        <th style="padding: 11px 12px;">Document Type / Series</th>
+                        <th style="padding: 11px 12px;">First No (From)</th>
+                        <th style="padding: 11px 12px;">Last No (To)</th>
                         <th class="text-right" style="padding: 11px 12px;">Total Issued</th>
                         <th class="text-right" style="padding: 11px 12px;">Cancelled</th>
                         <th class="text-right" style="padding: 11px 12px;">Net Issued</th>
@@ -262,17 +268,81 @@
                 <tbody>
                     @forelse ($rows as $row)
                         <tr>
-                            <td class="font-weight-bold" style="padding: 9px 12px;">{{ $row['label'] }}</td>
-                            <td style="padding: 9px 12px;">{{ $row['first'] }}</td>
-                            <td style="padding: 9px 12px;">{{ $row['last'] }}</td>
-                            <td class="text-right" style="padding: 9px 12px;">{{ $row['total'] }}</td>
-                            <td class="text-right text-danger" style="padding: 9px 12px;">{{ $row['cancelled'] }}</td>
-                            <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ $row['net_issued'] }}</td>
+                            <td class="font-weight-bold text-primary" style="padding: 9px 12px;">
+                                <i class="fas fa-map-marker-alt mr-1 text-muted"></i> {{ $row['branch'] ?: 'All Branches' }}
+                            </td>
+                            <td class="font-weight-bold" style="padding: 9px 12px;">{{ $row['doc_type'] ?? $row['label'] }}</td>
+                            <td style="padding: 9px 12px;"><code>{{ $row['first'] }}</code></td>
+                            <td style="padding: 9px 12px;"><code>{{ $row['last'] }}</code></td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['total']) }}</td>
+                            <td class="text-right text-danger" style="padding: 9px 12px;">{{ number_format($row['cancelled']) }}</td>
+                            <td class="text-right font-weight-bold text-success" style="padding: 9px 12px;">{{ number_format($row['net_issued']) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No documents issued for this period.</td></tr>
+                        <tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No documents issued for this period.</td></tr>
                     @endforelse
                 </tbody>
+            </table>
+        </div>
+
+    @elseif($layout === 'nil-rated')
+        <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="mr-4">
+                    <span class="text-muted small text-uppercase font-weight-bold d-block">Total Nil-Rated Value</span>
+                    <span class="h4 font-weight-bold text-success mb-0">&#8377;{{ number_format($meta['amount'] ?? 0, 2) }}</span>
+                </div>
+                <div class="mr-4">
+                    <span class="text-muted small text-uppercase font-weight-bold d-block">Distinct Items</span>
+                    <span class="h5 font-weight-bold text-dark mb-0">{{ number_format($meta['count'] ?? 0) }}</span>
+                </div>
+                <div>
+                    <span class="text-muted small text-uppercase font-weight-bold d-block">Total Qty Sold</span>
+                    <span class="h5 font-weight-bold text-primary mb-0">{{ number_format(collect($rows)->sum('qty'), 2) }}</span>
+                </div>
+            </div>
+            <a href="{{ route('tools.gst.gstr-1.section.export', ['section' => $section, 'from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-outline-success btn-sm font-weight-bold">
+                <i class="fas fa-file-excel mr-1"></i> Export Excel (.xlsx)
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered mb-0 text-nowrap" style="font-size: 13px;">
+                <thead style="background: #f8fafc; color: #475569; border-top: 1px solid #e2e8f0; border-bottom: 2px solid #cbd5e1;">
+                    <tr>
+                        <th class="text-center" style="padding: 11px 12px; width: 50px;">#</th>
+                        <th style="padding: 11px 12px;">Item Name</th>
+                        <th class="text-center" style="padding: 11px 12px;">HSN Code</th>
+                        <th class="text-center" style="padding: 11px 12px;">Rate</th>
+                        <th class="text-right" style="padding: 11px 12px;">Qty Sold</th>
+                        <th class="text-center" style="padding: 11px 12px;">Bills Count</th>
+                        <th class="text-right" style="padding: 11px 12px;">Nil-Rated Amount (&#8377;)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($rows as $idx => $row)
+                        <tr>
+                            <td class="text-center text-muted" style="padding: 9px 12px;">{{ $idx + 1 }}</td>
+                            <td class="font-weight-bold text-dark" style="padding: 9px 12px;">{{ $row['name'] }}</td>
+                            <td class="text-center" style="padding: 9px 12px;"><span class="badge badge-light border">{{ $row['hsn'] }}</span></td>
+                            <td class="text-center text-muted" style="padding: 9px 12px;">0%</td>
+                            <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['qty'], 2) }}</td>
+                            <td class="text-center" style="padding: 9px 12px;"><span class="badge badge-secondary">{{ $row['bills'] }}</span></td>
+                            <td class="text-right font-weight-bold text-success" style="padding: 9px 12px;">&#8377;{{ number_format($row['amount'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No nil-rated or exempted supplies found for this period.</td></tr>
+                    @endforelse
+                </tbody>
+                @if(count($rows) > 0)
+                <tfoot style="background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1;">
+                    <tr>
+                        <td colspan="4" class="text-right" style="padding: 11px 12px;">Total:</td>
+                        <td class="text-right" style="padding: 11px 12px;">{{ number_format(collect($rows)->sum('qty'), 2) }}</td>
+                        <td class="text-center" style="padding: 11px 12px;">{{ collect($rows)->sum('bills') }}</td>
+                        <td class="text-right text-success" style="padding: 11px 12px;">&#8377;{{ number_format($meta['amount'] ?? 0, 2) }}</td>
+                    </tr>
+                </tfoot>
+                @endif
             </table>
         </div>
 

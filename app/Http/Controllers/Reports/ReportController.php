@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Exports\GenericReportExport;
+use App\Exports\GstPurchaseSummaryInvoiceWiseExport;
+use App\Exports\GstSalesTaxwiseExport;
+use App\Exports\PurchaseDetailExport;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Branch;
@@ -9,6 +13,7 @@ use App\Models\Brand;
 use App\Models\Breed;
 use App\Models\Customer;
 use App\Models\CustomerCategory;
+use App\Models\DailySalesSummary;
 use App\Models\DamageStock;
 use App\Models\Item;
 use App\Models\ItemCategoryValue;
@@ -27,9 +32,14 @@ use App\Models\Supplier;
 use App\Models\TenderType;
 use App\Models\TillSession;
 use App\Models\User;
+use App\Services\Reports\DynamicReportService;
+use App\Services\Reports\ReportPermissionRegistry;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use App\Exports\GenericReportExport;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -41,7 +51,7 @@ class ReportController extends Controller
         if (! $user) {
             abort(401);
         }
-        if (! \App\Services\Reports\ReportPermissionRegistry::canAccess($user, $slug, $action)) {
+        if (! ReportPermissionRegistry::canAccess($user, $slug, $action)) {
             abort(403, "Unauthorized access. You do not have permission to {$action} the '{$slug}' report.");
         }
     }
@@ -52,9 +62,10 @@ class ReportController extends Controller
         if (! $user) {
             abort(401);
         }
-        if (! \App\Services\Reports\ReportPermissionRegistry::hasAnyReportAccess($user)) {
+        if (! ReportPermissionRegistry::hasAnyReportAccess($user)) {
             abort(403, 'Unauthorized access to reports center.');
         }
+
         return view('reports.index');
     }
 
@@ -66,8 +77,8 @@ class ReportController extends Controller
         $rows = collect();
 
         // 1. Fetch from imported DailySalesSummary if records exist
-        if (\Illuminate\Support\Facades\Schema::hasTable('daily_sales_summaries')) {
-            $summaryRecords = \App\Models\DailySalesSummary::with('branch')
+        if (Schema::hasTable('daily_sales_summaries')) {
+            $summaryRecords = DailySalesSummary::with('branch')
                 ->whereBetween('summary_date', [$from, $to])
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->orderBy('summary_date', 'desc')
@@ -76,54 +87,54 @@ class ReportController extends Controller
 
             foreach ($summaryRecords as $s) {
                 $storeName = $s->store_name ?: ($s->branch?->name ?? ($s->branch_id ? "Branch #{$s->branch_id}" : 'All Branches'));
-                $dateStr = \Carbon\Carbon::parse($s->summary_date)->format('Y-m-d');
+                $dateStr = Carbon::parse($s->summary_date)->format('Y-m-d');
                 $rows->push((object) [
-                    'store'            => $storeName,
-                    'bill_date'        => $dateStr,
-                    'branch_id'        => $s->branch_id,
-                    'bill_amount'      => (float) $s->bill_amount,
-                    'tax'              => (float) $s->tax,
-                    'disc_amount'      => (float) $s->disc_amount,
-                    'scheme_amount'    => (float) $s->scheme_amount,
-                    'cash'             => (float) $s->cash,
-                    'card'             => (float) $s->card,
-                    'cheque'           => (float) $s->cheque,
-                    'coupon'           => (float) $s->coupon,
-                    'wallet_amt'       => (float) $s->wallet_amt,
-                    'credit'           => (float) $s->credit,
-                    'due'              => (float) $s->due,
-                    'compliment'       => (float) $s->compliment,
-                    'approval'         => (float) $s->approval,
+                    'store' => $storeName,
+                    'bill_date' => $dateStr,
+                    'branch_id' => $s->branch_id,
+                    'bill_amount' => (float) $s->bill_amount,
+                    'tax' => (float) $s->tax,
+                    'disc_amount' => (float) $s->disc_amount,
+                    'scheme_amount' => (float) $s->scheme_amount,
+                    'cash' => (float) $s->cash,
+                    'card' => (float) $s->card,
+                    'cheque' => (float) $s->cheque,
+                    'coupon' => (float) $s->coupon,
+                    'wallet_amt' => (float) $s->wallet_amt,
+                    'credit' => (float) $s->credit,
+                    'due' => (float) $s->due,
+                    'compliment' => (float) $s->compliment,
+                    'approval' => (float) $s->approval,
                     'advance_adjusted' => (float) $s->advance_adjusted,
-                    'rounded_off'      => (float) $s->rounded_off,
-                    'profit'           => (float) $s->profit,
-                    'item_discount'    => (float) $s->item_discount,
-                    'bill_discount'    => (float) $s->bill_discount,
-                    'freight'          => (float) $s->freight,
-                    'total_bills'      => (int) $s->total_bills,
-                    'gst_tax_amt'      => (float) $s->gst_tax_amt,
-                    'sgst_tax_amt'     => (float) $s->sgst_tax_amt,
-                    'cgst_tax_amt'     => (float) $s->cgst_tax_amt,
-                    'igst_tax_amt'     => (float) $s->igst_tax_amt,
-                    'gst_cess_amt'     => (float) $s->gst_cess_amt,
-                    'redeemed_point'   => (float) $s->redeemed_point,
+                    'rounded_off' => (float) $s->rounded_off,
+                    'profit' => (float) $s->profit,
+                    'item_discount' => (float) $s->item_discount,
+                    'bill_discount' => (float) $s->bill_discount,
+                    'freight' => (float) $s->freight,
+                    'total_bills' => (int) $s->total_bills,
+                    'gst_tax_amt' => (float) $s->gst_tax_amt,
+                    'sgst_tax_amt' => (float) $s->sgst_tax_amt,
+                    'cgst_tax_amt' => (float) $s->cgst_tax_amt,
+                    'igst_tax_amt' => (float) $s->igst_tax_amt,
+                    'gst_cess_amt' => (float) $s->gst_cess_amt,
+                    'redeemed_point' => (float) $s->redeemed_point,
                 ]);
             }
         }
 
         // 2. Fetch from live SalesBill for dates/branches not already in daily summaries
-        $existingDateBranchKeys = $rows->map(fn ($r) => $r->bill_date . '_' . ($r->branch_id ?? '0'))->all();
+        $existingDateBranchKeys = $rows->map(fn ($r) => $r->bill_date.'_'.($r->branch_id ?? '0'))->all();
 
         $billsQuery = SalesBill::with(['branch', 'payments.tenderType', 'items.item'])
             ->where('status', '!=', 'Cancelled')
-            ->where('bill_date', '>=', $from . ' 00:00:00')
-            ->where('bill_date', '<=', $to . ' 23:59:59')
+            ->where('bill_date', '>=', $from.' 00:00:00')
+            ->where('bill_date', '<=', $to.' 23:59:59')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
 
         $bills = $billsQuery->orderBy('bill_date', 'desc')->get();
 
         $liveGroups = $bills->groupBy(function ($b) {
-            return \Carbon\Carbon::parse($b->bill_date)->format('Y-m-d') . '_' . ($b->branch_id ?? '0');
+            return Carbon::parse($b->bill_date)->format('Y-m-d').'_'.($b->branch_id ?? '0');
         });
 
         foreach ($liveGroups as $key => $group) {
@@ -132,7 +143,7 @@ class ReportController extends Controller
             }
 
             $first = $group->first();
-            $dateStr = \Carbon\Carbon::parse($first->bill_date)->format('Y-m-d');
+            $dateStr = Carbon::parse($first->bill_date)->format('Y-m-d');
             $storeName = $first->branch?->name ?? 'Main Branch';
 
             $totalBills = $group->count();
@@ -187,19 +198,26 @@ class ReportController extends Controller
                     $pType = strtolower($bill->payment_type ?? 'cash');
                     $amt = (float) $bill->total;
                     $billPaid += $amt;
-                    if (str_contains($pType, 'card')) $card += $amt;
-                    elseif (str_contains($pType, 'upi') || str_contains($pType, 'wallet')) $wallet += $amt;
-                    elseif (str_contains($pType, 'cheque')) $cheque += $amt;
-                    elseif (str_contains($pType, 'coupon')) $coupon += $amt;
-                    elseif (str_contains($pType, 'credit')) $credit += $amt;
-                    else $cash += $amt;
+                    if (str_contains($pType, 'card')) {
+                        $card += $amt;
+                    } elseif (str_contains($pType, 'upi') || str_contains($pType, 'wallet')) {
+                        $wallet += $amt;
+                    } elseif (str_contains($pType, 'cheque')) {
+                        $cheque += $amt;
+                    } elseif (str_contains($pType, 'coupon')) {
+                        $coupon += $amt;
+                    } elseif (str_contains($pType, 'credit')) {
+                        $credit += $amt;
+                    } else {
+                        $cash += $amt;
+                    }
                 }
 
                 if ((float) $bill->total > $billPaid) {
                     $due += ((float) $bill->total - $billPaid);
                 }
 
-                if (!empty($bill->points_redeemed_amount)) {
+                if (! empty($bill->points_redeemed_amount)) {
                     $redeemedPoint += (float) $bill->points_redeemed_amount;
                 }
 
@@ -223,103 +241,103 @@ class ReportController extends Controller
             $billDiscount = max(0.0, $discAmount - $itemDiscount);
 
             $rows->push((object) [
-                'store'            => $storeName,
-                'bill_date'        => $dateStr,
-                'branch_id'        => $first->branch_id,
-                'bill_amount'      => $billAmount,
-                'tax'              => $tax,
-                'disc_amount'      => $discAmount,
-                'scheme_amount'    => 0.0,
-                'cash'             => $cash,
-                'card'             => $card,
-                'cheque'           => $cheque,
-                'coupon'           => $coupon,
-                'wallet_amt'       => $wallet,
-                'credit'           => $credit,
-                'due'              => $due,
-                'compliment'       => 0.0,
-                'approval'         => 0.0,
+                'store' => $storeName,
+                'bill_date' => $dateStr,
+                'branch_id' => $first->branch_id,
+                'bill_amount' => $billAmount,
+                'tax' => $tax,
+                'disc_amount' => $discAmount,
+                'scheme_amount' => 0.0,
+                'cash' => $cash,
+                'card' => $card,
+                'cheque' => $cheque,
+                'coupon' => $coupon,
+                'wallet_amt' => $wallet,
+                'credit' => $credit,
+                'due' => $due,
+                'compliment' => 0.0,
+                'approval' => 0.0,
                 'advance_adjusted' => 0.0,
-                'rounded_off'      => $roundOff,
-                'profit'           => $profit,
-                'item_discount'    => $itemDiscount,
-                'bill_discount'    => $billDiscount,
-                'freight'          => $freight,
-                'total_bills'      => $totalBills,
-                'gst_tax_amt'      => $tax,
-                'sgst_tax_amt'     => $igst > 0 ? $sgst : round(max(0.0, $tax - $igst) / 2, 2),
-                'cgst_tax_amt'     => $igst > 0 ? $cgst : round(max(0.0, $tax - $igst) / 2, 2),
-                'igst_tax_amt'     => $igst,
-                'gst_cess_amt'     => $cess,
-                'redeemed_point'   => $redeemedPoint,
+                'rounded_off' => $roundOff,
+                'profit' => $profit,
+                'item_discount' => $itemDiscount,
+                'bill_discount' => $billDiscount,
+                'freight' => $freight,
+                'total_bills' => $totalBills,
+                'gst_tax_amt' => $tax,
+                'sgst_tax_amt' => $igst > 0 ? $sgst : round(max(0.0, $tax - $igst) / 2, 2),
+                'cgst_tax_amt' => $igst > 0 ? $cgst : round(max(0.0, $tax - $igst) / 2, 2),
+                'igst_tax_amt' => $igst,
+                'gst_cess_amt' => $cess,
+                'redeemed_point' => $redeemedPoint,
             ]);
         }
 
         $rows = $rows->sortByDesc('bill_date')->values();
 
         $totals = (object) [
-            'bill_amount'      => (float) $rows->sum('bill_amount'),
-            'tax'              => (float) $rows->sum('tax'),
-            'disc_amount'      => (float) $rows->sum('disc_amount'),
-            'scheme_amount'    => (float) $rows->sum('scheme_amount'),
-            'cash'             => (float) $rows->sum('cash'),
-            'card'             => (float) $rows->sum('card'),
-            'cheque'           => (float) $rows->sum('cheque'),
-            'coupon'           => (float) $rows->sum('coupon'),
-            'wallet_amt'       => (float) $rows->sum('wallet_amt'),
-            'credit'           => (float) $rows->sum('credit'),
-            'due'              => (float) $rows->sum('due'),
-            'compliment'       => (float) $rows->sum('compliment'),
-            'approval'         => (float) $rows->sum('approval'),
+            'bill_amount' => (float) $rows->sum('bill_amount'),
+            'tax' => (float) $rows->sum('tax'),
+            'disc_amount' => (float) $rows->sum('disc_amount'),
+            'scheme_amount' => (float) $rows->sum('scheme_amount'),
+            'cash' => (float) $rows->sum('cash'),
+            'card' => (float) $rows->sum('card'),
+            'cheque' => (float) $rows->sum('cheque'),
+            'coupon' => (float) $rows->sum('coupon'),
+            'wallet_amt' => (float) $rows->sum('wallet_amt'),
+            'credit' => (float) $rows->sum('credit'),
+            'due' => (float) $rows->sum('due'),
+            'compliment' => (float) $rows->sum('compliment'),
+            'approval' => (float) $rows->sum('approval'),
             'advance_adjusted' => (float) $rows->sum('advance_adjusted'),
-            'rounded_off'      => (float) $rows->sum('rounded_off'),
-            'profit'           => (float) $rows->sum('profit'),
-            'item_discount'    => (float) $rows->sum('item_discount'),
-            'bill_discount'    => (float) $rows->sum('bill_discount'),
-            'freight'          => (float) $rows->sum('freight'),
-            'total_bills'      => (int) $rows->sum('total_bills'),
-            'gst_tax_amt'      => (float) $rows->sum('gst_tax_amt'),
-            'sgst_tax_amt'     => (float) $rows->sum('sgst_tax_amt'),
-            'cgst_tax_amt'     => (float) $rows->sum('cgst_tax_amt'),
-            'igst_tax_amt'     => (float) $rows->sum('igst_tax_amt'),
-            'gst_cess_amt'     => (float) $rows->sum('gst_cess_amt'),
-            'redeemed_point'   => (float) $rows->sum('redeemed_point'),
+            'rounded_off' => (float) $rows->sum('rounded_off'),
+            'profit' => (float) $rows->sum('profit'),
+            'item_discount' => (float) $rows->sum('item_discount'),
+            'bill_discount' => (float) $rows->sum('bill_discount'),
+            'freight' => (float) $rows->sum('freight'),
+            'total_bills' => (int) $rows->sum('total_bills'),
+            'gst_tax_amt' => (float) $rows->sum('gst_tax_amt'),
+            'sgst_tax_amt' => (float) $rows->sum('sgst_tax_amt'),
+            'cgst_tax_amt' => (float) $rows->sum('cgst_tax_amt'),
+            'igst_tax_amt' => (float) $rows->sum('igst_tax_amt'),
+            'gst_cess_amt' => (float) $rows->sum('gst_cess_amt'),
+            'redeemed_point' => (float) $rows->sum('redeemed_point'),
         ];
 
         if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
             return $this->exportQueryOrData(
                 $rows,
                 [
-                    'Store'            => fn($r) => $r->store,
-                    'Date'             => fn($r) => \Carbon\Carbon::parse($r->bill_date)->format('d-m-Y'),
-                    'Bill amount'      => fn($r) => number_format((float) $r->bill_amount, 2, '.', ''),
-                    'Tax'              => fn($r) => number_format((float) $r->tax, 2, '.', ''),
-                    'Disc. Amount'     => fn($r) => number_format((float) $r->disc_amount, 2, '.', ''),
-                    'Scheme amount'    => fn($r) => number_format((float) $r->scheme_amount, 2, '.', ''),
-                    'Cash'             => fn($r) => number_format((float) $r->cash, 2, '.', ''),
-                    'Card'             => fn($r) => number_format((float) $r->card, 2, '.', ''),
-                    'Cheque'           => fn($r) => number_format((float) $r->cheque, 2, '.', ''),
-                    'Coupon'           => fn($r) => number_format((float) $r->coupon, 2, '.', ''),
-                    'Wallet Amt'       => fn($r) => number_format((float) $r->wallet_amt, 2, '.', ''),
-                    'Credit'           => fn($r) => number_format((float) $r->credit, 2, '.', ''),
-                    'Due'              => fn($r) => number_format((float) $r->due, 2, '.', ''),
-                    'Compliment'       => fn($r) => number_format((float) $r->compliment, 2, '.', ''),
-                    'Approval'         => fn($r) => number_format((float) $r->approval, 2, '.', ''),
-                    'Advance adjusted' => fn($r) => number_format((float) $r->advance_adjusted, 2, '.', ''),
-                    'Rounded off'      => fn($r) => number_format((float) $r->rounded_off, 2, '.', ''),
-                    'Profit'           => fn($r) => number_format((float) $r->profit, 2, '.', ''),
-                    'Item discount'    => fn($r) => number_format((float) $r->item_discount, 2, '.', ''),
-                    'Bill discount'    => fn($r) => number_format((float) $r->bill_discount, 2, '.', ''),
-                    'Freight'          => fn($r) => number_format((float) $r->freight, 2, '.', ''),
-                    'Total bills'      => fn($r) => $r->total_bills,
-                    'GST TaxAmt'       => fn($r) => number_format((float) $r->gst_tax_amt, 2, '.', ''),
-                    'SGST TaxAmt'      => fn($r) => number_format((float) $r->sgst_tax_amt, 2, '.', ''),
-                    'CGST TaxAmt'      => fn($r) => number_format((float) $r->cgst_tax_amt, 2, '.', ''),
-                    'IGST TaxAmt'      => fn($r) => number_format((float) $r->igst_tax_amt, 2, '.', ''),
-                    'GST Cess Amt'     => fn($r) => number_format((float) $r->gst_cess_amt, 2, '.', ''),
-                    'Redeemed Point'   => fn($r) => number_format((float) $r->redeemed_point, 2, '.', ''),
+                    'Store' => fn ($r) => $r->store,
+                    'Date' => fn ($r) => Carbon::parse($r->bill_date)->format('d-m-Y'),
+                    'Bill amount' => fn ($r) => number_format((float) $r->bill_amount, 2, '.', ''),
+                    'Tax' => fn ($r) => number_format((float) $r->tax, 2, '.', ''),
+                    'Disc. Amount' => fn ($r) => number_format((float) $r->disc_amount, 2, '.', ''),
+                    'Scheme amount' => fn ($r) => number_format((float) $r->scheme_amount, 2, '.', ''),
+                    'Cash' => fn ($r) => number_format((float) $r->cash, 2, '.', ''),
+                    'Card' => fn ($r) => number_format((float) $r->card, 2, '.', ''),
+                    'Cheque' => fn ($r) => number_format((float) $r->cheque, 2, '.', ''),
+                    'Coupon' => fn ($r) => number_format((float) $r->coupon, 2, '.', ''),
+                    'Wallet Amt' => fn ($r) => number_format((float) $r->wallet_amt, 2, '.', ''),
+                    'Credit' => fn ($r) => number_format((float) $r->credit, 2, '.', ''),
+                    'Due' => fn ($r) => number_format((float) $r->due, 2, '.', ''),
+                    'Compliment' => fn ($r) => number_format((float) $r->compliment, 2, '.', ''),
+                    'Approval' => fn ($r) => number_format((float) $r->approval, 2, '.', ''),
+                    'Advance adjusted' => fn ($r) => number_format((float) $r->advance_adjusted, 2, '.', ''),
+                    'Rounded off' => fn ($r) => number_format((float) $r->rounded_off, 2, '.', ''),
+                    'Profit' => fn ($r) => number_format((float) $r->profit, 2, '.', ''),
+                    'Item discount' => fn ($r) => number_format((float) $r->item_discount, 2, '.', ''),
+                    'Bill discount' => fn ($r) => number_format((float) $r->bill_discount, 2, '.', ''),
+                    'Freight' => fn ($r) => number_format((float) $r->freight, 2, '.', ''),
+                    'Total bills' => fn ($r) => $r->total_bills,
+                    'GST TaxAmt' => fn ($r) => number_format((float) $r->gst_tax_amt, 2, '.', ''),
+                    'SGST TaxAmt' => fn ($r) => number_format((float) $r->sgst_tax_amt, 2, '.', ''),
+                    'CGST TaxAmt' => fn ($r) => number_format((float) $r->cgst_tax_amt, 2, '.', ''),
+                    'IGST TaxAmt' => fn ($r) => number_format((float) $r->igst_tax_amt, 2, '.', ''),
+                    'GST Cess Amt' => fn ($r) => number_format((float) $r->gst_cess_amt, 2, '.', ''),
+                    'Redeemed Point' => fn ($r) => number_format((float) $r->redeemed_point, 2, '.', ''),
                 ],
-                'Daily_Sale_Store_Wise_' . $from . '_to_' . $to . '.xlsx',
+                'Daily_Sale_Store_Wise_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -363,9 +381,9 @@ class ReportController extends Controller
         if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
             return $this->exportQueryOrData($query, [
                 'Bill Date' => '', 'Bill No' => '', 'Customer' => '', 'Item' => '', 'Qty' => '', 'MRP' => '', 'Net Amount' => '', 'Branch' => '',
-            ], 'billwise-sales_' . $from . '_to_' . $to . '.xlsx', function ($bill) {
+            ], 'billwise-sales_'.$from.'_to_'.$to.'.xlsx', function ($bill) {
                 return $bill->items->map(fn ($line) => [
-                    $bill->bill_date ? \Carbon\Carbon::parse($bill->bill_date)->format('d-m-Y') : '',
+                    $bill->bill_date ? Carbon::parse($bill->bill_date)->format('d-m-Y') : '',
                     $bill->bill_number,
                     $bill->customer?->name,
                     $line->item?->name,
@@ -400,14 +418,14 @@ class ReportController extends Controller
 
         // Aggregated in SQL (was: every bill + line hydrated into PHP models: 10 s / 190 MB per year of data).
         // Cancelled bills are excluded - they must not appear in a GST return.
-        $rows = \Illuminate\Support\Facades\DB::table('sales_bill_items as sbi')
+        $rows = DB::table('sales_bill_items as sbi')
             ->join('sales_bills as sb', 'sb.id', '=', 'sbi.sales_bill_id')
             ->leftJoin('items as it', 'it.id', '=', 'sbi.item_id')
             ->where('sb.bill_date', '>=', $from.' 00:00:00')
             ->where('sb.bill_date', '<=', $to.' 23:59:59')
             ->where(fn ($q) => $q->whereNull('sb.status')->orWhere('sb.status', '!=', 'Cancelled'))
             ->when($branchId, fn ($q) => $q->where('sb.branch_id', $branchId))
-            ->groupByRaw("it.hsn_code, sbi.gst_percent")
+            ->groupByRaw('it.hsn_code, sbi.gst_percent')
             ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), sbi.gst_percent")
             ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, sbi.gst_percent, SUM(sbi.net_amount - sbi.gst_tax_amount) as taxable_amount, SUM(sbi.gst_tax_amount) as gst_amount")
             ->get();
@@ -417,12 +435,12 @@ class ReportController extends Controller
                 $rows,
                 [
                     'HSN Code' => 'hsn_code',
-                    'GST Rate (%)' => fn($r) => $r->gst_percent . '%',
-                    'Taxable Amount' => fn($r) => number_format((float) $r->taxable_amount, 2),
-                    'GST Tax Amount' => fn($r) => number_format((float) $r->gst_amount, 2),
-                    'Total Amount' => fn($r) => number_format((float) ($r->taxable_amount + $r->gst_amount), 2),
+                    'GST Rate (%)' => fn ($r) => $r->gst_percent.'%',
+                    'Taxable Amount' => fn ($r) => number_format((float) $r->taxable_amount, 2),
+                    'GST Tax Amount' => fn ($r) => number_format((float) $r->gst_amount, 2),
+                    'Total Amount' => fn ($r) => number_format((float) ($r->taxable_amount + $r->gst_amount), 2),
                 ],
-                'gst-sales-summary_' . $from . '_to_' . $to . '.xlsx',
+                'gst-sales-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -460,8 +478,9 @@ class ReportController extends Controller
 
         // Excel export: real .xlsx download matching exact 16 columns
         if (in_array($request->query('export'), ['excel', 'xlsx'])) {
-            $filename = 'purchase-detail_' . $from . '_to_' . $to . '.xlsx';
-            return (new \App\Exports\PurchaseDetailExport($from, $to, $branchId, $supplierId, $purchaseType, $search))
+            $filename = 'purchase-detail_'.$from.'_to_'.$to.'.xlsx';
+
+            return (new PurchaseDetailExport($from, $to, $branchId, $supplierId, $purchaseType, $search))
                 ->download($filename);
         }
 
@@ -475,15 +494,17 @@ class ReportController extends Controller
                     ? $invoice->items->sum(fn ($i) => (float) $i->net_amount - (float) $i->gst_tax_amount)
                     : max(0.0, (float) $invoice->total - (float) $invoice->total_gst - (float) $invoice->freight - (float) $invoice->tcs_amount - (float) $invoice->round_off);
                 $taxPercents = $hasItems
-                    ? $invoice->items->pluck('gst_percent')->filter(fn ($p) => !is_null($p))->unique()->sort()->implode(', ')
+                    ? $invoice->items->pluck('gst_percent')->filter(fn ($p) => ! is_null($p))->unique()->sort()->implode(', ')
                     : ($taxable > 0 && (float) $invoice->total_gst > 0 ? (string) round(((float) $invoice->total_gst / $taxable) * 100, 1) : '');
                 $cgst = (float) ($invoice->total_cgst ?: ($hasItems ? $invoice->items->sum('cgst_amount') : 0));
                 $sgst = (float) ($invoice->total_sgst ?: ($hasItems ? $invoice->items->sum('sgst_amount') : 0));
                 $igst = (float) ($invoice->total_igst ?: ($hasItems ? $invoice->items->sum('igst_amount') : 0));
 
+                $primaryInvNo = ! empty($invoice->supplier_inv_no) ? $invoice->supplier_inv_no : $invoice->invoice_number;
+
                 return [[
                     $invoice->invoice_date->format('d-m-Y'),
-                    $invoice->invoice_number,
+                    $primaryInvNo,
                     $invoice->supplier?->name,
                     $invoice->supplier_gstin ?: $invoice->supplier?->gst_no,
                     number_format($taxable, 2, '.', ''),
@@ -519,9 +540,9 @@ class ReportController extends Controller
         $supplierId = $request->input('supplier_id');
         $purchaseType = $request->input('purchase_type');
 
-        $filename = 'purchase-detail_' . $from . '_to_' . $to . '.xlsx';
+        $filename = 'purchase-detail_'.$from.'_to_'.$to.'.xlsx';
 
-        return (new \App\Exports\PurchaseDetailExport($from, $to, $branchId, $supplierId, $purchaseType, $search))
+        return (new PurchaseDetailExport($from, $to, $branchId, $supplierId, $purchaseType, $search))
             ->download($filename);
     }
 
@@ -559,18 +580,18 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderBy('branch_id')->orderBy('item_stocks.id'),
                 [
-                    'Item Code' => fn($r) => $r->item?->item_code ?? '',
-                    'Item Name' => fn($r) => $r->item?->name ?? '',
-                    'Brand' => fn($r) => $r->item?->brand?->name ?? '',
-                    'Category' => fn($r) => $r->item?->categoryValue?->name ?? '',
-                    'Branch / Location' => fn($r) => $r->branch?->name ?? '',
-                    'Stock Qty' => fn($r) => (float) $r->quantity,
-                    'Cost Price' => fn($r) => number_format((float) (($r->cost_price > 0 ? $r->cost_price : ($r->item?->cost_price ?? 0))), 2),
-                    'Cost Value' => fn($r) => number_format((float) ($r->quantity * ($r->cost_price > 0 ? $r->cost_price : ($r->item?->cost_price ?? 0))), 2),
-                    'Selling Price' => fn($r) => number_format((float) (($r->sell_price > 0 ? $r->sell_price : ($r->item?->sell_price ?? 0))), 2),
-                    'Selling Value' => fn($r) => number_format((float) ($r->quantity * ($r->sell_price > 0 ? $r->sell_price : ($r->item?->sell_price ?? 0))), 2),
+                    'Item Code' => fn ($r) => $r->item?->item_code ?? '',
+                    'Item Name' => fn ($r) => $r->item?->name ?? '',
+                    'Brand' => fn ($r) => $r->item?->brand?->name ?? '',
+                    'Category' => fn ($r) => $r->item?->categoryValue?->name ?? '',
+                    'Branch / Location' => fn ($r) => $r->branch?->name ?? '',
+                    'Stock Qty' => fn ($r) => (float) $r->quantity,
+                    'Cost Price' => fn ($r) => number_format((float) (($r->cost_price > 0 ? $r->cost_price : ($r->item?->cost_price ?? 0))), 2),
+                    'Cost Value' => fn ($r) => number_format((float) ($r->quantity * ($r->cost_price > 0 ? $r->cost_price : ($r->item?->cost_price ?? 0))), 2),
+                    'Selling Price' => fn ($r) => number_format((float) (($r->sell_price > 0 ? $r->sell_price : ($r->item?->sell_price ?? 0))), 2),
+                    'Selling Value' => fn ($r) => number_format((float) ($r->quantity * ($r->sell_price > 0 ? $r->sell_price : ($r->item?->sell_price ?? 0))), 2),
                 ],
-                'current-stock-report_' . date('Y-m-d') . '.xlsx',
+                'current-stock-report_'.date('Y-m-d').'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -616,15 +637,15 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $returns,
                 [
-                    'Return Date' => fn($r) => \Carbon\Carbon::parse($r->return_date)->format('d-m-Y'),
+                    'Return Date' => fn ($r) => Carbon::parse($r->return_date)->format('d-m-Y'),
                     'Return No' => 'return_number',
-                    'Original Bill No' => fn($r) => $r->salesBill?->bill_number ?? '',
-                    'Customer' => fn($r) => $r->customer?->name ?? 'Walk-in',
+                    'Original Bill No' => fn ($r) => $r->salesBill?->bill_number ?? '',
+                    'Customer' => fn ($r) => $r->customer?->name ?? 'Walk-in',
                     'Return Mode' => 'return_mode',
-                    'Total Amount' => fn($r) => number_format((float) $r->total, 2),
-                    'Branch' => fn($r) => $r->branch?->name ?? '',
+                    'Total Amount' => fn ($r) => number_format((float) $r->total, 2),
+                    'Branch' => fn ($r) => $r->branch?->name ?? '',
                 ],
-                'sales-return-summary_' . $from . '_to_' . $to . '.xlsx',
+                'sales-return-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -664,7 +685,7 @@ class ReportController extends Controller
         if ($branchId && $branchId !== 'all') {
             $query->where(function ($q) use ($branchId) {
                 $q->where('branch_id', (int) $branchId)
-                  ->orWhereNull('branch_id');
+                    ->orWhereNull('branch_id');
             });
         }
 
@@ -676,15 +697,15 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderBy('name'),
                 [
-                    'Code' => fn($c) => $c->customer_code,
-                    'Customer Name' => fn($c) => $c->name,
-                    'Mobile / Phone' => fn($c) => $c->phone,
-                    'City' => fn($c) => $c->city,
-                    'GST No' => fn($c) => $c->gst_no,
-                    'Category' => fn($c) => $c->category?->name ?? '',
-                    'Branch' => fn($c) => $c->branch?->name ?? 'All Branches',
-                    'Credit Balance' => fn($c) => number_format((float) $c->credit_balance, 2),
-                    'Status' => fn($c) => $c->status ? 'Active' : 'Inactive',
+                    'Code' => fn ($c) => $c->customer_code,
+                    'Customer Name' => fn ($c) => $c->name,
+                    'Mobile / Phone' => fn ($c) => $c->phone,
+                    'City' => fn ($c) => $c->city,
+                    'GST No' => fn ($c) => $c->gst_no,
+                    'Category' => fn ($c) => $c->category?->name ?? '',
+                    'Branch' => fn ($c) => $c->branch?->name ?? 'All Branches',
+                    'Credit Balance' => fn ($c) => number_format((float) $c->credit_balance, 2),
+                    'Status' => fn ($c) => $c->status ? 'Active' : 'Inactive',
                 ],
                 'customer-master-report.xlsx',
                 null,
@@ -750,6 +771,7 @@ class ReportController extends Controller
                             $pet->birth_date ? optional($pet->birth_date)->format('d-m-Y') : '-',
                         ];
                     }
+
                     return $lines;
                 },
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
@@ -822,17 +844,17 @@ class ReportController extends Controller
                 $tillSessions,
                 [
                     'Session ID' => 'id',
-                    'Branch' => fn($s) => $s->branch?->name ?? 'Default',
-                    'Cashier' => fn($s) => $s->user?->name ?? 'User #' . $s->user_id,
-                    'Opened At' => fn($s) => $s->opened_at ? \Carbon\Carbon::parse($s->opened_at)->format('d-m-Y H:i') : '-',
-                    'Closed At' => fn($s) => $s->closed_at ? \Carbon\Carbon::parse($s->closed_at)->format('d-m-Y H:i') : 'Open',
-                    'Opening Cash' => fn($s) => number_format((float) $s->opening_cash, 2),
-                    'Expected Cash' => fn($s) => number_format((float) $s->expected_cash, 2),
-                    'Closing Cash' => fn($s) => number_format((float) $s->closing_cash, 2),
-                    'Variance' => fn($s) => number_format((float) $s->variance, 2),
+                    'Branch' => fn ($s) => $s->branch?->name ?? 'Default',
+                    'Cashier' => fn ($s) => $s->user?->name ?? 'User #'.$s->user_id,
+                    'Opened At' => fn ($s) => $s->opened_at ? Carbon::parse($s->opened_at)->format('d-m-Y H:i') : '-',
+                    'Closed At' => fn ($s) => $s->closed_at ? Carbon::parse($s->closed_at)->format('d-m-Y H:i') : 'Open',
+                    'Opening Cash' => fn ($s) => number_format((float) $s->opening_cash, 2),
+                    'Expected Cash' => fn ($s) => number_format((float) $s->expected_cash, 2),
+                    'Closing Cash' => fn ($s) => number_format((float) $s->closing_cash, 2),
+                    'Variance' => fn ($s) => number_format((float) $s->variance, 2),
                     'Status' => 'status',
                 ],
-                'eod-settlement-report_' . $from . '_to_' . $to . '.xlsx',
+                'eod-settlement-report_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -873,18 +895,18 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderBy('name'),
                 [
-                    'Code' => fn($i) => $i->item_code,
-                    'Barcode' => fn($i) => $i->ean_upc_code ?: '-',
-                    'Item Name' => fn($i) => $i->name,
-                    'Brand' => fn($i) => $i->brand?->name ?? '-',
-                    'Category' => fn($i) => $i->categoryValue?->name ?? '-',
-                    'UOM' => fn($i) => $i->base_uom ?: '-',
-                    'HSN' => fn($i) => $i->hsn_code ?: '-',
-                    'Tax %' => fn($i) => $i->gstTax ? $i->gstTax->percentage . '%' : '-',
-                    'Cost Price' => fn($i) => number_format((float) $i->cost_price, 2),
-                    'Sell Price' => fn($i) => number_format((float) $i->sell_price, 2),
-                    'MRP' => fn($i) => number_format((float) $i->mrp, 2),
-                    'Status' => fn($i) => $i->status ? 'Active' : 'Inactive',
+                    'Code' => fn ($i) => $i->item_code,
+                    'Barcode' => fn ($i) => $i->ean_upc_code ?: '-',
+                    'Item Name' => fn ($i) => $i->name,
+                    'Brand' => fn ($i) => $i->brand?->name ?? '-',
+                    'Category' => fn ($i) => $i->categoryValue?->name ?? '-',
+                    'UOM' => fn ($i) => $i->base_uom ?: '-',
+                    'HSN' => fn ($i) => $i->hsn_code ?: '-',
+                    'Tax %' => fn ($i) => $i->gstTax ? $i->gstTax->percentage.'%' : '-',
+                    'Cost Price' => fn ($i) => number_format((float) $i->cost_price, 2),
+                    'Sell Price' => fn ($i) => number_format((float) $i->sell_price, 2),
+                    'MRP' => fn ($i) => number_format((float) $i->mrp, 2),
+                    'Status' => fn ($i) => $i->status ? 'Active' : 'Inactive',
                 ],
                 'item-master-report.xlsx',
                 null,
@@ -927,16 +949,16 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderBy('name'),
                 [
-                    'Supplier Name' => fn($s) => $s->name,
-                    'Mobile' => fn($s) => $s->mobile ?: '-',
-                    'Phone' => fn($s) => $s->phone ?: '-',
-                    'Email' => fn($s) => $s->email ?: '-',
-                    'GST No' => fn($s) => $s->gst_no ?: '-',
-                    'City / State' => fn($s) => $s->city ? $s->city . ($s->state ? ', ' . $s->state : '') : ($s->state ?: '-'),
-                    'Address' => fn($s) => $s->address ?: '-',
-                    'Credit Limit' => fn($s) => number_format((float) $s->credit_limit, 2),
-                    'Credit Balance' => fn($s) => number_format((float) $s->credit_balance, 2),
-                    'Status' => fn($s) => $s->status ? 'Active' : 'Inactive',
+                    'Supplier Name' => fn ($s) => $s->name,
+                    'Mobile' => fn ($s) => $s->mobile ?: '-',
+                    'Phone' => fn ($s) => $s->phone ?: '-',
+                    'Email' => fn ($s) => $s->email ?: '-',
+                    'GST No' => fn ($s) => $s->gst_no ?: '-',
+                    'City / State' => fn ($s) => $s->city ? $s->city.($s->state ? ', '.$s->state : '') : ($s->state ?: '-'),
+                    'Address' => fn ($s) => $s->address ?: '-',
+                    'Credit Limit' => fn ($s) => number_format((float) $s->credit_limit, 2),
+                    'Credit Balance' => fn ($s) => number_format((float) $s->credit_balance, 2),
+                    'Status' => fn ($s) => $s->status ? 'Active' : 'Inactive',
                 ],
                 'supplier-master-report.xlsx',
                 null,
@@ -955,14 +977,14 @@ class ReportController extends Controller
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
         // Aggregated in SQL (was: every invoice + line hydrated into PHP). Cancelled invoices are excluded.
-        $rows = \Illuminate\Support\Facades\DB::table('purchase_invoice_items as pii')
+        $rows = DB::table('purchase_invoice_items as pii')
             ->join('purchase_invoices as pi', 'pi.id', '=', 'pii.purchase_invoice_id')
             ->leftJoin('items as it', 'it.id', '=', 'pii.item_id')
             ->where('pi.invoice_date', '>=', $from)
             ->where('pi.invoice_date', '<=', $to)
             ->where(fn ($q) => $q->whereNull('pi.status')->orWhere('pi.status', '!=', 'Cancelled'))
             ->when($branchId, fn ($q) => $q->where('pi.branch_id', $branchId))
-            ->groupByRaw("it.hsn_code, pii.gst_percent")
+            ->groupByRaw('it.hsn_code, pii.gst_percent')
             ->orderByRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A'), COALESCE(pii.gst_percent, 0)")
             ->selectRaw("COALESCE(NULLIF(it.hsn_code, ''), 'N/A') as hsn_code, COALESCE(pii.gst_percent, 0) as gst_percent, SUM(pii.net_amount - pii.gst_tax_amount) as taxable_amount, SUM(COALESCE(pii.cgst_amount,0)) as cgst_amount, SUM(COALESCE(pii.sgst_amount,0)) as sgst_amount, SUM(COALESCE(pii.igst_amount,0)) as igst_amount, SUM(COALESCE(pii.gst_tax_amount,0)) as gst_amount")
             ->get();
@@ -972,15 +994,15 @@ class ReportController extends Controller
                 $rows,
                 [
                     'HSN Code' => 'hsn_code',
-                    'GST Rate (%)' => fn($r) => $r->gst_percent . '%',
-                    'Taxable Amount' => fn($r) => number_format((float) $r->taxable_amount, 2),
-                    'CGST' => fn($r) => number_format((float) $r->cgst_amount, 2),
-                    'SGST' => fn($r) => number_format((float) $r->sgst_amount, 2),
-                    'IGST' => fn($r) => number_format((float) $r->igst_amount, 2),
-                    'Total GST' => fn($r) => number_format((float) $r->gst_amount, 2),
-                    'Total Amount' => fn($r) => number_format((float) ($r->taxable_amount + $r->gst_amount), 2),
+                    'GST Rate (%)' => fn ($r) => $r->gst_percent.'%',
+                    'Taxable Amount' => fn ($r) => number_format((float) $r->taxable_amount, 2),
+                    'CGST' => fn ($r) => number_format((float) $r->cgst_amount, 2),
+                    'SGST' => fn ($r) => number_format((float) $r->sgst_amount, 2),
+                    'IGST' => fn ($r) => number_format((float) $r->igst_amount, 2),
+                    'Total GST' => fn ($r) => number_format((float) $r->gst_amount, 2),
+                    'Total Amount' => fn ($r) => number_format((float) ($r->taxable_amount + $r->gst_amount), 2),
                 ],
-                'gst-purchase-summary_' . $from . '_to_' . $to . '.xlsx',
+                'gst-purchase-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -1016,17 +1038,17 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderByDesc('po_date'),
                 [
-                    'PO Number' => fn($po) => $po->po_number,
-                    'PO Date' => fn($po) => $po->po_date->format('d-m-Y'),
-                    'Supplier' => fn($po) => $po->supplier?->name ?? '-',
-                    'Branch' => fn($po) => $po->branch?->name ?? '-',
-                    'Total Qty' => fn($po) => number_format((float) $po->total_qty, 2),
-                    'Freight' => fn($po) => number_format((float) $po->freight, 2),
-                    'Total GST' => fn($po) => number_format((float) $po->total_gst, 2),
-                    'Total Amount' => fn($po) => number_format((float) $po->total, 2),
-                    'Status' => fn($po) => $po->status,
+                    'PO Number' => fn ($po) => $po->po_number,
+                    'PO Date' => fn ($po) => $po->po_date->format('d-m-Y'),
+                    'Supplier' => fn ($po) => $po->supplier?->name ?? '-',
+                    'Branch' => fn ($po) => $po->branch?->name ?? '-',
+                    'Total Qty' => fn ($po) => number_format((float) $po->total_qty, 2),
+                    'Freight' => fn ($po) => number_format((float) $po->freight, 2),
+                    'Total GST' => fn ($po) => number_format((float) $po->total_gst, 2),
+                    'Total Amount' => fn ($po) => number_format((float) $po->total, 2),
+                    'Status' => fn ($po) => $po->status,
                 ],
-                'purchase-order-summary_' . $from . '_to_' . $to . '.xlsx',
+                'purchase-order-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -1062,16 +1084,16 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderByDesc('transfer_date'),
                 [
-                    'Transfer Number' => fn($t) => $t->transfer_number,
-                    'Transfer Date' => fn($t) => $t->transfer_date->format('d-m-Y'),
-                    'From Branch' => fn($t) => $t->fromBranch?->name ?? '-',
-                    'To Branch' => fn($t) => $t->toBranch?->name ?? '-',
-                    'Total Qty' => fn($t) => number_format((float) $t->total_qty, 2),
-                    'Dispatched At' => fn($t) => $t->dispatched_at ? $t->dispatched_at->format('d-m-Y H:i') : '-',
-                    'Received At' => fn($t) => $t->received_at ? $t->received_at->format('d-m-Y H:i') : '-',
-                    'Status' => fn($t) => $t->status,
+                    'Transfer Number' => fn ($t) => $t->transfer_number,
+                    'Transfer Date' => fn ($t) => $t->transfer_date->format('d-m-Y'),
+                    'From Branch' => fn ($t) => $t->fromBranch?->name ?? '-',
+                    'To Branch' => fn ($t) => $t->toBranch?->name ?? '-',
+                    'Total Qty' => fn ($t) => number_format((float) $t->total_qty, 2),
+                    'Dispatched At' => fn ($t) => $t->dispatched_at ? $t->dispatched_at->format('d-m-Y H:i') : '-',
+                    'Received At' => fn ($t) => $t->received_at ? $t->received_at->format('d-m-Y H:i') : '-',
+                    'Status' => fn ($t) => $t->status,
                 ],
-                'stock-transfer-summary_' . $from . '_to_' . $to . '.xlsx',
+                'stock-transfer-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -1102,16 +1124,16 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderByDesc('entry_date'),
                 [
-                    'Entry Number' => fn($ds) => $ds->damage_number,
-                    'Entry Date' => fn($ds) => $ds->entry_date->format('d-m-Y'),
-                    'Branch' => fn($ds) => $ds->branch?->name ?? '-',
-                    'Wastage Type' => fn($ds) => ucfirst($ds->wastage_type ?: 'Damage'),
-                    'Total Damaged Qty' => fn($ds) => number_format((float) $ds->total_qty, 2),
-                    'Total Loss Cost' => fn($ds) => number_format((float) $ds->total_cost, 2),
-                    'Remarks' => fn($ds) => $ds->remarks ?: '-',
-                    'Status' => fn($ds) => $ds->status,
+                    'Entry Number' => fn ($ds) => $ds->damage_number,
+                    'Entry Date' => fn ($ds) => $ds->entry_date->format('d-m-Y'),
+                    'Branch' => fn ($ds) => $ds->branch?->name ?? '-',
+                    'Wastage Type' => fn ($ds) => ucfirst($ds->wastage_type ?: 'Damage'),
+                    'Total Damaged Qty' => fn ($ds) => number_format((float) $ds->total_qty, 2),
+                    'Total Loss Cost' => fn ($ds) => number_format((float) $ds->total_cost, 2),
+                    'Remarks' => fn ($ds) => $ds->remarks ?: '-',
+                    'Status' => fn ($ds) => $ds->status,
                 ],
-                'damage-stock-summary_' . $from . '_to_' . $to . '.xlsx',
+                'damage-stock-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -1131,9 +1153,9 @@ class ReportController extends Controller
         $query = SalesBillPayment::with(['tenderType', 'tenderTypeValue', 'salesBill.branch'])
             ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
                 $q->where('status', '!=', 'Cancelled')
-                  ->where('bill_date', '>=', $from.' 00:00:00')
-                  ->where('bill_date', '<=', $to.' 23:59:59')
-                  ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
+                    ->where('bill_date', '>=', $from.' 00:00:00')
+                    ->where('bill_date', '<=', $to.' 23:59:59')
+                    ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
             })
             ->when($tenderTypeId, fn ($q) => $q->where('tender_type_id', $tenderTypeId));
 
@@ -1157,9 +1179,9 @@ class ReportController extends Controller
                     'Payment Mode / Tender' => 'tender_name',
                     'Category' => 'type',
                     'Transaction Count' => 'count',
-                    'Total Amount' => fn($r) => number_format((float) $r->total_amount, 2),
+                    'Total Amount' => fn ($r) => number_format((float) $r->total_amount, 2),
                 ],
-                'tender-summary_' . $from . '_to_' . $to . '.xlsx',
+                'tender-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -1198,15 +1220,15 @@ class ReportController extends Controller
             return $this->exportQueryOrData(
                 $query->orderByDesc('created_at'),
                 [
-                    'Date & Time' => fn($log) => $log->created_at->format('d-m-Y H:i:s'),
-                    'User' => fn($log) => $log->user?->name ?? 'System',
-                    'Action' => fn($log) => strtoupper($log->action),
-                    'Entity' => fn($log) => class_basename($log->auditable_type),
-                    'Entity ID' => fn($log) => $log->auditable_id,
-                    'Reason / Description' => fn($log) => $log->reason ?: '-',
-                    'IP Address' => fn($log) => $log->ip_address ?: '-',
+                    'Date & Time' => fn ($log) => $log->created_at->format('d-m-Y H:i:s'),
+                    'User' => fn ($log) => $log->user?->name ?? 'System',
+                    'Action' => fn ($log) => strtoupper($log->action),
+                    'Entity' => fn ($log) => class_basename($log->auditable_type),
+                    'Entity ID' => fn ($log) => $log->auditable_id,
+                    'Reason / Description' => fn ($log) => $log->reason ?: '-',
+                    'IP Address' => fn ($log) => $log->ip_address ?: '-',
                 ],
-                'audit-logs-report_' . $from . '_to_' . $to . '.xlsx',
+                'audit-logs-report_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -1231,17 +1253,17 @@ class ReportController extends Controller
     public function salesMarginItemwise(Request $request)
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
-        $brandId       = $request->input('brand_id');
+        $brandId = $request->input('brand_id');
         $categoryValueId = $request->input('category_value_id');
-        $customerId    = $request->input('customer_id');
-        $search        = $request->input('search');
+        $customerId = $request->input('customer_id');
+        $search = $request->input('search');
 
         $query = SalesBillItem::with(['item.brand', 'item.categoryValue', 'salesBill.customer', 'salesBill.branch'])
             ->whereHas('salesBill', function ($q) use ($from, $to, $branchId) {
                 $q->where('status', '!=', 'Cancelled')
-                  ->where('bill_date', '>=', $from.' 00:00:00')
-                  ->where('bill_date', '<=', $to.' 23:59:59')
-                  ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
+                    ->where('bill_date', '>=', $from.' 00:00:00')
+                    ->where('bill_date', '<=', $to.' 23:59:59')
+                    ->when($branchId, fn ($bq) => $bq->where('branch_id', $branchId));
             })
             ->when($brandId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('brand_id', $brandId)))
             ->when($categoryValueId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('category_value_id', $categoryValueId)))
@@ -1255,8 +1277,8 @@ class ReportController extends Controller
             .'COALESCE(SUM(COALESCE(sales_bill_items.cost_at_sale, 0) * sales_bill_items.qty), 0) as cog_total'
         )->first();
         $totals = [
-            'sell_total'   => (float) $agg->sell_total,
-            'cog_total'    => (float) $agg->cog_total,
+            'sell_total' => (float) $agg->sell_total,
+            'cog_total' => (float) $agg->cog_total,
         ];
         $totals['gross_margin'] = $totals['sell_total'] - $totals['cog_total'];
         $totals['margin_pct'] = $totals['sell_total'] > 0
@@ -1265,26 +1287,27 @@ class ReportController extends Controller
         $query->orderBy('sales_bill_items.id', 'desc');
 
         $mapLine = function ($line) {
-            $sellTotal  = (float) $line->net_amount;
-            $cogTotal   = (float) ($line->cost_at_sale * $line->qty);
-            $margin     = $sellTotal - $cogTotal;
-            $marginPct  = $sellTotal > 0 ? ($margin / $sellTotal) * 100 : 0;
+            $sellTotal = (float) $line->net_amount;
+            $cogTotal = (float) ($line->cost_at_sale * $line->qty);
+            $margin = $sellTotal - $cogTotal;
+            $marginPct = $sellTotal > 0 ? ($margin / $sellTotal) * 100 : 0;
+
             return (object) [
-                'bill_date'     => $line->salesBill?->bill_date,
-                'bill_number'   => $line->salesBill?->bill_number,
+                'bill_date' => $line->salesBill?->bill_date,
+                'bill_number' => $line->salesBill?->bill_number,
                 'customer_name' => $line->salesBill?->customer?->name ?? 'Walk-in',
-                'branch_name'   => $line->salesBill?->branch?->name,
-                'item_code'     => $line->item?->item_code,
-                'item_name'     => $line->item?->name,
-                'brand_name'    => $line->item?->brand?->name,
+                'branch_name' => $line->salesBill?->branch?->name,
+                'item_code' => $line->item?->item_code,
+                'item_name' => $line->item?->name,
+                'brand_name' => $line->item?->brand?->name,
                 'category_name' => $line->item?->categoryValue?->name,
-                'qty'           => $line->qty,
-                'sell_price'    => $line->sell_price,
-                'sell_total'    => $sellTotal,
-                'cost_at_sale'  => $line->cost_at_sale,
-                'cog_total'     => $cogTotal,
-                'gross_margin'  => $margin,
-                'margin_pct'    => $marginPct,
+                'qty' => $line->qty,
+                'sell_price' => $line->sell_price,
+                'sell_total' => $sellTotal,
+                'cost_at_sale' => $line->cost_at_sale,
+                'cog_total' => $cogTotal,
+                'gross_margin' => $margin,
+                'margin_pct' => $marginPct,
             ];
         };
 
@@ -1293,11 +1316,11 @@ class ReportController extends Controller
             return $this->exportQueryOrData($query, [
                 'Date' => '', 'Bill No' => '', 'Customer' => '', 'Branch' => '', 'Item Code' => '', 'Item' => '', 'Brand' => '', 'Category' => '',
                 'Qty' => '', 'Sell/unit' => '', 'Cost/unit' => '', 'Sell Total' => '', 'COGS' => '', 'Gross Profit' => '', 'Margin %' => '',
-            ], 'sales-margin-itemwise_' . $from . '_to_' . $to . '.xlsx', function ($line) use ($mapLine) {
+            ], 'sales-margin-itemwise_'.$from.'_to_'.$to.'.xlsx', function ($line) use ($mapLine) {
                 $l = $mapLine($line);
 
                 return [
-                    $l->bill_date ? \Carbon\Carbon::parse($l->bill_date)->format('d-m-Y') : '',
+                    $l->bill_date ? Carbon::parse($l->bill_date)->format('d-m-Y') : '',
                     $l->bill_number, $l->customer_name, $l->branch_name, $l->item_code, $l->item_name, $l->brand_name, $l->category_name,
                     $l->qty,
                     number_format((float) $l->sell_price, 2, '.', ''),
@@ -1312,9 +1335,9 @@ class ReportController extends Controller
 
         $lines = $query->paginate(100)->withQueryString()->through($mapLine);
 
-        $branches        = $this->getBranchesForUser();
-        $brands          = Brand::orderBy('name')->pluck('name', 'id');
-        $categories      = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
+        $branches = $this->getBranchesForUser();
+        $brands = Brand::orderBy('name')->pluck('name', 'id');
+        $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
         $customerId = $request->input('customer_id');
         $selectedCustForFilter = $customerId ? Customer::find($customerId) : null;
         $customers = Customer::where('status', true)->orderBy('name')->limit(30)->pluck('name', 'id');
@@ -1337,7 +1360,7 @@ class ReportController extends Controller
 
         // Aggregated in SQL by category name (was: every line hydrated with item + category, grouped in PHP:
         // 2.9 s / 98 MB for a year of sales). Same rules: cancelled bills excluded, no category => 'Uncategorised'.
-        $grouped = \Illuminate\Support\Facades\DB::table('sales_bill_items as sbi')
+        $grouped = DB::table('sales_bill_items as sbi')
             ->join('sales_bills as sb', 'sb.id', '=', 'sbi.sales_bill_id')
             ->leftJoin('items as it', 'it.id', '=', 'sbi.item_id')
             ->leftJoin('item_category_values as icv', 'icv.id', '=', 'it.category_value_id')
@@ -1356,11 +1379,11 @@ class ReportController extends Controller
 
                 return (object) [
                     'category_name' => $row->category_name,
-                    'qty'           => $row->qty + 0,
-                    'sell_total'    => $sellTotal,
-                    'cog_total'     => $cogTotal,
-                    'gross_margin'  => $margin,
-                    'margin_pct'    => $sellTotal > 0 ? ($margin / $sellTotal) * 100 : 0,
+                    'qty' => $row->qty + 0,
+                    'sell_total' => $sellTotal,
+                    'cog_total' => $cogTotal,
+                    'gross_margin' => $margin,
+                    'margin_pct' => $sellTotal > 0 ? ($margin / $sellTotal) * 100 : 0,
                 ];
             })
             ->sortBy([['gross_margin', 'desc'], ['category_name', 'asc']])
@@ -1372,20 +1395,20 @@ class ReportController extends Controller
                 [
                     'Category' => 'category_name',
                     'Total Qty' => 'qty',
-                    'Sell Total' => fn($r) => number_format((float) $r->sell_total, 2),
-                    'Cost of Goods (COGS)' => fn($r) => number_format((float) $r->cog_total, 2),
-                    'Gross Margin' => fn($r) => number_format((float) $r->gross_margin, 2),
-                    'Margin %' => fn($r) => number_format((float) $r->margin_pct, 1) . '%',
+                    'Sell Total' => fn ($r) => number_format((float) $r->sell_total, 2),
+                    'Cost of Goods (COGS)' => fn ($r) => number_format((float) $r->cog_total, 2),
+                    'Gross Margin' => fn ($r) => number_format((float) $r->gross_margin, 2),
+                    'Margin %' => fn ($r) => number_format((float) $r->margin_pct, 1).'%',
                 ],
-                'sales-margin-categorywise_' . $from . '_to_' . $to . '.xlsx',
+                'sales-margin-categorywise_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
         }
 
         $totals = [
-            'sell_total'   => $grouped->sum('sell_total'),
-            'cog_total'    => $grouped->sum('cog_total'),
+            'sell_total' => $grouped->sum('sell_total'),
+            'cog_total' => $grouped->sum('cog_total'),
             'gross_margin' => $grouped->sum('gross_margin'),
         ];
         $totals['margin_pct'] = $totals['sell_total'] > 0
@@ -1394,7 +1417,7 @@ class ReportController extends Controller
         // Top-10 for chart
         $chartLabels = $grouped->take(10)->pluck('category_name');
         $chartMargin = $grouped->take(10)->pluck('gross_margin');
-        $chartSales  = $grouped->take(10)->pluck('sell_total');
+        $chartSales = $grouped->take(10)->pluck('sell_total');
 
         $branches = $this->getBranchesForUser();
 
@@ -1410,14 +1433,14 @@ class ReportController extends Controller
     public function quotationOrderSummary(Request $request)
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
-        $type     = $request->input('type');   // 'quotation' | 'order'
-        $status   = $request->input('status');
+        $type = $request->input('type');   // 'quotation' | 'order'
+        $status = $request->input('status');
         $customerId = $request->input('customer_id');
 
         $quotations = collect();
-        $orders     = collect();
+        $orders = collect();
 
-        if (!$type || $type === 'quotation') {
+        if (! $type || $type === 'quotation') {
             $quotations = SalesQuotation::with(['customer', 'branch', 'items'])
                 ->whereDate('quotation_date', '>=', $from)
                 ->whereDate('quotation_date', '<=', $to)
@@ -1427,21 +1450,21 @@ class ReportController extends Controller
                 ->orderByDesc('quotation_date')
                 ->get()
                 ->map(fn ($q) => (object) [
-                    'type'         => 'Quotation',
-                    'number'       => $q->quotation_number,
-                    'date'         => $q->quotation_date,
-                    'valid_until'  => $q->valid_until,
-                    'customer'     => $q->customer?->name ?? 'Walk-in',
-                    'branch'       => $q->branch?->name,
-                    'items_count'  => $q->items->count(),
-                    'total'        => $q->total,
-                    'status'       => $q->status,
+                    'type' => 'Quotation',
+                    'number' => $q->quotation_number,
+                    'date' => $q->quotation_date,
+                    'valid_until' => $q->valid_until,
+                    'customer' => $q->customer?->name ?? 'Walk-in',
+                    'branch' => $q->branch?->name,
+                    'items_count' => $q->items->count(),
+                    'total' => $q->total,
+                    'status' => $q->status,
                     'converted_bill_id' => $q->converted_sales_bill_id,
-                    'show_url'     => route('sales.sales-quotations.show', $q),
+                    'show_url' => route('sales.sales-quotations.show', $q),
                 ]);
         }
 
-        if (!$type || $type === 'order') {
+        if (! $type || $type === 'order') {
             $orders = SalesOrder::with(['customer', 'branch', 'items'])
                 ->whereDate('order_date', '>=', $from)
                 ->whereDate('order_date', '<=', $to)
@@ -1451,17 +1474,17 @@ class ReportController extends Controller
                 ->orderByDesc('order_date')
                 ->get()
                 ->map(fn ($o) => (object) [
-                    'type'         => 'Order',
-                    'number'       => $o->order_number,
-                    'date'         => $o->order_date,
-                    'valid_until'  => $o->expected_delivery_date,
-                    'customer'     => $o->customer?->name ?? 'Walk-in',
-                    'branch'       => $o->branch?->name,
-                    'items_count'  => $o->items->count(),
-                    'total'        => $o->total,
-                    'status'       => $o->status,
+                    'type' => 'Order',
+                    'number' => $o->order_number,
+                    'date' => $o->order_date,
+                    'valid_until' => $o->expected_delivery_date,
+                    'customer' => $o->customer?->name ?? 'Walk-in',
+                    'branch' => $o->branch?->name,
+                    'items_count' => $o->items->count(),
+                    'total' => $o->total,
+                    'status' => $o->status,
                     'converted_bill_id' => $o->converted_sales_bill_id,
-                    'show_url'     => route('sales.sales-orders.show', $o),
+                    'show_url' => route('sales.sales-orders.show', $o),
                 ]);
         }
 
@@ -1474,15 +1497,15 @@ class ReportController extends Controller
                 [
                     'Type' => 'type',
                     'Doc Number' => 'number',
-                    'Date' => fn($r) => $r->date ? \Carbon\Carbon::parse($r->date)->format('d-m-Y') : '',
-                    'Valid Until / Delivery' => fn($r) => $r->valid_until ? \Carbon\Carbon::parse($r->valid_until)->format('d-m-Y') : '',
+                    'Date' => fn ($r) => $r->date ? Carbon::parse($r->date)->format('d-m-Y') : '',
+                    'Valid Until / Delivery' => fn ($r) => $r->valid_until ? Carbon::parse($r->valid_until)->format('d-m-Y') : '',
                     'Customer' => 'customer',
                     'Branch' => 'branch',
                     'Items Count' => 'items_count',
-                    'Total Amount' => fn($r) => number_format((float) $r->total, 2),
+                    'Total Amount' => fn ($r) => number_format((float) $r->total, 2),
                     'Status' => 'status',
                 ],
-                'quotation-order-summary_' . $from . '_to_' . $to . '.xlsx',
+                'quotation-order-summary_'.$from.'_to_'.$to.'.xlsx',
                 null,
                 $request->query('export') === 'csv' ? 'csv' : 'excel'
             );
@@ -1490,20 +1513,22 @@ class ReportController extends Controller
 
         $summary = [
             'total_quotations' => $quotations->count(),
-            'total_orders'     => $orders->count(),
-            'open'             => $rows->whereIn('status', ['Draft', 'Sent', 'Accepted', 'Open', 'Partially Fulfilled', 'Confirmed'])->count(),
-            'converted'        => $rows->where('status', 'Converted')->count(),
-            'cancelled'        => $rows->where('status', 'Cancelled')->count(),
+            'total_orders' => $orders->count(),
+            'open' => $rows->whereIn('status', ['Draft', 'Sent', 'Accepted', 'Open', 'Partially Fulfilled', 'Confirmed'])->count(),
+            'converted' => $rows->where('status', 'Converted')->count(),
+            'cancelled' => $rows->where('status', 'Cancelled')->count(),
         ];
 
-        $branches   = $this->getBranchesForUser();
+        $branches = $this->getBranchesForUser();
         $filterCustId = $request->input('customer_id');
-        $customers  = Customer::where('status', true)->orderBy('name')->limit(30)->pluck('name', 'id');
+        $customers = Customer::where('status', true)->orderBy('name')->limit(30)->pluck('name', 'id');
         if ($filterCustId && ! isset($customers[$filterCustId])) {
             $fc = Customer::find($filterCustId);
-            if ($fc) $customers->put($fc->id, $fc->name);
+            if ($fc) {
+                $customers->put($fc->id, $fc->name);
+            }
         }
-        $statuses   = ['Draft', 'Sent', 'Accepted', 'Open', 'Partially Fulfilled', 'Converted', 'Cancelled'];
+        $statuses = ['Draft', 'Sent', 'Accepted', 'Open', 'Partially Fulfilled', 'Converted', 'Cancelled'];
 
         return view('reports.quotation-order-summary', compact(
             'rows', 'summary', 'from', 'to', 'branchId', 'type', 'status',
@@ -1517,12 +1542,12 @@ class ReportController extends Controller
      */
     public function reorderReport(Request $request)
     {
-        $branchId        = $this->resolveBranchId($request);
-        $brandId         = $request->input('brand_id');
+        $branchId = $this->resolveBranchId($request);
+        $brandId = $request->input('brand_id');
         $categoryValueId = $request->input('category_value_id');
-        $stockStatus     = $request->input('stock_status'); // 'out' | 'low'
-        $search          = $request->input('search');
-        $threshold       = (int) $request->input('threshold', 5); // default low-stock threshold
+        $stockStatus = $request->input('stock_status'); // 'out' | 'low'
+        $search = $request->input('search');
+        $threshold = (int) $request->input('threshold', 5); // default low-stock threshold
 
         $query = ItemStock::with(['item.brand', 'item.categoryValue', 'item.supplier', 'branch'])
             ->where('quantity', '<=', max($threshold, 0))
@@ -1531,8 +1556,7 @@ class ReportController extends Controller
             ->when($categoryValueId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('category_value_id', $categoryValueId)))
             ->when($stockStatus === 'out', fn ($q) => $q->where('quantity', '<=', 0))
             ->when($stockStatus === 'low', fn ($q) => $q->where('quantity', '>', 0)->where('quantity', '<=', $threshold))
-            ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) =>
-                $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")
+            ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")
             ));
 
         // KPIs for the whole filtered set come from one SQL aggregate; only a page of rows is ever loaded.
@@ -1541,8 +1565,8 @@ class ReportController extends Controller
         )->first();
         $kpi = [
             'out_of_stock' => (int) $kpiRow->out_of_stock,
-            'low_stock'    => (int) $kpiRow->low_stock,
-            'total_skus'   => (int) $kpiRow->total_skus,
+            'low_stock' => (int) $kpiRow->low_stock,
+            'total_skus' => (int) $kpiRow->total_skus,
         ];
 
         $query->orderBy('item_stocks.quantity')->orderBy('item_stocks.id');
@@ -1550,38 +1574,38 @@ class ReportController extends Controller
         // Full-dataset export is server-side (the on-page table only holds one page).
         if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
             return $this->exportQueryOrData($query, [
-                'Item Code'   => fn ($s) => $s->item?->item_code,
-                'Item Name'   => fn ($s) => $s->item?->name,
-                'Brand'       => fn ($s) => $s->item?->brand?->name,
-                'Category'    => fn ($s) => $s->item?->categoryValue?->name,
-                'Branch'      => fn ($s) => $s->branch?->name,
+                'Item Code' => fn ($s) => $s->item?->item_code,
+                'Item Name' => fn ($s) => $s->item?->name,
+                'Brand' => fn ($s) => $s->item?->brand?->name,
+                'Category' => fn ($s) => $s->item?->categoryValue?->name,
+                'Branch' => fn ($s) => $s->branch?->name,
                 'Current Qty' => fn ($s) => $s->quantity,
-                'Sell Price'  => fn ($s) => number_format((float) $s->sell_price, 2, '.', ''),
-                'MRP'         => fn ($s) => number_format((float) $s->mrp, 2, '.', ''),
-                'Supplier'    => fn ($s) => $s->item?->supplier?->name,
-                'Status'      => fn ($s) => $s->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
+                'Sell Price' => fn ($s) => number_format((float) $s->sell_price, 2, '.', ''),
+                'MRP' => fn ($s) => number_format((float) $s->mrp, 2, '.', ''),
+                'Supplier' => fn ($s) => $s->item?->supplier?->name,
+                'Status' => fn ($s) => $s->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
             ], 'reorder-stock-report.xlsx', null, $request->query('export') === 'csv' ? 'csv' : 'excel');
         }
 
         $rows = $query->paginate(100)->withQueryString()->through(function ($stock) {
             return (object) [
-                'item_code'     => $stock->item?->item_code,
-                'item_name'     => $stock->item?->name,
-                'brand_name'    => $stock->item?->brand?->name,
+                'item_code' => $stock->item?->item_code,
+                'item_name' => $stock->item?->name,
+                'brand_name' => $stock->item?->brand?->name,
                 'category_name' => $stock->item?->categoryValue?->name,
-                'branch_name'   => $stock->branch?->name,
-                'branch_id'     => $stock->branch_id,
-                'quantity'      => $stock->quantity,
-                'sell_price'    => $stock->sell_price,
-                'mrp'           => $stock->mrp,
-                'supplier_id'   => $stock->item?->supplier_id,
+                'branch_name' => $stock->branch?->name,
+                'branch_id' => $stock->branch_id,
+                'quantity' => $stock->quantity,
+                'sell_price' => $stock->sell_price,
+                'mrp' => $stock->mrp,
+                'supplier_id' => $stock->item?->supplier_id,
                 'supplier_name' => $stock->item?->supplier?->name,
-                'status'        => $stock->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
+                'status' => $stock->quantity <= 0 ? 'Out of Stock' : 'Low Stock',
             ];
         });
 
-        $branches   = $this->getBranchesForUser();
-        $brands     = Brand::orderBy('name')->pluck('name', 'id');
+        $branches = $this->getBranchesForUser();
+        $brands = Brand::orderBy('name')->pluck('name', 'id');
         $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
 
         return view('reports.reorder-report', compact(
@@ -1590,7 +1614,7 @@ class ReportController extends Controller
         ));
     }
 
-    public function renderGenericReport(Request $request, string $module, \App\Services\Reports\DynamicReportService $reportService)
+    public function renderGenericReport(Request $request, string $module, DynamicReportService $reportService)
     {
         $branches = $this->getBranchesForUser();
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
@@ -1609,10 +1633,10 @@ class ReportController extends Controller
 
         if ($isExport) {
             $title = $reportData['title'] ?? ucfirst(str_replace('-', ' ', $module));
-            $filename = \Illuminate\Support\Str::slug($title) . '_' . ($from ?: now()->format('Y-m-d')) . '.xlsx';
+            $filename = Str::slug($title).'_'.($from ?: now()->format('Y-m-d')).'.xlsx';
             $columns = $reportData['columns'] ?? [];
             $hasHash = ($columns[0] ?? null) === '#';
-            $exportColumns = array_values(array_filter($columns, fn($c) => $c !== '#' && $c !== 'Action' && !empty($c)));
+            $exportColumns = array_values(array_filter($columns, fn ($c) => $c !== '#' && $c !== 'Action' && ! empty($c)));
             $rows = $reportData['rows'] ?? [];
 
             $exportRows = [];
@@ -1620,7 +1644,9 @@ class ReportController extends Controller
                 $cells = is_array($r) ? ($r['cells'] ?? []) : (is_object($r) ? ($r->cells ?? []) : []);
                 $rowClean = [];
                 foreach ($columns as $cIdx => $colName) {
-                    if ($colName === '#' || $colName === 'Action') continue;
+                    if ($colName === '#' || $colName === 'Action') {
+                        continue;
+                    }
                     $cellIdx = $hasHash ? ($cIdx - 1) : $cIdx;
                     $val = $cells[$cellIdx] ?? '';
                     $valClean = html_entity_decode(strip_tags((string) $val), ENT_QUOTES, 'UTF-8');
@@ -1660,10 +1686,10 @@ class ReportController extends Controller
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
         $search = $request->input('search');
 
-        $filename = 'gst-sales-taxwise_' . $from . '_to_' . $to . '.xlsx';
+        $filename = 'gst-sales-taxwise_'.$from.'_to_'.$to.'.xlsx';
 
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\GstSalesTaxwiseExport($from, $to, $branchId, $search ?: null),
+        return Excel::download(
+            new GstSalesTaxwiseExport($from, $to, $branchId, $search ?: null),
             $filename
         );
     }
@@ -1679,10 +1705,10 @@ class ReportController extends Controller
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
 
-        $filename = 'gst-purchase-summary_' . $from . '_to_' . $to . '.xlsx';
+        $filename = 'gst-purchase-summary_'.$from.'_to_'.$to.'.xlsx';
 
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\GstPurchaseSummaryInvoiceWiseExport($from, $to, $branchId),
+        return Excel::download(
+            new GstPurchaseSummaryInvoiceWiseExport($from, $to, $branchId),
             $filename
         );
     }
@@ -1705,7 +1731,7 @@ class ReportController extends Controller
         return false;
     }
 
-    private function getBranchesForUser(): \Illuminate\Support\Collection
+    private function getBranchesForUser(): Collection
     {
         $user = auth()->user();
         if (! $this->isGlobalAdmin() && $user && $user->branch_id) {
@@ -1727,6 +1753,7 @@ class ReportController extends Controller
             if ($val === 'all' || empty($val) || $val === '0') {
                 return null;
             }
+
             return (int) $val;
         }
 
@@ -1743,12 +1770,12 @@ class ReportController extends Controller
         $rawFrom = $request->input('from');
         $rawTo = $request->input('to');
         try {
-            $from = $rawFrom ? \Carbon\Carbon::parse($rawFrom)->format('Y-m-d') : now()->startOfMonth()->format('Y-m-d');
+            $from = $rawFrom ? Carbon::parse($rawFrom)->format('Y-m-d') : now()->startOfMonth()->format('Y-m-d');
         } catch (\Exception $e) {
             $from = now()->startOfMonth()->format('Y-m-d');
         }
         try {
-            $to = $rawTo ? \Carbon\Carbon::parse($rawTo)->format('Y-m-d') : now()->format('Y-m-d');
+            $to = $rawTo ? Carbon::parse($rawTo)->format('Y-m-d') : now()->format('Y-m-d');
         } catch (\Exception $e) {
             $to = now()->format('Y-m-d');
         }
@@ -1821,8 +1848,8 @@ class ReportController extends Controller
         }, array_values($columns), array_keys($columns));
 
         if ($format === 'csv') {
-            $csvFilename = str_ends_with($filename, '.csv') ? $filename : (preg_replace('/\.(xlsx|xls)$/i', '', $filename) . '.csv');
-            if (is_array($source) || $source instanceof \Illuminate\Support\Collection) {
+            $csvFilename = str_ends_with($filename, '.csv') ? $filename : (preg_replace('/\.(xlsx|xls)$/i', '', $filename).'.csv');
+            if (is_array($source) || $source instanceof Collection) {
                 return response()->stream(function () use ($source, $columns, $headerLabels, $rowMapper) {
                     $handle = fopen('php://output', 'w');
                     fwrite($handle, "\xEF\xBB\xBF");
@@ -1854,14 +1881,15 @@ class ReportController extends Controller
                     'Expires' => '0',
                 ]);
             }
+
             return $this->exportQueryToCsv($source, $columns, $csvFilename, $rowMapper);
         }
 
         // Export as real Excel (.xlsx)
-        $xlsxFilename = str_ends_with($filename, '.xlsx') ? $filename : (preg_replace('/\.(csv|xls)$/i', '', $filename) . '.xlsx');
+        $xlsxFilename = str_ends_with($filename, '.xlsx') ? $filename : (preg_replace('/\.(csv|xls)$/i', '', $filename).'.xlsx');
         $rows = [];
 
-        if (is_array($source) || $source instanceof \Illuminate\Support\Collection) {
+        if (is_array($source) || $source instanceof Collection) {
             foreach ($source as $item) {
                 if ($rowMapper !== null) {
                     $mapped = $rowMapper($item);

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Support\Carbon;
 
 class Controller extends BaseController
 {
@@ -34,11 +37,12 @@ class Controller extends BaseController
         if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/', $v, $m)) {
             $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
             $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+
             return "{$m[3]}-{$month}-{$day}";
         }
 
         try {
-            return \Illuminate\Support\Carbon::parse($v)->format('Y-m-d');
+            return Carbon::parse($v)->format('Y-m-d');
         } catch (\Exception $e) {
             return $v;
         }
@@ -52,14 +56,8 @@ class Controller extends BaseController
      * 4. Otherwise, falls back to session('active_branch_id').
      * 5. If still empty, falls back to first active DB branch (or 1).
      */
-    protected function resolveActiveBranchId(?\Illuminate\Http\Request $request = null, bool $allowAll = false): int|string
+    protected function resolveActiveBranchId(?Request $request = null, bool $allowAll = false): int|string
     {
-        $user = auth()->user();
-        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
-        if (! $isGlobalAdmin && $user && $user->branch_id !== null) {
-            return (int) $user->branch_id;
-        }
-
         $req = $request ?: request();
         $raw = $req ? $req->input('branch_id') : null;
 
@@ -81,7 +79,13 @@ class Controller extends BaseController
             return (int) $sessionBranch;
         }
 
-        if ($allowAll && $isGlobalAdmin) {
+        $user = auth()->user();
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']) || $user->email === 'admin@urbanpos.com' || ($user && $user->can('reports.view'));
+        if (! $isGlobalAdmin && $user && $user->branch_id !== null && ! $allowAll) {
+            return (int) $user->branch_id;
+        }
+
+        if ($allowAll) {
             return 'all';
         }
 
@@ -89,14 +93,14 @@ class Controller extends BaseController
             return (int) $user->branch_id;
         }
 
-        return (int) (\App\Models\Branch::where('status', true)->value('id') ?: (\App\Models\Branch::value('id') ?? 1));
+        return (int) (Branch::where('status', true)->value('id') ?: (Branch::value('id') ?? 1));
     }
 
     /**
      * Resolve branch filter for listing/index queries.
      * Returns branch ID (int), 'all' (string), or active branch ID.
      */
-    protected function resolveBranchFilter(?\Illuminate\Http\Request $request = null): int|string
+    protected function resolveBranchFilter(?Request $request = null): int|string
     {
         return $this->resolveActiveBranchId($request, allowAll: true);
     }

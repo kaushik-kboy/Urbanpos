@@ -13,16 +13,16 @@
         </small>
     </div>
     <div class="d-flex align-items-center mt-2 mt-md-0">
-        <a href="{{ route('tools.gst.gstr-2.export', request()->all()) }}" class="btn btn-success btn-sm shadow-sm font-weight-bold mr-2">
+        <a href="{{ route('tools.gst.gstr-2.export', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-success btn-sm shadow-sm font-weight-bold mr-2">
             <i class="fas fa-file-csv mr-1"></i> Export Inward Register CSV
         </a>
-        <a href="{{ route('tools.gst.gstr-3b.page') }}" class="btn btn-primary btn-sm shadow-sm font-weight-bold mr-2">
+        <a href="{{ route('tools.gst.gstr-3b.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-primary btn-sm shadow-sm font-weight-bold mr-2">
             <i class="fas fa-balance-scale mr-1"></i> GSTR-3B (Offset)
         </a>
-        <a href="{{ route('tools.gst.gstr-1.page') }}" class="btn btn-primary btn-sm shadow-sm font-weight-bold mr-2">
+        <a href="{{ route('tools.gst.gstr-1.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-primary btn-sm shadow-sm font-weight-bold mr-2">
             <i class="fas fa-file-invoice-dollar mr-1"></i> GSTR-1 (Sales)
         </a>
-        <a href="{{ route('tools.integrations-gst', ['view' => 'returns']) }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
+        <a href="{{ route('tools.integrations-gst', ['view' => 'returns', 'from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
             <i class="fas fa-arrow-left mr-1"></i> GST Dashboard
         </a>
     </div>

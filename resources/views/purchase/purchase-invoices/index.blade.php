@@ -34,10 +34,8 @@
                 </div>
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>
-                    <select name="branch_id" class="form-control form-control-sm" {{ $branches->count() <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
-                        @if($branches->count() > 1)
-                            <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Branches</option>
-                        @endif
+                    <select name="branch_id" class="form-control form-control-sm">
+                        <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Branches</option>
                         @foreach ($branches as $bId => $bName)
                             <option value="{{ $bId }}" {{ (string)request('branch_id') === (string)$bId ? 'selected' : '' }}>
                                 {{ $bName }}
@@ -69,7 +67,7 @@
                 </div>
                 <div class="col-md-4 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply Filter</button>
-                    <a href="{{ route('purchase.purchase-invoices.index') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('purchase.purchase-invoices.index', ['reset' => 1]) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
                 </div>
             </form>
         </div>
@@ -116,9 +114,9 @@
                             <td>{{ number_format($invoice->total, 2) }}</td>
                             <td class="text-right text-nowrap">
                                 <a href="{{ route('master.barcodes.print', ['purchase_invoice_id' => $invoice->id, 'format' => '50x38_2up']) }}" target="_blank" class="btn btn-xs btn-outline-warning mr-1" title="Print Barcode Stickers (TSC TE244)"><i class="fas fa-barcode"></i> Stickers</a>
-                                <a href="{{ route('purchase.purchase-invoices.show', $invoice) }}" class="btn btn-xs btn-outline-info mr-1" title="View"><i class="fas fa-eye"></i> View</a>
+                                <a href="{{ route('purchase.purchase-invoices.show', array_merge(['purchase_invoice' => $invoice->id], request()->query())) }}" class="btn btn-xs btn-outline-info mr-1" title="View"><i class="fas fa-eye"></i> View</a>
                                 <a href="{{ route('purchase.purchase-invoices.print', $invoice) }}" target="_blank" class="btn btn-xs btn-outline-primary mr-1" title="Print"><i class="fas fa-print"></i> Print</a>
-                                <a href="{{ route('purchase.purchase-invoices.edit', $invoice) }}" class="btn btn-xs btn-outline-secondary" title="Edit"><i class="fas fa-pen"></i> Edit</a>
+                                <a href="{{ route('purchase.purchase-invoices.edit', array_merge(['purchase_invoice' => $invoice->id], request()->query())) }}" class="btn btn-xs btn-outline-secondary" title="Edit"><i class="fas fa-pen"></i> Edit</a>
                             </td>
                         </tr>
                     @empty
