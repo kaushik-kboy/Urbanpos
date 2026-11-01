@@ -30,20 +30,23 @@ class EnsureActiveBranch
             } else {
                 // User has access to switch branches (Owner/Admin/Manager)
                 $currentActive = session('active_branch_id');
-                $isValid = $currentActive && Branch::where('id', $currentActive)->where('status', true)->exists();
+                $isValid = ($currentActive === 'all')
+                    || ($currentActive && Branch::where('id', $currentActive)->where('status', true)->exists());
                 if (! $isValid) {
                     session(['active_branch_id' => $firstActiveBranchId]);
                 }
             }
 
-            // Auto-heal incoming query/filter branch_id if present but invalid/stale/empty on GET.
-            // Report routes support 'all', '0', or empty to mean consolidated/all branches; never overwrite report filters.
+            // Auto-heal incoming query/filter branch_id if present but truly invalid on GET.
+            // NEVER overwrite 'all', '0', or empty for listing and report filter selections!
             if ($request->isMethod('GET') && $request->has('branch_id')) {
-                if (! $request->is('reports*') && ! $request->is('*/reports*')) {
-                    $rawBranch = $request->input('branch_id');
-                    if (empty($rawBranch) || $rawBranch === 'all' || $rawBranch === '0' || ! Branch::where('id', $rawBranch)->where('status', true)->exists()) {
+                $rawBranch = $request->input('branch_id');
+                if ($rawBranch !== 'all' && $rawBranch !== '' && $rawBranch !== '0') {
+                    if (is_numeric($rawBranch) && ! Branch::where('id', $rawBranch)->where('status', true)->exists()) {
                         $healedBranchId = session('active_branch_id') ?: $firstActiveBranchId;
-                        $request->merge(['branch_id' => $healedBranchId]);
+                        if ($healedBranchId !== 'all') {
+                            $request->merge(['branch_id' => $healedBranchId]);
+                        }
                     }
                 }
             }

@@ -19,7 +19,7 @@
             <a href="{{ route('purchase.purchase-orders.edit', $purchaseOrder) }}" class="btn btn-outline-secondary btn-sm mr-1 shadow-sm">
                 <i class="fas fa-pen mr-1"></i> Edit
             </a>
-            <a href="{{ route('purchase.purchase-orders.index') }}" class="btn btn-secondary btn-sm shadow-sm">
+            <a href="{{ session()->has('purchase_orders_filters') ? route('purchase.purchase-orders.index', session('purchase_orders_filters')) : route('purchase.purchase-orders.index') }}" class="btn btn-secondary btn-sm shadow-sm">
                 <i class="fas fa-arrow-left mr-1"></i> Back to List
             </a>
         </div>

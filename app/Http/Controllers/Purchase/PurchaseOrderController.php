@@ -6,9 +6,12 @@ use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
+use App\Models\PurchaseIndent;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Services\Accounting\DocumentNumberingService;
 use App\Services\Audit\AuditLogger;
+use App\Services\DynamicValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,12 +19,32 @@ use Illuminate\Validation\ValidationException;
 class PurchaseOrderController extends Controller
 {
     use HasSorting;
-    public function __construct(private AuditLogger $auditLogger)
-    {
-    }
+
+    public function __construct(private AuditLogger $auditLogger) {}
 
     public function index(Request $request)
     {
+        $filterKeys = ['search', 'date_from', 'date_to', 'branch_id', 'supplier_id', 'status', 'sort', 'direction', 'page'];
+
+        if ($request->has('reset')) {
+            $request->session()->forget('purchase_orders_filters');
+
+            return redirect()->route('purchase.purchase-orders.index');
+        }
+
+        if (! $request->hasAny($filterKeys)) {
+            $savedFilters = $request->session()->get('purchase_orders_filters');
+            if (! empty($savedFilters) && is_array($savedFilters)) {
+                return redirect()->route('purchase.purchase-orders.index', $savedFilters);
+            }
+        } else {
+            $currentFilters = array_filter(
+                $request->only($filterKeys),
+                fn ($v) => $v !== null && $v !== ''
+            );
+            $request->session()->put('purchase_orders_filters', $currentFilters);
+        }
+
         $query = PurchaseOrder::with(['supplier', 'branch']);
 
         if ($request->filled('search')) {
@@ -82,7 +105,7 @@ class PurchaseOrderController extends Controller
         $initialItems = null;
 
         if ($request->filled('from_indent')) {
-            $indent = \App\Models\PurchaseIndent::with(['items.item', 'branch'])->findOrFail($request->from_indent);
+            $indent = PurchaseIndent::with(['items.item', 'branch'])->findOrFail($request->from_indent);
             if ($indent->status !== 'Approved') {
                 return redirect()->route('purchase.purchase-indents.show', $indent)
                     ->with('error', 'Only approved indents can be converted to Purchase Orders.');
@@ -128,8 +151,8 @@ class PurchaseOrderController extends Controller
 
             $purchaseOrder->items()->createMany($lines);
 
-            if (!empty($data['header']['purchase_indent_id'])) {
-                $indent = \App\Models\PurchaseIndent::find($data['header']['purchase_indent_id']);
+            if (! empty($data['header']['purchase_indent_id'])) {
+                $indent = PurchaseIndent::find($data['header']['purchase_indent_id']);
                 if ($indent && $indent->status === 'Approved') {
                     $indent->update([
                         'status' => 'Converted',
@@ -233,7 +256,7 @@ class PurchaseOrderController extends Controller
         ]);
 
         if ($purchaseOrder->purchase_indent_id) {
-            $indent = \App\Models\PurchaseIndent::find($purchaseOrder->purchase_indent_id);
+            $indent = PurchaseIndent::find($purchaseOrder->purchase_indent_id);
             if ($indent && $indent->status === 'Converted') {
                 $indent->update([
                     'status' => 'Approved',
@@ -264,7 +287,7 @@ class PurchaseOrderController extends Controller
                     'po_number' => $po->po_number,
                     'po_date' => $po->po_date ? $po->po_date->format('d-m-Y') : '',
                     'total' => (float) $po->total,
-                    'label' => $po->po_number . ($po->po_date ? ' (' . $po->po_date->format('d-m-Y') . ')' : ''),
+                    'label' => $po->po_number.($po->po_date ? ' ('.$po->po_date->format('d-m-Y').')' : ''),
                 ];
             });
 
@@ -278,7 +301,7 @@ class PurchaseOrderController extends Controller
         $items = $purchaseOrder->items->map(function ($poItem) {
             $item = $poItem->item;
             $code = $item?->item_code ?: ($item?->ean_upc_code ?: '');
-            $desc = $item ? ($item->name . ($item->item_code ? ' [' . $item->item_code . ']' : '')) : '';
+            $desc = $item ? ($item->name.($item->item_code ? ' ['.$item->item_code.']' : '')) : '';
 
             return [
                 'id' => $poItem->id,
@@ -320,7 +343,7 @@ class PurchaseOrderController extends Controller
     {
         $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
-        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+        return app(DocumentNumberingService::class)->generate(
             'purchase_order',
             $branchId ? (int) $branchId : null,
             $date
@@ -332,7 +355,7 @@ class PurchaseOrderController extends Controller
         $existingItemIds = collect($purchaseOrder?->items ?? ($initialItems ?? []))->pluck('item_id')->filter()->unique();
         $items = $existingItemIds->isNotEmpty()
             ? Item::whereIn('id', $existingItemIds)->with('gstTax:id,percentage')->get([
-                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id'
+                'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
             ])
             : collect();
 
@@ -431,28 +454,28 @@ class PurchaseOrderController extends Controller
     private function computeTotals(array $lines, array $data): array
     {
         $collection = collect($lines);
-        $freight      = (float) ($data['header']['freight']              ?? 0);
-        $roundOff     = (float) ($data['header']['round_off']            ?? 0);
-        $otherDiscAmt = (float) ($data['header']['other_disc_amt']       ?? 0);
-        $schemeDiscAmt= (float) ($data['header']['scheme_item_disc_amt'] ?? 0);
-        $schemeDiscPct= (float) ($data['header']['scheme_item_disc_percent'] ?? 0);
-        $totalExtCess = (float) ($data['header']['total_extra_cess']     ?? 0);
-        $totalWeight  = (float) ($data['header']['total_weight']         ?? 0);
+        $freight = (float) ($data['header']['freight'] ?? 0);
+        $roundOff = (float) ($data['header']['round_off'] ?? 0);
+        $otherDiscAmt = (float) ($data['header']['other_disc_amt'] ?? 0);
+        $schemeDiscAmt = (float) ($data['header']['scheme_item_disc_amt'] ?? 0);
+        $schemeDiscPct = (float) ($data['header']['scheme_item_disc_percent'] ?? 0);
+        $totalExtCess = (float) ($data['header']['total_extra_cess'] ?? 0);
+        $totalWeight = (float) ($data['header']['total_weight'] ?? 0);
 
         return [
-            'item_disc_amount'     => round($collection->sum('disc_amount'), 2),
-            'disc_amount'         => round($collection->sum('disc_amount'), 2),
-            'total_gst'           => round($collection->sum('gst_tax_amount'), 2),
-            'total_qty'           => $collection->sum('qty') + $collection->sum('free_qty'),
-            'total'               => round($collection->sum('net_amount') + $freight + $roundOff + $totalExtCess - $otherDiscAmt - $schemeDiscAmt, 2),
+            'item_disc_amount' => round($collection->sum('disc_amount'), 2),
+            'disc_amount' => round($collection->sum('disc_amount'), 2),
+            'total_gst' => round($collection->sum('gst_tax_amount'), 2),
+            'total_qty' => $collection->sum('qty') + $collection->sum('free_qty'),
+            'total' => round($collection->sum('net_amount') + $freight + $roundOff + $totalExtCess - $otherDiscAmt - $schemeDiscAmt, 2),
             // Normalize nullable numeric fields to 0 so MySQL strict mode doesn't reject null
-            'freight'             => $freight,
-            'round_off'           => $roundOff,
-            'other_disc_amt'      => $otherDiscAmt,
-            'scheme_item_disc_amt'=> $schemeDiscAmt,
+            'freight' => $freight,
+            'round_off' => $roundOff,
+            'other_disc_amt' => $otherDiscAmt,
+            'scheme_item_disc_amt' => $schemeDiscAmt,
             'scheme_item_disc_percent' => $schemeDiscPct,
-            'total_extra_cess'    => $totalExtCess,
-            'total_weight'        => $totalWeight,
+            'total_extra_cess' => $totalExtCess,
+            'total_weight' => $totalWeight,
         ];
     }
 
@@ -481,7 +504,7 @@ class PurchaseOrderController extends Controller
         ];
 
         $headerMessages = [];
-        app(\App\Services\DynamicValidationService::class)->applyTo('purchase_orders', $headerRules, $headerMessages);
+        app(DynamicValidationService::class)->applyTo('purchase_orders', $headerRules, $headerMessages);
         $header = $request->validate($headerRules, $headerMessages);
 
         $supplier = Supplier::find($header['supplier_id'] ?? null);
@@ -490,7 +513,6 @@ class PurchaseOrderController extends Controller
         }
 
         $header['po_date'] = $this->normalizeDate($header['po_date']);
-
 
         $validated = $request->validate([
             'items' => ['required', 'array', 'min:1'],
@@ -511,8 +533,8 @@ class PurchaseOrderController extends Controller
             $discAmount = (float) ($line['disc_amount'] ?? 0);
             $gross = round($qty * $costPrice, 2);
             if ($gross > 0 && $discAmount > $gross) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    "items.{$idx}.disc_amount" => ["Row #" . ($idx + 1) . ": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross})."],
+                throw ValidationException::withMessages([
+                    "items.{$idx}.disc_amount" => ['Row #'.($idx + 1).": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross})."],
                 ]);
             }
         }

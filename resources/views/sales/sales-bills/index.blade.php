@@ -184,7 +184,7 @@
                         <button type="submit" class="btn btn-primary btn-sm px-3">
                             <i class="fas fa-filter mr-1"></i> Apply Filter
                         </button>
-                        <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-outline-secondary btn-sm ml-1 px-3">
+                        <a href="{{ route('sales.sales-bills.index', ['reset' => 1]) }}" class="btn btn-outline-secondary btn-sm ml-1 px-3">
                             <i class="fas fa-undo mr-1"></i> Reset
                         </a>
                     </div>

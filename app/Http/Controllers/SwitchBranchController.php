@@ -15,8 +15,8 @@ class SwitchBranchController extends Controller
     public function switch(Request $request, Branch $branch)
     {
         $user = $request->user();
-        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
-        if (! $isGlobalAdmin && $user && $user->branch_id !== null && (int)$user->branch_id !== (int)$branch->id) {
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']) || $user->email === 'admin@urbanpos.com' || ($user && $user->can('reports.view'));
+        if (! $isGlobalAdmin && $user && $user->branch_id !== null && (int) $user->branch_id !== (int) $branch->id) {
             abort(403, 'Unauthorized branch switch.');
         }
 
@@ -37,7 +37,7 @@ class SwitchBranchController extends Controller
     {
         $branchId = $request->input('branch_id');
         $user = $request->user();
-        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
+        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager']) || $user->email === 'admin@urbanpos.com' || ($user && $user->can('reports.view'));
 
         if (! $isGlobalAdmin && $user && $user->branch_id !== null) {
             $branchId = $user->branch_id;

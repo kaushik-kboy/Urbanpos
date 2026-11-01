@@ -54,7 +54,7 @@
                     </button>
                 </form>
             @endif
-            <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-secondary btn-sm">
+            <a href="{{ session()->has('sales_bills_filters') ? route('sales.sales-bills.index', session('sales_bills_filters')) : route('sales.sales-bills.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left mr-1"></i> Back to Bills
             </a>
         </div>

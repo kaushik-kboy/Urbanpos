@@ -7,7 +7,7 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center py-0">
         <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-file-invoice text-primary mr-1"></i> Edit Purchase Order: <span class="text-primary">{{ $purchaseOrder->po_number }}</span></h1>
-        <a href="{{ route('purchase.purchase-orders.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
+        <a href="{{ session()->has('purchase_orders_filters') ? route('purchase.purchase-orders.index', session('purchase_orders_filters')) : route('purchase.purchase-orders.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to Orders
         </a>
     </div>
