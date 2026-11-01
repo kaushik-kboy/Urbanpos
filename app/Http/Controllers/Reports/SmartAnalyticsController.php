@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Exports\GenericReportExport;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\ItemStock;
 use App\Models\SalesBill;
-use App\Models\SalesBillItem;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SmartAnalyticsController extends Controller
@@ -52,7 +53,7 @@ class SmartAnalyticsController extends Controller
 
         $itemId = (int) $request->input('item_id');
         $rawBranch = $request->input('branch_id');
-        $branchId = ($request->filled('branch_id') && is_numeric($rawBranch) && (int)$rawBranch > 0) ? (int)$rawBranch : null;
+        $branchId = ($request->filled('branch_id') && is_numeric($rawBranch) && (int) $rawBranch > 0) ? (int) $rawBranch : null;
         $fromDate = $request->input('from_date') ? Carbon::parse($request->input('from_date'))->startOfDay() : now()->startOfMonth()->startOfDay();
         $toDate = $request->input('to_date') ? Carbon::parse($request->input('to_date'))->endOfDay() : now()->endOfDay();
 
@@ -158,7 +159,7 @@ class SmartAnalyticsController extends Controller
 
         $customerId = (int) $request->input('customer_id');
         $rawBranch = $request->input('branch_id');
-        $branchId = ($request->filled('branch_id') && is_numeric($rawBranch) && (int)$rawBranch > 0) ? (int)$rawBranch : null;
+        $branchId = ($request->filled('branch_id') && is_numeric($rawBranch) && (int) $rawBranch > 0) ? (int) $rawBranch : null;
         $fromDate = $request->input('from_date') ? Carbon::parse($request->input('from_date'))->startOfDay() : now()->startOfMonth()->startOfDay();
         $toDate = $request->input('to_date') ? Carbon::parse($request->input('to_date'))->endOfDay() : now()->endOfDay();
 
@@ -188,7 +189,7 @@ class SmartAnalyticsController extends Controller
                 'items.id',
                 'items.name',
                 DB::raw('SUM(sales_bill_items.qty) as total_qty'),
-                DB::raw('SUM(sales_bill_items.net_amount) as total_amount')
+                DB::raw('SUM(sales_bill_items.net_amount) as total_amount'),
             ])
             ->groupBy('items.id', 'items.name')
             ->orderByDesc('total_qty')
@@ -235,7 +236,7 @@ class SmartAnalyticsController extends Controller
                 ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
                 ->where('sales_bills.status', '!=', 'Cancelled')
                 ->whereBetween('sales_bills.bill_date', [$fromDate, $toDate])
-                ->when($branchId, fn($q) => $q->where('sales_bills.branch_id', $branchId))
+                ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
                 ->pluck('sales_bill_items.item_id')
                 ->unique()
                 ->toArray();
@@ -243,7 +244,7 @@ class SmartAnalyticsController extends Controller
             $items = Item::leftJoin('item_stocks', 'items.id', '=', 'item_stocks.item_id')
                 ->whereNotIn('items.id', $soldItemIds)
                 ->where('items.status', true)
-                ->when($branchId, fn($q) => $q->where('item_stocks.branch_id', $branchId))
+                ->when($branchId, fn ($q) => $q->where('item_stocks.branch_id', $branchId))
                 ->select([
                     'items.id',
                     'items.name',
@@ -251,7 +252,7 @@ class SmartAnalyticsController extends Controller
                     'items.sell_price',
                     DB::raw('COALESCE(SUM(item_stocks.quantity), 0) as current_stock'),
                     DB::raw('0 as total_sold_qty'),
-                    DB::raw('0 as total_revenue')
+                    DB::raw('0 as total_revenue'),
                 ])
                 ->groupBy('items.id', 'items.name', 'items.item_code', 'items.sell_price')
                 ->orderByDesc('current_stock')
@@ -266,7 +267,7 @@ class SmartAnalyticsController extends Controller
                 ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
                 ->where('sales_bills.status', '!=', 'Cancelled')
                 ->whereBetween('sales_bills.bill_date', [$fromDate, $toDate])
-                ->when($branchId, fn($q) => $q->where('sales_bills.branch_id', $branchId))
+                ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
                 ->select([
                     'items.id',
                     'items.name',
@@ -274,7 +275,7 @@ class SmartAnalyticsController extends Controller
                     'items.sell_price',
                     DB::raw('SUM(sales_bill_items.qty) as total_sold_qty'),
                     DB::raw('SUM(sales_bill_items.net_amount) as total_revenue'),
-                    DB::raw('COUNT(DISTINCT sales_bills.id) as bills_count')
+                    DB::raw('COUNT(DISTINCT sales_bills.id) as bills_count'),
                 ])
                 ->groupBy('items.id', 'items.name', 'items.item_code', 'items.sell_price')
                 ->orderByDesc($orderCol)
@@ -343,7 +344,7 @@ class SmartAnalyticsController extends Controller
             ->where('sales_bill_items.item_id', $itemId)
             ->where('sales_bills.status', '!=', 'Cancelled')
             ->whereBetween('sales_bills.bill_date', [$fromDate, $toDate])
-            ->when($branchId, fn($q) => $q->where('sales_bills.branch_id', $branchId))
+            ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
             ->select([
                 'sales_bills.bill_number',
                 'sales_bills.bill_date',
@@ -355,36 +356,24 @@ class SmartAnalyticsController extends Controller
             ])
             ->orderBy('sales_bills.bill_date', 'asc');
 
-        $filename = 'item_sales_' . ($item->item_code ?: $item->id) . '_' . date('Ymd_His') . '.xls';
-        $headers = [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
+        $filename = 'item_sales_'.($item->item_code ?: $item->id).'_'.date('Ymd_His').'.xlsx';
+        $headings = ['Bill No', 'Date & Time', 'Customer', 'Qty Sold', 'Unit Rate (₹)', 'Discount (₹)', 'Net Total (₹)'];
+        $rows = [];
 
-        return response()->stream(function () use ($salesQuery, $item) {
-            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
-            echo '<style>th { background-color: #2c3e50; color: #ffffff; font-weight: bold; border: 1px solid #000; padding: 6px; } td { border: 1px solid #ddd; padding: 5px; }</style>';
-            echo '</head><body>';
-            echo '<p><strong>Product:</strong> ' . htmlspecialchars($item->name) . ' | <strong>Code:</strong> ' . htmlspecialchars($item->item_code ?? '') . '</p>';
-            echo '<table border="1">';
-            echo '<thead><tr><th>Bill No</th><th>Date & Time</th><th>Customer</th><th>Qty Sold</th><th>Unit Rate</th><th>Discount</th><th>Net Total</th></tr></thead><tbody>';
+        $salesQuery->chunk(200, function ($chunk) use (&$rows) {
+            foreach ($chunk as $row) {
+                $rows[] = [
+                    $row->bill_number,
+                    $row->bill_date,
+                    $row->customer_name ?: 'Walk-in Customer',
+                    (float) $row->qty,
+                    (float) $row->sell_price,
+                    (float) $row->disc_amount,
+                    (float) $row->net_amount,
+                ];
+            }
+        });
 
-            $salesQuery->chunk(200, function ($rows) {
-                foreach ($rows as $row) {
-                    echo '<tr>';
-                    echo '<td>' . htmlspecialchars($row->bill_number) . '</td>';
-                    echo '<td>' . htmlspecialchars($row->bill_date) . '</td>';
-                    echo '<td>' . htmlspecialchars($row->customer_name ?: 'Walk-in Customer') . '</td>';
-                    echo '<td>' . htmlspecialchars((string) $row->qty) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) $row->sell_price) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) $row->disc_amount) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) $row->net_amount) . '</td>';
-                    echo '</tr>';
-                }
-            });
-
-            echo '</tbody></table></body></html>';
-        }, 200, $headers);
+        return Excel::download(new GenericReportExport($rows, $headings), $filename);
     }
 }

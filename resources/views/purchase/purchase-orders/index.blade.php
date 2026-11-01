@@ -70,7 +70,7 @@
                 </div>
                 <div class="col-md-4 col-sm-12 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm mr-1"><i class="fas fa-filter"></i> Apply Filter</button>
-                    <a href="{{ route('purchase.purchase-orders.index') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
+                    <a href="{{ route('purchase.purchase-orders.index', ['reset' => 1]) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo"></i> Reset</a>
                 </div>
             </form>
         </div>

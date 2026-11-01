@@ -3,17 +3,19 @@
 namespace App\Models;
 
 use App\Concerns\HasPostingLifecycle;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class SalesBill extends Model
 {
-    use HasFactory, HasPostingLifecycle, \App\Traits\HasCustomFields;
+    use \App\Traits\HasCustomFields, HasFactory, HasPostingLifecycle;
 
     protected $fillable = [
-        'bill_number', 'bill_date', 'customer_id', 'customer_pet_id', 'customer_gstin', 'branch_id', 'user_id', 'sales_delivery_note_id', 'till_session_id', 'invoice_type', 'delivery_type',
+        'bill_number', 'bill_date', 'customer_id', 'customer_pet_id', 'customer_gstin', 'branch_id', 'user_id', 'sales_delivery_note_id', 'till_session_id', 'invoice_type', 'delivery_type', 'fulfillment',
         'delivery_time', 'sales_type', 'purchase_type', 'payment_type', 'item_disc_amount', 'disc_percent',
         'bill_discount', 'disc_amount', 'round_off', 'total_gst', 'total_cgst', 'total_sgst', 'total_igst',
         'total_extra_cess', 'gst_calamity_cess',
@@ -40,20 +42,20 @@ class SalesBill extends Model
     {
         static::creating(function ($bill) {
             if (empty($bill->bill_date)) {
-                $bill->bill_date = \Carbon\Carbon::now('Asia/Kolkata');
+                $bill->bill_date = Carbon::now('Asia/Kolkata');
             } elseif ($bill->bill_date instanceof \DateTimeInterface) {
-                $bill->bill_date = \Carbon\Carbon::instance($bill->bill_date)->setTimezone('Asia/Kolkata');
+                $bill->bill_date = Carbon::instance($bill->bill_date)->setTimezone('Asia/Kolkata');
             } else {
-                $bill->bill_date = \Carbon\Carbon::parse($bill->bill_date, 'Asia/Kolkata')->setTimezone('Asia/Kolkata');
+                $bill->bill_date = Carbon::parse($bill->bill_date, 'Asia/Kolkata')->setTimezone('Asia/Kolkata');
             }
         });
 
         static::updating(function ($bill) {
-            if ($bill->isDirty('bill_date') && !empty($bill->bill_date)) {
+            if ($bill->isDirty('bill_date') && ! empty($bill->bill_date)) {
                 if ($bill->bill_date instanceof \DateTimeInterface) {
-                    $bill->bill_date = \Carbon\Carbon::instance($bill->bill_date)->setTimezone('Asia/Kolkata');
+                    $bill->bill_date = Carbon::instance($bill->bill_date)->setTimezone('Asia/Kolkata');
                 } else {
-                    $bill->bill_date = \Carbon\Carbon::parse($bill->bill_date, 'Asia/Kolkata')->setTimezone('Asia/Kolkata');
+                    $bill->bill_date = Carbon::parse($bill->bill_date, 'Asia/Kolkata')->setTimezone('Asia/Kolkata');
                 }
             }
         });
@@ -112,7 +114,7 @@ class SalesBill extends Model
         return $this->hasMany(SalesBillPayment::class);
     }
 
-    public function settlementItems(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    public function settlementItems(): MorphMany
     {
         return $this->morphMany(BillSettlementItem::class, 'billable');
     }
@@ -134,23 +136,23 @@ class SalesBill extends Model
 
     public function hasEwayBill(): bool
     {
-        return !empty($this->eway_bill_no);
+        return ! empty($this->eway_bill_no);
     }
 
     public function requiresEwayBill(): bool
     {
         // E-Way Bill is typically mandatory for consignment value > ₹50,000 or interstate deliveries
-        return (float) $this->total >= 50000 || !empty($this->vehicle_no) || !empty($this->transporter_name);
+        return (float) $this->total >= 50000 || ! empty($this->vehicle_no) || ! empty($this->transporter_name);
     }
 
     public function hasIrn(): bool
     {
-        return !empty($this->irn);
+        return ! empty($this->irn);
     }
 
     public function isEinvoiceCompleted(): bool
     {
-        return $this->einvoice_status === 'Completed' && !empty($this->irn);
+        return $this->einvoice_status === 'Completed' && ! empty($this->irn);
     }
 
     public function isEinvoiceFailed(): bool
@@ -161,7 +163,7 @@ class SalesBill extends Model
     public function requiresEinvoice(): bool
     {
         // Eligible if total >= ₹50,000 or Customer is registered (B2B with GSTIN)
-        return (float) $this->total >= 50000 || !empty($this->customer_gstin) || !empty($this->customer?->gst_no);
+        return (float) $this->total >= 50000 || ! empty($this->customer_gstin) || ! empty($this->customer?->gst_no);
     }
 
     public function isEinvoiceCancelled(): bool
@@ -177,6 +179,7 @@ class SalesBill extends Model
         } elseif (strlen($payload) > 800) {
             $payload = $this->irn ?: $payload;
         }
-        return 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=' . urlencode($payload);
+
+        return 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data='.urlencode($payload);
     }
 }

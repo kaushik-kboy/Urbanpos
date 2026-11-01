@@ -5,7 +5,7 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center py-0">
         <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-edit mr-2 text-primary"></i> Edit Purchase Return: {{ $purchaseReturn->return_number }}</h1>
-        <a href="{{ route('purchase.purchase-returns.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
+        <a href="{{ session()->has('purchase_returns_filters') ? route('purchase.purchase-returns.index', session('purchase_returns_filters')) : route('purchase.purchase-returns.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
             <i class="fas fa-arrow-left mr-1"></i> Back to List
         </a>
     </div>

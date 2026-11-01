@@ -14,7 +14,8 @@
         invoice_type: 'Retail Invoice',
         sales_type: '',
         purchase_type: 'Local',
-        delivery_type: 'Delivered',
+        fulfillment: '',
+        delivery_type: '',
         bill_discount: 0,
         tender_mode: null, // Cash, UPI, Card, Split, Credit (No default mode)
         split_payments: {
@@ -169,6 +170,13 @@
             state.customer_pet_id = null;
         }
 
+        const initFulfillment = window.EDIT_BILL?.fulfillment || window.EDIT_BILL?.delivery_type || $('#posFulfillmentSelect').val() || '';
+        state.fulfillment = initFulfillment;
+        state.delivery_type = initFulfillment;
+        if (initFulfillment && $('#posFulfillmentSelect').length) {
+            $('#posFulfillmentSelect').val(initFulfillment);
+        }
+
         const initSalesType = window.EDIT_BILL?.sales_type || $('#posSalesTypeSelect').val() || '';
         setSalesType(initSalesType);
 
@@ -188,7 +196,12 @@
             setSalesType(state.sales_type);
             state.purchase_type = window.EDIT_BILL.purchase_type || 'Local';
             setPurchaseType(state.purchase_type);
-            state.delivery_type = window.EDIT_BILL.delivery_type || 'Direct';
+            const billFulfillment = window.EDIT_BILL.fulfillment || window.EDIT_BILL.delivery_type || '';
+            state.fulfillment = billFulfillment;
+            state.delivery_type = billFulfillment;
+            if (billFulfillment && $('#posFulfillmentSelect').length) {
+                $('#posFulfillmentSelect').val(billFulfillment);
+            }
 
             // Point 2 & 3: Bill discount and remarks initialization
             state.bill_discount = window.EDIT_BILL.bill_discount ? parseFloat(window.EDIT_BILL.bill_discount) : 0;
@@ -211,29 +224,101 @@
                     scanInput.placeholder = 'View-Only Mode: Reading Bill #' + (window.EDIT_BILL.bill_number || '');
                 }
                 $('#pos-btn-item-lookup, #posHoldBtn, #posRecallBtn, #posClearBtn').prop('disabled', true);
-                $('#posBillDiscount, #posRemarks, #posSalesTypeSelect, #posBillerSelect, #posBranchSelect').prop('disabled', true);
+                $('#posBillDiscount, #posRemarks, #posSalesTypeSelect, #posFulfillmentSelect, #posBillerSelect, #posBranchSelect').prop('disabled', true);
                 $('.pos-tender-btn').prop('disabled', true);
             }
 
-            state.cash_received = window.EDIT_BILL.payments && window.EDIT_BILL.payments.length > 0 ? parseFloat(window.EDIT_BILL.payments[0].amount) : 0;
-            if (cashReceivedInput) cashReceivedInput.value = state.cash_received;
+            // Restore Tender Mode & Payment Breakdown (Task 3: Split and Single Tenders)
+            const billPayments = window.EDIT_BILL.payments || [];
+            const billPaymentType = (window.EDIT_BILL.payment_type || '').toLowerCase();
+            const isSplitPayment = billPaymentType === 'split' || billPayments.length > 1;
+
+            if (isSplitPayment) {
+                state.tender_mode = 'Split';
+                state.split_payments = { cash: 0, card: 0, wallet: 0, credit: 0, wallet_type: 'UPI' };
+                
+                billPayments.forEach(p => {
+                    const tenderName = (p.tender_type?.name || p.tender_type?.type || '').toLowerCase();
+                    const amt = parseFloat(p.amount) || 0;
+                    if (tenderName.includes('cash')) {
+                        state.split_payments.cash += amt;
+                    } else if (tenderName.includes('card')) {
+                        state.split_payments.card += amt;
+                    } else if (tenderName.includes('credit')) {
+                        state.split_payments.credit += amt;
+                    } else {
+                        state.split_payments.wallet += amt;
+                        if (p.tender_type?.name) {
+                            state.split_payments.wallet_type = p.tender_type.name;
+                        }
+                    }
+                });
+
+                $('.pos-tender-btn').removeClass('active');
+                $('.pos-tender-btn[data-mode="Split"]').addClass('active');
+                $('#posCashSection, #posUpiSection, #posCreditSection').hide();
+                $('#posSplitSection').show();
+                updateSplitPreviewUI();
+
+                if (window.IS_VIEW_ONLY) {
+                    $('#posEditSplitBtn').hide();
+                }
+            } else if (billPayments.length === 1) {
+                const singleP = billPayments[0];
+                const tenderName = singleP.tender_type?.name || window.EDIT_BILL.payment_type || 'Cash';
+                state.tender_mode = tenderName;
+                state.cash_received = parseFloat(singleP.amount) || 0;
+                if (cashReceivedInput) cashReceivedInput.value = state.cash_received;
+                
+                $('.pos-tender-btn').removeClass('active');
+                $(`.pos-tender-btn[data-mode="${tenderName}"]`).addClass('active');
+            } else if (window.EDIT_BILL.payment_type) {
+                state.tender_mode = window.EDIT_BILL.payment_type;
+                $('.pos-tender-btn').removeClass('active');
+                $(`.pos-tender-btn[data-mode="${window.EDIT_BILL.payment_type}"]`).addClass('active');
+            }
+
+            if (!isSplitPayment) {
+                state.cash_received = billPayments.length > 0 ? parseFloat(billPayments[0].amount) : 0;
+                if (cashReceivedInput) cashReceivedInput.value = state.cash_received;
+            }
             
-            state.cart = window.EDIT_BILL.items.map(i => ({
-                id: i.item_id,
-                name: i.item ? i.item.name : 'Unknown Item',
-                code: i.item ? (i.item.item_code || i.item.ean_upc_code || '') : '',
-                batch_no: i.batch_no || '',
-                exp_date: i.exp_date ? (typeof i.exp_date === 'string' ? i.exp_date.substring(0, 10) : '') : '',
-                sell_price: parseFloat(i.sell_price) || 0,
-                mrp: parseFloat(i.mrp) || 0,
-                qty: parseFloat(i.qty) || 1,
-                gst_percent: i.item && i.item.gst_tax ? parseFloat(i.item.gst_tax.percentage || i.item.gst_tax.igst || 0) : 0,
-                disc_percent: parseFloat(i.disc_percent) || 0,
-                disc_amount: parseFloat(i.disc_amount) || 0,
-                allow_negative_stock: i.item ? (i.item.allow_negative_stock ? 1 : 0) : 0,
-                stock: (parseFloat(i.stock) || 0),
-                batch_stock: (parseFloat(i.batch_stock) || 0)
-            }));
+            if (window.EDIT_BILL.items && window.EDIT_BILL.items.length > 0) {
+                state.cart = window.EDIT_BILL.items.map(i => ({
+                    id: i.item_id,
+                    name: i.item ? i.item.name : 'Unknown Item',
+                    code: i.item ? (i.item.item_code || i.item.ean_upc_code || '') : '',
+                    batch_no: i.batch_no || '',
+                    exp_date: i.exp_date ? (typeof i.exp_date === 'string' ? i.exp_date.substring(0, 10) : '') : '',
+                    sell_price: parseFloat(i.sell_price) || 0,
+                    mrp: parseFloat(i.mrp) || 0,
+                    qty: parseFloat(i.qty) || 1,
+                    gst_percent: i.item && i.item.gst_tax ? parseFloat(i.item.gst_tax.percentage || i.item.gst_tax.igst || 0) : 0,
+                    disc_percent: parseFloat(i.disc_percent) || 0,
+                    disc_amount: parseFloat(i.disc_amount) || 0,
+                    allow_negative_stock: i.item ? (i.item.allow_negative_stock ? 1 : 0) : 0,
+                    stock: (parseFloat(i.stock) || 0),
+                    batch_stock: (parseFloat(i.batch_stock) || 0)
+                }));
+            } else if (parseFloat(window.EDIT_BILL.total) > 0) {
+                // Point 1: Handle legacy/migrated bills without items safely
+                state.cart = [{
+                    id: 0,
+                    name: 'Sales Items (Migrated Bill #' + (window.EDIT_BILL.bill_number || '') + ')',
+                    code: 'MIGRATED',
+                    batch_no: '',
+                    exp_date: '',
+                    sell_price: parseFloat(window.EDIT_BILL.total) || 0,
+                    mrp: parseFloat(window.EDIT_BILL.total) || 0,
+                    qty: parseFloat(window.EDIT_BILL.total_qty) || 1,
+                    gst_percent: 0,
+                    disc_percent: 0,
+                    disc_amount: 0,
+                    allow_negative_stock: 1,
+                    stock: 1,
+                    batch_stock: 1
+                }];
+            }
             
             // Re-render UI pieces on load
             setTimeout(() => {
@@ -754,6 +839,17 @@
         document.getElementById('posHoldBtn')?.addEventListener('click', holdCurrentBill);
         document.getElementById('posRecallBtn')?.addEventListener('click', recallHeldBill);
         document.getElementById('posClearBtn')?.addEventListener('click', resetTerminalAll);
+
+        // Fulfillment Change
+        $('#posFulfillmentSelect').on('change', function () {
+            if (window.IS_VIEW_ONLY) return;
+            $(this).removeClass('is-invalid border-danger');
+            state.fulfillment = this.value;
+            state.delivery_type = this.value;
+            if (state.fulfillment) {
+                showNotification(`Fulfillment set to ${state.fulfillment}`, 'info');
+            }
+        });
 
         // Sales Bill Type Change (Branch-wise)
         $('#posSalesTypeSelect').on('change', function () {
@@ -2325,7 +2421,10 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Reset Sales Type to unselected placeholder & Purchase Type to default customer
+        // 6. Reset Fulfillment, Sales Type to unselected placeholder & Purchase Type to default customer
+        state.fulfillment = '';
+        state.delivery_type = '';
+        $('#posFulfillmentSelect').val('').removeClass('is-invalid border-danger');
         setSalesType('');
         setPurchaseType(window.INITIAL_CUSTOMER?.purchase_type || 'Local');
 
@@ -3627,6 +3726,8 @@
             id: Date.now(),
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             customer_id: state.customer_id,
+            fulfillment: state.fulfillment,
+            delivery_type: state.delivery_type || state.fulfillment,
             sales_type: state.sales_type,
             purchase_type: state.purchase_type || 'Local',
             bill_discount: state.bill_discount || 0,
@@ -3659,6 +3760,11 @@
         state.bill_discount = bill.bill_discount || 0;
         if ($('#posBillDiscount').length) $('#posBillDiscount').val(state.bill_discount > 0 ? state.bill_discount : '');
         if ($('#posRemarks').length) $('#posRemarks').val(bill.remarks || '');
+        state.fulfillment = bill.fulfillment || bill.delivery_type || '';
+        state.delivery_type = state.fulfillment;
+        if ($('#posFulfillmentSelect').length) {
+            $('#posFulfillmentSelect').val(state.fulfillment);
+        }
         if (bill.sales_type) {
             setSalesType(bill.sales_type);
         } else {
@@ -3752,6 +3858,19 @@
             showNotification('Please select a customer for this bill.', 'warning');
             return;
         }
+
+        // Validate Fulfillment is compulsory
+        const currentFulfillment = state.fulfillment || $('#posFulfillmentSelect').val();
+        if (!currentFulfillment || !String(currentFulfillment).trim()) {
+            const fMsg = 'Fulfillment is required. Please select Fulfillment (Delivery, Pick Up, or Other).';
+            showNotification(fMsg, 'warning');
+            $('#posFulfillmentSelect').addClass('is-invalid border-danger').focus();
+            alert(fMsg);
+            return;
+        }
+        $('#posFulfillmentSelect').removeClass('is-invalid border-danger');
+        state.fulfillment = String(currentFulfillment).trim();
+        state.delivery_type = state.fulfillment;
 
         // Validate Sales Bill Type is compulsory (Point 4: sales bill type compulsory form validation)
         const currentSalesType = state.sales_type || $('#posSalesTypeSelect').val();
@@ -4042,7 +4161,8 @@
             invoice_type: state.invoice_type,
             sales_type: state.sales_type,
             purchase_type: state.purchase_type || 'Local',
-            delivery_type: state.delivery_type,
+            delivery_type: state.delivery_type || state.fulfillment,
+            fulfillment: state.fulfillment || state.delivery_type,
             payment_type: state.tender_mode,
             save_action: action,
             send_whatsapp: action === 'whatsapp' ? 1 : 0,

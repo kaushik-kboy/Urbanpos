@@ -25,7 +25,7 @@
                     </button>
                 </form>
             @endif
-            <a href="{{ route('purchase.purchase-returns.index') }}" class="btn btn-secondary btn-sm">
+            <a href="{{ session()->has('purchase_returns_filters') ? route('purchase.purchase-returns.index', session('purchase_returns_filters')) : route('purchase.purchase-returns.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left mr-1"></i> Back to List
             </a>
         </div>

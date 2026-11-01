@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sales;
 
+use App\Models\Branch;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -27,17 +28,26 @@ class StoreSalesBillRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $branchId = $this->input('branch_id');
-        $validBranch = ! empty($branchId) && \App\Models\Branch::where('status', true)->where('id', $branchId)->exists();
+        $validBranch = ! empty($branchId) && Branch::where('status', true)->where('id', $branchId)->exists();
+        $merge = [];
         if (! $validBranch) {
             $user = $this->user();
             $fallbackBranchId = session('active_branch_id')
-                ?? ($user?->branch_id && \App\Models\Branch::where('status', true)->where('id', $user->branch_id)->exists() ? $user->branch_id : null)
-                ?? \App\Models\Branch::where('status', true)->orderBy('id')->value('id')
+                ?? ($user?->branch_id && Branch::where('status', true)->where('id', $user->branch_id)->exists() ? $user->branch_id : null)
+                ?? Branch::where('status', true)->orderBy('id')->value('id')
                 ?? 1;
 
-            $this->merge([
-                'branch_id' => $fallbackBranchId,
-            ]);
+            $merge['branch_id'] = $fallbackBranchId;
+        }
+
+        if ($this->filled('fulfillment') && ! $this->filled('delivery_type')) {
+            $merge['delivery_type'] = $this->input('fulfillment');
+        } elseif ($this->filled('delivery_type') && ! $this->filled('fulfillment')) {
+            $merge['fulfillment'] = $this->input('delivery_type');
+        }
+
+        if (! empty($merge)) {
+            $this->merge($merge);
         }
     }
 
@@ -47,42 +57,43 @@ class StoreSalesBillRequest extends FormRequest
 
         return [
             // ── Header ────────────────────────────────────────────────────
-            'bill_number'              => ['nullable', 'string', 'max:100'],
-            'bill_date'                => ['required', 'date', 'after_or_equal:2020-01-01 00:00:00', "before_or_equal:{$now}"],
-            'customer_id'              => ['required', 'exists:customers,id'],
-            'branch_id'                => ['required', 'exists:branches,id'],
-            'sales_delivery_note_id'   => ['nullable', 'exists:sales_delivery_notes,id'],
-            'invoice_type'             => ['required', 'in:Retail Invoice,Tax Invoice,Exempted'],
-            'delivery_type'            => ['required', 'string', 'max:255'],
-            'delivery_time'            => ['nullable', 'date_format:H:i'],
-            'sales_type'               => ['required', 'in:Local,Interstate'],
-            'payment_type'             => ['nullable', 'string', 'max:255'],
-            'till_session_id'          => ['nullable', 'exists:till_sessions,id'],
-            'round_off'                => ['nullable', 'numeric'],
-            'total_extra_cess'         => ['nullable', 'numeric', 'min:0'],
-            'gst_calamity_cess'        => ['nullable', 'numeric', 'min:0'],
-            'total_weight'             => ['nullable', 'numeric', 'min:0'],
-            'remarks'                  => ['nullable', 'string'],
-            'message'                  => ['nullable', 'string'],
-            'posting_key'              => ['nullable', 'string', 'max:100'],
+            'bill_number' => ['nullable', 'string', 'max:100'],
+            'bill_date' => ['required', 'date', 'after_or_equal:2020-01-01 00:00:00', "before_or_equal:{$now}"],
+            'customer_id' => ['required', 'exists:customers,id'],
+            'branch_id' => ['required', 'exists:branches,id'],
+            'sales_delivery_note_id' => ['nullable', 'exists:sales_delivery_notes,id'],
+            'invoice_type' => ['required', 'in:Retail Invoice,Tax Invoice,Exempted'],
+            'delivery_type' => ['required', 'string', 'max:255'],
+            'fulfillment' => ['nullable', 'string', 'max:50'],
+            'delivery_time' => ['nullable', 'date_format:H:i'],
+            'sales_type' => ['required', 'in:Local,Interstate'],
+            'payment_type' => ['nullable', 'string', 'max:255'],
+            'till_session_id' => ['nullable', 'exists:till_sessions,id'],
+            'round_off' => ['nullable', 'numeric'],
+            'total_extra_cess' => ['nullable', 'numeric', 'min:0'],
+            'gst_calamity_cess' => ['nullable', 'numeric', 'min:0'],
+            'total_weight' => ['nullable', 'numeric', 'min:0'],
+            'remarks' => ['nullable', 'string'],
+            'message' => ['nullable', 'string'],
+            'posting_key' => ['nullable', 'string', 'max:100'],
 
             // ── Line Items ────────────────────────────────────────────────
-            'items'                    => ['required', 'array', 'min:1'],
-            'items.*.item_id'          => ['required', 'exists:items,id'],
-            'items.*.batch_no'         => ['nullable', 'string', 'max:100'],
-            'items.*.exp_date'         => ['nullable', 'date'],
-            'items.*.qty'              => ['required', 'integer', 'min:1'],
-            'items.*.sell_price'       => ['required', 'numeric', 'min:0'],
-            'items.*.mrp'              => ['nullable', 'numeric', 'min:0'],
-            'items.*.disc_percent'     => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'items.*.disc_amount'      => ['nullable', 'numeric', 'min:0'],
-            'items.*.gst_percent'      => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_id' => ['required', 'exists:items,id'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
+            'items.*.exp_date' => ['nullable', 'date'],
+            'items.*.qty' => ['required', 'integer', 'min:1'],
+            'items.*.sell_price' => ['required', 'numeric', 'min:0'],
+            'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
+            'items.*.disc_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.disc_amount' => ['nullable', 'numeric', 'min:0'],
+            'items.*.gst_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             // ── Payments ──────────────────────────────────────────────────
-            'payments'                        => ['nullable', 'array'],
-            'payments.*.tender_type_id'       => ['required_with:payments', 'exists:tender_types,id'],
+            'payments' => ['nullable', 'array'],
+            'payments.*.tender_type_id' => ['required_with:payments', 'exists:tender_types,id'],
             'payments.*.tender_type_value_id' => ['nullable', 'exists:tender_type_values,id'],
-            'payments.*.amount'               => ['required_with:payments', 'numeric', 'min:0.01'],
+            'payments.*.amount' => ['required_with:payments', 'numeric', 'min:0.01'],
         ];
     }
 
@@ -97,7 +108,7 @@ class StoreSalesBillRequest extends FormRequest
                     $discAmount = (float) ($line['disc_amount'] ?? 0);
                     $gross = round($qty * $sellPrice, 2);
                     if ($gross > 0 && $discAmount > $gross) {
-                        $validator->errors()->add("items.{$idx}.disc_amount", "Row #" . ($idx + 1) . ": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross}).");
+                        $validator->errors()->add("items.{$idx}.disc_amount", 'Row #'.($idx + 1).": Discount amount (₹{$discAmount}) cannot exceed item gross total (₹{$gross}).");
                     }
                 }
             }
@@ -107,7 +118,7 @@ class StoreSalesBillRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'items.*.disc_percent.max'  => 'Discount % cannot exceed 100%.',
+            'items.*.disc_percent.max' => 'Discount % cannot exceed 100%.',
             'bill_date.before_or_equal' => 'Future date and time is not allowed for Bill Date.',
             'bill_date.after_or_equal' => 'Bill Date must be a valid date from year 2020 onwards.',
         ];

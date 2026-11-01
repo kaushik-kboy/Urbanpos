@@ -32,7 +32,7 @@
                     <button type="button" id="btn-reset-form" class="btn btn-warning btn-sm font-weight-bold btn-reset-form mr-2 shadow-xs">
                         <i class="fas fa-undo mr-1"></i> Reset
                     </button>
-                    <a href="{{ route('sales.sales-bills.index') }}" class="btn btn-outline-secondary btn-sm font-weight-bold mr-2 shadow-xs">
+                    <a href="{{ session()->has('sales_bills_filters') ? route('sales.sales-bills.index', session('sales_bills_filters')) : route('sales.sales-bills.index') }}" class="btn btn-outline-secondary btn-sm font-weight-bold mr-2 shadow-xs">
                         <i class="fas fa-times mr-1"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm" id="sb-main-save-btn">

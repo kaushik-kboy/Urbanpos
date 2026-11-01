@@ -38,7 +38,7 @@
                 <div class="col-md-2 col-sm-6 mb-2">
                     <label class="small font-weight-bold mb-1">Branch</label>
                     <select name="branch_id" class="form-control form-control-sm">
-                        <option value="">All Branches</option>
+                        <option value="all" {{ (!request('branch_id') || request('branch_id') === 'all') ? 'selected' : '' }}>All Branches</option>
                         @foreach ($branches as $id => $name)
                             <option value="{{ $id }}" @selected(request('branch_id') == $id)>{{ $name }}</option>
                         @endforeach
@@ -53,10 +53,13 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-1 col-sm-12 mb-2">
-                    <button type="submit" class="btn btn-primary btn-sm btn-block" title="Apply Filter">
-                        <i class="fas fa-filter"></i>
+                <div class="col-md-2 col-sm-12 mb-2 d-flex">
+                    <button type="submit" class="btn btn-primary btn-sm mr-1 flex-fill" title="Apply Filter">
+                        <i class="fas fa-filter mr-1"></i> Filter
                     </button>
+                    <a href="{{ route('purchase.purchase-returns.index', ['reset' => 1]) }}" class="btn btn-outline-secondary btn-sm" title="Reset Filters">
+                        <i class="fas fa-undo"></i>
+                    </a>
                 </div>
             </form>
         </div>
