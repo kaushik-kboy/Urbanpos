@@ -588,8 +588,8 @@
                     <i class="fas fa-list-ol mr-2 text-warning"></i> Transaction Breakdown
                 </h5>
                 <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-sm btn-success font-weight-bold mr-3 shadow-xs" id="btn-export-drilldown-excel" title="Download all transactions as real Excel spreadsheet (.xls)">
-                        <i class="fas fa-file-excel mr-1"></i> Download Excel (.xls)
+                    <button type="button" class="btn btn-sm btn-success font-weight-bold mr-3 shadow-xs" id="btn-export-drilldown-excel" title="Download transactions as Excel spreadsheet (.xlsx)">
+                        <i class="fas fa-file-excel mr-1"></i> Download Excel (.xlsx)
                     </button>
                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size: 20px; line-height: 1;">
                         <span aria-hidden="true">&times;</span>
@@ -600,12 +600,9 @@
                 <div class="p-3 bg-light border-bottom d-flex flex-wrap justify-content-between align-items-center">
                     <div id="drilldown-summary-text" class="font-weight-bold text-dark h6 mb-0"></div>
                     <div class="d-flex align-items-center">
-                        <span class="small text-muted mr-3">
+                        <span class="small text-muted">
                             <i class="fas fa-external-link-alt text-primary mr-1"></i> Links open in new tab
                         </span>
-                        <button type="button" class="btn btn-xs btn-outline-success font-weight-bold btn-trigger-drilldown-excel" title="Download Excel (.xls)">
-                            <i class="fas fa-file-excel mr-1"></i> Export Excel (.xls)
-                        </button>
                     </div>
                 </div>
                 <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
@@ -617,10 +614,7 @@
                     </table>
                 </div>
             </div>
-            <div class="modal-footer py-2 d-flex justify-content-between">
-                <button type="button" class="btn btn-success btn-sm font-weight-bold" id="btn-export-drilldown-excel-footer">
-                    <i class="fas fa-file-excel mr-1"></i> Download as Excel (.xls)
-                </button>
+            <div class="modal-footer py-2 d-flex justify-content-end">
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -1893,6 +1887,9 @@ $(document).ready(function() {
     });
 
     // GROUP DRILLDOWN ACTION (CLICKING BILLS OR DETAILS BUTTON)
+    let lastDrilldownParams = null;
+    let currentDrilldownRecords = [];
+
     $(document).on('click', '.btn-drilldown', function(e) {
         e.preventDefault();
         let group = $(this).data('group');
@@ -1915,6 +1912,9 @@ $(document).ready(function() {
         params['id'] = id;
         params['sub_id'] = subid;
 
+        lastDrilldownParams = params;
+        currentDrilldownRecords = [];
+
         $.ajax({
             url: '{{ route("reports.analytics-builder.drilldown") }}',
             method: 'GET',
@@ -1933,6 +1933,7 @@ $(document).ready(function() {
         let $thead = $('#drilldown-thead').empty();
         let $tbody = $('#drilldown-tbody').empty();
         let summary = resp.summary || {};
+        currentDrilldownRecords = resp.records || [];
 
         let summaryHtml = `<strong>Total Records:</strong> <span class="badge badge-primary mr-3">${summary.count || resp.records.length}</span>`;
         if (summary.total_qty) {
@@ -2122,69 +2123,21 @@ $(document).ready(function() {
         }
     }
 
-    // EXPORT DRILLDOWN TRANSACTION BREAKDOWN TO EXCEL (.xls)
+    // EXPORT DRILLDOWN TRANSACTION BREAKDOWN TO EXCEL (.xlsx)
     function exportDrilldownTableToExcel() {
-        let rawTitle = $('#drilldownModalTitle').text().replace(/Transaction Breakdown:\s*/i, '').trim();
-        if (!rawTitle) rawTitle = 'Transactions';
-        let safeTitle = rawTitle.replace(/[^a-zA-Z0-9_\-]/g, '_');
-        let filename = `Transaction_Breakdown_${safeTitle}_${new Date().toISOString().slice(0,10)}.xls`;
-
-        let $table = $('#drilldown-table');
-        if ($table.find('tbody tr').length === 0 || $table.find('tbody tr td').hasClass('text-muted')) {
+        if (!currentDrilldownRecords || currentDrilldownRecords.length === 0) {
             alert('No transaction data available to export.');
             return;
         }
 
-        let $clone = $table.clone();
-        // Remove Action column (last th and last td of every row)
-        $clone.find('tr').each(function() {
-            $(this).find('th:last-child, td:last-child').remove();
-        });
-        // Remove font-awesome icons
-        $clone.find('i').remove();
-
-        let tableHtml = $clone[0].outerHTML;
-
-        let excelDoc = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" 
-                  xmlns:x="urn:schemas-microsoft-com:office:excel" 
-                  xmlns="http://www.w3.org/TR/REC-html40">
-            <head>
-                <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-                <style>
-                    body { font-family: Calibri, Arial, sans-serif; }
-                    table { border-collapse: collapse; width: 100%; }
-                    th { background-color: #1f497d; color: #ffffff; font-weight: bold; border: 1px solid #999999; padding: 6px 10px; text-align: left; }
-                    td { border: 1px solid #d9d9d9; padding: 5px 8px; font-size: 11pt; }
-                    .text-right { text-align: right; }
-                    .text-center { text-align: center; }
-                    .report-title { font-size: 15pt; font-weight: bold; color: #1f497d; margin-bottom: 6px; }
-                    .report-sub { font-size: 10pt; color: #666666; margin-bottom: 12px; }
-                </style>
-            </head>
-            <body>
-                <div class="report-title">Transaction Breakdown: ${rawTitle}</div>
-                <div class="report-sub">Exported on: ${new Date().toLocaleString()} | UrbanPOS Analytics</div>
-                ${tableHtml}
-            </body>
-            </html>
-        `;
-
-        let blob = new Blob(['\ufeff', excelDoc], {
-            type: 'application/vnd.ms-excel;charset=utf-8'
-        });
-
-        let downloadUrl = URL.createObjectURL(blob);
-        let a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
+        if (lastDrilldownParams) {
+            let exportUrl = '{{ route("reports.analytics-builder.drilldown-export") }}?' + $.param(lastDrilldownParams);
+            window.location.href = exportUrl;
+            return;
+        }
     }
 
-    $(document).on('click', '#btn-export-drilldown-excel, #btn-export-drilldown-excel-footer, .btn-trigger-drilldown-excel', function(e) {
+    $(document).on('click', '#btn-export-drilldown-excel', function(e) {
         e.preventDefault();
         exportDrilldownTableToExcel();
     });

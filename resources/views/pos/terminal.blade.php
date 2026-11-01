@@ -235,15 +235,6 @@
                     </label>
                     <div class="d-flex align-items-center" style="gap: 6px;">
                         <div class="d-flex align-items-center">
-                            <label for="posSalesTypeSelect" class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.70rem; text-transform: uppercase;">Sales Type <span class="text-danger">*</span>:</label>
-                            <select id="posSalesTypeSelect" class="form-control form-control-sm font-weight-bold px-2 py-0 text-dark" style="height: 28px; width: auto; font-size: 0.78rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Sales Bill Type (Branch-wise)">
-                                <option value="" @selected(!isset($editBill) || empty($editBill->sales_type))>-- Select Sales Type --</option>
-                                @foreach($salesTypes as $stKey => $stName)
-                                    <option value="{{ $stName }}" @selected(isset($editBill) && ($editBill->sales_type === $stName))>{{ $stName }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="d-flex align-items-center">
                             <label class="text-muted mr-1 font-weight-bold mb-0" style="font-size: 0.70rem; text-transform: uppercase;">Purchase Type:</label>
                             <div class="d-flex align-items-center bg-light border rounded px-2" style="height: 28px; cursor: not-allowed;" title="Purchase Type is fixed from Customer Master and cannot be changed in POS">
                                 <i class="fas fa-lock text-secondary mr-1" style="font-size: 0.68rem;"></i>
@@ -424,6 +415,34 @@
                     <span class="text-muted font-weight-normal" style="font-size: 0.70rem;">Notes</span>
                 </label>
                 <input type="text" id="posRemarks" class="form-control form-control-sm" placeholder="Enter remarks or special instructions..." value="{{ isset($editBill) ? ($editBill->remarks ?? '') : '' }}" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} maxlength="255">
+            </div>
+
+            <!-- Fulfillment & Sales Type Selection (Compulsory / Mandatory) -->
+            <div class="pos-fulfillment-salestype-card p-2 bg-white rounded border mb-2 shadow-sm">
+                <div class="form-row">
+                    <div class="col-6 pr-1">
+                        <label for="posFulfillmentSelect" class="small font-weight-bold text-muted mb-1 d-flex align-items-center" style="font-size: 0.75rem;">
+                            <i class="fas fa-truck text-primary mr-1"></i> Fulfillment <span class="text-danger ml-1">*</span>
+                        </label>
+                        <select id="posFulfillmentSelect" class="form-control form-control-sm font-weight-bold text-dark" style="height: 30px; font-size: 0.80rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }}>
+                            <option value="">-- Select Fulfillment --</option>
+                            <option value="Delivery" @selected(isset($editBill) && in_array($editBill->delivery_type ?? ($editBill->fulfillment ?? ''), ['Delivery', 'Delivered']))>Delivery</option>
+                            <option value="Pick Up" @selected(isset($editBill) && in_array($editBill->delivery_type ?? ($editBill->fulfillment ?? ''), ['Pick Up', 'Store Pickup']))>Pick Up</option>
+                            <option value="Other" @selected(isset($editBill) && ($editBill->delivery_type ?? ($editBill->fulfillment ?? '')) === 'Other')>Other</option>
+                        </select>
+                    </div>
+                    <div class="col-6 pl-1">
+                        <label for="posSalesTypeSelect" class="small font-weight-bold text-muted mb-1 d-flex align-items-center" style="font-size: 0.75rem;">
+                            <i class="fas fa-tag text-info mr-1"></i> Sales Type <span class="text-danger ml-1">*</span>
+                        </label>
+                        <select id="posSalesTypeSelect" class="form-control form-control-sm font-weight-bold text-dark" style="height: 30px; font-size: 0.80rem; border-radius: 6px;" {{ (isset($isViewOnly) && $isViewOnly) ? 'disabled' : '' }} title="Sales Bill Type (Branch-wise)">
+                            <option value="" @selected(!isset($editBill) || empty($editBill->sales_type))>-- Select Sales Type --</option>
+                            @foreach($salesTypes as $stKey => $stName)
+                                <option value="{{ $stName }}" @selected(isset($editBill) && ($editBill->sales_type === $stName))>{{ $stName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <!-- Grand Total LED Display Card -->

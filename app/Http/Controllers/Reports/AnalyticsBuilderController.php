@@ -2,16 +2,12 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Exports\GenericReportExport;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Customer;
 use App\Models\Item;
-use App\Models\ItemCategoryValue;
-use App\Models\PurchaseInvoice;
-use App\Models\PurchaseInvoiceItem;
-use App\Models\SalesBill;
-use App\Models\SalesBillItem;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\UserSavedReport;
@@ -19,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AnalyticsBuilderController extends Controller
@@ -162,9 +159,9 @@ class AnalyticsBuilderController extends Controller
             $data = $this->querySalesAnalytics($groupBy, $metrics, $from, $to, $branchId, $itemId, $customerId, $sortBy, $sortDir, null, $supplierId);
         }
 
-        $filename = 'Custom_Report_' . $groupBy . '_' . date('Ymd_His') . '.xls';
+        $filename = 'Custom_Report_'.$groupBy.'_'.date('Ymd_His').'.xls';
 
-        return response()->streamDownload(function () use ($data, $groupBy) {
+        return response()->streamDownload(function () use ($data) {
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
             echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
             echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Report</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
@@ -173,7 +170,7 @@ class AnalyticsBuilderController extends Controller
             echo '<table border="1">';
             echo '<thead><tr>';
             foreach ($data['columns'] as $col) {
-                echo '<th>' . htmlspecialchars($col['label']) . '</th>';
+                echo '<th>'.htmlspecialchars($col['label']).'</th>';
             }
             echo '</tr></thead><tbody>';
             foreach ($data['rows'] as $row) {
@@ -181,7 +178,7 @@ class AnalyticsBuilderController extends Controller
                 foreach ($data['columns'] as $col) {
                     $key = $col['key'];
                     $val = $row->{$key} ?? '';
-                    echo '<td>' . htmlspecialchars((string) $val) . '</td>';
+                    echo '<td>'.htmlspecialchars((string) $val).'</td>';
                 }
                 echo '</tr>';
             }
@@ -238,16 +235,16 @@ class AnalyticsBuilderController extends Controller
              WHERE pii.item_id = items.id AND pi.supplier_id = suppliers.id AND pi.status != "Cancelled" 
              ORDER BY pi.invoice_date DESC, pi.id DESC LIMIT 1) as last_cost_price
         ')
-        ->groupBy(
-            'items.id',
-            'items.item_code',
-            'items.name',
-            'items.supplier_id',
-            'suppliers.id',
-            'suppliers.name',
-            'suppliers.mobile',
-            'suppliers.city'
-        );
+            ->groupBy(
+                'items.id',
+                'items.item_code',
+                'items.name',
+                'items.supplier_id',
+                'suppliers.id',
+                'suppliers.name',
+                'suppliers.mobile',
+                'suppliers.city'
+            );
 
         $allowedSorts = ['item_name', 'supplier_name', 'total_qty', 'total_amount', 'last_date', 'last_cost_price', 'invoice_count'];
         $orderCol = in_array($sortBy, $allowedSorts, true) ? $sortBy : 'item_name';
@@ -267,8 +264,8 @@ class AnalyticsBuilderController extends Controller
         foreach ($records as $r) {
             $r->is_primary_supplier = ($r->default_supplier_id == $r->supplier_id);
             $r->formatted_qty = number_format($r->total_qty, 2);
-            $r->formatted_amount = '₹ ' . number_format($r->total_amount, 2);
-            $r->formatted_last_cost = '₹ ' . number_format($r->last_cost_price ?? $r->avg_cost_price ?? 0, 2);
+            $r->formatted_amount = '₹ '.number_format($r->total_amount, 2);
+            $r->formatted_last_cost = '₹ '.number_format($r->last_cost_price ?? $r->avg_cost_price ?? 0, 2);
             $r->formatted_last_date = $r->last_date ? Carbon::parse($r->last_date)->format('d-m-Y') : 'N/A';
 
             $totalQty += (float) $r->total_qty;
@@ -292,7 +289,7 @@ class AnalyticsBuilderController extends Controller
         $chartLabels = [];
         $chartValues = [];
         foreach ($records->take(10) as $row) {
-            $chartLabels[] = $row->item_name . ' (' . $row->supplier_name . ')';
+            $chartLabels[] = $row->item_name.' ('.$row->supplier_name.')';
             $chartValues[] = (float) $row->total_qty;
         }
 
@@ -301,7 +298,7 @@ class AnalyticsBuilderController extends Controller
             'rows' => $records,
             'totals' => [
                 'total_qty' => number_format($totalQty, 2),
-                'total_amount' => '₹ ' . number_format($totalAmount, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
                 'total_invoices' => $totalInvoices,
                 'count' => count($records),
             ],
@@ -570,7 +567,7 @@ class AnalyticsBuilderController extends Controller
 
         // Columns definition based on chosen metrics
         $columns[] = ['key' => 'group_name', 'label' => $groupLabel];
-        if (!empty($subtextLabel)) {
+        if (! empty($subtextLabel)) {
             $columns[] = ['key' => 'group_subtext', 'label' => $subtextLabel];
         }
 
@@ -635,10 +632,10 @@ class AnalyticsBuilderController extends Controller
             $marginPct = $sales > 0 ? ($profit / $sales) * 100 : 0;
 
             $r->formatted_qty = number_format($qty, 2);
-            $r->formatted_sales = '₹ ' . number_format($sales, 2);
-            $r->formatted_disc = '₹ ' . number_format($disc, 2);
-            $r->formatted_profit = '₹ ' . number_format($profit, 2) . ' (' . number_format($marginPct, 1) . '%)';
-            $r->formatted_aov = '₹ ' . number_format($aov, 2);
+            $r->formatted_sales = '₹ '.number_format($sales, 2);
+            $r->formatted_disc = '₹ '.number_format($disc, 2);
+            $r->formatted_profit = '₹ '.number_format($profit, 2).' ('.number_format($marginPct, 1).'%)';
+            $r->formatted_aov = '₹ '.number_format($aov, 2);
             $r->formatted_last_date = $r->last_date ? Carbon::parse($r->last_date)->format('d-m-Y H:i') : '-';
 
             $totalQty += $qty;
@@ -650,7 +647,7 @@ class AnalyticsBuilderController extends Controller
 
         // Item / category / brand / subcategory rows each count a bill once per group, so a bill holding several groups
         // would be counted repeatedly in the footer. Use the distinct number of bills for the overall figures.
-        if (!in_array($groupBy, ['supplier', 'customer', 'cashier', 'payment_mode', 'date'], true)) {
+        if (! in_array($groupBy, ['supplier', 'customer', 'cashier', 'payment_mode', 'date'], true)) {
             $distinct = DB::table('sales_bill_items')
                 ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
                 ->where('sales_bills.status', '!=', 'Cancelled');
@@ -660,7 +657,7 @@ class AnalyticsBuilderController extends Controller
             if ($branchId) {
                 $distinct->where('sales_bills.branch_id', $branchId);
             }
-            if ($itemId && !in_array($groupBy, ['category', 'subcategory', 'department', 'brand'], true)) {
+            if ($itemId && ! in_array($groupBy, ['category', 'subcategory', 'department', 'brand'], true)) {
                 $distinct->where('sales_bill_items.item_id', $itemId);
             }
             $totalBills = (int) $distinct->distinct()->count('sales_bills.id');
@@ -682,15 +679,15 @@ class AnalyticsBuilderController extends Controller
             'rows' => $records,
             'totals' => [
                 'total_qty' => number_format($totalQty, 2),
-                'total_sales' => '₹ ' . number_format($totalSales, 2),
-                'total_disc' => '₹ ' . number_format($totalDisc, 2),
-                'total_profit' => '₹ ' . number_format($totalProfit, 2) . ' (' . number_format($overallMarginPct, 1) . '%)',
+                'total_sales' => '₹ '.number_format($totalSales, 2),
+                'total_disc' => '₹ '.number_format($totalDisc, 2),
+                'total_profit' => '₹ '.number_format($totalProfit, 2).' ('.number_format($overallMarginPct, 1).'%)',
                 'total_bills' => $totalBills,
-                'aov' => '₹ ' . number_format($overallAov, 2),
+                'aov' => '₹ '.number_format($overallAov, 2),
                 'count' => count($records),
             ],
             'chart' => [
-                'label' => 'Total Sales (₹) by ' . $groupLabel,
+                'label' => 'Total Sales (₹) by '.$groupLabel,
                 'labels' => $chartLabels,
                 'values' => $chartValues,
             ],
@@ -713,9 +710,10 @@ class AnalyticsBuilderController extends Controller
 
         // If explicitly custom, or if date_from/date_to provided without custom preset name
         if ($preset === 'custom' || (empty($preset) && ($dateFromInput || $dateToInput))) {
-            $from = !empty($dateFromInput) ? Carbon::parse($dateFromInput)->startOfDay() : null;
-            $to = !empty($dateToInput) ? Carbon::parse($dateToInput)->endOfDay() : Carbon::now()->endOfDay();
-            $label = 'Custom (' . ($from ? $from->format('d-M-Y') : 'Start') . ' to ' . $to->format('d-M-Y') . ')';
+            $from = ! empty($dateFromInput) ? Carbon::parse($dateFromInput)->startOfDay() : null;
+            $to = ! empty($dateToInput) ? Carbon::parse($dateToInput)->endOfDay() : Carbon::now()->endOfDay();
+            $label = 'Custom ('.($from ? $from->format('d-M-Y') : 'Start').' to '.$to->format('d-M-Y').')';
+
             return [$from, $to, $label];
         }
 
@@ -723,43 +721,43 @@ class AnalyticsBuilderController extends Controller
             case 'today':
                 $from = Carbon::today()->startOfDay();
                 $to = Carbon::today()->endOfDay();
-                $label = 'Today (' . $from->format('d-m-Y') . ')';
+                $label = 'Today ('.$from->format('d-m-Y').')';
                 break;
 
             case 'yesterday':
                 $from = Carbon::yesterday()->startOfDay();
                 $to = Carbon::yesterday()->endOfDay();
-                $label = 'Yesterday (' . $from->format('d-m-Y') . ')';
+                $label = 'Yesterday ('.$from->format('d-m-Y').')';
                 break;
 
             case 'this_week':
                 $from = Carbon::now()->startOfWeek();
                 $to = Carbon::now()->endOfWeek();
-                $label = 'This Week (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = 'This Week ('.$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
 
             case 'last_7_days':
                 $from = Carbon::now()->subDays(6)->startOfDay();
                 $to = Carbon::now()->endOfDay();
-                $label = 'Last 7 Days (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = 'Last 7 Days ('.$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
 
             case 'last_month':
                 $from = Carbon::now()->subMonth()->startOfMonth();
                 $to = Carbon::now()->subMonth()->endOfMonth();
-                $label = 'Last Month (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = 'Last Month ('.$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
 
             case 'last_30_days':
                 $from = Carbon::now()->subDays(29)->startOfDay();
                 $to = Carbon::now()->endOfDay();
-                $label = 'Last 30 Days (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = 'Last 30 Days ('.$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
 
             case 'this_quarter':
                 $from = Carbon::now()->startOfQuarter();
                 $to = Carbon::now()->endOfQuarter();
-                $label = 'This Quarter (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = 'This Quarter ('.$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
 
             case 'this_fy':
@@ -767,26 +765,26 @@ class AnalyticsBuilderController extends Controller
                 if ($now->month < 4) {
                     $from = Carbon::create($year - 1, 4, 1)->startOfDay();
                     $to = Carbon::create($year, 3, 31)->endOfDay();
-                    $fyTitle = ($year - 1) . '-' . substr((string) $year, -2);
+                    $fyTitle = ($year - 1).'-'.substr((string) $year, -2);
                 } else {
                     $from = Carbon::create($year, 4, 1)->startOfDay();
                     $to = Carbon::create($year + 1, 3, 31)->endOfDay();
-                    $fyTitle = $year . '-' . substr((string) ($year + 1), -2);
+                    $fyTitle = $year.'-'.substr((string) ($year + 1), -2);
                 }
-                $label = "This FY {$fyTitle} (" . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = "This FY {$fyTitle} (".$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
 
             case 'last_fy':
                 if ($now->month < 4) {
                     $from = Carbon::create($year - 2, 4, 1)->startOfDay();
                     $to = Carbon::create($year - 1, 3, 31)->endOfDay();
-                    $fyTitle = ($year - 2) . '-' . substr((string) ($year - 1), -2);
+                    $fyTitle = ($year - 2).'-'.substr((string) ($year - 1), -2);
                 } else {
                     $from = Carbon::create($year - 1, 4, 1)->startOfDay();
                     $to = Carbon::create($year, 3, 31)->endOfDay();
-                    $fyTitle = ($year - 1) . '-' . substr((string) $year, -2);
+                    $fyTitle = ($year - 1).'-'.substr((string) $year, -2);
                 }
-                $label = "Last FY {$fyTitle} (" . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = "Last FY {$fyTitle} (".$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
 
             case 'all_time':
@@ -799,7 +797,7 @@ class AnalyticsBuilderController extends Controller
             default:
                 $from = Carbon::now()->startOfMonth();
                 $to = Carbon::now()->endOfMonth();
-                $label = 'This Month (' . $from->format('d-m-Y') . ' to ' . $to->format('d-m-Y') . ')';
+                $label = 'This Month ('.$from->format('d-m-Y').' to '.$to->format('d-m-Y').')';
                 break;
         }
 
@@ -820,8 +818,8 @@ class AnalyticsBuilderController extends Controller
         if ($term !== '') {
             $query->where(function ($q) use ($term) {
                 $q->where('name', 'LIKE', "%{$term}%")
-                  ->orWhere('item_code', 'LIKE', "%{$term}%")
-                  ->orWhere('ean_upc_code', 'LIKE', "%{$term}%");
+                    ->orWhere('item_code', 'LIKE', "%{$term}%")
+                    ->orWhere('ean_upc_code', 'LIKE', "%{$term}%");
             });
         }
 
@@ -829,14 +827,14 @@ class AnalyticsBuilderController extends Controller
         if ($supplierId) {
             $query->where(function ($q) use ($supplierId) {
                 $q->where('supplier_id', $supplierId)
-                  ->orWhereExists(function ($sub) use ($supplierId) {
-                      $sub->select(DB::raw(1))
-                          ->from('purchase_invoice_items')
-                          ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
-                          ->whereColumn('purchase_invoice_items.item_id', 'items.id')
-                          ->where('purchase_invoices.supplier_id', $supplierId)
-                          ->where('purchase_invoices.status', '!=', 'Cancelled');
-                  });
+                    ->orWhereExists(function ($sub) use ($supplierId) {
+                        $sub->select(DB::raw(1))
+                            ->from('purchase_invoice_items')
+                            ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
+                            ->whereColumn('purchase_invoice_items.item_id', 'items.id')
+                            ->where('purchase_invoices.supplier_id', $supplierId)
+                            ->where('purchase_invoices.status', '!=', 'Cancelled');
+                    });
             });
         }
 
@@ -854,9 +852,9 @@ class AnalyticsBuilderController extends Controller
 
         $items = $query->limit(40)->get(['id', 'name', 'item_code', 'sell_price']);
 
-        $formatted = $items->map(fn($item) => [
+        $formatted = $items->map(fn ($item) => [
             'id' => $item->id,
-            'text' => ($item->item_code ? "[{$item->item_code}] " : '') . "{$item->name} (₹{$item->sell_price})",
+            'text' => ($item->item_code ? "[{$item->item_code}] " : '')."{$item->name} (₹{$item->sell_price})",
         ]);
 
         return response()->json(['results' => $formatted]);
@@ -876,8 +874,8 @@ class AnalyticsBuilderController extends Controller
         if ($term !== '') {
             $query->where(function ($q) use ($term) {
                 $q->where('name', 'LIKE', "%{$term}%")
-                  ->orWhere('mobile', 'LIKE', "%{$term}%")
-                  ->orWhere('city', 'LIKE', "%{$term}%");
+                    ->orWhere('mobile', 'LIKE', "%{$term}%")
+                    ->orWhere('city', 'LIKE', "%{$term}%");
             });
         }
 
@@ -902,9 +900,9 @@ class AnalyticsBuilderController extends Controller
 
         $suppliers = $query->limit(40)->get(['id', 'name', 'mobile', 'city']);
 
-        $formatted = $suppliers->map(fn($s) => [
+        $formatted = $suppliers->map(fn ($s) => [
             'id' => $s->id,
-            'text' => "{$s->name}" . ($s->city ? " - {$s->city}" : '') . ($s->mobile ? " ({$s->mobile})" : ''),
+            'text' => "{$s->name}".($s->city ? " - {$s->city}" : '').($s->mobile ? " ({$s->mobile})" : ''),
         ]);
 
         return response()->json(['results' => $formatted]);
@@ -924,9 +922,9 @@ class AnalyticsBuilderController extends Controller
         if ($term !== '') {
             $query->where(function ($q) use ($term) {
                 $q->where('name', 'LIKE', "%{$term}%")
-                  ->orWhere('mobile', 'LIKE', "%{$term}%")
-                  ->orWhere('phone', 'LIKE', "%{$term}%")
-                  ->orWhere('customer_code', 'LIKE', "%{$term}%");
+                    ->orWhere('mobile', 'LIKE', "%{$term}%")
+                    ->orWhere('phone', 'LIKE', "%{$term}%")
+                    ->orWhere('customer_code', 'LIKE', "%{$term}%");
             });
         }
 
@@ -944,9 +942,9 @@ class AnalyticsBuilderController extends Controller
 
         $customers = $query->limit(40)->get(['id', 'name', 'mobile', 'phone']);
 
-        $formatted = $customers->map(fn($c) => [
+        $formatted = $customers->map(fn ($c) => [
             'id' => $c->id,
-            'text' => "{$c->name}" . (($c->mobile ?: $c->phone) ? " (" . ($c->mobile ?: $c->phone) . ")" : ''),
+            'text' => "{$c->name}".(($c->mobile ?: $c->phone) ? ' ('.($c->mobile ?: $c->phone).')' : ''),
         ]);
 
         return response()->json(['results' => $formatted]);
@@ -972,7 +970,7 @@ class AnalyticsBuilderController extends Controller
 
         if ($groupBy === 'item' || $groupBy === 'single_item') {
             $item = Item::find($groupId);
-            $title = 'Sales Invoices for: ' . ($item ? $item->name : 'Item #' . $groupId);
+            $title = 'Sales Invoices for: '.($item ? $item->name : 'Item #'.$groupId);
 
             $query = DB::table('sales_bill_items')
                 ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
@@ -1000,16 +998,16 @@ class AnalyticsBuilderController extends Controller
                 sales_bill_items.disc_amount,
                 sales_bill_items.net_amount
             ')
-            ->orderBy('sales_bills.bill_date', 'desc')
-            ->limit(100)
-            ->get();
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
 
             $totalQty = 0;
             $totalAmount = 0;
             foreach ($items as $it) {
                 $it->formatted_date = Carbon::parse($it->bill_date)->format('d-m-Y H:i');
-                $it->formatted_rate = '₹ ' . number_format($it->sell_price, 2);
-                $it->formatted_amount = '₹ ' . number_format($it->net_amount, 2);
+                $it->formatted_rate = '₹ '.number_format($it->sell_price, 2);
+                $it->formatted_amount = '₹ '.number_format($it->net_amount, 2);
                 $it->view_url = route('sales.sales-bills.show', $it->bill_id);
                 $it->receipt_url = route('sales.sales-bills.receipt', $it->bill_id);
                 $totalQty += (float) $it->qty;
@@ -1019,14 +1017,14 @@ class AnalyticsBuilderController extends Controller
             $records = $items;
             $summary = [
                 'total_qty' => number_format($totalQty, 2),
-                'total_amount' => '₹ ' . number_format($totalAmount, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
                 'count' => count($items),
             ];
 
         } elseif ($groupBy === 'item_supplier') {
             $item = Item::find($groupId);
             $supplier = Supplier::find($subId);
-            $title = 'Purchase Inwards for: ' . ($item ? $item->name : 'Item #' . $groupId) . ' ⇄ ' . ($supplier ? $supplier->name : 'Supplier #' . $subId);
+            $title = 'Purchase Inwards for: '.($item ? $item->name : 'Item #'.$groupId).' ⇄ '.($supplier ? $supplier->name : 'Supplier #'.$subId);
 
             $query = DB::table('purchase_invoice_items')
                 ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
@@ -1052,16 +1050,16 @@ class AnalyticsBuilderController extends Controller
                 purchase_invoice_items.sell_price,
                 purchase_invoice_items.net_amount
             ')
-            ->orderBy('purchase_invoices.invoice_date', 'desc')
-            ->limit(100)
-            ->get();
+                ->orderBy('purchase_invoices.invoice_date', 'desc')
+                ->limit(100)
+                ->get();
 
             $totalQty = 0;
             $totalAmount = 0;
             foreach ($invoices as $inv) {
                 $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-m-Y');
-                $inv->formatted_cost = '₹ ' . number_format($inv->cost_price, 2);
-                $inv->formatted_amount = '₹ ' . number_format($inv->net_amount, 2);
+                $inv->formatted_cost = '₹ '.number_format($inv->cost_price, 2);
+                $inv->formatted_amount = '₹ '.number_format($inv->net_amount, 2);
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
                 $totalQty += (float) $inv->qty;
                 $totalAmount += (float) $inv->net_amount;
@@ -1070,13 +1068,13 @@ class AnalyticsBuilderController extends Controller
             $records = $invoices;
             $summary = [
                 'total_qty' => number_format($totalQty, 2),
-                'total_amount' => '₹ ' . number_format($totalAmount, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
                 'count' => count($invoices),
             ];
 
         } elseif ($groupBy === 'supplier') {
             $supplier = Supplier::find($groupId);
-            $title = 'Purchase Invoices for: ' . ($supplier ? $supplier->name : 'Supplier #' . $groupId);
+            $title = 'Purchase Invoices for: '.($supplier ? $supplier->name : 'Supplier #'.$groupId);
 
             $query = DB::table('purchase_invoices')
                 ->leftJoin('branches', 'purchase_invoices.branch_id', '=', 'branches.id')
@@ -1108,15 +1106,15 @@ class AnalyticsBuilderController extends Controller
                 purchase_invoices.total,
                 purchase_invoices.status
             ')
-            ->orderBy('purchase_invoices.invoice_date', 'desc')
-            ->limit(100)
-            ->get();
+                ->orderBy('purchase_invoices.invoice_date', 'desc')
+                ->limit(100)
+                ->get();
 
             $totalQty = 0;
             $totalAmount = 0;
             foreach ($invoices as $inv) {
                 $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-m-Y');
-                $inv->formatted_amount = '₹ ' . number_format($inv->total, 2);
+                $inv->formatted_amount = '₹ '.number_format($inv->total, 2);
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
                 $totalQty += (float) $inv->total_qty;
                 $totalAmount += (float) $inv->total;
@@ -1125,13 +1123,13 @@ class AnalyticsBuilderController extends Controller
             $records = $invoices;
             $summary = [
                 'total_qty' => number_format($totalQty, 2),
-                'total_amount' => '₹ ' . number_format($totalAmount, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
                 'count' => count($invoices),
             ];
 
         } elseif ($groupBy === 'customer') {
             $customer = Customer::find($groupId);
-            $title = 'Sales Bills for: ' . ($customer ? $customer->name : 'Customer #' . $groupId);
+            $title = 'Sales Bills for: '.($customer ? $customer->name : 'Customer #'.$groupId);
 
             $query = DB::table('sales_bills')
                 ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
@@ -1155,14 +1153,14 @@ class AnalyticsBuilderController extends Controller
                 sales_bills.disc_amount,
                 sales_bills.payment_type
             ')
-            ->orderBy('sales_bills.bill_date', 'desc')
-            ->limit(100)
-            ->get();
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
 
             $totalAmount = 0;
             foreach ($bills as $b) {
                 $b->formatted_date = Carbon::parse($b->bill_date)->format('d-m-Y H:i');
-                $b->formatted_amount = '₹ ' . number_format($b->total, 2);
+                $b->formatted_amount = '₹ '.number_format($b->total, 2);
                 $b->view_url = route('sales.sales-bills.show', $b->bill_id);
                 $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);
                 $totalAmount += (float) $b->total;
@@ -1170,12 +1168,12 @@ class AnalyticsBuilderController extends Controller
 
             $records = $bills;
             $summary = [
-                'total_amount' => '₹ ' . number_format($totalAmount, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
                 'count' => count($bills),
             ];
 
         } elseif ($groupBy === 'payment_mode') {
-            $title = 'Bills Paid via: ' . $groupId;
+            $title = 'Bills Paid via: '.$groupId;
 
             $query = DB::table('sales_bills')
                 ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
@@ -1198,14 +1196,14 @@ class AnalyticsBuilderController extends Controller
                 COALESCE(branches.name, "Main") as branch_name,
                 sales_bills.total
             ')
-            ->orderBy('sales_bills.bill_date', 'desc')
-            ->limit(100)
-            ->get();
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
 
             $totalAmount = 0;
             foreach ($bills as $b) {
                 $b->formatted_date = Carbon::parse($b->bill_date)->format('d-m-Y H:i');
-                $b->formatted_amount = '₹ ' . number_format($b->total, 2);
+                $b->formatted_amount = '₹ '.number_format($b->total, 2);
                 $b->view_url = route('sales.sales-bills.show', $b->bill_id);
                 $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);
                 $totalAmount += (float) $b->total;
@@ -1213,7 +1211,7 @@ class AnalyticsBuilderController extends Controller
 
             $records = $bills;
             $summary = [
-                'total_amount' => '₹ ' . number_format($totalAmount, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
                 'count' => count($bills),
             ];
         }
@@ -1228,88 +1226,78 @@ class AnalyticsBuilderController extends Controller
     }
 
     /**
-     * Export transaction breakdown drilldown to genuine Excel (.xls).
+     * Export transaction breakdown drilldown to genuine Excel (.xlsx).
      */
-    public function drilldownExport(Request $request): StreamedResponse
+    public function drilldownExport(Request $request)
     {
         $drilldownResp = $this->drilldown($request);
         $data = $drilldownResp->getData(true);
 
         $title = $data['title'] ?? 'Transaction Breakdown';
         $safeTitle = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $title);
-        $filename = "Breakdown_{$safeTitle}_" . date('Ymd_His') . '.xls';
+        $filename = "Breakdown_{$safeTitle}_".date('Ymd_His').'.xlsx';
 
         $records = $data['records'] ?? [];
         $groupBy = $data['group_by'] ?? 'item';
 
-        return response()->streamDownload(function () use ($title, $records, $groupBy) {
-            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
-            echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Transactions</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
-            echo '<style>th { background-color: #1f497d; color: #ffffff; font-weight: bold; border: 1px solid #999; padding: 6px 10px; } td { border: 1px solid #ddd; padding: 5px 8px; font-size: 11pt; } .text-right { text-align: right; } .text-center { text-align: center; } h3 { color: #1f497d; font-family: Arial, sans-serif; }</style>';
-            echo '</head><body>';
-            echo '<h3>' . htmlspecialchars($title) . '</h3>';
-            echo '<table border="1">';
+        $headings = [];
+        $rows = [];
 
-            if ($groupBy === 'item_supplier') {
-                echo '<thead><tr><th>#</th><th>Invoice / GRN No</th><th>Invoice Date</th><th>Branch</th><th class="text-right">Inward Qty</th><th class="text-right">Cost Price (₹)</th><th class="text-right">Net Value (₹)</th></tr></thead><tbody>';
-                foreach ($records as $idx => $r) {
-                    echo '<tr>';
-                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['invoice_number'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? '')) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars(number_format((float) ($r['qty'] ?? 0), 2)) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_cost'] ?? '')) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
-                    echo '</tr>';
-                }
-            } elseif ($groupBy === 'customer') {
-                echo '<thead><tr><th>#</th><th>Bill Number</th><th>Bill Date</th><th>Branch</th><th class="text-center">Total Qty</th><th class="text-center">Payment Mode</th><th class="text-right">Bill Total (₹)</th></tr></thead><tbody>';
-                foreach ($records as $idx => $r) {
-                    echo '<tr>';
-                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['bill_number'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? '')) . '</td>';
-                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['total_qty'] ?? '')) . '</td>';
-                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['payment_type'] ?? 'Cash')) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
-                    echo '</tr>';
-                }
-            } elseif ($groupBy === 'supplier') {
-                echo '<thead><tr><th>#</th><th>Invoice Number</th><th>Invoice Date</th><th>Branch</th><th class="text-center">Total Qty</th><th class="text-center">Status</th><th class="text-right">Invoice Total (₹)</th></tr></thead><tbody>';
-                foreach ($records as $idx => $r) {
-                    echo '<tr>';
-                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['invoice_number'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? '')) . '</td>';
-                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['total_qty'] ?? '')) . '</td>';
-                    echo '<td class="text-center">' . htmlspecialchars((string) ($r['status'] ?? 'Active')) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
-                    echo '</tr>';
-                }
-            } else {
-                echo '<thead><tr><th>#</th><th>Bill Number</th><th>Date & Time</th><th>Customer</th><th>Branch</th><th class="text-right">Qty</th><th class="text-right">Unit Rate (₹)</th><th class="text-right">Total Amount (₹)</th></tr></thead><tbody>';
-                foreach ($records as $idx => $r) {
-                    echo '<tr>';
-                    echo '<td class="text-center">' . ($idx + 1) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['bill_number'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['formatted_date'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['customer_name'] ?? '')) . '</td>';
-                    echo '<td>' . htmlspecialchars((string) ($r['branch_name'] ?? 'Main')) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars(number_format((float) ($r['qty'] ?? 1), 2)) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_rate'] ?? '-')) . '</td>';
-                    echo '<td class="text-right">' . htmlspecialchars((string) ($r['formatted_amount'] ?? '')) . '</td>';
-                    echo '</tr>';
-                }
+        if ($groupBy === 'item_supplier') {
+            $headings = ['#', 'Invoice / GRN No', 'Invoice Date', 'Branch', 'Inward Qty', 'Cost Price (₹)', 'Net Value (₹)'];
+            foreach ($records as $idx => $r) {
+                $rows[] = [
+                    $idx + 1,
+                    (string) ($r['invoice_number'] ?? ''),
+                    (string) ($r['formatted_date'] ?? ''),
+                    (string) ($r['branch_name'] ?? ''),
+                    number_format((float) ($r['qty'] ?? 0), 2, '.', ''),
+                    (string) ($r['formatted_cost'] ?? ''),
+                    (string) ($r['formatted_amount'] ?? ''),
+                ];
             }
+        } elseif ($groupBy === 'customer') {
+            $headings = ['#', 'Bill Number', 'Bill Date', 'Branch', 'Total Qty', 'Payment Mode', 'Bill Total (₹)'];
+            foreach ($records as $idx => $r) {
+                $rows[] = [
+                    $idx + 1,
+                    (string) ($r['bill_number'] ?? ''),
+                    (string) ($r['formatted_date'] ?? ''),
+                    (string) ($r['branch_name'] ?? ''),
+                    (string) ($r['total_qty'] ?? ''),
+                    (string) ($r['payment_type'] ?? 'Cash'),
+                    (string) ($r['formatted_amount'] ?? ''),
+                ];
+            }
+        } elseif ($groupBy === 'supplier') {
+            $headings = ['#', 'Invoice Number', 'Invoice Date', 'Branch', 'Total Qty', 'Status', 'Invoice Total (₹)'];
+            foreach ($records as $idx => $r) {
+                $rows[] = [
+                    $idx + 1,
+                    (string) ($r['invoice_number'] ?? ''),
+                    (string) ($r['formatted_date'] ?? ''),
+                    (string) ($r['branch_name'] ?? ''),
+                    (string) ($r['total_qty'] ?? ''),
+                    (string) ($r['status'] ?? 'Active'),
+                    (string) ($r['formatted_amount'] ?? ''),
+                ];
+            }
+        } else {
+            $headings = ['#', 'Bill Number', 'Date & Time', 'Customer', 'Branch', 'Qty', 'Unit Rate (₹)', 'Total Amount (₹)'];
+            foreach ($records as $idx => $r) {
+                $rows[] = [
+                    $idx + 1,
+                    (string) ($r['bill_number'] ?? ''),
+                    (string) ($r['formatted_date'] ?? ''),
+                    (string) ($r['customer_name'] ?? ''),
+                    (string) ($r['branch_name'] ?? 'Main'),
+                    number_format((float) ($r['qty'] ?? 1), 2, '.', ''),
+                    (string) ($r['formatted_rate'] ?? '-'),
+                    (string) ($r['formatted_amount'] ?? ''),
+                ];
+            }
+        }
 
-            echo '</tbody></table></body></html>';
-        }, $filename, [
-            'Content-Type' => 'application/vnd.ms-excel',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
+        return Excel::download(new GenericReportExport($rows, $headings), $filename);
     }
 }

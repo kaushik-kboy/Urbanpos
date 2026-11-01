@@ -14,7 +14,8 @@
         invoice_type: 'Retail Invoice',
         sales_type: '',
         purchase_type: 'Local',
-        delivery_type: 'Delivered',
+        fulfillment: '',
+        delivery_type: '',
         bill_discount: 0,
         tender_mode: null, // Cash, UPI, Card, Split, Credit (No default mode)
         split_payments: {
@@ -169,6 +170,13 @@
             state.customer_pet_id = null;
         }
 
+        const initFulfillment = window.EDIT_BILL?.fulfillment || window.EDIT_BILL?.delivery_type || $('#posFulfillmentSelect').val() || '';
+        state.fulfillment = initFulfillment;
+        state.delivery_type = initFulfillment;
+        if (initFulfillment && $('#posFulfillmentSelect').length) {
+            $('#posFulfillmentSelect').val(initFulfillment);
+        }
+
         const initSalesType = window.EDIT_BILL?.sales_type || $('#posSalesTypeSelect').val() || '';
         setSalesType(initSalesType);
 
@@ -188,7 +196,12 @@
             setSalesType(state.sales_type);
             state.purchase_type = window.EDIT_BILL.purchase_type || 'Local';
             setPurchaseType(state.purchase_type);
-            state.delivery_type = window.EDIT_BILL.delivery_type || 'Direct';
+            const billFulfillment = window.EDIT_BILL.fulfillment || window.EDIT_BILL.delivery_type || '';
+            state.fulfillment = billFulfillment;
+            state.delivery_type = billFulfillment;
+            if (billFulfillment && $('#posFulfillmentSelect').length) {
+                $('#posFulfillmentSelect').val(billFulfillment);
+            }
 
             // Point 2 & 3: Bill discount and remarks initialization
             state.bill_discount = window.EDIT_BILL.bill_discount ? parseFloat(window.EDIT_BILL.bill_discount) : 0;
@@ -211,7 +224,7 @@
                     scanInput.placeholder = 'View-Only Mode: Reading Bill #' + (window.EDIT_BILL.bill_number || '');
                 }
                 $('#pos-btn-item-lookup, #posHoldBtn, #posRecallBtn, #posClearBtn').prop('disabled', true);
-                $('#posBillDiscount, #posRemarks, #posSalesTypeSelect, #posBillerSelect, #posBranchSelect').prop('disabled', true);
+                $('#posBillDiscount, #posRemarks, #posSalesTypeSelect, #posFulfillmentSelect, #posBillerSelect, #posBranchSelect').prop('disabled', true);
                 $('.pos-tender-btn').prop('disabled', true);
             }
 
@@ -826,6 +839,17 @@
         document.getElementById('posHoldBtn')?.addEventListener('click', holdCurrentBill);
         document.getElementById('posRecallBtn')?.addEventListener('click', recallHeldBill);
         document.getElementById('posClearBtn')?.addEventListener('click', resetTerminalAll);
+
+        // Fulfillment Change
+        $('#posFulfillmentSelect').on('change', function () {
+            if (window.IS_VIEW_ONLY) return;
+            $(this).removeClass('is-invalid border-danger');
+            state.fulfillment = this.value;
+            state.delivery_type = this.value;
+            if (state.fulfillment) {
+                showNotification(`Fulfillment set to ${state.fulfillment}`, 'info');
+            }
+        });
 
         // Sales Bill Type Change (Branch-wise)
         $('#posSalesTypeSelect').on('change', function () {
@@ -2397,7 +2421,10 @@
         // 5. Clear scan input
         if (scanInput) scanInput.value = '';
 
-        // 6. Reset Sales Type to unselected placeholder & Purchase Type to default customer
+        // 6. Reset Fulfillment, Sales Type to unselected placeholder & Purchase Type to default customer
+        state.fulfillment = '';
+        state.delivery_type = '';
+        $('#posFulfillmentSelect').val('').removeClass('is-invalid border-danger');
         setSalesType('');
         setPurchaseType(window.INITIAL_CUSTOMER?.purchase_type || 'Local');
 
@@ -3699,6 +3726,8 @@
             id: Date.now(),
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             customer_id: state.customer_id,
+            fulfillment: state.fulfillment,
+            delivery_type: state.delivery_type || state.fulfillment,
             sales_type: state.sales_type,
             purchase_type: state.purchase_type || 'Local',
             bill_discount: state.bill_discount || 0,
@@ -3731,6 +3760,11 @@
         state.bill_discount = bill.bill_discount || 0;
         if ($('#posBillDiscount').length) $('#posBillDiscount').val(state.bill_discount > 0 ? state.bill_discount : '');
         if ($('#posRemarks').length) $('#posRemarks').val(bill.remarks || '');
+        state.fulfillment = bill.fulfillment || bill.delivery_type || '';
+        state.delivery_type = state.fulfillment;
+        if ($('#posFulfillmentSelect').length) {
+            $('#posFulfillmentSelect').val(state.fulfillment);
+        }
         if (bill.sales_type) {
             setSalesType(bill.sales_type);
         } else {
@@ -3824,6 +3858,19 @@
             showNotification('Please select a customer for this bill.', 'warning');
             return;
         }
+
+        // Validate Fulfillment is compulsory
+        const currentFulfillment = state.fulfillment || $('#posFulfillmentSelect').val();
+        if (!currentFulfillment || !String(currentFulfillment).trim()) {
+            const fMsg = 'Fulfillment is required. Please select Fulfillment (Delivery, Pick Up, or Other).';
+            showNotification(fMsg, 'warning');
+            $('#posFulfillmentSelect').addClass('is-invalid border-danger').focus();
+            alert(fMsg);
+            return;
+        }
+        $('#posFulfillmentSelect').removeClass('is-invalid border-danger');
+        state.fulfillment = String(currentFulfillment).trim();
+        state.delivery_type = state.fulfillment;
 
         // Validate Sales Bill Type is compulsory (Point 4: sales bill type compulsory form validation)
         const currentSalesType = state.sales_type || $('#posSalesTypeSelect').val();
@@ -4114,7 +4161,8 @@
             invoice_type: state.invoice_type,
             sales_type: state.sales_type,
             purchase_type: state.purchase_type || 'Local',
-            delivery_type: state.delivery_type,
+            delivery_type: state.delivery_type || state.fulfillment,
+            fulfillment: state.fulfillment || state.delivery_type,
             payment_type: state.tender_mode,
             save_action: action,
             send_whatsapp: action === 'whatsapp' ? 1 : 0,
