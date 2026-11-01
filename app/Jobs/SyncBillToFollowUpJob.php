@@ -84,14 +84,15 @@ class SyncBillToFollowUpJob implements ShouldQueue
 
         // Delivery specifics
         $salesType    = trim((string) ($bill->sales_type ?? ''));
+        $fulfillment  = trim((string) ($bill->fulfillment ?? $bill->delivery_type ?? ''));
         $deliveryType = trim((string) ($bill->delivery_type ?? 'Delivered'));
 
-        // Either sales_type or delivery_type indicates Home Delivery
-        $isHomeDelivery = (strcasecmp($salesType, 'Home') === 0
-            || strcasecmp($salesType, 'Home Delivery') === 0
-            || strcasecmp($deliveryType, 'Home Delivery') === 0);
+        // If Fulfillment is Delivery OR Other (or legacy Home / Home Delivery), it is Home Delivery
+        $isHomeDelivery = in_array(strtolower($fulfillment), ['delivery', 'other', 'home delivery', 'home'], true)
+            || in_array(strtolower($deliveryType), ['home delivery', 'home', 'delivery', 'other'], true)
+            || in_array(strtolower($salesType), ['home', 'home delivery'], true);
 
-        $effectiveDeliveryType = $isHomeDelivery ? 'Home Delivery' : $deliveryType;
+        $effectiveDeliveryType = $isHomeDelivery ? ($fulfillment ?: 'Home Delivery') : ($fulfillment ?: $deliveryType);
         $deliveryDate = $bill->delivery_time 
             ? Carbon::parse($bill->delivery_time)->format('Y-m-d') 
             : ($bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d') : now()->toDateString());
@@ -123,6 +124,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
             'branch_name'      => $bill->branch?->name ?: null,
             'branch_code'      => $bill->branch?->erp_code ?: null,
             'sales_type'       => $salesType,
+            'fulfillment'      => $fulfillment ?: $deliveryType,
             'delivery_type'    => $effectiveDeliveryType,
             'delivery_date'    => $deliveryDate,
             'payment_status'   => $paymentStatus,

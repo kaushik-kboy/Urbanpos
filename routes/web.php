@@ -416,6 +416,7 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('gst/gstr-1/export-json', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr1Json'])->name('gst.gstr-1.export-json');
     Route::get('gst/gstr-1', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1View'])->name('gst.gstr-1.page');
     Route::get('gst/gstr-1/{section}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1SectionView'])->name('gst.gstr-1.section');
+    Route::get('gst/gstr-1/{section}/export', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr1SectionExcel'])->name('gst.gstr-1.section.export');
     Route::get('gst/gstr-1-details', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1Details'])->name('gst.gstr-1');
     Route::get('gst/gstr-3b', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr3bView'])->name('gst.gstr-3b.page');
     Route::get('gst/gstr-3b-export', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr3b'])->name('gst.gstr-3b.export');
