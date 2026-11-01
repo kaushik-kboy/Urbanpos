@@ -408,6 +408,28 @@ class ChatOnClickWhatsAppService
                     'name'     => 'button_url',
                     'contents' => (string) $salesBill->id,
                 ];
+            } elseif ($this->templateName === 'urban_tax_invoice_v3') {
+                $variables = [
+                    $customerName,
+                    $billNumber,
+                    $billDate,
+                    $branchName,
+                    $totalItems,
+                    $totalAmount,
+                    $paymentModes,
+                    $branchPhone,
+                ];
+                foreach ($variables as $var) {
+                    $multipart[] = [
+                        'name'     => 'variables[]',
+                        'contents' => (string) $var,
+                    ];
+                }
+
+                $multipart[] = [
+                    'name'     => 'button_url',
+                    'contents' => (string) $salesBill->id,
+                ];
             } else {
                 // Generic 8 Body variables fallback
                 $variables = [

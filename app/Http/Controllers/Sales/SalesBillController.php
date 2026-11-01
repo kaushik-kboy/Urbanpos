@@ -759,6 +759,13 @@ class SalesBillController extends Controller
             $this->ledgerPosting->postSalesBill($salesBill);
         });
 
+        // Async sync to Follow-up CRM (urban.indianpetcompany.com) on edit
+        try {
+            \App\Jobs\SyncBillToFollowUpJob::dispatch($salesBill->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to dispatch SyncBillToFollowUpJob on update for bill {$salesBill->bill_number}: " . $e->getMessage());
+        }
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
