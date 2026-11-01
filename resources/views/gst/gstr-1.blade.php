@@ -13,17 +13,17 @@
         </small>
     </div>
     <div class="d-flex align-items-center mt-2 mt-md-0">
-        <a href="{{ route('tools.gst.gstr-1.export-json', request()->all()) }}" class="btn btn-success btn-sm shadow-sm font-weight-bold mr-2" title="Direct JSON upload for GST Portal services.gst.gov.in">
+        <a href="{{ route('tools.gst.gstr-1.export-json', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-success btn-sm shadow-sm font-weight-bold mr-2" title="Direct JSON upload for GST Portal services.gst.gov.in">
             <i class="fas fa-file-code mr-1"></i> Export Official GSTR-1 JSON (Govt Portal) ★
         </a>
-        <a href="{{ route('tools.gst.gstr-3b.page') }}" class="btn btn-primary btn-sm mr-2 shadow-sm font-weight-bold">
+        <a href="{{ route('tools.gst.gstr-3b.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-primary btn-sm mr-2 shadow-sm font-weight-bold">
             <i class="fas fa-balance-scale mr-1"></i> View GSTR-3B
         </a>
-        <a href="{{ route('tools.gst.gstr-2.page') }}" class="btn btn-info btn-sm mr-2 shadow-sm font-weight-bold">
+        <a href="{{ route('tools.gst.gstr-2.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-info btn-sm mr-2 shadow-sm font-weight-bold">
             <i class="fas fa-shopping-cart mr-1"></i> View GSTR-2 (Inward)
         </a>
-        <a href="{{ route('tools.integrations-gst', ['view' => 'returns']) }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
-            <i class="fas fa-arrow-left mr-1"></i> Back
+        <a href="{{ route('tools.integrations-gst', ['view' => 'returns', 'from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-outline-secondary btn-sm shadow-sm font-weight-bold">
+            <i class="fas fa-arrow-left mr-1"></i> Back to GST Hub
         </a>
     </div>
 </div>
@@ -49,14 +49,14 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center">
                 <form method="GET" action="{{ route('tools.gst.gstr-1.page') }}" id="periodForm" class="form-inline mb-2 mb-md-0">
                     <label class="font-weight-bold mr-2 text-dark small">
-                        <i class="far fa-calendar-alt text-primary mr-1"></i> Return Period:
+                        <i class="far fa-calendar-alt text-primary mr-1"></i> Period:
                     </label>
-                    <select name="period" class="form-control form-control-sm font-weight-bold mr-3" onchange="document.getElementById('periodForm').submit();" style="min-width: 170px;">
-                        <option value="Aug 2026 - 2027" {{ $selectedPeriod == 'Aug 2026 - 2027' ? 'selected' : '' }}>Aug 2026 - 2027</option>
-                        <option value="Sep 2026 - 2027" {{ $selectedPeriod == 'Sep 2026 - 2027' ? 'selected' : '' }}>Sep 2026 - 2027</option>
-                        <option value="Jul 2026 - 2027" {{ $selectedPeriod == 'Jul 2026 - 2027' ? 'selected' : '' }}>Jul 2026 - 2027</option>
-                        <option value="FY 2026 - 2027" {{ $selectedPeriod == 'FY 2026 - 2027' ? 'selected' : '' }}>FY 2026 - 2027</option>
-                    </select>
+                    <input type="date" name="from_date" value="{{ $fromDate }}" class="form-control form-control-sm mr-2 font-weight-bold" style="width: 140px;">
+                    <span class="mr-2 text-muted small">to</span>
+                    <input type="date" name="to_date" value="{{ $toDate }}" class="form-control form-control-sm mr-2 font-weight-bold" style="width: 140px;">
+                    <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm mr-3 font-weight-bold">
+                        <i class="fas fa-filter mr-1"></i> Apply
+                    </button>
 
                     <span class="badge badge-light border px-2 py-1 mr-2 text-dark">
                         <i class="fas fa-store mr-1 text-secondary"></i> {{ $companyName }}
@@ -83,7 +83,7 @@
             {{-- ROW 1 --}}
             {{-- Card 1: HSN B2B Summary --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2b-hsn']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2b-hsn', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>HSN B2B Summary</span>
                         <span></span>
@@ -105,7 +105,7 @@
 
             {{-- Card 2: HSN B2C Summary --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2c-hsn']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2c-hsn', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>HSN B2C Summary</span>
                         <span></span>
@@ -127,7 +127,7 @@
 
             {{-- Card 3: B2B Outward Supplies --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2b']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2b', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>B2B Outward Supplies</span>
                         <span class="small font-weight-bold">{{ $b2bCount }} invoices</span>
@@ -150,7 +150,7 @@
             {{-- ROW 2 --}}
             {{-- Card 4: B2CL Outward Supplies --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2cl']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2cl', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>B2CL Outward Supplies</span>
                         <span class="small font-weight-bold">{{ $b2clCount }} Invoices</span>
@@ -172,7 +172,7 @@
 
             {{-- Card 5: Exported Supplies --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'exp']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'exp', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>Exported Supplies</span>
                         <span class="small font-weight-bold">{{ $exportCount }} Invoices</span>
@@ -194,7 +194,7 @@
 
             {{-- Card 6: B2CS Outward Supplies --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2cs']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2cs', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>B2CS Outward Supplies</span>
                         <span></span>
@@ -217,7 +217,7 @@
             {{-- ROW 3 --}}
             {{-- Card 7: Credit/Debit notes (Reg) --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'cdnr']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'cdnr', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>Credit/Debit notes (Reg)</span>
                         <span class="small font-weight-bold">{{ $cdnrCount }} notes</span>
@@ -239,7 +239,7 @@
 
             {{-- Card 8: Credit/Debit notes (UnReg) --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'cdnur']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'cdnur', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>Credit/Debit notes (UnReg)</span>
                         <span class="small font-weight-bold">{{ $cdnurCount }} notes</span>
@@ -261,7 +261,7 @@
 
             {{-- Card 9: Nil Rated Supplies --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'nil']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'nil', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>Nil Rated Supplies</span>
                         <span></span>
@@ -284,7 +284,7 @@
             {{-- ROW 4 --}}
             {{-- Card 10: Advance Received --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'adv-rec']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'adv-rec', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>Advance Received</span>
                         <span></span>
@@ -306,7 +306,7 @@
 
             {{-- Card 11: Advance Adjusted --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'adv-adj']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'adv-adj', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>Advance Adjusted</span>
                         <span></span>
@@ -328,7 +328,7 @@
 
             {{-- Card 12: Document Issued --}}
             <div class="col-lg-4 col-md-6 mb-3">
-                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'doc-issued']) }}';">
+                <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'doc-issued', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>Document Issued</span>
                         <span class="small font-weight-bold">Total Invoices {{ $docIssuedTotal }}</span>

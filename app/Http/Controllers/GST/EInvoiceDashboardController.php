@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\GST;
 
+use App\Exports\GenericReportExport;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
-use App\Models\Customer;
 use App\Models\GstSetting;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesBill;
 use App\Services\GST\EInvoiceService;
-use App\Services\GST\EWayBillService;
 use App\Services\GST\Gstr1ReportService;
 use App\Services\GST\Gstr2ReportService;
 use App\Services\GST\Gstr3bReportService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EInvoiceDashboardController extends Controller
 {
@@ -25,7 +26,7 @@ class EInvoiceDashboardController extends Controller
     public function index(Request $request, EInvoiceService $service)
     {
         $settings = GstSetting::current();
-        
+
         // Active view: 'returns' (GST Returns: GSTR-1, GSTR-3B, GSTR-2, 2A, 2B, 9) or 'einvoice' (E-Invoice Hub)
         $viewMode = $request->input('view', $request->is('*einvoice*') ? 'einvoice' : 'returns');
         $tab = $request->input('tab', 'pending'); // 'pending', 'failed', 'completed'
@@ -48,7 +49,7 @@ class EInvoiceDashboardController extends Controller
         $gstr1Count = (clone $salesQuery)->count();
         $gstr1Total = (float) (clone $salesQuery)->sum('total');
         $gstr1TaxCollected = (float) (clone $salesQuery)->sum('total_gst');
-        
+
         if ($gstr1TaxCollected == 0 && $gstr1Total > 0) {
             $itemGst = DB::table('sales_bill_items')
                 ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
@@ -110,15 +111,15 @@ class EInvoiceDashboardController extends Controller
         })->count();
 
         // Filter by Date
-        if (!empty($fromDate)) {
+        if (! empty($fromDate)) {
             $baseQuery->whereDate('bill_date', '>=', $fromDate);
         }
-        if (!empty($toDate)) {
+        if (! empty($toDate)) {
             $baseQuery->whereDate('bill_date', '<=', $toDate);
         }
 
         // Filter by Search
-        if (!empty($customerSearch)) {
+        if (! empty($customerSearch)) {
             $baseQuery->whereHas('customer', function ($q) use ($customerSearch) {
                 $q->where('name', 'like', "%{$customerSearch}%")
                     ->orWhere('gst_no', 'like', "%{$customerSearch}%")
@@ -126,7 +127,7 @@ class EInvoiceDashboardController extends Controller
             });
         }
 
-        if (!empty($invoiceSearch)) {
+        if (! empty($invoiceSearch)) {
             $baseQuery->where('bill_number', 'like', "%{$invoiceSearch}%");
         }
 
@@ -179,12 +180,34 @@ class EInvoiceDashboardController extends Controller
     /** Default GSTR-1 reporting period used when the request doesn't specify one. */
     private function defaultGstr1Period(Request $request): array
     {
-        $fromDate = $request->input('from_date');
-        $toDate = $request->input('to_date');
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+
+        // If from_date or to_date are missing, but period was provided (e.g. 'Oct 2026', '2026-10', 'Aug 2026 - 2027')
+        if ((empty($fromDate) || empty($toDate)) && $request->filled('period')) {
+            $periodStr = trim((string) $request->input('period'));
+            if (preg_match('/([A-Za-z]+)\s+(\d{4})/', $periodStr, $matches)) {
+                try {
+                    $dt = Carbon::parse("1 {$matches[1]} {$matches[2]}");
+                    $fromDate = $dt->startOfMonth()->format('Y-m-d');
+                    $toDate = $dt->endOfMonth()->format('Y-m-d');
+                } catch (\Throwable $e) {
+                }
+            } elseif (preg_match('/^(\d{4})-(\d{2})$/', $periodStr, $matches)) {
+                try {
+                    $dt = Carbon::parse("{$matches[1]}-{$matches[2]}-01");
+                    $fromDate = $dt->startOfMonth()->format('Y-m-d');
+                    $toDate = $dt->endOfMonth()->format('Y-m-d');
+                } catch (\Throwable $e) {
+                }
+            }
+        }
+
         if (empty($fromDate) || empty($toDate)) {
             $fromDate = now()->startOfMonth()->format('Y-m-d');
             $toDate = now()->format('Y-m-d');
         }
+
         return [$fromDate, $toDate];
     }
 
@@ -204,7 +227,7 @@ class EInvoiceDashboardController extends Controller
     public function gstr1View(Request $request)
     {
         $settings = GstSetting::current();
-        $selectedPeriod = $request->input('period', now()->format('M Y') . ' - ' . now()->addYear()->format('Y'));
+        $selectedPeriod = $request->input('period', now()->format('M Y').' - '.now()->addYear()->format('Y'));
 
         [$fromDate, $toDate] = $this->defaultGstr1Period($request);
 
@@ -336,10 +359,14 @@ class EInvoiceDashboardController extends Controller
                 $meta = ['note' => $data['note']];
                 break;
             case 'nil':
-                $layout = 'unsupported-summary';
+                $layout = 'nil-rated';
                 $data = $service->nilRated();
-                $rows = [];
-                $meta = ['amount' => $data['combined_amount'], 'limitation' => $data['limitation']];
+                $rows = $data['rows'] ?? [];
+                $meta = [
+                    'amount' => $data['combined_amount'] ?? 0,
+                    'count' => count($rows),
+                    'limitation' => $data['limitation'],
+                ];
                 break;
             case 'exp':
                 $layout = 'unsupported';
@@ -362,15 +389,16 @@ class EInvoiceDashboardController extends Controller
                 $rows = [];
         }
 
-        // Search filter (HSN/invoice-shaped layouts only — kept from the original behaviour)
+        // Search filter (HSN/invoice-shaped layouts only — searches HSN, Item name, Invoice No, Rate)
         if ($request->filled('search') && in_array($layout, ['hsn', 'invoice', 'invoice-b2cl'], true)) {
             $q = trim($request->search);
             $rows = array_values(array_filter($rows, function ($r) use ($q) {
-                foreach (['hsn', 'ref', 'rate'] as $key) {
-                    if (isset($r[$key]) && str_contains((string) $r[$key], $q)) {
+                foreach (['hsn', 'name', 'ref', 'rate'] as $key) {
+                    if (isset($r[$key]) && stripos((string) $r[$key], $q) !== false) {
                         return true;
                     }
                 }
+
                 return false;
             }));
         }
@@ -393,7 +421,245 @@ class EInvoiceDashboardController extends Controller
             'gstin' => $gstin,
             'gstinIsSandbox' => $gstinIsSandbox,
             'search' => $request->search ?? '',
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
         ]);
+    }
+
+    /**
+     * Download dedicated Excel (.xlsx) for any GSTR-1 section.
+     */
+    public function exportGstr1SectionExcel(Request $request, string $section)
+    {
+        $section = strtolower(trim(str_replace('_', '-', $section)));
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $service = new Gstr1ReportService($fromDate, $toDate);
+
+        $safeSection = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $section);
+        $filename = "GSTR1_{$safeSection}_".date('Ymd', strtotime($fromDate)).'_'.date('Ymd', strtotime($toDate)).'.xlsx';
+
+        $headings = [];
+        $rows = [];
+
+        switch ($section) {
+            case 'b2b-hsn':
+            case 'b2c-hsn':
+                $isB2b = ($section === 'b2b-hsn');
+                $data = $isB2b ? $service->hsnB2b() : $service->hsnB2c();
+                $headings = [
+                    'HSN or SAC code',
+                    'Item name',
+                    'UOM',
+                    'Total Quantity',
+                    'Total Value (₹)',
+                    'Rate (%)',
+                    'Nil/Exempted Value (₹)',
+                    'Taxable Value (₹)',
+                    'IGST (₹)',
+                    'CGST (₹)',
+                    'SGST (₹)',
+                    'CESS (₹)',
+                ];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [
+                        $r['hsn'] ?? '',
+                        $r['name'] ?? '',
+                        $r['uom'] ?? 'NOS',
+                        $r['qty'] ?? 0,
+                        $r['total'] ?? 0,
+                        $r['rate'] ?? 0,
+                        $r['nil'] ?? 0,
+                        $r['taxable'] ?? 0,
+                        $r['igst'] ?? 0,
+                        $r['cgst'] ?? 0,
+                        $r['sgst'] ?? 0,
+                        $r['cess'] ?? 0,
+                    ];
+                }
+                break;
+
+            case 'b2b':
+                $data = $service->b2b();
+                $headings = [
+                    'Invoice No',
+                    'Invoice Date',
+                    'Customer Name',
+                    'GSTIN',
+                    'Place of Supply',
+                    'Taxable Value (₹)',
+                    'IGST (₹)',
+                    'CGST (₹)',
+                    'SGST (₹)',
+                    'Invoice Value (₹)',
+                ];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [
+                        $r['ref'] ?? '',
+                        $r['date'] ?? '',
+                        $r['customer'] ?? '',
+                        $r['gstin'] ?? '',
+                        $r['pos'] ?? '',
+                        $r['taxable'] ?? 0,
+                        $r['igst'] ?? 0,
+                        $r['cgst'] ?? 0,
+                        $r['sgst'] ?? 0,
+                        $r['total'] ?? 0,
+                    ];
+                }
+                break;
+
+            case 'b2cl':
+                $data = $service->b2cl();
+                $headings = [
+                    'Invoice No',
+                    'Invoice Date',
+                    'Place of Supply',
+                    'Taxable Value (₹)',
+                    'IGST (₹)',
+                    'Invoice Value (₹)',
+                ];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [
+                        $r['ref'] ?? '',
+                        $r['date'] ?? '',
+                        $r['pos'] ?? '',
+                        $r['taxable'] ?? 0,
+                        $r['igst'] ?? 0,
+                        $r['total'] ?? 0,
+                    ];
+                }
+                break;
+
+            case 'b2cs':
+                $data = $service->b2cs();
+                $headings = [
+                    'Place of Supply',
+                    'Rate (%)',
+                    'Taxable Value (₹)',
+                    'IGST (₹)',
+                    'CGST (₹)',
+                    'SGST (₹)',
+                ];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [
+                        $r['pos'] ?? '',
+                        $r['rate'] ?? 0,
+                        $r['taxable'] ?? 0,
+                        $r['igst'] ?? 0,
+                        $r['cgst'] ?? 0,
+                        $r['sgst'] ?? 0,
+                    ];
+                }
+                break;
+
+            case 'cdnr':
+                $data = $service->cdnr();
+                $headings = [
+                    'Note No',
+                    'Note Date',
+                    'Original Invoice',
+                    'Customer Name',
+                    'GSTIN',
+                    'Taxable Value (₹)',
+                    'IGST (₹)',
+                    'CGST (₹)',
+                    'SGST (₹)',
+                    'Note Value (₹)',
+                ];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [
+                        $r['ref'] ?? '',
+                        $r['date'] ?? '',
+                        $r['original_invoice'] ?? '',
+                        $r['customer'] ?? '',
+                        $r['gstin'] ?? '',
+                        $r['taxable'] ?? 0,
+                        $r['igst'] ?? 0,
+                        $r['cgst'] ?? 0,
+                        $r['sgst'] ?? 0,
+                        $r['total'] ?? 0,
+                    ];
+                }
+                break;
+
+            case 'cdnur':
+                $data = $service->cdnur();
+                $headings = [
+                    'Note No',
+                    'Note Date',
+                    'Original Invoice',
+                    'Customer Name',
+                    'GSTIN',
+                    'Taxable Value (₹)',
+                    'IGST (₹)',
+                    'CGST (₹)',
+                    'SGST (₹)',
+                    'Note Value (₹)',
+                ];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [
+                        $r['ref'] ?? '',
+                        $r['date'] ?? '',
+                        $r['original_invoice'] ?? '',
+                        $r['customer'] ?? '',
+                        $r['gstin'] ?? '',
+                        $r['taxable'] ?? 0,
+                        $r['igst'] ?? 0,
+                        $r['cgst'] ?? 0,
+                        $r['sgst'] ?? 0,
+                        $r['total'] ?? 0,
+                    ];
+                }
+                break;
+
+            case 'nil':
+                $data = $service->nilRated();
+                $headings = ['#', 'Item Name', 'HSN Code', 'Rate (%)', 'Qty Sold', 'Bills Count', 'Nil-Rated Value (₹)'];
+                $i = 1;
+                foreach ($data['rows'] ?? [] as $r) {
+                    $rows[] = [
+                        $i++,
+                        $r['name'],
+                        $r['hsn'],
+                        '0.00%',
+                        $r['qty'],
+                        $r['bills'],
+                        number_format($r['amount'], 2, '.', ''),
+                    ];
+                }
+                break;
+
+            case 'doc-issued':
+                $data = $service->documentsIssued();
+                $headings = [
+                    'Branch',
+                    'Document Series / Type',
+                    'First No (From)',
+                    'Last No (To)',
+                    'Total Issued',
+                    'Cancelled',
+                    'Net Issued',
+                ];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [
+                        $r['branch'] ?? '',
+                        $r['doc_type'] ?? ($r['label'] ?? ''),
+                        $r['first'] ?? '',
+                        $r['last'] ?? '',
+                        $r['total'] ?? 0,
+                        $r['cancelled'] ?? 0,
+                        $r['net_issued'] ?? 0,
+                    ];
+                }
+                break;
+
+            default:
+                $headings = ['Status', 'Message'];
+                $rows[] = ['Notice', 'No direct register rows available for this section.'];
+                break;
+        }
+
+        return Excel::download(new GenericReportExport($rows, $headings), $filename);
     }
 
     /**
@@ -469,6 +735,7 @@ class EInvoiceDashboardController extends Controller
             if (array_sum($actual) > 0) {
                 return array_map(fn ($v) => round($v, 2), $actual);
             }
+
             return ['igst' => round($gst * 0.1, 2), 'cgst' => round($gst * 0.45, 2), 'sgst' => round($gst * 0.45, 2)];
         };
         $outSplit = $splitTax($salesSplit, $salesGst);
@@ -518,10 +785,10 @@ class EInvoiceDashboardController extends Controller
 
         return view('gst.gstr-3b', array_merge($data, [
             'companyName' => $companyName,
-            'gstin'       => $gstin,
-            'fromDate'    => $fromDate,
-            'toDate'      => $toDate,
-            'period'      => date('M Y', strtotime($fromDate)),
+            'gstin' => $gstin,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'period' => date('M Y', strtotime($fromDate)),
         ]));
     }
 
@@ -534,7 +801,7 @@ class EInvoiceDashboardController extends Controller
         $service = new Gstr3bReportService($fromDate, $toDate);
         $data = $service->compute();
 
-        $filename = "GSTR3B_" . date('Ymd', strtotime($fromDate)) . "_" . date('Ymd', strtotime($toDate)) . ".csv";
+        $filename = 'GSTR3B_'.date('Ymd', strtotime($fromDate)).'_'.date('Ymd', strtotime($toDate)).'.csv';
 
         return response()->stream(function () use ($data) {
             $handle = fopen('php://output', 'w');
@@ -555,7 +822,7 @@ class EInvoiceDashboardController extends Controller
             $allOther = $data['table_4']['available']['all_other'];
             fputcsv($handle, [$allOther['desc'], $allOther['igst'], $allOther['cgst'], $allOther['sgst'], $allOther['total_itc']]);
             $rev = $data['table_4']['reversed']['others'];
-            fputcsv($handle, ['Less: ' . $rev['desc'], $rev['igst'], $rev['cgst'], $rev['sgst'], $rev['total']]);
+            fputcsv($handle, ['Less: '.$rev['desc'], $rev['igst'], $rev['cgst'], $rev['sgst'], $rev['total']]);
             $net = $data['table_4']['net_itc'];
             fputcsv($handle, [$net['desc'], $net['igst'], $net['cgst'], $net['sgst'], $net['total']]);
             fputcsv($handle, []);
@@ -570,7 +837,7 @@ class EInvoiceDashboardController extends Controller
 
             fclose($handle);
         }, 200, [
-            'Content-Type'        => 'text/csv',
+            'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
@@ -591,15 +858,15 @@ class EInvoiceDashboardController extends Controller
 
         return view('gst.gstr-2', array_merge($data, [
             'companyName' => $companyName,
-            'gstin'       => $gstin,
-            'fromDate'    => $fromDate,
-            'toDate'      => $toDate,
-            'period'      => date('M Y', strtotime($fromDate)),
+            'gstin' => $gstin,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'period' => date('M Y', strtotime($fromDate)),
         ]));
     }
 
     /**
-     * Export GSTR-2 Inward Purchase Register as CSV.
+     * Export GSTR-2 Inward Purchase Register as real Excel (.xlsx).
      */
     public function exportGstr2(Request $request)
     {
@@ -607,54 +874,48 @@ class EInvoiceDashboardController extends Controller
         $service = new Gstr2ReportService($fromDate, $toDate);
         $summary = $service->summary();
 
-        $filename = "GSTR2_Inward_Register_" . date('Ymd', strtotime($fromDate)) . "_" . date('Ymd', strtotime($toDate)) . ".csv";
+        $headings = ['Supplier Name', 'Supplier GSTIN', 'Invoice / Ref No', 'Invoice Date', 'Document Type', 'Invoice Value (₹)', 'Taxable Value (₹)', 'IGST (₹)', 'CGST (₹)', 'SGST (₹)', 'Total GST (₹)', 'ITC Eligibility', 'RCM'];
+        $rows = [];
 
-        return response()->stream(function () use ($summary) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['GSTR-2 INWARD SUPPLIES (PURCHASE REGISTER)', "Period: {$summary['from_date']} to {$summary['to_date']}"]);
-            fputcsv($handle, []);
-            fputcsv($handle, ['Supplier Name', 'Supplier GSTIN', 'Invoice No', 'Invoice Date', 'Invoice Value', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Total GST', 'ITC Eligibility', 'RCM']);
+        foreach ($summary['purchases'] as $inv) {
+            $rows[] = [
+                $inv['supplier_name'] ?? '',
+                $inv['supplier_gstin'] ?? '',
+                $inv['invoice_number'] ?? '',
+                $inv['invoice_date'] ?? '',
+                'Purchase Invoice',
+                $inv['invoice_value'] ?? 0,
+                $inv['taxable_value'] ?? 0,
+                $inv['igst'] ?? 0,
+                $inv['cgst'] ?? 0,
+                $inv['sgst'] ?? 0,
+                $inv['total_gst'] ?? 0,
+                $inv['itc_eligibility'] ?? 'Eligible',
+                $inv['rcm'] ?? 'No',
+            ];
+        }
 
-            foreach ($summary['purchases'] as $inv) {
-                fputcsv($handle, [
-                    $inv['supplier_name'],
-                    $inv['supplier_gstin'],
-                    $inv['invoice_number'],
-                    $inv['invoice_date'],
-                    $inv['invoice_value'],
-                    $inv['taxable_value'],
-                    $inv['igst'],
-                    $inv['cgst'],
-                    $inv['sgst'],
-                    $inv['total_gst'],
-                    $inv['itc_eligibility'],
-                    $inv['rcm'],
-                ]);
-            }
+        foreach ($summary['debit_notes'] as $dn) {
+            $rows[] = [
+                $dn['supplier_name'] ?? '',
+                $dn['supplier_gstin'] ?? '',
+                $dn['return_number'] ?? '',
+                $dn['return_date'] ?? '',
+                'Purchase Debit Note',
+                $dn['return_value'] ?? 0,
+                $dn['taxable_value'] ?? 0,
+                $dn['igst'] ?? 0,
+                $dn['cgst'] ?? 0,
+                $dn['sgst'] ?? 0,
+                $dn['total_gst'] ?? 0,
+                'N/A',
+                'No',
+            ];
+        }
 
-            fputcsv($handle, []);
-            fputcsv($handle, ['PURCHASE DEBIT NOTES (RETURNS)']);
-            fputcsv($handle, ['Supplier Name', 'Supplier GSTIN', 'Return No', 'Return Date', 'Return Value', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Total GST']);
-            foreach ($summary['debit_notes'] as $dn) {
-                fputcsv($handle, [
-                    $dn['supplier_name'],
-                    $dn['supplier_gstin'],
-                    $dn['return_number'],
-                    $dn['return_date'],
-                    $dn['return_value'],
-                    $dn['taxable_value'],
-                    $dn['igst'],
-                    $dn['cgst'],
-                    $dn['sgst'],
-                    $dn['total_gst'],
-                ]);
-            }
+        $filename = 'GSTR2_Inward_Register_'.date('Ymd', strtotime($fromDate)).'_'.date('Ymd', strtotime($toDate)).'.xlsx';
 
-            fclose($handle);
-        }, 200, [
-            'Content-Type'        => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return Excel::download(new GenericReportExport($rows, $headings), $filename);
     }
 
     /**
@@ -680,7 +941,7 @@ class EInvoiceDashboardController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'financial_year' => "{$year}-" . substr((string)($year + 1), 2),
+            'financial_year' => "{$year}-".substr((string) ($year + 1), 2),
             'period' => "{$fyStart} to {$fyEnd}",
             'annual_turnover' => $annualSales,
             'annual_taxable_turnover' => round($annualSales - $annualSalesGst, 2),
@@ -707,13 +968,13 @@ class EInvoiceDashboardController extends Controller
 
         $type = strtoupper($request->type);
 
-        if (!$json) {
+        if (! $json) {
             return redirect()->back()->with('error', "Invalid JSON file uploaded for GSTR-{$type}.");
         }
 
         // Mock reconciliation summary
         $invCount = isset($json['b2b']) ? count($json['b2b']) : (is_array($json) ? count($json) : 12);
-        $matched = max(1, (int)($invCount * 0.9));
+        $matched = max(1, (int) ($invCount * 0.9));
         $mismatch = max(0, $invCount - $matched);
 
         return redirect()->back()->with('status', "GSTR-{$type} uploaded successfully! Reconciled {$invCount} supplier invoices: {$matched} Matched with Purchase Register, {$mismatch} Pending match.");
@@ -729,12 +990,12 @@ class EInvoiceDashboardController extends Controller
 
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"GSTR_{$type}_Reconciliation_" . now()->format('Ymd_His') . ".csv\"",
+            'Content-Disposition' => "attachment; filename=\"GSTR_{$type}_Reconciliation_".now()->format('Ymd_His').'.csv"',
         ];
 
         $callback = function () use ($invoices, $type) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ["Supplier GSTIN", "Supplier Name", "Invoice No", "Invoice Date", "Invoice Value", "Taxable Value", "CGST", "SGST", "IGST", "{$type} Match Status"]);
+            fputcsv($file, ['Supplier GSTIN', 'Supplier Name', 'Invoice No', 'Invoice Date', 'Invoice Value', 'Taxable Value', 'CGST', 'SGST', 'IGST', "{$type} Match Status"]);
 
             foreach ($invoices as $inv) {
                 fputcsv($file, [
@@ -766,6 +1027,7 @@ class EInvoiceDashboardController extends Controller
 
         $items = $salesBill->items->map(function ($line) {
             $taxable = round((float) $line->net_amount - (float) $line->gst_tax_amount, 2);
+
             return [
                 'id' => $line->id,
                 'name' => $line->item?->name ?? 'Goods / Item',
@@ -855,14 +1117,14 @@ class EInvoiceDashboardController extends Controller
             $payload = $service->buildPayload($bill);
             // NIC Government Bulk Upload ALWAYS expects an array of invoices root element
             $json = json_encode([$payload], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            $filename = "EINV_" . preg_replace('/[^A-Za-z0-9]/', '_', $bill->bill_number) . "_" . now()->format('Ymd_His') . ".json";
+            $filename = 'EINV_'.preg_replace('/[^A-Za-z0-9]/', '_', $bill->bill_number).'_'.now()->format('Ymd_His').'.json';
         } else {
             $batchList = [];
             foreach ($bills as $bill) {
                 $batchList[] = $service->buildPayload($bill);
             }
             $json = json_encode($batchList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            $filename = "EINV_BATCH_" . $bills->count() . "_BILLS_" . now()->format('Ymd_His') . ".json";
+            $filename = 'EINV_BATCH_'.$bills->count().'_BILLS_'.now()->format('Ymd_His').'.json';
         }
 
         return Response::make($json, 200, [
@@ -883,7 +1145,7 @@ class EInvoiceDashboardController extends Controller
 
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="EInvoice_Errors_' . now()->format('Ymd_His') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="EInvoice_Errors_'.now()->format('Ymd_His').'.csv"',
         ];
 
         $callback = function () use ($failedBills) {
@@ -924,7 +1186,7 @@ class EInvoiceDashboardController extends Controller
             return redirect()->back()->with('status', "Government IRN for Bill #{$salesBill->bill_number} has been cancelled successfully.");
         }
 
-        return redirect()->back()->with('error', "IRN Cancellation failed: " . ($result['error'] ?? 'Unknown error'));
+        return redirect()->back()->with('error', 'IRN Cancellation failed: '.($result['error'] ?? 'Unknown error'));
     }
 
     /**
@@ -961,19 +1223,19 @@ class EInvoiceDashboardController extends Controller
     public function updateManualIrn(Request $request, SalesBill $salesBill)
     {
         $validated = $request->validate([
-            'irn'            => 'required|string|size:64',
-            'ack_no'         => 'nullable|string|max:35',
-            'ack_date'       => 'nullable|date',
+            'irn' => 'required|string|size:64',
+            'ack_no' => 'nullable|string|max:35',
+            'ack_date' => 'nullable|date',
             'signed_qr_code' => 'nullable|string',
         ]);
 
         $salesBill->update([
-            'irn'                => trim($validated['irn']),
-            'ack_no'             => $validated['ack_no'] ? trim($validated['ack_no']) : null,
-            'ack_date'           => $validated['ack_date'] ? \Carbon\Carbon::parse($validated['ack_date']) : now(),
-            'signed_qr_code'     => $validated['signed_qr_code'] ?: null,
-            'einvoice_status'    => 'Completed',
-            'einvoice_error'     => null,
+            'irn' => trim($validated['irn']),
+            'ack_no' => $validated['ack_no'] ? trim($validated['ack_no']) : null,
+            'ack_date' => $validated['ack_date'] ? Carbon::parse($validated['ack_date']) : now(),
+            'signed_qr_code' => $validated['signed_qr_code'] ?: null,
+            'einvoice_status' => 'Completed',
+            'einvoice_error' => null,
             'einvoice_synced_at' => now(),
         ]);
 
@@ -1010,12 +1272,12 @@ class EInvoiceDashboardController extends Controller
                     $bill = SalesBill::where('bill_number', trim($docNo))->first();
                     if ($bill) {
                         $bill->update([
-                            'irn'                => trim($irn),
-                            'ack_no'             => $ackNo ? (string) $ackNo : null,
-                            'ack_date'           => \Carbon\Carbon::parse($ackDt),
-                            'signed_qr_code'     => $signedQr,
-                            'einvoice_status'    => 'Completed',
-                            'einvoice_error'     => null,
+                            'irn' => trim($irn),
+                            'ack_no' => $ackNo ? (string) $ackNo : null,
+                            'ack_date' => Carbon::parse($ackDt),
+                            'signed_qr_code' => $signedQr,
+                            'einvoice_status' => 'Completed',
+                            'einvoice_error' => null,
                             'einvoice_synced_at' => now(),
                         ]);
                         $synced++;
@@ -1027,13 +1289,24 @@ class EInvoiceDashboardController extends Controller
         } elseif (in_array($ext, ['csv', 'txt'])) {
             $handle = fopen($file->getRealPath(), 'r');
             $header = fgetcsv($handle);
-            $docIdx = false; $irnIdx = false; $ackIdx = false; $dateIdx = false;
+            $docIdx = false;
+            $irnIdx = false;
+            $ackIdx = false;
+            $dateIdx = false;
             foreach ($header as $idx => $col) {
                 $clean = strtolower(trim(str_replace([' ', '_', '-'], '', $col)));
-                if (in_array($clean, ['docno', 'invoiceno', 'billno', 'documentno', 'billnumber'])) $docIdx = $idx;
-                if (in_array($clean, ['irn', 'irnno', 'irnhash'])) $irnIdx = $idx;
-                if (in_array($clean, ['ackno', 'acknowledgementno', 'acknumber'])) $ackIdx = $idx;
-                if (in_array($clean, ['ackdate', 'ackdt', 'date'])) $dateIdx = $idx;
+                if (in_array($clean, ['docno', 'invoiceno', 'billno', 'documentno', 'billnumber'])) {
+                    $docIdx = $idx;
+                }
+                if (in_array($clean, ['irn', 'irnno', 'irnhash'])) {
+                    $irnIdx = $idx;
+                }
+                if (in_array($clean, ['ackno', 'acknowledgementno', 'acknumber'])) {
+                    $ackIdx = $idx;
+                }
+                if (in_array($clean, ['ackdate', 'ackdt', 'date'])) {
+                    $dateIdx = $idx;
+                }
             }
 
             if ($docIdx !== false && $irnIdx !== false) {
@@ -1047,11 +1320,11 @@ class EInvoiceDashboardController extends Controller
                         $bill = SalesBill::where('bill_number', trim($docNo))->first();
                         if ($bill) {
                             $bill->update([
-                                'irn'                => trim($irn),
-                                'ack_no'             => $ackNo ? trim($ackNo) : null,
-                                'ack_date'           => \Carbon\Carbon::parse($ackDt),
-                                'einvoice_status'    => 'Completed',
-                                'einvoice_error'     => null,
+                                'irn' => trim($irn),
+                                'ack_no' => $ackNo ? trim($ackNo) : null,
+                                'ack_date' => Carbon::parse($ackDt),
+                                'einvoice_status' => 'Completed',
+                                'einvoice_error' => null,
                                 'einvoice_synced_at' => now(),
                             ]);
                             $synced++;
@@ -1066,6 +1339,6 @@ class EInvoiceDashboardController extends Controller
             return redirect()->back()->with('status', "Official Government E-Invoice Response synced: {$synced} bills updated with verified IRN & Ack details!");
         }
 
-        return redirect()->back()->with('error', "No matching bills could be synced from the uploaded file. Please check file format.");
+        return redirect()->back()->with('error', 'No matching bills could be synced from the uploaded file. Please check file format.');
     }
 }

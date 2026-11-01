@@ -3,13 +3,17 @@
 namespace App\Services\Inventory;
 
 use App\Models\Item;
+use App\Models\ItemStock;
 use App\Models\OpeningStockItem;
 use App\Models\PurchaseInvoiceItem;
+use App\Models\SalesBill;
+use App\Models\SalesBillItem;
 use App\Models\StockLedger;
 use App\Models\StockTransferItem;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class BatchStockService
 {
@@ -28,17 +32,17 @@ class BatchStockService
     public function getItemBatches(int $itemId, int $branchId, ?int $excludeSalesBillId = null): Collection
     {
         $item = Item::find($itemId);
-        if (!$item) {
+        if (! $item) {
             return collect();
         }
 
         // 1. Query tracked batch stock from StockLedger for this branch & item
-        $hasMrp = \Illuminate\Support\Facades\Schema::hasColumn('stock_ledger', 'mrp');
+        $hasMrp = Schema::hasColumn('stock_ledger', 'mrp');
         $selectCols = "COALESCE(NULLIF(TRIM(batch_no), ''), '') as b_no, DATE(exp_date) as exp_date_val";
         if ($hasMrp) {
-            $selectCols .= ", COALESCE(ROUND(mrp, 2), 0) as mrp_val";
+            $selectCols .= ', COALESCE(ROUND(mrp, 2), 0) as mrp_val';
         }
-        $selectCols .= ", SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in";
+        $selectCols .= ', SUM(qty_in) - SUM(qty_out) as remaining_qty, SUM(qty_in) as total_in';
 
         $groupByCols = ['b_no', DB::raw('DATE(exp_date)')];
         if ($hasMrp) {
@@ -51,10 +55,10 @@ class BatchStockService
         if ($excludeSalesBillId) {
             $ledgerQuery->where(function ($q) use ($excludeSalesBillId) {
                 $q->whereNull('reference_type')
-                  ->orWhere(function ($sub) use ($excludeSalesBillId) {
-                      $sub->whereNotIn('reference_type', ['SalesBill', \App\Models\SalesBill::class])
-                          ->orWhere('reference_id', '!=', $excludeSalesBillId);
-                  });
+                    ->orWhere(function ($sub) use ($excludeSalesBillId) {
+                        $sub->whereNotIn('reference_type', ['SalesBill', SalesBill::class])
+                            ->orWhere('reference_id', '!=', $excludeSalesBillId);
+                    });
             });
         }
 
@@ -73,17 +77,18 @@ class BatchStockService
                 $expDmy = '';
                 try {
                     $expDmy = Carbon::parse($expStr)->format('d/m/Y');
-                } catch (\Throwable) {}
+                } catch (\Throwable) {
+                }
                 if ($bNo === $expStr || $bNo === $expDmy || strcasecmp($bNo, 'DEFAULT') === 0) {
                     $bNo = '';
                 }
             }
 
             $baseKey = $bNo !== '' ? $bNo : ($expStr !== '' ? $expStr : 'DEFAULT');
-            $exactKey = $mrpVal > 0 ? ($baseKey . '|' . round($mrpVal, 2)) : null;
+            $exactKey = $mrpVal > 0 ? ($baseKey.'|'.round($mrpVal, 2)) : null;
 
             if ($exactKey !== null) {
-                if (!isset($ledgerBatchMap[$exactKey])) {
+                if (! isset($ledgerBatchMap[$exactKey])) {
                     $ledgerBatchMap[$exactKey] = [
                         'remaining' => (float) $lr->remaining_qty,
                         'total_in' => (float) $lr->total_in,
@@ -98,7 +103,7 @@ class BatchStockService
                 }
             }
 
-            if (!isset($ledgerBatchMap[$baseKey])) {
+            if (! isset($ledgerBatchMap[$baseKey])) {
                 $ledgerBatchMap[$baseKey] = [
                     'remaining' => (float) $lr->remaining_qty,
                     'total_in' => (float) $lr->total_in,
@@ -115,29 +120,29 @@ class BatchStockService
 
         if ($excludeSalesBillId) {
             $billHadItemInLedger = StockLedger::where(function ($q) {
-                    $q->where('reference_type', 'SalesBill')
-                      ->orWhere('reference_type', \App\Models\SalesBill::class);
-                })
+                $q->where('reference_type', 'SalesBill')
+                    ->orWhere('reference_type', SalesBill::class);
+            })
                 ->where('reference_id', $excludeSalesBillId)
                 ->where('item_id', $itemId)
                 ->whereNull('reversal_of')
                 ->exists();
 
-            if (!$billHadItemInLedger) {
+            if (! $billHadItemInLedger) {
                 // This sales bill was not recorded in StockLedger (e.g. legacy/imported bill).
                 // Add back this bill's line item quantities to the corresponding batches in $ledgerBatchMap!
-                $billLines = \App\Models\SalesBillItem::where('sales_bill_id', $excludeSalesBillId)
+                $billLines = SalesBillItem::where('sales_bill_id', $excludeSalesBillId)
                     ->where('item_id', $itemId)
                     ->get();
                 foreach ($billLines as $bl) {
-                    $bNo = trim((string)($bl->batch_no ?? ''));
-                    $expStr = !empty($bl->exp_date) ? substr((string)$bl->exp_date, 0, 10) : '';
-                    $mrpVal = (float)($bl->mrp ?? 0);
+                    $bNo = trim((string) ($bl->batch_no ?? ''));
+                    $expStr = ! empty($bl->exp_date) ? substr((string) $bl->exp_date, 0, 10) : '';
+                    $mrpVal = (float) ($bl->mrp ?? 0);
                     $baseKey = $bNo !== '' ? $bNo : ($expStr !== '' ? $expStr : 'DEFAULT');
-                    $exactKey = $mrpVal > 0 ? ($baseKey . '|' . round($mrpVal, 2)) : null;
+                    $exactKey = $mrpVal > 0 ? ($baseKey.'|'.round($mrpVal, 2)) : null;
 
                     if ($exactKey !== null) {
-                        if (!isset($ledgerBatchMap[$exactKey])) {
+                        if (! isset($ledgerBatchMap[$exactKey])) {
                             $ledgerBatchMap[$exactKey] = [
                                 'remaining' => (float) $bl->qty,
                                 'total_in' => (float) $bl->qty,
@@ -153,7 +158,7 @@ class BatchStockService
                         }
                     }
 
-                    if (!isset($ledgerBatchMap[$baseKey])) {
+                    if (! isset($ledgerBatchMap[$baseKey])) {
                         $ledgerBatchMap[$baseKey] = [
                             'remaining' => (float) $bl->qty,
                             'total_in' => (float) $bl->qty,
@@ -171,10 +176,12 @@ class BatchStockService
             }
         }
 
-        // 2. Fetch purchase batches strictly from Purchase Invoices in this branch
+        // 2. Fetch purchase batches strictly from active (live) Purchase Invoices in this branch
+        // Historical/imported GRNs (id <= 1023) are legacy purchase records whose physical stock
+        // was already captured in closing_stocks as of the go-live cut-off date.
         $piItems = PurchaseInvoiceItem::with('purchaseInvoice')
             ->where('item_id', $itemId)
-            ->whereHas('purchaseInvoice', fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('purchaseInvoice', fn ($q) => $q->where('branch_id', $branchId)->where('purchase_invoices.id', '>=', 1024))
             ->orderBy('id', 'asc')
             ->get();
 
@@ -194,7 +201,7 @@ class BatchStockService
 
         // 5. Fetch from Closing Stock (imported GoFrugal TruePOS batches) strictly in this branch
         $csRows = DB::table('closing_stocks')
-            ->where(function($q) use ($itemId, $item) {
+            ->where(function ($q) use ($itemId, $item) {
                 $q->where('item_id', $itemId);
                 if ($item->item_code) {
                     $q->orWhere('item_code', $item->item_code);
@@ -206,25 +213,33 @@ class BatchStockService
 
         $csItems = collect();
         if ($csRows->isNotEmpty()) {
-            $isDummyBatch = function(?string $b): bool {
-                if (empty($b)) return false;
+            $isDummyBatch = function (?string $b): bool {
+                if (empty($b)) {
+                    return false;
+                }
                 $ub = strtoupper(trim($b));
-                if (in_array($ub, ['OP1', 'OS1'])) return true;
-                if (preg_match('/^MO\d*$/', $ub)) return true;
+                if (in_array($ub, ['OP1', 'OS1'])) {
+                    return true;
+                }
+                if (preg_match('/^MO\d*$/', $ub)) {
+                    return true;
+                }
+
                 return false;
             };
 
             // Check if any real physical (non-dummy) batches exist
-            $hasPhysicalBatches = $csRows->some(fn($cs) => !$isDummyBatch($cs->batch_no) && (float)$cs->closing_stock > 0);
+            $hasPhysicalBatches = $csRows->some(fn ($cs) => ! $isDummyBatch($cs->batch_no) && (float) $cs->closing_stock > 0);
 
             // Filter out dummy batches if physical batches exist, or always drop zero/negative dummy adjustments
-            $filteredCsRows = $csRows->filter(function($cs) use ($isDummyBatch, $hasPhysicalBatches) {
-                $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
+            $filteredCsRows = $csRows->filter(function ($cs) use ($isDummyBatch, $hasPhysicalBatches) {
+                $rawBNo = ! empty($cs->batch_no) ? trim((string) $cs->batch_no) : '';
                 if ($isDummyBatch($rawBNo)) {
-                    if ($hasPhysicalBatches || (float)$cs->closing_stock <= 0) {
+                    if ($hasPhysicalBatches || (float) $cs->closing_stock <= 0) {
                         return false;
                     }
                 }
+
                 return true;
             });
 
@@ -232,44 +247,44 @@ class BatchStockService
             $rawBNoCounts = [];
             $rawBNoSums = [];
             foreach ($filteredCsRows as $cs) {
-                $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
+                $rawBNo = ! empty($cs->batch_no) ? trim((string) $cs->batch_no) : '';
                 if ($rawBNo !== '') {
                     $rawBNoCounts[$rawBNo] = ($rawBNoCounts[$rawBNo] ?? 0) + 1;
-                    $rawBNoSums[$rawBNo] = ($rawBNoSums[$rawBNo] ?? 0.0) + (float)$cs->closing_stock;
+                    $rawBNoSums[$rawBNo] = ($rawBNoSums[$rawBNo] ?? 0.0) + (float) $cs->closing_stock;
                 }
             }
 
             $consolidatedCs = [];
             foreach ($filteredCsRows as $cs) {
-                $rawBNo = !empty($cs->batch_no) ? trim((string)$cs->batch_no) : '';
+                $rawBNo = ! empty($cs->batch_no) ? trim((string) $cs->batch_no) : '';
                 // If multiple rows exist with the exact same batch_no and their sum <= 0, drop them (revaluation cancellation)
                 if ($rawBNo !== '' && ($rawBNoCounts[$rawBNo] ?? 0) > 1 && ($rawBNoSums[$rawBNo] ?? 0.0) <= 0.0001) {
                     continue;
                 }
 
                 $exp = null;
-                if (!empty($cs->expiry_date)) {
+                if (! empty($cs->expiry_date)) {
                     try {
                         $exp = Carbon::parse($cs->expiry_date)->format('Y-m-d');
                     } catch (\Throwable) {
-                        $exp = substr((string)$cs->expiry_date, 0, 10);
+                        $exp = substr((string) $cs->expiry_date, 0, 10);
                     }
                 }
-                $mrp = (float)($cs->mrp ?? 0);
-                $cost = (float)($cs->net_cost ?? 0);
-                $qty = (float)($cs->closing_stock ?? 0);
+                $mrp = (float) ($cs->mrp ?? 0);
+                $cost = (float) ($cs->net_cost ?? 0);
+                $qty = (float) ($cs->closing_stock ?? 0);
 
                 // Group key by (exp ?: rawBNo) + MRP for TruePOS parity
-                $groupKey = ($exp ?: ($rawBNo ?: 'DEFAULT')) . '|' . round($mrp, 2);
+                $groupKey = ($exp ?: ($rawBNo ?: 'DEFAULT')).'|'.round($mrp, 2);
 
-                if (!isset($consolidatedCs[$groupKey])) {
+                if (! isset($consolidatedCs[$groupKey])) {
                     $consolidatedCs[$groupKey] = (object) [
                         'id' => $cs->id,
                         'batch_no' => $rawBNo ?: ($exp ? Carbon::parse($exp)->format('d/m/Y') : 'Initial Stock'),
                         'raw_batch_no' => $rawBNo,
                         'exp_date' => $exp,
                         'cost_price' => $cost,
-                        'sell_price' => $mrp > 0 ? $mrp : (float)($item->sell_price ?? 0),
+                        'sell_price' => $mrp > 0 ? $mrp : (float) ($item->sell_price ?? 0),
                         'mrp' => $mrp,
                         'qty' => $qty,
                         'free_qty' => 0,
@@ -277,7 +292,7 @@ class BatchStockService
                     ];
                 } else {
                     $consolidatedCs[$groupKey]->qty += $qty;
-                    if (!empty($rawBNo) && empty($consolidatedCs[$groupKey]->raw_batch_no)) {
+                    if (! empty($rawBNo) && empty($consolidatedCs[$groupKey]->raw_batch_no)) {
                         $consolidatedCs[$groupKey]->raw_batch_no = $rawBNo;
                         $consolidatedCs[$groupKey]->batch_no = $rawBNo;
                     }
@@ -285,9 +300,9 @@ class BatchStockService
             }
 
             // Exclude non-positive if positive batches exist
-            $hasPositive = collect($consolidatedCs)->some(fn($c) => $c->qty > 0.0001);
+            $hasPositive = collect($consolidatedCs)->some(fn ($c) => $c->qty > 0.0001);
             if ($hasPositive) {
-                $consolidatedCs = array_filter($consolidatedCs, fn($c) => $c->qty > 0.0001);
+                $consolidatedCs = array_filter($consolidatedCs, fn ($c) => $c->qty > 0.0001);
             }
             $csItems = collect(array_values($consolidatedCs));
         }
@@ -300,6 +315,7 @@ class BatchStockService
             $isCrossBranchFallback = true;
             $fallbackPi = PurchaseInvoiceItem::with('purchaseInvoice')
                 ->where('item_id', $itemId)
+                ->whereHas('purchaseInvoice', fn ($q) => $q->where('purchase_invoices.id', '>=', 1024))
                 ->whereNotNull('exp_date')
                 ->where('exp_date', '!=', '')
                 ->where('exp_date', '!=', '0000-00-00')
@@ -315,15 +331,15 @@ class BatchStockService
             $allPurchases = $fallbackPi->concat($fallbackOs);
         }
 
-        $branchStock = \App\Models\ItemStock::where('item_id', $itemId)->where('branch_id', $branchId)->first();
+        $branchStock = ItemStock::where('item_id', $itemId)->where('branch_id', $branchId)->first();
 
         $batches = [];
         $unassignedKeys = [];
 
         foreach ($allPurchases as $p) {
-            $rawBNo = !empty($p->batch_no) ? trim((string)$p->batch_no) : '';
+            $rawBNo = ! empty($p->batch_no) ? trim((string) $p->batch_no) : '';
             $exp = null;
-            if (!empty($p->exp_date)) {
+            if (! empty($p->exp_date)) {
                 try {
                     $exp = Carbon::parse($p->exp_date)->format('Y-m-d');
                 } catch (\Throwable) {
@@ -333,7 +349,7 @@ class BatchStockService
 
             if ($p instanceof StockTransferItem) {
                 $cost = (float) (($p->unit_cost ?? 0) > 0 ? $p->unit_cost : ($item->cost_price ?? 0));
-                $mrp  = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
+                $mrp = (float) (($p->mrp ?? 0) > 0 ? $p->mrp : ($item->mrp ?? 0));
                 $batchSell = (float) ($p->sell_price ?? 0);
                 if ($batchSell <= 0) {
                     $batchSell = (float) ($branchStock && $branchStock->sell_price > 0 ? $branchStock->sell_price : ($item->sell_price ?? ($mrp > 0 ? $mrp : 0)));
@@ -345,15 +361,15 @@ class BatchStockService
                 $inQty = (float) ($p->received_qty > 0 ? $p->received_qty : $p->qty);
             } else {
                 $cost = (float) (($p->cost_price ?? 0) > 0 ? $p->cost_price : ($item->cost_price ?? 0));
-                
+
                 // 1. MRP: A batch's own recorded MRP is primary. Only fall back to branchStock/item if batch has no MRP.
                 $batchMrp = (float) ($p->mrp ?? 0);
-                $mrp = $batchMrp > 0 ? $batchMrp : (float) ($branchStock && (float)$branchStock->mrp > 0 ? $branchStock->mrp : ($item->mrp ?? 0));
+                $mrp = $batchMrp > 0 ? $batchMrp : (float) ($branchStock && (float) $branchStock->mrp > 0 ? $branchStock->mrp : ($item->mrp ?? 0));
 
                 // 2. Selling Price: Use batch sell_price, or branchStock sell_price, or item sell_price
                 $batchSell = (float) ($p->sell_price ?? 0);
                 if ($batchSell <= 0) {
-                    $batchSell = (float) ($branchStock && (float)$branchStock->sell_price > 0 ? $branchStock->sell_price : ($item->sell_price ?? 0));
+                    $batchSell = (float) ($branchStock && (float) $branchStock->sell_price > 0 ? $branchStock->sell_price : ($item->sell_price ?? 0));
                 }
                 if ($batchSell <= 0 && $mrp > 0) {
                     $batchSell = $mrp;
@@ -367,41 +383,47 @@ class BatchStockService
 
             // If using cross-branch fallback, preserve this branch's own stock pricing if set
             if ($isCrossBranchFallback && $branchStock) {
-                if ($branchStock->cost_price > 0) $cost = (float) $branchStock->cost_price;
-                if ($branchStock->sell_price > 0) $sell = (float) $branchStock->sell_price;
-                if ($branchStock->mrp > 0) $mrp = (float) $branchStock->mrp;
+                if ($branchStock->cost_price > 0) {
+                    $cost = (float) $branchStock->cost_price;
+                }
+                if ($branchStock->sell_price > 0) {
+                    $sell = (float) $branchStock->sell_price;
+                }
+                if ($branchStock->mrp > 0) {
+                    $mrp = (float) $branchStock->mrp;
+                }
             }
 
             if ($rawBNo !== '') {
                 $displayBatchNo = $rawBNo;
                 // Group strictly by physical batch_no, MRP, and expiry date
-                $key = 'B_' . $rawBNo . '|' . round($mrp, 2) . '|' . ($exp ?: '');
+                $key = 'B_'.$rawBNo.'|'.round($mrp, 2).'|'.($exp ?: '');
             } else {
                 if ($exp !== null) {
                     // Purchases/transfers with same expiry date AND same MRP merge into one batch
-                    $key = 'EXP_' . $exp . '|' . round($mrp, 2);
+                    $key = 'EXP_'.$exp.'|'.round($mrp, 2);
                     $displayBatchNo = Carbon::parse($exp)->format('d/m/Y');
                 } else {
                     if ($p instanceof PurchaseInvoiceItem && $p->purchaseInvoice) {
                         $invNum = $p->purchaseInvoice->supplier_inv_no ?: $p->purchaseInvoice->invoice_number;
                         $invDate = $p->purchaseInvoice->invoice_date ? Carbon::parse($p->purchaseInvoice->invoice_date)->format('d/m/Y') : null;
-                        $displayBatchNo = $invNum ? ($invNum . ($invDate ? " ({$invDate})" : '')) : ($invDate ? "Lot {$invDate}" : ('Lot #' . $p->id));
+                        $displayBatchNo = $invNum ? ($invNum.($invDate ? " ({$invDate})" : '')) : ($invDate ? "Lot {$invDate}" : ('Lot #'.$p->id));
                     } elseif ($p instanceof OpeningStockItem && $p->openingStock) {
                         $osDate = $p->openingStock->opening_date ? Carbon::parse($p->openingStock->opening_date)->format('d/m/Y') : null;
                         $displayBatchNo = $osDate ? "Opening ({$osDate})" : 'Opening Stock';
                     } elseif ($p instanceof StockTransferItem && $p->stockTransfer) {
                         $stNum = $p->stockTransfer->transfer_number;
                         $stDate = $p->stockTransfer->transfer_date ? Carbon::parse($p->stockTransfer->transfer_date)->format('d/m/Y') : null;
-                        $displayBatchNo = $stNum ? ($stNum . ($stDate ? " ({$stDate})" : '')) : ($stDate ? "Transfer {$stDate}" : ('Transfer #' . $p->id));
+                        $displayBatchNo = $stNum ? ($stNum.($stDate ? " ({$stDate})" : '')) : ($stDate ? "Transfer {$stDate}" : ('Transfer #'.$p->id));
                     } else {
-                        $displayBatchNo = 'Lot #' . $p->id;
+                        $displayBatchNo = 'Lot #'.$p->id;
                     }
-                    $key = 'SRC_' . (get_class($p) === 'App\Models\StockTransferItem' ? 'ST_' : (get_class($p) === 'App\Models\OpeningStockItem' ? 'OS_' : (isset($p->source) && $p->source === 'closing_stock' ? 'CS_' : 'PI_'))) . $p->id . '|' . round($mrp, 2);
+                    $key = 'SRC_'.(get_class($p) === 'App\Models\StockTransferItem' ? 'ST_' : (get_class($p) === 'App\Models\OpeningStockItem' ? 'OS_' : (isset($p->source) && $p->source === 'closing_stock' ? 'CS_' : 'PI_'))).$p->id.'|'.round($mrp, 2);
                     $unassignedKeys[$key] = true;
                 }
             }
 
-            if (!isset($batches[$key])) {
+            if (! isset($batches[$key])) {
                 $batches[$key] = [
                     'item_id' => $itemId,
                     'item_code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
@@ -418,10 +440,18 @@ class BatchStockService
                 ];
             } else {
                 $batches[$key]['purchased_qty'] += $inQty;
-                if ($exp && !$batches[$key]['exp_date']) $batches[$key]['exp_date'] = $exp;
-                if ($sell > 0) $batches[$key]['sell_price'] = $sell;
-                if ($mrp > 0) $batches[$key]['mrp'] = $mrp;
-                if ($cost > 0) $batches[$key]['cost_price'] = $cost;
+                if ($exp && ! $batches[$key]['exp_date']) {
+                    $batches[$key]['exp_date'] = $exp;
+                }
+                if ($sell > 0) {
+                    $batches[$key]['sell_price'] = $sell;
+                }
+                if ($mrp > 0) {
+                    $batches[$key]['mrp'] = $mrp;
+                }
+                if ($cost > 0) {
+                    $batches[$key]['cost_price'] = $cost;
+                }
             }
         }
 
@@ -433,9 +463,9 @@ class BatchStockService
             $exp = $b['exp_date'] ?? '';
             $mrp = (float) ($b['mrp'] ?? 0);
 
-            $exactRaw = ($raw !== '' && $mrp > 0) ? ($raw . '|' . round($mrp, 2)) : null;
-            $exactExp = ($raw === '' && $exp !== '' && $mrp > 0) ? ($exp . '|' . round($mrp, 2)) : null;
-            $exactBNo = ($bNo !== '' && $mrp > 0) ? ($bNo . '|' . round($mrp, 2)) : null;
+            $exactRaw = ($raw !== '' && $mrp > 0) ? ($raw.'|'.round($mrp, 2)) : null;
+            $exactExp = ($raw === '' && $exp !== '' && $mrp > 0) ? ($exp.'|'.round($mrp, 2)) : null;
+            $exactBNo = ($bNo !== '' && $mrp > 0) ? ($bNo.'|'.round($mrp, 2)) : null;
 
             $mk = null;
             if ($exactRaw !== null && isset($ledgerBatchMap[$exactRaw])) {
@@ -467,9 +497,9 @@ class BatchStockService
             $mrp = (float) ($bData['mrp'] ?? 0);
             $pQty = (float) $bData['purchased_qty'];
 
-            $exactRaw = ($raw !== '' && $mrp > 0) ? ($raw . '|' . round($mrp, 2)) : null;
-            $exactExp = ($raw === '' && $exp !== '' && $mrp > 0) ? ($exp . '|' . round($mrp, 2)) : null;
-            $exactBNo = ($bNo !== '' && $mrp > 0) ? ($bNo . '|' . round($mrp, 2)) : null;
+            $exactRaw = ($raw !== '' && $mrp > 0) ? ($raw.'|'.round($mrp, 2)) : null;
+            $exactExp = ($raw === '' && $exp !== '' && $mrp > 0) ? ($exp.'|'.round($mrp, 2)) : null;
+            $exactBNo = ($bNo !== '' && $mrp > 0) ? ($bNo.'|'.round($mrp, 2)) : null;
 
             $matchedKey = null;
             if ($exactRaw !== null && isset($ledgerBatchMap[$exactRaw])) {
@@ -510,7 +540,7 @@ class BatchStockService
                     $ledgerBatchMap[$baseKey]['assigned'] += $alloc;
                 }
                 $namedBatchRemaining += $alloc;
-            } elseif (!isset($unassignedKeys[$key])) {
+            } elseif (! isset($unassignedKeys[$key])) {
                 $bData['remaining_qty'] = $pQty;
                 $namedBatchRemaining += $bData['remaining_qty'];
             }
@@ -531,7 +561,7 @@ class BatchStockService
             }
             $lBNo = $lData['batch_no'] ?: ($key !== 'DEFAULT' ? $key : '');
             if ($lBNo !== '') {
-                $batches['L_' . $lBNo] = [
+                $batches['L_'.$lBNo] = [
                     'item_id' => $itemId,
                     'item_code' => $item->item_code ?: ($item->ean_upc_code ?: ''),
                     'item_name' => $item->name,
@@ -550,18 +580,18 @@ class BatchStockService
         }
 
         // Fetch current physical branch stock
-        $currentBranchStock = (float) (\App\Models\ItemStock::where('item_id', $itemId)
+        $currentBranchStock = (float) (ItemStock::where('item_id', $itemId)
             ->where('branch_id', $branchId)
             ->value('quantity') ?? 0);
 
         if ($excludeSalesBillId) {
-            $alreadyInBillStock = (float) (\App\Models\SalesBillItem::where('sales_bill_id', $excludeSalesBillId)
+            $alreadyInBillStock = (float) (SalesBillItem::where('sales_bill_id', $excludeSalesBillId)
                 ->where('item_id', $itemId)
                 ->sum('qty') ?? 0);
             $currentBranchStock += $alreadyInBillStock;
         }
 
-        if (empty($ledgerBatchMap) && !empty($batches)) {
+        if (empty($ledgerBatchMap) && ! empty($batches)) {
             // FIFO allocation across purchases by expiry date
             $totalIn = array_sum(array_column($batches, 'purchased_qty'));
             $effectiveStock = max(0.0, (float) $currentBranchStock);
@@ -606,7 +636,7 @@ class BatchStockService
         } elseif ($unassignedAvailable > 0.0001) {
             // Unbatched physical branch stock exists without explicit unassigned purchase lines.
             // If there's a single active lot without batch_no or expiry, absorb it; otherwise provide Store Stock batch
-            $positiveBatchKeys = array_keys(array_filter($batches, fn($b) => (float)($b['remaining_qty'] ?? 0) > 0));
+            $positiveBatchKeys = array_keys(array_filter($batches, fn ($b) => (float) ($b['remaining_qty'] ?? 0) > 0));
             if (count($positiveBatchKeys) === 1 && empty($batches[$positiveBatchKeys[0]]['raw_batch_no']) && empty($batches[$positiveBatchKeys[0]]['exp_date'])) {
                 $targetKey = $positiveBatchKeys[0];
                 $batches[$targetKey]['remaining_qty'] += $unassignedAvailable;
@@ -647,12 +677,12 @@ class BatchStockService
             ];
         }
 
-        if ($currentBranchStock <= 0 && !($item->allow_negative_stock ?? false)) {
+        if ($currentBranchStock <= 0 && ! ($item->allow_negative_stock ?? false)) {
             foreach ($batches as &$bData) {
                 $bData['remaining_qty'] = 0.0;
             }
             unset($bData);
-        } else if ($currentBranchStock > 0) {
+        } elseif ($currentBranchStock > 0) {
             // Safety cap: total batch remaining should never exceed physical branch stock
             $batchTotal = array_sum(array_column($batches, 'remaining_qty'));
             if ($batchTotal > $currentBranchStock) {
@@ -666,8 +696,8 @@ class BatchStockService
                 usort($deductKeys, function ($ka, $kb) use ($batches, $todayStr) {
                     $ba = $batches[$ka];
                     $bb = $batches[$kb];
-                    $expA = !empty($ba['exp_date']) ? substr((string)$ba['exp_date'], 0, 10) : '';
-                    $expB = !empty($bb['exp_date']) ? substr((string)$bb['exp_date'], 0, 10) : '';
+                    $expA = ! empty($ba['exp_date']) ? substr((string) $ba['exp_date'], 0, 10) : '';
+                    $expB = ! empty($bb['exp_date']) ? substr((string) $bb['exp_date'], 0, 10) : '';
 
                     $isExpA = ($expA !== '' && $expA < $todayStr);
                     $isExpB = ($expB !== '' && $expB < $todayStr);
@@ -701,9 +731,13 @@ class BatchStockService
                 });
 
                 foreach ($deductKeys as $dk) {
-                    if ($excess <= 0) break;
+                    if ($excess <= 0) {
+                        break;
+                    }
                     $cur = (float) $batches[$dk]['remaining_qty'];
-                    if ($cur <= 0) continue;
+                    if ($cur <= 0) {
+                        continue;
+                    }
                     $ded = min($cur, $excess);
                     $batches[$dk]['remaining_qty'] = max(0.0, round($cur - $ded, 3));
                     $excess -= $ded;
@@ -722,36 +756,49 @@ class BatchStockService
         $batches = $this->getItemBatches($itemId, $branchId, $excludeSalesBillId);
 
         $found = $batches->first(function ($b) use ($batchNo, $expDate, $mrp) {
-            $matchBNo = (strcasecmp(trim((string)$b['batch_no']), trim($batchNo)) === 0
-                || strcasecmp(trim((string)($b['raw_batch_no'] ?? '')), trim($batchNo)) === 0);
-            if (!$matchBNo) return false;
-
-            if ($expDate) {
-                $bExp = !empty($b['exp_date']) ? substr((string)$b['exp_date'], 0, 10) : '';
-                $cleanExp = substr($expDate, 0, 10);
-                if ($bExp && $cleanExp && $bExp !== $cleanExp) return false;
+            $matchBNo = (strcasecmp(trim((string) $b['batch_no']), trim($batchNo)) === 0
+                || strcasecmp(trim((string) ($b['raw_batch_no'] ?? '')), trim($batchNo)) === 0);
+            if (! $matchBNo) {
+                return false;
             }
 
-            if ($mrp !== null && (float)$mrp > 0) {
-                $bMrp = (float)($b['mrp'] ?? 0);
-                if ($bMrp > 0 && abs($bMrp - (float)$mrp) > 0.01) return false;
+            if ($expDate) {
+                $bExp = ! empty($b['exp_date']) ? substr((string) $b['exp_date'], 0, 10) : '';
+                $cleanExp = substr($expDate, 0, 10);
+                if ($bExp && $cleanExp && $bExp !== $cleanExp) {
+                    return false;
+                }
+            }
+
+            if ($mrp !== null && (float) $mrp > 0) {
+                $bMrp = (float) ($b['mrp'] ?? 0);
+                if ($bMrp > 0 && abs($bMrp - (float) $mrp) > 0.01) {
+                    return false;
+                }
             }
 
             return true;
         });
 
-        if (!$found && in_array(strtoupper(trim($batchNo)), ['', 'DEFAULT', 'NO BATCH', 'LOT'], true)) {
+        if (! $found && in_array(strtoupper(trim($batchNo)), ['', 'DEFAULT', 'NO BATCH', 'LOT'], true)) {
             $found = $batches->first(function ($b) use ($expDate, $mrp) {
-                if ($b['remaining_qty'] <= 0) return false;
+                if ($b['remaining_qty'] <= 0) {
+                    return false;
+                }
                 if ($expDate) {
-                    $bExp = !empty($b['exp_date']) ? substr((string)$b['exp_date'], 0, 10) : '';
+                    $bExp = ! empty($b['exp_date']) ? substr((string) $b['exp_date'], 0, 10) : '';
                     $cleanExp = substr($expDate, 0, 10);
-                    if ($bExp && $cleanExp && $bExp !== $cleanExp) return false;
+                    if ($bExp && $cleanExp && $bExp !== $cleanExp) {
+                        return false;
+                    }
                 }
-                if ($mrp !== null && (float)$mrp > 0) {
-                    $bMrp = (float)($b['mrp'] ?? 0);
-                    if ($bMrp > 0 && abs($bMrp - (float)$mrp) > 0.01) return false;
+                if ($mrp !== null && (float) $mrp > 0) {
+                    $bMrp = (float) ($b['mrp'] ?? 0);
+                    if ($bMrp > 0 && abs($bMrp - (float) $mrp) > 0.01) {
+                        return false;
+                    }
                 }
+
                 return true;
             }) ?? $batches->firstWhere('remaining_qty', '>', 0) ?? $batches->first();
         }

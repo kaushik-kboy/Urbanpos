@@ -108,7 +108,7 @@
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                            <a href="{{ route('tools.gst.gstr-1.page') }}" class="btn btn-primary btn-sm font-weight-bold shadow-sm">
+                            <a href="{{ route('tools.gst.gstr-1.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-primary btn-sm font-weight-bold shadow-sm">
                                 <i class="fas fa-chart-bar mr-1"></i> VIEW GSTR-1 (12 CARDS)
                             </a>
                             <a href="{{ route('reports.gst-sales-summary', ['from' => $fromDate, 'to' => $toDate]) }}" class="btn btn-light btn-sm text-muted">
@@ -149,10 +149,12 @@
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <a href="{{ route('tools.gst.gstr-3b.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-success btn-sm font-weight-bold shadow-sm">
+                                <i class="fas fa-balance-scale mr-1"></i> VIEW GSTR-3B
+                            </a>
                             <button type="button" class="btn btn-outline-success btn-sm font-weight-bold" onclick="openGstr3bModal()">
-                                <i class="fas fa-file-invoice mr-1"></i> VIEW GSTR-3B
+                                <i class="fas fa-file-invoice mr-1"></i> Quick Modal
                             </button>
-                            <span class="small text-muted font-weight-bold">Auto-Computed</span>
                         </div>
                     </div>
                 </div>
@@ -184,11 +186,11 @@
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                            <a href="{{ route('reports.purchase-detail', ['from' => $fromDate, 'to' => $toDate]) }}" class="btn btn-outline-info btn-sm font-weight-bold">
-                                <i class="fas fa-list mr-1"></i> PURCHASE REGISTER
+                            <a href="{{ route('tools.gst.gstr-2.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-info btn-sm font-weight-bold shadow-sm">
+                                <i class="fas fa-shopping-cart mr-1"></i> VIEW GSTR-2
                             </a>
-                            <a href="{{ route('reports.gst-purchase-summary', ['from' => $fromDate, 'to' => $toDate]) }}" class="btn btn-light btn-sm text-muted">
-                                GST Summary <i class="fas fa-arrow-right ml-1"></i>
+                            <a href="{{ route('reports.purchase-detail', ['from' => $fromDate, 'to' => $toDate]) }}" class="btn btn-outline-info btn-sm font-weight-bold">
+                                <i class="fas fa-list mr-1"></i> REGISTER
                             </a>
                         </div>
                     </div>

@@ -8,6 +8,9 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap">
         <h1 class="m-0">Edit Purchase Invoice "{{ $purchaseInvoice->invoice_number }}"</h1>
         <div class="my-1">
+            <a href="{{ route('purchase.purchase-invoices.index', request()->query() ?: session('purchase_invoices_filters', [])) }}" class="btn btn-secondary btn-sm font-weight-bold mr-2">
+                <i class="fas fa-arrow-left mr-1"></i> Back to List
+            </a>
             <a href="{{ route('master.barcodes.print', ['purchase_invoice_id' => $purchaseInvoice->id, 'format' => '50x38_2up']) }}" target="_blank" class="btn btn-warning font-weight-bold shadow-sm mr-2">
                 <i class="fas fa-barcode mr-1"></i> Print Stickers (TSC TE244)
             </a>
@@ -35,7 +38,7 @@
                 items-badge-id="pinv-total-items-badge"
                 save-btn-id="pinv-main-save-btn"
                 save-btn-text="Update Invoice"
-                cancel-route="{{ route('purchase.purchase-invoices.index') }}"
+                cancel-route="{{ route('purchase.purchase-invoices.index', request()->query() ?: session('purchase_invoices_filters', [])) }}"
                 reset-btn-id="btn-reset-form"
             >
                 <x-slot:extraActions>

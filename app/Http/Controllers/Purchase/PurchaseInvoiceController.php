@@ -2,28 +2,37 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Helpers\DateHelper;
 use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
 use App\Models\ItemStock;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceItem;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReceiptNote;
 use App\Models\Supplier;
 use App\Services\Accounting\CreditLimitGuard;
+use App\Services\Accounting\DocumentNumberingService;
 use App\Services\Accounting\FinancialYearGuard;
 use App\Services\Accounting\LedgerPostingService;
 use App\Services\Audit\AuditLogger;
+use App\Services\DynamicValidationService;
 use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Unique;
+use Illuminate\Validation\ValidationException;
 
 class PurchaseInvoiceController extends Controller
 {
     use HasSorting;
+
     public function __construct(
         private LedgerPostingService $ledgerPosting,
         private StockLedgerService $stockLedger,
@@ -31,11 +40,31 @@ class PurchaseInvoiceController extends Controller
         private AuditLogger $auditLogger,
         private CreditLimitGuard $creditLimitGuard,
         private FinancialYearGuard $financialYearGuard,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
+        $filterKeys = ['search', 'date_from', 'date_to', 'branch_id', 'supplier_id', 'purchase_type', 'sort', 'direction', 'page'];
+
+        if ($request->has('reset')) {
+            $request->session()->forget('purchase_invoices_filters');
+
+            return redirect()->route('purchase.purchase-invoices.index');
+        }
+
+        if (! $request->hasAny($filterKeys)) {
+            $savedFilters = $request->session()->get('purchase_invoices_filters');
+            if (! empty($savedFilters) && is_array($savedFilters)) {
+                return redirect()->route('purchase.purchase-invoices.index', $savedFilters);
+            }
+        } else {
+            $currentFilters = array_filter(
+                $request->only($filterKeys),
+                fn ($v) => $v !== null && $v !== ''
+            );
+            $request->session()->put('purchase_invoices_filters', $currentFilters);
+        }
+
         $query = PurchaseInvoice::with(['supplier', 'branch', 'purchaseOrder']);
 
         if ($request->filled('search')) {
@@ -59,22 +88,15 @@ class PurchaseInvoiceController extends Controller
             $query->whereDate('invoice_date', '<=', $request->input('date_to'));
         }
 
-        $user = $request->user();
-        $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
-
-        if (! $isGlobalAdmin && $user->branch_id) {
-            $query->where('branch_id', $user->branch_id);
-        } else {
-            $rawBranch = $request->input('branch_id');
-            if ($request->has('branch_id') && ($rawBranch === 'all' || $rawBranch === '' || $rawBranch === '0')) {
-                // User explicitly selected All Branches: do not filter by branch
-            } elseif ($request->filled('branch_id') && is_numeric($rawBranch) && (int) $rawBranch > 0) {
-                $query->where('branch_id', (int) $rawBranch);
-            } elseif ($request->session()->get('active_branch_id') === 'all') {
-                // Global active branch is All Branches: do not filter
-            } elseif ($request->session()->has('active_branch_id') && is_numeric($request->session()->get('active_branch_id'))) {
-                $query->where('branch_id', (int) $request->session()->get('active_branch_id'));
-            }
+        $rawBranch = $request->input('branch_id');
+        if ($request->has('branch_id') && ($rawBranch === 'all' || $rawBranch === '' || $rawBranch === '0')) {
+            // User explicitly selected All Branches: do not filter by branch (both branches shown)
+        } elseif ($request->filled('branch_id') && is_numeric($rawBranch) && (int) $rawBranch > 0) {
+            $query->where('branch_id', (int) $rawBranch);
+        } elseif ($request->session()->get('active_branch_id') === 'all') {
+            // Global active branch is All Branches: do not filter
+        } elseif ($request->session()->has('active_branch_id') && is_numeric($request->session()->get('active_branch_id')) && (int) $request->session()->get('active_branch_id') > 0) {
+            $query->where('branch_id', (int) $request->session()->get('active_branch_id'));
         }
 
         if ($request->filled('supplier_id') && $request->input('supplier_id') !== 'all') {
@@ -101,10 +123,8 @@ class PurchaseInvoiceController extends Controller
         $this->applySorting($query, $allowedSorts, ['grn_number' => 'desc', 'id' => 'desc']);
 
         $purchaseInvoices = $query->paginate(20)->withQueryString();
-        $branches = (! $isGlobalAdmin && $user->branch_id)
-            ? Branch::where('id', $user->branch_id)->pluck('name', 'id')
-            : Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
-        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
+        $branches = Branch::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $suppliers = Supplier::where('status', true)->orderBy('name')->pluck('name', 'id');
         $purchaseTypes = ['Local', 'Interstate'];
 
         return view('purchase.purchase-invoices.index', compact('purchaseInvoices', 'branches', 'suppliers', 'purchaseTypes'));
@@ -135,7 +155,7 @@ class PurchaseInvoiceController extends Controller
                 ];
             })->filter(fn ($line) => $line['qty'] > 0)->values();
         } elseif ($request->filled('from_order')) {
-            $sourceOrder = \App\Models\PurchaseOrder::with(['items.item.gstTax', 'supplier', 'branch'])
+            $sourceOrder = PurchaseOrder::with(['items.item.gstTax', 'supplier', 'branch'])
                 ->findOrFail($request->from_order);
             if ($sourceOrder->status === 'Cancelled') {
                 return redirect()->route('purchase.purchase-orders.show', $sourceOrder)
@@ -172,7 +192,7 @@ class PurchaseInvoiceController extends Controller
             $options['convertedItems'] = $convertedItems;
         }
 
-        $previewBranchId = session('active_branch_id', auth()->user()?->branch_id) ?: (\App\Models\Branch::value('id') ?: null);
+        $previewBranchId = session('active_branch_id', auth()->user()?->branch_id) ?: (Branch::value('id') ?: null);
         $options['nextGrnNumber'] = $this->nextGrnNumber(false, $previewBranchId ? (int) $previewBranchId : null);
 
         return view('purchase.purchase-invoices.create', array_merge($options, [
@@ -196,7 +216,7 @@ class PurchaseInvoiceController extends Controller
         }
 
         $postingKey = $data['header']['posting_key'] ?? null;
-        $lock = $postingKey ? \Illuminate\Support\Facades\Cache::lock('pinv_lock_'.md5($postingKey), 10) : null;
+        $lock = $postingKey ? Cache::lock('pinv_lock_'.md5($postingKey), 10) : null;
         try {
             $lock?->block(5);
             if ($postingKey && ($existing = PurchaseInvoice::where('posting_key', $postingKey)->first())) {
@@ -228,7 +248,7 @@ class PurchaseInvoiceController extends Controller
                 );
             }
 
-            $supplierGstin = \App\Models\Supplier::where('id', $data['header']['supplier_id'])->value('gst_no');
+            $supplierGstin = Supplier::where('id', $data['header']['supplier_id'])->value('gst_no');
 
             $purchaseInvoice = PurchaseInvoice::create(array_merge($data['header'], $totals, [
                 'invoice_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['invoice_date'] ?? null),
@@ -240,7 +260,7 @@ class PurchaseInvoiceController extends Controller
             // Stock posting: if converted from a PurchaseReceiptNote, physical stock
             // was already posted by the GRN. We only update item master prices
             // without duplicating stock in stock_ledger.
-            if (!empty($data['header']['purchase_receipt_note_id'])) {
+            if (! empty($data['header']['purchase_receipt_note_id'])) {
                 $rn = PurchaseReceiptNote::find($data['header']['purchase_receipt_note_id']);
                 if ($rn) {
                     $rn->update([
@@ -360,7 +380,9 @@ class PurchaseInvoiceController extends Controller
             $this->ledgerPosting->postPurchaseInvoice($purchaseInvoice);
         });
 
-        return redirect()->route('purchase.purchase-invoices.index')->with('status', "Purchase Invoice {$purchaseInvoice->invoice_number} updated successfully.");
+        $returnFilters = $request->session()->get('purchase_invoices_filters', []);
+
+        return redirect()->route('purchase.purchase-invoices.index', $returnFilters)->with('status', "Purchase Invoice {$purchaseInvoice->invoice_number} updated successfully.");
     }
 
     public function destroy(PurchaseInvoice $purchaseInvoice)
@@ -383,7 +405,9 @@ class PurchaseInvoiceController extends Controller
             $purchaseInvoice->delete();
         });
 
-        return redirect()->route('purchase.purchase-invoices.index')->with('status', 'Purchase Invoice deleted and stock reversed.');
+        $returnFilters = request()->session()->get('purchase_invoices_filters', []);
+
+        return redirect()->route('purchase.purchase-invoices.index', $returnFilters)->with('status', 'Purchase Invoice deleted and stock reversed.');
     }
 
     /**
@@ -414,23 +438,38 @@ class PurchaseInvoiceController extends Controller
                 );
             }
 
-            Item::whereKey($line['item_id'])->update(array_filter([
+            $existingItem = Item::find($line['item_id']);
+            $isPouchCaseMismatch = false;
+            $lineMrp = (float) ($line['mrp'] ?? 0);
+            if ($existingItem && (float) $existingItem->mrp > 0 && $lineMrp > ((float) $existingItem->mrp * 2.5) && (float) $existingItem->mrp < 500) {
+                $isPouchCaseMismatch = true;
+            }
+
+            $itemMasterUpdate = [
                 'cost_price' => $line['cost_price'],
                 'landing_cost' => $effectiveCost,
-                'sell_price' => $line['sell_price'] ?: null,
-                'mrp' => $line['mrp'] ?: null,
-            ], fn ($v) => $v !== null));
-
-            $itemStockData = array_filter([
+            ];
+            $itemStockData = [
                 'cost_price' => $line['cost_price'] ?: null,
                 'landing_cost' => $effectiveCost ?: null,
-                'sell_price' => $line['sell_price'] ?: null,
-                'mrp' => $line['mrp'] ?: null,
-            ], fn ($v) => $v !== null);
+            ];
+
+            if (! $isPouchCaseMismatch) {
+                if (! empty($line['sell_price'])) {
+                    $itemMasterUpdate['sell_price'] = $line['sell_price'];
+                    $itemStockData['sell_price'] = $line['sell_price'];
+                }
+                if (! empty($line['mrp'])) {
+                    $itemMasterUpdate['mrp'] = $line['mrp'];
+                    $itemStockData['mrp'] = $line['mrp'];
+                }
+            }
+
+            Item::whereKey($line['item_id'])->update(array_filter($itemMasterUpdate, fn ($v) => $v !== null));
 
             ItemStock::updateOrCreate(
                 ['item_id' => $line['item_id'], 'branch_id' => $purchaseInvoice->branch_id],
-                $itemStockData
+                array_filter($itemStockData, fn ($v) => $v !== null)
             );
         }
     }
@@ -468,8 +507,8 @@ class PurchaseInvoiceController extends Controller
         $finalAmount = round((float) ($totals['total'] ?? 0), 2);
 
         if ($supplierInvAmt > 0 && abs($supplierInvAmt - $finalAmount) > 0.01) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'supplier_inv_amount' => "Supplier Invoice Amount [₹" . number_format($supplierInvAmt, 2) . "] must match the Final Amount [₹" . number_format($finalAmount, 2) . "] (Difference: ₹" . number_format($supplierInvAmt - $finalAmount, 2) . ").",
+            throw ValidationException::withMessages([
+                'supplier_inv_amount' => 'Supplier Invoice Amount [₹'.number_format($supplierInvAmt, 2).'] must match the Final Amount [₹'.number_format($finalAmount, 2).'] (Difference: ₹'.number_format($supplierInvAmt - $finalAmount, 2).').',
             ]);
         }
     }
@@ -478,7 +517,7 @@ class PurchaseInvoiceController extends Controller
     {
         $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
-        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+        return app(DocumentNumberingService::class)->generate(
             'purchase_invoice',
             $branchId ? (int) $branchId : null,
             $date
@@ -490,13 +529,13 @@ class PurchaseInvoiceController extends Controller
         $branchId = $branchId ?: session('active_branch_id', auth()->user()?->branch_id);
 
         if (! $consume) {
-            return app(\App\Services\Accounting\DocumentNumberingService::class)->preview(
+            return app(DocumentNumberingService::class)->preview(
                 'purchase_receipt_note',
                 $branchId ? (int) $branchId : null
             );
         }
 
-        return app(\App\Services\Accounting\DocumentNumberingService::class)->generate(
+        return app(DocumentNumberingService::class)->generate(
             'purchase_receipt_note',
             $branchId ? (int) $branchId : null,
             $date
@@ -505,11 +544,11 @@ class PurchaseInvoiceController extends Controller
 
     public function itemList(Request $request)
     {
-        $defaultBranchId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?: 0));
+        $defaultBranchId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: (Branch::value('id') ?: 0));
         $branchId = (int) ($request->input('branch_id') ?: $defaultBranchId);
-        $search   = trim((string) $request->input('search', ''));
-        $expiry   = trim((string) $request->input('expiry', ''));
-        $code     = trim((string) $request->input('code', ''));
+        $search = trim((string) $request->input('search', ''));
+        $expiry = trim((string) $request->input('expiry', ''));
+        $code = trim((string) $request->input('code', ''));
 
         // Require at least 1 character to avoid loading 8000+ items on initial empty state
         $hasFilter = $search !== '' || $code !== '' || $expiry !== '';
@@ -518,22 +557,22 @@ class PurchaseInvoiceController extends Controller
         }
 
         // --- Single optimised query: items LEFT JOINed with stock & earliest expiry ---
-        $limit  = 100;
-        $where  = ['i.status = 1'];
-        $todayIndia = \Carbon\Carbon::now('Asia/Kolkata')->toDateString();
+        $limit = 100;
+        $where = ['i.status = 1'];
+        $todayIndia = Carbon::now('Asia/Kolkata')->toDateString();
         $params = [$branchId];
 
-        $orderSql    = 'i.name ASC';
+        $orderSql = 'i.name ASC';
         $orderParams = [];
 
         if ($search !== '') {
-            $sWild   = "%{$search}%";
-            $sExact  = $search;
+            $sWild = "%{$search}%";
+            $sExact = $search;
             $sPrefix = "{$search}%";
 
             // Multi-token fuzzy matching: e.g. "item 30 kg" matches "item b 30 kg"
             // Also handles unit combos: e.g. "30kg" matches both "30kg" and "30 kg"
-            $tokens = array_values(array_filter(preg_split('/\s+/', $search), fn($t) => $t !== ''));
+            $tokens = array_values(array_filter(preg_split('/\s+/', $search), fn ($t) => $t !== ''));
             $tokenConds = [];
             $tokenParams = [];
 
@@ -552,7 +591,7 @@ class PurchaseInvoiceController extends Controller
             }
 
             $nameWhereSql = $tokenConds ? implode(' AND ', $tokenConds) : 'i.name LIKE ?';
-            if (!$tokenConds) {
+            if (! $tokenConds) {
                 $tokenParams[] = $sWild;
             }
 
@@ -560,10 +599,10 @@ class PurchaseInvoiceController extends Controller
             // Item code matches exact or prefix
             // Item name matches multi-token or contiguous phrase
             $where[] = "({$nameWhereSql} OR i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)";
-            $params  = array_merge($params, $tokenParams, [$sExact, $sPrefix, $sExact, $sPrefix]);
+            $params = array_merge($params, $tokenParams, [$sExact, $sPrefix, $sExact, $sPrefix]);
 
             // Rank exact code / barcode match first, then prefix, then exact name, then prefix, then phrase, then multi-token
-            $orderSql = "
+            $orderSql = '
                 CASE
                     WHEN i.item_code = ? THEN 1
                     WHEN i.ean_upc_code = ? THEN 2
@@ -575,18 +614,18 @@ class PurchaseInvoiceController extends Controller
                     ELSE 8
                 END ASC,
                 i.name ASC
-            ";
+            ';
             $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sExact, $sPrefix, $sWild];
         }
 
         if ($code !== '') {
-            $cExact  = $code;
+            $cExact = $code;
             $cPrefix = "{$code}%";
             $where[] = '(i.item_code = ? OR i.item_code LIKE ? OR i.ean_upc_code = ? OR i.ean_upc_code LIKE ?)';
-            $params  = array_merge($params, [$cExact, $cPrefix, $cExact, $cPrefix]);
+            $params = array_merge($params, [$cExact, $cPrefix, $cExact, $cPrefix]);
 
             if ($search === '') {
-                $orderSql = "
+                $orderSql = '
                     CASE
                         WHEN i.item_code = ? THEN 1
                         WHEN i.ean_upc_code = ? THEN 2
@@ -595,12 +634,12 @@ class PurchaseInvoiceController extends Controller
                         ELSE 5
                     END ASC,
                     i.name ASC
-                ";
+                ';
                 $orderParams = [$cExact, $cExact, $cPrefix, $cPrefix];
             }
         }
 
-        $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $whereClause = $where ? 'WHERE '.implode(' AND ', $where) : '';
 
         $sql = "
             SELECT
@@ -663,9 +702,15 @@ class PurchaseInvoiceController extends Controller
             foreach ($rows as $row) {
                 if (isset($ei[$row->id])) {
                     $row->exp_date = $ei[$row->id]->exp_date;
-                    if ((float) ($ei[$row->id]->cost_price ?? 0) > 0) $row->cost_price = $ei[$row->id]->cost_price;
-                    if ((float) ($ei[$row->id]->sell_price ?? 0) > 0) $row->sell_price = $ei[$row->id]->sell_price;
-                    if ((float) ($ei[$row->id]->mrp ?? 0) > 0)        $row->mrp        = $ei[$row->id]->mrp;
+                    if ((float) ($ei[$row->id]->cost_price ?? 0) > 0) {
+                        $row->cost_price = $ei[$row->id]->cost_price;
+                    }
+                    if ((float) ($ei[$row->id]->sell_price ?? 0) > 0) {
+                        $row->sell_price = $ei[$row->id]->sell_price;
+                    }
+                    if ((float) ($ei[$row->id]->mrp ?? 0) > 0) {
+                        $row->mrp = $ei[$row->id]->mrp;
+                    }
                 }
             }
         }
@@ -678,7 +723,7 @@ class PurchaseInvoiceController extends Controller
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
             $fbCostSub = $isSqlite ? 'MAX(pi2.cost_price) AS cost_price' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.cost_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS cost_price";
             $fbSellSub = $isSqlite ? 'MAX(pi2.sell_price) AS sell_price' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.sell_price ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS sell_price";
-            $fbMrpSub  = $isSqlite ? 'MAX(pi2.mrp) AS mrp' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS mrp";
+            $fbMrpSub = $isSqlite ? 'MAX(pi2.mrp) AS mrp' : "SUBSTRING_INDEX(GROUP_CONCAT(pi2.mrp ORDER BY pi2.id DESC SEPARATOR ','), ',', 1) AS mrp";
 
             $fbSql = "
                 SELECT pi2.item_id,
@@ -702,37 +747,45 @@ class PurchaseInvoiceController extends Controller
         foreach ($rows as $row) {
             $expRaw = $row->exp_date ?? null;
             if (empty($expRaw) && isset($expiryFallback[$row->id])) {
-                $fb     = $expiryFallback[$row->id];
+                $fb = $expiryFallback[$row->id];
                 $expRaw = $fb->exp_date;
-                if ((float) ($fb->cost_price ?? 0) > 0 && (float) $row->cost_price <= 0) $row->cost_price = $fb->cost_price;
-                if ((float) ($fb->sell_price ?? 0) > 0 && (float) $row->sell_price <= 0) $row->sell_price = $fb->sell_price;
-                if ((float) ($fb->mrp ?? 0) > 0        && (float) $row->mrp <= 0)        $row->mrp        = $fb->mrp;
+                if ((float) ($fb->cost_price ?? 0) > 0 && (float) $row->cost_price <= 0) {
+                    $row->cost_price = $fb->cost_price;
+                }
+                if ((float) ($fb->sell_price ?? 0) > 0 && (float) $row->sell_price <= 0) {
+                    $row->sell_price = $fb->sell_price;
+                }
+                if ((float) ($fb->mrp ?? 0) > 0 && (float) $row->mrp <= 0) {
+                    $row->mrp = $fb->mrp;
+                }
             }
 
             $exp = null;
             if (! empty($expRaw) && $expRaw !== '0000-00-00') {
                 try {
-                    $exp = \Carbon\Carbon::parse($expRaw)->format('Y-m-d');
+                    $exp = Carbon::parse($expRaw)->format('Y-m-d');
                 } catch (\Exception $e) {
                     $exp = substr((string) $expRaw, 0, 10) ?: null;
                 }
             }
 
-            if ($expiry !== '' && (! $exp || strpos($exp, $expiry) === false)) continue;
+            if ($expiry !== '' && (! $exp || strpos($exp, $expiry) === false)) {
+                continue;
+            }
 
             $result[] = [
-                'id'                      => (int) $row->id,
-                'name'                    => $row->name,
-                'code'                    => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
-                'qty'                     => (float) $row->qty,
-                'cost_price'              => (float) $row->cost_price,
-                'sell_price'              => (float) $row->sell_price,
-                'mrp'                     => (float) $row->mrp,
-                'exp_date'                => $exp,
-                'batch_expiry_details'    => $row->batch_expiry_details ?? 'Not Required',
-                'shelf_life_days'         => $row->shelf_life_days ? (int) $row->shelf_life_days : null,
+                'id' => (int) $row->id,
+                'name' => $row->name,
+                'code' => ($row->item_code ?? '') ?: (($row->ean_upc_code ?? '') ?: ''),
+                'qty' => (float) $row->qty,
+                'cost_price' => (float) $row->cost_price,
+                'sell_price' => (float) $row->sell_price,
+                'mrp' => (float) $row->mrp,
+                'exp_date' => $exp,
+                'batch_expiry_details' => $row->batch_expiry_details ?? 'Not Required',
+                'shelf_life_days' => $row->shelf_life_days ? (int) $row->shelf_life_days : null,
                 'minimum_shelf_life_days' => $row->minimum_shelf_life_days ? (int) $row->minimum_shelf_life_days : null,
-                'gst_percent'             => (float) $row->gst_percent,
+                'gst_percent' => (float) $row->gst_percent,
             ];
         }
 
@@ -742,8 +795,8 @@ class PurchaseInvoiceController extends Controller
     public function lookupItem(Request $request)
     {
         $itemId = $request->input('item_id');
-        $query  = trim((string) $request->input('query', ''));
-        $defaultBranchId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?: 0));
+        $query = trim((string) $request->input('query', ''));
+        $defaultBranchId = session('active_branch_id') ?: (auth()->user()?->branch_id ?: (Branch::value('id') ?: 0));
         $branchId = (int) ($request->input('branch_id') ?: $defaultBranchId);
 
         $exactMatchOnly = $request->boolean('exact_match_only');
@@ -758,7 +811,7 @@ class PurchaseInvoiceController extends Controller
             $item = Item::where('status', true)
                 ->where(function ($q) use ($query) {
                     $q->where('item_code', $query)
-                      ->orWhere('ean_upc_code', $query);
+                        ->orWhere('ean_upc_code', $query);
                 })
                 ->with('gstTax:id,percentage')
                 ->first();
@@ -787,13 +840,13 @@ class PurchaseInvoiceController extends Controller
 
         $latestExpDate = null;
         if ($item->batch_expiry_details && $item->batch_expiry_details !== 'Not Required') {
-            $rawExp = \App\Models\PurchaseInvoiceItem::where('item_id', $item->id)
+            $rawExp = PurchaseInvoiceItem::where('item_id', $item->id)
                 ->whereNotNull('exp_date')
                 ->latest('id')
                 ->value('exp_date');
             if ($rawExp) {
                 try {
-                    $latestExpDate = \Carbon\Carbon::parse($rawExp)->format('Y-m-d');
+                    $latestExpDate = Carbon::parse($rawExp)->format('Y-m-d');
                 } catch (\Exception $e) {
                     $latestExpDate = substr((string) $rawExp, 0, 10) ?: null;
                 }
@@ -803,22 +856,22 @@ class PurchaseInvoiceController extends Controller
         $branchStock = $branchId > 0 ? ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->first() : null;
         $resolvedCost = ($branchStock && (float) $branchStock->cost_price > 0) ? (float) $branchStock->cost_price : (float) ($item->cost_price ?? 0);
         $resolvedSell = ($branchStock && (float) $branchStock->sell_price > 0) ? (float) $branchStock->sell_price : (float) ($item->sell_price ?? 0);
-        $resolvedMrp  = ($branchStock && (float) $branchStock->mrp > 0) ? (float) $branchStock->mrp : (float) ($item->mrp ?? 0);
+        $resolvedMrp = ($branchStock && (float) $branchStock->mrp > 0) ? (float) $branchStock->mrp : (float) ($item->mrp ?? 0);
 
         return response()->json([
-            'id'                      => $item->id,
-            'name'                    => $item->name,
-            'item_code'               => $item->item_code,
-            'ean_upc_code'            => $item->ean_upc_code,
-            'cost_price'              => $resolvedCost,
-            'sell_price'              => $resolvedSell,
-            'mrp'                     => $resolvedMrp,
-            'stock'                   => $stock,
-            'qty'                     => $stock,
-            'exp_date'                => $latestExpDate,
-            'gst_percent'             => (float) ($item->gstTax?->percentage ?? 0),
-            'batch_expiry_details'    => $item->batch_expiry_details ?? 'Not Required',
-            'shelf_life_days'         => $item->shelf_life_days ? (int) $item->shelf_life_days : null,
+            'id' => $item->id,
+            'name' => $item->name,
+            'item_code' => $item->item_code,
+            'ean_upc_code' => $item->ean_upc_code,
+            'cost_price' => $resolvedCost,
+            'sell_price' => $resolvedSell,
+            'mrp' => $resolvedMrp,
+            'stock' => $stock,
+            'qty' => $stock,
+            'exp_date' => $latestExpDate,
+            'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
+            'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
+            'shelf_life_days' => $item->shelf_life_days ? (int) $item->shelf_life_days : null,
             'minimum_shelf_life_days' => $item->minimum_shelf_life_days ? (int) $item->minimum_shelf_life_days : null,
         ]);
     }
@@ -848,7 +901,7 @@ class PurchaseInvoiceController extends Controller
         $items = $existingItemIds->isNotEmpty()
             ? Item::whereIn('id', $existingItemIds)->with('gstTax:id,percentage')->get([
                 'id', 'name', 'item_code', 'ean_upc_code', 'cost_price', 'sell_price', 'mrp', 'gst_tax_id',
-                'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days'
+                'batch_expiry_details', 'shelf_life_days', 'minimum_shelf_life_days',
             ])
             : collect();
 
@@ -890,7 +943,7 @@ class PurchaseInvoiceController extends Controller
     {
         $itemsById = Item::with('gstTax')->whereIn('id', collect($items)->pluck('item_id')->unique())->get()->keyBy('id');
         $supplier = isset($header['supplier_id']) ? Supplier::find($header['supplier_id']) : null;
-        $isInterstate = !empty($header['purchase_type'])
+        $isInterstate = ! empty($header['purchase_type'])
             ? ($header['purchase_type'] === 'Interstate')
             : ($supplier && $supplier->isInterstate());
 
@@ -981,7 +1034,7 @@ class PurchaseInvoiceController extends Controller
 
             return [
                 'item_id' => $line['item_id'],
-                'batch_no' => !empty($line['batch_no']) ? trim($line['batch_no']) : null,
+                'batch_no' => ! empty($line['batch_no']) ? trim($line['batch_no']) : null,
                 'exp_date' => $this->normalizeDate($line['exp_date'] ?? null),
                 'qty' => $qty,
                 'free_qty' => $freeQty,
@@ -1026,7 +1079,7 @@ class PurchaseInvoiceController extends Controller
         $invNo = strtoupper(trim((string) $request->query('supplier_inv_no')));
         $ignoreId = $request->query('ignore_id');
 
-        if (!$supplierId || !$invNo) {
+        if (! $supplierId || ! $invNo) {
             return response()->json([
                 'is_duplicate' => false,
             ]);
@@ -1044,7 +1097,7 @@ class PurchaseInvoiceController extends Controller
             'existing_invoice_id' => $existing?->id,
             'existing_invoice_number' => $existing?->invoice_number,
             'edit_url' => $editUrl,
-            'message' => $existing 
+            'message' => $existing
                 ? "Supplier Invoice Number '{$invNo}' is already recorded in {$existing->invoice_number} for this supplier."
                 : null,
         ]);
@@ -1063,8 +1116,8 @@ class PurchaseInvoiceController extends Controller
             $term = trim((string) $request->input('search'));
             $query->where(function ($q) use ($term) {
                 $q->where('invoice_number', 'like', "%{$term}%")
-                  ->orWhere('supplier_inv_no', 'like', "%{$term}%")
-                  ->orWhere('grn_number', 'like', "%{$term}%");
+                    ->orWhere('supplier_inv_no', 'like', "%{$term}%")
+                    ->orWhere('grn_number', 'like', "%{$term}%");
             });
         }
 
@@ -1078,8 +1131,8 @@ class PurchaseInvoiceController extends Controller
 
         $invoices = $query->limit(100)->get()
             ->map(function ($inv) {
-                $dateFormatted = $inv->invoice_date 
-                    ? $inv->invoice_date->format('d-m-Y') 
+                $dateFormatted = $inv->invoice_date
+                    ? $inv->invoice_date->format('d-m-Y')
                     : ($inv->supplier_inv_date ? $inv->supplier_inv_date->format('d-m-Y') : ($inv->created_at ? $inv->created_at->format('d-m-Y') : '-'));
 
                 return [
@@ -1103,7 +1156,6 @@ class PurchaseInvoiceController extends Controller
         ]);
     }
 
-
     private function validateData(Request $request, ?int $id = null): array
     {
         if ($request->filled('supplier_inv_no')) {
@@ -1115,7 +1167,7 @@ class PurchaseInvoiceController extends Controller
 
         foreach (['invoice_date', 'grn_date', 'supplier_inv_date'] as $dateField) {
             if ($request->filled($dateField)) {
-                $normalized = \App\Helpers\DateHelper::normalize($request->input($dateField));
+                $normalized = DateHelper::normalize($request->input($dateField));
                 if ($normalized) {
                     $request->merge([$dateField => $normalized]);
                 }
@@ -1126,8 +1178,8 @@ class PurchaseInvoiceController extends Controller
             $items = $request->input('items');
             $itemsUpdated = false;
             foreach ($items as &$itm) {
-                if (!empty($itm['exp_date'])) {
-                    $normExp = \App\Helpers\DateHelper::normalize($itm['exp_date']);
+                if (! empty($itm['exp_date'])) {
+                    $normExp = DateHelper::normalize($itm['exp_date']);
                     if ($normExp) {
                         $itm['exp_date'] = $normExp;
                         $itemsUpdated = true;
@@ -1173,7 +1225,7 @@ class PurchaseInvoiceController extends Controller
         ];
 
         // Apply dynamic field validations configured in Admin Configuration
-        $dynamicService = app(\App\Services\DynamicValidationService::class);
+        $dynamicService = app(DynamicValidationService::class);
         $dynamicService->applyTo('purchase_invoices', $headerRules, $headerMessages);
 
         if (empty($id)) {
@@ -1183,7 +1235,7 @@ class PurchaseInvoiceController extends Controller
             // Instead, store() automatically assigns the next fresh unique GRN inside the database transaction.
             if (isset($headerRules['grn_number'])) {
                 $headerRules['grn_number'] = array_values(array_filter($headerRules['grn_number'], function ($r) {
-                    return !($r instanceof \Illuminate\Validation\Rules\Unique) && !str_starts_with((string) $r, 'unique');
+                    return ! ($r instanceof Unique) && ! str_starts_with((string) $r, 'unique');
                 }));
             }
         }
@@ -1200,39 +1252,39 @@ class PurchaseInvoiceController extends Controller
             $header['purchase_type'] = ($supplier && $supplier->isInterstate()) ? 'Interstate' : 'Local';
         }
 
-        if (!empty($header['supplier_inv_no'])) {
+        if (! empty($header['supplier_inv_no'])) {
             $header['supplier_inv_no'] = strtoupper(trim($header['supplier_inv_no']));
         }
-        if (!empty($header['invoice_number'])) {
+        if (! empty($header['invoice_number'])) {
             $header['invoice_number'] = strtoupper(trim($header['invoice_number']));
         }
 
         $configs = $dynamicService->getConfigsForModule('purchase_invoices');
 
-        if (!empty($header['supplier_inv_no']) && ($configs['supplier_inv_no']->is_unique ?? true)) {
+        if (! empty($header['supplier_inv_no']) && ($configs['supplier_inv_no']->is_unique ?? true)) {
             $duplicateSupplierInv = PurchaseInvoice::where('supplier_id', $header['supplier_id'])
                 ->where('supplier_inv_no', $header['supplier_inv_no'])
                 ->when($id, fn ($q) => $q->where('id', '!=', $id))
                 ->exists();
             if ($duplicateSupplierInv) {
-                $msg = !empty($configs['supplier_inv_no']->custom_error_message)
+                $msg = ! empty($configs['supplier_inv_no']->custom_error_message)
                     ? $configs['supplier_inv_no']->custom_error_message
                     : "Supplier Invoice Number '{$header['supplier_inv_no']}' is already recorded for this supplier.";
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'supplier_inv_no' => $msg,
                 ]);
             }
         }
 
-        if (!empty($id) && !empty($header['grn_number']) && ($configs['grn_number']->is_unique ?? true)) {
+        if (! empty($id) && ! empty($header['grn_number']) && ($configs['grn_number']->is_unique ?? true)) {
             $duplicateGrn = PurchaseInvoice::where('grn_number', $header['grn_number'])
                 ->where('id', '!=', $id)
                 ->exists();
             if ($duplicateGrn) {
-                $msg = !empty($configs['grn_number']->custom_error_message)
+                $msg = ! empty($configs['grn_number']->custom_error_message)
                     ? $configs['grn_number']->custom_error_message
                     : "GRN Number '{$header['grn_number']}' already exists. Please use a unique GRN Number.";
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'grn_number' => $msg,
                 ]);
             }
@@ -1330,10 +1382,10 @@ class PurchaseInvoiceController extends Controller
                     }
                 }
 
-                if (!empty($line['exp_date'])) {
-                    $todayIndia = \Carbon\Carbon::now('Asia/Kolkata')->startOfDay();
+                if (! empty($line['exp_date'])) {
+                    $todayIndia = Carbon::now('Asia/Kolkata')->startOfDay();
                     try {
-                        $expCarbon = \Carbon\Carbon::parse($line['exp_date'], 'Asia/Kolkata')->startOfDay();
+                        $expCarbon = Carbon::parse($line['exp_date'], 'Asia/Kolkata')->startOfDay();
                         if ($expCarbon->lt($todayIndia)) {
                             $rowNum = $idx + 1;
                             $v->errors()->add(
@@ -1367,7 +1419,7 @@ class PurchaseInvoiceController extends Controller
                         $rowNum = $idx + 1;
                         $v->errors()->add(
                             "items.{$idx}.sell_price",
-                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must be greater than Landing Cost (₹" . number_format($benchmarkCost, 2) . ")."
+                            "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must be greater than Landing Cost (₹".number_format($benchmarkCost, 2).').'
                         );
                     }
                     if ($mrp > 0 && $sellPrice > $mrp) {
@@ -1376,6 +1428,18 @@ class PurchaseInvoiceController extends Controller
                             "items.{$idx}.sell_price",
                             "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must not exceed MRP (₹{$mrp}) (Sell price must be <= MRP)."
                         );
+                    }
+
+                    // Anomaly Guardrail: Detect Box/Carton wholesale price entered for single retail unit
+                    if ($itemModel && (float) $itemModel->mrp > 0 && $mrp > 0) {
+                        $existingMrp = (float) $itemModel->mrp;
+                        if ($mrp > ($existingMrp * 2.5) && $existingMrp < 500) {
+                            $rowNum = $idx + 1;
+                            $v->errors()->add(
+                                "items.{$idx}.mrp",
+                                "Item '{$itemModel->name}' (Row #{$rowNum}): Entered MRP (₹{$mrp}) is drastically higher than current retail MRP (₹{$existingMrp}). If this is a wholesale Case/Box, please enter individual pouch/unit quantity or verify rate."
+                            );
+                        }
                     }
                 }
             }

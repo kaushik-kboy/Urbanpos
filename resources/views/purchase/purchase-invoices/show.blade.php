@@ -19,10 +19,10 @@
             <a href="{{ route('purchase.purchase-invoices.print', $purchaseInvoice) }}" target="_blank" class="btn btn-primary btn-sm mr-1">
                 <i class="fas fa-print mr-1"></i> Print
             </a>
-            <a href="{{ route('purchase.purchase-invoices.edit', $purchaseInvoice) }}" class="btn btn-outline-secondary btn-sm mr-1">
+            <a href="{{ route('purchase.purchase-invoices.edit', array_merge(['purchase_invoice' => $purchaseInvoice->id], request()->query())) }}" class="btn btn-outline-secondary btn-sm mr-1">
                 <i class="fas fa-pen mr-1"></i> Edit
             </a>
-            <a href="{{ route('purchase.purchase-invoices.index') }}" class="btn btn-secondary btn-sm">
+            <a href="{{ route('purchase.purchase-invoices.index', request()->query() ?: session('purchase_invoices_filters', [])) }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left mr-1"></i> Back to List
             </a>
         </div>
