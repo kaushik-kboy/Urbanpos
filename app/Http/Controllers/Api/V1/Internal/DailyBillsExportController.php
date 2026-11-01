@@ -70,26 +70,64 @@ class DailyBillsExportController extends Controller
 
         $bills = $query->orderBy('id', 'asc')->get();
 
-        // 4. Transform Bills to EOD Expected Shape
-        $results = $bills->map(function (SalesBill $bill) {
-            $custName = trim(($bill->customer?->title ? $bill->customer->title.' ' : '').($bill->customer?->name ?? 'Walk-in Customer'));
-            $rawPhone = $bill->customer?->mobile ?: $bill->customer?->phone;
-            $cleanPhone = $this->sanitizePhone($rawPhone);
-            $mode = $this->resolvePaymentMode($bill);
+        // 4. Transform Bills to EOD Expected Shape (splitting multiple tenders into discrete entries)
+        $results = collect();
 
-            return [
-                'bill_number' => (string) $bill->bill_number,
-                'bill_date' => $bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d') : now()->toDateString(),
-                'customer_name' => $custName ?: 'Walk-in Customer',
-                'mobile' => $cleanPhone,
-                'payment_mode' => $mode,
-                'sales_type' => $bill->sales_type,
-                'delivery_type' => $bill->delivery_type,
-                'amount' => (float) $bill->total,
-                'branch_id' => $bill->branch_id,
-                'branch_name' => $bill->branch?->name,
-            ];
-        });
+        foreach ($bills as $bill) {
+            $custName   = trim(($bill->customer?->title ? $bill->customer->title . ' ' : '') . ($bill->customer?->name ?? 'Walk-in Customer'));
+            $rawPhone   = $bill->customer?->mobile ?: $bill->customer?->phone;
+            $cleanPhone = $this->sanitizePhone($rawPhone);
+            $billDate   = $bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d') : now()->toDateString();
+
+            $payments = $bill->payments->filter(fn ($p) => (float) $p->amount > 0);
+            $distinctTypes = $payments->pluck('tender_type_id')->unique();
+
+            if ($payments->count() > 1 && $distinctTypes->count() > 1) {
+                // Split payment: group amounts by standard 2-letter mode
+                $modesMap = [];
+                foreach ($payments as $p) {
+                    $tender = $p->tenderType;
+                    $tenderName = $tender ? strtolower(trim($tender->name . ' ' . $tender->type)) : 'cash';
+                    $modeCode = $this->codeFromTenderName($tenderName);
+                    $modesMap[$modeCode] = ($modesMap[$modeCode] ?? 0.0) + (float) $p->amount;
+                }
+
+                foreach ($modesMap as $modeCode => $modeAmount) {
+                    $results->push([
+                        'bill_number'   => (string) $bill->bill_number,
+                        'bill_date'     => $billDate,
+                        'customer_name' => $custName ?: 'Walk-in Customer',
+                        'mobile'        => $cleanPhone,
+                        'payment_mode'  => $modeCode,
+                        'sales_type'    => $bill->sales_type,
+                        'delivery_type' => $bill->delivery_type,
+                        'amount'        => (float) $modeAmount,
+                        'branch_id'     => $bill->branch_id,
+                        'branch_name'   => $bill->branch?->name,
+                        'is_split'      => true,
+                    ]);
+                }
+            } else {
+                $mode = $this->resolvePaymentMode($bill);
+                if ($mode === 'SP') {
+                    $mode = 'CA';
+                }
+
+                $results->push([
+                    'bill_number'   => (string) $bill->bill_number,
+                    'bill_date'     => $billDate,
+                    'customer_name' => $custName ?: 'Walk-in Customer',
+                    'mobile'        => $cleanPhone,
+                    'payment_mode'  => $mode,
+                    'sales_type'    => $bill->sales_type,
+                    'delivery_type' => $bill->delivery_type,
+                    'amount'        => (float) $bill->total,
+                    'branch_id'     => $bill->branch_id,
+                    'branch_name'   => $bill->branch?->name,
+                    'is_split'      => false,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
