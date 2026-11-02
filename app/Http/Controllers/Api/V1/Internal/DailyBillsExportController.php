@@ -83,7 +83,7 @@ class DailyBillsExportController extends Controller
             $distinctTypes = $payments->pluck('tender_type_id')->unique();
 
             if ($payments->count() > 1 && $distinctTypes->count() > 1) {
-                // Split payment: group amounts by standard 2-letter mode and emit discrete rows for physical reconciliation
+                // Split payment: group amounts by standard 2-letter mode and emit 1 single row with breakdown
                 $modesMap = [];
                 foreach ($payments as $p) {
                     $tender = $p->tenderType;
@@ -92,28 +92,29 @@ class DailyBillsExportController extends Controller
                     $modesMap[$modeCode] = ($modesMap[$modeCode] ?? 0.0) + (float) $p->amount;
                 }
 
-                foreach ($modesMap as $modeCode => $modeAmount) {
-                    if ($modeAmount <= 0) {
-                        continue;
-                    }
-
-                    $results->push([
-                        'bill_number' => (string) $bill->bill_number,
-                        'bill_date' => $billDate,
-                        'customer_name' => $custName ?: 'Walk-in Customer',
-                        'mobile' => $cleanPhone,
-                        'payment_mode' => $modeCode,
-                        'sales_type' => $bill->sales_type,
-                        'delivery_type' => $bill->delivery_type,
-                        'fulfillment' => $bill->fulfillment ?? $bill->delivery_type,
-                        'amount' => (float) $modeAmount,
-                        'branch_id' => $bill->branch_id,
-                        'branch_name' => $bill->branch?->name,
-                        'is_split' => true,
-                        'split_details' => null,
-                        'split_summary' => null,
-                    ]);
+                $summaryParts = [];
+                $labelMap = ['CA' => 'Cash', 'CC' => 'Card', 'WA' => 'UPI', 'CR' => 'Credit'];
+                arsort($modesMap);
+                foreach ($modesMap as $mCode => $mAmt) {
+                    $summaryParts[] = '₹'.number_format($mAmt, 0).' '.($labelMap[$mCode] ?? $mCode);
                 }
+
+                $results->push([
+                    'bill_number'   => (string) $bill->bill_number,
+                    'bill_date'     => $billDate,
+                    'customer_name' => $custName ?: 'Walk-in Customer',
+                    'mobile'        => $cleanPhone,
+                    'payment_mode'  => 'SP',
+                    'sales_type'    => $bill->sales_type,
+                    'delivery_type' => $bill->delivery_type,
+                    'fulfillment'   => $bill->fulfillment ?? $bill->delivery_type,
+                    'amount'        => (float) $bill->total,
+                    'branch_id'     => $bill->branch_id,
+                    'branch_name'   => $bill->branch?->name,
+                    'is_split'      => true,
+                    'split_details' => $modesMap,
+                    'split_summary' => implode(' • ', $summaryParts),
+                ]);
             } else {
                 $mode = $this->resolvePaymentMode($bill);
                 if ($mode === 'SP') {
