@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Inventory;
 
+use App\Exports\SmartReplenishmentExport;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -19,6 +20,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SmartReplenishmentController extends Controller
 {
@@ -427,5 +430,105 @@ class SmartReplenishmentController extends Controller
                 'message' => "Stock Transfer {$stockTransfer->transfer_number} dispatched successfully with {$totalQty} units!",
             ]);
         });
+    }
+
+    /**
+     * 1-Click Export to Excel (.xlsx).
+     */
+    public function export(Request $request): BinaryFileResponse
+    {
+        if (! config('replenishment.enabled', false)) {
+            abort(404);
+        }
+
+        $branchId = $request->get('branch_id');
+        $status = $request->get('status');
+        $brandId = $request->get('brand_id');
+        $categoryId = $request->get('category_id');
+        $supplierId = $request->get('supplier_id');
+        $search = $request->get('search');
+
+        $query = ReplenishmentItemMetric::with([
+            'item:id,name,item_code,brand_id,category_id,supplier_id,cost_price',
+            'item.brand:id,name',
+            'item.category:id,name',
+            'supplier:id,name',
+            'branch:id,name',
+        ]);
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($status && $status !== 'all') {
+            if ($status === 'needs_action') {
+                $query->where(function ($q) {
+                    $q->where('suggested_qty', '>', 0)
+                        ->orWhere(function ($sub) {
+                            $sub->whereIn('stock_status', ['Critical', 'Low'])
+                                ->where('daily_avg_sales', '>', 0);
+                        });
+                });
+            } else {
+                $query->where('stock_status', $status);
+            }
+        }
+
+        if ($supplierId && $supplierId !== 'all') {
+            $query->where('primary_supplier_id', $supplierId);
+        }
+
+        if ($brandId && $brandId !== 'all') {
+            $query->whereHas('item', function ($q) use ($brandId) {
+                $q->where('brand_id', $brandId);
+            });
+        }
+
+        if ($categoryId && $categoryId !== 'all') {
+            $query->whereHas('item', function ($q) use ($categoryId) {
+                $q->where('category_id', $categoryId);
+            });
+        }
+
+        if ($search) {
+            $query->whereHas('item', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('item_code', 'like', "%{$search}%")
+                    ->orWhere('alias', 'like', "%{$search}%");
+            });
+        }
+
+        $query->orderByDesc('suggested_qty')->orderBy('cover_days', 'asc');
+
+        $rows = [];
+        foreach ($query->cursor() as $metric) {
+            $item = $metric->item;
+            $unitCost = (float) ($item->cost_price ?? 0);
+            $reorderVal = round($metric->suggested_qty * $unitCost, 2);
+
+            $rows[] = [
+                $item->item_code ?? '-',
+                $item->name ?? 'SKU #'.$metric->item_id,
+                $item->brand->name ?? '-',
+                $item->category->name ?? '-',
+                $metric->supplier->name ?? '-',
+                (float) $metric->current_stock,
+                (float) $metric->other_branch_stock,
+                (float) ($metric->current_stock + $metric->other_branch_stock),
+                (float) $metric->sales_30d,
+                (float) $metric->daily_avg_sales,
+                (float) $metric->cover_days,
+                (int) $metric->target_cover_days,
+                (int) $metric->suggested_qty,
+                $metric->stock_status,
+                $unitCost,
+                $reorderVal,
+            ];
+        }
+
+        $timestamp = now()->format('Y-m-d_His');
+        $fileName = "Stock_Replenishment_Analysis_{$timestamp}.xlsx";
+
+        return Excel::download(new SmartReplenishmentExport($rows), $fileName);
     }
 }

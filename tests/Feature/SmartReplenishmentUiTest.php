@@ -194,6 +194,18 @@ class SmartReplenishmentUiTest extends TestCase
         $this->assertEquals($this->item->id, $transfer->items->first()->item_id);
     }
 
+    public function test_export_endpoint_downloads_excel_file(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('inventory.replenishment.export', [
+            'branch_id' => $this->branch->id,
+            'status' => 'all',
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertHeader('content-disposition');
+        $this->assertStringContainsString('.xlsx', $response->headers->get('content-disposition'));
+    }
+
     public function test_feature_flag_disabled_returns_404(): void
     {
         config(['replenishment.enabled' => false]);
