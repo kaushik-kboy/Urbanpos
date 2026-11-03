@@ -131,6 +131,33 @@ class PurchaseDetailExport implements FromQuery, ShouldAutoSize, WithColumnForma
         $sgst18 = round((float) $row->sgst_18_amt, 2);
         $total = round((float) $row->total_amount, 2);
 
+        $taxSum = round($igst5 + $sgst5 + $cgst5 + $igst18 + $cgst18 + $sgst18, 2);
+        $rawTaxableSum = round($taxable0 + $taxable5 + $taxable18, 2);
+        $targetTaxable = round($total - $taxSum, 2);
+
+        if ($targetTaxable <= 0) {
+            $taxable0 = 0.0;
+            $taxable5 = 0.0;
+            $taxable18 = 0.0;
+        } elseif ($rawTaxableSum > 0 && abs($targetTaxable - $rawTaxableSum) >= 0.005) {
+            $scale = $targetTaxable / $rawTaxableSum;
+            $taxable0 = round($taxable0 * $scale, 2);
+            $taxable5 = round($taxable5 * $scale, 2);
+            $taxable18 = round($taxable18 * $scale, 2);
+
+            $allocated = round($taxable0 + $taxable5 + $taxable18, 2);
+            $diff = round($targetTaxable - $allocated, 2);
+            if ($diff != 0) {
+                if ($taxable18 >= $taxable5 && $taxable18 >= $taxable0 && $taxable18 > 0) {
+                    $taxable18 = round($taxable18 + $diff, 2);
+                } elseif ($taxable5 >= $taxable0 && $taxable5 > 0) {
+                    $taxable5 = round($taxable5 + $diff, 2);
+                } else {
+                    $taxable0 = round($taxable0 + $diff, 2);
+                }
+            }
+        }
+
         // Format numeric strings to prevent Excel blank cell issue for 0.00
         $fmt = fn (float $v) => number_format($v, 2, '.', '');
         [$taxable0, $taxable5, $taxable18, $igst5, $sgst5, $cgst5, $igst18, $cgst18, $sgst18, $total] =
