@@ -123,7 +123,7 @@ class ReplenishmentCalculationService
 
                 // Cover Days & Suggested Order Qty
                 if ($dailyAvg > 0) {
-                    $coverDays = round($curStock / $dailyAvg, 1);
+                    $coverDays = max(0.0, round($curStock / $dailyAvg, 1));
                     $requiredStock = $dailyAvg * $targetDays;
                     $suggestedQty = (int) max(0, ceil($requiredStock - $curStock));
 
@@ -136,6 +136,9 @@ class ReplenishmentCalculationService
                     if ($curStock > 0) {
                         $coverDays = 999.0;
                         $stockStatus = 'Overstock';
+                    } elseif ($curStock < 0) {
+                        $coverDays = 0.0;
+                        $stockStatus = 'Critical';
                     } else {
                         $coverDays = 0.0;
                         $stockStatus = 'Dead Stock';
@@ -280,19 +283,32 @@ class ReplenishmentCalculationService
             'src.current_stock as source_stock',
             'src.cover_days as source_cover_days',
             'src.stock_status as source_status',
+            'src.daily_avg_sales as source_daily_avg',
+            'src.target_cover_days as source_target_days',
         ])
             ->limit($limit)
             ->get();
 
         return $rows->map(function ($row) {
-            $surplusSpare = max(1, floor($row->source_stock * 0.4));
-            $needed = max(1, $row->dest_suggested_qty > 0 ? $row->dest_suggested_qty : 5);
+            if ($row->source_daily_avg > 0) {
+                $srcRequired = $row->source_daily_avg * $row->source_target_days;
+                $surplusSpare = max(0, floor($row->source_stock - $srcRequired));
+                if ($surplusSpare < 1 && $row->source_stock >= 5) {
+                    $surplusSpare = (int) floor($row->source_stock * 0.2);
+                }
+            } else {
+                $surplusSpare = (int) $row->source_stock;
+            }
+
+            $needed = max(1, (int) ($row->dest_suggested_qty > 0 ? $row->dest_suggested_qty : 5));
             $transferQty = (int) min($needed, $surplusSpare);
 
             $row->suggested_transfer_qty = $transferQty;
 
             return $row;
-        });
+        })->filter(function ($row) {
+            return $row->suggested_transfer_qty > 0;
+        })->values();
     }
 
     /**
@@ -331,34 +347,40 @@ class ReplenishmentCalculationService
     }
 
     /**
-     * Helper: Match daily sales to sales rules.
+     * Helper: Match daily sales to sales rules with continuous zero-gap thresholds.
      */
     protected function matchSalesRule(float $dailyAvg, Collection $salesRules): ?ReplenishmentSalesRule
     {
-        foreach ($salesRules as $rule) {
-            if ($dailyAvg >= $rule->min_daily_avg) {
-                if (is_null($rule->max_daily_avg) || $dailyAvg <= $rule->max_daily_avg) {
-                    return $rule;
-                }
+        $normalizedVelocity = max(0.0, $dailyAvg);
+        $sorted = $salesRules->sortByDesc('min_daily_avg');
+
+        foreach ($sorted as $rule) {
+            if ($normalizedVelocity >= (float) $rule->min_daily_avg) {
+                return $rule;
             }
         }
 
-        return $salesRules->last();
+        return $sorted->last();
     }
 
     /**
-     * Helper: Match cover days to stock rules.
+     * Helper: Match cover days to stock rules with continuous zero-gap thresholds.
      */
     protected function matchStockRule(float $coverDays, Collection $stockRules): ?ReplenishmentStockRule
     {
-        foreach ($stockRules as $rule) {
-            if ($coverDays >= $rule->min_cover_days) {
-                if (is_null($rule->max_cover_days) || $coverDays <= $rule->max_cover_days) {
-                    return $rule;
-                }
+        $normalizedDays = max(0.0, $coverDays);
+
+        // Check tiers with max threshold in ascending order (Critical <= 3, Low <= 10, Healthy <= 30)
+        $rulesWithMax = $stockRules->whereNotNull('max_cover_days')->sortBy('max_cover_days');
+
+        foreach ($rulesWithMax as $rule) {
+            if ($normalizedDays <= (float) $rule->max_cover_days) {
+                return $rule;
             }
         }
 
-        return $stockRules->first();
+        // Exceeds all thresholds -> Overstock (max_cover_days is null)
+        return $stockRules->firstWhere('max_cover_days', null)
+            ?? $stockRules->sortByDesc('min_cover_days')->first();
     }
 }

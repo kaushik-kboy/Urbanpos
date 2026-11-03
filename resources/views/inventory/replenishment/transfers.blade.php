@@ -158,7 +158,7 @@ body, .content-wrapper {
                 </thead>
                 <tbody>
                     @forelse($transferRecommendations as $transfer)
-                        <tr id="transfer-row-{{ $transfer->item_id }}">
+                        <tr id="transfer-row-{{ $transfer->item_id }}-{{ $transfer->source_branch_id }}-{{ $transfer->dest_branch_id }}">
                             <td>
                                 <strong class="text-dark" style="font-size: 0.9rem;">{{ $transfer->item_name }}</strong><br>
                                 <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs mt-1" style="border-radius: 4px;">SKU: {{ $transfer->item_code }}</span>
@@ -189,7 +189,7 @@ body, .content-wrapper {
                                 </span>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-action-dark btn-sm shadow-sm" onclick="createTransfer({{ $transfer->item_id }}, {{ $transfer->source_branch_id }}, {{ $transfer->dest_branch_id }}, {{ $transfer->suggested_transfer_qty }}, '{{ addslashes($transfer->item_name) }}')">
+                                <button type="button" class="btn btn-action-dark btn-sm shadow-sm" onclick="createTransfer(this, {{ $transfer->item_id }}, {{ $transfer->source_branch_id }}, {{ $transfer->dest_branch_id }}, {{ $transfer->suggested_transfer_qty }}, '{{ addslashes($transfer->item_name) }}')">
                                     <i class="fas fa-dolly mr-1 text-success"></i> Create Transfer
                                 </button>
                             </td>
@@ -211,13 +211,13 @@ body, .content-wrapper {
 
 @section('js')
 <script>
-    function createTransfer(itemId, fromBranchId, toBranchId, qty, itemName) {
+    function createTransfer(buttonEl, itemId, fromBranchId, toBranchId, qty, itemName) {
         if (!confirm(`Dispatch ${qty} units of "${itemName}" from source store to deficit store?`)) {
             return;
         }
 
-        const btn = $(`#transfer-row-${itemId} button`);
-        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Creating...');
+        const $btn = $(buttonEl);
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Creating...');
 
         $.ajax({
             url: "{{ route('inventory.replenishment.create-transfer') }}",
@@ -231,12 +231,12 @@ body, .content-wrapper {
             success: function(res) {
                 $('#transferAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-white" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Transfer #${res.transfer_number}</a>`);
                 $('#transferAlert').removeClass('d-none');
-                $(`#transfer-row-${itemId}`).fadeOut(300, function() { $(this).remove(); });
+                $btn.closest('tr').fadeOut(300, function() { $(this).remove(); });
             },
             error: function(xhr) {
                 const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error creating Stock Transfer.';
                 alert(msg);
-                btn.prop('disabled', false).html('<i class="fas fa-dolly mr-1 text-success"></i> Create Transfer');
+                $btn.prop('disabled', false).html('<i class="fas fa-dolly mr-1 text-success"></i> Create Transfer');
             }
         });
     }

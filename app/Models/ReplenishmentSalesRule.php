@@ -27,18 +27,23 @@ class ReplenishmentSalesRule extends Model
     ];
 
     /**
-     * Determine matching sales rule for a given daily average.
+     * Determine matching sales rule for a given daily average with continuous zero-gap thresholds.
      */
     public static function resolveForVelocity(float $avgDailySales): ?self
     {
-        return static::where('is_active', true)
-            ->where('min_daily_avg', '<=', $avgDailySales)
-            ->where(function ($query) use ($avgDailySales) {
-                $query->whereNull('max_daily_avg')
-                    ->orWhere('max_daily_avg', '>=', $avgDailySales);
-            })
+        $normalizedVelocity = max(0.0, $avgDailySales);
+
+        // Check rules ordered by min_daily_avg descending (Highest >= 20, Fast >= 10, Normal >= 5, Slow >= 1, Dead >= 0)
+        $rules = static::where('is_active', true)
             ->orderBy('min_daily_avg', 'desc')
-            ->first();
+            ->get();
+
+        foreach ($rules as $rule) {
+            if ($normalizedVelocity >= (float) $rule->min_daily_avg) {
+                return $rule;
+            }
+        }
+
+        return $rules->last();
     }
 }
-

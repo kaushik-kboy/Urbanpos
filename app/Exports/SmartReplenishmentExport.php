@@ -77,10 +77,10 @@ class SmartReplenishmentExport implements FromArray, ShouldAutoSize, WithHeading
                 'color' => ['argb' => 'FFD9D9D9'],
             ]);
 
-            // Right-align numeric columns (F to M and O to P)
-            $sheet->getStyle("F2:M{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-            $sheet->getStyle("O2:P{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-            $sheet->getStyle("N2:N{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            // Alignment: numeric columns right-aligned, status badges centered
+            $sheet->getStyle("F2:N{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $sheet->getStyle("O2:P{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("Q2:R{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
 
         $sheet->setShowGridlines(true);

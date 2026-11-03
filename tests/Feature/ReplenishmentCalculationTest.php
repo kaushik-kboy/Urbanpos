@@ -48,6 +48,12 @@ class ReplenishmentCalculationTest extends TestCase
         $this->assertNotNull($dead);
         $this->assertEquals('Dead Stock', $dead->rule_name);
         $this->assertEquals(7, $dead->target_cover_days);
+
+        // Boundary float tests (ensuring no floating-point gaps slip through)
+        $this->assertEquals('Dead Stock', ReplenishmentSalesRule::resolveForVelocity(0.995)->rule_name);
+        $this->assertEquals('Slow Moving', ReplenishmentSalesRule::resolveForVelocity(4.995)->rule_name);
+        $this->assertEquals('Normal Moving', ReplenishmentSalesRule::resolveForVelocity(9.995)->rule_name);
+        $this->assertEquals('Fast Moving', ReplenishmentSalesRule::resolveForVelocity(19.995)->rule_name);
     }
 
     /**
@@ -74,6 +80,11 @@ class ReplenishmentCalculationTest extends TestCase
         $this->assertNotNull($overstock);
         $this->assertEquals('Overstock', $overstock->stock_type);
         $this->assertEquals('info', $overstock->color_code);
+
+        // Boundary float tests (ensuring no float gaps slip between integer days)
+        $this->assertEquals('Low', ReplenishmentStockRule::resolveForCoverDays(3.5)->stock_type);
+        $this->assertEquals('Healthy', ReplenishmentStockRule::resolveForCoverDays(10.5)->stock_type);
+        $this->assertEquals('Overstock', ReplenishmentStockRule::resolveForCoverDays(30.5)->stock_type);
     }
 
     /**

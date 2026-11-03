@@ -409,34 +409,34 @@ body, .content-wrapper {
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-signal mr-1 text-primary"></i> Stock Status</label>
                             <select id="filterStatus" class="form-control form-control-sm modern-control">
-                                <option value="all">All Statuses</option>
-                                <option value="needs_action" selected>🚨 Needs Action (Order/Transfer)</option>
-                                <option value="Critical">🔴 Critical (0-3 Days)</option>
-                                <option value="Low">🟡 Low (4-10 Days)</option>
-                                <option value="Healthy">🟢 Healthy (11-30 Days)</option>
-                                <option value="Overstock">🔵 Overstock (>30 Days)</option>
-                                <option value="Dead Stock">⚪ Dead Stock</option>
+                                <option value="all" {{ request('status') === 'all' ? 'selected' : '' }}>All Statuses</option>
+                                <option value="needs_action" {{ !request()->has('status') || request('status') === 'needs_action' ? 'selected' : '' }}>🚨 Needs Action (Order/Transfer)</option>
+                                <option value="Critical" {{ request('status') === 'Critical' ? 'selected' : '' }}>🔴 Critical (0-3 Days)</option>
+                                <option value="Low" {{ request('status') === 'Low' ? 'selected' : '' }}>🟡 Low (4-10 Days)</option>
+                                <option value="Healthy" {{ request('status') === 'Healthy' ? 'selected' : '' }}>🟢 Healthy (11-30 Days)</option>
+                                <option value="Overstock" {{ request('status') === 'Overstock' ? 'selected' : '' }}>🔵 Overstock (>30 Days)</option>
+                                <option value="Dead Stock" {{ request('status') === 'Dead Stock' ? 'selected' : '' }}>⚪ Dead Stock</option>
                             </select>
                         </div>
 
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-tachometer-alt mr-1 text-success"></i> Sales Movement</label>
                             <select id="filterSalesType" class="form-control form-control-sm modern-control">
-                                <option value="all">All Velocities</option>
-                                <option value="Highest Moving">⚡ Highest Moving (20+ units/d)</option>
-                                <option value="Fast Moving">🚀 Fast Moving (10-20 units/d)</option>
-                                <option value="Normal Moving">📦 Normal Moving (5-10 units/d)</option>
-                                <option value="Slow Moving">⏳ Slow Moving (1-5 units/d)</option>
-                                <option value="Dead Stock">💤 Dead Stock (&lt;1 unit/d)</option>
+                                <option value="all" {{ !request()->has('sales_type') || request('sales_type') === 'all' ? 'selected' : '' }}>All Velocities</option>
+                                <option value="Highest Moving" {{ request('sales_type') === 'Highest Moving' ? 'selected' : '' }}>⚡ Highest Moving (20+ units/d)</option>
+                                <option value="Fast Moving" {{ request('sales_type') === 'Fast Moving' ? 'selected' : '' }}>🚀 Fast Moving (10-20 units/d)</option>
+                                <option value="Normal Moving" {{ request('sales_type') === 'Normal Moving' ? 'selected' : '' }}>📦 Normal Moving (5-10 units/d)</option>
+                                <option value="Slow Moving" {{ request('sales_type') === 'Slow Moving' ? 'selected' : '' }}>⏳ Slow Moving (1-5 units/d)</option>
+                                <option value="Dead Stock" {{ request('sales_type') === 'Dead Stock' ? 'selected' : '' }}>💤 Dead Stock (&lt;1 unit/d)</option>
                             </select>
                         </div>
 
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-building mr-1 text-primary"></i> Supplier</label>
                             <select id="filterSupplier" class="form-control form-control-sm modern-control">
-                                <option value="all">All Suppliers</option>
+                                <option value="all" {{ !request()->has('supplier_id') || request('supplier_id') === 'all' ? 'selected' : '' }}>All Suppliers</option>
                                 @foreach($suppliers as $s)
-                                    <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                    <option value="{{ $s->id }}" {{ request('supplier_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -445,9 +445,9 @@ body, .content-wrapper {
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-tags mr-1 text-primary"></i> Category</label>
                             <select id="filterCategory" class="form-control form-control-sm modern-control">
-                                <option value="all">All Categories</option>
+                                <option value="all" {{ !request()->has('category_id') || request('category_id') === 'all' ? 'selected' : '' }}>All Categories</option>
                                 @foreach($categories as $c)
-                                    <option value="{{ $c->id }}">{{ $c->name }}</option>
+                                    <option value="{{ $c->id }}" {{ request('category_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -455,9 +455,9 @@ body, .content-wrapper {
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-award mr-1 text-primary"></i> Brand</label>
                             <select id="filterBrand" class="form-control form-control-sm modern-control">
-                                <option value="all">All Brands</option>
+                                <option value="all" {{ !request()->has('brand_id') || request('brand_id') === 'all' ? 'selected' : '' }}>All Brands</option>
                                 @foreach($brands as $b)
-                                    <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                    <option value="{{ $b->id }}" {{ request('brand_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -465,7 +465,7 @@ body, .content-wrapper {
                         <div class="col-md-4 col-8 mb-2">
                             <label class="filter-field-label"><i class="fas fa-search mr-1 text-primary"></i> Search Item / SKU</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="Search Name, SKU, Barcode...">
+                                <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="Search Name, SKU, Barcode..." value="{{ request('search', '') }}">
                                 <div class="input-group-append">
                                     <button class="btn btn-action-dark btn-sm" type="button" id="btnFilterSearch">
                                         <i class="fas fa-search"></i>

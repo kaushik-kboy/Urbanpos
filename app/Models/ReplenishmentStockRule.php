@@ -26,18 +26,27 @@ class ReplenishmentStockRule extends Model
     ];
 
     /**
-     * Determine matching stock status for a given cover days count.
+     * Determine matching stock status for a given cover days count with continuous zero-gap thresholds.
      */
     public static function resolveForCoverDays(float $coverDays): ?self
     {
+        $normalizedDays = max(0.0, $coverDays);
+
+        // Check tiers with max threshold in ascending order (Critical <= 3, Low <= 10, Healthy <= 30)
+        $rulesWithMax = static::where('is_active', true)
+            ->whereNotNull('max_cover_days')
+            ->orderBy('max_cover_days', 'asc')
+            ->get();
+
+        foreach ($rulesWithMax as $rule) {
+            if ($normalizedDays <= (float) $rule->max_cover_days) {
+                return $rule;
+            }
+        }
+
+        // Exceeds all thresholds -> Overstock (max_cover_days is null)
         return static::where('is_active', true)
-            ->where('min_cover_days', '<=', $coverDays)
-            ->where(function ($query) use ($coverDays) {
-                $query->whereNull('max_cover_days')
-                    ->orWhere('max_cover_days', '>=', $coverDays);
-            })
-            ->orderBy('min_cover_days', 'desc')
-            ->first();
+            ->whereNull('max_cover_days')
+            ->first() ?? static::where('is_active', true)->orderBy('min_cover_days', 'desc')->first();
     }
 }
-
