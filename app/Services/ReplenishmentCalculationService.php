@@ -143,25 +143,25 @@ class ReplenishmentCalculationService
                 }
 
                 $upsertData[] = [
-                    'item_id'             => $item->id,
-                    'branch_id'           => $branchId,
-                    'current_stock'       => $curStock,
-                    'other_branch_stock'  => $othStock,
-                    'sales_30d'           => $sold30d,
-                    'daily_avg_sales'     => $dailyAvg,
-                    'cover_days'          => $coverDays,
-                    'target_cover_days'   => $targetDays,
-                    'suggested_qty'       => $suggestedQty,
-                    'sales_type'          => $salesType,
-                    'stock_status'        => $stockStatus,
+                    'item_id' => $item->id,
+                    'branch_id' => $branchId,
+                    'current_stock' => $curStock,
+                    'other_branch_stock' => $othStock,
+                    'sales_30d' => $sold30d,
+                    'daily_avg_sales' => $dailyAvg,
+                    'cover_days' => $coverDays,
+                    'target_cover_days' => $targetDays,
+                    'suggested_qty' => $suggestedQty,
+                    'sales_type' => $salesType,
+                    'stock_status' => $stockStatus,
                     'primary_supplier_id' => $item->supplier_id,
-                    'calculated_at'       => $now,
-                    'created_at'          => $now,
-                    'updated_at'          => $now,
+                    'calculated_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
             }
 
-            if (!empty($upsertData)) {
+            if (! empty($upsertData)) {
                 ReplenishmentItemMetric::upsert(
                     $upsertData,
                     ['item_id', 'branch_id'],
@@ -218,28 +218,28 @@ class ReplenishmentCalculationService
         $transferOpportunitiesCount = $this->getTransferRecommendations($branchId)->count();
 
         return [
-            'critical_count'    => (int) ($statusCounts['Critical'] ?? 0),
-            'low_count'         => (int) ($statusCounts['Low'] ?? 0),
-            'healthy_count'     => (int) ($statusCounts['Healthy'] ?? 0),
-            'overstock_count'   => (int) ($statusCounts['Overstock'] ?? 0),
-            'dead_stock_count'  => (int) ($statusCounts['Dead Stock'] ?? 0),
-            'status_chart'      => [
-                'Critical'   => (int) ($statusCounts['Critical'] ?? 0),
-                'Low'        => (int) ($statusCounts['Low'] ?? 0),
-                'Healthy'    => (int) ($statusCounts['Healthy'] ?? 0),
-                'Overstock'  => (int) ($statusCounts['Overstock'] ?? 0),
+            'critical_count' => (int) ($statusCounts['Critical'] ?? 0),
+            'low_count' => (int) ($statusCounts['Low'] ?? 0),
+            'healthy_count' => (int) ($statusCounts['Healthy'] ?? 0),
+            'overstock_count' => (int) ($statusCounts['Overstock'] ?? 0),
+            'dead_stock_count' => (int) ($statusCounts['Dead Stock'] ?? 0),
+            'status_chart' => [
+                'Critical' => (int) ($statusCounts['Critical'] ?? 0),
+                'Low' => (int) ($statusCounts['Low'] ?? 0),
+                'Healthy' => (int) ($statusCounts['Healthy'] ?? 0),
+                'Overstock' => (int) ($statusCounts['Overstock'] ?? 0),
                 'Dead Stock' => (int) ($statusCounts['Dead Stock'] ?? 0),
             ],
-            'velocity_chart'    => [
+            'velocity_chart' => [
                 'Highest Moving' => (int) ($velocityCounts['Highest Moving'] ?? 0),
-                'Fast Moving'    => (int) ($velocityCounts['Fast Moving'] ?? 0),
-                'Normal Moving'  => (int) ($velocityCounts['Normal Moving'] ?? 0),
-                'Slow Moving'    => (int) ($velocityCounts['Slow Moving'] ?? 0),
-                'Dead Stock'     => (int) ($velocityCounts['Dead Stock'] ?? 0),
+                'Fast Moving' => (int) ($velocityCounts['Fast Moving'] ?? 0),
+                'Normal Moving' => (int) ($velocityCounts['Normal Moving'] ?? 0),
+                'Slow Moving' => (int) ($velocityCounts['Slow Moving'] ?? 0),
+                'Dead Stock' => (int) ($velocityCounts['Dead Stock'] ?? 0),
             ],
             'transfer_opportunities_count' => $transferOpportunitiesCount,
-            'suggested_po_value'           => round((float) ($poTotals->total_val ?? 0), 2),
-            'suggested_po_units'           => (int) ($poTotals->total_units ?? 0),
+            'suggested_po_value' => round((float) ($poTotals->total_val ?? 0), 2),
+            'suggested_po_units' => (int) ($poTotals->total_units ?? 0),
         ];
     }
 
@@ -281,8 +281,8 @@ class ReplenishmentCalculationService
             'src.cover_days as source_cover_days',
             'src.stock_status as source_status',
         ])
-        ->limit($limit)
-        ->get();
+            ->limit($limit)
+            ->get();
 
         return $rows->map(function ($row) {
             $surplusSpare = max(1, floor($row->source_stock * 0.4));
@@ -290,6 +290,7 @@ class ReplenishmentCalculationService
             $transferQty = (int) min($needed, $surplusSpare);
 
             $row->suggested_transfer_qty = $transferQty;
+
             return $row;
         });
     }
@@ -314,16 +315,17 @@ class ReplenishmentCalculationService
             $totalUnits = $group->sum('suggested_qty');
             $totalEstimatedValue = $group->sum(function ($metric) {
                 $cost = (float) ($metric->item->cost_price ?? 0);
+
                 return $metric->suggested_qty * $cost;
             });
 
             return (object) [
-                'supplier_id'      => $supplierId ?: null,
-                'supplier_name'    => $supplierName,
-                'items_count'      => $group->count(),
-                'total_units'      => $totalUnits,
-                'estimated_value'  => round($totalEstimatedValue, 2),
-                'items'            => $group,
+                'supplier_id' => $supplierId ?: null,
+                'supplier_name' => $supplierName,
+                'items_count' => $group->count(),
+                'total_units' => $totalUnits,
+                'estimated_value' => round($totalEstimatedValue, 2),
+                'items' => $group,
             ];
         })->sortByDesc('estimated_value')->values();
     }
@@ -340,6 +342,7 @@ class ReplenishmentCalculationService
                 }
             }
         }
+
         return $salesRules->last();
     }
 
@@ -355,6 +358,7 @@ class ReplenishmentCalculationService
                 }
             }
         }
+
         return $stockRules->first();
     }
 }

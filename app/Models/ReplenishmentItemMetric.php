@@ -52,3 +52,4 @@ class ReplenishmentItemMetric extends Model
         return $this->belongsTo(Supplier::class, 'primary_supplier_id');
     }
 }
+

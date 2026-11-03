@@ -40,3 +40,4 @@ class ReplenishmentStockRule extends Model
             ->first();
     }
 }
+

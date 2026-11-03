@@ -48,3 +48,4 @@ class CalculateReplenishmentMetricsCommand extends Command
         return Command::SUCCESS;
     }
 }
+

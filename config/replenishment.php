@@ -29,3 +29,4 @@ return [
         'Overstock' => 'info',     // Blue badge
     ],
 ];
+

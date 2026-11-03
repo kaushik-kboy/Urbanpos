@@ -41,3 +41,4 @@ class ReplenishmentSalesRule extends Model
             ->first();
     }
 }
+

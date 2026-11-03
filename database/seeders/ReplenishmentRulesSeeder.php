@@ -108,3 +108,4 @@ class ReplenishmentRulesSeeder extends Seeder
         }
     }
 }
+

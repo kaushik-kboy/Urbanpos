@@ -70,3 +70,4 @@ return new class extends Migration
         Schema::dropIfExists('replenishment_sales_rules');
     }
 };
+

@@ -712,6 +712,41 @@ return [
             ],
         ],
         [
+            'text' => 'Smart Replenishment (V1)',
+            'icon' => 'fas fa-fw fa-brain text-info',
+            'can' => 'access-smart-replenishment',
+            'submenu' => [
+                [
+                    'text' => 'Stock Analysis Studio',
+                    'url' => 'inventory/smart-replenishment',
+                    'icon' => 'fas fa-fw fa-table',
+                    'active' => ['inventory/smart-replenishment'],
+                    'can' => 'access-smart-replenishment',
+                ],
+                [
+                    'text' => 'Inter-Branch Matcher',
+                    'url' => 'inventory/smart-replenishment/transfers',
+                    'icon' => 'fas fa-fw fa-random text-success',
+                    'active' => ['inventory/smart-replenishment/transfers*'],
+                    'can' => 'access-smart-replenishment',
+                ],
+                [
+                    'text' => 'Supplier PO Orders',
+                    'url' => 'inventory/smart-replenishment/supplier-orders',
+                    'icon' => 'fas fa-fw fa-truck text-primary',
+                    'active' => ['inventory/smart-replenishment/supplier-orders*'],
+                    'can' => 'access-smart-replenishment',
+                ],
+                [
+                    'text' => 'Rules & Settings',
+                    'url' => 'inventory/smart-replenishment/settings',
+                    'icon' => 'fas fa-fw fa-sliders-h',
+                    'active' => ['inventory/smart-replenishment/settings*'],
+                    'can' => 'access-smart-replenishment',
+                ],
+            ],
+        ],
+        [
             'text' => 'Reports',
             'icon' => 'fas fa-fw fa-chart-bar',
             'can' => 'access-reports-menu',
