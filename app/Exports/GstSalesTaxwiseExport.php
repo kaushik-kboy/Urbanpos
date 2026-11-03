@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromQuery;
@@ -11,7 +12,6 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
  * GST Sales Taxwise export — ONE POSTED SALES BILL = ONE ROW, with 0%/5%/18%
@@ -32,7 +32,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
  * client wants returns included (net or separate), that's a distinct,
  * explicit follow-up request, not something to fold in silently here.
  */
-class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoSize, WithColumnFormatting, WithEvents
+class GstSalesTaxwiseExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, WithEvents, WithHeadings, WithMapping
 {
     use Exportable;
 
@@ -41,8 +41,7 @@ class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, Sho
         private readonly string $toDate,
         private readonly ?int $branchId = null,
         private readonly ?string $search = null,
-    ) {
-    }
+    ) {}
 
     public function query()
     {
@@ -59,7 +58,7 @@ class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, Sho
             ->where('sales_bills.status', 'Posted')
             ->when($this->branchId, fn ($qq) => $qq->where('sales_bills.branch_id', $this->branchId))
             ->when($this->search, function ($qq) {
-                $term = '%' . $this->search . '%';
+                $term = '%'.$this->search.'%';
                 $qq->where(function ($q2) use ($term) {
                     $q2->where('sales_bills.bill_number', 'like', $term)
                         ->orWhere('customers.name', 'like', $term);
@@ -147,6 +146,37 @@ class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, Sho
         $sgst18 = round((float) $row->sgst_18_amt, 2);
         $total = round((float) $row->total_amount, 2);
 
+        $taxSum = round($igst5 + $sgst5 + $cgst5 + $igst18 + $cgst18 + $sgst18, 2);
+        $rawTaxableSum = round($taxable0 + $taxable5 + $taxable18, 2);
+        $targetTaxable = round($total - $taxSum, 2);
+
+        // When a bill has an overall bill_discount or round_off, the raw items table taxable
+        // sum exceeds (total - taxes). Reconcile the discount pro-rata across the taxable brackets
+        // so that (taxable_0 + taxable_5 + taxable_18 + taxes) equals total_amount to the exact paise.
+        if ($targetTaxable <= 0) {
+            $taxable0 = 0.0;
+            $taxable5 = 0.0;
+            $taxable18 = 0.0;
+        } elseif ($rawTaxableSum > 0 && abs($targetTaxable - $rawTaxableSum) >= 0.005) {
+            $scale = $targetTaxable / $rawTaxableSum;
+            $taxable0 = round($taxable0 * $scale, 2);
+            $taxable5 = round($taxable5 * $scale, 2);
+            $taxable18 = round($taxable18 * $scale, 2);
+
+            // Allocate any 1-paise rounding difference to the largest non-zero bucket
+            $allocated = round($taxable0 + $taxable5 + $taxable18, 2);
+            $diff = round($targetTaxable - $allocated, 2);
+            if ($diff != 0) {
+                if ($taxable18 >= $taxable5 && $taxable18 >= $taxable0 && $taxable18 > 0) {
+                    $taxable18 = round($taxable18 + $diff, 2);
+                } elseif ($taxable5 >= $taxable0 && $taxable5 > 0) {
+                    $taxable5 = round($taxable5 + $diff, 2);
+                } else {
+                    $taxable0 = round($taxable0 + $diff, 2);
+                }
+            }
+        }
+
         // Found while verifying the real export output (not just assuming a
         // successful download meant it was right): Laravel Excel/PhpSpreadsheet
         // silently writes a raw PHP int(0) or float(0.0) cell value as an EMPTY
@@ -162,7 +192,7 @@ class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, Sho
 
         return [
             $row->bill_number,
-            $row->bill_date ? \Carbon\Carbon::parse($row->bill_date)->format('d-m-Y') : '',
+            $row->bill_date ? Carbon::parse($row->bill_date)->format('d-m-Y') : '',
             $row->customer_name,
             $row->gst_no ?: '',
             $row->state_name ?: '',
@@ -182,6 +212,7 @@ class GstSalesTaxwiseExport implements FromQuery, WithHeadings, WithMapping, Sho
     public function columnFormats(): array
     {
         $money = '0.00';
+
         return [
             'F' => $money, 'G' => $money, 'H' => $money,
             'I' => $money, 'J' => $money, 'K' => $money,

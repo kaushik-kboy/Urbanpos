@@ -26,8 +26,11 @@ class GstSalesTaxwiseExportTest extends TestCase
     use RefreshDatabase;
 
     private Branch $branch;
+
     private Branch $branch2;
+
     private GstTax $gst18;
+
     private GstTax $gst5;
 
     protected function setUp(): void
@@ -69,12 +72,13 @@ class GstSalesTaxwiseExportTest extends TestCase
         ]);
         foreach ($lines as [$rate, $taxable, $tax, $cgst, $sgst, $igst]) {
             SalesBillItem::create([
-                'sales_bill_id' => $bill->id, 'item_id' => $this->item('X' . uniqid())->id,
+                'sales_bill_id' => $bill->id, 'item_id' => $this->item('X'.uniqid())->id,
                 'qty' => 1, 'sell_price' => $taxable, 'gst_percent' => $rate, 'gst_tax_amount' => $tax,
                 'cgst_amount' => $cgst, 'sgst_amount' => $sgst, 'igst_amount' => $igst,
                 'net_amount' => round($taxable + $tax, 2),
             ]);
         }
+
         return $bill->fresh();
     }
 
@@ -82,6 +86,7 @@ class GstSalesTaxwiseExportTest extends TestCase
     {
         $export = new GstSalesTaxwiseExport($from, $to, $branchId, $search);
         $rows = $export->query()->get();
+
         return $rows->keyBy('bill_number')->all();
     }
 
@@ -309,5 +314,76 @@ class GstSalesTaxwiseExportTest extends TestCase
         foreach ([6, 7, 8, 9, 10, 11, 12, 13] as $idx) { // taxable_5, taxable_18, igst_5, sgst_5, cgst_5, igst_18, cgst_18, sgst_18
             $this->assertSame('0.00', $mapped[$idx], "column index {$idx} must be the string \"0.00\", not a raw 0/null");
         }
+    }
+
+    // ================================================================== Bill Discount Reconciliation
+
+    public function test_bill_with_overall_discount_reconciles_taxable_so_taxable_plus_tax_matches_total_exactly(): void
+    {
+        $cust = $this->customer('Discounted Customer');
+        // Total items gross = 840.00 (taxable 711.86, cgst 64.07, sgst 64.07)
+        // Cashier gives 500 bill discount, so final bill total = 340.00
+        $bill = $this->billWithLines(
+            [
+                'bill_number' => 'TW-DISC-1',
+                'bill_date' => '2026-09-16',
+                'customer_id' => $cust->id,
+            ],
+            [[18, 711.86, 128.14, 64.07, 64.07, 0]]
+        );
+        $bill->update(['total' => 340.00, 'bill_discount' => 500.00]);
+
+        $export = new GstSalesTaxwiseExport('2026-09-01', '2026-09-30');
+        $row = $export->query()->where('sales_bills.bill_number', 'TW-DISC-1')->first();
+        $mapped = $export->map($row);
+
+        // [5]=taxable_0, [6]=taxable_5, [7]=taxable_18, [8]=igst_5, [9]=sgst_5, [10]=cgst_5, [11]=igst_18, [12]=cgst_18, [13]=sgst_18, [14]=Total
+        $taxable18 = (float) $mapped[7];
+        $cgst18 = (float) $mapped[12];
+        $sgst18 = (float) $mapped[13];
+        $total = (float) $mapped[14];
+
+        $this->assertEquals(340.00, $total);
+        $this->assertEquals(211.86, $taxable18);
+        $this->assertEquals(64.07, $cgst18);
+        $this->assertEquals(64.07, $sgst18);
+        // Assert sum of taxable + taxes matches total exactly (0.00 difference)
+        $this->assertEquals($total, round($taxable18 + $cgst18 + $sgst18, 2));
+    }
+
+    public function test_mixed_bill_with_discount_pro_rates_taxable_across_slabs_with_zero_paise_difference(): void
+    {
+        $cust = $this->customer('Mixed Discount Customer');
+        // taxable_5: 2423.18, cgst_5: 60.59, sgst_5: 60.57
+        // taxable_18: 3123.13, cgst_18: 281.09, sgst_18: 281.06
+        // Raw items total = 6229.62. Cashier gave discount + roundoff so total = 6200.00
+        $bill = $this->billWithLines(
+            [
+                'bill_number' => 'TW-DISC-MIX',
+                'bill_date' => '2026-09-17',
+                'customer_id' => $cust->id,
+            ],
+            [
+                [5, 2423.18, 121.16, 60.59, 60.57, 0],
+                [18, 3123.13, 562.15, 281.09, 281.06, 0],
+            ]
+        );
+        $bill->update(['total' => 6200.00, 'bill_discount' => 30.00, 'round_off' => 0.38]);
+
+        $export = new GstSalesTaxwiseExport('2026-09-01', '2026-09-30');
+        $row = $export->query()->where('sales_bills.bill_number', 'TW-DISC-MIX')->first();
+        $mapped = $export->map($row);
+
+        $taxable5 = (float) $mapped[6];
+        $taxable18 = (float) $mapped[7];
+        $cgst5 = (float) $mapped[10];
+        $sgst5 = (float) $mapped[9];
+        $cgst18 = (float) $mapped[12];
+        $sgst18 = (float) $mapped[13];
+        $total = (float) $mapped[14];
+
+        $this->assertEquals(6200.00, $total);
+        $sumTaxableAndTax = round($taxable5 + $taxable18 + $cgst5 + $sgst5 + $cgst18 + $sgst18, 2);
+        $this->assertEquals($total, $sumTaxableAndTax, 'Sum of all taxable and tax components must equal total amount exactly');
     }
 }
