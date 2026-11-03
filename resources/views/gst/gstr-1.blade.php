@@ -16,6 +16,9 @@
         <a href="{{ route('tools.gst.gstr-1.export-json', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-success btn-sm shadow-sm font-weight-bold mr-2" title="Direct JSON upload for GST Portal services.gst.gov.in">
             <i class="fas fa-file-code mr-1"></i> Export Official GSTR-1 JSON (Govt Portal) ★
         </a>
+        <a href="{{ route('tools.gst.gstr-1.export-all-excel', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-sm shadow-sm font-weight-bold mr-2 text-white" style="background-color: #107c41; border-color: #107c41;" title="Download Complete GSTR-1 Excel workbook with all 12 section tabs (.xlsx)">
+            <i class="fas fa-file-excel mr-1"></i> Export All Sections (Excel .xlsx)
+        </a>
         <a href="{{ route('tools.gst.gstr-3b.page', ['from_date' => $fromDate, 'to_date' => $toDate]) }}" class="btn btn-primary btn-sm mr-2 shadow-sm font-weight-bold">
             <i class="fas fa-balance-scale mr-1"></i> View GSTR-3B
         </a>

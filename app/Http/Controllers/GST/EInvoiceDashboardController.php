@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\GST;
 
 use App\Exports\GenericReportExport;
+use App\Exports\Gstr1FullWorkbookExport;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\GstSetting;
@@ -424,6 +425,17 @@ class EInvoiceDashboardController extends Controller
             'fromDate' => $fromDate,
             'toDate' => $toDate,
         ]);
+    }
+
+    /**
+     * Download comprehensive GSTR-1 Excel (.xlsx) containing all 12 section worksheets.
+     */
+    public function exportGstr1AllExcel(Request $request)
+    {
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $filename = 'GSTR1_All_Sections_'.date('Ymd', strtotime($fromDate)).'_'.date('Ymd', strtotime($toDate)).'.xlsx';
+
+        return Excel::download(new Gstr1FullWorkbookExport($fromDate, $toDate), $filename);
     }
 
     /**
