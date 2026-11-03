@@ -583,7 +583,7 @@ class Gstr1ReportService
                 DB::raw('SUM(sales_bill_items.qty) as total_qty'),
                 DB::raw('SUM(sales_bill_items.net_amount) as total_amount')
             )
-            ->groupBy('items.name', 'items.hsn_code', DB::raw("CASE WHEN {$gstin} IS NOT NULL THEN 'B2B' ELSE 'B2C' END"))
+            ->groupBy('items.name', 'items.hsn_code', 'supply_type')
             ->orderByDesc('total_amount')
             ->get();
 
