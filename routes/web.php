@@ -43,6 +43,7 @@ use App\Http\Controllers\Inventory\ChangeSellingController;
 use App\Http\Controllers\Inventory\InventoryMoreController;
 use App\Http\Controllers\Inventory\KitRecipeController;
 use App\Http\Controllers\Inventory\StockTransferController;
+use App\Http\Controllers\Inventory\SmartReplenishmentController;
 use App\Http\Controllers\Sales\SalesBillController;
 use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\Sales\SalesQuotationController;
@@ -281,6 +282,18 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::get('shelf-talker', [InventoryMoreController::class, 'shelfTalker'])->name('shelf-talker.index');
     Route::get('change-serial-no', [InventoryMoreController::class, 'changeSerialNo'])->name('change-serial-no.index');
     Route::post('change-serial-no', [InventoryMoreController::class, 'processChangeSerialNo'])->name('change-serial-no.process');
+
+    // Smart Inventory Replenishment & Demand Forecasting (V1)
+    Route::middleware(['permission:smart-replenishment.view', 'branch.access'])->prefix('smart-replenishment')->name('replenishment.')->group(function () {
+        Route::get('/', [SmartReplenishmentController::class, 'index'])->name('index');
+        Route::get('/data', [SmartReplenishmentController::class, 'data'])->name('data');
+        Route::post('/sync', [SmartReplenishmentController::class, 'sync'])->name('sync');
+        Route::post('/settings', [SmartReplenishmentController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/transfers', [SmartReplenishmentController::class, 'transfers'])->name('transfers');
+        Route::get('/supplier-orders', [SmartReplenishmentController::class, 'supplierOrders'])->name('supplier-orders');
+        Route::post('/generate-po', [SmartReplenishmentController::class, 'generatePo'])->name('generate-po');
+        Route::post('/create-transfer', [SmartReplenishmentController::class, 'createTransfer'])->name('create-transfer');
+    });
 
     // Stock Transfer
     Route::get('stock-transfers/item-list', [StockTransferController::class, 'itemList'])->name('stock-transfers.item-list');
