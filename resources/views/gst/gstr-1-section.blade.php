@@ -83,6 +83,72 @@
 
     {{-- 2. Data table — shape depends on this section's own real data source ($layout), not a generic HSN table reused everywhere --}}
     @if($layout === 'hsn')
+        @if(!empty($meta['rate_summary']))
+        <div class="px-3 pt-3 pb-2 bg-light border-bottom">
+            <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
+                <div>
+                    <h6 class="mb-0 font-weight-bold text-dark">
+                        <i class="fas fa-layer-group text-primary mr-1"></i> GST Rate-Wise Summary (Grouping)
+                    </h6>
+                    <span class="text-muted small">
+                        Consolidated values for <strong>{{ date('d M Y', strtotime($fromDate)) }} to {{ date('d M Y', strtotime($toDate)) }}</strong> (Net of Credit Notes & Returns)
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive bg-white rounded border shadow-sm">
+                <table class="table table-sm table-hover mb-0 text-nowrap" style="font-size: 12.5px;">
+                    <thead style="background: #f1f5f9; color: #334155; border-bottom: 2px solid #cbd5e1;">
+                        <tr>
+                            <th class="text-center font-weight-bold" style="padding: 9px 14px; width: 140px;">GST Rate</th>
+                            <th class="text-right font-weight-bold" style="padding: 9px 14px;">Total Value (&#8377;)</th>
+                            <th class="text-right font-weight-bold text-primary" style="padding: 9px 14px;">Taxable Value (&#8377;)</th>
+                            <th class="text-right font-weight-bold" style="padding: 9px 14px;">IGST (&#8377;)</th>
+                            <th class="text-right font-weight-bold" style="padding: 9px 14px;">CGST (&#8377;)</th>
+                            <th class="text-right font-weight-bold" style="padding: 9px 14px;">SGST (&#8377;)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($meta['rate_summary'] as $rg)
+                            @php
+                                $rFloat = (float) $rg['rate'];
+                                $badgeClass = match($rFloat) {
+                                    18.0 => 'badge-primary',
+                                    5.0 => 'badge-info',
+                                    0.0 => 'badge-secondary',
+                                    12.0 => 'badge-warning',
+                                    28.0 => 'badge-danger',
+                                    default => 'badge-dark',
+                                };
+                            @endphp
+                            <tr style="{{ $rFloat == 18.0 ? 'background-color: #fbfdff;' : ($rFloat == 5.0 ? 'background-color: #fcfdfa;' : '') }}">
+                                <td class="text-center font-weight-bold" style="padding: 8px 14px;">
+                                    <span class="badge {{ $badgeClass }} px-2 py-1" style="font-size: 12px;">
+                                        {{ $rFloat == 0.0 ? '0% (Nil Rated)' : $rFloat . '% GST' }}
+                                    </span>
+                                </td>
+                                <td class="text-right font-weight-bold text-dark" style="padding: 8px 14px;">&#8377;{{ number_format($rg['total'], 2) }}</td>
+                                <td class="text-right font-weight-bold text-primary" style="padding: 8px 14px;">&#8377;{{ number_format($rg['taxable'], 2) }}</td>
+                                <td class="text-right text-muted" style="padding: 8px 14px;">&#8377;{{ number_format($rg['igst'], 2) }}</td>
+                                <td class="text-right font-weight-bold" style="padding: 8px 14px;">&#8377;{{ number_format($rg['cgst'], 2) }}</td>
+                                <td class="text-right font-weight-bold" style="padding: 8px 14px;">&#8377;{{ number_format($rg['sgst'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot style="background: #e2e8f0; font-weight: bold; border-top: 2px solid #94a3b8;">
+                        <tr>
+                            <td class="text-center text-uppercase" style="padding: 8px 14px;">Total Grouping</td>
+                            <td class="text-right text-dark" style="padding: 8px 14px;">&#8377;{{ number_format(collect($meta['rate_summary'])->sum('total'), 2) }}</td>
+                            <td class="text-right text-primary" style="padding: 8px 14px;">&#8377;{{ number_format(collect($meta['rate_summary'])->sum('taxable'), 2) }}</td>
+                            <td class="text-right" style="padding: 8px 14px;">&#8377;{{ number_format(collect($meta['rate_summary'])->sum('igst'), 2) }}</td>
+                            <td class="text-right" style="padding: 8px 14px;">&#8377;{{ number_format(collect($meta['rate_summary'])->sum('cgst'), 2) }}</td>
+                            <td class="text-right" style="padding: 8px 14px;">&#8377;{{ number_format(collect($meta['rate_summary'])->sum('sgst'), 2) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        @endif
         @if(($meta['missing_hsn_qty'] ?? 0) > 0)
         <div class="alert alert-secondary border mb-0 rounded-0 py-2 px-3 small">
             <i class="fas fa-info-circle mr-1"></i>
