@@ -465,9 +465,12 @@ body, .content-wrapper {
                         <div class="col-md-4 col-8 mb-2">
                             <label class="filter-field-label"><i class="fas fa-search mr-1 text-primary"></i> Search Item / SKU</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="Search Name, SKU, Barcode..." value="{{ request('search', '') }}">
+                                <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="Search by SKU, Name or Barcode..." value="{{ request('search', '') }}" autocomplete="off">
                                 <div class="input-group-append">
-                                    <button class="btn btn-action-dark btn-sm" type="button" id="btnFilterSearch">
+                                    <button class="btn btn-action-outline btn-sm {{ request('search') ? '' : 'd-none' }}" type="button" id="btnClearSearch" title="Clear search text">
+                                        <i class="fas fa-times text-danger"></i>
+                                    </button>
+                                    <button class="btn btn-action-dark btn-sm" type="button" id="btnFilterSearch" title="Click to search">
                                         <i class="fas fa-search"></i>
                                     </button>
                                 </div>
@@ -645,6 +648,8 @@ body, .content-wrapper {
     let currentPage = 1;
     let currentModalSupplierId = null;
     let currentModalItems = [];
+    let activeAjaxRequest = null;
+    let searchDebounceTimer = null;
 
     $(document).ready(function() {
         loadTableData(1);
@@ -654,25 +659,51 @@ body, .content-wrapper {
             loadTableData(1);
         });
 
-        // Search trigger
+        // Instant Live Debounced Search (250ms)
+        $('#filterSearch').on('input', function() {
+            clearTimeout(searchDebounceTimer);
+            const val = $(this).val().trim();
+            if (val.length > 0) {
+                $('#btnClearSearch').removeClass('d-none');
+            } else {
+                $('#btnClearSearch').addClass('d-none');
+            }
+            searchDebounceTimer = setTimeout(function() {
+                loadTableData(1);
+            }, 250);
+        });
+
+        // Quick Clear Search Button
+        $('#btnClearSearch').on('click', function() {
+            $('#filterSearch').val('').focus();
+            $(this).addClass('d-none');
+            loadTableData(1);
+        });
+
+        // Search trigger on enter or button click
         $('#btnFilterSearch').on('click', function() {
+            clearTimeout(searchDebounceTimer);
             loadTableData(1);
         });
 
         $('#filterSearch').on('keypress', function(e) {
             if (e.which === 13) {
+                e.preventDefault();
+                clearTimeout(searchDebounceTimer);
                 loadTableData(1);
             }
         });
 
         // Reset Filters Button
         $('#btnResetFilters').on('click', function() {
+            clearTimeout(searchDebounceTimer);
             $('#filterStatus').val('needs_action');
             $('#filterSalesType').val('all');
             $('#filterSupplier').val('all');
             $('#filterCategory').val('all');
             $('#filterBrand').val('all');
             $('#filterSearch').val('');
+            $('#btnClearSearch').addClass('d-none');
             loadTableData(1);
         });
 
@@ -784,10 +815,15 @@ body, .content-wrapper {
     }
 
     function loadTableData(page = 1) {
-        currentPage = page;
-        $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-spinner fa-spin mr-1"></i> Loading data...</td></tr>');
+        // Abort previous in-flight search request to prevent stale results and save server resources
+        if (activeAjaxRequest && activeAjaxRequest.readyState !== 4) {
+            activeAjaxRequest.abort();
+        }
 
-        $.ajax({
+        currentPage = page;
+        $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-spinner fa-spin mr-1 text-primary"></i> Loading fast search results...</td></tr>');
+
+        activeAjaxRequest = $.ajax({
             url: "{{ route('inventory.replenishment.data') }}",
             type: 'GET',
             data: {
@@ -804,7 +840,10 @@ body, .content-wrapper {
                 renderTable(res.data);
                 renderPagination(res);
             },
-            error: function() {
+            error: function(xhr, status) {
+                if (status === 'abort') {
+                    return; // Ignore cancelled in-flight requests cleanly
+                }
                 $('#tableBody').html('<tr><td colspan="9" class="text-center py-3 text-danger font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Failed to load replenishment data.</td></tr>');
             }
         });

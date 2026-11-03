@@ -87,63 +87,70 @@ class SmartReplenishmentController extends Controller
         $supplierId = $request->get('supplier_id');
         $search = $request->get('search');
 
-        $query = ReplenishmentItemMetric::with([
-            'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price,sell_price',
-            'item.brand:id,name',
-            'item.categoryValue:id,name',
-            'supplier:id,name',
-            'branch:id,name',
-        ]);
+        $query = ReplenishmentItemMetric::query()
+            ->select('replenishment_item_metrics.*')
+            ->with([
+                'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price,sell_price',
+                'item.brand:id,name',
+                'item.categoryValue:id,name',
+                'supplier:id,name',
+                'branch:id,name',
+            ]);
+
+        $needsItemJoin = ($brandId && $brandId !== 'all')
+            || ($categoryId && $categoryId !== 'all')
+            || ! empty($search);
+
+        if ($needsItemJoin) {
+            $query->join('items', 'replenishment_item_metrics.item_id', '=', 'items.id');
+        }
 
         if ($branchId && $branchId !== 'all') {
-            $query->where('branch_id', $branchId);
+            $query->where('replenishment_item_metrics.branch_id', $branchId);
         }
 
         if ($status && $status !== 'all') {
             if ($status === 'needs_action') {
                 $query->where(function ($q) {
-                    $q->where('suggested_qty', '>', 0)
+                    $q->where('replenishment_item_metrics.suggested_qty', '>', 0)
                         ->orWhere(function ($sub) {
-                            $sub->whereIn('stock_status', ['Critical', 'Low'])
-                                ->where('daily_avg_sales', '>', 0);
+                            $sub->whereIn('replenishment_item_metrics.stock_status', ['Critical', 'Low'])
+                                ->where('replenishment_item_metrics.daily_avg_sales', '>', 0);
                         });
                 });
             } else {
-                $query->where('stock_status', $status);
+                $query->where('replenishment_item_metrics.stock_status', $status);
             }
         }
 
         if ($salesType && $salesType !== 'all') {
-            $query->where('sales_type', $salesType);
+            $query->where('replenishment_item_metrics.sales_type', $salesType);
         }
 
         if ($supplierId && $supplierId !== 'all') {
-            $query->where('primary_supplier_id', $supplierId);
+            $query->where('replenishment_item_metrics.primary_supplier_id', $supplierId);
         }
 
         if ($brandId && $brandId !== 'all') {
-            $query->whereHas('item', function ($q) use ($brandId) {
-                $q->where('brand_id', $brandId);
-            });
+            $query->where('items.brand_id', $brandId);
         }
 
         if ($categoryId && $categoryId !== 'all') {
-            $query->whereHas('item', function ($q) use ($categoryId) {
-                $q->where('category_value_id', $categoryId);
-            });
+            $query->where('items.category_value_id', $categoryId);
         }
 
         if ($search) {
-            $query->whereHas('item', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('item_code', 'like', "%{$search}%")
-                    ->orWhere('alias', 'like', "%{$search}%");
+            $term = trim($search);
+            $query->where(function ($q) use ($term) {
+                $q->where('items.item_code', 'like', "{$term}%")
+                    ->orWhere('items.name', 'like', "%{$term}%")
+                    ->orWhere('items.alias', 'like', "%{$term}%");
             });
         }
 
         // Sorting: Prioritize items needing urgent action first
-        $query->orderByDesc('suggested_qty')
-            ->orderBy('cover_days', 'asc');
+        $query->orderByDesc('replenishment_item_metrics.suggested_qty')
+            ->orderBy('replenishment_item_metrics.cover_days', 'asc');
 
         $paginator = $query->paginate($request->get('per_page', 25));
 
@@ -476,61 +483,69 @@ class SmartReplenishmentController extends Controller
         $supplierId = $request->get('supplier_id');
         $search = $request->get('search');
 
-        $query = ReplenishmentItemMetric::with([
-            'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price',
-            'item.brand:id,name',
-            'item.categoryValue:id,name',
-            'supplier:id,name',
-            'branch:id,name',
-        ]);
+        $query = ReplenishmentItemMetric::query()
+            ->select('replenishment_item_metrics.*')
+            ->with([
+                'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price',
+                'item.brand:id,name',
+                'item.categoryValue:id,name',
+                'supplier:id,name',
+                'branch:id,name',
+            ]);
+
+        $needsItemJoin = ($brandId && $brandId !== 'all')
+            || ($categoryId && $categoryId !== 'all')
+            || ! empty($search);
+
+        if ($needsItemJoin) {
+            $query->join('items', 'replenishment_item_metrics.item_id', '=', 'items.id');
+        }
 
         if ($branchId && $branchId !== 'all') {
-            $query->where('branch_id', $branchId);
+            $query->where('replenishment_item_metrics.branch_id', $branchId);
         }
 
         if ($status && $status !== 'all') {
             if ($status === 'needs_action') {
                 $query->where(function ($q) {
-                    $q->where('suggested_qty', '>', 0)
+                    $q->where('replenishment_item_metrics.suggested_qty', '>', 0)
                         ->orWhere(function ($sub) {
-                            $sub->whereIn('stock_status', ['Critical', 'Low'])
-                                ->where('daily_avg_sales', '>', 0);
+                            $sub->whereIn('replenishment_item_metrics.stock_status', ['Critical', 'Low'])
+                                ->where('replenishment_item_metrics.daily_avg_sales', '>', 0);
                         });
                 });
             } else {
-                $query->where('stock_status', $status);
+                $query->where('replenishment_item_metrics.stock_status', $status);
             }
         }
 
         if ($salesType && $salesType !== 'all') {
-            $query->where('sales_type', $salesType);
+            $query->where('replenishment_item_metrics.sales_type', $salesType);
         }
 
         if ($supplierId && $supplierId !== 'all') {
-            $query->where('primary_supplier_id', $supplierId);
+            $query->where('replenishment_item_metrics.primary_supplier_id', $supplierId);
         }
 
         if ($brandId && $brandId !== 'all') {
-            $query->whereHas('item', function ($q) use ($brandId) {
-                $q->where('brand_id', $brandId);
-            });
+            $query->where('items.brand_id', $brandId);
         }
 
         if ($categoryId && $categoryId !== 'all') {
-            $query->whereHas('item', function ($q) use ($categoryId) {
-                $q->where('category_value_id', $categoryId);
-            });
+            $query->where('items.category_value_id', $categoryId);
         }
 
         if ($search) {
-            $query->whereHas('item', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('item_code', 'like', "%{$search}%")
-                    ->orWhere('alias', 'like', "%{$search}%");
+            $term = trim($search);
+            $query->where(function ($q) use ($term) {
+                $q->where('items.item_code', 'like', "{$term}%")
+                    ->orWhere('items.name', 'like', "%{$term}%")
+                    ->orWhere('items.alias', 'like', "%{$term}%");
             });
         }
 
-        $query->orderByDesc('suggested_qty')->orderBy('cover_days', 'asc');
+        $query->orderByDesc('replenishment_item_metrics.suggested_qty')
+            ->orderBy('replenishment_item_metrics.cover_days', 'asc');
 
         $rows = [];
         foreach ($query->cursor() as $metric) {
