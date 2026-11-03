@@ -436,6 +436,36 @@ class Gstr1ReportService
             ];
         }, $cappedRows);
 
+        $rateSummary = [];
+        foreach ($allRows as $r) {
+            $rateKey = (string) (float) $r['rate'];
+            if (! isset($rateSummary[$rateKey])) {
+                $rateSummary[$rateKey] = [
+                    'rate' => (float) $r['rate'],
+                    'qty' => 0.0,
+                    'total' => 0.0,
+                    'taxable' => 0.0,
+                    'igst' => 0.0,
+                    'cgst' => 0.0,
+                    'sgst' => 0.0,
+                    'cess' => 0.0,
+                ];
+            }
+            $tx = round((float) $r['taxable'], 2);
+            $ig = round((float) $r['igst'], 2);
+            $cg = round((float) $r['cgst'], 2);
+            $sg = round((float) $r['sgst'], 2);
+            $tot = round($tx + $ig + $cg + $sg, 2);
+
+            $rateSummary[$rateKey]['qty'] += (float) $r['qty'];
+            $rateSummary[$rateKey]['taxable'] += $tx;
+            $rateSummary[$rateKey]['igst'] += $ig;
+            $rateSummary[$rateKey]['cgst'] += $cg;
+            $rateSummary[$rateKey]['sgst'] += $sg;
+            $rateSummary[$rateKey]['total'] += $tot;
+        }
+        ksort($rateSummary, SORT_NUMERIC);
+
         return [
             'taxable' => round($targetBillTaxable - $targetRetTaxable, 2),
             'tax' => round($targetBillTax - $targetRetTax, 2),
@@ -444,6 +474,7 @@ class Gstr1ReportService
             'has_more_groups' => $hasMore,
             'row_cap' => self::HSN_ROW_CAP,
             'rows' => $mappedRows,
+            'rate_summary' => array_values($rateSummary),
         ];
     }
 

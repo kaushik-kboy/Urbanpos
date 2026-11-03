@@ -220,6 +220,25 @@ class Gstr1ReportTest extends TestCase
         $this->assertEqualsWithDelta(300.00, $hsnB2b['rows'][0]['taxable'], 0.01);
     }
 
+    public function test_hsn_summary_provides_rate_wise_grouping_summary(): void
+    {
+        $unreg = $this->customer('Rate Group Walk-in');
+        $item18 = $this->item('RATE18', '30049099');
+        $item5 = $this->item('RATE5', '23091000', $this->gst5->id);
+
+        $this->bill(['bill_number' => 'SB-RG-18', 'bill_date' => '2026-09-14', 'customer' => $unreg], ['item' => $item18, 'qty' => 1, 'sell_price' => 100, 'gst_percent' => 18]);
+        $this->bill(['bill_number' => 'SB-RG-5', 'bill_date' => '2026-09-14', 'customer' => $unreg], ['item' => $item5, 'qty' => 2, 'sell_price' => 50, 'gst_percent' => 5]);
+
+        $hsnB2c = $this->service()->hsnB2c();
+        $this->assertNotEmpty($hsnB2c['rate_summary']);
+
+        $byRate = collect($hsnB2c['rate_summary'])->keyBy('rate');
+        $this->assertTrue($byRate->has(18));
+        $this->assertTrue($byRate->has(5));
+        $this->assertEqualsWithDelta(100.00, $byRate[18]['taxable'], 0.01);
+        $this->assertEqualsWithDelta(100.00, $byRate[5]['taxable'], 0.01);
+    }
+
     public function test_nil_rated_supplies_are_categorized_by_b2b_and_b2c(): void
     {
         $registered = $this->customer('Nil Reg Co', '24EEEEE0000E1Z5');

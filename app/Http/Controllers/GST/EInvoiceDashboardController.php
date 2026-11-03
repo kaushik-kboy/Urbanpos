@@ -330,13 +330,23 @@ class EInvoiceDashboardController extends Controller
                 $layout = 'hsn';
                 $data = $service->hsnB2b();
                 $rows = $data['rows'];
-                $meta = ['missing_hsn_qty' => $data['missing_hsn_qty'], 'has_more_groups' => $data['has_more_groups'], 'row_cap' => $data['row_cap']];
+                $meta = [
+                    'missing_hsn_qty' => $data['missing_hsn_qty'],
+                    'has_more_groups' => $data['has_more_groups'],
+                    'row_cap' => $data['row_cap'],
+                    'rate_summary' => $data['rate_summary'] ?? [],
+                ];
                 break;
             case 'b2c-hsn':
                 $layout = 'hsn';
                 $data = $service->hsnB2c();
                 $rows = $data['rows'];
-                $meta = ['missing_hsn_qty' => $data['missing_hsn_qty'], 'has_more_groups' => $data['has_more_groups'], 'row_cap' => $data['row_cap']];
+                $meta = [
+                    'missing_hsn_qty' => $data['missing_hsn_qty'],
+                    'has_more_groups' => $data['has_more_groups'],
+                    'row_cap' => $data['row_cap'],
+                    'rate_summary' => $data['rate_summary'] ?? [],
+                ];
                 break;
             case 'b2b':
                 $layout = 'invoice';
