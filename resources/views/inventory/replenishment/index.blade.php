@@ -125,8 +125,11 @@
                     <h3 class="card-title font-weight-bold text-sm">
                         <i class="fas fa-list-alt text-primary mr-1"></i> Stock Replenishment Analysis
                     </h3>
-                    <div class="card-tools">
+                    <div class="card-tools d-flex align-items-center">
                         <span class="badge badge-info" id="totalFilteredRows">Loading...</span>
+                        <button type="button" class="btn btn-outline-success btn-xs font-weight-bold shadow-sm ml-2" id="btnExportExcel" title="Export current filtered view to Excel spreadsheet">
+                            <i class="fas fa-file-excel mr-1"></i> Export Excel
+                        </button>
                     </div>
                 </div>
 
@@ -440,6 +443,17 @@
             if (e.which === 13) {
                 loadTableData(1);
             }
+        });
+
+        // 1-Click Excel Export Trigger
+        $('#btnExportExcel').on('click', function() {
+            const params = new URLSearchParams({
+                branch_id: $('#filterBranch').val(),
+                status: $('#filterStatus').val(),
+                supplier_id: $('#filterSupplier').val(),
+                search: $('#filterSearch').val()
+            });
+            window.location.href = "{{ route('inventory.replenishment.export') }}?" + params.toString();
         });
 
         // Sync Trigger
