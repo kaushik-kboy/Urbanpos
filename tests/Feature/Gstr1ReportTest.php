@@ -26,7 +26,9 @@ class Gstr1ReportTest extends TestCase
     use RefreshDatabase;
 
     private Branch $branch;
+
     private GstTax $gst18;
+
     private GstTax $gst5;
 
     protected function setUp(): void
@@ -38,7 +40,7 @@ class Gstr1ReportTest extends TestCase
         $this->gst5 = GstTax::firstOrCreate(['percentage' => 5], ['name' => 'GST 5%', 'description' => 'GST 5%', 'status' => true]);
     }
 
-    private function item(string $code, ?string $hsn = '30049099', float $gstTaxId = null): Item
+    private function item(string $code, ?string $hsn = '30049099', ?float $gstTaxId = null): Item
     {
         return Item::create([
             'name' => "GSTR1 $code", 'item_code' => $code, 'sell_price' => 100, 'mrp' => 120, 'cost_price' => 60,
@@ -87,6 +89,7 @@ class Gstr1ReportTest extends TestCase
             'igst_amount' => $isInterstate ? $gstAmt : 0,
             'net_amount' => $net + $gstAmt,
         ]);
+
         return [$bill, $bi];
     }
 
@@ -167,6 +170,54 @@ class Gstr1ReportTest extends TestCase
         $this->assertNull($hsnB2c['rows'][0]['hsn']);
         $this->assertSame(5.0, $hsnB2c['missing_hsn_qty']);
         $this->assertStringContainsString('not fabricated', $hsnB2c['rows'][0]['name']);
+    }
+
+    public function test_hsn_summary_reflects_net_credit_notes_and_reconciles_totals(): void
+    {
+        $registered = $this->customer('HSN Net Co', '24DDDDD0000D1Z5');
+        $item = $this->item('HSNNET1', '30049099');
+
+        [$bill] = $this->bill(
+            ['bill_number' => 'SB-HSN-NET-1', 'bill_date' => '2026-09-10', 'customer' => $registered],
+            ['item' => $item, 'qty' => 5, 'sell_price' => 100, 'gst_percent' => 18] // taxable 500, tax 90
+        );
+
+        $return = SalesReturn::create([
+            'return_number' => 'SR-HSN-NET-1',
+            'return_date' => '2026-09-11',
+            'customer_id' => $registered->id,
+            'customer_gstin' => $registered->gst_no,
+            'branch_id' => $this->branch->id,
+            'sales_bill_id' => $bill->id,
+            'return_mode' => 'Credit Note',
+            'sales_type' => 'Local',
+            'total' => 236.00,
+            'total_gst' => 36.00,
+            'total_cgst' => 18.00,
+            'total_sgst' => 18.00,
+            'status' => 'Posted',
+        ]);
+        SalesReturnItem::create([
+            'sales_return_id' => $return->id,
+            'item_id' => $item->id,
+            'qty' => 2,
+            'sell_price' => 100,
+            'gst_percent' => 18,
+            'gst_tax_amount' => 36,
+            'cgst_amount' => 18,
+            'sgst_amount' => 18,
+            'net_amount' => 236,
+        ]);
+
+        $hsnB2b = $this->service()->hsnB2b();
+
+        // Net taxable must be 500 - 200 = 300
+        $this->assertEqualsWithDelta(300.00, $hsnB2b['taxable'], 0.01);
+        // Net tax must be 90 - 36 = 54
+        $this->assertEqualsWithDelta(54.00, $hsnB2b['tax'], 0.01);
+        // Net row qty must be 5 - 2 = 3
+        $this->assertSame(3.0, $hsnB2b['rows'][0]['qty']);
+        $this->assertEqualsWithDelta(300.00, $hsnB2b['rows'][0]['taxable'], 0.01);
     }
 
     // ================================================================== CDNR / CDNUR
