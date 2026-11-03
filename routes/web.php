@@ -289,6 +289,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
         Route::get('/data', [SmartReplenishmentController::class, 'data'])->name('data');
         Route::get('/export', [SmartReplenishmentController::class, 'export'])->name('export');
         Route::post('/sync', [SmartReplenishmentController::class, 'sync'])->name('sync');
+        Route::get('/settings', [SmartReplenishmentController::class, 'settings'])->name('settings');
         Route::post('/settings', [SmartReplenishmentController::class, 'updateSettings'])->name('settings.update');
         Route::get('/transfers', [SmartReplenishmentController::class, 'transfers'])->name('transfers');
         Route::get('/supplier-orders', [SmartReplenishmentController::class, 'supplierOrders'])->name('supplier-orders');
