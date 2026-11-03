@@ -74,7 +74,7 @@ class DailyBillsExportController extends Controller
         $results = collect();
 
         foreach ($bills as $bill) {
-            $custName = trim(($bill->customer?->title ? $bill->customer->title.' ' : '').($bill->customer?->name ?? 'Walk-in Customer'));
+            $custName = trim((string) ($bill->customer?->name ?? 'Walk-in Customer'));
             $rawPhone = $bill->customer?->mobile ?: $bill->customer?->phone;
             $cleanPhone = $this->sanitizePhone($rawPhone);
             $billDate = $bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d') : now()->toDateString();
@@ -208,7 +208,7 @@ class DailyBillsExportController extends Controller
 
         // 4. Transform Returns to EOD Expected Shape
         $results = $returns->map(function (SalesReturn $ret) {
-            $custName = trim(($ret->customer?->title ? $ret->customer->title.' ' : '').($ret->customer?->name ?? 'Walk-in Customer'));
+            $custName = trim((string) ($ret->customer?->name ?? 'Walk-in Customer'));
             $rawPhone = $ret->customer?->mobile ?: $ret->customer?->phone;
             $cleanPhone = $this->sanitizePhone($rawPhone);
             $mode = $this->resolveReturnPaymentMode($ret->return_mode);

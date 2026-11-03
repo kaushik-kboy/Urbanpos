@@ -72,7 +72,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
             return;
         }
 
-        $customerName = trim(($bill->customer->title ? $bill->customer->title . ' ' : '') . $bill->customer->name);
+        $customerName = trim((string) ($bill->customer->name ?? 'Customer'));
         $billDate     = $bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s');
         $addressParts = array_filter([
             $bill->customer->address1,
