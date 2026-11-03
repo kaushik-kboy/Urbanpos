@@ -269,6 +269,10 @@ class EInvoiceDashboardController extends Controller
             'cdnurValue' => $summary['cdnur']['value'],
             'cdnurTax' => $summary['cdnur']['tax'],
             'nilRatedAmount' => $summary['nil']['combined_amount'],
+            'b2bNilAmount' => $summary['nil']['b2b_amount'] ?? 0.0,
+            'b2cNilAmount' => $summary['nil']['b2c_amount'] ?? 0.0,
+            'hsnB2bNil' => $summary['hsnB2b']['nil'] ?? 0.0,
+            'hsnB2cNil' => $summary['hsnB2c']['nil'] ?? 0.0,
             'exemptedAmount' => 0.00, // see $summary['nil']['limitation'] — schema can't split this out
             'advanceReceivedTaxable' => 0,
             'advanceReceivedTax' => 0,
@@ -365,6 +369,8 @@ class EInvoiceDashboardController extends Controller
                 $rows = $data['rows'] ?? [];
                 $meta = [
                     'amount' => $data['combined_amount'] ?? 0,
+                    'b2b_amount' => $data['b2b_amount'] ?? 0,
+                    'b2c_amount' => $data['b2c_amount'] ?? 0,
                     'count' => count($rows),
                     'limitation' => $data['limitation'],
                 ];
@@ -630,11 +636,12 @@ class EInvoiceDashboardController extends Controller
 
             case 'nil':
                 $data = $service->nilRated();
-                $headings = ['#', 'Item Name', 'HSN Code', 'Rate (%)', 'Qty Sold', 'Bills Count', 'Nil-Rated Value (₹)'];
+                $headings = ['#', 'Supply Type', 'Item Name', 'HSN Code', 'Rate (%)', 'Qty Sold', 'Bills Count', 'Nil-Rated Value (₹)'];
                 $i = 1;
                 foreach ($data['rows'] ?? [] as $r) {
                     $rows[] = [
                         $i++,
+                        $r['type'] ?? 'B2C',
                         $r['name'],
                         $r['hsn'],
                         '0.00%',

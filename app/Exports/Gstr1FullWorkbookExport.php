@@ -254,6 +254,7 @@ class Gstr1FullWorkbookExport implements WithMultipleSheets
         $nilData = $service->nilRated();
         $nilHeadings = [
             '#',
+            'Supply Type',
             'Item Name',
             'HSN Code',
             'Rate (%)',
@@ -266,6 +267,7 @@ class Gstr1FullWorkbookExport implements WithMultipleSheets
         foreach ($nilData['rows'] ?? [] as $r) {
             $nilRows[] = [
                 $i++,
+                $r['type'] ?? 'B2C',
                 $r['name'] ?? '',
                 $r['hsn'] ?? '',
                 '0.00%',
