@@ -414,6 +414,7 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
 
     // GSTR Returns Specific Actions (GSTR-1, GSTR-3B, GSTR-2, GSTR-9, GSTR-2A, GSTR-2B)
     Route::get('gst/gstr-1/export-json', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr1Json'])->name('gst.gstr-1.export-json');
+    Route::get('gst/gstr-1/export-all-excel', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr1AllExcel'])->name('gst.gstr-1.export-all-excel');
     Route::get('gst/gstr-1', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1View'])->name('gst.gstr-1.page');
     Route::get('gst/gstr-1/{section}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'gstr1SectionView'])->name('gst.gstr-1.section');
     Route::get('gst/gstr-1/{section}/export', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'exportGstr1SectionExcel'])->name('gst.gstr-1.section.export');

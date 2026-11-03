@@ -74,7 +74,7 @@ class DailyBillsExportController extends Controller
         $results = collect();
 
         foreach ($bills as $bill) {
-            $custName = trim(($bill->customer?->title ? $bill->customer->title.' ' : '').($bill->customer?->name ?? 'Walk-in Customer'));
+            $custName = trim((string) ($bill->customer?->name ?? 'Walk-in Customer'));
             $rawPhone = $bill->customer?->mobile ?: $bill->customer?->phone;
             $cleanPhone = $this->sanitizePhone($rawPhone);
             $billDate = $bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d') : now()->toDateString();
@@ -83,7 +83,7 @@ class DailyBillsExportController extends Controller
             $distinctTypes = $payments->pluck('tender_type_id')->unique();
 
             if ($payments->count() > 1 && $distinctTypes->count() > 1) {
-                // Split payment: group amounts by standard 2-letter mode and emit 1 single row with breakdown
+                // Split payment: group amounts by standard 2-letter mode
                 $modesMap = [];
                 foreach ($payments as $p) {
                     $tender = $p->tenderType;
@@ -100,18 +100,18 @@ class DailyBillsExportController extends Controller
                 }
 
                 $results->push([
-                    'bill_number'   => (string) $bill->bill_number,
-                    'bill_date'     => $billDate,
+                    'bill_number' => (string) $bill->bill_number,
+                    'bill_date' => $billDate,
                     'customer_name' => $custName ?: 'Walk-in Customer',
-                    'mobile'        => $cleanPhone,
-                    'payment_mode'  => 'SP',
-                    'sales_type'    => $bill->sales_type,
+                    'mobile' => $cleanPhone,
+                    'payment_mode' => 'SP',
+                    'sales_type' => $bill->sales_type,
                     'delivery_type' => $bill->delivery_type,
-                    'fulfillment'   => $bill->fulfillment ?? $bill->delivery_type,
-                    'amount'        => (float) $bill->total,
-                    'branch_id'     => $bill->branch_id,
-                    'branch_name'   => $bill->branch?->name,
-                    'is_split'      => true,
+                    'fulfillment' => $bill->fulfillment ?? $bill->delivery_type,
+                    'amount' => (float) $bill->total,
+                    'branch_id' => $bill->branch_id,
+                    'branch_name' => $this->normalizeBranchName($bill->branch?->name),
+                    'is_split' => true,
                     'split_details' => $modesMap,
                     'split_summary' => implode(' • ', $summaryParts),
                 ]);
@@ -132,7 +132,7 @@ class DailyBillsExportController extends Controller
                     'fulfillment' => $bill->fulfillment ?? $bill->delivery_type,
                     'amount' => (float) $bill->total,
                     'branch_id' => $bill->branch_id,
-                    'branch_name' => $bill->branch?->name,
+                    'branch_name' => $this->normalizeBranchName($bill->branch?->name),
                     'is_split' => false,
                     'split_details' => null,
                     'split_summary' => null,
@@ -208,7 +208,7 @@ class DailyBillsExportController extends Controller
 
         // 4. Transform Returns to EOD Expected Shape
         $results = $returns->map(function (SalesReturn $ret) {
-            $custName = trim(($ret->customer?->title ? $ret->customer->title.' ' : '').($ret->customer?->name ?? 'Walk-in Customer'));
+            $custName = trim((string) ($ret->customer?->name ?? 'Walk-in Customer'));
             $rawPhone = $ret->customer?->mobile ?: $ret->customer?->phone;
             $cleanPhone = $this->sanitizePhone($rawPhone);
             $mode = $this->resolveReturnPaymentMode($ret->return_mode);
@@ -232,7 +232,7 @@ class DailyBillsExportController extends Controller
                 'amount' => (float) $ret->total,
                 'notes' => $notes,
                 'branch_id' => $ret->branch_id,
-                'branch_name' => $ret->branch?->name,
+                'branch_name' => $this->normalizeBranchName($ret->branch?->name),
             ];
         });
 
@@ -323,5 +323,25 @@ class DailyBillsExportController extends Controller
         }
 
         return strlen($digits) >= 10 ? substr($digits, -10) : null;
+    }
+
+    /**
+     * Normalize POS branch name strictly to Motera or Satellite for CRM parity.
+     */
+    private function normalizeBranchName(?string $rawName): ?string
+    {
+        if (blank($rawName)) {
+            return null;
+        }
+
+        if (stripos($rawName, 'motera') !== false) {
+            return 'Motera';
+        }
+
+        if (stripos($rawName, 'satellite') !== false) {
+            return 'Satellite';
+        }
+
+        return trim(str_ireplace(['Urban Pets |', 'Urban Pets -', '|', '-'], '', $rawName)) ?: $rawName;
     }
 }

@@ -354,6 +354,7 @@ class Gstr1ReportService
         $rows = $this->returnsBaseQuery()
             ->whereRaw($condition)
             ->selectRaw("
+                sales_returns.id,
                 sales_returns.return_number,
                 sales_returns.return_date,
                 customers.name as customer_name,
@@ -365,7 +366,17 @@ class Gstr1ReportService
                 sales_returns.total_gst as gst,
                 sales_returns.total_igst as igst,
                 sales_returns.total_cgst as cgst,
-                sales_returns.total_sgst as sgst
+                sales_returns.total_sgst as sgst,
+                (
+                    SELECT GROUP_CONCAT(DISTINCT sri.gst_percent ORDER BY sri.gst_percent SEPARATOR ', ')
+                    FROM sales_return_items sri
+                    WHERE sri.sales_return_id = sales_returns.id
+                ) as gst_rates,
+                (
+                    SELECT MAX(sri.gst_percent)
+                    FROM sales_return_items sri
+                    WHERE sri.sales_return_id = sales_returns.id
+                ) as primary_rate
             ")
             ->orderBy('sales_returns.return_date')
             ->get();
@@ -375,19 +386,45 @@ class Gstr1ReportService
             'value' => round((float) $rows->sum('taxable_value'), 2),
             // total_gst is authoritative (same reasoning as b2b()/b2cl()); igst/cgst/sgst are for the row breakdown only.
             'tax' => round((float) $rows->sum('gst'), 2),
-            'rows' => $rows->map(fn ($r) => [
-                'ref' => $r->return_number,
-                'date' => $r->return_date,
-                'customer' => $r->customer_name,
-                'gstin' => $r->gstin,
-                'original_invoice' => $r->original_invoice_number,
-                'original_invoice_date' => $r->original_invoice_date,
-                'taxable' => round((float) $r->taxable_value, 2),
-                'igst' => round((float) $r->igst, 2),
-                'cgst' => round((float) $r->cgst, 2),
-                'sgst' => round((float) $r->sgst, 2),
-                'total' => round((float) $r->note_value, 2),
-            ])->values()->all(),
+            'rows' => $rows->map(function ($r) {
+                $rateStr = '';
+                if (!empty($r->gst_rates)) {
+                    $rates = array_map(function ($p) {
+                        return ((float) trim($p)).'%';
+                    }, explode(',', (string) $r->gst_rates));
+                    $rateStr = implode(', ', array_filter($rates, fn ($v) => $v !== ''));
+                }
+
+                $ratePct = (float) ($r->primary_rate ?? 0);
+                if (empty($rateStr)) {
+                    $taxable = (float) $r->taxable_value;
+                    $gst = (float) $r->gst;
+                    if ($taxable > 0 && $gst > 0) {
+                        $calcPct = round(($gst / $taxable) * 100);
+                        $rateStr = $calcPct.'%';
+                        $ratePct = (float) $calcPct;
+                    } else {
+                        $rateStr = '0%';
+                        $ratePct = 0.0;
+                    }
+                }
+
+                return [
+                    'ref' => $r->return_number,
+                    'date' => $r->return_date,
+                    'customer' => $r->customer_name,
+                    'gstin' => $r->gstin,
+                    'rate' => $rateStr,
+                    'rate_pct' => $ratePct,
+                    'original_invoice' => $r->original_invoice_number,
+                    'original_invoice_date' => $r->original_invoice_date,
+                    'taxable' => round((float) $r->taxable_value, 2),
+                    'igst' => round((float) $r->igst, 2),
+                    'cgst' => round((float) $r->cgst, 2),
+                    'sgst' => round((float) $r->sgst, 2),
+                    'total' => round((float) $r->note_value, 2),
+                ];
+            })->values()->all(),
             'note' => 'This schema only represents credit-note-like sales returns issued by this business. '
                 .'There is no debit-note concept (a document the customer would issue back to this business) '
                 .'in the current data model — reported as unsupported rather than invented.',
@@ -729,7 +766,7 @@ class Gstr1ReportService
                                 'num' => 1,
                                 'itm_det' => [
                                     'txval' => (float) $r['taxable'],
-                                    'rt' => 18.0,
+                                    'rt' => (float) ($r['rate_pct'] ?? 18.0),
                                     'iamt' => (float) $r['igst'],
                                     'camt' => (float) $r['cgst'],
                                     'samt' => (float) $r['sgst'],

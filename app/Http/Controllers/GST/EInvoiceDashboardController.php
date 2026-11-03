@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\GST;
 
 use App\Exports\GenericReportExport;
+use App\Exports\Gstr1FullWorkbookExport;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\GstSetting;
@@ -427,6 +428,17 @@ class EInvoiceDashboardController extends Controller
     }
 
     /**
+     * Download comprehensive GSTR-1 Excel (.xlsx) containing all 12 section worksheets.
+     */
+    public function exportGstr1AllExcel(Request $request)
+    {
+        [$fromDate, $toDate] = $this->defaultGstr1Period($request);
+        $filename = 'GSTR1_All_Sections_'.date('Ymd', strtotime($fromDate)).'_'.date('Ymd', strtotime($toDate)).'.xlsx';
+
+        return Excel::download(new Gstr1FullWorkbookExport($fromDate, $toDate), $filename);
+    }
+
+    /**
      * Download dedicated Excel (.xlsx) for any GSTR-1 section.
      */
     public function exportGstr1SectionExcel(Request $request, string $section)
@@ -560,6 +572,7 @@ class EInvoiceDashboardController extends Controller
                     'Original Invoice',
                     'Customer Name',
                     'GSTIN',
+                    'GST %',
                     'Taxable Value (₹)',
                     'IGST (₹)',
                     'CGST (₹)',
@@ -573,6 +586,7 @@ class EInvoiceDashboardController extends Controller
                         $r['original_invoice'] ?? '',
                         $r['customer'] ?? '',
                         $r['gstin'] ?? '',
+                        $r['rate'] ?? '0%',
                         $r['taxable'] ?? 0,
                         $r['igst'] ?? 0,
                         $r['cgst'] ?? 0,
@@ -590,6 +604,7 @@ class EInvoiceDashboardController extends Controller
                     'Original Invoice',
                     'Customer Name',
                     'GSTIN',
+                    'GST %',
                     'Taxable Value (₹)',
                     'IGST (₹)',
                     'CGST (₹)',
@@ -603,6 +618,7 @@ class EInvoiceDashboardController extends Controller
                         $r['original_invoice'] ?? '',
                         $r['customer'] ?? '',
                         $r['gstin'] ?? '',
+                        $r['rate'] ?? '0%',
                         $r['taxable'] ?? 0,
                         $r['igst'] ?? 0,
                         $r['cgst'] ?? 0,

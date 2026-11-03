@@ -72,7 +72,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
             return;
         }
 
-        $customerName = trim(($bill->customer->title ? $bill->customer->title . ' ' : '') . $bill->customer->name);
+        $customerName = trim((string) ($bill->customer->name ?? 'Customer'));
         $billDate     = $bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s');
         $addressParts = array_filter([
             $bill->customer->address1,
@@ -81,6 +81,17 @@ class SyncBillToFollowUpJob implements ShouldQueue
             $bill->customer->postal_code,
         ]);
         $fullAddress  = ! empty($addressParts) ? implode(', ', $addressParts) : null;
+
+        // Normalize branch name strictly to Motera or Satellite for CRM parity
+        $rawBranch = (string) ($bill->branch?->name ?? '');
+        $normalizedBranch = null;
+        if (stripos($rawBranch, 'motera') !== false) {
+            $normalizedBranch = 'Motera';
+        } elseif (stripos($rawBranch, 'satellite') !== false) {
+            $normalizedBranch = 'Satellite';
+        } elseif (filled($rawBranch)) {
+            $normalizedBranch = trim(str_ireplace(['Urban Pets |', 'Urban Pets -', '|', '-'], '', $rawBranch));
+        }
 
         // Delivery specifics
         $salesType    = trim((string) ($bill->sales_type ?? ''));
@@ -121,7 +132,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
             'customer_phone'   => $phone,
             'customer_email'   => $bill->customer->email ?: null,
             'customer_address' => $fullAddress,
-            'branch_name'      => $bill->branch?->name ?: null,
+            'branch_name'      => $normalizedBranch ?: ($bill->branch?->name ?: null),
             'branch_code'      => $bill->branch?->erp_code ?: null,
             'sales_type'       => $salesType,
             'fulfillment'      => $fulfillment ?: $deliveryType,
