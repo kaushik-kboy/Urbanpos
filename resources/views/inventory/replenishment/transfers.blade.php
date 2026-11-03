@@ -19,6 +19,13 @@
 @stop
 
 @section('content')
+    <div id="transferAlert" class="alert alert-success alert-dismissible fade show d-none" role="alert">
+        <i class="fas fa-check-circle mr-1"></i> <span id="transferAlertMessage"></span>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
     <div class="card card-outline card-success shadow-sm">
         <div class="card-header py-2 bg-light">
             <h3 class="card-title font-weight-bold text-sm">
@@ -35,12 +42,12 @@
                         <th>Surplus Branch (Source)</th>
                         <th>Available Surplus Stock</th>
                         <th class="text-center">Recommended Transfer Qty</th>
-                        <th class="text-center" style="width: 140px;">Action</th>
+                        <th class="text-center" style="width: 160px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($transferRecommendations as $transfer)
-                        <tr>
+                        <tr id="transfer-row-{{ $transfer->item_id }}">
                             <td>
                                 <strong>{{ $transfer->item_name }}</strong><br>
                                 <small class="text-muted">SKU: {{ $transfer->item_code }}</small>
@@ -71,8 +78,8 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-success btn-xs font-weight-bold shadow-sm" onclick="alert('Transfer Draft created successfully from {{ addslashes($transfer->source_branch_name) }} to {{ addslashes($transfer->dest_branch_name) }}!')">
-                                    <i class="fas fa-dolly mr-1"></i> Create Transfer
+                                <button type="button" class="btn btn-success btn-xs font-weight-bold shadow-sm" onclick="dispatchDirectTransfer({{ $transfer->item_id }}, {{ $transfer->source_branch_id }}, {{ $transfer->dest_branch_id }}, {{ $transfer->suggested_transfer_qty }}, '{{ addslashes($transfer->item_name) }}')">
+                                    <i class="fas fa-dolly mr-1"></i> 1-Click Dispatch
                                 </button>
                             </td>
                         </tr>
@@ -89,4 +96,33 @@
             </table>
         </div>
     </div>
+@stop
+
+@section('js')
+<script>
+    function dispatchDirectTransfer(itemId, sourceBranchId, destBranchId, qty, itemName) {
+        if (!confirm(`Dispatch ${qty} units of ${itemName} from source to deficit branch?`)) {
+            return;
+        }
+
+        $.ajax({
+            url: "{{ route('inventory.replenishment.create-transfer') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                from_branch_id: sourceBranchId,
+                to_branch_id: destBranchId,
+                items: [{ item_id: itemId, qty: qty }]
+            },
+            success: function(res) {
+                $('#transferAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-dark" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Transfer Document</a>`);
+                $('#transferAlert').removeClass('d-none');
+                $('#transfer-row-' + itemId).fadeOut(500);
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error creating Stock Transfer.');
+            }
+        });
+    }
+</script>
 @stop

@@ -242,6 +242,9 @@
                                 <i class="fas fa-long-arrow-alt-right text-success mx-1"></i>
                                 <span><i class="fas fa-arrow-circle-down text-danger mr-1"></i> {{ $match->dest_branch_name }} ({{ (int)$match->dest_stock }})</span>
                             </div>
+                            <button type="button" class="btn btn-xs btn-outline-success btn-block mt-2 font-weight-bold" onclick="triggerQuickTransfer({{ $match->item_id }}, {{ $match->source_branch_id }}, {{ $match->dest_branch_id }}, {{ $match->suggested_transfer_qty }}, '{{ addslashes($match->item_name) }}')">
+                                <i class="fas fa-dolly mr-1"></i> Dispatch Transfer
+                            </button>
                         </div>
                     @empty
                         <div class="text-center py-3 text-muted text-xs">
@@ -273,7 +276,7 @@
                             </div>
                             <div class="text-right">
                                 <div class="font-weight-bold text-primary">₹ {{ number_format($order->estimated_value, 2) }}</div>
-                                <button type="button" class="btn btn-xs btn-primary mt-1" onclick="openSupplierPoModal('{{ addslashes($order->supplier_name) }}', {{ $order->items_count }}, '₹ {{ number_format($order->estimated_value, 2) }}')">
+                                <button type="button" class="btn btn-xs btn-primary mt-1" onclick="openSupplierPoModal({{ $order->supplier_id ?? 'null' }}, '{{ addslashes($order->supplier_name) }}', {{ $order->items_count }}, '₹ {{ number_format($order->estimated_value, 2) }}', {{ json_encode($order->items->map(fn($m) => ['item_id' => $m->item_id, 'name' => $m->item->name ?? 'SKU #'.$m->item_id, 'qty' => $m->suggested_qty, 'cost' => (float)($m->item->cost_price ?? 0)])) }})">
                                     <i class="fas fa-file-invoice mr-1"></i> Review PO
                                 </button>
                             </div>
@@ -362,9 +365,9 @@
         </div>
     </div>
 
-    {{-- Supplier Review PO Modal --}}
+    {{-- Supplier Review & 1-Click PO Modal --}}
     <div class="modal fade" id="poModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content shadow">
                 <div class="modal-header py-2 bg-light">
                     <h5 class="modal-title font-weight-bold text-sm" id="poModalTitle">
@@ -374,13 +377,36 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body p-3 text-sm" id="poModalBody">
-                    <p>Review automated purchase order creation.</p>
+                <div class="modal-body p-3 text-sm">
+                    <div class="bg-light p-2 rounded mb-3 border d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted">Vendor:</span> <strong id="modalVendorName" class="text-dark">-</strong><br>
+                            <span class="text-muted">Target Store:</span> <strong id="modalBranchName" class="text-dark">Current Branch</strong>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-muted">Estimated Amount:</span><br>
+                            <span class="font-weight-bold text-primary" id="modalEstimatedVal" style="font-size:1.1rem;">-</span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered text-xs mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Item SKU & Name</th>
+                                    <th class="text-right">Unit Cost</th>
+                                    <th class="text-center" style="width: 120px;">Order Qty</th>
+                                    <th class="text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poModalItemsTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="modal-footer py-2 bg-light">
-                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary btn-sm font-weight-bold" onclick="alert('PO Generated with Draft status!'); $('#poModal').modal('hide');">
-                        <i class="fas fa-check mr-1"></i> Confirm & Generate Draft PO
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm font-weight-bold" id="btnConfirmGeneratePo">
+                        <i class="fas fa-check mr-1"></i> Confirm & Generate 1-Click PO
                     </button>
                 </div>
             </div>
@@ -394,6 +420,8 @@
     let stockHealthChartInstance = null;
     let salesVelocityChartInstance = null;
     let currentPage = 1;
+    let currentModalSupplierId = null;
+    let currentModalItems = [];
 
     $(document).ready(function() {
         initCharts();
@@ -466,6 +494,57 @@
                 },
                 error: function() {
                     alert('Failed to update rules settings.');
+                }
+            });
+        });
+
+        // Confirm PO generation from modal
+        $('#btnConfirmGeneratePo').on('click', function() {
+            if (!currentModalSupplierId || currentModalItems.length === 0) {
+                alert('No valid supplier or items to order.');
+                return;
+            }
+
+            const branchId = $('#filterBranch').val() !== 'all' ? $('#filterBranch').val() : {{ $activeBranchId }};
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Creating PO...');
+
+            const itemsPayload = [];
+            $('.modal-item-qty').each(function() {
+                const itemId = $(this).data('item-id');
+                const qty = parseInt($(this).val()) || 0;
+                if (qty > 0) {
+                    itemsPayload.push({ item_id: itemId, qty: qty });
+                }
+            });
+
+            if (itemsPayload.length === 0) {
+                alert('Please enter at least one quantity greater than zero.');
+                $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Confirm & Generate 1-Click PO');
+                return;
+            }
+
+            $.ajax({
+                url: "{{ route('inventory.replenishment.generate-po') }}",
+                type: 'POST',
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    supplier_id: currentModalSupplierId,
+                    branch_id: branchId,
+                    items: itemsPayload
+                },
+                success: function(res) {
+                    $('#poModal').modal('hide');
+                    $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-dark" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
+                    $('#statusAlert').removeClass('d-none');
+                    loadTableData(currentPage);
+                },
+                error: function(xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Failed to generate Purchase Order.';
+                    alert(msg);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Confirm & Generate 1-Click PO');
                 }
             });
         });
@@ -609,6 +688,7 @@
             const targetDays = row.target_cover_days || 0;
             const suggestedQty = Number(row.suggested_qty || 0);
             const status = row.stock_status || 'Healthy';
+            const supplierId = row.primary_supplier_id || (item.supplier_id || null);
 
             let statusBadgeClass = 'badge-secondary';
             if (status === 'Critical') statusBadgeClass = 'badge-danger';
@@ -645,16 +725,16 @@
                     </td>
                     <td class="text-center">
                         <div class="btn-group btn-group-xs">
-                            ${suggestedQty > 0 
-                                ? `<button type="button" class="btn btn-primary btn-xs mr-1" onclick="alert('Item ${escapeHtml(itemName)} (Qty: ${suggestedQty}) added to PO queue!')" title="Add to Purchase Order">
+                            ${suggestedQty > 0 && supplierId
+                                ? `<button type="button" class="btn btn-primary btn-xs mr-1 shadow-sm font-weight-bold" onclick="triggerSingleItemPo(${row.item_id}, ${supplierId}, ${suggestedQty}, '${escapeJs(itemName)}')" title="Generate PO for this item">
                                      <i class="fas fa-cart-plus mr-1"></i> Order
                                    </button>` 
                                 : ''
                             }
                             ${othStock > 0 && (status === 'Critical' || status === 'Low')
-                                ? `<button type="button" class="btn btn-outline-success btn-xs" onclick="alert('Suggested transfer for ${escapeHtml(itemName)} initiated!')" title="Suggest Branch Transfer">
+                                ? `<a href="{{ route('inventory.replenishment.transfers') }}" class="btn btn-outline-success btn-xs shadow-sm font-weight-bold" title="View available transfer sources">
                                      <i class="fas fa-random mr-1"></i> Transfer
-                                   </button>` 
+                                   </a>` 
                                 : ''
                             }
                         </div>
@@ -693,22 +773,92 @@
         $('#paginationControls').html(html);
     }
 
-    function openSupplierPoModal(supplier, count, val) {
-        $('#poModalTitle').html(`<i class="fas fa-truck text-primary mr-1"></i> PO Recommendation for ${supplier}`);
-        $('#poModalBody').html(`
-            <div class="bg-light p-3 rounded mb-2 border">
-                <p class="mb-1"><strong>Supplier:</strong> ${supplier}</p>
-                <p class="mb-1"><strong>Recommended Items:</strong> ${count} SKUs requiring replenishment</p>
-                <p class="mb-0"><strong>Estimated Total Value:</strong> <span class="text-primary font-weight-bold">${val}</span></p>
-            </div>
-            <p class="text-muted text-xs mb-0">Confirming will create a Draft Purchase Order in the Purchase Module for final review and approval.</p>
-        `);
+    function triggerSingleItemPo(itemId, supplierId, qty, itemName) {
+        if (!confirm(`Generate 1-Click Purchase Order for ${itemName} (${qty} units)?`)) {
+            return;
+        }
+
+        const branchId = $('#filterBranch').val() !== 'all' ? $('#filterBranch').val() : {{ $activeBranchId }};
+
+        $.ajax({
+            url: "{{ route('inventory.replenishment.generate-po') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                supplier_id: supplierId,
+                branch_id: branchId,
+                items: [{ item_id: itemId, qty: qty }]
+            },
+            success: function(res) {
+                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-dark" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
+                $('#statusAlert').removeClass('d-none');
+                loadTableData(currentPage);
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error generating Purchase Order.');
+            }
+        });
+    }
+
+    function triggerQuickTransfer(itemId, fromBranchId, toBranchId, qty, itemName) {
+        if (!confirm(`Dispatch ${qty} units of ${itemName} from source store?`)) {
+            return;
+        }
+
+        $.ajax({
+            url: "{{ route('inventory.replenishment.create-transfer') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                from_branch_id: fromBranchId,
+                to_branch_id: toBranchId,
+                items: [{ item_id: itemId, qty: qty }]
+            },
+            success: function(res) {
+                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-dark" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Transfer</a>`);
+                $('#statusAlert').removeClass('d-none');
+                loadTableData(currentPage);
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error creating Stock Transfer.');
+            }
+        });
+    }
+
+    function openSupplierPoModal(supplierId, supplierName, count, val, items) {
+        currentModalSupplierId = supplierId;
+        currentModalItems = items || [];
+
+        $('#poModalTitle').html(`<i class="fas fa-truck text-primary mr-1"></i> PO Recommendation for ${supplierName}`);
+        $('#modalVendorName').text(supplierName);
+        $('#modalEstimatedVal').text(val);
+
+        let rowsHtml = '';
+        currentModalItems.forEach(function(item) {
+            rowsHtml += `
+                <tr>
+                    <td class="align-middle"><strong>${escapeHtml(item.name)}</strong></td>
+                    <td class="text-right align-middle">₹ ${Number(item.cost || 0).toFixed(2)}</td>
+                    <td class="text-center align-middle">
+                        <input type="number" class="form-control form-control-sm text-center font-weight-bold modal-item-qty" data-item-id="${item.item_id}" value="${item.qty}" min="1">
+                    </td>
+                    <td class="text-right align-middle font-weight-bold">₹ ${(item.qty * (item.cost || 0)).toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        $('#poModalItemsTableBody').html(rowsHtml);
         $('#poModal').modal('show');
     }
 
     function escapeHtml(text) {
         if (!text) return '';
         return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function escapeJs(text) {
+        if (!text) return '';
+        return String(text).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 </script>
 @stop
