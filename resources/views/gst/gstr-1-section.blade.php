@@ -223,6 +223,7 @@
                         <th style="padding: 11px 12px;">Original Invoice</th>
                         <th style="padding: 11px 12px;">Customer</th>
                         <th style="padding: 11px 12px;">GSTIN</th>
+                        <th class="text-center" style="padding: 11px 12px;">GST %</th>
                         <th class="text-right" style="padding: 11px 12px;">Taxable Value</th>
                         <th class="text-right" style="padding: 11px 12px;">IGST</th>
                         <th class="text-right" style="padding: 11px 12px;">CGST</th>
@@ -238,6 +239,9 @@
                             <td style="padding: 9px 12px;">{{ $row['original_invoice'] ?? '-' }}</td>
                             <td style="padding: 9px 12px;">{{ $row['customer'] }}</td>
                             <td style="padding: 9px 12px;"><code>{{ $row['gstin'] ?? '-' }}</code></td>
+                            <td class="text-center font-weight-bold" style="padding: 9px 12px;">
+                                <span class="badge badge-info">{{ $row['rate'] ?? '0%' }}</span>
+                            </td>
                             <td class="text-right font-weight-bold" style="padding: 9px 12px;">{{ number_format($row['taxable'], 2) }}</td>
                             <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['igst'], 2) }}</td>
                             <td class="text-right" style="padding: 9px 12px;">{{ number_format($row['cgst'], 2) }}</td>
@@ -245,7 +249,7 @@
                             <td class="text-right font-weight-bold text-success" style="padding: 9px 12px;">{{ number_format($row['total'], 2) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No records found for this period.</td></tr>
+                        <tr><td colspan="11" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-2 d-block text-secondary"></i>No records found for this period.</td></tr>
                     @endforelse
                 </tbody>
             </table>
