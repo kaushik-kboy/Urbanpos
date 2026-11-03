@@ -110,7 +110,7 @@ class DailyBillsExportController extends Controller
                     'fulfillment' => $bill->fulfillment ?? $bill->delivery_type,
                     'amount' => (float) $bill->total,
                     'branch_id' => $bill->branch_id,
-                    'branch_name' => $bill->branch?->name,
+                    'branch_name' => $this->normalizeBranchName($bill->branch?->name),
                     'is_split' => true,
                     'split_details' => $modesMap,
                     'split_summary' => implode(' • ', $summaryParts),
@@ -132,7 +132,7 @@ class DailyBillsExportController extends Controller
                     'fulfillment' => $bill->fulfillment ?? $bill->delivery_type,
                     'amount' => (float) $bill->total,
                     'branch_id' => $bill->branch_id,
-                    'branch_name' => $bill->branch?->name,
+                    'branch_name' => $this->normalizeBranchName($bill->branch?->name),
                     'is_split' => false,
                     'split_details' => null,
                     'split_summary' => null,
@@ -232,7 +232,7 @@ class DailyBillsExportController extends Controller
                 'amount' => (float) $ret->total,
                 'notes' => $notes,
                 'branch_id' => $ret->branch_id,
-                'branch_name' => $ret->branch?->name,
+                'branch_name' => $this->normalizeBranchName($ret->branch?->name),
             ];
         });
 
@@ -323,5 +323,25 @@ class DailyBillsExportController extends Controller
         }
 
         return strlen($digits) >= 10 ? substr($digits, -10) : null;
+    }
+
+    /**
+     * Normalize POS branch name strictly to Motera or Satellite for CRM parity.
+     */
+    private function normalizeBranchName(?string $rawName): ?string
+    {
+        if (blank($rawName)) {
+            return null;
+        }
+
+        if (stripos($rawName, 'motera') !== false) {
+            return 'Motera';
+        }
+
+        if (stripos($rawName, 'satellite') !== false) {
+            return 'Satellite';
+        }
+
+        return trim(str_ireplace(['Urban Pets |', 'Urban Pets -', '|', '-'], '', $rawName)) ?: $rawName;
     }
 }
