@@ -439,6 +439,7 @@ class Gstr1ReportService
         return [
             'taxable' => round($targetBillTaxable - $targetRetTaxable, 2),
             'tax' => round($targetBillTax - $targetRetTax, 2),
+            'nil' => round((float) array_sum(array_column($allRows, 'nil')), 2),
             'missing_hsn_qty' => $missingHsnQty,
             'has_more_groups' => $hasMore,
             'row_cap' => self::HSN_ROW_CAP,
@@ -563,9 +564,12 @@ class Gstr1ReportService
     // -----------------------------------------------------------------
     public function nilRated(): array
     {
-        // 1. Items sold with 0% GST (nil rated) during the selected period
+        $gstin = $this->gstinExpr('sales_bills', 'customers');
+
+        // 1. Items sold with 0% GST (nil rated) during the selected period, grouped by B2B and B2C
         $zeroItems = DB::table('sales_bill_items')
             ->join('sales_bills', 'sales_bills.id', '=', 'sales_bill_items.sales_bill_id')
+            ->leftJoin('customers', 'customers.id', '=', 'sales_bills.customer_id')
             ->join('items', 'items.id', '=', 'sales_bill_items.item_id')
             ->whereDate('sales_bills.bill_date', '>=', $this->fromDate)
             ->whereDate('sales_bills.bill_date', '<=', $this->toDate)
@@ -574,16 +578,18 @@ class Gstr1ReportService
             ->select(
                 'items.name as item_name',
                 'items.hsn_code',
+                DB::raw("CASE WHEN {$gstin} IS NOT NULL THEN 'B2B' ELSE 'B2C' END as supply_type"),
                 DB::raw('COUNT(DISTINCT sales_bills.id) as bill_count'),
                 DB::raw('SUM(sales_bill_items.qty) as total_qty'),
                 DB::raw('SUM(sales_bill_items.net_amount) as total_amount')
             )
-            ->groupBy('items.name', 'items.hsn_code')
+            ->groupBy('items.name', 'items.hsn_code', DB::raw("CASE WHEN {$gstin} IS NOT NULL THEN 'B2B' ELSE 'B2C' END"))
             ->orderByDesc('total_amount')
             ->get();
 
         // 2. Any entire bills marked as Exempted that did not have itemized 0% items
-        $exemptBillsSum = (float) $this->billsBaseQuery()
+        $b2bExemptBills = (float) $this->billsBaseQuery()
+            ->whereRaw("{$gstin} IS NOT NULL")
             ->where('sales_bills.invoice_type', 'Exempted')
             ->whereNotExists(function ($q) {
                 $q->select(DB::raw(1))
@@ -593,25 +599,42 @@ class Gstr1ReportService
             })
             ->sum('sales_bills.total');
 
-        $itemsTotal = (float) $zeroItems->sum('total_amount');
-        $totalCombined = round($itemsTotal + $exemptBillsSum, 2);
+        $b2cExemptBills = (float) $this->billsBaseQuery()
+            ->whereRaw("{$gstin} IS NULL")
+            ->where('sales_bills.invoice_type', 'Exempted')
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('sales_bill_items')
+                    ->whereColumn('sales_bill_items.sales_bill_id', 'sales_bills.id')
+                    ->where('sales_bill_items.gst_percent', 0);
+            })
+            ->sum('sales_bills.total');
+
+        $b2bItemsTotal = (float) $zeroItems->where('supply_type', 'B2B')->sum('total_amount');
+        $b2cItemsTotal = (float) $zeroItems->where('supply_type', 'B2C')->sum('total_amount');
+
+        $b2bTotal = round($b2bItemsTotal + $b2bExemptBills, 2);
+        $b2cTotal = round($b2cItemsTotal + $b2cExemptBills, 2);
+        $totalCombined = round($b2bTotal + $b2cTotal, 2);
 
         $rows = $zeroItems->map(fn ($item) => [
+            'type' => $item->supply_type,
             'name' => $item->item_name,
             'hsn' => $item->hsn_code ?: 'N/A',
             'qty' => round((float) $item->total_qty, 3),
             'bills' => (int) $item->bill_count,
             'amount' => round((float) $item->total_amount, 2),
             'rate' => 0.0,
-            'type' => 'Nil Rated (0% GST)',
         ])->toArray();
 
         return [
             'combined_amount' => $totalCombined,
+            'b2b_amount' => $b2bTotal,
+            'b2c_amount' => $b2cTotal,
             'supported_breakdown' => true,
             'count' => count($rows),
             'rows' => $rows,
-            'limitation' => 'Statutory GSTR-1 Table 8: Aggregated supplies with 0% GST rate and exempted supplies.',
+            'limitation' => 'Statutory GSTR-1 Table 8: Aggregated supplies with 0% GST rate and exempted supplies, categorized by B2B and B2C.',
         ];
     }
 

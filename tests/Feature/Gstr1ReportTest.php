@@ -220,6 +220,28 @@ class Gstr1ReportTest extends TestCase
         $this->assertEqualsWithDelta(300.00, $hsnB2b['rows'][0]['taxable'], 0.01);
     }
 
+    public function test_nil_rated_supplies_are_categorized_by_b2b_and_b2c(): void
+    {
+        $registered = $this->customer('Nil Reg Co', '24EEEEE0000E1Z5');
+        $unregistered = $this->customer('Nil Walk-in');
+        $itemZero = $this->item('NIL1', '30049099');
+
+        // B2B nil-rated sale
+        $this->bill(['bill_number' => 'SB-NIL-B2B', 'bill_date' => '2026-09-12', 'customer' => $registered], ['item' => $itemZero, 'qty' => 3, 'sell_price' => 100, 'gst_percent' => 0]);
+        // B2C nil-rated sale
+        $this->bill(['bill_number' => 'SB-NIL-B2C', 'bill_date' => '2026-09-12', 'customer' => $unregistered], ['item' => $itemZero, 'qty' => 2, 'sell_price' => 100, 'gst_percent' => 0]);
+
+        $nil = $this->service()->nilRated();
+
+        $this->assertEqualsWithDelta(300.00, $nil['b2b_amount'], 0.01);
+        $this->assertEqualsWithDelta(200.00, $nil['b2c_amount'], 0.01);
+        $this->assertEqualsWithDelta(500.00, $nil['combined_amount'], 0.01);
+
+        $types = array_column($nil['rows'], 'type');
+        $this->assertContains('B2B', $types);
+        $this->assertContains('B2C', $types);
+    }
+
     // ================================================================== CDNR / CDNUR
 
     public function test_registered_and_unregistered_credit_notes_are_kept_separate(): void

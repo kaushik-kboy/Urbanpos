@@ -89,7 +89,9 @@
                 <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2b-hsn', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>HSN B2B Summary</span>
-                        <span></span>
+                        @if(($hsnB2bNil ?? 0) > 0)
+                            <span class="badge badge-light text-dark font-weight-normal">Nil: ₹{{ number_format($hsnB2bNil, 2) }}</span>
+                        @endif
                     </div>
                     <div class="card-body p-3 bg-white">
                         <div class="row text-center align-items-center" style="min-height: 70px;">
@@ -111,7 +113,9 @@
                 <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'b2c-hsn', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
                         <span>HSN B2C Summary</span>
-                        <span></span>
+                        @if(($hsnB2cNil ?? 0) > 0)
+                            <span class="badge badge-light text-dark font-weight-normal">Nil: ₹{{ number_format($hsnB2cNil, 2) }}</span>
+                        @endif
                     </div>
                     <div class="card-body p-3 bg-white">
                         <div class="row text-center align-items-center" style="min-height: 70px;">
@@ -266,18 +270,18 @@
             <div class="col-lg-4 col-md-6 mb-3">
                 <div class="card shadow-sm border h-100 gstr1-card" onclick="window.location.href='{{ route('tools.gst.gstr-1.section', ['section' => 'nil', 'from_date' => $fromDate, 'to_date' => $toDate]) }}';">
                     <div class="card-header py-2 px-3 font-weight-bold text-dark d-flex justify-content-between align-items-center" style="background-color: #ffc107; font-size: 13px;">
-                        <span>Nil Rated Supplies</span>
-                        <span></span>
+                        <span>Nil Rated Supplies (Table 8)</span>
+                        <span class="small font-weight-bold">₹{{ number_format($nilRatedAmount, 2) }}</span>
                     </div>
                     <div class="card-body p-3 bg-white">
                         <div class="row text-center align-items-center" style="min-height: 70px;">
                             <div class="col-6 border-right">
-                                <div class="font-weight-bold text-dark h5 mb-1">₹{{ number_format($nilRatedAmount, 2) }}</div>
-                                <div class="text-muted small" style="font-size: 11px;">Nil Rated Amount</div>
+                                <div class="font-weight-bold text-dark h5 mb-1">₹{{ number_format($b2bNilAmount ?? 0, 2) }}</div>
+                                <div class="text-muted small" style="font-size: 11px;">B2B Nil Rated</div>
                             </div>
                             <div class="col-6">
-                                <div class="font-weight-bold text-dark h5 mb-1">₹{{ number_format($exemptedAmount, 2) }}</div>
-                                <div class="text-muted small" style="font-size: 11px;">Exempted Amount</div>
+                                <div class="font-weight-bold text-dark h5 mb-1">₹{{ number_format($b2cNilAmount ?? 0, 2) }}</div>
+                                <div class="text-muted small" style="font-size: 11px;">B2C Nil Rated</div>
                             </div>
                         </div>
                     </div>
