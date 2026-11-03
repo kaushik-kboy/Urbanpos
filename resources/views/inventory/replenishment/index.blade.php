@@ -2,22 +2,299 @@
 
 @section('title', 'Smart Replenishment Studio (V1)')
 
+@push('css')
+<style>
+/* Modern 2026 High-Contrast Dashboard Design System */
+:root {
+    --text-primary: #0f172a;
+    --text-secondary: #1e293b;
+    --border-subtle: #e2e8f0;
+    --border-dark: #0f172a;
+}
+
+body, .content-wrapper {
+    color: #0f172a !important;
+}
+
+/* Page Header */
+.replenishment-heading {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.025em;
+    font-size: 1.65rem;
+}
+.replenishment-subheading {
+    color: #1e293b !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Modern Metric Cards (Replacing 2012 small-box) */
+.stat-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+    padding: 1.15rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.stat-card:hover {
+    transform: translateY(-2px);
+    border-color: #0f172a;
+    box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
+}
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+.stat-card.critical::before { background: #dc2626; }
+.stat-card.warning::before { background: #d97706; }
+.stat-card.success::before { background: #16a34a; }
+.stat-card.info::before { background: #2563eb; }
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.65rem;
+}
+.stat-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #0f172a;
+}
+.stat-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 800;
+}
+.stat-val {
+    font-size: 1.95rem;
+    font-weight: 800;
+    line-height: 1.15;
+    color: #0f172a !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin-bottom: 0.4rem;
+}
+.stat-indicator {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Modern Card Containers */
+.modern-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.04);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+.modern-card-header {
+    background: #ffffff;
+    border-bottom: 1.5px solid #e2e8f0;
+    padding: 0.95rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modern-card-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+/* Filter Toolbar */
+.modern-filter-toolbar {
+    background: #f8fafc;
+    border-bottom: 1.5px solid #e2e8f0;
+    padding: 1rem 1.25rem;
+}
+.filter-field-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #0f172a;
+    margin-bottom: 0.35rem;
+    display: block;
+}
+.modern-control {
+    border-radius: 8px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 0.83rem !important;
+    background-color: #ffffff !important;
+}
+.modern-control:focus {
+    border-color: #0f172a !important;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.15) !important;
+}
+
+/* Modern Table Architecture */
+.modern-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.modern-table thead th {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    padding: 0.85rem 0.95rem !important;
+    border: none !important;
+    white-space: nowrap;
+}
+.modern-table tbody tr {
+    transition: background-color 0.1s ease;
+}
+.modern-table tbody tr:nth-of-type(even) {
+    background-color: #f8fafc;
+}
+.modern-table tbody tr:hover {
+    background-color: #e2e8f0 !important;
+}
+.modern-table tbody td {
+    padding: 0.8rem 0.95rem !important;
+    vertical-align: middle !important;
+    border-top: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    font-size: 0.84rem;
+}
+.item-title {
+    font-weight: 800;
+    color: #0f172a !important;
+    font-size: 0.88rem;
+}
+.item-subtitle {
+    font-weight: 700;
+    color: #1e293b !important;
+    font-size: 0.76rem;
+    margin-top: 0.15rem;
+}
+
+/* Modern Status Chips */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.74rem;
+    font-weight: 800;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+}
+.status-pill.critical { background: #fee2e2; color: #991b1b; border: 1.5px solid #f87171; }
+.status-pill.low { background: #fef3c7; color: #92400e; border: 1.5px solid #fbbf24; }
+.status-pill.healthy { background: #dcfce7; color: #166534; border: 1.5px solid #4ade80; }
+.status-pill.overstock { background: #e0f2fe; color: #075985; border: 1.5px solid #38bdf8; }
+.status-pill.dead { background: #f1f5f9; color: #0f172a; border: 1.5px solid #94a3b8; }
+
+/* Reorder Pill */
+.reorder-badge {
+    background: #dc2626;
+    color: #ffffff !important;
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(220, 38, 38, 0.4);
+    display: inline-block;
+}
+
+/* Modern Action Buttons */
+.btn-action-dark {
+    background: #0f172a;
+    border: 1.5px solid #0f172a;
+    color: #ffffff !important;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    transition: all 0.15s ease;
+}
+.btn-action-dark:hover {
+    background: #1e293b;
+    border-color: #1e293b;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);
+}
+.btn-action-outline {
+    background: #ffffff;
+    border: 1.5px solid #0f172a;
+    color: #0f172a !important;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    transition: all 0.15s ease;
+}
+.btn-action-outline:hover {
+    background: #0f172a;
+    color: #ffffff !important;
+}
+
+/* Modal Styling */
+.modal-content {
+    border-radius: 14px;
+    border: 1.5px solid #0f172a;
+    overflow: hidden;
+}
+.modal-header {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    padding: 1rem 1.25rem;
+}
+.modal-header .modal-title {
+    color: #ffffff !important;
+    font-weight: 800;
+}
+.modal-header .close {
+    color: #ffffff !important;
+    opacity: 0.9;
+}
+</style>
+@endpush
+
 @section('content_header')
-    <div class="d-flex flex-wrap justify-content-between align-items-center">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
         <div>
-            <h1 class="m-0 text-dark font-weight-bold">
-                <i class="fas fa-brain text-info mr-2"></i> Smart Replenishment Studio <span class="badge badge-primary font-weight-normal text-xs ml-1">V1</span>
+            <h1 class="replenishment-heading m-0">
+                <i class="fas fa-brain text-primary mr-2"></i> Smart Replenishment Studio <span class="badge badge-dark font-weight-bold text-xs ml-1" style="letter-spacing: 0.05em; padding: 4px 8px;">V1</span>
             </h1>
-            <small class="text-muted">Demand Velocity &bull; Cover Days &bull; Inter-Branch Matchmaking &bull; 1-Click PO</small>
+            <div class="replenishment-subheading mt-1">
+                Demand Velocity &bull; Stock Cover Days &bull; Inter-Branch Matchmaking &bull; 1-Click PO
+            </div>
         </div>
         <div class="d-flex align-items-center mt-2 mt-md-0">
-            <span class="badge badge-warning px-3 py-2 mr-2 font-weight-bold shadow-sm" style="font-size: 0.82rem;">
+            <span class="badge badge-warning px-3 py-2 mr-2 font-weight-bold border border-dark text-dark shadow-sm" style="font-size: 0.82rem; border-radius: 8px;">
                 <i class="fas fa-flask mr-1"></i> Ramdev Staging Test Mode
             </span>
-            <button type="button" class="btn btn-outline-secondary mr-2 shadow-sm" data-toggle="modal" data-target="#settingsModal">
+            <a href="{{ route('inventory.replenishment.settings') }}" class="btn btn-action-outline mr-2 shadow-sm">
                 <i class="fas fa-sliders-h mr-1"></i> Rules & Settings
-            </button>
-            <button type="button" class="btn btn-primary shadow-sm" id="btnSyncLive">
+            </a>
+            <button type="button" class="btn btn-action-dark shadow-sm" id="btnSyncLive">
                 <i class="fas fa-sync-alt mr-1" id="syncIcon"></i> <span id="syncText">Sync Live Stock</span>
             </button>
         </div>
@@ -26,63 +303,71 @@
 
 @section('content')
     {{-- Alerts Bar --}}
-    <div id="statusAlert" class="alert alert-success alert-dismissible fade show d-none" role="alert">
-        <i class="fas fa-check-circle mr-1"></i> <span id="statusAlertMessage"></span>
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <div id="statusAlert" class="alert alert-dark alert-dismissible fade show d-none border-dark shadow-sm mb-3" style="background:#0f172a; color:#ffffff; border-radius:10px;" role="alert">
+        <i class="fas fa-check-circle mr-1 text-success"></i> <span id="statusAlertMessage" class="font-weight-bold"></span>
+        <button type="button" class="close text-white" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
 
-    {{-- Top KPI Cards --}}
+    {{-- Modern High-Contrast KPI Cards --}}
     <div class="row">
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-white shadow-sm border border-danger">
-                <div class="inner">
-                    <h3 class="text-danger font-weight-bold" id="kpiCriticalCount">{{ number_format($summary['critical_count'] ?? 0) }}</h3>
-                    <p class="text-muted mb-0 font-weight-bold text-uppercase text-xs">Critical Stock (0-3 Days)</p>
-                    <small class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Immediate action required</small>
+        <div class="col-lg-3 col-6 mb-3">
+            <div class="stat-card critical">
+                <div class="stat-header">
+                    <span class="stat-label">Critical Stock (0-3 Days)</span>
+                    <div class="stat-icon-wrapper" style="background: #fee2e2; color: #dc2626;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-skull-crossbones text-danger" style="opacity: 0.15;"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-white shadow-sm border border-warning">
-                <div class="inner">
-                    <h3 class="text-warning font-weight-bold" id="kpiLowCount">{{ number_format($summary['low_count'] ?? 0) }}</h3>
-                    <p class="text-muted mb-0 font-weight-bold text-uppercase text-xs">Low Stock (4-10 Days)</p>
-                    <small class="text-warning font-weight-bold"><i class="fas fa-clock mr-1"></i> Approaching buffer limit</small>
-                </div>
-                <div class="icon">
-                    <i class="fas fa-hourglass-half text-warning" style="opacity: 0.15;"></i>
+                <div class="stat-val" id="kpiCriticalCount">{{ number_format($summary['critical_count'] ?? 0) }}</div>
+                <div class="stat-indicator text-danger">
+                    <i class="fas fa-fire mr-1"></i> Immediate action required
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-white shadow-sm border border-success">
-                <div class="inner">
-                    <h3 class="text-success font-weight-bold" id="kpiTransferCount">{{ number_format($summary['transfer_opportunities_count'] ?? 0) }}</h3>
-                    <p class="text-muted mb-0 font-weight-bold text-uppercase text-xs">Transfer Matches</p>
-                    <small class="text-success font-weight-bold"><i class="fas fa-random mr-1"></i> Surplus &rarr; Deficit match</small>
+        <div class="col-lg-3 col-6 mb-3">
+            <div class="stat-card warning">
+                <div class="stat-header">
+                    <span class="stat-label">Low Stock (4-10 Days)</span>
+                    <div class="stat-icon-wrapper" style="background: #fef3c7; color: #d97706;">
+                        <i class="fas fa-clock"></i>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-people-carry text-success" style="opacity: 0.15;"></i>
+                <div class="stat-val" id="kpiLowCount">{{ number_format($summary['low_count'] ?? 0) }}</div>
+                <div class="stat-indicator" style="color: #92400e;">
+                    <i class="fas fa-hourglass-half mr-1"></i> Approaching safety buffer
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-white shadow-sm border border-info">
-                <div class="inner">
-                    <h3 class="text-info font-weight-bold" id="kpiPoValue">₹ {{ number_format($summary['suggested_po_value'] ?? 0, 2) }}</h3>
-                    <p class="text-muted mb-0 font-weight-bold text-uppercase text-xs">Suggested PO Value</p>
-                    <small class="text-info font-weight-bold"><i class="fas fa-boxes mr-1"></i> {{ number_format($summary['suggested_po_units'] ?? 0) }} units across suppliers</small>
+        <div class="col-lg-3 col-6 mb-3">
+            <div class="stat-card success">
+                <div class="stat-header">
+                    <span class="stat-label">Transfer Matches</span>
+                    <div class="stat-icon-wrapper" style="background: #dcfce7; color: #16a34a;">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
                 </div>
-                <div class="icon">
-                    <i class="fas fa-shopping-cart text-info" style="opacity: 0.15;"></i>
+                <div class="stat-val" id="kpiTransferCount">{{ number_format($summary['transfer_opportunities_count'] ?? 0) }}</div>
+                <div class="stat-indicator text-success">
+                    <i class="fas fa-check-circle mr-1"></i> Surplus &rarr; Deficit match
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6 mb-3">
+            <div class="stat-card info">
+                <div class="stat-header">
+                    <span class="stat-label">Suggested PO Value</span>
+                    <div class="stat-icon-wrapper" style="background: #dbeafe; color: #2563eb;">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                </div>
+                <div class="stat-val" id="kpiPoValue">₹ {{ number_format($summary['suggested_po_value'] ?? 0, 2) }}</div>
+                <div class="stat-indicator text-primary">
+                    <i class="fas fa-boxes mr-1"></i> {{ number_format($summary['suggested_po_units'] ?? 0) }} units across suppliers
                 </div>
             </div>
         </div>
@@ -90,26 +375,28 @@
 
     {{-- Visual Analytics Charts --}}
     <div class="row">
-        <div class="col-md-6">
-            <div class="card card-outline card-primary shadow-sm">
-                <div class="card-header py-2">
-                    <h3 class="card-title font-weight-bold text-sm">
-                        <i class="fas fa-chart-pie mr-1 text-primary"></i> Stock Health Condition
+        <div class="col-md-6 mb-3">
+            <div class="modern-card h-100">
+                <div class="modern-card-header">
+                    <h3 class="modern-card-title">
+                        <i class="fas fa-chart-pie mr-2 text-primary"></i> Stock Health Condition
                     </h3>
+                    <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius: 6px;">Live Breakdown</span>
                 </div>
-                <div class="card-body p-2" style="height: 190px; position: relative;">
+                <div class="p-3" style="height: 195px; position: relative;">
                     <canvas id="stockHealthChart"></canvas>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card card-outline card-success shadow-sm">
-                <div class="card-header py-2">
-                    <h3 class="card-title font-weight-bold text-sm">
-                        <i class="fas fa-tachometer-alt mr-1 text-success"></i> Sales Movement Velocity (30 Days)
+        <div class="col-md-6 mb-3">
+            <div class="modern-card h-100">
+                <div class="modern-card-header">
+                    <h3 class="modern-card-title">
+                        <i class="fas fa-tachometer-alt mr-2 text-success"></i> Sales Movement Velocity (30 Days)
                     </h3>
+                    <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius: 6px;">Velocity Tiers</span>
                 </div>
-                <div class="card-body p-2" style="height: 190px; position: relative;">
+                <div class="p-3" style="height: 195px; position: relative;">
                     <canvas id="salesVelocityChart"></canvas>
                 </div>
             </div>
@@ -120,25 +407,25 @@
     <div class="row">
         {{-- Left 8 Cols: Stock Analysis Data Table --}}
         <div class="col-lg-8">
-            <div class="card card-outline card-primary shadow-sm">
-                <div class="card-header py-2 bg-light">
-                    <h3 class="card-title font-weight-bold text-sm">
-                        <i class="fas fa-list-alt text-primary mr-1"></i> Stock Replenishment Analysis
+            <div class="modern-card">
+                <div class="modern-card-header">
+                    <h3 class="modern-card-title">
+                        <i class="fas fa-list-alt text-primary mr-2"></i> Stock Replenishment Analysis
                     </h3>
-                    <div class="card-tools d-flex align-items-center">
-                        <span class="badge badge-info" id="totalFilteredRows">Loading...</span>
-                        <button type="button" class="btn btn-outline-success btn-xs font-weight-bold shadow-sm ml-2" id="btnExportExcel" title="Export current filtered view to Excel spreadsheet">
-                            <i class="fas fa-file-excel mr-1"></i> Export Excel
+                    <div class="d-flex align-items-center">
+                        <span class="badge badge-dark font-weight-bold px-3 py-2 mr-2" id="totalFilteredRows" style="font-size: 0.8rem; border-radius: 6px;">Loading...</span>
+                        <button type="button" class="btn btn-action-dark btn-sm shadow-sm" id="btnExportExcel" title="Export current filtered view to Excel spreadsheet">
+                            <i class="fas fa-file-excel text-success mr-1"></i> Export Excel (.xlsx)
                         </button>
                     </div>
                 </div>
 
                 {{-- Filter Toolbar --}}
-                <div class="card-body bg-light border-bottom py-2">
+                <div class="modern-filter-toolbar">
                     <div class="row g-2 align-items-center">
                         <div class="col-md-3 col-6 mb-2">
-                            <label class="text-xs text-muted font-weight-bold text-uppercase mb-1">Branch</label>
-                            <select id="filterBranch" class="form-control form-control-sm">
+                            <label class="filter-field-label"><i class="fas fa-store mr-1 text-primary"></i> Branch</label>
+                            <select id="filterBranch" class="form-control form-control-sm modern-control">
                                 <option value="all">All Branches</option>
                                 @foreach($branches as $b)
                                     <option value="{{ $b->id }}" {{ $activeBranchId == $b->id ? 'selected' : '' }}>
@@ -149,10 +436,10 @@
                         </div>
 
                         <div class="col-md-3 col-6 mb-2">
-                            <label class="text-xs text-muted font-weight-bold text-uppercase mb-1">Stock Status</label>
-                            <select id="filterStatus" class="form-control form-control-sm">
+                            <label class="filter-field-label"><i class="fas fa-signal mr-1 text-primary"></i> Stock Status</label>
+                            <select id="filterStatus" class="form-control form-control-sm modern-control">
                                 <option value="all">All Statuses</option>
-                                <option value="needs_action" selected>🚨 Needs Action</option>
+                                <option value="needs_action" selected>🚨 Needs Action (Order/Transfer)</option>
                                 <option value="Critical">🔴 Critical (0-3 Days)</option>
                                 <option value="Low">🟡 Low (4-10 Days)</option>
                                 <option value="Healthy">🟢 Healthy (11-30 Days)</option>
@@ -162,8 +449,8 @@
                         </div>
 
                         <div class="col-md-3 col-6 mb-2">
-                            <label class="text-xs text-muted font-weight-bold text-uppercase mb-1">Supplier</label>
-                            <select id="filterSupplier" class="form-control form-control-sm">
+                            <label class="filter-field-label"><i class="fas fa-building mr-1 text-primary"></i> Supplier</label>
+                            <select id="filterSupplier" class="form-control form-control-sm modern-control">
                                 <option value="all">All Suppliers</option>
                                 @foreach($suppliers as $s)
                                     <option value="{{ $s->id }}">{{ $s->name }}</option>
@@ -172,11 +459,11 @@
                         </div>
 
                         <div class="col-md-3 col-6 mb-2">
-                            <label class="text-xs text-muted font-weight-bold text-uppercase mb-1">Search Item / SKU</label>
+                            <label class="filter-field-label"><i class="fas fa-search mr-1 text-primary"></i> Search Item / SKU</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" id="filterSearch" class="form-control form-control-sm" placeholder="SKU, Name, Barcode...">
+                                <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="SKU, Name, Barcode...">
                                 <div class="input-group-append">
-                                    <button class="btn btn-default" type="button" id="btnFilterSearch">
+                                    <button class="btn btn-action-dark btn-sm" type="button" id="btnFilterSearch">
                                         <i class="fas fa-search"></i>
                                     </button>
                                 </div>
@@ -185,17 +472,17 @@
                     </div>
                 </div>
 
-                {{-- Table Container --}}
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover table-striped table-bordered text-sm mb-0" id="replenishmentTable">
-                        <thead class="thead-light">
+                {{-- Modern High-Contrast Table Container --}}
+                <div class="p-0 table-responsive">
+                    <table class="modern-table" id="replenishmentTable">
+                        <thead>
                             <tr>
                                 <th>Item Name (SKU)</th>
                                 <th>Branch Stock</th>
                                 <th class="text-center">30D Sales</th>
-                                <th class="text-center">Avg/Day</th>
+                                <th class="text-center">Avg / Day</th>
                                 <th class="text-center">Cover Days</th>
-                                <th class="text-center">Target Days</th>
+                                <th class="text-center">Target</th>
                                 <th class="text-center">Suggested Qty</th>
                                 <th class="text-center">Status</th>
                                 <th class="text-center" style="width: 140px;">Action</th>
@@ -203,7 +490,7 @@
                         </thead>
                         <tbody id="tableBody">
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
+                                <td colspan="9" class="text-center py-4 font-weight-bold text-dark">
                                     <i class="fas fa-spinner fa-spin mr-1"></i> Loading replenishment metrics...
                                 </td>
                             </tr>
@@ -212,8 +499,8 @@
                 </div>
 
                 {{-- Table Pagination Footer --}}
-                <div class="card-footer py-2 bg-light d-flex justify-content-between align-items-center">
-                    <small class="text-muted" id="paginationInfo">Showing 0 of 0</small>
+                <div class="p-3 bg-white border-top d-flex justify-content-between align-items-center">
+                    <span class="font-weight-bold text-dark text-sm" id="paginationInfo">Showing 0 of 0</span>
                     <ul class="pagination pagination-sm m-0" id="paginationControls"></ul>
                 </div>
             </div>
@@ -222,36 +509,34 @@
         {{-- Right 4 Cols: Quick Actions (Matchmaker & PO Grouping) --}}
         <div class="col-lg-4">
             {{-- Inter-Branch Transfer Matcher Widget --}}
-            <div class="card card-outline card-success shadow-sm mb-3">
-                <div class="card-header py-2">
-                    <h3 class="card-title font-weight-bold text-sm">
-                        <i class="fas fa-random text-success mr-1"></i> Smart Branch Transfers
+            <div class="modern-card mb-3">
+                <div class="modern-card-header">
+                    <h3 class="modern-card-title">
+                        <i class="fas fa-random text-success mr-2"></i> Smart Branch Transfers
                     </h3>
-                    <div class="card-tools">
-                        <a href="{{ route('inventory.replenishment.transfers') }}" class="btn btn-tool text-xs">
-                            View All <i class="fas fa-arrow-right ml-1"></i>
-                        </a>
-                    </div>
+                    <a href="{{ route('inventory.replenishment.transfers') }}" class="btn btn-action-dark btn-xs">
+                        View All <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
                 </div>
-                <div class="card-body p-2" id="transferWidgetBody">
+                <div class="p-3" id="transferWidgetBody">
                     @forelse($transferRecommendations->take(4) as $match)
-                        <div class="p-2 mb-2 rounded border border-success bg-light text-xs">
-                            <div class="d-flex justify-content-between font-weight-bold text-dark">
-                                <span>{{ \Illuminate\Support\Str::limit($match->item_name, 25) }}</span>
-                                <span class="badge badge-success px-2 py-1">Suggest: {{ $match->suggested_transfer_qty }} Qty</span>
+                        <div class="p-2 mb-2 rounded border border-success bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div class="d-flex justify-content-between font-weight-bold text-dark" style="font-size: 0.85rem;">
+                                <span>{{ \Illuminate\Support\Str::limit($match->item_name, 24) }}</span>
+                                <span class="badge badge-success px-2 py-1 font-weight-bold">Transfer: {{ $match->suggested_transfer_qty }} Qty</span>
                             </div>
-                            <div class="d-flex justify-content-between text-muted mt-1">
-                                <span><i class="fas fa-arrow-circle-up text-info mr-1"></i> {{ $match->source_branch_name }} ({{ (int)$match->source_stock }})</span>
-                                <i class="fas fa-long-arrow-alt-right text-success mx-1"></i>
+                            <div class="d-flex justify-content-between font-weight-bold mt-2" style="font-size: 0.76rem; color: #0f172a;">
+                                <span><i class="fas fa-arrow-circle-up text-primary mr-1"></i> {{ $match->source_branch_name }} ({{ (int)$match->source_stock }})</span>
+                                <i class="fas fa-arrow-right text-success mx-1"></i>
                                 <span><i class="fas fa-arrow-circle-down text-danger mr-1"></i> {{ $match->dest_branch_name }} ({{ (int)$match->dest_stock }})</span>
                             </div>
-                            <button type="button" class="btn btn-xs btn-outline-success btn-block mt-2 font-weight-bold" onclick="triggerQuickTransfer({{ $match->item_id }}, {{ $match->source_branch_id }}, {{ $match->dest_branch_id }}, {{ $match->suggested_transfer_qty }}, '{{ addslashes($match->item_name) }}')">
-                                <i class="fas fa-dolly mr-1"></i> Dispatch Transfer
+                            <button type="button" class="btn btn-action-outline btn-block btn-xs mt-2 font-weight-bold" onclick="triggerQuickTransfer({{ $match->item_id }}, {{ $match->source_branch_id }}, {{ $match->dest_branch_id }}, {{ $match->suggested_transfer_qty }}, '{{ addslashes($match->item_name) }}')">
+                                <i class="fas fa-dolly mr-1 text-success"></i> Dispatch Transfer
                             </button>
                         </div>
                     @empty
-                        <div class="text-center py-3 text-muted text-xs">
-                            <i class="fas fa-check-circle text-success mb-1" style="font-size: 1.5rem;"></i><br>
+                        <div class="text-center py-4 text-dark font-weight-bold" style="font-size: 0.85rem;">
+                            <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i><br>
                             All active stores are currently well balanced!
                         </div>
                     @endforelse
@@ -259,34 +544,35 @@
             </div>
 
             {{-- Supplier-wise Order Recommendations Widget --}}
-            <div class="card card-outline card-primary shadow-sm mb-3">
-                <div class="card-header py-2">
-                    <h3 class="card-title font-weight-bold text-sm">
-                        <i class="fas fa-truck text-primary mr-1"></i> Supplier Order Recommendations
+            <div class="modern-card mb-3">
+                <div class="modern-card-header">
+                    <h3 class="modern-card-title">
+                        <i class="fas fa-truck text-primary mr-2"></i> Supplier Recommendations
                     </h3>
-                    <div class="card-tools">
-                        <a href="{{ route('inventory.replenishment.supplier-orders') }}" class="btn btn-tool text-xs">
-                            View All <i class="fas fa-arrow-right ml-1"></i>
-                        </a>
-                    </div>
+                    <a href="{{ route('inventory.replenishment.supplier-orders') }}" class="btn btn-action-dark btn-xs">
+                        View All <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
                 </div>
-                <div class="card-body p-2" id="supplierWidgetBody">
+                <div class="p-3" id="supplierWidgetBody">
                     @forelse($supplierOrders->take(5) as $order)
-                        <div class="p-2 mb-2 rounded border bg-light d-flex justify-content-between align-items-center text-xs">
+                        <div class="p-2 mb-2 rounded border bg-white d-flex justify-content-between align-items-center" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                             <div>
-                                <strong class="text-dark">{{ \Illuminate\Support\Str::limit($order->supplier_name, 22) }}</strong>
-                                <div class="text-muted">{{ $order->items_count }} items &bull; {{ $order->total_units }} units</div>
+                                <div class="font-weight-bold text-dark" style="font-size: 0.85rem;">{{ \Illuminate\Support\Str::limit($order->supplier_name, 22) }}</div>
+                                <div class="font-weight-bold text-dark mt-1" style="font-size: 0.74rem;">
+                                    <span class="badge badge-dark px-2 py-1 font-weight-bold">{{ $order->items_count }} items</span> &bull; 
+                                    <span class="text-dark">{{ $order->total_units }} units</span>
+                                </div>
                             </div>
                             <div class="text-right">
-                                <div class="font-weight-bold text-primary">₹ {{ number_format($order->estimated_value, 2) }}</div>
-                                <button type="button" class="btn btn-xs btn-primary mt-1" onclick="openSupplierPoModal({{ $order->supplier_id ?? 'null' }}, '{{ addslashes($order->supplier_name) }}', {{ $order->items_count }}, '₹ {{ number_format($order->estimated_value, 2) }}', {{ json_encode($order->items->map(fn($m) => ['item_id' => $m->item_id, 'name' => $m->item->name ?? 'SKU #'.$m->item_id, 'qty' => $m->suggested_qty, 'cost' => (float)($m->item->cost_price ?? 0)])) }})">
-                                    <i class="fas fa-file-invoice mr-1"></i> Review PO
+                                <div class="font-weight-bold text-primary" style="font-size: 0.95rem;">₹ {{ number_format($order->estimated_value, 2) }}</div>
+                                <button type="button" class="btn btn-action-dark btn-xs mt-1" onclick="openSupplierPoModal({{ $order->supplier_id ?? 'null' }}, '{{ addslashes($order->supplier_name) }}', {{ $order->items_count }}, '₹ {{ number_format($order->estimated_value, 2) }}', {{ json_encode($order->items->map(fn($m) => ['item_id' => $m->item_id, 'name' => $m->item->name ?? 'SKU #'.$m->item_id, 'qty' => $m->suggested_qty, 'cost' => (float)($m->item->cost_price ?? 0)])) }})">
+                                    <i class="fas fa-file-invoice mr-1 text-primary"></i> Review PO
                                 </button>
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-3 text-muted text-xs">
-                            <i class="fas fa-clipboard-check text-info mb-1" style="font-size: 1.5rem;"></i><br>
+                        <div class="text-center py-4 text-dark font-weight-bold" style="font-size: 0.85rem;">
+                            <i class="fas fa-clipboard-check text-primary mb-2" style="font-size: 2rem;"></i><br>
                             No pending supplier purchase orders needed right now.
                         </div>
                     @endforelse
@@ -295,106 +581,33 @@
         </div>
     </div>
 
-    {{-- Rules & Settings Modal --}}
-    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-labelledby="settingsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content shadow">
-                <div class="modal-header py-2 bg-light">
-                    <h5 class="modal-title font-weight-bold text-sm" id="settingsModalLabel">
-                        <i class="fas fa-sliders-h text-primary mr-1"></i> Replenishment Rules Configuration
-                    </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <form id="settingsForm">
-                    @csrf
-                    <div class="modal-body p-3">
-                        <h6 class="font-weight-bold text-xs text-uppercase text-muted mb-2">1. Sales Movement Target Cover Days</h6>
-                        <p class="text-muted text-xs mb-3">Defines target buffer days maintained based on average daily velocity.</p>
-
-                        @foreach($salesRules as $rule)
-                            <div class="form-group row mb-2 align-items-center">
-                                <label class="col-7 col-form-label text-xs">
-                                    <strong>{{ $rule->rule_name }}</strong>
-                                    <span class="text-muted">
-                                        ({{ $rule->min_daily_avg }}{{ $rule->max_daily_avg ? ' - ' . $rule->max_daily_avg : '+' }} units/day)
-                                    </span>
-                                </label>
-                                <div class="col-5">
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" name="sales_rules[{{ $rule->id }}]" class="form-control text-center font-weight-bold" value="{{ $rule->target_cover_days }}" min="1" max="180">
-                                        <div class="input-group-append">
-                                            <span class="input-group-text text-xs">Days</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-
-                        <hr class="my-3">
-                        <h6 class="font-weight-bold text-xs text-uppercase text-muted mb-2">2. Stock Condition Statuses</h6>
-                        <div class="row g-2">
-                            <div class="col-6 mb-2">
-                                <div class="p-2 rounded bg-danger text-white text-xs font-weight-bold text-center">
-                                    Critical: 0 - 3 Days
-                                </div>
-                            </div>
-                            <div class="col-6 mb-2">
-                                <div class="p-2 rounded bg-warning text-dark text-xs font-weight-bold text-center">
-                                    Low: 4 - 10 Days
-                                </div>
-                            </div>
-                            <div class="col-6 mb-2">
-                                <div class="p-2 rounded bg-success text-white text-xs font-weight-bold text-center">
-                                    Healthy: 11 - 30 Days
-                                </div>
-                            </div>
-                            <div class="col-6 mb-2">
-                                <div class="p-2 rounded bg-info text-white text-xs font-weight-bold text-center">
-                                    Overstock: > 30 Days
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer py-2 bg-light">
-                        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary btn-sm font-weight-bold">
-                            <i class="fas fa-save mr-1"></i> Save Changes & Recalculate
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     {{-- Supplier Review & 1-Click PO Modal --}}
     <div class="modal fade" id="poModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-            <div class="modal-content shadow">
-                <div class="modal-header py-2 bg-light">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
                     <h5 class="modal-title font-weight-bold text-sm" id="poModalTitle">
                         <i class="fas fa-file-invoice text-primary mr-1"></i> Purchase Order Recommendation
                     </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body p-3 text-sm">
-                    <div class="bg-light p-2 rounded mb-3 border d-flex justify-content-between align-items-center">
+                    <div class="bg-light p-3 rounded mb-3 border border-dark d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="text-muted">Vendor:</span> <strong id="modalVendorName" class="text-dark">-</strong><br>
-                            <span class="text-muted">Target Store:</span> <strong id="modalBranchName" class="text-dark">Current Branch</strong>
+                            <span class="font-weight-bold text-dark">Vendor:</span> <strong id="modalVendorName" class="text-dark ml-1">-</strong><br>
+                            <span class="font-weight-bold text-dark">Target Store:</span> <strong id="modalBranchName" class="text-dark ml-1">Current Branch</strong>
                         </div>
                         <div class="text-right">
-                            <span class="text-muted">Estimated Amount:</span><br>
-                            <span class="font-weight-bold text-primary" id="modalEstimatedVal" style="font-size:1.1rem;">-</span>
+                            <span class="font-weight-bold text-dark">Estimated Amount:</span><br>
+                            <span class="font-weight-bold text-primary" id="modalEstimatedVal" style="font-size:1.25rem;">-</span>
                         </div>
                     </div>
 
                     <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
                         <table class="table table-sm table-bordered text-xs mb-0">
-                            <thead class="thead-light">
+                            <thead class="bg-dark text-white">
                                 <tr>
                                     <th>Item SKU & Name</th>
                                     <th class="text-right">Unit Cost</th>
@@ -406,10 +619,10 @@
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer py-2 bg-light">
-                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm font-weight-bold" id="btnConfirmGeneratePo">
-                        <i class="fas fa-check mr-1"></i> Confirm & Generate 1-Click PO
+                <div class="modal-footer py-2 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-action-outline btn-sm font-weight-bold" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-action-dark btn-sm font-weight-bold" id="btnConfirmGeneratePo">
+                        <i class="fas fa-check mr-1 text-success"></i> Confirm & Generate 1-Click PO
                     </button>
                 </div>
             </div>
@@ -491,31 +704,10 @@
             });
         });
 
-        // Settings Save
-        $('#settingsForm').on('submit', function(e) {
-            e.preventDefault();
-            const formData = $(this).serialize();
-
-            $.ajax({
-                url: "{{ route('inventory.replenishment.settings.update') }}",
-                type: 'POST',
-                data: formData,
-                success: function(res) {
-                    $('#settingsModal').modal('hide');
-                    $('#statusAlertMessage').text(res.message);
-                    $('#statusAlert').removeClass('d-none');
-                    $('#btnSyncLive').trigger('click');
-                },
-                error: function() {
-                    alert('Failed to update rules settings.');
-                }
-            });
-        });
-
-        // Confirm PO generation from modal
+        // PO Confirmation inside modal
         $('#btnConfirmGeneratePo').on('click', function() {
-            if (!currentModalSupplierId || currentModalItems.length === 0) {
-                alert('No valid supplier or items to order.');
+            if (!currentModalSupplierId) {
+                alert('Supplier ID is missing.');
                 return;
             }
 
@@ -534,7 +726,7 @@
 
             if (itemsPayload.length === 0) {
                 alert('Please enter at least one quantity greater than zero.');
-                $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Confirm & Generate 1-Click PO');
+                $btn.prop('disabled', false).html('<i class="fas fa-check mr-1 text-success"></i> Confirm & Generate 1-Click PO');
                 return;
             }
 
@@ -549,7 +741,7 @@
                 },
                 success: function(res) {
                     $('#poModal').modal('hide');
-                    $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-dark" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
+                    $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-white" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
                     $('#statusAlert').removeClass('d-none');
                     loadTableData(currentPage);
                 },
@@ -558,7 +750,7 @@
                     alert(msg);
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Confirm & Generate 1-Click PO');
+                    $btn.prop('disabled', false).html('<i class="fas fa-check mr-1 text-success"></i> Confirm & Generate 1-Click PO');
                 }
             });
         });
@@ -582,8 +774,8 @@
                         initialStatus['Overstock'] || 0,
                         initialStatus['Dead Stock'] || 0
                     ],
-                    backgroundColor: ['#dc3545', '#ffc107', '#28a745', '#17a2b8', '#6c757d'],
-                    borderWidth: 1.5,
+                    backgroundColor: ['#dc2626', '#d97706', '#16a34a', '#2563eb', '#475569'],
+                    borderWidth: 2,
                     borderColor: '#ffffff'
                 }]
             },
@@ -591,7 +783,14 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } }
+                    legend: { 
+                        position: 'right', 
+                        labels: { 
+                            boxWidth: 12, 
+                            color: '#0f172a',
+                            font: { size: 11, weight: '700' } 
+                        } 
+                    }
                 }
             }
         });
@@ -611,8 +810,8 @@
                         initialVelocity['Slow Moving'] || 0,
                         initialVelocity['Dead Stock'] || 0
                     ],
-                    backgroundColor: ['#6f42c1', '#007bff', '#28a745', '#fd7e14', '#adb5bd'],
-                    borderRadius: 3
+                    backgroundColor: ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#475569'],
+                    borderRadius: 6
                 }]
             },
             options: {
@@ -620,8 +819,15 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, ticks: { font: { size: 9.5 } } },
-                    x: { ticks: { font: { size: 9.5 } } }
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { color: '#0f172a', font: { size: 10, weight: '700' } },
+                        grid: { color: '#e2e8f0' }
+                    },
+                    x: { 
+                        ticks: { color: '#0f172a', font: { size: 10, weight: '700' } },
+                        grid: { display: false }
+                    }
                 }
             }
         });
@@ -660,7 +866,7 @@
 
     function loadTableData(page = 1) {
         currentPage = page;
-        $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Loading data...</td></tr>');
+        $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-spinner fa-spin mr-1"></i> Loading data...</td></tr>');
 
         $.ajax({
             url: "{{ route('inventory.replenishment.data') }}",
@@ -677,14 +883,14 @@
                 renderPagination(res);
             },
             error: function() {
-                $('#tableBody').html('<tr><td colspan="9" class="text-center py-3 text-danger"><i class="fas fa-exclamation-circle mr-1"></i> Failed to load replenishment data.</td></tr>');
+                $('#tableBody').html('<tr><td colspan="9" class="text-center py-3 text-danger font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Failed to load replenishment data.</td></tr>');
             }
         });
     }
 
     function renderTable(rows) {
         if (!rows || rows.length === 0) {
-            $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.</td></tr>');
+            $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.</td></tr>');
             return;
         }
 
@@ -704,50 +910,57 @@
             const status = row.stock_status || 'Healthy';
             const supplierId = row.primary_supplier_id || (item.supplier_id || null);
 
-            let statusBadgeClass = 'badge-secondary';
-            if (status === 'Critical') statusBadgeClass = 'badge-danger';
-            else if (status === 'Low') statusBadgeClass = 'badge-warning';
-            else if (status === 'Healthy') statusBadgeClass = 'badge-success';
-            else if (status === 'Overstock') statusBadgeClass = 'badge-info';
+            let statusChip = 'status-pill dead';
+            if (status === 'Critical') statusChip = 'status-pill critical';
+            else if (status === 'Low') statusChip = 'status-pill low';
+            else if (status === 'Healthy') statusChip = 'status-pill healthy';
+            else if (status === 'Overstock') statusChip = 'status-pill overstock';
 
-            let coverDaysColor = 'text-dark';
-            if (status === 'Critical') coverDaysColor = 'text-danger font-weight-bold';
-            else if (status === 'Low') coverDaysColor = 'text-warning font-weight-bold';
+            let coverDaysColor = 'color: #0f172a;';
+            if (status === 'Critical') coverDaysColor = 'color: #dc2626; font-weight: 800;';
+            else if (status === 'Low') coverDaysColor = 'color: #d97706; font-weight: 800;';
 
             html += `
                 <tr>
                     <td>
-                        <div class="font-weight-bold text-dark">${escapeHtml(itemName)}</div>
-                        <small class="text-muted">SKU: ${escapeHtml(itemCode)} &bull; ${escapeHtml(brand)}</small>
+                        <div class="item-title">${escapeHtml(itemName)}</div>
+                        <div class="item-subtitle">
+                            <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius:4px;">SKU: ${escapeHtml(itemCode)}</span> &bull; 
+                            <span class="font-weight-bold text-dark">${escapeHtml(brand)}</span>
+                        </div>
                     </td>
                     <td>
-                        <span class="font-weight-bold">${curStock}</span>
-                        ${othStock > 0 ? `<br><small class="text-muted"><i class="fas fa-warehouse mr-1 text-xs"></i> Other: ${othStock}</small>` : ''}
+                        <div class="font-weight-bold text-dark" style="font-size:0.95rem;">${curStock} units</div>
+                        ${othStock > 0 ? `<div class="item-subtitle text-dark mt-1"><i class="fas fa-warehouse mr-1 text-primary"></i> Other Store: <strong class="text-dark">${othStock}</strong></div>` : ''}
                     </td>
-                    <td class="text-center">${sales30d}</td>
-                    <td class="text-center">${avgDay}</td>
-                    <td class="text-center ${coverDaysColor}">${coverDays} d</td>
-                    <td class="text-center text-muted">${targetDays} d</td>
+                    <td class="text-center font-weight-bold text-dark">${sales30d}</td>
+                    <td class="text-center font-weight-bold text-dark">${avgDay}</td>
+                    <td class="text-center" style="${coverDaysColor}">
+                        ${coverDays} <span class="text-xs text-dark font-weight-bold">days</span>
+                    </td>
+                    <td class="text-center font-weight-bold text-dark">
+                        ${targetDays} <span class="text-xs text-dark font-weight-bold">days</span>
+                    </td>
                     <td class="text-center">
                         ${suggestedQty > 0 
-                            ? `<span class="badge badge-danger px-2 py-1" style="font-size:0.9rem;">${suggestedQty}</span>` 
-                            : `<span class="text-muted">0</span>`
+                            ? `<span class="reorder-badge">${suggestedQty} Qty</span>` 
+                            : `<span class="text-dark font-weight-bold">&mdash;</span>`
                         }
                     </td>
                     <td class="text-center">
-                        <span class="badge ${statusBadgeClass} px-2 py-1">${status}</span>
+                        <span class="${statusChip}">${status}</span>
                     </td>
                     <td class="text-center">
-                        <div class="btn-group btn-group-xs">
+                        <div class="d-flex justify-content-center">
                             ${suggestedQty > 0 && supplierId
-                                ? `<button type="button" class="btn btn-primary btn-xs mr-1 shadow-sm font-weight-bold" onclick="triggerSingleItemPo(${row.item_id}, ${supplierId}, ${suggestedQty}, '${escapeJs(itemName)}')" title="Generate PO for this item">
+                                ? `<button type="button" class="btn btn-action-dark btn-xs mr-1 shadow-sm font-weight-bold" onclick="triggerSingleItemPo(${row.item_id}, ${supplierId}, ${suggestedQty}, '${escapeJs(itemName)}')" title="Generate PO for this item">
                                      <i class="fas fa-cart-plus mr-1"></i> Order
                                    </button>` 
                                 : ''
                             }
                             ${othStock > 0 && (status === 'Critical' || status === 'Low')
-                                ? `<a href="{{ route('inventory.replenishment.transfers') }}" class="btn btn-outline-success btn-xs shadow-sm font-weight-bold" title="View available transfer sources">
-                                     <i class="fas fa-random mr-1"></i> Transfer
+                                ? `<a href="{{ route('inventory.replenishment.transfers') }}" class="btn btn-action-outline btn-xs shadow-sm font-weight-bold" title="View available transfer sources">
+                                     <i class="fas fa-exchange-alt mr-1"></i> Transfer
                                    </a>` 
                                 : ''
                             }
@@ -767,7 +980,7 @@
         let html = '';
         if (res.last_page > 1) {
             html += `<li class="page-item ${res.current_page === 1 ? 'disabled' : ''}">
-                        <a class="page-link" href="javascript:void(0)" onclick="loadTableData(${res.current_page - 1})">&laquo;</a>
+                        <a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="loadTableData(${res.current_page - 1})">&laquo;</a>
                      </li>`;
 
             let start = Math.max(1, res.current_page - 2);
@@ -775,12 +988,12 @@
 
             for (let i = start; i <= end; i++) {
                 html += `<li class="page-item ${i === res.current_page ? 'active' : ''}">
-                            <a class="page-link" href="javascript:void(0)" onclick="loadTableData(${i})">${i}</a>
+                            <a class="page-link font-weight-bold ${i === res.current_page ? 'bg-dark text-white border-dark' : 'text-dark'}" href="javascript:void(0)" onclick="loadTableData(${i})">${i}</a>
                          </li>`;
             }
 
             html += `<li class="page-item ${res.current_page === res.last_page ? 'disabled' : ''}">
-                        <a class="page-link" href="javascript:void(0)" onclick="loadTableData(${res.current_page + 1})">&raquo;</a>
+                        <a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="loadTableData(${res.current_page + 1})">&raquo;</a>
                      </li>`;
         }
 
@@ -804,7 +1017,7 @@
                 items: [{ item_id: itemId, qty: qty }]
             },
             success: function(res) {
-                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-dark" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
+                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-white" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
                 $('#statusAlert').removeClass('d-none');
                 loadTableData(currentPage);
             },
@@ -829,7 +1042,7 @@
                 items: [{ item_id: itemId, qty: qty }]
             },
             success: function(res) {
-                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-dark" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Transfer</a>`);
+                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-white" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Transfer</a>`);
                 $('#statusAlert').removeClass('d-none');
                 loadTableData(currentPage);
             },
@@ -843,7 +1056,7 @@
         currentModalSupplierId = supplierId;
         currentModalItems = items || [];
 
-        $('#poModalTitle').html(`<i class="fas fa-truck text-primary mr-1"></i> PO Recommendation for ${supplierName}`);
+        $('#poModalTitle').html(`<i class="fas fa-truck text-primary mr-2"></i> PO Recommendation for ${supplierName}`);
         $('#modalVendorName').text(supplierName);
         $('#modalEstimatedVal').text(val);
 
@@ -851,12 +1064,14 @@
         currentModalItems.forEach(function(item) {
             rowsHtml += `
                 <tr>
-                    <td class="align-middle"><strong>${escapeHtml(item.name)}</strong></td>
-                    <td class="text-right align-middle">₹ ${Number(item.cost || 0).toFixed(2)}</td>
-                    <td class="text-center align-middle">
-                        <input type="number" class="form-control form-control-sm text-center font-weight-bold modal-item-qty" data-item-id="${item.item_id}" value="${item.qty}" min="1">
+                    <td class="align-middle">
+                        <strong class="text-dark">${escapeHtml(item.name)}</strong>
                     </td>
-                    <td class="text-right align-middle font-weight-bold">₹ ${(item.qty * (item.cost || 0)).toFixed(2)}</td>
+                    <td class="text-right align-middle font-weight-bold text-dark">₹ ${Number(item.cost || 0).toFixed(2)}</td>
+                    <td class="text-center align-middle">
+                        <input type="number" class="form-control form-control-sm text-center font-weight-bold modal-item-qty modern-control" data-item-id="${item.item_id}" value="${item.qty}" min="1">
+                    </td>
+                    <td class="text-right align-middle font-weight-bold text-dark">₹ ${(item.qty * (item.cost || 0)).toFixed(2)}</td>
                 </tr>
             `;
         });
