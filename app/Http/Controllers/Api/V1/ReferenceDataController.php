@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
+use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\ItemCategoryValue;
 use Illuminate\Http\Request;
@@ -47,10 +48,19 @@ class ReferenceDataController extends Controller
 
     public function brands(Request $request)
     {
-        $brands = Brand::query()
-            ->where('status', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $query = Brand::query()->where('status', true);
+
+        if ($request->filled('category_value_id') || $request->filled('category_id')) {
+            $catVal = $request->input('category_value_id') ?? $request->input('category_id');
+            $catIds = is_array($catVal) ? $catVal : explode(',', (string) $catVal);
+            $brandIds = Item::whereIn('category_value_id', $catIds)
+                ->whereNotNull('brand_id')
+                ->distinct()
+                ->pluck('brand_id');
+            $query->whereIn('id', $brandIds);
+        }
+
+        $brands = $query->orderBy('name')->get(['id', 'name']);
 
         return response()->json(['data' => $brands]);
     }

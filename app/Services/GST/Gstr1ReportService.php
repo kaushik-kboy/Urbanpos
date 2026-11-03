@@ -243,35 +243,33 @@ class Gstr1ReportService
 
     private function hsnSummary(bool $isB2b): array
     {
-        $gstin = $this->gstinExpr();
-        $condition = $isB2b ? "{$gstin} IS NOT NULL" : "{$gstin} IS NULL";
+        $gstin = $this->gstinExpr('sales_bills', 'customers');
+        $billCondition = $isB2b ? "{$gstin} IS NOT NULL" : "{$gstin} IS NULL";
 
-        $base = fn () => DB::table('sales_bill_items')
+        // Authoritative bill totals (Net of line discounts and bill discounts)
+        $billTotals = $this->billsBaseQuery()
+            ->whereRaw($billCondition)
+            ->selectRaw('
+                SUM(sales_bills.total - sales_bills.total_gst) as bill_taxable,
+                SUM(sales_bills.total_gst) as bill_gst
+            ')
+            ->first();
+        $targetBillTaxable = (float) ($billTotals->bill_taxable ?? 0);
+        $targetBillTax = (float) ($billTotals->bill_gst ?? 0);
+
+        // Fetch bill items grouped by (hsn, rate)
+        $billRows = DB::table('sales_bill_items')
             ->join('sales_bills', 'sales_bills.id', '=', 'sales_bill_items.sales_bill_id')
             ->leftJoin('customers', 'customers.id', '=', 'sales_bills.customer_id')
             ->leftJoin('items', 'items.id', '=', 'sales_bill_items.item_id')
             ->whereDate('sales_bills.bill_date', '>=', $this->fromDate)
             ->whereDate('sales_bills.bill_date', '<=', $this->toDate)
             ->where('sales_bills.status', '!=', 'Cancelled')
-            ->whereRaw($condition);
-
-        // Flat aggregate over every matching line — these totals don't need the
-        // HSN/rate grouping at all, so they're correct regardless of the row cap below.
-        $aggregates = $base()->selectRaw('
-                SUM(sales_bill_items.qty * (items.hsn_code IS NULL)) as missing_hsn_qty,
-                SUM(sales_bill_items.net_amount - sales_bill_items.gst_tax_amount) as taxable,
-                SUM(sales_bill_items.igst_amount + sales_bill_items.cgst_amount + sales_bill_items.sgst_amount) as tax
-            ')->first();
-
-        // Fetch one row beyond the cap so we know whether more groups exist
-        // without a separate COUNT query (which, measured, cost as much as the
-        // main aggregate query itself — not worth doubling the cost of every
-        // HSN page load just for an exact "of N" figure).
-        $rows = $base()
+            ->whereRaw($billCondition)
             ->selectRaw('
                 items.hsn_code as hsn,
                 sales_bill_items.gst_percent as rate,
-                MIN(COALESCE(items.name, "Unknown Item")) as sample_item_name,
+                MIN(COALESCE(items.name, "Unknown Item")) as sample_name,
                 COUNT(DISTINCT items.id) as item_count,
                 GROUP_CONCAT(DISTINCT items.name) as group_names,
                 SUM(sales_bill_items.qty) as qty,
@@ -283,51 +281,168 @@ class Gstr1ReportService
                 SUM(sales_bill_items.sgst_amount) as sgst
             ')
             ->groupBy('hsn', 'rate')
-            ->orderByRaw('SUM(sales_bill_items.net_amount - sales_bill_items.gst_tax_amount) DESC')
-            ->limit(self::HSN_ROW_CAP + 1)
             ->get();
-        $hasMore = $rows->count() > self::HSN_ROW_CAP;
-        $rows = $rows->take(self::HSN_ROW_CAP);
+
+        $rawBillTaxableSum = (float) $billRows->sum('taxable');
+        $taxableScale = $rawBillTaxableSum > 0 ? ($targetBillTaxable / $rawBillTaxableSum) : 1.0;
+
+        $rawBillTaxSum = (float) ($billRows->sum('igst') + $billRows->sum('cgst') + $billRows->sum('sgst'));
+        $billTaxScale = $rawBillTaxSum > 0 ? ($targetBillTax / $rawBillTaxSum) : 1.0;
+
+        // Authoritative return totals (Credit Notes / CDNR / CDNUR)
+        $retGstin = $this->gstinExpr('sales_returns', 'customers');
+        $retCondition = $isB2b ? "{$retGstin} IS NOT NULL" : "{$retGstin} IS NULL";
+
+        $retTotals = $this->returnsBaseQuery()
+            ->whereRaw($retCondition)
+            ->selectRaw('
+                SUM(sales_returns.total - sales_returns.total_gst) as ret_taxable,
+                SUM(sales_returns.total_gst) as ret_gst
+            ')
+            ->first();
+        $targetRetTaxable = (float) ($retTotals->ret_taxable ?? 0);
+        $targetRetTax = (float) ($retTotals->ret_gst ?? 0);
+
+        // Fetch return items grouped by (hsn, rate)
+        $retRows = DB::table('sales_return_items')
+            ->join('sales_returns', 'sales_returns.id', '=', 'sales_return_items.sales_return_id')
+            ->leftJoin('customers', 'customers.id', '=', 'sales_returns.customer_id')
+            ->leftJoin('items', 'items.id', '=', 'sales_return_items.item_id')
+            ->whereDate('sales_returns.return_date', '>=', $this->fromDate)
+            ->whereDate('sales_returns.return_date', '<=', $this->toDate)
+            ->where('sales_returns.status', '!=', 'Cancelled')
+            ->whereRaw($retCondition)
+            ->selectRaw('
+                items.hsn_code as hsn,
+                sales_return_items.gst_percent as rate,
+                SUM(sales_return_items.qty) as qty,
+                SUM(sales_return_items.net_amount) as total,
+                SUM(CASE WHEN sales_return_items.gst_percent = 0 THEN sales_return_items.net_amount ELSE 0 END) as nil,
+                SUM(sales_return_items.net_amount - sales_return_items.gst_tax_amount) as taxable,
+                SUM(sales_return_items.igst_amount) as igst,
+                SUM(sales_return_items.cgst_amount) as cgst,
+                SUM(sales_return_items.sgst_amount) as sgst
+            ')
+            ->groupBy('hsn', 'rate')
+            ->get();
+
+        $rawRetTaxableSum = (float) $retRows->sum('taxable');
+        $retTaxableScale = $rawRetTaxableSum > 0 ? ($targetRetTaxable / $rawRetTaxableSum) : 1.0;
+
+        $rawRetTaxSum = (float) ($retRows->sum('igst') + $retRows->sum('cgst') + $retRows->sum('sgst'));
+        $retTaxScale = $rawRetTaxSum > 0 ? ($targetRetTax / $rawRetTaxSum) : 1.0;
+
+        // Merge bill items and return items by (hsn, rate)
+        $groups = [];
+        foreach ($billRows as $bl) {
+            $key = ($bl->hsn ?? 'NULL').'|'.((float) $bl->rate);
+            $groups[$key] = [
+                'hsn' => $bl->hsn,
+                'rate' => (float) $bl->rate,
+                'sample_name' => $bl->sample_name,
+                'item_count' => (int) $bl->item_count,
+                'group_names' => (string) $bl->group_names,
+                'qty' => (float) $bl->qty,
+                'taxable' => (float) $bl->taxable * $taxableScale,
+                'igst' => (float) $bl->igst * $billTaxScale,
+                'cgst' => (float) $bl->cgst * $billTaxScale,
+                'sgst' => (float) $bl->sgst * $billTaxScale,
+                'nil' => (float) $bl->nil,
+            ];
+        }
+
+        foreach ($retRows as $rl) {
+            $key = ($rl->hsn ?? 'NULL').'|'.((float) $rl->rate);
+            $retTaxable = (float) $rl->taxable * $retTaxableScale;
+            $retIgst = (float) $rl->igst * $retTaxScale;
+            $retCgst = (float) $rl->cgst * $retTaxScale;
+            $retSgst = (float) $rl->sgst * $retTaxScale;
+
+            if (! isset($groups[$key])) {
+                $groups[$key] = [
+                    'hsn' => $rl->hsn,
+                    'rate' => (float) $rl->rate,
+                    'sample_name' => 'Returned Item',
+                    'item_count' => 1,
+                    'group_names' => '',
+                    'qty' => -((float) $rl->qty),
+                    'taxable' => -$retTaxable,
+                    'igst' => -$retIgst,
+                    'cgst' => -$retCgst,
+                    'sgst' => -$retSgst,
+                    'nil' => -((float) $rl->nil),
+                ];
+            } else {
+                $groups[$key]['qty'] -= (float) $rl->qty;
+                $groups[$key]['taxable'] -= $retTaxable;
+                $groups[$key]['igst'] -= $retIgst;
+                $groups[$key]['cgst'] -= $retCgst;
+                $groups[$key]['sgst'] -= $retSgst;
+                $groups[$key]['nil'] -= (float) $rl->nil;
+            }
+        }
+
+        // Sort descending by net taxable
+        uasort($groups, fn ($a, $b) => $b['taxable'] <=> $a['taxable']);
+
+        $missingHsnQty = 0.0;
+        foreach ($groups as $g) {
+            if (empty($g['hsn'])) {
+                $missingHsnQty += $g['qty'];
+            }
+        }
+
+        $allRows = array_values($groups);
+        $hasMore = count($allRows) > self::HSN_ROW_CAP;
+        $cappedRows = array_slice($allRows, 0, self::HSN_ROW_CAP);
+
+        $mappedRows = array_map(function ($r) {
+            $nameList = ! empty($r['group_names']) ? array_unique(array_filter(array_map('trim', explode(',', (string) $r['group_names'])))) : [];
+            $topNames = ! empty($nameList) ? implode(', ', array_slice($nameList, 0, 3)) : ($r['sample_name'] ?: 'Unknown Item');
+
+            if ($r['hsn'] === null) {
+                $name = '(!) HSN not set on item master (not fabricated): '.$topNames;
+                if ($r['item_count'] > 3) {
+                    $name .= ' (+'.($r['item_count'] - 3).' more items)';
+                }
+            } else {
+                $name = $topNames;
+                if ($r['item_count'] > 3) {
+                    $name .= ' (+'.($r['item_count'] - 3).' more items)';
+                }
+            }
+
+            $taxable = round((float) $r['taxable'], 2);
+            $igst = round((float) $r['igst'], 2);
+            $cgst = round((float) $r['cgst'], 2);
+            $sgst = round((float) $r['sgst'], 2);
+            $total = round($taxable + $igst + $cgst + $sgst, 2);
+
+            return [
+                'hsn' => $r['hsn'] ?? null,
+                'name' => $name,
+                'item_count' => (int) $r['item_count'],
+                'sample_name' => $r['sample_name'],
+                'uom' => 'UNT-UNITS',
+                'qty' => (float) $r['qty'],
+                'total' => $total,
+                'rate' => (float) $r['rate'],
+                'nil' => round((float) $r['nil'], 2),
+                'taxable' => $taxable,
+                'igst' => $igst,
+                'cgst' => $cgst,
+                'sgst' => $sgst,
+                'cess' => 0.00, // Cess is genuinely unsupported: no cess column exists anywhere in this schema.
+            ];
+        }, $cappedRows);
 
         return [
-            'taxable' => round((float) $aggregates->taxable, 2),
-            'tax' => round((float) $aggregates->tax, 2),
-            'missing_hsn_qty' => (float) $aggregates->missing_hsn_qty,
+            'taxable' => round($targetBillTaxable - $targetRetTaxable, 2),
+            'tax' => round($targetBillTax - $targetRetTax, 2),
+            'missing_hsn_qty' => $missingHsnQty,
             'has_more_groups' => $hasMore,
             'row_cap' => self::HSN_ROW_CAP,
-            'rows' => $rows->map(function ($r) {
-                $nameList = ! empty($r->group_names) ? array_unique(array_filter(array_map('trim', explode(',', (string) $r->group_names)))) : [];
-                $topNames = ! empty($nameList) ? implode(', ', array_slice($nameList, 0, 3)) : ($r->sample_item_name ?: 'Unknown Item');
-
-                if ($r->hsn === null) {
-                    $name = '(!) HSN not set on item master (not fabricated): '.$topNames;
-                    if ($r->item_count > 3) {
-                        $name .= ' (+'.($r->item_count - 3).' more items)';
-                    }
-                } else {
-                    $name = $topNames;
-                    if ($r->item_count > 3) {
-                        $name .= ' (+'.($r->item_count - 3).' more items)';
-                    }
-                }
-
-                return [
-                    'hsn' => $r->hsn ?? null,
-                    'name' => $name,
-                    'item_count' => (int) $r->item_count,
-                    'sample_name' => $r->sample_item_name,
-                    'uom' => 'UNT-UNITS',
-                    'qty' => (float) $r->qty,
-                    'total' => round((float) $r->total, 2),
-                    'rate' => (float) $r->rate,
-                    'nil' => round((float) $r->nil, 2),
-                    'taxable' => round((float) $r->taxable, 2),
-                    'igst' => round((float) $r->igst, 2),
-                    'cgst' => round((float) $r->cgst, 2),
-                    'sgst' => round((float) $r->sgst, 2),
-                    'cess' => 0.00, // Cess is genuinely unsupported: no cess column exists anywhere in this schema.
-                ];
-            })->values()->all(),
+            'rows' => $mappedRows,
         ];
     }
 
@@ -368,7 +483,7 @@ class Gstr1ReportService
                 sales_returns.total_cgst as cgst,
                 sales_returns.total_sgst as sgst,
                 (
-                    SELECT GROUP_CONCAT(DISTINCT sri.gst_percent ORDER BY sri.gst_percent SEPARATOR ', ')
+                    SELECT GROUP_CONCAT(DISTINCT sri.gst_percent)
                     FROM sales_return_items sri
                     WHERE sri.sales_return_id = sales_returns.id
                 ) as gst_rates,
@@ -388,7 +503,7 @@ class Gstr1ReportService
             'tax' => round((float) $rows->sum('gst'), 2),
             'rows' => $rows->map(function ($r) {
                 $rateStr = '';
-                if (!empty($r->gst_rates)) {
+                if (! empty($r->gst_rates)) {
                     $rates = array_map(function ($p) {
                         return ((float) trim($p)).'%';
                     }, explode(',', (string) $r->gst_rates));

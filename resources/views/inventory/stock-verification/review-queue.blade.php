@@ -50,7 +50,6 @@
                             <th>#</th>
                             <th>Type</th>
                             <th>Product</th>
-                            <th>Branch</th>
                             <th>Batch</th>
                             <th>Physical Qty</th>
                             <th>System Qty</th>
@@ -72,7 +71,6 @@
                                     @endif
                                 </td>
                                 <td>{{ $o['item_name'] }} <small class="text-muted">({{ $o['item_code'] }})</small></td>
-                                <td>{{ $o['branch_name'] }}</td>
                                 <td>{{ $o['batch_no'] ?: '-' }}</td>
                                 <td>{{ $o['physical_qty'] ?? '-' }}</td>
                                 <td>{{ $o['system_qty_snapshot'] ?? '-' }}</td>
@@ -95,11 +93,9 @@
                                     </a>
 
                                     @if ($o['type'] === 'stock_count')
-                                        <form action="{{ route('inventory.stock-verification.approve', $o['id']) }}" method="POST" class="d-inline" onsubmit="return promptApprove(this, {{ (float) ($o['system_qty_snapshot'] ?? 0) }})">
-                                            @csrf
-                                            <input type="hidden" name="approved_qty" value="">
-                                            <button type="button" class="btn btn-xs btn-success" onclick="promptApprove(this.closest('form'), {{ (float) ($o['system_qty_snapshot'] ?? 0) }})"><i class="fas fa-check mr-1"></i> Approve</button>
-                                        </form>
+                                        <button type="button" class="btn btn-xs btn-success" onclick="openApproveModal('{{ route('inventory.stock-verification.approve', $o['id']) }}', '{{ addslashes($o['item_name']) }}', '{{ $o['item_code'] }}', '{{ $o['physical_qty'] ?? 0 }}', '{{ $o['system_qty_snapshot'] ?? 0 }}', '{{ $o['variance'] ?? 0 }}')">
+                                            <i class="fas fa-check mr-1"></i> Approve
+                                        </button>
                                     @else
                                         <form action="{{ route('inventory.stock-verification.approve', $o['id']) }}" method="POST" class="d-inline" onsubmit="return confirm('Approve this expiry check? This records the review only — it will NOT change stock quantity.')">
                                             @csrf
@@ -121,7 +117,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="11" class="text-center text-muted py-4">No pending observations.</td></tr>
+                            <tr><td colspan="10" class="text-center text-muted py-4">No pending observations.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -141,6 +137,53 @@
             @endif
         </div>
     </div>
+
+    <!-- Modal for Approve Confirmation -->
+    <div class="modal fade" id="approveStockModal" tabindex="-1" role="dialog" aria-labelledby="approveModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form id="approveModalForm" method="POST" action="">
+                    @csrf
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title" id="approveModalLabel"><i class="fas fa-check-circle mr-1"></i> Confirm Stock Count Approval</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="text-muted mb-0">Product:</label>
+                            <h5 id="modalItemName" class="font-weight-bold text-dark mb-0"></h5>
+                            <small id="modalItemCode" class="text-muted"></small>
+                        </div>
+                        <div class="row text-center my-3 p-2 bg-light rounded">
+                            <div class="col-4">
+                                <small class="text-muted d-block">Physical Count</small>
+                                <strong id="modalPhysicalQty" class="h5 font-weight-bold text-primary">0</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">System Qty</small>
+                                <strong id="modalSystemQty" class="h5 font-weight-bold text-secondary">0</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">Variance</small>
+                                <strong id="modalVariance" class="h5 font-weight-bold">0</strong>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="modalApprovedQty" class="font-weight-bold">Approved Target Quantity <span class="text-danger">*</span></label>
+                            <input type="number" step="any" class="form-control form-control-lg text-center font-weight-bold" id="modalApprovedQty" name="approved_qty" required>
+                            <small class="form-text text-muted">This quantity will be applied to the system inventory ledger upon approval.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success font-weight-bold"><i class="fas fa-check mr-1"></i> Confirm & Approve</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('js')
@@ -152,12 +195,24 @@
             form.submit();
             return false;
         }
-        function promptApprove(form, systemQty) {
-            const approved = prompt('Approved target quantity (system qty is ' + systemQty + '):', systemQty);
-            if (approved === null || approved === '') { return false; }
-            form.querySelector('input[name="approved_qty"]').value = approved;
-            form.submit();
-            return false;
+
+        function openApproveModal(actionUrl, itemName, itemCode, physicalQty, systemQty, variance) {
+            const form = document.getElementById('approveModalForm');
+            form.action = actionUrl;
+            document.getElementById('modalItemName').innerText = itemName;
+            document.getElementById('modalItemCode').innerText = '(' + itemCode + ')';
+            document.getElementById('modalPhysicalQty').innerText = physicalQty;
+            document.getElementById('modalSystemQty').innerText = systemQty;
+
+            const varElem = document.getElementById('modalVariance');
+            const numVar = parseFloat(variance) || 0;
+            varElem.innerText = (numVar > 0 ? '+' : '') + numVar;
+            varElem.className = 'h5 font-weight-bold ' + (numVar > 0 ? 'text-success' : (numVar < 0 ? 'text-danger' : 'text-muted'));
+
+            // Default approved qty to physical qty (or system qty if 0)
+            document.getElementById('modalApprovedQty').value = physicalQty;
+
+            $('#approveStockModal').modal('show');
         }
     </script>
 @stop
