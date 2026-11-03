@@ -29,7 +29,7 @@ body, .content-wrapper {
     font-size: 0.85rem;
 }
 
-/* Modern Metric Cards (Replacing 2012 small-box) */
+/* Modern Metric Cards */
 .stat-card {
     background: #ffffff;
     border-radius: 12px;
@@ -390,9 +390,10 @@ body, .content-wrapper {
                     </div>
                 </div>
 
-                {{-- Filter Toolbar --}}
+                {{-- Filter Toolbar (Category, Brand, Sales Type, Supplier, Branch, Status, Search) --}}
                 <div class="modern-filter-toolbar">
                     <div class="row g-2 align-items-center">
+                        {{-- Row 1: Core Dimensions --}}
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-store mr-1 text-primary"></i> Branch</label>
                             <select id="filterBranch" class="form-control form-control-sm modern-control">
@@ -419,6 +420,18 @@ body, .content-wrapper {
                         </div>
 
                         <div class="col-md-3 col-6 mb-2">
+                            <label class="filter-field-label"><i class="fas fa-tachometer-alt mr-1 text-success"></i> Sales Movement</label>
+                            <select id="filterSalesType" class="form-control form-control-sm modern-control">
+                                <option value="all">All Velocities</option>
+                                <option value="Highest Moving">⚡ Highest Moving (20+ units/d)</option>
+                                <option value="Fast Moving">🚀 Fast Moving (10-20 units/d)</option>
+                                <option value="Normal Moving">📦 Normal Moving (5-10 units/d)</option>
+                                <option value="Slow Moving">⏳ Slow Moving (1-5 units/d)</option>
+                                <option value="Dead Stock">💤 Dead Stock (&lt;1 unit/d)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-building mr-1 text-primary"></i> Supplier</label>
                             <select id="filterSupplier" class="form-control form-control-sm modern-control">
                                 <option value="all">All Suppliers</option>
@@ -428,16 +441,43 @@ body, .content-wrapper {
                             </select>
                         </div>
 
+                        {{-- Row 2: Secondary Attributes & Search --}}
                         <div class="col-md-3 col-6 mb-2">
+                            <label class="filter-field-label"><i class="fas fa-tags mr-1 text-primary"></i> Category</label>
+                            <select id="filterCategory" class="form-control form-control-sm modern-control">
+                                <option value="all">All Categories</option>
+                                @foreach($categories as $c)
+                                    <option value="{{ $c->id }}">{{ $c->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <label class="filter-field-label"><i class="fas fa-award mr-1 text-primary"></i> Brand</label>
+                            <select id="filterBrand" class="form-control form-control-sm modern-control">
+                                <option value="all">All Brands</option>
+                                @foreach($brands as $b)
+                                    <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 col-8 mb-2">
                             <label class="filter-field-label"><i class="fas fa-search mr-1 text-primary"></i> Search Item / SKU</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="SKU, Name, Barcode...">
+                                <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="Search Name, SKU, Barcode...">
                                 <div class="input-group-append">
                                     <button class="btn btn-action-dark btn-sm" type="button" id="btnFilterSearch">
                                         <i class="fas fa-search"></i>
                                     </button>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="col-md-2 col-4 mb-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-action-outline btn-sm btn-block" id="btnResetFilters" title="Reset all filters">
+                                <i class="fas fa-undo-alt mr-1"></i> Reset
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -447,14 +487,14 @@ body, .content-wrapper {
                     <table class="modern-table" id="replenishmentTable">
                         <thead>
                             <tr>
-                                <th>Item Name (SKU)</th>
-                                <th>Branch Stock</th>
-                                <th class="text-center">30D Sales</th>
-                                <th class="text-center">Avg / Day</th>
+                                <th>Item Details</th>
+                                <th>Current Stock</th>
+                                <th class="text-center">Daily Avg</th>
                                 <th class="text-center">Cover Days</th>
-                                <th class="text-center">Target</th>
+                                <th class="text-center">Required Stock</th>
                                 <th class="text-center">Suggested Qty</th>
-                                <th class="text-center">Status</th>
+                                <th class="text-center">Sales Type</th>
+                                <th class="text-center">Stock Status</th>
                                 <th class="text-center" style="width: 140px;">Action</th>
                             </tr>
                         </thead>
@@ -609,11 +649,12 @@ body, .content-wrapper {
     $(document).ready(function() {
         loadTableData(1);
 
-        // Filter events
-        $('#filterBranch, #filterStatus, #filterSupplier').on('change', function() {
+        // Filter change triggers
+        $('#filterBranch, #filterStatus, #filterSalesType, #filterSupplier, #filterCategory, #filterBrand').on('change', function() {
             loadTableData(1);
         });
 
+        // Search trigger
         $('#btnFilterSearch').on('click', function() {
             loadTableData(1);
         });
@@ -624,12 +665,26 @@ body, .content-wrapper {
             }
         });
 
+        // Reset Filters Button
+        $('#btnResetFilters').on('click', function() {
+            $('#filterStatus').val('needs_action');
+            $('#filterSalesType').val('all');
+            $('#filterSupplier').val('all');
+            $('#filterCategory').val('all');
+            $('#filterBrand').val('all');
+            $('#filterSearch').val('');
+            loadTableData(1);
+        });
+
         // 1-Click Excel Export Trigger
         $('#btnExportExcel').on('click', function() {
             const params = new URLSearchParams({
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
+                sales_type: $('#filterSalesType').val(),
                 supplier_id: $('#filterSupplier').val(),
+                category_id: $('#filterCategory').val(),
+                brand_id: $('#filterBrand').val(),
                 search: $('#filterSearch').val()
             });
             window.location.href = "{{ route('inventory.replenishment.export') }}?" + params.toString();
@@ -738,7 +793,10 @@ body, .content-wrapper {
             data: {
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
+                sales_type: $('#filterSalesType').val(),
                 supplier_id: $('#filterSupplier').val(),
+                category_id: $('#filterCategory').val(),
+                brand_id: $('#filterBrand').val(),
                 search: $('#filterSearch').val(),
                 page: page
             },
@@ -764,14 +822,17 @@ body, .content-wrapper {
             const itemName = item.name || 'Unnamed Item #' + row.item_id;
             const itemCode = item.item_code || '-';
             const brand = (item.brand && item.brand.name) ? item.brand.name : '-';
+            const category = (item.category_value && item.category_value.name) ? item.category_value.name : '';
             const curStock = Number(row.current_stock || 0).toFixed(0);
             const othStock = Number(row.other_branch_stock || 0).toFixed(0);
             const sales30d = Number(row.sales_30d || 0).toFixed(0);
             const avgDay = Number(row.daily_avg_sales || 0).toFixed(2);
             const coverDays = Number(row.cover_days || 0).toFixed(1);
-            const targetDays = row.target_cover_days || 0;
+            const targetDays = Number(row.target_cover_days || 0);
+            const requiredStock = Math.ceil((row.daily_avg_sales || 0) * targetDays);
             const suggestedQty = Number(row.suggested_qty || 0);
             const status = row.stock_status || 'Healthy';
+            const salesType = row.sales_type || 'Dead Stock';
             const supplierId = row.primary_supplier_id || (item.supplier_id || null);
 
             let statusChip = 'status-pill dead';
@@ -779,6 +840,13 @@ body, .content-wrapper {
             else if (status === 'Low') statusChip = 'status-pill low';
             else if (status === 'Healthy') statusChip = 'status-pill healthy';
             else if (status === 'Overstock') statusChip = 'status-pill overstock';
+
+            let salesTypeBadge = 'badge-dark';
+            let salesTypeIcon = 'fa-bed';
+            if (salesType === 'Highest Moving') { salesTypeBadge = 'badge-success'; salesTypeIcon = 'fa-fire'; }
+            else if (salesType === 'Fast Moving') { salesTypeBadge = 'badge-primary'; salesTypeIcon = 'fa-tachometer-alt'; }
+            else if (salesType === 'Normal Moving') { salesTypeBadge = 'badge-info'; salesTypeIcon = 'fa-boxes'; }
+            else if (salesType === 'Slow Moving') { salesTypeBadge = 'badge-warning text-dark'; salesTypeIcon = 'fa-hourglass-half'; }
 
             let coverDaysColor = 'color: #0f172a;';
             if (status === 'Critical') coverDaysColor = 'color: #dc2626; font-weight: 800;';
@@ -791,25 +859,34 @@ body, .content-wrapper {
                         <div class="item-subtitle">
                             <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius:4px;">SKU: ${escapeHtml(itemCode)}</span> &bull; 
                             <span class="font-weight-bold text-dark">${escapeHtml(brand)}</span>
+                            ${category ? ` &bull; <span class="badge badge-light border border-dark text-dark px-2 py-0 font-weight-bold text-xs">${escapeHtml(category)}</span>` : ''}
                         </div>
                     </td>
                     <td>
                         <div class="font-weight-bold text-dark" style="font-size:0.95rem;">${curStock} units</div>
                         ${othStock > 0 ? `<div class="item-subtitle text-dark mt-1"><i class="fas fa-warehouse mr-1 text-primary"></i> Other Store: <strong class="text-dark">${othStock}</strong></div>` : ''}
                     </td>
-                    <td class="text-center font-weight-bold text-dark">${sales30d}</td>
-                    <td class="text-center font-weight-bold text-dark">${avgDay}</td>
+                    <td class="text-center font-weight-bold text-dark">
+                        ${avgDay}<br>
+                        <small class="font-weight-bold text-dark" style="font-size:0.7rem;">(${sales30d} in 30d)</small>
+                    </td>
                     <td class="text-center" style="${coverDaysColor}">
                         ${coverDays} <span class="text-xs text-dark font-weight-bold">days</span>
                     </td>
                     <td class="text-center font-weight-bold text-dark">
-                        ${targetDays} <span class="text-xs text-dark font-weight-bold">days</span>
+                        <span class="badge badge-light border border-dark text-dark font-weight-bold px-2 py-1" style="font-size: 0.88rem;">${requiredStock} units</span>
+                        <br><small class="text-dark font-weight-bold" style="font-size:0.7rem;">(${targetDays}d target)</small>
                     </td>
                     <td class="text-center">
                         ${suggestedQty > 0 
                             ? `<span class="reorder-badge">${suggestedQty} Qty</span>` 
                             : `<span class="text-dark font-weight-bold">&mdash;</span>`
                         }
+                    </td>
+                    <td class="text-center">
+                        <span class="badge ${salesTypeBadge} px-2 py-1 font-weight-bold text-xs" style="border-radius:6px;">
+                            <i class="fas ${salesTypeIcon} mr-1"></i> ${salesType}
+                        </span>
                     </td>
                     <td class="text-center">
                         <span class="${statusChip}">${status}</span>

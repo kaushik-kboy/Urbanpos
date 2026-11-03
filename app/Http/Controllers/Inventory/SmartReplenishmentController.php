@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Item;
-use App\Models\ItemCategory;
+use App\Models\ItemCategoryValue;
 use App\Models\PurchaseOrder;
 use App\Models\ReplenishmentItemMetric;
 use App\Models\ReplenishmentSalesRule;
@@ -51,7 +51,7 @@ class SmartReplenishmentController extends Controller
         $supplierOrders = $this->service->getSupplierOrderRecommendations($activeBranchId)->take(6);
 
         $brands = Brand::orderBy('name')->get(['id', 'name']);
-        $categories = ItemCategory::orderBy('name')->get(['id', 'name']);
+        $categories = ItemCategoryValue::where('status', true)->orderBy('name')->get(['id', 'name']);
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $salesRules = ReplenishmentSalesRule::orderBy('sort_order')->get();
         $stockRules = ReplenishmentStockRule::orderBy('sort_order')->get();
@@ -81,6 +81,7 @@ class SmartReplenishmentController extends Controller
 
         $branchId = $request->get('branch_id');
         $status = $request->get('status');
+        $salesType = $request->get('sales_type');
         $brandId = $request->get('brand_id');
         $categoryId = $request->get('category_id');
         $supplierId = $request->get('supplier_id');
@@ -110,6 +111,10 @@ class SmartReplenishmentController extends Controller
             } else {
                 $query->where('stock_status', $status);
             }
+        }
+
+        if ($salesType && $salesType !== 'all') {
+            $query->where('sales_type', $salesType);
         }
 
         if ($supplierId && $supplierId !== 'all') {
@@ -465,6 +470,7 @@ class SmartReplenishmentController extends Controller
 
         $branchId = $request->get('branch_id');
         $status = $request->get('status');
+        $salesType = $request->get('sales_type');
         $brandId = $request->get('brand_id');
         $categoryId = $request->get('category_id');
         $supplierId = $request->get('supplier_id');
@@ -494,6 +500,10 @@ class SmartReplenishmentController extends Controller
             } else {
                 $query->where('stock_status', $status);
             }
+        }
+
+        if ($salesType && $salesType !== 'all') {
+            $query->where('sales_type', $salesType);
         }
 
         if ($supplierId && $supplierId !== 'all') {
@@ -541,7 +551,9 @@ class SmartReplenishmentController extends Controller
                 (float) $metric->daily_avg_sales,
                 (float) $metric->cover_days,
                 (int) $metric->target_cover_days,
+                (int) ceil($metric->daily_avg_sales * $metric->target_cover_days),
                 (int) $metric->suggested_qty,
+                $metric->sales_type ?? 'Dead Stock',
                 $metric->stock_status,
                 $unitCost,
                 $reorderVal,
