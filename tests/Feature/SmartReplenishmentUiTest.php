@@ -109,6 +109,14 @@ class SmartReplenishmentUiTest extends TestCase
         ]);
     }
 
+    public function test_settings_page_renders_successfully(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('inventory.replenishment.settings'));
+        $response->assertStatus(200);
+        $response->assertSee('Replenishment Rules & Settings');
+        $response->assertSee('Sales Movement Rules');
+    }
+
     public function test_settings_update_modifies_rules(): void
     {
         $rule = ReplenishmentSalesRule::first();
@@ -122,6 +130,22 @@ class SmartReplenishmentUiTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertEquals(35, $rule->fresh()->target_cover_days);
+    }
+
+    public function test_settings_update_via_form_post_redirects_with_success(): void
+    {
+        $rule = ReplenishmentSalesRule::first();
+        $this->assertNotNull($rule);
+
+        $response = $this->actingAs($this->user)->post(route('inventory.replenishment.settings.update'), [
+            'sales_rules' => [
+                $rule->id => 40,
+            ],
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+        $this->assertEquals(40, $rule->fresh()->target_cover_days);
     }
 
     public function test_transfers_page_renders_successfully(): void

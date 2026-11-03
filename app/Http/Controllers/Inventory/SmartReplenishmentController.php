@@ -178,12 +178,30 @@ class SmartReplenishmentController extends Controller
     }
 
     /**
-     * Update Replenishment Rules & Settings.
+     * View Replenishment Rules & Settings.
      */
-    public function updateSettings(Request $request): JsonResponse
+    public function settings(): View
     {
         if (! config('replenishment.enabled', false)) {
-            return response()->json(['error' => 'Not enabled'], 404);
+            abort(404);
+        }
+
+        $salesRules = ReplenishmentSalesRule::orderBy('id')->get();
+        $stockRules = ReplenishmentStockRule::orderBy('id')->get();
+
+        return view('inventory.replenishment.settings', compact('salesRules', 'stockRules'));
+    }
+
+    /**
+     * Update Replenishment Rules & Settings.
+     */
+    public function updateSettings(Request $request)
+    {
+        if (! config('replenishment.enabled', false)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Not enabled'], 404);
+            }
+            abort(404);
         }
 
         $salesRulesData = $request->input('sales_rules', []);
@@ -193,10 +211,14 @@ class SmartReplenishmentController extends Controller
             ]);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Replenishment rules and target days updated successfully!',
-        ]);
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Replenishment rules and target days updated successfully!',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Replenishment rules and target days updated successfully!');
     }
 
     /**
