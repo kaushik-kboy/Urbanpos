@@ -373,36 +373,6 @@ body, .content-wrapper {
         </div>
     </div>
 
-    {{-- Visual Analytics Charts --}}
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <div class="modern-card h-100">
-                <div class="modern-card-header">
-                    <h3 class="modern-card-title">
-                        <i class="fas fa-chart-pie mr-2 text-primary"></i> Stock Health Condition
-                    </h3>
-                    <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius: 6px;">Live Breakdown</span>
-                </div>
-                <div class="p-3" style="height: 195px; position: relative;">
-                    <canvas id="stockHealthChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 mb-3">
-            <div class="modern-card h-100">
-                <div class="modern-card-header">
-                    <h3 class="modern-card-title">
-                        <i class="fas fa-tachometer-alt mr-2 text-success"></i> Sales Movement Velocity (30 Days)
-                    </h3>
-                    <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius: 6px;">Velocity Tiers</span>
-                </div>
-                <div class="p-3" style="height: 195px; position: relative;">
-                    <canvas id="salesVelocityChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- Main Workspace: Table + Side Action Panels --}}
     <div class="row">
         {{-- Left 8 Cols: Stock Analysis Data Table --}}
@@ -631,16 +601,12 @@ body, .content-wrapper {
 @stop
 
 @section('js')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
-    let stockHealthChartInstance = null;
-    let salesVelocityChartInstance = null;
     let currentPage = 1;
     let currentModalSupplierId = null;
     let currentModalItems = [];
 
     $(document).ready(function() {
-        initCharts();
         loadTableData(1);
 
         // Filter events
@@ -689,7 +655,6 @@ body, .content-wrapper {
                     $('#statusAlert').removeClass('d-none');
                     if (res.summary) {
                         updateKpis(res.summary);
-                        updateCharts(res.summary);
                     }
                     loadTableData(currentPage);
                 },
@@ -756,112 +721,11 @@ body, .content-wrapper {
         });
     });
 
-    function initCharts() {
-        const initialStatus = @json($summary['status_chart'] ?? []);
-        const initialVelocity = @json($summary['velocity_chart'] ?? []);
-
-        // Donut Chart: Stock Health
-        const ctxHealth = document.getElementById('stockHealthChart').getContext('2d');
-        stockHealthChartInstance = new Chart(ctxHealth, {
-            type: 'doughnut',
-            data: {
-                labels: ['Critical (0-3d)', 'Low (4-10d)', 'Healthy (11-30d)', 'Overstock (>30d)', 'Dead Stock'],
-                datasets: [{
-                    data: [
-                        initialStatus['Critical'] || 0,
-                        initialStatus['Low'] || 0,
-                        initialStatus['Healthy'] || 0,
-                        initialStatus['Overstock'] || 0,
-                        initialStatus['Dead Stock'] || 0
-                    ],
-                    backgroundColor: ['#dc2626', '#d97706', '#16a34a', '#2563eb', '#475569'],
-                    borderWidth: 2,
-                    borderColor: '#ffffff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { 
-                        position: 'right', 
-                        labels: { 
-                            boxWidth: 12, 
-                            color: '#0f172a',
-                            font: { size: 11, weight: '700' } 
-                        } 
-                    }
-                }
-            }
-        });
-
-        // Bar Chart: Velocity
-        const ctxVelocity = document.getElementById('salesVelocityChart').getContext('2d');
-        salesVelocityChartInstance = new Chart(ctxVelocity, {
-            type: 'bar',
-            data: {
-                labels: ['Highest (20+)', 'Fast (10-20)', 'Normal (5-10)', 'Slow (1-5)', 'Dead (<1)'],
-                datasets: [{
-                    label: 'SKUs',
-                    data: [
-                        initialVelocity['Highest Moving'] || 0,
-                        initialVelocity['Fast Moving'] || 0,
-                        initialVelocity['Normal Moving'] || 0,
-                        initialVelocity['Slow Moving'] || 0,
-                        initialVelocity['Dead Stock'] || 0
-                    ],
-                    backgroundColor: ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#475569'],
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { color: '#0f172a', font: { size: 10, weight: '700' } },
-                        grid: { color: '#e2e8f0' }
-                    },
-                    x: { 
-                        ticks: { color: '#0f172a', font: { size: 10, weight: '700' } },
-                        grid: { display: false }
-                    }
-                }
-            }
-        });
-    }
-
     function updateKpis(summary) {
         $('#kpiCriticalCount').text(Number(summary.critical_count || 0).toLocaleString());
         $('#kpiLowCount').text(Number(summary.low_count || 0).toLocaleString());
         $('#kpiTransferCount').text(Number(summary.transfer_opportunities_count || 0).toLocaleString());
         $('#kpiPoValue').text('₹ ' + Number(summary.suggested_po_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2}));
-    }
-
-    function updateCharts(summary) {
-        if (stockHealthChartInstance && summary.status_chart) {
-            stockHealthChartInstance.data.datasets[0].data = [
-                summary.status_chart['Critical'] || 0,
-                summary.status_chart['Low'] || 0,
-                summary.status_chart['Healthy'] || 0,
-                summary.status_chart['Overstock'] || 0,
-                summary.status_chart['Dead Stock'] || 0
-            ];
-            stockHealthChartInstance.update();
-        }
-
-        if (salesVelocityChartInstance && summary.velocity_chart) {
-            salesVelocityChartInstance.data.datasets[0].data = [
-                summary.velocity_chart['Highest Moving'] || 0,
-                summary.velocity_chart['Fast Moving'] || 0,
-                summary.velocity_chart['Normal Moving'] || 0,
-                summary.velocity_chart['Slow Moving'] || 0,
-                summary.velocity_chart['Dead Stock'] || 0
-            ];
-            salesVelocityChartInstance.update();
-        }
     }
 
     function loadTableData(page = 1) {

@@ -87,9 +87,9 @@ class SmartReplenishmentController extends Controller
         $search = $request->get('search');
 
         $query = ReplenishmentItemMetric::with([
-            'item:id,name,item_code,brand_id,category_id,supplier_id,cost_price,sell_price',
+            'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price,sell_price',
             'item.brand:id,name',
-            'item.category:id,name',
+            'item.categoryValue:id,name',
             'supplier:id,name',
             'branch:id,name',
         ]);
@@ -124,7 +124,7 @@ class SmartReplenishmentController extends Controller
 
         if ($categoryId && $categoryId !== 'all') {
             $query->whereHas('item', function ($q) use ($categoryId) {
-                $q->where('category_id', $categoryId);
+                $q->where('category_value_id', $categoryId);
             });
         }
 
@@ -471,9 +471,9 @@ class SmartReplenishmentController extends Controller
         $search = $request->get('search');
 
         $query = ReplenishmentItemMetric::with([
-            'item:id,name,item_code,brand_id,category_id,supplier_id,cost_price',
+            'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price',
             'item.brand:id,name',
-            'item.category:id,name',
+            'item.categoryValue:id,name',
             'supplier:id,name',
             'branch:id,name',
         ]);
@@ -508,7 +508,7 @@ class SmartReplenishmentController extends Controller
 
         if ($categoryId && $categoryId !== 'all') {
             $query->whereHas('item', function ($q) use ($categoryId) {
-                $q->where('category_id', $categoryId);
+                $q->where('category_value_id', $categoryId);
             });
         }
 
@@ -532,7 +532,7 @@ class SmartReplenishmentController extends Controller
                 $item->item_code ?? '-',
                 $item->name ?? 'SKU #'.$metric->item_id,
                 $item->brand->name ?? '-',
-                $item->category->name ?? '-',
+                $item->categoryValue->name ?? '-',
                 $metric->supplier->name ?? '-',
                 (float) $metric->current_stock,
                 (float) $metric->other_branch_stock,
