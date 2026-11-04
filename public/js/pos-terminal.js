@@ -355,6 +355,7 @@
             if (idx < 0 || !state.cart[idx]) return;
         }
         window._posLastItemSelectTime = Date.now();
+        window._posLastActiveRowIdx = idx;
         openQuantityInput(idx);
         const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
         const $inp = $cell.find('input');
@@ -372,9 +373,53 @@
     }
     window.posFocusRowQty = focusRowQty;
 
+    // Helper: commit any open inputs in other rows before opening a new input
+    function commitAllOtherOpenInputs(keepIdx) {
+        if (!cartTableBody) return;
+        $(cartTableBody).find('input.pos-row-input').each(function () {
+            const otherIdx = parseInt($(this).data('idx'), 10);
+            if (!isNaN(otherIdx) && otherIdx !== keepIdx) {
+                const $otherCell = $(this).closest('td');
+                const otherItem = state.cart[otherIdx];
+                if (!otherItem) return;
+
+                if ($otherCell.hasClass('pos-row-qty')) {
+                    const rawVal = $(this).val().trim();
+                    const val = parseInt(rawVal.replace(/[^\d]/g, ''), 10);
+                    if (!isNaN(val) && val > 0 && !isItemStockExceeded(otherItem, val, otherIdx)) {
+                        otherItem.qty = val;
+                        $otherCell.text(val);
+                        recalculateRow(otherIdx, 'qty');
+                    } else if (otherItem.qty && !isNaN(parseInt(otherItem.qty, 10)) && parseInt(otherItem.qty, 10) > 0) {
+                        $otherCell.text(parseInt(otherItem.qty, 10));
+                    } else {
+                        $otherCell.html('<span class="text-danger font-weight-bold">Qty</span>');
+                    }
+                } else if ($otherCell.hasClass('pos-row-sell-price')) {
+                    const val = parseFloat($(this).val()) || otherItem.sell_price || 0;
+                    otherItem.sell_price = Math.max(0, val);
+                    $otherCell.text('₹ ' + (otherItem.sell_price || 0).toFixed(2));
+                    recalculateRow(otherIdx, 'base');
+                } else if ($otherCell.hasClass('pos-row-disc-pct')) {
+                    const val = parseFloat($(this).val()) || 0;
+                    otherItem.disc_percent = Math.min(100, Math.max(0, val));
+                    const disp = otherItem.disc_percent > 0 ? (otherItem.disc_percent % 1 === 0 ? otherItem.disc_percent : otherItem.disc_percent.toFixed(2)) + '%' : '0%';
+                    $otherCell.text(disp);
+                    recalculateRow(otherIdx, 'percent');
+                } else if ($otherCell.hasClass('pos-row-disc-amt')) {
+                    const val = parseFloat($(this).val()) || 0;
+                    otherItem.disc_amount = Math.max(0, val);
+                    $otherCell.text('₹ ' + (otherItem.disc_amount || 0).toFixed(2));
+                    recalculateRow(otherIdx, 'amount');
+                }
+            }
+        });
+    }
+
     // Inline editing helpers & keyboard flow for Qty, Sell Price, Dis % and Dis Amt
     function openQuantityInput(idx) {
         if (isNaN(idx) || !state.cart[idx]) return;
+        commitAllOtherOpenInputs(idx);
         const $cell = $(`.pos-row-qty[data-idx="${idx}"]`);
         if (!$cell.length) return;
         const item = state.cart[idx];
@@ -394,9 +439,9 @@
         setTimeout(() => $input.focus().select(), 20);
 
         $input.on('blur', function (e) {
-            // If user clicked an action button (remove row, switch batch, modal, reset), don't trap them
+            // If user clicked an action button (remove row, switch batch, modal, reset) or another row in cart table, don't trap them
             const related = e.relatedTarget || document.activeElement;
-            if (related && $(related).closest('.btn, button, .modal, #posTableBody, .pos-batch-row, .btn-remove-item').length) {
+            if (related && $(related).closest('.btn, button, .modal, #posCartBody, table, tr, td, .pos-batch-row, .btn-remove-item').length) {
                 const rawVal = $(this).val().trim();
                 const val = parseInt(rawVal.replace(/[^\d]/g, ''), 10);
                 if (!isNaN(val) && val > 0 && !isItemStockExceeded(item, val, idx)) {
@@ -407,14 +452,19 @@
                 return;
             }
 
-            // Prevent newly opened Qty input from accidental collapse while modals are closing or backdrop is animating
-            if (window._posSuppressQtyBlur || (Date.now() - (window._posLastItemSelectTime || 0) < 600)) {
-                setTimeout(() => {
-                    if ($cell.find('input').length) {
-                        $cell.find('input').focus().select();
-                    }
-                }, 50);
-                return;
+            // Prevent newly opened Qty input from accidental collapse while modals are closing or backdrop is animating (ONLY for this active row!)
+            const isThisNewlyOpened = (idx === window._posLastActiveRowIdx) && (Date.now() - (window._posLastItemSelectTime || 0) < 600);
+            if (window._posSuppressQtyBlur || isThisNewlyOpened) {
+                if (related && $(related).closest('#posCartBody, .btn, button, .modal').length) {
+                    // allow transition
+                } else {
+                    setTimeout(() => {
+                        if ($cell.find('input').length && (!document.activeElement || !$(document.activeElement).closest('#posCartBody').length)) {
+                            $cell.find('input').focus().select();
+                        }
+                    }, 50);
+                    return;
+                }
             }
 
             const rawVal = $(this).val().trim();
@@ -524,6 +574,7 @@
 
     function openDiscountPercentInput(idx) {
         if (isNaN(idx) || !state.cart[idx]) return;
+        commitAllOtherOpenInputs(idx);
         const $cell = $(`.pos-row-disc-pct[data-idx="${idx}"]`);
         if (!$cell.length) return;
         if ($cell.find('input').length) {
@@ -583,6 +634,7 @@
             return;
         }
         if (isNaN(idx) || !state.cart[idx]) return;
+        commitAllOtherOpenInputs(idx);
         const $cell = $(`.pos-row-sell-price[data-idx="${idx}"]`);
         if (!$cell.length) return;
         if ($cell.find('input').length) {
@@ -631,6 +683,7 @@
 
     function openDiscountAmountInput(idx) {
         if (isNaN(idx) || !state.cart[idx]) return;
+        commitAllOtherOpenInputs(idx);
         const $cell = $(`.pos-row-disc-amt[data-idx="${idx}"]`);
         if (!$cell.length) return;
         if ($cell.find('input').length) {
@@ -2129,14 +2182,6 @@
         focusRowQty(targetIdx);
         setTimeout(() => focusRowQty(targetIdx), 50);
         setTimeout(() => focusRowQty(targetIdx), 150);
-        setTimeout(() => focusRowQty(targetIdx), 300);
-        setTimeout(() => focusRowQty(targetIdx), 500);
-
-        $('.modal').one('hidden.bs.modal', function () {
-            setTimeout(() => focusRowQty(targetIdx), 50);
-            setTimeout(() => focusRowQty(targetIdx), 150);
-            setTimeout(() => focusRowQty(targetIdx), 300);
-        });
 
         return true;
     }
