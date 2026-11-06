@@ -30,21 +30,28 @@ class MenuVisibilityFilter implements FilterInterface
             return $item;
         }
 
-        $roleId = $user->roles->first()?->id;
-
-        // 1. Check direct URL match
+        // 1. If item has URL or route, check direct and alias menu keys
         if ($url) {
             $key = MenuCatalogService::resolveMenuKey($item);
-            if ($key && !MenuVisibilitySetting::isVisible($key, $roleId)) {
+            if ($key && !MenuVisibilitySetting::isVisibleForUser($key, $user)) {
                 $item['restricted'] = true;
                 return $item;
             }
 
             // Also check raw url with dots e.g. "sales.pos" or "tools.backups"
             $altKey = str_replace('/', '.', trim($url, '/'));
-            if ($altKey !== $key && !MenuVisibilitySetting::isVisible($altKey, $roleId)) {
+            if ($altKey !== $key && !MenuVisibilitySetting::isVisibleForUser($altKey, $user)) {
                 $item['restricted'] = true;
                 return $item;
+            }
+        } else {
+            // 2. Parent Category or Submenu without direct URL (e.g. Sales, Purchase, Master, Till, Inventory)
+            if (isset($item['text'])) {
+                $catKey = MenuCatalogService::resolveMenuKey($item);
+                if ($catKey && !MenuVisibilitySetting::isVisibleForUser($catKey, $user)) {
+                    $item['restricted'] = true;
+                    return $item;
+                }
             }
         }
 

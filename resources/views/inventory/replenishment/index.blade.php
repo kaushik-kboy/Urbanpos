@@ -307,82 +307,9 @@ body, .content-wrapper {
         </button>
     </div>
 
-    {{-- Modern High-Contrast KPI Cards --}}
-    @php
-        $stockMap = $stockRules->keyBy('stock_type');
-        $critMin = $stockMap['Critical']->min_cover_days ?? 0;
-        $critMax = $stockMap['Critical']->max_cover_days ?? 3;
-        $lowMin = $stockMap['Low']->min_cover_days ?? ($critMax + 1);
-        $lowMax = $stockMap['Low']->max_cover_days ?? 10;
-        $healthyMin = $stockMap['Healthy']->min_cover_days ?? ($lowMax + 1);
-        $healthyMax = $stockMap['Healthy']->max_cover_days ?? 30;
-    @endphp
+    {{-- Main Workspace: Full Screen Stock Analysis Table --}}
     <div class="row">
-        <div class="col-lg-3 col-6 mb-3">
-            <div class="stat-card critical">
-                <div class="stat-header">
-                    <span class="stat-label">Critical Stock ({{ $critMin }}-{{ $critMax }} Days)</span>
-                    <div class="stat-icon-wrapper" style="background: #fee2e2; color: #dc2626;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                </div>
-                <div class="stat-val" id="kpiCriticalCount">{{ number_format($summary['critical_count'] ?? 0) }}</div>
-                <div class="stat-indicator text-danger">
-                    <i class="fas fa-fire mr-1"></i> Immediate action required
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6 mb-3">
-            <div class="stat-card warning">
-                <div class="stat-header">
-                    <span class="stat-label">Low Stock ({{ $lowMin }}-{{ $lowMax }} Days)</span>
-                    <div class="stat-icon-wrapper" style="background: #fef3c7; color: #d97706;">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                </div>
-                <div class="stat-val" id="kpiLowCount">{{ number_format($summary['low_count'] ?? 0) }}</div>
-                <div class="stat-indicator" style="color: #92400e;">
-                    <i class="fas fa-hourglass-half mr-1"></i> Approaching safety buffer
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6 mb-3">
-            <div class="stat-card success">
-                <div class="stat-header">
-                    <span class="stat-label">Transfer Matches</span>
-                    <div class="stat-icon-wrapper" style="background: #dcfce7; color: #16a34a;">
-                        <i class="fas fa-exchange-alt"></i>
-                    </div>
-                </div>
-                <div class="stat-val" id="kpiTransferCount">{{ number_format($summary['transfer_opportunities_count'] ?? 0) }}</div>
-                <div class="stat-indicator text-success">
-                    <i class="fas fa-check-circle mr-1"></i> Surplus &rarr; Deficit match
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-6 mb-3">
-            <div class="stat-card info">
-                <div class="stat-header">
-                    <span class="stat-label">Suggested PO Value</span>
-                    <div class="stat-icon-wrapper" style="background: #dbeafe; color: #2563eb;">
-                        <i class="fas fa-shopping-cart"></i>
-                    </div>
-                </div>
-                <div class="stat-val" id="kpiPoValue">₹ {{ number_format($summary['suggested_po_value'] ?? 0, 2) }}</div>
-                <div class="stat-indicator text-primary">
-                    <i class="fas fa-boxes mr-1"></i> {{ number_format($summary['suggested_po_units'] ?? 0) }} units across suppliers
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Main Workspace: Table + Side Action Panels --}}
-    <div class="row">
-        {{-- Left 8 Cols: Stock Analysis Data Table --}}
-        <div class="col-lg-8">
+        <div class="col-12 mb-4">
             <div class="modern-card">
                 <div class="modern-card-header">
                     <h3 class="modern-card-title">
@@ -396,10 +323,10 @@ body, .content-wrapper {
                     </div>
                 </div>
 
-                {{-- Filter Toolbar (Category, Brand, Sales Type, Supplier, Branch, Status, Search) --}}
+                {{-- Filter Toolbar (Branch, Status, Movement, Action, Department, Category, Brand, Supplier, Search) --}}
                 <div class="modern-filter-toolbar">
                     <div class="row g-2 align-items-center">
-                        {{-- Row 1: Core Dimensions --}}
+                        {{-- Row 1: Core Dimensions & Action --}}
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-store mr-1 text-primary"></i> Branch</label>
                             <select id="filterBranch" class="form-control form-control-sm modern-control">
@@ -417,10 +344,10 @@ body, .content-wrapper {
                             <select id="filterStatus" class="form-control form-control-sm modern-control">
                                 <option value="all" {{ request('status') === 'all' ? 'selected' : '' }}>All Statuses</option>
                                 <option value="needs_action" {{ !request()->has('status') || request('status') === 'needs_action' ? 'selected' : '' }}>🚨 Needs Action (Order/Transfer)</option>
-                                <option value="Critical" {{ request('status') === 'Critical' ? 'selected' : '' }}>🔴 Critical ({{ $critMin }}-{{ $critMax }} Days)</option>
-                                <option value="Low" {{ request('status') === 'Low' ? 'selected' : '' }}>🟡 Low ({{ $lowMin }}-{{ $lowMax }} Days)</option>
-                                <option value="Healthy" {{ request('status') === 'Healthy' ? 'selected' : '' }}>🟢 Healthy ({{ $healthyMin }}-{{ $healthyMax }} Days)</option>
-                                <option value="Overstock" {{ request('status') === 'Overstock' ? 'selected' : '' }}>🔵 Overstock (>{{ $healthyMax }} Days)</option>
+                                <option value="Critical" {{ request('status') === 'Critical' ? 'selected' : '' }}>🔴 Critical</option>
+                                <option value="Low" {{ request('status') === 'Low' ? 'selected' : '' }}>🟡 Low</option>
+                                <option value="Healthy" {{ request('status') === 'Healthy' ? 'selected' : '' }}>🟢 Healthy</option>
+                                <option value="Overstock" {{ request('status') === 'Overstock' ? 'selected' : '' }}>🔵 Overstock</option>
                                 <option value="Dead Stock" {{ request('status') === 'Dead Stock' ? 'selected' : '' }}>⚪ Dead Stock</option>
                             </select>
                         </div>
@@ -429,11 +356,51 @@ body, .content-wrapper {
                             <label class="filter-field-label"><i class="fas fa-tachometer-alt mr-1 text-success"></i> Sales Movement</label>
                             <select id="filterSalesType" class="form-control form-control-sm modern-control">
                                 <option value="all" {{ !request()->has('sales_type') || request('sales_type') === 'all' ? 'selected' : '' }}>All Velocities</option>
-                                <option value="Highest Moving" {{ request('sales_type') === 'Highest Moving' ? 'selected' : '' }}>⚡ Highest Moving (20+ units/d)</option>
-                                <option value="Fast Moving" {{ request('sales_type') === 'Fast Moving' ? 'selected' : '' }}>🚀 Fast Moving (10-20 units/d)</option>
-                                <option value="Normal Moving" {{ request('sales_type') === 'Normal Moving' ? 'selected' : '' }}>📦 Normal Moving (5-10 units/d)</option>
-                                <option value="Slow Moving" {{ request('sales_type') === 'Slow Moving' ? 'selected' : '' }}>⏳ Slow Moving (1-5 units/d)</option>
-                                <option value="Dead Stock" {{ request('sales_type') === 'Dead Stock' ? 'selected' : '' }}>💤 Dead Stock (&lt;1 unit/d)</option>
+                                <option value="Highest Moving" {{ request('sales_type') === 'Highest Moving' ? 'selected' : '' }}>⚡ Highest Moving</option>
+                                <option value="Fast Moving" {{ request('sales_type') === 'Fast Moving' ? 'selected' : '' }}>🚀 Fast Moving</option>
+                                <option value="Normal Moving" {{ request('sales_type') === 'Normal Moving' ? 'selected' : '' }}>📦 Normal Moving</option>
+                                <option value="Slow Moving" {{ request('sales_type') === 'Slow Moving' ? 'selected' : '' }}>⏳ Slow Moving</option>
+                                <option value="Dead Stock" {{ request('sales_type') === 'Dead Stock' ? 'selected' : '' }}>💤 Dead Stock</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <label class="filter-field-label"><i class="fas fa-tasks mr-1 text-primary"></i> Action</label>
+                            <select id="filterAction" class="form-control form-control-sm modern-control">
+                                <option value="all" {{ !request()->has('action') || request('action') === 'all' ? 'selected' : '' }}>All Actions</option>
+                                <option value="order" {{ request('action') === 'order' ? 'selected' : '' }}>🛒 Order (PO Needed)</option>
+                                <option value="transfer" {{ request('action') === 'transfer' ? 'selected' : '' }}>🔄 Transfer (Other Store Stock)</option>
+                            </select>
+                        </div>
+
+                        {{-- Row 2: Department, Category, Brand, Supplier from Item Master --}}
+                        <div class="col-md-3 col-6 mb-2">
+                            <label class="filter-field-label"><i class="fas fa-layer-group mr-1 text-primary"></i> DEPARTMENT</label>
+                            <select id="filterDepartment" class="form-control form-control-sm modern-control">
+                                <option value="all" {{ !request()->has('department_id') || request('department_id') === 'all' ? 'selected' : '' }}>All Departments</option>
+                                @foreach($departments as $d)
+                                    <option value="{{ $d->id }}" {{ request('department_id') == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <label class="filter-field-label"><i class="fas fa-tags mr-1 text-primary"></i> CATEGORY</label>
+                            <select id="filterCategory" class="form-control form-control-sm modern-control">
+                                <option value="all" {{ !request()->has('category_id') || request('category_id') === 'all' ? 'selected' : '' }}>All Categories</option>
+                                @foreach($categories as $c)
+                                    <option value="{{ $c->id }}" {{ request('category_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-6 mb-2">
+                            <label class="filter-field-label"><i class="fas fa-award mr-1 text-primary"></i> Brands</label>
+                            <select id="filterBrand" class="form-control form-control-sm modern-control">
+                                <option value="all" {{ !request()->has('brand_id') || request('brand_id') === 'all' ? 'selected' : '' }}>All Brands</option>
+                                @foreach($brands as $b)
+                                    <option value="{{ $b->id }}" {{ request('brand_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                @endforeach
                             </select>
                         </div>
 
@@ -447,28 +414,8 @@ body, .content-wrapper {
                             </select>
                         </div>
 
-                        {{-- Row 2: Secondary Attributes & Search --}}
-                        <div class="col-md-3 col-6 mb-2">
-                            <label class="filter-field-label"><i class="fas fa-tags mr-1 text-primary"></i> Category</label>
-                            <select id="filterCategory" class="form-control form-control-sm modern-control">
-                                <option value="all" {{ !request()->has('category_id') || request('category_id') === 'all' ? 'selected' : '' }}>All Categories</option>
-                                @foreach($categories as $c)
-                                    <option value="{{ $c->id }}" {{ request('category_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-3 col-6 mb-2">
-                            <label class="filter-field-label"><i class="fas fa-award mr-1 text-primary"></i> Brand</label>
-                            <select id="filterBrand" class="form-control form-control-sm modern-control">
-                                <option value="all" {{ !request()->has('brand_id') || request('brand_id') === 'all' ? 'selected' : '' }}>All Brands</option>
-                                @foreach($brands as $b)
-                                    <option value="{{ $b->id }}" {{ request('brand_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="col-md-4 col-8 mb-2">
+                        {{-- Row 3: Search Item / SKU & Reset --}}
+                        <div class="col-md-10 col-8 mb-2">
                             <label class="filter-field-label"><i class="fas fa-search mr-1 text-primary"></i> Search Item / SKU</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" id="filterSearch" class="form-control form-control-sm modern-control" placeholder="Search by SKU, Name or Barcode..." value="{{ request('search', '') }}" autocomplete="off">
@@ -521,80 +468,6 @@ body, .content-wrapper {
                 <div class="p-3 bg-white border-top d-flex justify-content-between align-items-center">
                     <span class="font-weight-bold text-dark text-sm" id="paginationInfo">Showing 0 of 0</span>
                     <ul class="pagination pagination-sm m-0" id="paginationControls"></ul>
-                </div>
-            </div>
-        </div>
-
-        {{-- Right 4 Cols: Quick Actions (Matchmaker & PO Grouping) --}}
-        <div class="col-lg-4">
-            {{-- Inter-Branch Transfer Matcher Widget --}}
-            <div class="modern-card mb-3">
-                <div class="modern-card-header">
-                    <h3 class="modern-card-title">
-                        <i class="fas fa-random text-success mr-2"></i> Smart Branch Transfers
-                    </h3>
-                    <a href="{{ route('inventory.replenishment.transfers') }}" class="btn btn-action-dark btn-xs">
-                        View All <i class="fas fa-arrow-right ml-1"></i>
-                    </a>
-                </div>
-                <div class="p-3" id="transferWidgetBody">
-                    @forelse($transferRecommendations->take(4) as $match)
-                        <div class="p-2 mb-2 rounded border border-success bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <div class="d-flex justify-content-between font-weight-bold text-dark" style="font-size: 0.85rem;">
-                                <span>{{ \Illuminate\Support\Str::limit($match->item_name, 24) }}</span>
-                                <span class="badge badge-success px-2 py-1 font-weight-bold">Transfer: {{ $match->suggested_transfer_qty }} Qty</span>
-                            </div>
-                            <div class="d-flex justify-content-between font-weight-bold mt-2" style="font-size: 0.76rem; color: #0f172a;">
-                                <span><i class="fas fa-arrow-circle-up text-primary mr-1"></i> {{ $match->source_branch_name }} ({{ (int)$match->source_stock }})</span>
-                                <i class="fas fa-arrow-right text-success mx-1"></i>
-                                <span><i class="fas fa-arrow-circle-down text-danger mr-1"></i> {{ $match->dest_branch_name }} ({{ (int)$match->dest_stock }})</span>
-                            </div>
-                            <button type="button" class="btn btn-action-outline btn-block btn-xs mt-2 font-weight-bold" onclick="triggerQuickTransfer({{ $match->item_id }}, {{ $match->source_branch_id }}, {{ $match->dest_branch_id }}, {{ $match->suggested_transfer_qty }}, '{{ addslashes($match->item_name) }}')">
-                                <i class="fas fa-dolly mr-1 text-success"></i> Dispatch Transfer
-                            </button>
-                        </div>
-                    @empty
-                        <div class="text-center py-4 text-dark font-weight-bold" style="font-size: 0.85rem;">
-                            <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i><br>
-                            All active stores are currently well balanced!
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-
-            {{-- Supplier-wise Order Recommendations Widget --}}
-            <div class="modern-card mb-3">
-                <div class="modern-card-header">
-                    <h3 class="modern-card-title">
-                        <i class="fas fa-truck text-primary mr-2"></i> Supplier Recommendations
-                    </h3>
-                    <a href="{{ route('inventory.replenishment.supplier-orders') }}" class="btn btn-action-dark btn-xs">
-                        View All <i class="fas fa-arrow-right ml-1"></i>
-                    </a>
-                </div>
-                <div class="p-3" id="supplierWidgetBody">
-                    @forelse($supplierOrders->take(5) as $order)
-                        <div class="p-2 mb-2 rounded border bg-white d-flex justify-content-between align-items-center" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <div>
-                                <div class="font-weight-bold text-dark" style="font-size: 0.85rem;">{{ \Illuminate\Support\Str::limit($order->supplier_name, 22) }}</div>
-                                <div class="font-weight-bold text-dark mt-1" style="font-size: 0.74rem;">
-                                    <span class="badge badge-dark px-2 py-1 font-weight-bold">{{ $order->items_count }} items</span> &bull; 
-                                    <span class="text-dark">{{ $order->total_units }} units</span>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-weight-bold text-primary" style="font-size: 0.95rem;">₹ {{ number_format($order->estimated_value, 2) }}</div>
-                                <button type="button" class="btn btn-action-dark btn-xs mt-1" onclick="openSupplierPoModal({{ $order->supplier_id ?? 'null' }}, '{{ addslashes($order->supplier_name) }}', {{ $order->items_count }}, '₹ {{ number_format($order->estimated_value, 2) }}', {{ json_encode($order->items->map(fn($m) => ['item_id' => $m->item_id, 'name' => $m->item->name ?? 'SKU #'.$m->item_id, 'qty' => $m->suggested_qty, 'cost' => (float)($m->item->cost_price ?? 0)])) }})">
-                                    <i class="fas fa-file-invoice mr-1 text-primary"></i> Review PO
-                                </button>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="text-center py-4 text-dark font-weight-bold" style="font-size: 0.85rem;">
-                            <i class="fas fa-clipboard-check text-primary mb-2" style="font-size: 2rem;"></i><br>
-                            No pending supplier purchase orders needed right now.
-                        </div>
-                    @endforelse
                 </div>
             </div>
         </div>
@@ -661,7 +534,7 @@ body, .content-wrapper {
         loadTableData(1);
 
         // Filter change triggers
-        $('#filterBranch, #filterStatus, #filterSalesType, #filterSupplier, #filterCategory, #filterBrand').on('change', function() {
+        $('#filterBranch, #filterStatus, #filterSalesType, #filterAction, #filterDepartment, #filterCategory, #filterBrand, #filterSupplier').on('change', function() {
             loadTableData(1);
         });
 
@@ -705,9 +578,11 @@ body, .content-wrapper {
             clearTimeout(searchDebounceTimer);
             $('#filterStatus').val('needs_action');
             $('#filterSalesType').val('all');
-            $('#filterSupplier').val('all');
+            $('#filterAction').val('all');
+            $('#filterDepartment').val('all');
             $('#filterCategory').val('all');
             $('#filterBrand').val('all');
+            $('#filterSupplier').val('all');
             $('#filterSearch').val('');
             $('#btnClearSearch').addClass('d-none');
             loadTableData(1);
@@ -719,9 +594,11 @@ body, .content-wrapper {
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
                 sales_type: $('#filterSalesType').val(),
-                supplier_id: $('#filterSupplier').val(),
+                action: $('#filterAction').val(),
+                department_id: $('#filterDepartment').val(),
                 category_id: $('#filterCategory').val(),
                 brand_id: $('#filterBrand').val(),
+                supplier_id: $('#filterSupplier').val(),
                 search: $('#filterSearch').val()
             });
             window.location.href = "{{ route('inventory.replenishment.export') }}?" + params.toString();
@@ -836,9 +713,11 @@ body, .content-wrapper {
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
                 sales_type: $('#filterSalesType').val(),
-                supplier_id: $('#filterSupplier').val(),
+                action: $('#filterAction').val(),
+                department_id: $('#filterDepartment').val(),
                 category_id: $('#filterCategory').val(),
                 brand_id: $('#filterBrand').val(),
+                supplier_id: $('#filterSupplier').val(),
                 search: $('#filterSearch').val(),
                 page: page
             },
@@ -866,8 +745,9 @@ body, .content-wrapper {
             const item = row.item || {};
             const itemName = item.name || 'Unnamed Item #' + row.item_id;
             const itemCode = item.item_code || '-';
-            const brand = (item.brand && item.brand.name) ? item.brand.name : '-';
-            const category = (item.category_value && item.category_value.name) ? item.category_value.name : '';
+            const brand = (item.brand && item.brand.name) ? item.brand.name : (item.brand_value && item.brand_value.name ? item.brand_value.name : '-');
+            const category = (item.category_value && item.category_value.name) ? item.category_value.name : '-';
+            const department = (item.department_value && item.department_value.name) ? item.department_value.name : '-';
             const curStock = Number(row.current_stock || 0).toFixed(0);
             const othStock = Number(row.other_branch_stock || 0).toFixed(0);
             const sales30d = Number(row.sales_30d || 0).toFixed(0);
@@ -903,8 +783,9 @@ body, .content-wrapper {
                         <div class="item-title">${escapeHtml(itemName)}</div>
                         <div class="item-subtitle">
                             <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius:4px;">SKU: ${escapeHtml(itemCode)}</span> &bull; 
-                            <span class="font-weight-bold text-dark">${escapeHtml(brand)}</span>
-                            ${category ? ` &bull; <span class="badge badge-light border border-dark text-dark px-2 py-0 font-weight-bold text-xs">${escapeHtml(category)}</span>` : ''}
+                            <span class="font-weight-bold text-dark"><i class="fas fa-award text-muted mr-1"></i>${escapeHtml(brand)}</span> &bull; 
+                            <span class="badge badge-secondary px-2 py-0 font-weight-bold text-xs">Dept: ${escapeHtml(department)}</span> &bull; 
+                            <span class="badge badge-light border border-dark text-dark px-2 py-0 font-weight-bold text-xs">Cat: ${escapeHtml(category)}</span>
                         </div>
                     </td>
                     <td>

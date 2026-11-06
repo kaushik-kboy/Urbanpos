@@ -297,21 +297,86 @@ class MenuCatalogService
 
         $url = $item['url'] ?? ($item['route'] ?? null);
         if (!$url && isset($item['text'])) {
-            return 'header.' . \Illuminate\Support\Str::slug($item['text']);
+            return 'category.' . \Illuminate\Support\Str::slug($item['text']);
         }
 
         if (!$url) return null;
 
-        // Clean url prefix/suffix
-        $cleanUrl = trim(str_replace(['reports/view/', 'reports/'], '', $url), '/');
+        $trimmed = trim($url, '/');
 
-        // Check report slug
-        if (str_starts_with($url, 'reports')) {
-            return 'report.' . $cleanUrl;
+        // Direct alias dictionary for shorthand and auxiliary routes
+        $directMap = [
+            'pos' => 'sales.pos',
+            'inventory/barcode' => 'inventory.barcode-printing',
+            'inventory/barcode-printing' => 'inventory.barcode-printing',
+            'inventory/stock-update-approval' => 'inventory.stock-approvals',
+            'inventory/stock-updates/approvals' => 'inventory.stock-approvals',
+            'inventory/stock-transfers/pending-receipt' => 'inventory.stock-transfers',
+            'sales/delivery-notes' => 'sales.sales-delivery-notes',
+            'sales/delivery-notes/create' => 'sales.sales-delivery-notes',
+            'sales/aux/delivery-note-returns' => 'sales.sales-delivery-notes',
+            'sales/aux/order-approval' => 'sales.sales-orders',
+            'sales/aux/transfer-out-approval' => 'inventory.stock-transfers',
+            'purchase/aux/auto-indent' => 'purchase.purchase-indents',
+            'purchase/aux/indent-cancellation' => 'purchase.purchase-indents',
+            'purchase/aux/transfer-in-touch' => 'purchase.purchase-indents',
+            'purchase/aux/indent-cutoff' => 'purchase.purchase-indents',
+            'till/sessions/open' => 'till.sessions',
+            'master/aux/assembly' => 'master.assembly',
+            'master/aux/kit-mapping' => 'master.kit-mapping',
+            'master/aux/item-property-setting' => 'master.item-property',
+            'master/aux/item-ean-upc-entry' => 'master.item-ean-upc',
+            'master/aux/uom-vs-item-mapping' => 'master.uom-mapping',
+            'master/aux/tax-slab' => 'master.items',
+            'master/areas' => 'master.customers',
+            'master/loyalty-points' => 'master.loyalty-programs',
+            'master/pet-types' => 'master.customers',
+            'master/breeds' => 'master.customers',
+            'master/colors' => 'master.customers',
+            'master/aux/gstno-restriction' => 'master.gst-taxes',
+            'master/aux/distribution-centre-mapping' => 'master.branches',
+            'master/sales-types' => 'master.registers',
+            'master/tender-type-values' => 'master.tender-types',
+            'finance/reports/general-ledger' => 'finance.general-ledger',
+            'finance/reports/day-book' => 'finance.day-book',
+            'finance/reports/trial-balance' => 'finance.trial-balance',
+            'finance/reports/profit-loss' => 'finance.profit-loss',
+            'finance/reports/cash-bank-book' => 'finance.cash-bank-book',
+            'finance/reports/outstanding-aging' => 'finance.outstanding-aging',
+        ];
+
+        if (isset($directMap[$trimmed])) {
+            return $directMap[$trimmed];
         }
 
-        // Replace slashes with dots
-        return str_replace('/', '.', trim($url, '/'));
+        // Check report slug
+        if (str_starts_with($trimmed, 'reports')) {
+            $cleanUrl = trim(str_replace(['reports/view/', 'reports/view', 'reports/'], '', $trimmed), '/');
+            return 'report.' . ($cleanUrl ?: 'dashboard');
+        }
+
+        // Normalize trailing action verbs like /create, /open, /approvals
+        $normalizedUrl = preg_replace('/\/(create|open|pending-receipt|approvals)$/', '', $trimmed);
+        if (isset($directMap[$normalizedUrl])) {
+            return $directMap[$normalizedUrl];
+        }
+
+        // Prefix match against main menus catalog
+        $catalog = self::getMainMenusCatalog();
+        foreach ($catalog as $cat) {
+            foreach ($cat['items'] as $itemKey => $meta) {
+                $metaUrl = trim($meta['url'], '/');
+                if ($trimmed === $metaUrl || str_starts_with($trimmed, $metaUrl . '/')) {
+                    return $itemKey;
+                }
+                if ($normalizedUrl === $metaUrl || str_starts_with($normalizedUrl, $metaUrl . '/')) {
+                    return $itemKey;
+                }
+            }
+        }
+
+        // Fallback: replace slashes with dots
+        return str_replace('/', '.', $trimmed);
     }
 
     /**
@@ -320,8 +385,6 @@ class MenuCatalogService
     public static function isReportVisible(string $slug, ?User $user = null): bool
     {
         $user = $user ?? auth()->user();
-        $roleId = $user ? $user->roles->first()?->id : null;
-        
-        return MenuVisibilitySetting::isVisible('report.' . $slug, $roleId);
+        return MenuVisibilitySetting::isVisibleForUser('report.' . $slug, $user);
     }
 }

@@ -49,17 +49,42 @@ class MenuVisibilitySetting extends Model
      */
     public static function isVisible(string $menuKey, ?int $roleId = null): bool
     {
-        $roleMap = static::getVisibilityMap($roleId);
-        if (array_key_exists($menuKey, $roleMap)) {
-            return (bool) $roleMap[$menuKey];
+        if ($roleId !== null) {
+            $roleMap = static::getVisibilityMap($roleId);
+            if (array_key_exists($menuKey, $roleMap)) {
+                return (bool) $roleMap[$menuKey];
+            }
         }
 
-        // If checking a specific role and not found, check global setting
-        if ($roleId !== null) {
-            $globalMap = static::getVisibilityMap(null);
-            if (array_key_exists($menuKey, $globalMap)) {
-                return (bool) $globalMap[$menuKey];
+        // Fallback to global setting (null)
+        $globalMap = static::getVisibilityMap(null);
+        if (array_key_exists($menuKey, $globalMap)) {
+            return (bool) $globalMap[$menuKey];
+        }
+
+        return true; // Default is visible
+    }
+
+    /**
+     * Check visibility for a specific authenticated user, across all their assigned roles.
+     * Falls back to global setting if no role override exists.
+     */
+    public static function isVisibleForUser(string $menuKey, ?User $user = null): bool
+    {
+        if ($user) {
+            $userRoleIds = $user->roles->pluck('id')->toArray();
+            foreach ($userRoleIds as $rId) {
+                $roleMap = static::getVisibilityMap($rId);
+                if (array_key_exists($menuKey, $roleMap)) {
+                    return (bool) $roleMap[$menuKey];
+                }
             }
+        }
+
+        // Fallback to global setting
+        $globalMap = static::getVisibilityMap(null);
+        if (array_key_exists($menuKey, $globalMap)) {
+            return (bool) $globalMap[$menuKey];
         }
 
         return true; // Default is visible
@@ -104,13 +129,23 @@ class MenuVisibilitySetting extends Model
     }
 
     /**
-     * Invalidate caches.
+     * Invalidate caches across roles and global.
      */
     public static function clearCache(?int $roleId = null): void
     {
-        Cache::forget('menu_visibility_role_' . ($roleId ?? 'global'));
+        Cache::forget('menu_visibility_role_global');
         if ($roleId !== null) {
-            Cache::forget('menu_visibility_role_global');
+            Cache::forget('menu_visibility_role_' . $roleId);
+        } else {
+            // When global settings change, invalidate all role caches so fallbacks are fresh
+            try {
+                $roles = Role::pluck('id');
+                foreach ($roles as $rId) {
+                    Cache::forget('menu_visibility_role_' . $rId);
+                }
+            } catch (\Throwable $e) {
+                // Ignore during testing / early migrations
+            }
         }
     }
 }

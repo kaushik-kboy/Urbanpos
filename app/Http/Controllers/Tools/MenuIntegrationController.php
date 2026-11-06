@@ -18,15 +18,12 @@ class MenuIntegrationController extends Controller
     {
         $roles = Role::withCount('users')->orderBy('name')->get();
 
-        // Determine active role selection (null means Global)
+        // Determine active role selection (null means Global store-wide default)
         $roleParam = $request->query('role_id');
         $selectedRoleId = null;
 
         if ($roleParam !== null && $roleParam !== 'global' && $roleParam !== '') {
             $selectedRoleId = (int) $roleParam;
-        } elseif ($roleParam === null) {
-            // Default to current user's role or first role
-            $selectedRoleId = auth()->user()?->roles->first()?->id ?? ($roles->first()?->id ?? null);
         }
 
         $selectedRole = $selectedRoleId ? Role::find($selectedRoleId) : null;

@@ -193,25 +193,45 @@ body, .content-wrapper {
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="font-weight-bold text-dark" style="font-size: 0.95rem;">{{ $rule->min_daily_avg }}</span>
-                                            @if($rule->max_daily_avg)
-                                                <span class="font-weight-bold text-dark"> &ndash; </span><span class="font-weight-bold text-dark" style="font-size: 0.95rem;">{{ $rule->max_daily_avg }}</span>
-                                            @else
-                                                <span class="font-weight-bold text-dark">+</span>
-                                            @endif
-                                            <span class="font-weight-bold text-dark text-xs ml-1">units / day</span>
+                                            <div class="d-flex align-items-center" style="max-width: 220px;">
+                                                <input type="number" 
+                                                       step="0.1" 
+                                                       min="0" 
+                                                       name="sales_rules[{{ $rule->id }}][min_daily_avg]" 
+                                                       class="form-control form-control-sm text-center modern-input-num font-weight-bold" 
+                                                       value="{{ $rule->min_daily_avg }}" 
+                                                       style="width: 70px; border-radius: 6px;" 
+                                                       required>
+                                                <span class="mx-1 font-weight-bold text-dark">&ndash;</span>
+                                                @if($rule->rule_name === 'Highest Moving')
+                                                    <input type="text" 
+                                                           class="form-control form-control-sm text-center font-weight-bold bg-light" 
+                                                           value="&infin;" 
+                                                           readonly 
+                                                           style="width: 65px; border-radius: 6px;">
+                                                @else
+                                                    <input type="number" 
+                                                           step="0.1" 
+                                                           min="0" 
+                                                           name="sales_rules[{{ $rule->id }}][max_daily_avg]" 
+                                                           class="form-control form-control-sm text-center modern-input-num font-weight-bold" 
+                                                           value="{{ $rule->max_daily_avg }}" 
+                                                           style="width: 70px; border-radius: 6px;">
+                                                @endif
+                                                <span class="font-weight-bold text-dark text-xs ml-1 text-nowrap">u/day</span>
+                                            </div>
                                         </td>
                                         <td>
                                             <div class="input-group input-group-sm">
                                                 <input type="number" 
-                                                       name="sales_rules[{{ $rule->id }}]" 
+                                                       name="sales_rules[{{ $rule->id }}][target_cover_days]" 
                                                        class="form-control text-center modern-input-num" 
                                                        value="{{ $rule->target_cover_days }}" 
                                                        min="1" 
                                                        max="180" 
                                                        required>
                                                 <div class="input-group-append">
-                                                    <span class="input-group-text font-weight-bold bg-dark text-white text-xs" style="border-radius: 0 8px 8px 0;">Days</span>
+                                                     <span class="input-group-text font-weight-bold bg-dark text-white text-xs" style="border-radius: 0 8px 8px 0;">Days</span>
                                                 </div>
                                             </div>
                                         </td>

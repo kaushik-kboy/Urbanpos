@@ -33,6 +33,28 @@ class SmartReplenishmentController extends Controller
     }
 
     /**
+     * Helper to load ItemCategoryValue options for a category head by name or aliases (matching Item Master).
+     */
+    private function getCategoryHeadValues(array $aliases): \Illuminate\Support\Collection
+    {
+        $heads = \App\Models\ItemCategory::where(function ($query) use ($aliases) {
+            foreach ($aliases as $alias) {
+                $query->orWhere('name', 'like', $alias);
+            }
+        })->get();
+
+        if ($heads->isEmpty()) {
+            return collect();
+        }
+
+        $headIds = $heads->pluck('id')->toArray();
+        return ItemCategoryValue::whereIn('item_category_id', $headIds)
+            ->where('status', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    /**
      * Render the Smart Replenishment Studio Dashboard.
      */
     public function index(Request $request): View
@@ -50,8 +72,11 @@ class SmartReplenishmentController extends Controller
         $transferRecommendations = $this->service->getTransferRecommendations($activeBranchId, 10);
         $supplierOrders = $this->service->getSupplierOrderRecommendations($activeBranchId)->take(6);
 
-        $brands = Brand::orderBy('name')->get(['id', 'name']);
-        $categories = ItemCategoryValue::where('status', true)->orderBy('name')->get(['id', 'name']);
+        // Load Department, Category, and Brands matching Item Master exactly
+        $departments = $this->getCategoryHeadValues(['DEPARTMENT', 'Department', 'department', 'Departments', 'Dept', 'DEPT']);
+        $categories = $this->getCategoryHeadValues(['CATEGORY', 'Category', 'category', 'Categories', 'CAT']);
+        $brands = Brand::where('status', true)->orderBy('name')->get(['id', 'name']);
+
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $salesRules = ReplenishmentSalesRule::orderBy('sort_order')->get();
         $stockRules = ReplenishmentStockRule::orderBy('sort_order')->get();
@@ -62,8 +87,9 @@ class SmartReplenishmentController extends Controller
             'summary',
             'transferRecommendations',
             'supplierOrders',
-            'brands',
+            'departments',
             'categories',
+            'brands',
             'suppliers',
             'salesRules',
             'stockRules'
@@ -82,16 +108,20 @@ class SmartReplenishmentController extends Controller
         $branchId = $request->get('branch_id');
         $status = $request->get('status');
         $salesType = $request->get('sales_type');
+        $action = $request->get('action');
         $brandId = $request->get('brand_id');
         $categoryId = $request->get('category_id');
+        $departmentId = $request->get('department_id');
         $supplierId = $request->get('supplier_id');
         $search = $request->get('search');
 
         $query = ReplenishmentItemMetric::query()
             ->select('replenishment_item_metrics.*')
             ->with([
-                'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price,sell_price',
+                'item:id,name,item_code,brand_id,brand_value_id,department_value_id,category_value_id,supplier_id,cost_price,sell_price',
                 'item.brand:id,name',
+                'item.brandValue:id,name',
+                'item.departmentValue:id,name',
                 'item.categoryValue:id,name',
                 'supplier:id,name',
                 'branch:id,name',
@@ -99,6 +129,7 @@ class SmartReplenishmentController extends Controller
 
         $needsItemJoin = ($brandId && $brandId !== 'all')
             || ($categoryId && $categoryId !== 'all')
+            || ($departmentId && $departmentId !== 'all')
             || ! empty($search);
 
         if ($needsItemJoin) {
@@ -127,16 +158,35 @@ class SmartReplenishmentController extends Controller
             $query->where('replenishment_item_metrics.sales_type', $salesType);
         }
 
+        if ($action && $action !== 'all') {
+            if ($action === 'order') {
+                $query->where('replenishment_item_metrics.suggested_qty', '>', 0);
+            } elseif ($action === 'transfer') {
+                $query->where('replenishment_item_metrics.other_branch_stock', '>', 0)
+                    ->where(function ($q) {
+                        $q->whereIn('replenishment_item_metrics.stock_status', ['Critical', 'Low'])
+                            ->orWhere('replenishment_item_metrics.suggested_qty', '>', 0);
+                    });
+            }
+        }
+
         if ($supplierId && $supplierId !== 'all') {
             $query->where('replenishment_item_metrics.primary_supplier_id', $supplierId);
         }
 
-        if ($brandId && $brandId !== 'all') {
-            $query->where('items.brand_id', $brandId);
+        if ($departmentId && $departmentId !== 'all') {
+            $query->where('items.department_value_id', $departmentId);
         }
 
         if ($categoryId && $categoryId !== 'all') {
             $query->where('items.category_value_id', $categoryId);
+        }
+
+        if ($brandId && $brandId !== 'all') {
+            $query->where(function ($q) use ($brandId) {
+                $q->where('items.brand_id', $brandId)
+                    ->orWhere('items.brand_value_id', $brandId);
+            });
         }
 
         if ($search) {
@@ -217,10 +267,25 @@ class SmartReplenishmentController extends Controller
         }
 
         $salesRulesData = $request->input('sales_rules', []);
-        foreach ($salesRulesData as $ruleId => $targetDays) {
-            ReplenishmentSalesRule::where('id', $ruleId)->update([
-                'target_cover_days' => max(1, (int) $targetDays),
-            ]);
+        foreach ($salesRulesData as $ruleId => $data) {
+            if (is_array($data)) {
+                $update = [
+                    'target_cover_days' => max(1, (int) ($data['target_cover_days'] ?? 7)),
+                ];
+                if (isset($data['min_daily_avg'])) {
+                    $update['min_daily_avg'] = max(0.0, (float) $data['min_daily_avg']);
+                }
+                if (array_key_exists('max_daily_avg', $data)) {
+                    $update['max_daily_avg'] = ($data['max_daily_avg'] !== '' && $data['max_daily_avg'] !== null)
+                        ? (float) $data['max_daily_avg']
+                        : null;
+                }
+                ReplenishmentSalesRule::where('id', $ruleId)->update($update);
+            } else {
+                ReplenishmentSalesRule::where('id', $ruleId)->update([
+                    'target_cover_days' => max(1, (int) $data),
+                ]);
+            }
         }
 
         if ($request->has('stock_rules')) {
@@ -245,10 +310,10 @@ class SmartReplenishmentController extends Controller
                 'min_cover_days' => $healthyMax + 1,
                 'max_cover_days' => null,
             ]);
-
-            // Auto-recalculate metrics so inventory status immediately reflects the updated thresholds
-            $this->service->calculateAll();
         }
+
+        // Auto-recalculate metrics so inventory status immediately reflects the updated thresholds
+        $this->service->calculateAll();
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -505,16 +570,20 @@ class SmartReplenishmentController extends Controller
         $branchId = $request->get('branch_id');
         $status = $request->get('status');
         $salesType = $request->get('sales_type');
+        $action = $request->get('action');
         $brandId = $request->get('brand_id');
         $categoryId = $request->get('category_id');
+        $departmentId = $request->get('department_id');
         $supplierId = $request->get('supplier_id');
         $search = $request->get('search');
 
         $query = ReplenishmentItemMetric::query()
             ->select('replenishment_item_metrics.*')
             ->with([
-                'item:id,name,item_code,brand_id,category_value_id,supplier_id,cost_price',
+                'item:id,name,item_code,brand_id,brand_value_id,department_value_id,category_value_id,supplier_id,cost_price',
                 'item.brand:id,name',
+                'item.brandValue:id,name',
+                'item.departmentValue:id,name',
                 'item.categoryValue:id,name',
                 'supplier:id,name',
                 'branch:id,name',
@@ -522,6 +591,7 @@ class SmartReplenishmentController extends Controller
 
         $needsItemJoin = ($brandId && $brandId !== 'all')
             || ($categoryId && $categoryId !== 'all')
+            || ($departmentId && $departmentId !== 'all')
             || ! empty($search);
 
         if ($needsItemJoin) {
@@ -550,16 +620,35 @@ class SmartReplenishmentController extends Controller
             $query->where('replenishment_item_metrics.sales_type', $salesType);
         }
 
+        if ($action && $action !== 'all') {
+            if ($action === 'order') {
+                $query->where('replenishment_item_metrics.suggested_qty', '>', 0);
+            } elseif ($action === 'transfer') {
+                $query->where('replenishment_item_metrics.other_branch_stock', '>', 0)
+                    ->where(function ($q) {
+                        $q->whereIn('replenishment_item_metrics.stock_status', ['Critical', 'Low'])
+                            ->orWhere('replenishment_item_metrics.suggested_qty', '>', 0);
+                    });
+            }
+        }
+
         if ($supplierId && $supplierId !== 'all') {
             $query->where('replenishment_item_metrics.primary_supplier_id', $supplierId);
         }
 
-        if ($brandId && $brandId !== 'all') {
-            $query->where('items.brand_id', $brandId);
+        if ($departmentId && $departmentId !== 'all') {
+            $query->where('items.department_value_id', $departmentId);
         }
 
         if ($categoryId && $categoryId !== 'all') {
             $query->where('items.category_value_id', $categoryId);
+        }
+
+        if ($brandId && $brandId !== 'all') {
+            $query->where(function ($q) use ($brandId) {
+                $q->where('items.brand_id', $brandId)
+                    ->orWhere('items.brand_value_id', $brandId);
+            });
         }
 
         if ($search) {
@@ -579,12 +668,14 @@ class SmartReplenishmentController extends Controller
             $item = $metric->item;
             $unitCost = (float) ($item->cost_price ?? 0);
             $reorderVal = round($metric->suggested_qty * $unitCost, 2);
+            $brandName = $item->brand->name ?? ($item->brandValue->name ?? '-');
 
             $rows[] = [
                 $item->item_code ?? '-',
                 $item->name ?? 'SKU #'.$metric->item_id,
-                $item->brand->name ?? '-',
+                $item->departmentValue->name ?? '-',
                 $item->categoryValue->name ?? '-',
+                $brandName,
                 $metric->supplier->name ?? '-',
                 (float) $metric->current_stock,
                 (float) $metric->other_branch_stock,

@@ -27,8 +27,9 @@ class SmartReplenishmentExport implements FromArray, ShouldAutoSize, WithHeading
         return [
             'SKU / Code',
             'Item Name',
-            'Brand',
+            'Department',
             'Category',
+            'Brand',
             'Primary Supplier',
             'Branch Stock',
             'Other Branch Stock',

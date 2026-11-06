@@ -124,12 +124,41 @@ class SmartReplenishmentUiTest extends TestCase
 
         $response = $this->actingAs($this->user)->postJson(route('inventory.replenishment.settings.update'), [
             'sales_rules' => [
-                $rule->id => 35,
+                $rule->id => [
+                    'min_daily_avg' => 2.5,
+                    'max_daily_avg' => 7.5,
+                    'target_cover_days' => 35,
+                ],
             ],
         ]);
 
         $response->assertStatus(200);
-        $this->assertEquals(35, $rule->fresh()->target_cover_days);
+        $fresh = $rule->fresh();
+        $this->assertEquals(2.5, (float) $fresh->min_daily_avg);
+        $this->assertEquals(7.5, (float) $fresh->max_daily_avg);
+        $this->assertEquals(35, $fresh->target_cover_days);
+    }
+
+    public function test_ajax_data_endpoint_filters_by_action_and_master_attributes(): void
+    {
+        $response = $this->actingAs($this->user)->getJson(route('inventory.replenishment.data', [
+            'branch_id' => $this->branch->id,
+            'action' => 'order',
+            'department_id' => 'all',
+            'category_id' => 'all',
+            'brand_id' => 'all',
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data', 'total']);
+
+        $responseTransfer = $this->actingAs($this->user)->getJson(route('inventory.replenishment.data', [
+            'branch_id' => $this->branch->id,
+            'action' => 'transfer',
+        ]));
+
+        $responseTransfer->assertStatus(200);
+        $responseTransfer->assertJsonStructure(['data', 'total']);
     }
 
     public function test_settings_update_via_form_post_redirects_with_success(): void
