@@ -8,7 +8,7 @@
             @endforeach
         @endif
     </select>
-    <small class="form-text text-muted">Branch select karein jahan yeh sales bill type use hoga (e.g., Motera: Retail, Home, Spa | Satellite: B2B, IPC, Home, Retail).</small>
+    <small class="form-text text-muted">Select the branch where this sales bill type will be used (e.g., Motera: Retail, Home, Spa | Satellite: B2B, IPC, Home, Retail).</small>
 </div>
 
 <x-field name="name" label="Sales Bill Type Name" :value="$salesType->name ?? ''" required placeholder="e.g. Retail, Home, Spa, B2B, IPC" />

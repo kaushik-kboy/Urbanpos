@@ -9,7 +9,7 @@
                 <i class="fas fa-toggle-on text-primary mr-2"></i> Module & Menu Integration
             </h1>
             <p class="text-muted small mb-0">
-                कन्फ्यूजन खत्म! जो मेनू और रिपोर्ट्स आपको या आपके स्टाफ को देखनी हैं, सिर्फ वही ऑन रखें।
+                Keep your workspace uncluttered! Turn on only the menus and reports needed for you or your staff.
             </p>
         </div>
         <div class="mt-2 mt-md-0 d-flex align-items-center">
@@ -30,7 +30,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center">
                 <div class="d-flex align-items-center mb-2 mb-md-0">
                     <span class="font-weight-bold mr-3 text-secondary text-uppercase small">
-                        <i class="fas fa-user-shield mr-1 text-primary"></i> लक्ष्य भूमिका (Target Role):
+                        <i class="fas fa-user-shield mr-1 text-primary"></i> Target Role:
                     </span>
                     <div class="btn-group btn-group-toggle flex-wrap" data-toggle="buttons">
                         @foreach ($roles as $role)
@@ -42,7 +42,7 @@
                         @endforeach
                         <a href="{{ route('tools.module-integrations.index', ['role_id' => 'global']) }}" 
                            class="btn btn-sm {{ $selectedRoleId === null ? 'btn-primary font-weight-bold active' : 'btn-outline-secondary' }} px-3 py-1">
-                            <i class="fas fa-globe mr-1"></i> Global (सभी के लिए)
+                            <i class="fas fa-globe mr-1"></i> Global (All Users)
                         </a>
                     </div>
                 </div>
@@ -53,7 +53,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-light border-right-0"><i class="fas fa-search text-muted"></i></span>
                         </div>
-                        <input type="text" id="menuSearchInput" class="form-control border-left-0" placeholder="सर्च मेनू या रिपोर्ट (उदा. GST, Daily, Sale)...">
+                        <input type="text" id="menuSearchInput" class="form-control border-left-0" placeholder="Search menu or report (e.g. GST, Daily, Sale)...">
                         <div class="input-group-append">
                             <button class="btn btn-light border border-left-0 text-muted" type="button" id="clearSearchBtn">
                                 <i class="fas fa-times"></i>
@@ -67,10 +67,10 @@
             <div class="mt-3 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center small text-muted">
                 <div>
                     <i class="fas fa-info-circle text-info mr-1"></i>
-                    वर्तमान कॉन्फ़िगरेशन: 
-                    <strong class="text-dark">{{ $selectedRole ? $selectedRole->name . ' Role' : 'Global Default (दुकान भर के लिए)' }}</strong>
-                    | एक्टिव मेनू: <span class="badge badge-success">{{ $enabledMainMenuCount }} / {{ $totalMainMenuCount }}</span>
-                    | एक्टिव रिपोर्ट्स: <span class="badge badge-info">{{ $enabledReportCount }} / {{ $totalReportCount }}</span>
+                    Current Configuration: 
+                    <strong class="text-dark">{{ $selectedRole ? $selectedRole->name . ' Role' : 'Global Default (Store-wide)' }}</strong>
+                    | Active Menus: <span class="badge badge-success">{{ $enabledMainMenuCount }} / {{ $totalMainMenuCount }}</span>
+                    | Active Reports: <span class="badge badge-info">{{ $enabledReportCount }} / {{ $totalReportCount }}</span>
                 </div>
                 <div>
                     <button type="button" class="btn btn-xs btn-outline-danger" data-toggle="modal" data-target="#resetConfirmModal">
@@ -171,10 +171,10 @@
             <div class="alert alert-info py-2 px-3 mb-3 shadow-sm d-flex justify-content-between align-items-center">
                 <div>
                     <i class="fas fa-info-circle mr-1"></i>
-                    <strong>रिपोर्ट्स विजिबिलिटी:</strong> जो रिपोर्ट आप OFF करेंगे, वह एडमिन के <strong>साइडबार</strong> और <strong>Reports Center</strong> दोनों जगह से छुप जाएगी।
+                    <strong>Reports Visibility:</strong> Reports you turn OFF will be hidden from both the <strong>sidebar</strong> and the <strong>Reports Center</strong>.
                 </div>
                 <div>
-                    <span class="badge badge-light font-weight-normal">कुल 186 रिपोर्ट्स कैटलॉग</span>
+                    <span class="badge badge-light font-weight-normal">Total 186 Reports Catalog</span>
                 </div>
             </div>
 
@@ -260,7 +260,7 @@
                                         <input type="hidden" name="role_id" value="{{ $selectedRoleId ?? 'global' }}">
                                         <input type="hidden" name="preset" value="{{ $pKey }}">
                                         <button type="submit" class="btn btn-block btn-outline-primary font-weight-bold shadow-sm"
-                                                onclick="return confirm('क्या आप {{ $selectedRole ? $selectedRole->name : 'Global' }} पर यह प्रीसेट लागू करना चाहते हैं?');">
+                                                onclick="return confirm('Are you sure you want to apply this preset for {{ $selectedRole ? $selectedRole->name : 'Global' }}?');">
                                             <i class="fas fa-check-circle mr-1"></i> Apply This Preset
                                         </button>
                                     </form>
@@ -283,19 +283,19 @@
                 </div>
                 <div class="modal-body p-4">
                     <p class="mb-2">
-                        क्या आप वाकई <strong>{{ $selectedRole ? $selectedRole->name : 'Global' }}</strong> के सभी मेनू और रिपोर्ट्स को डिफ़ॉल्ट (सारे चालू) पर रीसेट करना चाहते हैं?
+                        Are you sure you want to reset all menus and reports for <strong>{{ $selectedRole ? $selectedRole->name : 'Global' }}</strong> to default (all enabled)?
                     </p>
                     <p class="text-muted small mb-0">
-                        इससे सारे बंद मेनू दोबारा दिखने लगेंगे।
+                        This will re-enable all previously hidden menu items.
                     </p>
                 </div>
                 <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">रद्द करें (Cancel)</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
                     <form action="{{ route('tools.module-integrations.reset') }}" method="POST">
                         @csrf
                         <input type="hidden" name="role_id" value="{{ $selectedRoleId ?? 'global' }}">
                         <button type="submit" class="btn btn-danger btn-sm font-weight-bold">
-                            <i class="fas fa-undo mr-1"></i> हां, रीसेट करें (Reset)
+                            <i class="fas fa-undo mr-1"></i> Yes, Reset
                         </button>
                     </form>
                 </div>
@@ -375,11 +375,11 @@ $(document).ready(function() {
                 is_visible: isVisible
             },
             success: function(res) {
-                showToast(isVisible ? 'मेनू चालू कर दिया गया है' : 'मेनू बंद (छिपा) दिया गया है', 'success');
+                showToast(isVisible ? 'Menu enabled successfully' : 'Menu hidden successfully', 'success');
             },
             error: function() {
                 switchInput.prop('checked', !isVisible);
-                showToast('सेटिंग अपडेट करने में त्रुटि हुई', 'danger');
+                showToast('Failed to update menu setting', 'danger');
             }
         });
     });
@@ -408,11 +408,11 @@ $(document).ready(function() {
                     const selector = '#switch_' + key.replace(/[.\/\-]/g, '_');
                     $(selector).prop('checked', isVisible === 1);
                 });
-                showToast(res.message || 'कैटेगरी अपडेट हो गई है', 'success');
+                showToast(res.message || 'Category updated successfully', 'success');
             },
             error: function() {
                 btn.prop('disabled', false);
-                showToast('कैटेगरी अपडेट करने में त्रुटि हुई', 'danger');
+                showToast('Failed to update category', 'danger');
             }
         });
     });

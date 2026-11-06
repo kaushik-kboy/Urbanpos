@@ -907,7 +907,9 @@ class SalesBillController extends Controller
             ];
         });
 
-        $outstanding = $customer->getOutstandingBalance($branchId && $branchId !== 'all' ? (int) $branchId : null);
+        // Outstanding amount temporarily commented out
+        // $outstanding = $customer->getOutstandingBalance($branchId && $branchId !== 'all' ? (int) $branchId : null);
+        $outstanding = ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
 
         return response()->json([
             'customer_id' => $customer->id,
@@ -1831,7 +1833,8 @@ class SalesBillController extends Controller
                 ->limit(30)
                 ->get();
 
-            $balances = Customer::getBatchOutstandingBalances($customerModels->pluck('id')->all());
+            // $balances = Customer::getBatchOutstandingBalances($customerModels->pluck('id')->all());
+            $balances = [];
 
             $customers = $customerModels->map(function ($c) use ($balances) {
                 $bal = $balances[$c->id] ?? ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
@@ -1888,7 +1891,8 @@ class SalesBillController extends Controller
             ->limit(30)
             ->get();
 
-        $balances = Customer::getBatchOutstandingBalances($customerModels->pluck('id')->all());
+        // $balances = Customer::getBatchOutstandingBalances($customerModels->pluck('id')->all());
+        $balances = [];
 
         $customers = $customerModels->map(function ($c) use ($balances) {
             $bal = $balances[$c->id] ?? ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];

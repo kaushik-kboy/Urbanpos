@@ -1,12 +1,12 @@
 @extends('adminlte::page')
 
-@section('title', 'Document Sequences & Bill Numbering (बिल नंबरिंग रूल्स)')
+@section('title', 'Document Sequences & Bill Numbering')
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center flex-wrap">
         <div>
             <h1 class="font-weight-bold text-dark mb-1">
-                <i class="fas fa-sort-numeric-up-alt text-primary mr-2"></i> Document Sequences <span class="text-muted" style="font-size: 18px; font-weight: normal;">(बिल नंबरिंग रूल्स)</span>
+                <i class="fas fa-sort-numeric-up-alt text-primary mr-2"></i> Document Sequences <span class="text-muted" style="font-size: 18px; font-weight: normal;">(Bill Numbering Rules)</span>
             </h1>
             <p class="text-muted small mb-0">
                 Configure voucher prefixes, Indian financial year tokens ({FY}), branch codes, starting numbers, and auto-reset rules.

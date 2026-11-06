@@ -2,6 +2,34 @@
 
 @section('title', 'Sales Bills')
 
+@section('css')
+@if(request('is_iframe'))
+<style>
+    .pos-bill-row {
+        cursor: pointer;
+        user-select: none;
+    }
+    .pos-bill-row:hover {
+        background-color: #f1f5f9;
+    }
+    .pos-bill-row.pos-row-selected {
+        background-color: #007bff !important;
+        color: #fff !important;
+        outline: none;
+    }
+    .pos-bill-row.pos-row-selected td,
+    .pos-bill-row.pos-row-selected td a,
+    .pos-bill-row.pos-row-selected td span,
+    .pos-bill-row.pos-row-selected td .text-muted {
+        color: #fff !important;
+    }
+    .pos-bill-row.pos-row-selected .badge {
+        border: 1px solid rgba(255,255,255,0.7);
+    }
+</style>
+@endif
+@stop
+
 @section('content_header')
     @if(!request('is_iframe'))
         <h1>Sales Bills</h1>
@@ -224,13 +252,14 @@
                 </thead>
                 <tbody>
                     @forelse ($salesBills as $bill)
-                        <tr class="text-nowrap">
+                        @php
+                            $targetUrl = request('mode') === 'edit'
+                                ? (request('is_iframe') ? route('pos.terminal', ['edit_id' => $bill->id]) : route('sales.sales-bills.edit', $bill))
+                                : (request('is_iframe') ? route('pos.terminal', ['view_id' => $bill->id]) : route('sales.sales-bills.show', $bill));
+                        @endphp
+                        <tr class="text-nowrap pos-bill-row" data-href="{{ $targetUrl }}" tabindex="0">
                             <td class="font-weight-bold">
-                                @if(request('mode') === 'edit')
-                                    <a href="{{ request('is_iframe') ? route('pos.terminal', ['edit_id' => $bill->id]) : route('sales.sales-bills.edit', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
-                                @else
-                                    <a href="{{ request('is_iframe') ? route('pos.terminal', ['view_id' => $bill->id]) : route('sales.sales-bills.show', $bill) }}" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
-                                @endif
+                                <a href="{{ $targetUrl }}" class="pos-bill-link" @if(request('is_iframe')) target="_parent" @endif>{{ $bill->bill_number }}</a>
                             </td>
                             <td>
                                 @if ($bill->bill_date)
@@ -377,5 +406,95 @@ function sendWhatsAppFromIndex(btn) {
         alert('Network error: ' + err.message);
     });
 }
+
+@if(request('is_iframe'))
+$(document).ready(function () {
+    const $rows = $('tbody tr.pos-bill-row');
+    if (!$rows.length) return;
+
+    let selectedIndex = 0;
+
+    function selectRow(index) {
+        if (index < 0) index = 0;
+        if (index >= $rows.length) index = $rows.length - 1;
+        selectedIndex = index;
+
+        $rows.removeClass('pos-row-selected');
+        const $target = $rows.eq(selectedIndex);
+        $target.addClass('pos-row-selected');
+
+        if ($target[0] && typeof $target[0].scrollIntoView === 'function') {
+            $target[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }
+
+    // Default: first row highlighted
+    selectRow(0);
+
+    // Mouse click selects row
+    $rows.on('click', function (e) {
+        // If clicking on a direct action button with its own handler, don't hijack
+        if ($(e.target).closest('button, .btn-whatsapp-index').length) return;
+        const idx = $rows.index(this);
+        selectRow(idx);
+    });
+
+    $rows.on('dblclick', function () {
+        triggerSelect();
+    });
+
+    function triggerSelect() {
+        const $selected = $rows.eq(selectedIndex);
+        if (!$selected.length) return;
+
+        const href = $selected.data('href') || $selected.find('a.pos-bill-link').attr('href');
+        if (href) {
+            if (window.parent && window.parent !== window) {
+                window.parent.location.href = href;
+            } else {
+                window.location.href = href;
+            }
+        }
+    }
+
+    // Keyboard navigation: ArrowUp, ArrowDown, Enter, Escape
+    $(window).on('keydown', function (e) {
+        const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'select' || tag === 'textarea') {
+            if (e.key === 'Escape') {
+                $(e.target).blur();
+                return;
+            }
+            if (e.key === 'ArrowDown' && e.target.id === 'search') {
+                e.preventDefault();
+                $(e.target).blur();
+                selectRow(0);
+                return;
+            }
+            if (e.key === 'Enter') {
+                // If in search input, normal form submit
+                return;
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectRow(selectedIndex + 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectRow(selectedIndex - 1);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            triggerSelect();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            if (window.parent && window.parent.jQuery && window.parent.$('#posListModal').length) {
+                window.parent.$('#posListModal').modal('hide');
+            }
+        }
+    });
+});
+@endif
 </script>
 @stop

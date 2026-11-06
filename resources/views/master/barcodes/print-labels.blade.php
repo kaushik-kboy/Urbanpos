@@ -871,17 +871,17 @@
             </button>
 
             {{-- Test Print (1 Row Only) --}}
-            <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" onclick="printTestRow()" title="Sirf 2 stickers test ke liye print karein taaki roll na kharab ho">
+            <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" onclick="printTestRow()" title="Print only 2 test stickers to verify alignment">
                 <i class="fas fa-vial mr-1"></i> Test 1 Row (2 Stickers)
             </button>
 
             {{-- 1-Click Direct Print to TSC TE244 via Chrome --}}
-            <button type="button" class="btn btn-primary font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="window.print()" title="Chrome print dialog kholein calibrated TSC settings ke saath">
+            <button type="button" class="btn btn-primary font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="window.print()" title="Open Chrome print dialog with calibrated TSC settings">
                 <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Print (Chrome)
             </button>
 
             {{-- Main Print via Browser Dialog --}}
-            <button type="button" class="btn btn-success font-weight-bold shadow-sm px-4 my-1" onclick="window.print();" title="Chrome print preview dialog kholein">
+            <button type="button" class="btn btn-success font-weight-bold shadow-sm px-4 my-1" onclick="window.print();" title="Open Chrome print preview dialog">
                 <i class="fas fa-print mr-2"></i> Print via Chrome (Ctrl + P)
             </button>
         </div>
@@ -894,7 +894,7 @@
                 <i class="fas fa-exclamation-triangle text-dark mr-2" style="font-size: 22px;"></i>
                 <span class="small font-weight-bold text-dark">
                     <strong>TSC TE244 (2-Up Roll) Print Guide:</strong> &nbsp;
-                    1. Layout = <span class="badge badge-success" style="font-size: 12px;">LANDSCAPE</span> (Kyunki 102mm roll width badi hai. Agar kabhi ghoom ke aaye to Landscape/Portrait switch karein) &nbsp;|&nbsp;
+                    1. Layout = <span class="badge badge-success" style="font-size: 12px;">LANDSCAPE</span> (Roll width is 102mm. If printed sideways, toggle Landscape/Portrait) &nbsp;|&nbsp;
                     2. Paper Size = <strong>102 x 38 mm</strong> &nbsp;|&nbsp;
                     3. Margins = <strong>None</strong> &nbsp;|&nbsp;
                     4. Headers & Footers = <strong>OFF (Uncheck)</strong>
@@ -1081,46 +1081,46 @@
                 </div>
                 <div class="modal-body p-4" style="font-size: 14px; line-height: 1.6;">
                     <div class="alert alert-info py-2 px-3 mb-3">
-                        <strong>Aapke Roll me 1 row me 2 stickers bagal-bagal hain (50x25mm ya 50x38mm).</strong><br>
-                        Print <strong>sideways (ghoom ke)</strong> ya <strong>blank roll bahar nikalne</strong> se bachne ke liye sirf ye 3 steps check karein:
+                        <strong>Your label roll contains 2 stickers side-by-side per row (50x25mm or 50x38mm).</strong><br>
+                        Follow these 3 quick steps to avoid printing sideways or feeding blank labels:
                     </div>
 
                     <div class="card mb-3 border-primary">
                         <div class="card-header bg-light font-weight-bold text-primary">
-                            <i class="fas fa-magic mr-1"></i> STEP 1: Printer Hardware Calibrate Karein (Blank Roll / Paper Fenkte Rehne se Bachne Ke Liye)
+                            <i class="fas fa-magic mr-1"></i> STEP 1: Printer Hardware Sensor Calibration
                         </div>
                         <div class="card-body py-2">
                             <ol class="mb-0 pl-3">
-                                <li>Printer ko peeche ke button se <strong>POWER OFF</strong> karein.</li>
-                                <li>Front panel par <strong>PAUSE</strong> button (ya FEED button) ko ungli se daba kar rakhein.</li>
-                                <li>Button dabaye hue hi printer ko peeche se <strong>POWER ON</strong> karein.</li>
-                                <li>Jaise hi printer paper ko aage khiskana shuru kare aur light blink ho, button chhod dein.</li>
-                                <li>Printer 2-3 stickers nikal kar exact gap par ruk jayega (Sensor calibrate ho gaya).</li>
+                                <li>Turn the printer <strong>POWER OFF</strong> using the rear switch.</li>
+                                <li>Hold down the front panel <strong>PAUSE</strong> button (or FEED button).</li>
+                                <li>While holding the button down, switch the printer <strong>POWER ON</strong>.</li>
+                                <li>Release the button as soon as the printer feeds paper and the LED begins flashing.</li>
+                                <li>The printer will feed 2-3 labels and align accurately at the gap marker.</li>
                             </ol>
                         </div>
                     </div>
 
                     <div class="card mb-3 border-success">
                         <div class="card-header bg-light font-weight-bold text-success">
-                            <i class="fas fa-cogs mr-1"></i> STEP 2: Windows me TSC TE244 Driver Settings (Sirf 1 baar karni hoti hai)
+                            <i class="fas fa-cogs mr-1"></i> STEP 2: Windows TSC Driver Preferences (One-time setup)
                         </div>
                         <div class="card-body py-2">
                             <ol class="mb-0 pl-3">
-                                <li>Windows Start menu me search karein <strong>"Printers & Scanners"</strong> aur open karein.</li>
-                                <li><strong>TSC TE244</strong> printer par click karein -> <strong>Printing Preferences</strong>.</li>
-                                <li><strong>Page Setup</strong> tab me click karein <strong>New...</strong>:
+                                <li>Open <strong>Printers & Scanners</strong> from the Windows Start menu.</li>
+                                <li>Select <strong>TSC TE244</strong> and click <strong>Printing Preferences</strong>.</li>
+                                <li>In the <strong>Page Setup</strong> tab, click <strong>New...</strong>:
                                     <ul>
-                                        <li>Name: <code>102x25</code> (ya <code>102x38</code>)</li>
-                                        <li>Width: <strong>102.0 mm</strong> (roll ki total choudai)</li>
-                                        <li>Height: <strong>25.0 mm</strong> (ya sticker ki height jaise 38.0 mm)</li>
+                                        <li>Name: <code>102x25</code> (or <code>102x38</code>)</li>
+                                        <li>Width: <strong>102.0 mm</strong> (combined roll width)</li>
+                                        <li>Height: <strong>25.0 mm</strong> (or label height e.g. 38.0 mm)</li>
                                     </ul>
                                 </li>
-                                <li><strong>Stock</strong> tab me:
+                                <li>In the <strong>Stock</strong> tab:
                                     <ul>
                                         <li>Type: <strong>Labels with Gaps</strong> (Gap height: <strong>2.0 mm</strong>)</li>
                                     </ul>
                                 </li>
-                                <li><strong>Apply</strong> aur <strong>OK</strong> par click karein.</li>
+                                <li>Click <strong>Apply</strong> and <strong>OK</strong>.</li>
                             </ol>
                         </div>
                     </div>
@@ -1132,8 +1132,8 @@
                         <div class="card-body py-2">
                             <ul class="mb-0 pl-3">
                                 <li><strong>Destination:</strong> Select <code>TSC TE244</code></li>
-                                <li><strong>Layout:</strong> <span class="badge badge-success">LANDSCAPE</span> (Kyunki 102mm roll width badi hai. Agar kabhi ghoom ke aaye to Landscape/Portrait switch karein)</li>
-                                <li><strong>Paper size:</strong> <code>102x38 mm</code> (jo step 2 me banaya)</li>
+                                <li><strong>Layout:</strong> <span class="badge badge-success">LANDSCAPE</span> (Roll width is 102mm. If printed sideways, switch to Landscape)</li>
+                                <li><strong>Paper size:</strong> <code>102x38 mm</code> (as created in Step 2)</li>
                                 <li><strong>Margins:</strong> <code>None</code> (0)</li>
                                 <li><strong>Scale:</strong> <code>100%</code> (Custom -> 100)</li>
                                 <li><strong>Headers and Footers:</strong> <code>Uncheck (OFF)</code></li>
@@ -1142,13 +1142,13 @@
                     </div>
 
                     <div class="alert alert-warning py-2 px-3 mb-0 font-weight-bold">
-                        💡 Roll bachane ke liye pehle <strong>"Test 1 Row (2 Stickers)"</strong> button dabakar test karein!
+                        💡 Save label roll paper by testing first with the <strong>"Test 1 Row (2 Stickers)"</strong> button!
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-2">
                     <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Close</button>
                     <button type="button" class="btn btn-warning font-weight-bold" onclick="$('#tscSetupModal').modal('hide'); printTestRow();">
-                        <i class="fas fa-vial mr-1"></i> Test 1 Row Print Karein
+                        <i class="fas fa-vial mr-1"></i> Test Print 1 Row
                     </button>
                 </div>
             </div>

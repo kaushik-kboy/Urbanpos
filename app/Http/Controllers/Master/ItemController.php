@@ -244,7 +244,7 @@ class ItemController extends Controller
             $data['store_pickup'] = false;
         }
         if (!isset($data['tax_inclusive'])) {
-            $data['tax_inclusive'] = false;
+            $data['tax_inclusive'] = true;
         }
         if (!isset($data['batch_expiry_details']) || empty($data['batch_expiry_details'])) {
             $data['batch_expiry_details'] = 'Not Required';

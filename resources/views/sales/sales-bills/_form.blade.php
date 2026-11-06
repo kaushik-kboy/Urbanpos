@@ -455,6 +455,7 @@
                 <input type="hidden" name="customer_id" value="{{ $bill->customer_id }}">
             @endif
         </div>
+        {{-- Customer Outstanding Badge (Temporarily Commented Out)
         <div id="sb-customer-outstanding-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between" style="font-size: 0.85rem; cursor: pointer;" title="Click to view Customer Invoices & Ledger">
             <div>
                 <i class="fas fa-wallet text-primary mr-1"></i>
@@ -462,6 +463,7 @@
             </div>
             <span id="sb-customer-outstanding-badge-inner" class="badge badge-success font-weight-bold px-2 py-1" style="font-size: 0.8rem; border-radius: 6px;">Pending: ₹ 0.00</span>
         </div>
+        --}}
         <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between">
             <div>
                 <i class="fas fa-coins text-warning mr-1"></i>
@@ -1597,6 +1599,7 @@
                         window.SELECTED_CUSTOMER_PAYMENT_MODE = res.payment_mode;
                         window.SELECTED_CUSTOMER_IS_CREDIT_ALLOWED = (res.is_credit_allowed !== false);
                     }
+                    /* Outstanding amount temporarily commented out
                     if (res.outstanding || typeof res.outstanding_amount !== 'undefined') {
                         const amt = typeof res.outstanding?.amount === 'number' ? res.outstanding.amount : (parseFloat(res.outstanding_amount) || 0);
                         const formatted = res.outstanding_formatted || res.outstanding?.formatted || ('₹ ' + amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -1611,6 +1614,7 @@
                         }
                         $('#sb-customer-outstanding-badge').removeClass('d-none').addClass('d-flex');
                     }
+                    */
                     if (res.invoices) {
                         customerInvoicesData = res.invoices;
                         filteredInvoices = [...customerInvoicesData];

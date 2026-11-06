@@ -18,10 +18,10 @@
                         <div class="custom-control custom-radio mb-2">
                             <input type="radio" id="date-mode-manual" name="date_pref_mode" class="custom-control-input" value="manual">
                             <label class="custom-control-label font-weight-bold text-primary" for="date-mode-manual" style="cursor: pointer;">
-                                ✍️ Hath se likhna (Fast Keyboard Typing)
+                                ✍️ Manual Numeric Entry (Fast Keyboard Typing)
                             </label>
                             <div class="small text-muted ml-4 mt-1">
-                                Direct number type karein (e.g. <code>10042026</code>). Input box par click karne par <strong>calendar popup nahi aayega</strong>.
+                                Type digits directly (e.g. <code>10042026</code>). Clicking the input will <strong>not open the calendar popup</strong>.
                             </div>
                         </div>
                         <div class="custom-control custom-radio">
@@ -30,7 +30,7 @@
                                 📅 Calendar Picker Popup
                             </label>
                             <div class="small text-muted ml-4 mt-1">
-                                Field par click ya focus karne par visual calendar pop-up khulega.
+                                Clicking or focusing on the input opens an interactive visual calendar popup.
                             </div>
                         </div>
                     </div>

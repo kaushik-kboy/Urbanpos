@@ -95,7 +95,7 @@
         </div>
         <div class="row g-2 form-fields-grid" id="item-taxes-fields-grid">
             <div class="field-wrapper col-md-6" data-field="tax_inclusive" data-label="Tax Inclusive" data-default-order="1">
-                <x-bool-select name="tax_inclusive" label="Tax Inclusive" :value="$i->tax_inclusive ?? false" true-label="Yes" false-label="No" />
+                <x-bool-select name="tax_inclusive" label="Tax Inclusive" :value="old('tax_inclusive', isset($i?->tax_inclusive) ? (bool)$i->tax_inclusive : true)" true-label="Yes" false-label="No" />
             </div>
         </div>
     </div>

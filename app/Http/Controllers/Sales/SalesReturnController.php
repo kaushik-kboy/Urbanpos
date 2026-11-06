@@ -197,9 +197,9 @@ class SalesReturnController extends Controller
 
     public function edit(SalesReturn $salesReturn)
     {
-        $salesReturn->load(['items.item', 'items.salesBill']);
+        $salesReturn->load(['customer', 'items.item', 'items.salesBill']);
 
-        return view('sales.sales-returns.edit', array_merge(['salesReturn' => $salesReturn], $this->formOptions()));
+        return view('sales.sales-returns.edit', array_merge(['salesReturn' => $salesReturn], $this->formOptions($salesReturn)));
     }
 
     public function update(Request $request, SalesReturn $salesReturn)
@@ -307,10 +307,15 @@ class SalesReturnController extends Controller
             ];
         });
 
+        $salesBill->loadMissing('customer');
+        $resolvedSalesType = in_array($salesBill->sales_type, ['Local', 'Interstate']) 
+            ? $salesBill->sales_type 
+            : ($salesBill->customer?->sales_type ?? 'Local');
+
         return response()->json([
             'customer_id'  => $salesBill->customer_id,
             'branch_id'    => $salesBill->branch_id,
-            'sales_type'   => $salesBill->sales_type,
+            'sales_type'   => $resolvedSalesType,
             'bill_number'  => $salesBill->bill_number,
             'bill_date'    => $salesBill->bill_date ? $salesBill->bill_date->format('d-m-Y') : '',
             'bill_total'   => (float) ($salesBill->total ?? 0),
@@ -387,7 +392,7 @@ class SalesReturnController extends Controller
                 ];
             });
 
-        return response()->json($bills);
+        return response()->json($bills)->header('X-Customer-Sales-Type', $customer->sales_type ?? 'Local');
     }
 
     /**

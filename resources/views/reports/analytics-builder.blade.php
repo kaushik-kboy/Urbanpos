@@ -60,7 +60,7 @@
         </div>
         <div class="mt-2 mt-md-0">
             <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm mr-1" data-toggle="modal" data-target="#guideHindiModal">
-                <i class="fas fa-book-reader mr-1"></i> 📖 Kaise Use Karein? (Guide)
+                <i class="fas fa-book-reader mr-1"></i> User Guide & Examples
             </button>
             <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm mr-1">
                 <i class="fas fa-arrow-left mr-1"></i> Reports Center
@@ -80,8 +80,8 @@
         <div class="card-body p-2 d-flex flex-wrap align-items-center justify-content-between">
             <div class="d-flex flex-wrap align-items-center mb-1 mb-md-0">
                 <span class="font-weight-bold text-dark mr-2 small"><i class="fas fa-bolt text-warning mr-1"></i> Smart Presets:</span>
-                <button type="button" class="btn btn-xs btn-outline-info font-weight-bold mr-2 mb-1 px-2" data-toggle="modal" data-target="#guideHindiModal" title="Click for step-by-step Hindi guide">
-                    <i class="fas fa-question-circle mr-1"></i> गाइड / उदाहरण
+                <button type="button" class="btn btn-xs btn-outline-info font-weight-bold mr-2 mb-1 px-2" data-toggle="modal" data-target="#guideHindiModal" title="Click for step-by-step user guide">
+                    <i class="fas fa-question-circle mr-1"></i> Guide / Examples
                 </button>
                 
                 {{-- User exact requirement 1: Item Supplier Sourcing --}}
@@ -627,7 +627,7 @@
         <div class="modal-content shadow-lg border-0">
             <div class="modal-header bg-gradient-info text-white py-2">
                 <h5 class="modal-title font-weight-bold" id="guideHindiModalTitle">
-                    <i class="fas fa-book-reader mr-2"></i> Custom Report Studio — आसान यूज़र गाइड (Hindi Guide & Examples)
+                    <i class="fas fa-book-reader mr-2"></i> Custom Report Studio — Quick User Guide & Examples
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
@@ -640,9 +640,9 @@
                     <div class="d-flex align-items-center">
                         <i class="fas fa-lightbulb fa-2x text-warning mr-3"></i>
                         <div>
-                            <h6 class="font-weight-bold mb-1 text-primary">यह टूल क्या है और इसका क्या फायदा है?</h6>
+                            <h6 class="font-weight-bold mb-1 text-primary">What is this tool and how does it help?</h6>
                             <p class="mb-0 text-dark small" style="line-height: 1.6;">
-                                यह आपकी दुकान/बिज़नेस का <strong>"जादुई रिपोर्ट मेकर"</strong> है। इसमें आपको फिक्स रिपोर्ट देखने की कोई मजबूरी नहीं है। आप अपनी मर्जी से तय कर सकते हैं कि आपको <strong>किस चीज़ का हिसाब</strong> (जैसे आइटम, कस्टमर, सप्लायर, पेमेंट मोड) और <strong>क्या-क्या जानकारी</strong> (जैसे कुल बिक्री, क्वांटिटी, मुनाफा/प्रॉफ़िट) देखनी है।
+                                This is your business's <strong>"Custom Report Studio"</strong>. You are never restricted to rigid preset reports. You can freely choose <strong>what to analyze</strong> (items, customers, suppliers, payment methods) and <strong>which metrics to calculate</strong> (sales volume, quantity, gross profit, margin %).
                             </p>
                         </div>
                     </div>
@@ -652,17 +652,17 @@
                 <ul class="nav nav-pills nav-justified mb-3 shadow-sm bg-white p-1 rounded" id="guideTab" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active font-weight-bold" id="guide-concept-tab" data-toggle="pill" href="#guide-concept" role="tab">
-                            <i class="fas fa-magic mr-1 text-primary"></i> 1. सिर्फ 3-स्टेप फॉर्मूला
+                            <i class="fas fa-magic mr-1 text-primary"></i> 1. The 3-Step Formula
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link font-weight-bold" id="guide-examples-tab" data-toggle="pill" href="#guide-examples" role="tab">
-                            <i class="fas fa-store mr-1 text-success"></i> 2. रोज़ाना काम आने वाले 5 उदाहरण
+                            <i class="fas fa-store mr-1 text-success"></i> 2. 5 Common Real-World Examples
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link font-weight-bold" id="guide-tips-tab" data-toggle="pill" href="#guide-tips" role="tab">
-                            <i class="fas fa-star mr-1 text-warning"></i> 3. ख़ास फीचर्स और टिप्स
+                            <i class="fas fa-star mr-1 text-warning"></i> 3. Key Features & Tips
                         </a>
                     </li>
                 </ul>
@@ -675,16 +675,16 @@
                             <div class="col-md-4 mb-3">
                                 <div class="card h-100 border-primary shadow-sm">
                                     <div class="card-header bg-primary text-white py-2 font-weight-bold">
-                                        <i class="fas fa-database mr-1"></i> स्टेप 1: Data Source (किसकी रिपोर्ट?)
+                                        <i class="fas fa-database mr-1"></i> Step 1: Data Source (What data?)
                                     </div>
                                     <div class="card-body p-3">
-                                        <p class="small text-muted mb-2">पहले तय करें कि डेटा कहाँ से उठाना है:</p>
+                                        <p class="small text-muted mb-2">First, select where your data comes from:</p>
                                         <ul class="small pl-3 mb-0" style="line-height: 1.8;">
-                                            <li><strong>Sales (Items):</strong> हर बिके हुए सामान की डिटेल, मुनाफा और मार्जिन।</li>
-                                            <li><strong>Sales (Bills):</strong> पूरे बिल की समरी, जैसे Cash या UPI और कस्टमर हिसाब।</li>
-                                            <li><strong>Purchases:</strong> सप्लायर से खरीदे गए माल और बिलों का ब्यौरा।</li>
-                                            <li><strong>Item ⇄ Supplier Sourcing:</strong> कौन सा आइटम किस सप्लायर से किस रेट पर आया।</li>
-                                            <li><strong>Item Monthly:</strong> किसी 1 खास आइटम की महीने-दर-महीने बिक्री।</li>
+                                            <li><strong>Sales (Items):</strong> Detailed item-wise sales, revenue, profit, and margins.</li>
+                                            <li><strong>Sales (Bills):</strong> Bill-level summaries, payment modes, and customer totals.</li>
+                                            <li><strong>Purchases:</strong> Supplier invoice entries and purchase summaries.</li>
+                                            <li><strong>Item ⇄ Supplier Sourcing:</strong> Which supplier supplied which items and at what cost.</li>
+                                            <li><strong>Item Monthly:</strong> Month-over-month sales trends for a selected item.</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -693,16 +693,16 @@
                             <div class="col-md-4 mb-3">
                                 <div class="card h-100 border-info shadow-sm">
                                     <div class="card-header bg-info text-white py-2 font-weight-bold">
-                                        <i class="fas fa-layer-group mr-1"></i> स्टेप 2: Group By (किसके हिसाब से जोड़ें?)
+                                        <i class="fas fa-layer-group mr-1"></i> Step 2: Group By (How to aggregate?)
                                     </div>
                                     <div class="card-body p-3">
-                                        <p class="small text-muted mb-2">डेटा को किस आधार पर इकट्ठा (Group) करना है:</p>
+                                        <p class="small text-muted mb-2">Choose how the rows should be grouped:</p>
                                         <ul class="small pl-3 mb-0" style="line-height: 1.8;">
-                                            <li><strong>Item / Product:</strong> हर प्रोडक्ट की एक लाइन बनेगी (जैसे साबुन की कुल बिक्री)।</li>
-                                            <li><strong>Customer:</strong> हर ग्राहक की एक लाइन बनेगी (किस ग्राहक ने कितना खरीदा)।</li>
-                                            <li><strong>Category:</strong> कैटेगरी-वाइज़ जोड़ (जैसे Grocery, Electronics)।</li>
-                                            <li><strong>Payment Mode:</strong> Cash, UPI, Card के हिसाब से कुल कलेक्शन।</li>
-                                            <li><strong>Supplier:</strong> किस सप्लायर से कितना माल खरीदा।</li>
+                                            <li><strong>Item / Product:</strong> One row per product (e.g. total units and revenue per item).</li>
+                                            <li><strong>Customer:</strong> One row per customer (how much each customer purchased).</li>
+                                            <li><strong>Category:</strong> Category-wise grouping (e.g. Grocery, Pet Food, Accessories).</li>
+                                            <li><strong>Payment Mode:</strong> Aggregated collection by Cash, UPI, Card, etc.</li>
+                                            <li><strong>Supplier:</strong> Purchase totals grouped by each vendor.</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -711,18 +711,18 @@
                             <div class="col-md-4 mb-3">
                                 <div class="card h-100 border-success shadow-sm">
                                     <div class="card-header bg-success text-white py-2 font-weight-bold">
-                                        <i class="fas fa-calculator mr-1"></i> स्टेप 3: Metrics (क्या कैलकुलेट करना है?)
+                                        <i class="fas fa-calculator mr-1"></i> Step 3: Metrics (What to calculate?)
                                     </div>
                                     <div class="card-body p-3">
-                                        <p class="small text-muted mb-2">रिपोर्ट में कौन-से कॉलम देखने हैं:</p>
+                                        <p class="small text-muted mb-2">Select the columns to include in your report:</p>
                                         <ul class="small pl-3 mb-2" style="line-height: 1.8;">
-                                            <li><span class="badge badge-light border">Qty</span> = कुल कितनी मात्रा बिकी।</li>
-                                            <li><span class="badge badge-light border">Total Amount</span> = कुल कितने रुपये बने।</li>
-                                            <li><span class="badge badge-light border">Gross Profit</span> = कुल कितने रुपये का मुनाफा हुआ।</li>
-                                            <li><span class="badge badge-light border">Margin %</span> = कितने प्रतिशत मार्जिन मिला।</li>
+                                            <li><span class="badge badge-light border">Qty</span> = Total quantity sold.</li>
+                                            <li><span class="badge badge-light border">Total Amount</span> = Total gross revenue.</li>
+                                            <li><span class="badge badge-light border">Gross Profit</span> = Total calculated profit in ₹.</li>
+                                            <li><span class="badge badge-light border">Margin %</span> = Overall profit percentage.</li>
                                         </ul>
                                         <div class="alert alert-light border p-2 small mb-0">
-                                            <strong>⚡ शॉर्टकट:</strong> आपको एक-एक टिक करने की ज़रूरत नहीं है! ऊपर बने <strong>"Standard"</strong> या <strong>"Profit"</strong> बटन पर 1 क्लिक करें।
+                                            <strong>⚡ Shortcut:</strong> No need to check individual boxes manually! Click the <strong>"Standard"</strong> or <strong>"Profit"</strong> buttons above.
                                         </div>
                                     </div>
                                 </div>
@@ -733,16 +733,16 @@
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-calendar-alt fa-2x text-info mr-3"></i>
                                 <div>
-                                    <h6 class="font-weight-bold mb-1 text-dark">📅 तारीख चुनना (Date Filter) और भी आसान:</h6>
+                                    <h6 class="font-weight-bold mb-1 text-dark">📅 Date Filters made simple:</h6>
                                     <p class="small text-muted mb-0">
-                                        मैनुअल तारीख डालने के अलावा आप 1-क्लिक बटन दबा सकते हैं: 
-                                        <span class="badge badge-primary mr-1">आज (Today)</span>
-                                        <span class="badge badge-secondary mr-1">इस हफ्ते (This Week)</span>
-                                        <span class="badge badge-info mr-1">इस महीने (This Month)</span>
-                                        <span class="badge badge-dark mr-1">पिछले महीने (Last Month)</span>
-                                        <span class="badge badge-warning text-dark mr-1">इस वित्तीय वर्ष (FY)</span>
+                                        In addition to picking custom date ranges, use 1-click quick presets: 
+                                        <span class="badge badge-primary mr-1">Today</span>
+                                        <span class="badge badge-secondary mr-1">This Week</span>
+                                        <span class="badge badge-info mr-1">This Month</span>
+                                        <span class="badge badge-dark mr-1">Last Month</span>
+                                        <span class="badge badge-warning text-dark mr-1">Current Financial Year (FY)</span>
                                         <span class="badge badge-success mr-1">All Time</span>
-                                        बटन दबाते ही रिपोर्ट तुरंत ताज़ा डेटा के साथ लोड हो जाएगी।
+                                        Clicking any date badge refreshes the report instantly with current data.
                                     </p>
                                 </div>
                             </div>
@@ -751,7 +751,7 @@
 
                     {{-- TAB 2: 5 REAL BUSINESS EXAMPLES --}}
                     <div class="tab-pane fade" id="guide-examples" role="tabpanel">
-                        <p class="text-muted small mb-3">यहाँ 5 सबसे ज़्यादा इस्तेमाल होने वाले बिज़नेस उदाहरण दिए गए हैं। इन्हें देखने के लिए आप ऊपर दिए गए <strong>Smart Presets</strong> बटन भी दबा सकते हैं:</p>
+                        <p class="text-muted small mb-3">Here are 5 frequently used business scenarios. You can also trigger them directly with the <strong>Smart Presets</strong> buttons above:</p>
 
                         <div class="accordion" id="examplesAccordion">
                             
@@ -760,7 +760,7 @@
                                 <div class="card-header bg-white py-2" id="headingEx1">
                                     <h6 class="mb-0">
                                         <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center" type="button" data-toggle="collapse" data-target="#collapseEx1">
-                                            <span><i class="fas fa-fire text-danger mr-2"></i> <strong>उदाहरण 1:</strong> सबसे ज्यादा बिकने वाले सामान और किसमें कितना मुनाफ़ा (Profit & Margin) हुआ?</span>
+                                            <span><i class="fas fa-fire text-danger mr-2"></i> <strong>Example 1:</strong> Top selling items and their profit margins (Profit & Margin)</span>
                                             <span class="badge badge-danger">Top Selling</span>
                                         </button>
                                     </h6>
@@ -769,18 +769,18 @@
                                     <div class="card-body bg-light p-3 small">
                                         <div class="row">
                                             <div class="col-md-7">
-                                                <strong>🎯 क्यों देखना है:</strong> यह जानने के लिए कि कौन सा आइटम सबसे ज्यादा डिमांड में है और दुकान को असली कमाई किस आइटम से हो रही है।<br>
-                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-fire text-danger"></i> Top Selling Items</strong> बटन पर क्लिक करें।<br>
-                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <strong>🎯 Purpose:</strong> Identify which products are in highest demand and driving real revenue for your store.<br>
+                                                <strong>⚡ 1-Click:</strong> Click the <strong><i class="fas fa-fire text-danger"></i> Top Selling Items</strong> preset button above.<br>
+                                                <strong>⚙️ Manual Setup:</strong>
                                                 <ul class="mb-0 mt-1 pl-3">
                                                     <li><strong>Data Source:</strong> Sales (Bill Items)</li>
                                                     <li><strong>Group By:</strong> Item / Product</li>
-                                                    <li><strong>Metrics:</strong> Qty, Total Amount, Gross Profit, Margin % (या "Profit" बटन दबाएं)</li>
-                                                    <li><strong>Date:</strong> This Month (इस महीने) या All Time</li>
+                                                    <li><strong>Metrics:</strong> Qty, Total Amount, Gross Profit, Margin % (or click "Profit")</li>
+                                                    <li><strong>Date:</strong> This Month or All Time</li>
                                                 </ul>
                                             </div>
                                             <div class="col-md-5 border-left">
-                                                <strong>📊 आपको स्क्रीन पर क्या दिखेगा:</strong>
+                                                <strong>📊 Output Preview:</strong>
                                                 <div class="table-responsive mt-1">
                                                     <table class="table table-xs table-bordered bg-white mb-0">
                                                         <thead class="bg-secondary text-white">
@@ -803,7 +803,7 @@
                                 <div class="card-header bg-white py-2" id="headingEx2">
                                     <h6 class="mb-0">
                                         <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx2">
-                                            <span><i class="fas fa-crown text-warning mr-2"></i> <strong>उदाहरण 2:</strong> दुकान के सबसे बड़े VIP ग्राहक कौन-से हैं? (Top Customers)</span>
+                                            <span><i class="fas fa-crown text-warning mr-2"></i> <strong>Example 2:</strong> Who are your top VIP customers? (Top Customers)</span>
                                             <span class="badge badge-warning text-dark">VIP Customers</span>
                                         </button>
                                     </h6>
@@ -812,9 +812,9 @@
                                     <div class="card-body bg-light p-3 small">
                                         <div class="row">
                                             <div class="col-md-7">
-                                                <strong>🎯 क्यों देखना है:</strong> किन ग्राहकों ने आपकी दुकान से सबसे ज्यादा खरीदारी की है, ताकि उन्हें फेस्टिव डिस्काउंट या लॉयल्टी ऑफर दे सकें।<br>
-                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-crown text-warning"></i> Top VIP Customers</strong> बटन पर क्लिक करें।<br>
-                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <strong>🎯 Purpose:</strong> Recognize high-value shoppers to offer loyalty perks and personalized promotions.<br>
+                                                <strong>⚡ 1-Click:</strong> Click the <strong><i class="fas fa-crown text-warning"></i> Top VIP Customers</strong> preset button above.<br>
+                                                <strong>⚙️ Manual Setup:</strong>
                                                 <ul class="mb-0 mt-1 pl-3">
                                                     <li><strong>Data Source:</strong> Sales (Bill Level)</li>
                                                     <li><strong>Group By:</strong> Customer</li>
@@ -822,7 +822,7 @@
                                                 </ul>
                                             </div>
                                             <div class="col-md-5 border-left">
-                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <strong>📊 Output Preview:</strong>
                                                 <div class="table-responsive mt-1">
                                                     <table class="table table-xs table-bordered bg-white mb-0">
                                                         <thead class="bg-secondary text-white">
@@ -845,7 +845,7 @@
                                 <div class="card-header bg-white py-2" id="headingEx3">
                                     <h6 class="mb-0">
                                         <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx3">
-                                            <span><i class="fas fa-wallet text-primary mr-2"></i> <strong>उदाहरण 3:</strong> कैश कितना आया और ऑनलाइन/UPI में कितना पेमेंट हुआ?</span>
+                                            <span><i class="fas fa-wallet text-primary mr-2"></i> <strong>Example 3:</strong> How much cash vs UPI vs card collections were received?</span>
                                             <span class="badge badge-primary">Cash vs UPI</span>
                                         </button>
                                     </h6>
@@ -854,18 +854,18 @@
                                     <div class="card-body bg-light p-3 small">
                                         <div class="row">
                                             <div class="col-md-7">
-                                                <strong>🎯 क्यों देखना है:</strong> शाम को गल्ला (Cash Counter) गिनने और बैंक खाते में आए ऑनलाइन पेमेंट को मिलाने के लिए।<br>
-                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-wallet"></i> Cash vs UPI vs Card</strong> बटन पर क्लिक करें।<br>
-                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <strong>🎯 Purpose:</strong> Reconcile your cash register and match bank receipts with digital payments.<br>
+                                                <strong>⚡ 1-Click:</strong> Click the <strong><i class="fas fa-wallet"></i> Cash vs UPI vs Card</strong> preset button above.<br>
+                                                <strong>⚙️ Manual Setup:</strong>
                                                 <ul class="mb-0 mt-1 pl-3">
                                                     <li><strong>Data Source:</strong> Sales (Bill Level)</li>
                                                     <li><strong>Group By:</strong> Payment Mode</li>
                                                     <li><strong>Metrics:</strong> Records/Count, Total Amount</li>
-                                                    <li><strong>Date:</strong> Today (आज) या This Month</li>
+                                                    <li><strong>Date:</strong> Today or This Month</li>
                                                 </ul>
                                             </div>
                                             <div class="col-md-5 border-left">
-                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <strong>📊 Output Preview:</strong>
                                                 <div class="table-responsive mt-1">
                                                     <table class="table table-xs table-bordered bg-white mb-0">
                                                         <thead class="bg-secondary text-white">
@@ -889,7 +889,7 @@
                                 <div class="card-header bg-white py-2" id="headingEx4">
                                     <h6 class="mb-0">
                                         <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx4">
-                                            <span><i class="fas fa-file-invoice-dollar text-success mr-2"></i> <strong>उदाहरण 4:</strong> किस सप्लायर से कुल कितने का माल खरीदा और कितने इनवॉइस आए?</span>
+                                            <span><i class="fas fa-file-invoice-dollar text-success mr-2"></i> <strong>Example 4:</strong> How much stock was purchased from each supplier and tax breakdown?</span>
                                             <span class="badge badge-success">Supplier Purchases</span>
                                         </button>
                                     </h6>
@@ -898,9 +898,9 @@
                                     <div class="card-body bg-light p-3 small">
                                         <div class="row">
                                             <div class="col-md-7">
-                                                <strong>🎯 क्यों देखना है:</strong> सप्लायर का हिसाब चुकता करने और GST इनपुट टैक्स क्रेडिट (ITC) का मिलान करने के लिए।<br>
-                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-file-invoice-dollar"></i> Supplier Invoice Summary</strong> बटन पर क्लिक करें।<br>
-                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <strong>🎯 Purpose:</strong> Track vendor accounts, pending payments, and reconcile GST Input Tax Credit (ITC).<br>
+                                                <strong>⚡ 1-Click:</strong> Click the <strong><i class="fas fa-file-invoice-dollar"></i> Supplier Invoice Summary</strong> preset button above.<br>
+                                                <strong>⚙️ Manual Setup:</strong>
                                                 <ul class="mb-0 mt-1 pl-3">
                                                     <li><strong>Data Source:</strong> Purchases</li>
                                                     <li><strong>Group By:</strong> Supplier</li>
@@ -908,7 +908,7 @@
                                                 </ul>
                                             </div>
                                             <div class="col-md-5 border-left">
-                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <strong>📊 Output Preview:</strong>
                                                 <div class="table-responsive mt-1">
                                                     <table class="table table-xs table-bordered bg-white mb-0">
                                                         <thead class="bg-secondary text-white">
@@ -931,7 +931,7 @@
                                 <div class="card-header bg-white py-2" id="headingEx5">
                                     <h6 class="mb-0">
                                         <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none d-flex justify-content-between align-items-center collapsed" type="button" data-toggle="collapse" data-target="#collapseEx5">
-                                            <span><i class="fas fa-truck-loading text-info mr-2"></i> <strong>उदाहरण 5:</strong> कौन सा आइटम किस-किस सप्लायर से किस रेट पर आया? (Item ⇄ Supplier Sourcing)</span>
+                                            <span><i class="fas fa-truck-loading text-info mr-2"></i> <strong>Example 5:</strong> Which supplier supplied which items and at what rates? (Item ⇄ Supplier Sourcing)</span>
                                             <span class="badge badge-info">Sourcing Trace</span>
                                         </button>
                                     </h6>
@@ -940,9 +940,9 @@
                                     <div class="card-body bg-light p-3 small">
                                         <div class="row">
                                             <div class="col-md-7">
-                                                <strong>🎯 क्यों देखना है:</strong> अलग-अलग सप्लायर के रेट की तुलना करने के लिए कि कौन सा डिस्ट्रीब्यूटर सस्ता माल देता है और अभी दुकान में कितना स्टॉक बाकी है।<br>
-                                                <strong>⚡ 1-क्लिक तरीका:</strong> ऊपर दिए <strong><i class="fas fa-truck-loading"></i> Item ⇄ Supplier Sourcing</strong> बटन पर क्लिक करें।<br>
-                                                <strong>⚙️ अगर खुद सेट करना हो:</strong>
+                                                <strong>🎯 Purpose:</strong> Compare purchase rates between different vendors and verify current shelf stock.<br>
+                                                <strong>⚡ 1-Click:</strong> Click the <strong><i class="fas fa-truck-loading"></i> Item ⇄ Supplier Sourcing</strong> preset button above.<br>
+                                                <strong>⚙️ Manual Setup:</strong>
                                                 <ul class="mb-0 mt-1 pl-3">
                                                     <li><strong>Data Source:</strong> Item-Supplier Sourcing Trace</li>
                                                     <li><strong>Group By:</strong> Item + Supplier (Combined)</li>
@@ -950,7 +950,7 @@
                                                 </ul>
                                             </div>
                                             <div class="col-md-5 border-left">
-                                                <strong>📊 आपको क्या दिखेगा:</strong>
+                                                <strong>📊 Output Preview:</strong>
                                                 <div class="table-responsive mt-1">
                                                     <table class="table table-xs table-bordered bg-white mb-0">
                                                         <thead class="bg-secondary text-white">
@@ -978,10 +978,10 @@
                                 <div class="card h-100 bg-white border shadow-sm">
                                     <div class="card-body p-3">
                                         <h6 class="font-weight-bold text-primary mb-2">
-                                            <i class="fas fa-eye text-info mr-1"></i> 1. "View / Details" बटन (अंदर के सारे बिल देखना)
+                                            <i class="fas fa-eye text-info mr-1"></i> 1. "View / Details" Button (Drill-Down to Actual Bills)
                                         </h6>
                                         <p class="small text-muted mb-0">
-                                            टेबल में जब भी कोई रिपोर्ट दिखे, हर लाइन के दाईं तरफ एक नीला <strong>"View / Details"</strong> बटन होता है। उस पर क्लिक करते ही एक पॉपअप खुलेगा जिसमें उस आइटम या कस्टमर से जुड़े सभी असली बिल, इनवॉइस नंबर, तारीख और रेट दिख जाएंगे। आप सीधे <em>"View Bill ↗"</em> दबाकर पूरा बिल भी खोल सकते हैं।
+                                            In every generated report row, a blue <strong>"View / Details"</strong> button appears on the right. Clicking it displays all underlying bills, invoices, dates, and item prices in a popup. You can click <em>"View Bill ↗"</em> to inspect the entire bill in full.
                                         </p>
                                     </div>
                                 </div>
@@ -991,10 +991,10 @@
                                 <div class="card h-100 bg-white border shadow-sm">
                                     <div class="card-body p-3">
                                         <h6 class="font-weight-bold text-success mb-2">
-                                            <i class="fas fa-chart-pie text-success mr-1"></i> 2. Chart View (ग्राफ में रिपोर्ट देखना)
+                                            <i class="fas fa-chart-pie text-success mr-1"></i> 2. Chart View (Visual Graphical Analysis)
                                         </h6>
                                         <p class="small text-muted mb-0">
-                                            अगर आपको नंबर और टेबल देखने के बजाय चार्ट देखना पसंद है, तो ऊपर दाईं तरफ <strong>"Chart View"</strong> बटन पर क्लिक करें। आपकी रिपोर्ट तुरंत बार चार्ट (Bar Chart) या पाई चार्ट (Pie Chart) में बदल जाएगी, जिससे आँखों को तुरंत समझ आ जाता है कि कौन सा आइटम आगे है।
+                                            Prefer visual graphs over tables? Click the <strong>"Chart View"</strong> button at top right to instantly render a Bar Chart or Pie Chart to analyze top contributors at a glance.
                                         </p>
                                     </div>
                                 </div>
@@ -1004,10 +1004,10 @@
                                 <div class="card h-100 bg-white border shadow-sm">
                                     <div class="card-body p-3">
                                         <h6 class="font-weight-bold text-warning mb-2">
-                                            <i class="fas fa-file-excel text-success mr-1"></i> 3. Excel और PDF डाउनलोड करना
+                                            <i class="fas fa-file-excel text-success mr-1"></i> 3. Excel & PDF Export
                                         </h6>
                                         <p class="small text-muted mb-0">
-                                            रिपोर्ट जनरेट होने के बाद टेबल के ठीक ऊपर <strong>"Export Excel"</strong> और <strong>"Export PDF"</strong> बटन एक्टिव हो जाते हैं। 1 क्लिक करते ही पूरी रिपोर्ट आपकी एक्सेल शीट में डाउनलोड हो जाएगी, जिसे आप सीधे WhatsApp पर या अपने अकाउंटेंट/CA को भेज सकते हैं।
+                                            Once a report is rendered, <strong>"Export Excel"</strong> and <strong>"Export PDF"</strong> buttons become active above the table. A single click downloads formatted reports ready for sharing with your accountant or management.
                                         </p>
                                     </div>
                                 </div>
@@ -1017,10 +1017,10 @@
                                 <div class="card h-100 bg-white border shadow-sm">
                                     <div class="card-body p-3">
                                         <h6 class="font-weight-bold text-dark mb-2">
-                                            <i class="fas fa-bookmark text-primary mr-1"></i> 4. Save Report (अपनी मनपसंद रिपोर्ट सेव करना)
+                                            <i class="fas fa-bookmark text-primary mr-1"></i> 4. Save Report (Save Custom Layouts)
                                         </h6>
                                         <p class="small text-muted mb-0">
-                                            अगर कोई खास रिपोर्ट आपको हर हफ्ते देखनी पड़ती है, तो बार-बार सेटिंग बदलने की ज़रूरत नहीं है। ऊपर <strong>"Save Report"</strong> पर क्लिक करें और कोई भी नाम दे दें (जैसे: <em>"मेरी वीकली ग्रोसरी रिपोर्ट"</em>)। अगली बार वह रिपोर्ट आपके <strong>"My Saved Reports"</strong> में 1-क्लिक में मिल जाएगी!
+                                            If you check a specific report layout frequently, click <strong>"Save Report"</strong> and give it a name. It will be saved under <strong>"My Saved Reports"</strong> for instant 1-click execution anytime.
                                         </p>
                                     </div>
                                 </div>
@@ -1033,10 +1033,10 @@
             </div>
             <div class="modal-footer bg-light py-2 d-flex justify-content-between">
                 <span class="small text-muted font-italic">
-                    <i class="fas fa-check-circle text-success mr-1"></i> अगर कोई सवाल या परेशानी हो, तो आप कभी भी इस गाइड को दोबारा खोल सकते हैं।
+                    <i class="fas fa-check-circle text-success mr-1"></i> You can reopen this guide anytime from the top bar.
                 </span>
                 <button type="button" class="btn btn-primary btn-sm font-weight-bold px-4" data-dismiss="modal">
-                    समझ आ गया (Got it!)
+                    Got it!
                 </button>
             </div>
         </div>

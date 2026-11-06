@@ -52,7 +52,13 @@
             @php
                 $selectedCustId = old('customer_id', $ret->customer_id ?? ($presetCustomerId ?? ''));
                 $selectedBillId = old('sales_bill_id', $ret->sales_bill_id ?? ($presetBillId ?? ''));
+                $selectedCustModel = $ret?->customer ?? ($selectedCustId ? \App\Models\Customer::find($selectedCustId) : null);
             @endphp
+            @if($selectedCustModel && !isset($customers[$selectedCustModel->id]))
+                <option value="{{ $selectedCustModel->id }}" selected>
+                    {{ $selectedCustModel->name }}{{ $selectedCustModel->mobile ? ' (' . $selectedCustModel->mobile . ')' : '' }}
+                </option>
+            @endif
             @foreach ($customers as $id => $name)
                 <option value="{{ $id }}" @selected($selectedCustId == $id)>{{ $name }}</option>
             @endforeach
@@ -60,6 +66,10 @@
     </div>
     @php
         $selectedBranch = old('branch_id', $ret->branch_id ?? session('active_branch_id', auth()->user()?->branch_id ?: (\App\Models\Branch::value('id') ?? 1)));
+        $initSalesType = old('sales_type', $ret->sales_type ?? ($selectedCustModel?->sales_type ?? 'Local'));
+        if (!in_array($initSalesType, ['Local', 'Interstate'])) {
+            $initSalesType = 'Local';
+        }
     @endphp
     <input type="hidden" name="branch_id" id="branch_id" value="{{ $selectedBranch }}">
     <div class="field-wrapper col-lg-2 col-md-3 col-sm-6 col-6 mb-1" data-field="return_date" data-label="Return Date" data-default-order="3" data-core="1">
@@ -68,9 +78,9 @@
     </div>
     <div class="field-wrapper col-lg-2 col-md-3 col-sm-6 col-6 mb-1" data-field="sales_type" data-label="Sales Type" data-default-order="4" data-core="1">
         <label for="sales_type" class="font-weight-bold mb-1">Sales Type <span class="text-danger">*</span></label>
-        <select name="sales_type" id="sales_type" class="form-control" required>
-            <option value="Local" @selected(old('sales_type', $ret->sales_type ?? 'Local') === 'Local')>Local (CGST + SGST)</option>
-            <option value="Interstate" @selected(old('sales_type', $ret->sales_type ?? '') === 'Interstate')>Interstate (IGST)</option>
+        <select name="sales_type" id="sales_type" class="form-control" style="pointer-events: none; background-color: #e9ecef;" tabindex="-1" required>
+            <option value="Local" @selected($initSalesType === 'Local')>Local (CGST + SGST)</option>
+            <option value="Interstate" @selected($initSalesType === 'Interstate')>Interstate (IGST)</option>
         </select>
     </div>
     <div class="field-wrapper col-lg-3 col-md-4 col-sm-6 col-6 mb-1" data-field="sales_bill_id" data-label="Original Sales Bill" data-default-order="5">
@@ -1334,6 +1344,20 @@
             }
         });
 
+        $custSelect.on('select2:select', function (e) {
+            let data = e.params ? e.params.data : null;
+            if (data && data.sales_type) {
+                let st = (String(data.sales_type).toLowerCase() === 'interstate') ? 'Interstate' : 'Local';
+                $('#sales_type').val(st).trigger('change');
+            }
+        });
+
+        // Ensure sales_type is strictly readonly (driven by selected customer)
+        $('#sales_type').on('mousedown keydown', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
         // Smart Bill Items Picker & Automatic Loader when Bill is selected
         let cachedBillItems = [];
         let isAutoLoadingBill = false;
@@ -1361,7 +1385,8 @@
                 if (data.branch_id && !$('#branch_id').val()) {
                     $('#branch_id').val(data.branch_id).trigger('change');
                 }
-                if (data.sales_type) {
+                // Only update sales_type if bill specifies a valid tax mode (Local/Interstate), never blank it out
+                if (data.sales_type && ['Local', 'Interstate'].includes(data.sales_type)) {
                     $('#sales_type').val(data.sales_type).trigger('change');
                 }
 
@@ -1698,19 +1723,28 @@
                 custBillsUrl += '&ignore_return_id=' + SR_CURRENT_RETURN_ID;
             }
 
-            $.getJSON(custBillsUrl, function (bills) {
-                let html = '<option value="">-- No Original Bill / Direct Return --</option>';
-                if (bills && bills.length > 0) {
-                    bills.forEach(function (b) {
-                        let sel = (selectedBillId && String(b.id) === String(selectedBillId)) ? 'selected' : '';
-                        html += `<option value="${b.id}" ${sel}>${b.label || b.bill_number}</option>`;
-                    });
-                }
-                $billSelect.html(html);
-                if (selectedBillId) {
-                    $billSelect.val(selectedBillId);
-                } else {
-                    $billSelect.val('');
+            $.ajax({
+                url: custBillsUrl,
+                dataType: 'json',
+                success: function (bills, status, xhr) {
+                    let custSalesType = xhr.getResponseHeader('X-Customer-Sales-Type');
+                    if (custSalesType) {
+                        let st = (String(custSalesType).toLowerCase() === 'interstate') ? 'Interstate' : 'Local';
+                        $('#sales_type').val(st).trigger('change');
+                    }
+                    let html = '<option value="">-- No Original Bill / Direct Return --</option>';
+                    if (bills && bills.length > 0) {
+                        bills.forEach(function (b) {
+                            let sel = (selectedBillId && String(b.id) === String(selectedBillId)) ? 'selected' : '';
+                            html += `<option value="${b.id}" ${sel}>${b.label || b.bill_number}</option>`;
+                        });
+                    }
+                    $billSelect.html(html);
+                    if (selectedBillId) {
+                        $billSelect.val(selectedBillId);
+                    } else {
+                        $billSelect.val('');
+                    }
                 }
             }).fail(function () {
                 console.error('Failed to load customer bills');

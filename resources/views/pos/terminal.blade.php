@@ -280,7 +280,7 @@
                         </div>
                     </div>
 
-                    <!-- Customer Outstanding Pending Balance Badge -->
+                    {{-- Customer Outstanding Pending Balance Badge (Temporarily Commented Out)
                     @php
                         $defaultBal = $defaultCustomer ? $defaultCustomer->getOutstandingBalance() : ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
                     @endphp
@@ -300,6 +300,7 @@
                             @endif
                         </div>
                     </div>
+                    --}}
 
                     <!-- Customer Pet Details (Above Invoices & Favorites) -->
                     @php
@@ -965,7 +966,7 @@
                 <div id="posListLoader" style="position: absolute; top:0; left:0; width:100%; height:100%; display:none; justify-content:center; align-items:center; background: rgba(255,255,255,0.8); z-index: 10;">
                     <div class="spinner-border text-primary" role="status"></div>
                 </div>
-                <iframe id="posListIframe" src="" style="width: 100%; height: 100%; border: none;" onload="document.getElementById('posListLoader').style.display='none';"></iframe>
+                <iframe id="posListIframe" src="" style="width: 100%; height: 100%; border: none;" onload="document.getElementById('posListLoader').style.display='none'; try { this.contentWindow.focus(); } catch(e){}"></iframe>
             </div>
         </div>
     </div>
@@ -1735,6 +1736,15 @@
                 const loader = document.getElementById('posListLoader');
                 if (loader) loader.style.display = 'flex';
                 iframe.src = listUrl;
+            }
+        });
+
+        $('#posListModal').on('shown.bs.modal', function () {
+            const iframe = document.getElementById('posListIframe');
+            if (iframe && iframe.contentWindow) {
+                try {
+                    iframe.contentWindow.focus();
+                } catch (e) {}
             }
         });
     });

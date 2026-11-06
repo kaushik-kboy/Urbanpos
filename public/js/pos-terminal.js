@@ -2836,6 +2836,7 @@
                     if (!item.id) return item.text;
                     let mob = item.mobile ? `<span class="badge badge-light border text-muted ml-2"><i class="fas fa-phone mr-1 text-success"></i>${escapeHtml(item.mobile)}</span>` : '';
                     let outHtml = '';
+                    /* Outstanding amount temporarily commented out
                     if (item.outstanding_formatted) {
                         if (item.is_pending) {
                             outHtml = `<span class="badge badge-danger ml-2 font-weight-bold" style="font-size: 0.75rem;"><i class="fas fa-exclamation-circle mr-1"></i>Due: ${escapeHtml(item.outstanding_formatted)}</span>`;
@@ -2843,6 +2844,7 @@
                             outHtml = `<span class="badge badge-success ml-2 font-weight-bold" style="font-size: 0.75rem;"><i class="fas fa-check-circle mr-1"></i>Due: ₹ 0.00</span>`;
                         }
                     }
+                    */
                     return $(`<div class="d-flex justify-content-between align-items-center py-1">
                         <span><strong>${escapeHtml(item.name || item.text)}</strong>${mob}${outHtml}</span>
                         <small class="text-muted">${item.pets_summary ? '<i class="fas fa-paw text-warning mr-1"></i>' + escapeHtml(item.pets_summary) : ''}</small>
@@ -3557,6 +3559,11 @@
     }
 
     function updateCustomerOutstandingBadge(outstanding) {
+        // Customer outstanding amount badge temporarily commented out
+        const $wrapper = $('#posCustomerOutstandingWrapper');
+        if ($wrapper.length) $wrapper.hide();
+        return;
+        /*
         const $wrapper = $('#posCustomerOutstandingWrapper');
         const $badge = $('#posCustomerOutstandingBadge');
         if (!$wrapper.length || !$badge.length) return;
@@ -3583,6 +3590,7 @@
                 .css({ 'font-size': '0.82rem', 'padding': '3px 6px' })
                 .html(`<i class="fas fa-check-circle mr-1"></i> Pending: ₹ 0.00`);
         }
+        */
     }
     window.posUpdateCustomerOutstandingBadge = updateCustomerOutstandingBadge;
 

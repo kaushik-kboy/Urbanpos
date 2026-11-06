@@ -177,8 +177,8 @@ class MenuCatalogService
     {
         return [
             'minimal_retail' => [
-                'name' => 'Minimal Retail POS (कैशियर व सरल दुकान)',
-                'description' => 'सिर्फ बिलिंग, टिल, इन्वेंटरी और डेली रिपोर्ट्स चालू रहेंगी। बाकी 280+ फालतू मेनू 1-क्लिक में गायब।',
+                'name' => 'Minimal Retail POS (Cashier & Simple Store)',
+                'description' => 'Only billing, till, inventory, and daily reports enabled. Excess menus hidden in 1 click.',
                 'badge' => 'badge-success',
                 'enabled_keys' => [
                     // Main Menus
@@ -206,8 +206,8 @@ class MenuCatalogService
                 ],
             ],
             'standard_store' => [
-                'name' => 'Standard Supermarket / Store (स्टैंडर्ड स्टोर)',
-                'description' => 'बिलिंग, परचेज, सप्लायर, स्टॉक एडजस्टमेंट, जीएसटी रिपोर्ट्स और अकाउंट्स लेजर सक्रिय।',
+                'name' => 'Standard Supermarket / Store',
+                'description' => 'Billing, purchases, suppliers, stock adjustments, GST reports, and accounting ledgers enabled.',
                 'badge' => 'badge-primary',
                 'enabled_keys' => [
                     // Master
@@ -234,8 +234,8 @@ class MenuCatalogService
                 ],
             ],
             'full_erp' => [
-                'name' => 'Full Enterprise ERP (सारे मेनू चालू)',
-                'description' => 'सभी 320+ मेनू, सबमेनू और रिपोर्ट्स पूरी तरह चालू रहेंगी।',
+                'name' => 'Full Enterprise ERP (All Menus Active)',
+                'description' => 'All 320+ menus, submenus, and reports are fully enabled.',
                 'badge' => 'badge-dark',
                 'enabled_keys' => 'ALL',
             ],

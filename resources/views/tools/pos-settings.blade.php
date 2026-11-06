@@ -41,8 +41,8 @@
                                 </label>
                             </div>
                             <p class="text-muted mb-0 pl-1 small">
-                                <strong>Admin Control:</strong> Agar aap ise <strong>ON</strong> karenge, to sabhi POS terminals par Lock Screen button, 4-digit PIN lock aur inactivity auto-lock active rahega. 
-                                Agar aap ise <strong>OFF</strong> karenge, to sabhi POS terminals se lock option turant hat jayega aur screens kabhi lock nahi hongi.
+                                <strong>Admin Control:</strong> When enabled (<strong>ON</strong>), all POS terminals provide a Lock Screen button, 4-digit PIN lock, and inactivity auto-lock. 
+                                When disabled (<strong>OFF</strong>), the lock feature is completely hidden from POS terminals and screens will not lock.
                             </p>
                         </div>
 

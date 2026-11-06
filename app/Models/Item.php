@@ -66,7 +66,7 @@ class Item extends Model
             $item->product_type = $item->product_type ?: 'Standard';
             $item->status = $item->status ?? true;
             $item->store_pickup = $item->store_pickup ?? false;
-            $item->tax_inclusive = $item->tax_inclusive ?? false;
+            $item->tax_inclusive = $item->tax_inclusive ?? true;
             $item->batch_expiry_details = $item->batch_expiry_details ?: 'Not Required';
             $item->allow_negative_stock = $item->allow_negative_stock ?? false;
 
