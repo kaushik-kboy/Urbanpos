@@ -720,11 +720,11 @@ return [
                 ],
             ],
         ],
-        /*
         [
             'text' => 'Smart Replenishment (V1)',
             'icon' => 'fas fa-fw fa-brain text-info',
             'can' => 'access-smart-replenishment',
+            'active' => ['inventory/smart-replenishment*'],
             'submenu' => [
                 [
                     'text' => 'Stock Analysis Studio',
@@ -756,7 +756,6 @@ return [
                 ],
             ],
         ],
-        */
         [
             'text' => 'Reports',
             'icon' => 'fas fa-fw fa-chart-bar',
