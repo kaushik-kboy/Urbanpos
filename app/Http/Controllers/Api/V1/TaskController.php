@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\Item;
 use App\Models\StockCountTask;
 use App\Models\User;
@@ -68,7 +69,9 @@ class TaskController extends Controller
             'category_value_ids.*' => ['integer', 'exists:item_category_values,id'],
             'brand_ids' => ['nullable', 'array', 'max:50'],
             'brand_ids.*' => ['integer', 'exists:brands,id'],
-            'assigned_to' => ['required', 'integer', 'exists:users,id'],
+            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_to_ids' => ['nullable', 'array', 'max:50'],
+            'assigned_to_ids.*' => ['integer', 'exists:users,id'],
             'due_date' => ['nullable', 'date'],
             'priority' => ['nullable', Rule::in(['low', 'normal', 'high'])],
             'items' => ['nullable', 'array', 'max:500'],
@@ -84,6 +87,18 @@ class TaskController extends Controller
         $brandIds = collect([$validated['brand_id'] ?? null])
             ->merge($validated['brand_ids'] ?? [])
             ->filter()->unique()->values()->all();
+
+        // Support both single assigned_to and multiple assigned_to_ids
+        $assigneeIds = collect([$validated['assigned_to'] ?? null])
+            ->merge($validated['assigned_to_ids'] ?? [])
+            ->filter()->unique()->values()->all();
+
+        if (empty($assigneeIds)) {
+            return response()->json([
+                'message' => 'The assigned to field is required.',
+                'errors' => ['assigned_to' => ['The assigned to field is required.']],
+            ], 422);
+        }
 
         // Scope consistency: when a task is scoped by category and/or brand AND explicit
         // products are also selected, every selected product must belong to the UNION
@@ -102,18 +117,20 @@ class TaskController extends Controller
             ], 422);
         }
 
-        $assignee = User::find($validated['assigned_to']);
         $branchId = (int) $validated['branch_id'];
+        $assignees = User::whereIn('id', $assigneeIds)->get();
 
-        $assigneeHasAccess = $assignee->branch_id === null
-            || (int) $assignee->branch_id === $branchId
-            || $assignee->hasRole('Owner')
-            || $assignee->email === 'admin@urbanpos.com';
+        foreach ($assignees as $assignee) {
+            $assigneeHasAccess = $assignee->branch_id === null
+                || (int) $assignee->branch_id === $branchId
+                || $assignee->hasRole('Owner')
+                || $assignee->email === 'admin@urbanpos.com';
 
-        if (! $assigneeHasAccess) {
-            return response()->json([
-                'message' => 'The assigned user does not have access to this branch.',
-            ], 422);
+            if (! $assigneeHasAccess) {
+                return response()->json([
+                    'message' => "The assigned user {$assignee->name} does not have access to this branch.",
+                ], 422);
+            }
         }
 
         $requester = $request->user();
@@ -121,46 +138,73 @@ class TaskController extends Controller
             return response()->json(['message' => 'You do not have access to this branch.'], 403);
         }
 
-        $task = DB::transaction(function () use ($validated, $requester, $branchId, $categoryValueIds, $brandIds) {
-            $task = StockCountTask::create([
-                'branch_id' => $branchId,
-                'title' => $validated['title'],
-                'section' => $validated['section'] ?? null,
-                'category_id' => $validated['category_id'] ?? null,
-                // Singular columns mirror the pivot tables ONLY when exactly one value
-                // was selected, so every existing single-category/brand query (incl.
-                // index()'s legacy filter) keeps working unchanged.
-                'category_value_id' => count($categoryValueIds) === 1 ? $categoryValueIds[0] : null,
-                'brand_id' => count($brandIds) === 1 ? $brandIds[0] : null,
-                'assigned_to' => $validated['assigned_to'],
-                'assigned_by' => $requester->id,
-                'due_date' => $validated['due_date'] ?? null,
-                'priority' => $validated['priority'] ?? 'normal',
-                'status' => 'pending',
-            ]);
+        $createdTasks = DB::transaction(function () use ($validated, $requester, $branchId, $categoryValueIds, $brandIds, $assigneeIds) {
+            $tasks = collect();
 
-            if (! empty($categoryValueIds)) {
-                $task->categoryValues()->sync($categoryValueIds);
-            }
-            if (! empty($brandIds)) {
-                $task->brands()->sync($brandIds);
-            }
-
-            foreach ($validated['items'] ?? [] as $row) {
-                if (empty($row['item_id']) && empty($row['batch_no'])) {
-                    continue;
-                }
-                $task->items()->create([
-                    'item_id' => $row['item_id'] ?? null,
-                    'batch_no' => $row['batch_no'] ?? null,
+            foreach ($assigneeIds as $assigneeId) {
+                $task = StockCountTask::create([
+                    'branch_id' => $branchId,
+                    'title' => $validated['title'],
+                    'section' => $validated['section'] ?? null,
+                    'category_id' => $validated['category_id'] ?? null,
+                    // Singular columns mirror the pivot tables ONLY when exactly one value
+                    // was selected, so every existing single-category/brand query (incl.
+                    // index()'s legacy filter) keeps working unchanged.
+                    'category_value_id' => count($categoryValueIds) === 1 ? $categoryValueIds[0] : null,
+                    'brand_id' => count($brandIds) === 1 ? $brandIds[0] : null,
+                    'assigned_to' => $assigneeId,
+                    'assigned_by' => $requester->id,
+                    'due_date' => $validated['due_date'] ?? null,
+                    'priority' => $validated['priority'] ?? 'normal',
+                    'status' => 'pending',
                 ]);
+
+                if (! empty($categoryValueIds)) {
+                    $task->categoryValues()->sync($categoryValueIds);
+                }
+                if (! empty($brandIds)) {
+                    $task->brands()->sync($brandIds);
+                }
+
+                foreach ($validated['items'] ?? [] as $row) {
+                    if (empty($row['item_id']) && empty($row['batch_no'])) {
+                        continue;
+                    }
+                    $task->items()->create([
+                        'item_id' => $row['item_id'] ?? null,
+                        'batch_no' => $row['batch_no'] ?? null,
+                    ]);
+                }
+
+                try {
+                    AppNotification::create([
+                        'user_id' => $assigneeId,
+                        'branch_id' => $branchId,
+                        'title' => 'New Task Assigned',
+                        'message' => "You have been assigned: {$task->title}",
+                        'type' => 'task_assigned',
+                        'data' => [
+                            'task_id' => $task->id,
+                            'title' => $task->title,
+                            'priority' => $task->priority,
+                            'due_date' => $task->due_date?->format('Y-m-d'),
+                        ],
+                    ]);
+                } catch (\Throwable $e) {
+                    // notification failure shouldn't rollback task creation
+                }
+
+                $tasks->push($task);
             }
 
-            return $task;
+            return $tasks;
         });
 
+        $primaryTask = $createdTasks->first();
+
         return response()->json([
-            'data' => $task->load(self::DETAIL_RELATIONS)->toArray(),
+            'data' => $primaryTask->load(self::DETAIL_RELATIONS)->toArray(),
+            'created_count' => $createdTasks->count(),
         ], 201);
     }
 

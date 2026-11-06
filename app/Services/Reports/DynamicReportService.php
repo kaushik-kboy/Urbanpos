@@ -1262,7 +1262,7 @@ class DynamicReportService
                 return [
                     'title' => 'Itemwise Stock Statement (Ledger)',
                     'subtitle' => "Period Ledger from {$from} to {$to}: Mathematical formula Opening + Inward - Outward = Closing",
-                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Branch', 'Opening Stock', 'Inward (+)', 'Outward (-)', 'Closing Stock', 'Unit Cost', 'Closing Valuation'],
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Branch', 'Opening Stock', 'Inward (Purch + Trf-In)', 'Outward (Sales + Trf-Out)', 'Closing Stock', 'Unit Cost', 'Closing Valuation'],
                     'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right'],
                     'rows' => $rows,
                     'kpis' => [

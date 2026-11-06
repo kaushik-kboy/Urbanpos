@@ -6,7 +6,9 @@ use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ExpiryBucketController;
 use App\Http\Controllers\Api\V1\ItemController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ObservationController;
+use App\Http\Controllers\Api\V1\PurchaseLookupController;
 use App\Http\Controllers\Api\V1\ReferenceDataController;
 use App\Http\Controllers\Api\V1\TaskController;
 use Illuminate\Support\Facades\Route;
@@ -84,6 +86,15 @@ Route::prefix('v1')->group(function () {
         Route::get('/barcode-mapping-requests', [BarcodeMappingController::class, 'index']);
         Route::post('/barcode-mapping-requests/{mappingRequest}/approve', [BarcodeMappingController::class, 'approve']);
         Route::post('/barcode-mapping-requests/{mappingRequest}/reject', [BarcodeMappingController::class, 'reject']);
+
+        // --- In-App Notifications ---
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+        // --- Purchase from Barcode Scan Lookup ---
+        Route::get('/purchases/item-lookup/{code}', [PurchaseLookupController::class, 'lookup']);
 
         // --- Phase 10: role-aware dashboard summary (Staff: personal; Manager/Owner: branch-wide) ---
         // Permission checked inline in DashboardController@summary for the Manager/Owner path
