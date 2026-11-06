@@ -2739,7 +2739,11 @@
                     if ($btn.length) {
                         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
                     }
-                    $form.submit();
+                    if ($form[0] && typeof $form[0].submit === 'function') {
+                        $form[0].submit();
+                    } else {
+                        HTMLFormElement.prototype.submit.call($form[0]);
+                    }
                 };
 
                 if (typeof Swal !== 'undefined') {
