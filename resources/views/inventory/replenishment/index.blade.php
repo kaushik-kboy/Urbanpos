@@ -288,9 +288,6 @@ body, .content-wrapper {
             </div>
         </div>
         <div class="d-flex align-items-center mt-2 mt-md-0">
-            <span class="badge badge-warning px-3 py-2 mr-2 font-weight-bold border border-dark text-dark shadow-sm" style="font-size: 0.82rem; border-radius: 8px;">
-                <i class="fas fa-flask mr-1"></i> Ramdev Staging Test Mode
-            </span>
             <a href="{{ route('inventory.replenishment.settings') }}" class="btn btn-action-outline mr-2 shadow-sm">
                 <i class="fas fa-sliders-h mr-1"></i> Rules & Settings
             </a>
@@ -311,11 +308,20 @@ body, .content-wrapper {
     </div>
 
     {{-- Modern High-Contrast KPI Cards --}}
+    @php
+        $stockMap = $stockRules->keyBy('stock_type');
+        $critMin = $stockMap['Critical']->min_cover_days ?? 0;
+        $critMax = $stockMap['Critical']->max_cover_days ?? 3;
+        $lowMin = $stockMap['Low']->min_cover_days ?? ($critMax + 1);
+        $lowMax = $stockMap['Low']->max_cover_days ?? 10;
+        $healthyMin = $stockMap['Healthy']->min_cover_days ?? ($lowMax + 1);
+        $healthyMax = $stockMap['Healthy']->max_cover_days ?? 30;
+    @endphp
     <div class="row">
         <div class="col-lg-3 col-6 mb-3">
             <div class="stat-card critical">
                 <div class="stat-header">
-                    <span class="stat-label">Critical Stock (0-3 Days)</span>
+                    <span class="stat-label">Critical Stock ({{ $critMin }}-{{ $critMax }} Days)</span>
                     <div class="stat-icon-wrapper" style="background: #fee2e2; color: #dc2626;">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
@@ -330,7 +336,7 @@ body, .content-wrapper {
         <div class="col-lg-3 col-6 mb-3">
             <div class="stat-card warning">
                 <div class="stat-header">
-                    <span class="stat-label">Low Stock (4-10 Days)</span>
+                    <span class="stat-label">Low Stock ({{ $lowMin }}-{{ $lowMax }} Days)</span>
                     <div class="stat-icon-wrapper" style="background: #fef3c7; color: #d97706;">
                         <i class="fas fa-clock"></i>
                     </div>
@@ -411,10 +417,10 @@ body, .content-wrapper {
                             <select id="filterStatus" class="form-control form-control-sm modern-control">
                                 <option value="all" {{ request('status') === 'all' ? 'selected' : '' }}>All Statuses</option>
                                 <option value="needs_action" {{ !request()->has('status') || request('status') === 'needs_action' ? 'selected' : '' }}>🚨 Needs Action (Order/Transfer)</option>
-                                <option value="Critical" {{ request('status') === 'Critical' ? 'selected' : '' }}>🔴 Critical (0-3 Days)</option>
-                                <option value="Low" {{ request('status') === 'Low' ? 'selected' : '' }}>🟡 Low (4-10 Days)</option>
-                                <option value="Healthy" {{ request('status') === 'Healthy' ? 'selected' : '' }}>🟢 Healthy (11-30 Days)</option>
-                                <option value="Overstock" {{ request('status') === 'Overstock' ? 'selected' : '' }}>🔵 Overstock (>30 Days)</option>
+                                <option value="Critical" {{ request('status') === 'Critical' ? 'selected' : '' }}>🔴 Critical ({{ $critMin }}-{{ $critMax }} Days)</option>
+                                <option value="Low" {{ request('status') === 'Low' ? 'selected' : '' }}>🟡 Low ({{ $lowMin }}-{{ $lowMax }} Days)</option>
+                                <option value="Healthy" {{ request('status') === 'Healthy' ? 'selected' : '' }}>🟢 Healthy ({{ $healthyMin }}-{{ $healthyMax }} Days)</option>
+                                <option value="Overstock" {{ request('status') === 'Overstock' ? 'selected' : '' }}>🔵 Overstock (>{{ $healthyMax }} Days)</option>
                                 <option value="Dead Stock" {{ request('status') === 'Dead Stock' ? 'selected' : '' }}>⚪ Dead Stock</option>
                             </select>
                         </div>

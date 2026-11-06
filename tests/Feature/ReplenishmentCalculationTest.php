@@ -102,4 +102,47 @@ class ReplenishmentCalculationTest extends TestCase
         $this->assertArrayHasKey('overstock_count', $summary);
         $this->assertArrayHasKey('suggested_po_value', $summary);
     }
+
+    /**
+     * Test dynamic updating of stock condition rules.
+     */
+    public function test_stock_condition_rules_can_be_updated_dynamically(): void
+    {
+        config(['replenishment.enabled' => true]);
+        $user = \App\Models\User::factory()->create();
+        $user->assignRole('Owner');
+
+        $response = $this->actingAs($user)->post(route('inventory.replenishment.settings.update'), [
+            'sales_rules' => [],
+            'stock_rules' => [
+                'critical_max' => 5,
+                'low_max' => 15,
+                'healthy_max' => 45,
+            ],
+        ]);
+
+        $response->assertRedirect();
+
+        $critical = ReplenishmentStockRule::where('stock_type', 'Critical')->first();
+        $this->assertEquals(0, $critical->min_cover_days);
+        $this->assertEquals(5, $critical->max_cover_days);
+
+        $low = ReplenishmentStockRule::where('stock_type', 'Low')->first();
+        $this->assertEquals(6, $low->min_cover_days);
+        $this->assertEquals(15, $low->max_cover_days);
+
+        $healthy = ReplenishmentStockRule::where('stock_type', 'Healthy')->first();
+        $this->assertEquals(16, $healthy->min_cover_days);
+        $this->assertEquals(45, $healthy->max_cover_days);
+
+        $overstock = ReplenishmentStockRule::where('stock_type', 'Overstock')->first();
+        $this->assertEquals(46, $overstock->min_cover_days);
+        $this->assertNull($overstock->max_cover_days);
+
+        // Verify resolution reflects the new custom dynamic thresholds
+        $this->assertEquals('Critical', ReplenishmentStockRule::resolveForCoverDays(4.5)->stock_type);
+        $this->assertEquals('Low', ReplenishmentStockRule::resolveForCoverDays(12.0)->stock_type);
+        $this->assertEquals('Healthy', ReplenishmentStockRule::resolveForCoverDays(30.0)->stock_type);
+        $this->assertEquals('Overstock', ReplenishmentStockRule::resolveForCoverDays(50.0)->stock_type);
+    }
 }

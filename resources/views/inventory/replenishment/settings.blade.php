@@ -244,39 +244,63 @@ body, .content-wrapper {
                 </div>
             </div>
 
-            {{-- Stock Condition Rules & Formulas Reference --}}
+            {{-- Stock Condition Rules Configuration --}}
             <div class="col-lg-5">
                 <div class="modern-settings-card mb-4">
                     <div class="modern-settings-header">
                         <h3 class="modern-settings-title">
                             <i class="fas fa-layer-group text-primary mr-2"></i> 2. Stock Condition Statuses
                         </h3>
+                        <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius: 6px;">Configurable</span>
+                    </div>
+                    <div class="p-3 bg-white border-bottom font-weight-bold text-dark" style="font-size: 0.82rem; background: #f8fafc !important;">
+                        <i class="fas fa-info-circle mr-1 text-primary"></i>
+                        Adjust the cover day thresholds to categorize your branch inventory into Critical, Low, Healthy, or Overstock.
                     </div>
                     <div class="p-3">
-                        <div class="p-3 rounded border border-danger mb-2 bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                        @php
+                            $stockMap = $stockRules->keyBy('stock_type');
+                            $critRule = $stockMap['Critical'] ?? null;
+                            $lowRule = $stockMap['Low'] ?? null;
+                            $healthyRule = $stockMap['Healthy'] ?? null;
+                            $overRule = $stockMap['Overstock'] ?? null;
+                        @endphp
+                        <div class="p-3 rounded border border-danger mb-3 bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="status-pill critical">Critical Stock</span>
-                                <strong class="text-danger" style="font-size: 0.95rem;">0 &ndash; 3 Cover Days</strong>
+                                <div class="d-flex align-items-center">
+                                    <span class="font-weight-bold mr-2 text-xs">0 &ndash;</span>
+                                    <input type="number" name="stock_rules[critical_max]" id="inpCritMax" class="form-control form-control-sm text-center font-weight-bold modern-input-num" style="width: 75px; border-radius: 6px;" value="{{ $critRule->max_cover_days ?? 3 }}" min="1" max="60" required>
+                                    <span class="font-weight-bold ml-1 text-xs">Days</span>
+                                </div>
                             </div>
                             <div class="font-weight-bold text-dark" style="font-size: 0.78rem;">
                                 Stock almost depleted. High stockout risk. Immediate supplier PO or emergency inter-branch transfer required.
                             </div>
                         </div>
 
-                        <div class="p-3 rounded border border-warning mb-2 bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="p-3 rounded border border-warning mb-3 bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="status-pill low">Low Stock</span>
-                                <strong class="text-dark" style="font-size: 0.95rem; color: #92400e !important;">4 &ndash; 10 Cover Days</strong>
+                                <div class="d-flex align-items-center">
+                                    <span class="font-weight-bold mr-1 text-xs" id="lblLowMin">{{ ($critRule->max_cover_days ?? 3) + 1 }} &ndash;</span>
+                                    <input type="number" name="stock_rules[low_max]" id="inpLowMax" class="form-control form-control-sm text-center font-weight-bold modern-input-num" style="width: 75px; border-radius: 6px;" value="{{ $lowRule->max_cover_days ?? 10 }}" min="2" max="120" required>
+                                    <span class="font-weight-bold ml-1 text-xs">Days</span>
+                                </div>
                             </div>
                             <div class="font-weight-bold text-dark" style="font-size: 0.78rem;">
                                 Approaching minimum threshold. Added to suggested reorder list so goods arrive before stock depletion.
                             </div>
                         </div>
 
-                        <div class="p-3 rounded border border-success mb-2 bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="p-3 rounded border border-success mb-3 bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="status-pill healthy">Healthy Stock</span>
-                                <strong class="text-success" style="font-size: 0.95rem;">11 &ndash; 30 Cover Days</strong>
+                                <div class="d-flex align-items-center">
+                                    <span class="font-weight-bold mr-1 text-xs" id="lblHealthyMin">{{ ($lowRule->max_cover_days ?? 10) + 1 }} &ndash;</span>
+                                    <input type="number" name="stock_rules[healthy_max]" id="inpHealthyMax" class="form-control form-control-sm text-center font-weight-bold modern-input-num" style="width: 75px; border-radius: 6px;" value="{{ $healthyRule->max_cover_days ?? 30 }}" min="3" max="180" required>
+                                    <span class="font-weight-bold ml-1 text-xs">Days</span>
+                                </div>
                             </div>
                             <div class="font-weight-bold text-dark" style="font-size: 0.78rem;">
                                 Optimum inventory level. Well balanced between shelf availability and capital efficiency.
@@ -284,14 +308,22 @@ body, .content-wrapper {
                         </div>
 
                         <div class="p-3 rounded border border-primary bg-white" style="box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="status-pill overstock">Overstock</span>
-                                <strong class="text-primary" style="font-size: 0.95rem;">&gt; 30 Cover Days</strong>
+                                <strong class="text-primary font-weight-bold" style="font-size: 0.95rem;" id="lblOverstock">&gt; {{ $healthyRule->max_cover_days ?? 30 }} Days</strong>
                             </div>
                             <div class="font-weight-bold text-dark" style="font-size: 0.78rem;">
                                 Surplus inventory available. System prioritizes these stores as sources for Inter-Branch transfers.
                             </div>
                         </div>
+                    </div>
+                    <div class="p-3 bg-white border-top d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold text-dark text-xs">
+                            <i class="fas fa-check-circle text-success mr-1"></i> Continuous zero-gap coverage automatically maintained.
+                        </span>
+                        <button type="submit" class="btn btn-action-dark shadow-sm">
+                            <i class="fas fa-save mr-1 text-success"></i> Save Rules & Settings
+                        </button>
                     </div>
                 </div>
 
@@ -326,3 +358,25 @@ body, .content-wrapper {
         </div>
     </form>
 @stop
+
+@push('js')
+<script>
+$(function() {
+    function updateStockBounds() {
+        const crit = parseInt($('#inpCritMax').val(), 10) || 3;
+        const low = parseInt($('#inpLowMax').val(), 10) || 10;
+        const healthy = parseInt($('#inpHealthyMax').val(), 10) || 30;
+
+        $('#lblLowMin').text((crit + 1) + ' –');
+        $('#inpLowMax').attr('min', crit + 1);
+
+        $('#lblHealthyMin').text((low + 1) + ' –');
+        $('#inpHealthyMax').attr('min', low + 1);
+
+        $('#lblOverstock').text('> ' + healthy + ' Days');
+    }
+
+    $('#inpCritMax, #inpLowMax, #inpHealthyMax').on('input change', updateStockBounds);
+});
+</script>
+@endpush

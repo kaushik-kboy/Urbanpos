@@ -223,6 +223,33 @@ class SmartReplenishmentController extends Controller
             ]);
         }
 
+        if ($request->has('stock_rules')) {
+            $stockRulesInput = $request->input('stock_rules', []);
+            $criticalMax = max(1, (int) ($stockRulesInput['critical_max'] ?? 3));
+            $lowMax = max($criticalMax + 1, (int) ($stockRulesInput['low_max'] ?? 10));
+            $healthyMax = max($lowMax + 1, (int) ($stockRulesInput['healthy_max'] ?? 30));
+
+            ReplenishmentStockRule::where('stock_type', 'Critical')->update([
+                'min_cover_days' => 0,
+                'max_cover_days' => $criticalMax,
+            ]);
+            ReplenishmentStockRule::where('stock_type', 'Low')->update([
+                'min_cover_days' => $criticalMax + 1,
+                'max_cover_days' => $lowMax,
+            ]);
+            ReplenishmentStockRule::where('stock_type', 'Healthy')->update([
+                'min_cover_days' => $lowMax + 1,
+                'max_cover_days' => $healthyMax,
+            ]);
+            ReplenishmentStockRule::where('stock_type', 'Overstock')->update([
+                'min_cover_days' => $healthyMax + 1,
+                'max_cover_days' => null,
+            ]);
+
+            // Auto-recalculate metrics so inventory status immediately reflects the updated thresholds
+            $this->service->calculateAll();
+        }
+
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
