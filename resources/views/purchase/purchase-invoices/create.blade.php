@@ -2,6 +2,8 @@
 
 @section('title', 'Add Purchase Invoice')
 
+@section('plugins.Sweetalert2', true)
+
 @section('classes_body', 'sidebar-mini sidebar-collapse')
 
 @section('content_header')

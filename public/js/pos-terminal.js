@@ -3174,6 +3174,14 @@
         $('#posSelectedCustMobile span').text(customer.mobile || 'No mobile');
         $('#posEditCustomerBtn').attr('data-id', customer.id);
 
+        if (customer.outstanding || typeof customer.outstanding_amount !== 'undefined') {
+            updateCustomerOutstandingBadge(customer.outstanding || {
+                amount: customer.outstanding_amount,
+                formatted: customer.outstanding_formatted,
+                is_pending: customer.is_pending
+            });
+        }
+
         if (typeof customer.is_credit_allowed !== 'undefined') {
             state.customer_is_credit_allowed = Boolean(customer.is_credit_allowed);
         } else if (customer.payment_mode) {
@@ -3513,11 +3521,50 @@
                 } else if (!data.pets || data.pets.length === 0) {
                     $('#posSelectedCustPets').hide();
                 }
+                if (data.outstanding || typeof data.outstanding_amount !== 'undefined') {
+                    updateCustomerOutstandingBadge(data.outstanding || {
+                        amount: data.outstanding_amount,
+                        formatted: data.outstanding_formatted,
+                        is_pending: data.is_pending
+                    });
+                }
             }
         } catch (e) {
             console.error('Failed to load customer invoices', e);
         }
     }
+
+    function updateCustomerOutstandingBadge(outstanding) {
+        const $wrapper = $('#posCustomerOutstandingWrapper');
+        const $badge = $('#posCustomerOutstandingBadge');
+        if (!$wrapper.length || !$badge.length) return;
+
+        if (!outstanding) {
+            $wrapper.hide();
+            return;
+        }
+
+        $wrapper.show();
+        const amt = typeof outstanding.amount === 'number'
+            ? outstanding.amount
+            : (parseFloat(outstanding.outstanding_amount) || 0);
+
+        const formatted = outstanding.formatted || outstanding.outstanding_formatted || ('₹ ' + amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        const isPending = Boolean(outstanding.is_pending ?? (amt > 0.01));
+
+        if (isPending) {
+            $badge.removeClass('badge-success').addClass('badge-danger')
+                .html(`<i class="fas fa-exclamation-circle mr-1"></i> Pending: ${formatted}`);
+        } else {
+            $badge.removeClass('badge-danger').addClass('badge-success')
+                .html(`<i class="fas fa-check-circle mr-1"></i> Pending: ₹ 0.00`);
+        }
+    }
+    window.posUpdateCustomerOutstandingBadge = updateCustomerOutstandingBadge;
+
+    $(document).on('click', '#posCustomerOutstandingBadgeContainer', function () {
+        openCustomerInvoicesModal();
+    });
 
     function openCustomerInvoicesModal() {
         $('#cimSearchInput').val('');

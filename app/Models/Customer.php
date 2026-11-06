@@ -115,6 +115,89 @@ class Customer extends Model
         return $this->mobile ? "{$this->name} ({$this->mobile})" : $this->name;
     }
 
+    /**
+     * Calculate outstanding pending balance for this customer.
+     * Formula: Sum(Sales Bills Total) - Sum(POS Non-Credit Payments) - Sum(Active Settlements)
+     */
+    public function getOutstandingBalance(?int $branchId = null): array
+    {
+        $balances = static::getBatchOutstandingBalances([$this->id], $branchId);
+        return $balances[$this->id] ?? [
+            'amount' => 0.0,
+            'formatted' => '₹ 0.00',
+            'unpaid_bills_count' => 0,
+            'is_pending' => false,
+        ];
+    }
+
+    /**
+     * Batch calculation of outstanding pending balances for multiple customer IDs in a single query.
+     */
+    public static function getBatchOutstandingBalances(array $customerIds, ?int $branchId = null): array
+    {
+        $customerIds = array_values(array_filter(array_unique(array_map('intval', $customerIds))));
+        if (empty($customerIds)) {
+            return [];
+        }
+
+        $query = SalesBill::with([
+            'payments.tenderType',
+            'settlementItems.settlement',
+        ])
+            ->whereIn('customer_id', $customerIds)
+            ->where('status', '!=', 'Cancelled');
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', (int) $branchId);
+        }
+
+        $bills = $query->get(['id', 'customer_id', 'branch_id', 'total', 'payment_type', 'status']);
+        $billsByCustomer = $bills->groupBy('customer_id');
+
+        $results = [];
+        foreach ($customerIds as $cId) {
+            $custBills = $billsByCustomer->get($cId, collect());
+            $totalOutstanding = 0.0;
+            $unpaidCount = 0;
+
+            foreach ($custBills as $sb) {
+                $posImmediatePaid = 0.0;
+                if ($sb->payments->isNotEmpty()) {
+                    $posImmediatePaid = (float) $sb->payments
+                        ->filter(fn ($p) => ($p->tenderType?->type ?? '') !== 'Credit')
+                        ->sum('amount');
+                } elseif (!empty($sb->payment_type) && strtolower($sb->payment_type) !== 'credit' && strtolower($sb->payment_type) !== 'none') {
+                    $posImmediatePaid = (float) $sb->total;
+                }
+
+                $settledSum = (float) $sb->settlementItems
+                    ->filter(fn ($si) => ($si->settlement?->status ?? 'Active') === 'Active')
+                    ->sum(fn ($si) => (float) $si->settled_amount + (float) $si->discount_amount);
+
+                $paidForBill = round($posImmediatePaid + $settledSum, 2);
+                $dueForBill = round((float) $sb->total - $paidForBill, 2);
+
+                if ($dueForBill > 0.01) {
+                    $totalOutstanding += $dueForBill;
+                    $unpaidCount++;
+                }
+            }
+
+            $amount = max(0.0, round($totalOutstanding, 2));
+            $formatted = '₹ ' . number_format($amount, 2);
+            $results[$cId] = [
+                'amount' => $amount,
+                'formatted' => $formatted,
+                'outstanding_amount' => $amount,
+                'outstanding_formatted' => $formatted,
+                'unpaid_bills_count' => $unpaidCount,
+                'is_pending' => $amount > 0.01,
+            ];
+        }
+
+        return $results;
+    }
+
     public static function options(int $limit = 50): \Illuminate\Support\Collection
     {
         $query = static::where('status', true)->orderBy('name');

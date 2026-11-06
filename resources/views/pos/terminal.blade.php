@@ -280,6 +280,27 @@
                         </div>
                     </div>
 
+                    <!-- Customer Outstanding Pending Balance Badge -->
+                    @php
+                        $defaultBal = $defaultCustomer ? $defaultCustomer->getOutstandingBalance() : ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
+                    @endphp
+                    <div id="posCustomerOutstandingWrapper" class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center" style="font-size: 0.85rem;">
+                        <span class="text-muted small font-weight-bold">
+                            <i class="fas fa-wallet mr-1 text-primary"></i> Outstanding:
+                        </span>
+                        <div id="posCustomerOutstandingBadgeContainer" style="cursor: pointer;" title="Click to view Unpaid Customer Invoices">
+                            @if(!empty($defaultBal['is_pending']))
+                                <span class="badge badge-danger px-2 py-1 font-weight-bold shadow-sm" id="posCustomerOutstandingBadge" style="font-size: 0.82rem; border-radius: 6px;">
+                                    <i class="fas fa-exclamation-circle mr-1"></i> Pending: {{ $defaultBal['formatted'] }}
+                                </span>
+                            @else
+                                <span class="badge badge-success px-2 py-1 font-weight-bold shadow-sm" id="posCustomerOutstandingBadge" style="font-size: 0.82rem; border-radius: 6px;">
+                                    <i class="fas fa-check-circle mr-1"></i> Pending: ₹ 0.00
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
                     <!-- Customer Pet Details (Above Invoices & Favorites) -->
                     @php
                         $defaultPetSummary = $defaultCustomer && $defaultCustomer->pets ? $defaultCustomer->pets->map(fn($p) => $p->name ? ($p->breed?->name ? "{$p->name} ({$p->breed->name})" : ($p->petType?->name ? "{$p->name} ({$p->petType->name})" : $p->name)) : ($p->breed?->name ?? ($p->petType?->name ?? 'Pet')))->filter()->implode(', ') : '';
@@ -1557,6 +1578,10 @@
         'purchase_type' => $defaultCustomer->sales_type ?? 'Local',
         'edit_url' => url("sales/sales-bills/quick-customer/{$defaultCustomer->id}"),
         'pets_summary' => $defaultPetSummary,
+        'outstanding_amount' => $defaultBal['amount'] ?? 0.0,
+        'outstanding_formatted' => $defaultBal['formatted'] ?? '₹ 0.00',
+        'is_pending' => $defaultBal['is_pending'] ?? false,
+        'outstanding' => $defaultBal ?? null,
     ] : null) !!};
     window.EDIT_BILL = {!! isset($editBill) ? json_encode($editBill) : 'null' !!};
     window.NEXT_BILL_NUMBER = "{{ $nextBillNumber ?? '' }}";

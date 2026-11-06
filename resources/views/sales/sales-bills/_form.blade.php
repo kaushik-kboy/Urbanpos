@@ -455,6 +455,13 @@
                 <input type="hidden" name="customer_id" value="{{ $bill->customer_id }}">
             @endif
         </div>
+        <div id="sb-customer-outstanding-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between" style="font-size: 0.85rem; cursor: pointer;" title="Click to view Customer Invoices & Ledger">
+            <div>
+                <i class="fas fa-wallet text-primary mr-1"></i>
+                <strong>Outstanding:</strong>
+            </div>
+            <span id="sb-customer-outstanding-badge-inner" class="badge badge-success font-weight-bold px-2 py-1" style="font-size: 0.8rem; border-radius: 6px;">Pending: ₹ 0.00</span>
+        </div>
         <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between">
             <div>
                 <i class="fas fa-coins text-warning mr-1"></i>
@@ -1572,6 +1579,7 @@
             filteredInvoices = [];
             $('#badge-cust-invoices-count').addClass('d-none').text('0');
             $('#btn-customer-invoices').prop('disabled', true).attr('title', 'Select a customer first to view their invoice history');
+            $('#sb-customer-outstanding-badge').addClass('d-none').removeClass('d-flex');
         }
 
         function fetchCustomerInvoices(customerId) {
@@ -1589,6 +1597,20 @@
                         window.SELECTED_CUSTOMER_PAYMENT_MODE = res.payment_mode;
                         window.SELECTED_CUSTOMER_IS_CREDIT_ALLOWED = (res.is_credit_allowed !== false);
                     }
+                    if (res.outstanding || typeof res.outstanding_amount !== 'undefined') {
+                        const amt = typeof res.outstanding?.amount === 'number' ? res.outstanding.amount : (parseFloat(res.outstanding_amount) || 0);
+                        const formatted = res.outstanding_formatted || res.outstanding?.formatted || ('₹ ' + amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                        const isPending = Boolean(res.is_pending ?? (amt > 0.01));
+                        const $badge = $('#sb-customer-outstanding-badge-inner');
+                        if (isPending) {
+                            $badge.removeClass('badge-success').addClass('badge-danger')
+                                .html(`<i class="fas fa-exclamation-circle mr-1"></i> Pending: ${formatted}`);
+                        } else {
+                            $badge.removeClass('badge-danger').addClass('badge-success')
+                                .html(`<i class="fas fa-check-circle mr-1"></i> Pending: ₹ 0.00`);
+                        }
+                        $('#sb-customer-outstanding-badge').removeClass('d-none').addClass('d-flex');
+                    }
                     if (res.invoices) {
                         customerInvoicesData = res.invoices;
                         filteredInvoices = [...customerInvoicesData];
@@ -1602,6 +1624,12 @@
                 resetCustomerInvoices();
             });
         }
+
+        $(document).on('click', '#sb-customer-outstanding-badge', function () {
+            if (!$('#btn-customer-invoices').prop('disabled')) {
+                $('#btn-customer-invoices').click();
+            }
+        });
 
         // Check on initial page load if customer is preselected
         @if(!empty($selectedCustomer))

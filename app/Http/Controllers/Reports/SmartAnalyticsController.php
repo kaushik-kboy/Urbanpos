@@ -329,7 +329,7 @@ class SmartAnalyticsController extends Controller
         return response()->json($customers);
     }
 
-    public function exportItemCsv(Request $request): StreamedResponse
+    public function exportItemCsv(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $itemId = (int) $request->input('item_id');
         $branchId = $request->filled('branch_id') ? (int) $request->input('branch_id') : null;

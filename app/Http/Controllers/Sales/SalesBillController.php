@@ -907,6 +907,8 @@ class SalesBillController extends Controller
             ];
         });
 
+        $outstanding = $customer->getOutstandingBalance($branchId && $branchId !== 'all' ? (int) $branchId : null);
+
         return response()->json([
             'customer_id' => $customer->id,
             'customer_name' => $customer->name,
@@ -915,6 +917,11 @@ class SalesBillController extends Controller
             'sales_type' => $customer->sales_type ?? 'Local',
             'payment_mode' => $customer->payment_mode ?? 'Cash Only',
             'is_credit_allowed' => $customer->isCreditAllowed(),
+            'outstanding_amount' => $outstanding['amount'],
+            'outstanding_formatted' => $outstanding['formatted'],
+            'unpaid_bills_count' => $outstanding['unpaid_bills_count'],
+            'is_pending' => $outstanding['is_pending'],
+            'outstanding' => $outstanding,
             'customer_edit_url' => url("master/customers/{$customer->id}/edit"),
             'pets' => $pets,
             'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
@@ -1818,60 +1825,16 @@ class SalesBillController extends Controller
     {
         $q = trim((string) $request->input('q', ''));
         if ($q === '') {
-            $customers = Customer::where('status', true)
+            $customerModels = Customer::where('status', true)
                 ->with(['pets.petType', 'pets.breed'])
                 ->orderBy('name')
                 ->limit(30)
-                ->get()
-                ->map(function ($c) {
-                    $pets = $c->pets->map(function ($p) {
-                        $breedName = $p->breed?->name ?? '';
-                        $typeName = $p->petType?->name ?? '';
-                        $disp = $p->name
-                            ? ($breedName ? "{$p->name} ({$breedName})" : ($typeName ? "{$p->name} ({$typeName})" : $p->name))
-                            : ($breedName ?: ($typeName ?: 'Pet'));
+                ->get();
 
-                        return [
-                            'id' => $p->id,
-                            'name' => $p->name,
-                            'type' => $typeName,
-                            'breed' => $breedName,
-                            'display' => $disp,
-                        ];
-                    });
+            $balances = Customer::getBatchOutstandingBalances($customerModels->pluck('id')->all());
 
-                    return [
-                        'id' => $c->id,
-                        'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
-                        'name' => $c->name,
-                        'mobile' => $c->mobile ?? '',
-                        'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
-                        'sales_type' => $c->sales_type ?? 'Local',
-                        'payment_mode' => $c->payment_mode ?? 'Cash Only',
-                        'is_credit_allowed' => $c->isCreditAllowed(),
-                        'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
-                        'pets' => $pets,
-                    ];
-                });
-
-            return response()->json(['results' => $customers]);
-        }
-
-        $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q))->exists();
-        $customers = Customer::where('status', true)
-            ->with(['pets.petType', 'pets.breed'])
-            ->when($exactHit, function ($query) use ($q) {
-                // Exact mobile / phone: index lookup, strictly no customer_code matching.
-                $query->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q));
-            })
-            ->when(! $exactHit, function ($query) use ($q) {
-                // Resolve matching ids with index-only probes (only name, mobile, phone).
-                $query->whereIn('id', Customer::pickerMatchIds($q));
-            })
-            ->orderBy('name')
-            ->limit(30)
-            ->get()
-            ->map(function ($c) {
+            $customers = $customerModels->map(function ($c) use ($balances) {
+                $bal = $balances[$c->id] ?? ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
                 $pets = $c->pets->map(function ($p) {
                     $breedName = $p->breed?->name ?? '';
                     $typeName = $p->petType?->name ?? '';
@@ -1895,14 +1858,76 @@ class SalesBillController extends Controller
                     'mobile' => $c->mobile ?? '',
                     'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                     'sales_type' => $c->sales_type ?? 'Local',
-                    'purchase_type' => $c->sales_type ?? 'Local',
                     'payment_mode' => $c->payment_mode ?? 'Cash Only',
                     'is_credit_allowed' => $c->isCreditAllowed(),
+                    'outstanding_amount' => $bal['amount'],
+                    'outstanding_formatted' => $bal['formatted'],
+                    'unpaid_bills_count' => $bal['unpaid_bills_count'],
+                    'is_pending' => $bal['is_pending'],
+                    'outstanding' => $bal,
                     'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                     'pets' => $pets,
-                    'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
                 ];
             });
+
+            return response()->json(['results' => $customers]);
+        }
+
+        $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q))->exists();
+        $customerModels = Customer::where('status', true)
+            ->with(['pets.petType', 'pets.breed'])
+            ->when($exactHit, function ($query) use ($q) {
+                // Exact mobile / phone: index lookup, strictly no customer_code matching.
+                $query->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q));
+            })
+            ->when(! $exactHit, function ($query) use ($q) {
+                // Resolve matching ids with index-only probes (only name, mobile, phone).
+                $query->whereIn('id', Customer::pickerMatchIds($q));
+            })
+            ->orderBy('name')
+            ->limit(30)
+            ->get();
+
+        $balances = Customer::getBatchOutstandingBalances($customerModels->pluck('id')->all());
+
+        $customers = $customerModels->map(function ($c) use ($balances) {
+            $bal = $balances[$c->id] ?? ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
+            $pets = $c->pets->map(function ($p) {
+                $breedName = $p->breed?->name ?? '';
+                $typeName = $p->petType?->name ?? '';
+                $disp = $p->name
+                    ? ($breedName ? "{$p->name} ({$breedName})" : ($typeName ? "{$p->name} ({$typeName})" : $p->name))
+                    : ($breedName ?: ($typeName ?: 'Pet'));
+
+                return [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'type' => $typeName,
+                    'breed' => $breedName,
+                    'display' => $disp,
+                ];
+            });
+
+            return [
+                'id' => $c->id,
+                'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
+                'name' => $c->name,
+                'mobile' => $c->mobile ?? '',
+                'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
+                'sales_type' => $c->sales_type ?? 'Local',
+                'purchase_type' => $c->sales_type ?? 'Local',
+                'payment_mode' => $c->payment_mode ?? 'Cash Only',
+                'is_credit_allowed' => $c->isCreditAllowed(),
+                'outstanding_amount' => $bal['amount'],
+                'outstanding_formatted' => $bal['formatted'],
+                'unpaid_bills_count' => $bal['unpaid_bills_count'],
+                'is_pending' => $bal['is_pending'],
+                'outstanding' => $bal,
+                'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
+                'pets' => $pets,
+                'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
+            ];
+        });
 
         return response()->json(['results' => $customers]);
     }

@@ -1154,48 +1154,90 @@ class DynamicReportService
                 // Compute Inward and Outward per item in period [$from, $to]
                 $itemIds = $paginator->pluck('item_id')->unique()->filter()->values()->all();
 
-                $inwardMap = [];
+                $purInwardMap = [];
+                $trfInMap = [];
                 if (!empty($itemIds)) {
-                    $purInward = DB::table('purchase_invoice_items')
+                    $purInwardRows = DB::table('purchase_invoice_items')
                         ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
                         ->whereIn('purchase_invoice_items.item_id', $itemIds)
                         ->whereDate('purchase_invoices.invoice_date', '>=', $from)
                         ->whereDate('purchase_invoices.invoice_date', '<=', $to)
                         ->where('purchase_invoices.status', '!=', 'Cancelled')
                         ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
-                        ->groupBy('purchase_invoice_items.item_id')
-                        ->selectRaw('purchase_invoice_items.item_id, SUM(purchase_invoice_items.qty) as total_qty')
-                        ->pluck('total_qty', 'item_id')
-                        ->all();
+                        ->groupBy('purchase_invoice_items.item_id', 'purchase_invoices.branch_id')
+                        ->selectRaw('purchase_invoice_items.item_id, purchase_invoices.branch_id, SUM(purchase_invoice_items.qty) as total_qty')
+                        ->get();
 
-                    $inwardMap = $purInward;
+                    foreach ($purInwardRows as $row) {
+                        $purInwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
+
+                    $trfInRows = DB::table('stock_transfer_items')
+                        ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
+                        ->whereIn('stock_transfer_items.item_id', $itemIds)
+                        ->whereDate('stock_transfers.transfer_date', '>=', $from)
+                        ->whereDate('stock_transfers.transfer_date', '<=', $to)
+                        ->where('stock_transfers.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('stock_transfers.to_branch_id', $branchId))
+                        ->groupBy('stock_transfer_items.item_id', 'stock_transfers.to_branch_id')
+                        ->selectRaw('stock_transfer_items.item_id, stock_transfers.to_branch_id as branch_id, SUM(COALESCE(stock_transfer_items.received_qty, stock_transfer_items.qty)) as total_qty')
+                        ->get();
+
+                    foreach ($trfInRows as $row) {
+                        $trfInMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
                 }
 
-                $outwardMap = [];
+                $salesOutwardMap = [];
+                $trfOutMap = [];
                 if (!empty($itemIds)) {
-                    $salesOutward = DB::table('sales_bill_items')
+                    $salesOutwardRows = DB::table('sales_bill_items')
                         ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
                         ->whereIn('sales_bill_items.item_id', $itemIds)
                         ->whereDate('sales_bills.bill_date', '>=', $from)
                         ->whereDate('sales_bills.bill_date', '<=', $to)
                         ->where('sales_bills.status', '!=', 'Cancelled')
                         ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
-                        ->groupBy('sales_bill_items.item_id')
-                        ->selectRaw('sales_bill_items.item_id, SUM(sales_bill_items.qty) as total_qty')
-                        ->pluck('total_qty', 'item_id')
-                        ->all();
+                        ->groupBy('sales_bill_items.item_id', 'sales_bills.branch_id')
+                        ->selectRaw('sales_bill_items.item_id, sales_bills.branch_id, SUM(sales_bill_items.qty) as total_qty')
+                        ->get();
 
-                    $outwardMap = $salesOutward;
+                    foreach ($salesOutwardRows as $row) {
+                        $salesOutwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
+
+                    $trfOutRows = DB::table('stock_transfer_items')
+                        ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
+                        ->whereIn('stock_transfer_items.item_id', $itemIds)
+                        ->whereDate('stock_transfers.transfer_date', '>=', $from)
+                        ->whereDate('stock_transfers.transfer_date', '<=', $to)
+                        ->where('stock_transfers.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('stock_transfers.from_branch_id', $branchId))
+                        ->groupBy('stock_transfer_items.item_id', 'stock_transfers.from_branch_id')
+                        ->selectRaw('stock_transfer_items.item_id, stock_transfers.from_branch_id as branch_id, SUM(stock_transfer_items.qty) as total_qty')
+                        ->get();
+
+                    foreach ($trfOutRows as $row) {
+                        $trfOutMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
                 }
 
-                $rows = $paginator->through(function ($stock) use ($inwardMap, $outwardMap) {
-                    $itemId   = $stock->item_id;
-                    $closing  = (float) $stock->quantity;
-                    $inward   = (float) ($inwardMap[$itemId] ?? 0);
-                    $outward  = (float) ($outwardMap[$itemId] ?? 0);
-                    $opening  = max(0, $closing - $inward + $outward);
-                    $costRate = (float) ($stock->cost_price ?: ($stock->item?->cost_price ?? 0));
-                    $valuation= round($closing * $costRate, 2);
+                $rows = $paginator->through(function ($stock) use ($purInwardMap, $trfInMap, $salesOutwardMap, $trfOutMap) {
+                    $itemId    = $stock->item_id;
+                    $branchKey = $itemId . '_' . $stock->branch_id;
+                    $closing   = (float) $stock->quantity;
+
+                    $pur       = (float) ($purInwardMap[$branchKey] ?? 0);
+                    $trfIn     = (float) ($trfInMap[$branchKey] ?? 0);
+                    $inward    = $pur + $trfIn;
+
+                    $sales     = (float) ($salesOutwardMap[$branchKey] ?? 0);
+                    $trfOut    = (float) ($trfOutMap[$branchKey] ?? 0);
+                    $outward   = $sales + $trfOut;
+
+                    $opening   = max(0, $closing - $inward + $outward);
+                    $costRate  = (float) ($stock->cost_price ?: ($stock->item?->cost_price ?? 0));
+                    $valuation = round($closing * $costRate, 2);
 
                     return [
                         'cells' => [
@@ -1204,8 +1246,8 @@ class DynamicReportService
                             e($stock->item?->brand?->name ?: '-'),
                             e($stock->branch?->name ?: '-'),
                             '<strong>' . number_format($opening) . '</strong>',
-                            '<span class="text-success font-weight-bold">+' . number_format($inward) . '</span>',
-                            '<span class="text-danger font-weight-bold">-' . number_format($outward) . '</span>',
+                            '<span class="text-success font-weight-bold">+' . number_format($inward) . '</span> <br><small class="text-muted text-nowrap">(Purch: ' . number_format($pur) . ' | Trf-In: ' . number_format($trfIn) . ')</small>',
+                            '<span class="text-danger font-weight-bold">-' . number_format($outward) . '</span> <br><small class="text-muted text-nowrap">(Sales: ' . number_format($sales) . ' | Trf-Out: ' . number_format($trfOut) . ')</small>',
                             '<strong class="text-primary">' . number_format($closing) . '</strong>',
                             '₹ ' . number_format($costRate, 2),
                             '<strong>₹ ' . number_format($valuation, 2) . '</strong>',

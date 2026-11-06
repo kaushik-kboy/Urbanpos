@@ -2391,12 +2391,6 @@
                 checkAmountMatch();
                 return false;
             }
-
-            // Show submit loading indicator
-            let $btn = $(this).find('button[type="submit"]');
-            if ($btn.length) {
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
-            }
         });
 
         function initPinvItemSelect2($el) {
@@ -2714,6 +2708,70 @@
                     $(this).remove();
                 }
             });
+
+            // Task: Purchase Bill Save Time Confirmation (Yes / No)
+            let $form = $(this);
+            if (!$form.data('confirmed')) {
+                e.preventDefault();
+                let supplierName = $('select[name="supplier_id"] option:selected').text().trim() || 'Selected Supplier';
+                let totalAmount = $('#display-pinv-final-total').text().trim() || $('input[name="total"]').val() || '0.00';
+                totalAmount = ('' + totalAmount).replace(/[^0-9.]/g, '');
+                let finalVal = parseFloat(totalAmount) || 0;
+                let formattedAmount = finalVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                let itemsCount = validRows;
+
+                let confirmHtml = `
+                    <div class="text-left font-weight-normal" style="font-size: 0.95rem; line-height: 1.6;">
+                        <div class="mb-2">Are you sure you want to save this purchase bill?</div>
+                        <div class="p-2 rounded bg-light border">
+                            <div><strong>Supplier:</strong> ${supplierName}</div>
+                            <div><strong>Total Items:</strong> ${itemsCount}</div>
+                            <div class="text-success font-weight-bold" style="font-size: 1.1rem; margin-top: 4px;">
+                                <strong>Final Total:</strong> ₹ ${formattedAmount}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                let executeConfirmedSubmit = function () {
+                    $form.data('confirmed', true);
+                    let $btn = $form.find('#pinv-main-save-btn, button[type="submit"]');
+                    if ($btn.length) {
+                        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                    }
+                    $form.submit();
+                };
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Confirm Purchase Bill',
+                        html: confirmHtml,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#28a745',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: '<i class="fas fa-check mr-1"></i> Yes, Save Invoice',
+                        cancelButtonText: '<i class="fas fa-times mr-1"></i> No, Cancel',
+                        reverseButtons: true,
+                        focusConfirm: true
+                    }).then((result) => {
+                        let isConfirmed = (result && (result.value === true || result.isConfirmed === true));
+                        if (isConfirmed) {
+                            executeConfirmedSubmit();
+                        }
+                    });
+                } else {
+                    if (confirm(`Are you sure you want to save this purchase invoice for ${supplierName} with Total: ₹ ${formattedAmount}?`)) {
+                        executeConfirmedSubmit();
+                    }
+                }
+                return false;
+            } else {
+                let $btn = $form.find('#pinv-main-save-btn, button[type="submit"]');
+                if ($btn.length) {
+                    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                }
+            }
         });
 
         // Ensure exactly ONE empty row for new item entry (Task 4)
