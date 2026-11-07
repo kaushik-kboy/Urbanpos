@@ -340,7 +340,7 @@ class SmartReplenishmentController extends Controller
             ? (int) $request->get('branch_id')
             : null;
 
-        $transferRecommendations = $this->service->getTransferRecommendations($activeBranchId, 200);
+        $transferRecommendations = $this->service->getTransferRecommendations($activeBranchId, 500);
 
         return view('inventory.replenishment.transfers', compact('branches', 'activeBranchId', 'transferRecommendations'));
     }
@@ -766,25 +766,32 @@ class SmartReplenishmentController extends Controller
         }
 
         $validated = $request->validate([
-            'to_branch_id' => 'required|exists:branches,id',
+            'to_branch_id' => 'nullable|exists:branches,id',
             'transfers' => 'required|array|min:1',
-            'transfers.*.from_branch_id' => 'required|exists:branches,id|different:to_branch_id',
+            'transfers.*.from_branch_id' => 'required|exists:branches,id',
+            'transfers.*.to_branch_id' => 'nullable|exists:branches,id',
             'transfers.*.items' => 'required|array|min:1',
             'transfers.*.items.*.item_id' => 'required|exists:items,id',
             'transfers.*.items.*.qty' => 'required|integer|min:1',
         ]);
 
-        $toBranchId = (int) $validated['to_branch_id'];
+        $defaultToBranchId = (int) ($validated['to_branch_id'] ?? 0);
         $today = now()->format('Y-m-d');
         $createdTransfers = [];
         $totalOverallQty = 0;
 
-        DB::transaction(function () use ($toBranchId, $today, $validated, &$createdTransfers, &$totalOverallQty) {
+        DB::transaction(function () use ($defaultToBranchId, $today, $validated, &$createdTransfers, &$totalOverallQty) {
             $numberingService = app(DocumentNumberingService::class);
 
             foreach ($validated['transfers'] as $transferData) {
                 $fromBranchId = (int) $transferData['from_branch_id'];
+                $toBranchId = (int) ($transferData['to_branch_id'] ?? $defaultToBranchId);
+                if (! $toBranchId || $toBranchId === $fromBranchId) {
+                    continue;
+                }
+
                 $fromBranch = Branch::find($fromBranchId);
+                $toBranch = Branch::find($toBranchId);
                 $transferNumber = $numberingService->generate('stock_transfer', $fromBranchId, $today);
 
                 $itemIds = collect($transferData['items'])->pluck('item_id')->unique();
@@ -860,6 +867,8 @@ class SmartReplenishmentController extends Controller
                     'transfer_number' => $stockTransfer->transfer_number,
                     'from_branch_id' => $fromBranchId,
                     'from_branch_name' => $fromBranch ? $fromBranch->name : 'Branch #'.$fromBranchId,
+                    'to_branch_id' => $toBranchId,
+                    'to_branch_name' => $toBranch ? $toBranch->name : 'Branch #'.$toBranchId,
                     'items_count' => count($transferLines),
                     'total_qty' => $totalQty,
                     'redirect_url' => route('inventory.stock-transfers.show', $stockTransfer->id),

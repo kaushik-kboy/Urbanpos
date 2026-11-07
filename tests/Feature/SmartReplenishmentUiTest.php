@@ -182,6 +182,49 @@ class SmartReplenishmentUiTest extends TestCase
         $response = $this->actingAs($this->user)->get(route('inventory.replenishment.transfers'));
         $response->assertStatus(200);
         $response->assertSee('Smart Inter-Branch Matchmaker');
+        $response->assertSee('Bulk Create Transfer(s)');
+        $response->assertSee('stickyBulkBar');
+        $response->assertSee('bulkTransferModal');
+    }
+
+    public function test_bulk_create_transfer_with_independent_route_destinations(): void
+    {
+        $response = $this->actingAs($this->user)->postJson(route('inventory.replenishment.bulk-create-transfer'), [
+            'transfers' => [
+                [
+                    'from_branch_id' => $this->otherBranch->id,
+                    'to_branch_id' => $this->branch->id,
+                    'items' => [
+                        ['item_id' => $this->item->id, 'qty' => 3],
+                    ],
+                ],
+                [
+                    'from_branch_id' => $this->branch->id,
+                    'to_branch_id' => $this->otherBranch->id,
+                    'items' => [
+                        ['item_id' => $this->item->id, 'qty' => 2],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'total_transfers' => 2,
+            'total_qty' => 5,
+        ]);
+
+        $this->assertDatabaseHas('stock_transfers', [
+            'from_branch_id' => $this->otherBranch->id,
+            'to_branch_id' => $this->branch->id,
+            'total_qty' => 3,
+        ]);
+        $this->assertDatabaseHas('stock_transfers', [
+            'from_branch_id' => $this->branch->id,
+            'to_branch_id' => $this->otherBranch->id,
+            'total_qty' => 2,
+        ]);
     }
 
     public function test_supplier_orders_page_renders_successfully(): void
