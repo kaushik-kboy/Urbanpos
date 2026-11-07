@@ -274,6 +274,57 @@ body, .content-wrapper {
     color: #ffffff !important;
     opacity: 0.9;
 }
+
+/* Floating Sticky Bulk Action Bar */
+.sticky-bulk-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border-top: 3px solid #3b82f6;
+    padding: 0.75rem 1.75rem;
+    box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.35);
+    z-index: 1045;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.sticky-bulk-bar.hidden-bar {
+    transform: translateY(110%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Custom Checkbox Styling */
+.row-select-checkbox {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    accent-color: #0f172a;
+}
+.table-checkbox-header {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    accent-color: #ffffff;
+}
+
+/* Supplier Card in Bulk Modal */
+.bulk-vendor-card {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+.bulk-vendor-header {
+    background: #f8fafc;
+    border-bottom: 1.5px solid #cbd5e1;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 </style>
 @endpush
 
@@ -443,12 +494,15 @@ body, .content-wrapper {
                     <table class="modern-table" id="replenishmentTable">
                         <thead>
                             <tr>
+                                <th style="width: 40px;" class="text-center">
+                                    <input type="checkbox" id="checkAllRows" class="table-checkbox-header" title="Select / Deselect all items on this page">
+                                </th>
                                 <th>Item Details</th>
                                 <th>Current Stock</th>
                                 <th class="text-center">Daily Avg</th>
                                 <th class="text-center">Cover Days</th>
                                 <th class="text-center">Required Stock</th>
-                                <th class="text-center">Suggested Qty</th>
+                                <th class="text-center" style="width: 140px;">Order / Transfer Qty</th>
                                 <th class="text-center">Sales Type</th>
                                 <th class="text-center">Stock Status</th>
                                 <th class="text-center" style="width: 140px;">Action</th>
@@ -456,7 +510,7 @@ body, .content-wrapper {
                         </thead>
                         <tbody id="tableBody">
                             <tr>
-                                <td colspan="9" class="text-center py-4 font-weight-bold text-dark">
+                                <td colspan="10" class="text-center py-4 font-weight-bold text-dark">
                                     <i class="fas fa-spinner fa-spin mr-1"></i> Loading replenishment metrics...
                                 </td>
                             </tr>
@@ -473,7 +527,35 @@ body, .content-wrapper {
         </div>
     </div>
 
-    {{-- Supplier Review & 1-Click PO Modal --}}
+    {{-- Floating Sticky Bulk Action Bar --}}
+    <div id="stickyBulkBar" class="sticky-bulk-bar hidden-bar">
+        <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center p-0">
+            <div class="d-flex align-items-center py-1">
+                <span class="badge badge-light border border-dark text-dark px-3 py-2 font-weight-bold mr-3 shadow-sm" style="font-size: 0.95rem; border-radius: 6px;">
+                    <i class="fas fa-check-square mr-1 text-primary"></i> <span id="selectedCountBadge">0</span> Items Selected
+                </span>
+                <span class="text-white mr-4 font-weight-bold" style="font-size: 0.92rem;">
+                    Total Units: <strong id="selectedTotalUnits" class="text-warning ml-1">0</strong>
+                </span>
+                <span class="text-white font-weight-bold" style="font-size: 0.92rem;">
+                    Est. Reorder Value: <strong id="selectedTotalAmount" class="text-success ml-1">₹ 0.00</strong>
+                </span>
+            </div>
+            <div class="d-flex align-items-center py-1">
+                <button type="button" class="btn btn-outline-light btn-sm mr-2 font-weight-bold" id="btnClearSelection" title="Clear all currently selected items">
+                    <i class="fas fa-times mr-1"></i> Deselect All
+                </button>
+                <button type="button" class="btn btn-success btn-sm mr-2 font-weight-bold shadow-sm" id="btnBulkPoModalOpen">
+                    <i class="fas fa-cart-plus mr-1"></i> Bulk Create PO(s) (<span class="selected-count-span">0</span>)
+                </button>
+                <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm text-white" id="btnBulkTransferModalOpen">
+                    <i class="fas fa-random mr-1"></i> Bulk Create Transfer(s) (<span class="selected-count-span">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Single Item Quick PO Modal --}}
     <div class="modal fade" id="poModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content shadow-lg">
@@ -520,6 +602,95 @@ body, .content-wrapper {
             </div>
         </div>
     </div>
+
+    {{-- Bulk Purchase Orders Review & Grouping Modal --}}
+    <div class="modal fade" id="bulkPoModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold" id="bulkPoModalTitle">
+                        <i class="fas fa-cart-plus text-primary mr-2"></i> Review & Create Bulk Purchase Orders
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3" style="max-height: calc(85vh - 120px); overflow-y: auto;">
+                    <div class="alert alert-info py-2 px-3 mb-3 font-weight-bold text-xs" style="border-radius: 8px;">
+                        <i class="fas fa-info-circle mr-1"></i> Items have been automatically grouped by primary vendor. You can adjust the <strong>Order Qty</strong> for any item or remove items before generating purchase orders.
+                    </div>
+                    <div id="bulkPoVendorsContainer">
+                        {{-- Injected dynamically --}}
+                    </div>
+                </div>
+                <div class="modal-footer py-2 bg-light d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="font-weight-bold text-dark" id="bulkPoOverallSummary">
+                            Total: <strong>0</strong> POs &bull; <strong>0</strong> Units &bull; <strong>₹ 0.00</strong>
+                        </span>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-action-outline btn-sm font-weight-bold mr-2" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-success btn-sm font-weight-bold shadow-sm" id="btnConfirmBulkPo">
+                            <i class="fas fa-check mr-1"></i> Confirm & Create All Purchase Orders
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Bulk Stock Transfers Review & Route Grouping Modal --}}
+    <div class="modal fade" id="bulkTransferModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold" id="bulkTransferModalTitle">
+                        <i class="fas fa-random text-info mr-2"></i> Review & Create Bulk Stock Transfers
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3" style="max-height: calc(85vh - 120px); overflow-y: auto;">
+                    <div class="alert alert-info py-2 px-3 mb-3 font-weight-bold text-xs" style="border-radius: 8px;">
+                        <i class="fas fa-info-circle mr-1"></i> Select the <strong>Source Store</strong> and adjust the <strong>Transfer Qty</strong> for each item. Items originating from the same source store will be automatically combined into a single Stock Transfer Challan.
+                    </div>
+                    <div id="bulkTransferLoading" class="text-center py-5 d-none">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i>
+                        <div class="font-weight-bold text-dark">Checking other store stock availability...</div>
+                    </div>
+                    <div id="bulkTransferTableContainer" class="table-responsive">
+                        <table class="table table-sm table-bordered text-sm mb-0">
+                            <thead class="bg-dark text-white text-xs">
+                                <tr>
+                                    <th>Item SKU & Name</th>
+                                    <th class="text-center" style="width: 110px;">Deficit Stock</th>
+                                    <th style="width: 250px;">Source Store (Surplus Available)</th>
+                                    <th class="text-center" style="width: 140px;">Transfer Qty</th>
+                                    <th class="text-center" style="width: 60px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulkTransferItemsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 bg-light d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="font-weight-bold text-dark" id="bulkTransferOverallSummary">
+                            Challans: <strong>0</strong> &bull; Total Units: <strong>0</strong>
+                        </span>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-action-outline btn-sm font-weight-bold mr-2" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-info btn-sm font-weight-bold text-white shadow-sm" id="btnConfirmBulkTransfer">
+                            <i class="fas fa-dolly mr-1"></i> Confirm & Dispatch All Stock Transfers
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('js')
@@ -529,6 +700,12 @@ body, .content-wrapper {
     let currentModalItems = [];
     let activeAjaxRequest = null;
     let searchDebounceTimer = null;
+
+    // Multi-Item Bulk Selection State
+    // Key: itemId -> { itemId, name, code, cost, qty, supplierId, supplierName, othStock, curStock }
+    let selectedItems = {};
+    let currentTableRows = [];
+    let bulkTransferSourcesMap = {}; // itemId -> Array of source branch options
 
     $(document).ready(function() {
         loadTableData(1);
@@ -604,6 +781,59 @@ body, .content-wrapper {
             window.location.href = "{{ route('inventory.replenishment.export') }}?" + params.toString();
         });
 
+        // Master "Select All on Page" Checkbox
+        $('#checkAllRows').on('change', function() {
+            const isChecked = $(this).is(':checked');
+            $('.row-select-checkbox').each(function() {
+                $(this).prop('checked', isChecked);
+                const itemId = $(this).data('item-id');
+                const rowObj = currentTableRows.find(r => r.item_id === itemId);
+                if (rowObj) {
+                    if (isChecked) {
+                        const customQty = parseInt($('#row-qty-' + itemId).val()) || getDefaultRowQty(rowObj);
+                        selectedItems[itemId] = extractItemPayload(rowObj, customQty);
+                    } else {
+                        delete selectedItems[itemId];
+                    }
+                }
+            });
+            updateStickyBar();
+        });
+
+        // Row checkbox listener (delegated)
+        $(document).on('change', '.row-select-checkbox', function() {
+            const itemId = $(this).data('item-id');
+            const rowObj = currentTableRows.find(r => r.item_id === itemId);
+            if (!rowObj) return;
+
+            if ($(this).is(':checked')) {
+                const customQty = parseInt($('#row-qty-' + itemId).val()) || getDefaultRowQty(rowObj);
+                selectedItems[itemId] = extractItemPayload(rowObj, customQty);
+            } else {
+                delete selectedItems[itemId];
+                $('#checkAllRows').prop('checked', false);
+            }
+            updateStickyBar();
+        });
+
+        // Custom user quantity change in table row (delegated)
+        $(document).on('input change', '.row-qty-input', function() {
+            const itemId = $(this).data('item-id');
+            const newQty = Math.max(1, parseInt($(this).val()) || 1);
+            if (selectedItems[itemId]) {
+                selectedItems[itemId].qty = newQty;
+                updateStickyBar();
+            }
+        });
+
+        // Deselect All in Sticky Bar
+        $('#btnClearSelection').on('click', function() {
+            selectedItems = {};
+            $('#checkAllRows').prop('checked', false);
+            $('.row-select-checkbox').prop('checked', false);
+            updateStickyBar();
+        });
+
         // Sync Trigger
         $('#btnSyncLive').on('click', function() {
             const $btn = $(this);
@@ -622,9 +852,6 @@ body, .content-wrapper {
                 success: function(res) {
                     $('#statusAlertMessage').text(res.message);
                     $('#statusAlert').removeClass('d-none');
-                    if (res.summary) {
-                        updateKpis(res.summary);
-                    }
                     loadTableData(currentPage);
                 },
                 error: function(err) {
@@ -638,7 +865,7 @@ body, .content-wrapper {
             });
         });
 
-        // PO Confirmation inside modal
+        // Single PO Modal Confirmation
         $('#btnConfirmGeneratePo').on('click', function() {
             if (!currentModalSupplierId) {
                 alert('Supplier ID is missing.');
@@ -688,23 +915,638 @@ body, .content-wrapper {
                 }
             });
         });
+
+        // Open Bulk PO Review Modal
+        $('#btnBulkPoModalOpen').on('click', function() {
+            const itemIds = Object.keys(selectedItems);
+            if (itemIds.length === 0) {
+                alert('Please select at least one item from the table.');
+                return;
+            }
+            renderBulkPoModal();
+            $('#bulkPoModal').modal('show');
+        });
+
+        // Confirm Bulk PO Generation
+        $('#btnConfirmBulkPo').on('click', function() {
+            const groupedOrders = collectBulkPoPayload();
+            if (groupedOrders.length === 0) {
+                alert('Please ensure at least one item has a quantity greater than zero.');
+                return;
+            }
+
+            const branchId = $('#filterBranch').val() !== 'all' ? $('#filterBranch').val() : {{ $activeBranchId }};
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating Orders...');
+
+            $.ajax({
+                url: "{{ route('inventory.replenishment.bulk-generate-po') }}",
+                type: 'POST',
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    branch_id: branchId,
+                    orders: groupedOrders
+                },
+                success: function(res) {
+                    $('#bulkPoModal').modal('hide');
+                    
+                    // Build success message with clickable links for each PO
+                    let linksHtml = '';
+                    if (res.created_pos && res.created_pos.length > 0) {
+                        linksHtml = '<div class="mt-1">';
+                        res.created_pos.forEach(function(po) {
+                            linksHtml += `<a href="${po.redirect_url}" class="badge badge-light border border-dark text-dark mr-2 p-1" target="_blank"><i class="fas fa-file-invoice text-primary mr-1"></i>${escapeHtml(po.po_number)} (${escapeHtml(po.supplier_name)}: ${po.total_qty} units)</a> `;
+                        });
+                        linksHtml += '</div>';
+                    }
+
+                    $('#statusAlertMessage').html(`<strong>${escapeHtml(res.message)}</strong> ${linksHtml}`);
+                    $('#statusAlert').removeClass('d-none');
+
+                    // Clear selection and reload
+                    selectedItems = {};
+                    updateStickyBar();
+                    loadTableData(currentPage);
+                },
+                error: function(xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Failed to generate bulk Purchase Orders.';
+                    alert(msg);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Confirm & Create All Purchase Orders');
+                }
+            });
+        });
+
+        // Open Bulk Transfer Review Modal
+        $('#btnBulkTransferModalOpen').on('click', function() {
+            const itemIds = Object.keys(selectedItems).map(id => parseInt(id));
+            if (itemIds.length === 0) {
+                alert('Please select at least one item from the table.');
+                return;
+            }
+
+            const branchId = $('#filterBranch').val() !== 'all' ? $('#filterBranch').val() : {{ $activeBranchId }};
+            $('#bulkTransferTableContainer').addClass('d-none');
+            $('#bulkTransferLoading').removeClass('d-none');
+            $('#bulkTransferModal').modal('show');
+
+            $.ajax({
+                url: "{{ route('inventory.replenishment.transfer-sources') }}",
+                type: 'POST',
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    to_branch_id: branchId,
+                    item_ids: itemIds
+                },
+                success: function(res) {
+                    bulkTransferSourcesMap = {};
+                    (res.items || []).forEach(function(it) {
+                        bulkTransferSourcesMap[it.item_id] = it;
+                    });
+                    renderBulkTransferModal();
+                },
+                error: function() {
+                    alert('Failed to load other store stock availability.');
+                    $('#bulkTransferModal').modal('hide');
+                },
+                complete: function() {
+                    $('#bulkTransferLoading').addClass('d-none');
+                    $('#bulkTransferTableContainer').removeClass('d-none');
+                }
+            });
+        });
+
+        // Confirm Bulk Transfer Generation
+        $('#btnConfirmBulkTransfer').on('click', function() {
+            const groupedTransfers = collectBulkTransferPayload();
+            if (groupedTransfers.length === 0) {
+                alert('Please select a valid source store and enter a transfer quantity greater than zero for at least one item.');
+                return;
+            }
+
+            const branchId = $('#filterBranch').val() !== 'all' ? $('#filterBranch').val() : {{ $activeBranchId }};
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Dispatching Transfers...');
+
+            $.ajax({
+                url: "{{ route('inventory.replenishment.bulk-create-transfer') }}",
+                type: 'POST',
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    to_branch_id: branchId,
+                    transfers: groupedTransfers
+                },
+                success: function(res) {
+                    $('#bulkTransferModal').modal('hide');
+
+                    let linksHtml = '';
+                    if (res.created_transfers && res.created_transfers.length > 0) {
+                        linksHtml = '<div class="mt-1">';
+                        res.created_transfers.forEach(function(tr) {
+                            linksHtml += `<a href="${tr.redirect_url}" class="badge badge-light border border-dark text-dark mr-2 p-1" target="_blank"><i class="fas fa-random text-info mr-1"></i>${escapeHtml(tr.transfer_number)} (${escapeHtml(tr.from_branch_name)}: ${tr.total_qty} units)</a> `;
+                        });
+                        linksHtml += '</div>';
+                    }
+
+                    $('#statusAlertMessage').html(`<strong>${escapeHtml(res.message)}</strong> ${linksHtml}`);
+                    $('#statusAlert').removeClass('d-none');
+
+                    selectedItems = {};
+                    updateStickyBar();
+                    loadTableData(currentPage);
+                },
+                error: function(xhr) {
+                    const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Failed to create bulk Stock Transfers.';
+                    alert(msg);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<i class="fas fa-dolly mr-1"></i> Confirm & Dispatch All Stock Transfers');
+                }
+            });
+        });
     });
 
-    function updateKpis(summary) {
-        $('#kpiCriticalCount').text(Number(summary.critical_count || 0).toLocaleString());
-        $('#kpiLowCount').text(Number(summary.low_count || 0).toLocaleString());
-        $('#kpiTransferCount').text(Number(summary.transfer_opportunities_count || 0).toLocaleString());
-        $('#kpiPoValue').text('₹ ' + Number(summary.suggested_po_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2}));
+    // Extract item metadata for selected state
+    function extractItemPayload(rowObj, customQty) {
+        const item = rowObj.item || {};
+        return {
+            itemId: rowObj.item_id,
+            name: item.name || 'SKU #' + rowObj.item_id,
+            code: item.item_code || '-',
+            cost: parseFloat(item.cost_price || 0),
+            qty: customQty,
+            supplierId: rowObj.primary_supplier_id || (item.supplier_id || null),
+            supplierName: (rowObj.supplier && rowObj.supplier.name) ? rowObj.supplier.name : 'Unassigned Vendor',
+            othStock: parseFloat(rowObj.other_branch_stock || 0),
+            curStock: parseFloat(rowObj.current_stock || 0),
+            suggestedQty: parseInt(rowObj.suggested_qty || 0)
+        };
+    }
+
+    function getDefaultRowQty(rowObj) {
+        const sugg = parseInt(rowObj.suggested_qty || 0);
+        if (sugg > 0) return sugg;
+        const oth = parseFloat(rowObj.other_branch_stock || 0);
+        if (oth > 0) return Math.min(5, Math.floor(oth));
+        return 1;
+    }
+
+    // Refresh Sticky Bottom Bar
+    function updateStickyBar() {
+        const itemIds = Object.keys(selectedItems);
+        const count = itemIds.length;
+
+        if (count === 0) {
+            $('#stickyBulkBar').addClass('hidden-bar');
+            return;
+        }
+
+        let totalUnits = 0;
+        let totalAmount = 0;
+
+        itemIds.forEach(function(id) {
+            const item = selectedItems[id];
+            totalUnits += (parseInt(item.qty) || 0);
+            totalAmount += ((parseInt(item.qty) || 0) * (parseFloat(item.cost) || 0));
+        });
+
+        $('#selectedCountBadge').text(count);
+        $('.selected-count-span').text(count);
+        $('#selectedTotalUnits').text(totalUnits.toLocaleString());
+        $('#selectedTotalAmount').text('₹ ' + totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+        $('#stickyBulkBar').removeClass('hidden-bar');
+    }
+
+    // Render Bulk PO Modal
+    function renderBulkPoModal() {
+        const itemIds = Object.keys(selectedItems);
+        const vendors = {};
+
+        itemIds.forEach(function(id) {
+            const item = selectedItems[id];
+            const supId = item.supplierId || 0;
+            const supName = item.supplierName || 'Unassigned Vendor';
+
+            if (!vendors[supId]) {
+                vendors[supId] = {
+                    id: supId,
+                    name: supName,
+                    items: []
+                };
+            }
+            vendors[supId].items.push(item);
+        });
+
+        let html = '';
+        let totalPoCount = 0;
+        let grandUnits = 0;
+        let grandAmount = 0;
+
+        Object.keys(vendors).forEach(function(supId) {
+            const vendor = vendors[supId];
+            totalPoCount++;
+
+            let vendorUnits = 0;
+            let vendorAmount = 0;
+
+            let rowsHtml = '';
+            vendor.items.forEach(function(it) {
+                const subtotal = it.qty * it.cost;
+                vendorUnits += it.qty;
+                vendorAmount += subtotal;
+
+                rowsHtml += `
+                    <tr id="bulk-po-row-${it.itemId}">
+                        <td class="align-middle">
+                            <strong class="text-dark">${escapeHtml(it.name)}</strong><br>
+                            <span class="badge badge-dark px-2 py-0 text-xs">SKU: ${escapeHtml(it.code)}</span>
+                        </td>
+                        <td class="text-right align-middle font-weight-bold text-dark">
+                            ₹ ${it.cost.toFixed(2)}
+                        </td>
+                        <td class="text-center align-middle" style="width: 130px;">
+                            <input type="number" 
+                                   min="1" 
+                                   class="form-control form-control-sm text-center font-weight-bold bulk-po-qty-input modern-control" 
+                                   data-item-id="${it.itemId}" 
+                                   data-supplier-id="${vendor.id}"
+                                   value="${it.qty}" 
+                                   style="width: 80px; margin: 0 auto;">
+                        </td>
+                        <td class="text-right align-middle font-weight-bold text-dark" id="bulk-po-subtotal-${it.itemId}">
+                            ₹ ${subtotal.toFixed(2)}
+                        </td>
+                        <td class="text-center align-middle" style="width: 50px;">
+                            <button type="button" class="btn btn-outline-danger btn-xs" onclick="removeBulkPoItem(${it.itemId}, ${vendor.id})" title="Remove item">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            grandUnits += vendorUnits;
+            grandAmount += vendorAmount;
+
+            html += `
+                <div class="bulk-vendor-card shadow-sm" id="vendor-card-${vendor.id}">
+                    <div class="bulk-vendor-header">
+                        <div>
+                            <h6 class="m-0 font-weight-bold text-dark">
+                                <i class="fas fa-building text-primary mr-2"></i> ${escapeHtml(vendor.name)}
+                            </h6>
+                            <small class="text-muted font-weight-bold">
+                                <span id="vendor-count-${vendor.id}">${vendor.items.length}</span> items &bull; 
+                                Total: <strong id="vendor-units-${vendor.id}" class="text-dark">${vendorUnits}</strong> units &bull; 
+                                Amount: <strong id="vendor-val-${vendor.id}" class="text-primary">₹ ${vendorAmount.toFixed(2)}</strong>
+                            </small>
+                        </div>
+                        <div>
+                            ${vendor.id > 0 
+                                ? `<button type="button" class="btn btn-action-outline btn-xs font-weight-bold" onclick="createSingleVendorFromBulk(${vendor.id})">
+                                     <i class="fas fa-file-invoice mr-1 text-primary"></i> Create PO For This Vendor
+                                   </button>` 
+                                : '<span class="badge badge-warning text-dark font-weight-bold">Needs Supplier</span>'
+                            }
+                        </div>
+                    </div>
+                    <div class="table-responsive p-0">
+                        <table class="table table-sm table-bordered text-xs mb-0">
+                            <thead class="bg-light text-dark">
+                                <tr>
+                                    <th>Item SKU & Name</th>
+                                    <th class="text-right" style="width: 100px;">Unit Cost</th>
+                                    <th class="text-center" style="width: 130px;">Order Qty</th>
+                                    <th class="text-right" style="width: 120px;">Subtotal</th>
+                                    <th class="text-center" style="width: 50px;">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHtml}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        $('#bulkPoVendorsContainer').html(html);
+        updateBulkPoModalSummary();
+
+        // Listen for live quantity edits inside the bulk modal
+        $('.bulk-po-qty-input').off('input change').on('input change', function() {
+            const itemId = parseInt($(this).data('item-id'));
+            const supId = parseInt($(this).data('supplier-id'));
+            const qty = Math.max(1, parseInt($(this).val()) || 1);
+
+            if (selectedItems[itemId]) {
+                selectedItems[itemId].qty = qty;
+                $('#row-qty-' + itemId).val(qty); // sync table row
+            }
+
+            const item = selectedItems[itemId];
+            if (item) {
+                const sub = qty * item.cost;
+                $('#bulk-po-subtotal-' + itemId).text('₹ ' + sub.toFixed(2));
+            }
+
+            updateBulkPoVendorHeader(supId);
+            updateBulkPoModalSummary();
+            updateStickyBar();
+        });
+    }
+
+    function removeBulkPoItem(itemId, supId) {
+        delete selectedItems[itemId];
+        $(`.row-select-checkbox[data-item-id="${itemId}"]`).prop('checked', false);
+        $(`#bulk-po-row-${itemId}`).remove();
+
+        const remainingRows = $(`#vendor-card-${supId} tbody tr`).length;
+        if (remainingRows === 0) {
+            $(`#vendor-card-${supId}`).remove();
+        } else {
+            updateBulkPoVendorHeader(supId);
+        }
+
+        updateBulkPoModalSummary();
+        updateStickyBar();
+    }
+
+    function updateBulkPoVendorHeader(supId) {
+        let u = 0;
+        let v = 0;
+        let count = 0;
+
+        $(`#vendor-card-${supId} .bulk-po-qty-input`).each(function() {
+            const id = $(this).data('item-id');
+            const qty = parseInt($(this).val()) || 0;
+            const item = selectedItems[id];
+            if (item) {
+                count++;
+                u += qty;
+                v += (qty * item.cost);
+            }
+        });
+
+        $(`#vendor-count-${supId}`).text(count);
+        $(`#vendor-units-${supId}`).text(u);
+        $(`#vendor-val-${supId}`).text('₹ ' + v.toFixed(2));
+    }
+
+    function updateBulkPoModalSummary() {
+        let totalPos = $('.bulk-vendor-card').length;
+        let totalUnits = 0;
+        let totalVal = 0;
+
+        $('.bulk-po-qty-input').each(function() {
+            const id = $(this).data('item-id');
+            const qty = parseInt($(this).val()) || 0;
+            const item = selectedItems[id];
+            if (item) {
+                totalUnits += qty;
+                totalVal += (qty * item.cost);
+            }
+        });
+
+        $('#bulkPoOverallSummary').html(`
+            Will create: <strong class="text-primary">${totalPos}</strong> PO(s) &bull; 
+            Total Units: <strong class="text-warning">${totalUnits}</strong> &bull; 
+            Total Value: <strong class="text-success">₹ ${totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+        `);
+    }
+
+    function collectBulkPoPayload() {
+        const vendors = {};
+        $('.bulk-po-qty-input').each(function() {
+            const itemId = parseInt($(this).data('item-id'));
+            const supId = parseInt($(this).data('supplier-id'));
+            const qty = parseInt($(this).val()) || 0;
+
+            if (qty > 0 && supId > 0) {
+                if (!vendors[supId]) {
+                    vendors[supId] = {
+                        supplier_id: supId,
+                        items: []
+                    };
+                }
+                vendors[supId].items.push({
+                    item_id: itemId,
+                    qty: qty
+                });
+            }
+        });
+
+        return Object.values(vendors);
+    }
+
+    function createSingleVendorFromBulk(supplierId) {
+        const branchId = $('#filterBranch').val() !== 'all' ? $('#filterBranch').val() : {{ $activeBranchId }};
+        const itemsPayload = [];
+
+        $(`#vendor-card-${supplierId} .bulk-po-qty-input`).each(function() {
+            const itemId = parseInt($(this).data('item-id'));
+            const qty = parseInt($(this).val()) || 0;
+            if (qty > 0) {
+                itemsPayload.push({ item_id: itemId, qty: qty });
+            }
+        });
+
+        if (itemsPayload.length === 0) {
+            alert('No valid items found for this supplier.');
+            return;
+        }
+
+        if (!confirm(`Create Purchase Order for this supplier with ${itemsPayload.length} items?`)) {
+            return;
+        }
+
+        $.ajax({
+            url: "{{ route('inventory.replenishment.generate-po') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                supplier_id: supplierId,
+                branch_id: branchId,
+                items: itemsPayload
+            },
+            success: function(res) {
+                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-white" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
+                $('#statusAlert').removeClass('d-none');
+
+                // Remove these items from selected state
+                itemsPayload.forEach(it => {
+                    delete selectedItems[it.item_id];
+                });
+
+                $(`#vendor-card-${supplierId}`).remove();
+                updateBulkPoModalSummary();
+                updateStickyBar();
+
+                if ($('.bulk-vendor-card').length === 0) {
+                    $('#bulkPoModal').modal('hide');
+                }
+                loadTableData(currentPage);
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Failed to create Purchase Order.');
+            }
+        });
+    }
+
+    // Render Bulk Stock Transfer Modal
+    function renderBulkTransferModal() {
+        const itemIds = Object.keys(selectedItems);
+        let rowsHtml = '';
+
+        itemIds.forEach(function(id) {
+            const it = selectedItems[id];
+            const sourceInfo = bulkTransferSourcesMap[id] || { sources: [] };
+            const sources = sourceInfo.sources || [];
+
+            let optionsHtml = '';
+            if (sources.length === 0) {
+                optionsHtml = '<option value="" disabled selected>No other store has stock</option>';
+            } else {
+                sources.forEach(function(src) {
+                    const isSelected = (sourceInfo.recommended_branch_id === src.branch_id) ? 'selected' : '';
+                    optionsHtml += `<option value="${src.branch_id}" data-max="${src.available_stock}" ${isSelected}>${escapeHtml(src.branch_name)} (Available: ${src.available_stock})</option>`;
+                });
+            }
+
+            const initialMax = sources.length > 0 ? (sources[0].available_stock || 999) : 999;
+
+            rowsHtml += `
+                <tr id="bulk-tr-row-${it.itemId}">
+                    <td class="align-middle">
+                        <strong class="text-dark">${escapeHtml(it.name)}</strong><br>
+                        <span class="badge badge-dark px-2 py-0 text-xs">SKU: ${escapeHtml(it.code)}</span>
+                    </td>
+                    <td class="text-center align-middle font-weight-bold text-danger">
+                        ${it.curStock} units
+                    </td>
+                    <td class="align-middle">
+                        <select class="form-control form-control-sm modern-control bulk-tr-source-select" data-item-id="${it.itemId}" ${sources.length === 0 ? 'disabled' : ''}>
+                            ${optionsHtml}
+                        </select>
+                    </td>
+                    <td class="text-center align-middle" style="width: 140px;">
+                        <input type="number" 
+                               min="1" 
+                               max="${initialMax}" 
+                               class="form-control form-control-sm text-center font-weight-bold bulk-tr-qty-input modern-control" 
+                               data-item-id="${it.itemId}" 
+                               value="${it.qty}" 
+                               ${sources.length === 0 ? 'disabled' : ''}
+                               style="width: 80px; margin: 0 auto;">
+                    </td>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-outline-danger btn-xs" onclick="removeBulkTransferItem(${it.itemId})" title="Remove item">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        $('#bulkTransferItemsTableBody').html(rowsHtml);
+        updateBulkTransferModalSummary();
+
+        // Listen for source changes to update max allowed transfer
+        $('.bulk-tr-source-select').off('change').on('change', function() {
+            const itemId = $(this).data('item-id');
+            const max = $(this).find('option:selected').data('max') || 999;
+            const $qtyInput = $(`.bulk-tr-qty-input[data-item-id="${itemId}"]`);
+            $qtyInput.attr('max', max);
+            if (parseInt($qtyInput.val()) > max) {
+                $qtyInput.val(max);
+            }
+            updateBulkTransferModalSummary();
+        });
+
+        // Listen for quantity change in transfer modal
+        $('.bulk-tr-qty-input').off('input change').on('input change', function() {
+            const itemId = $(this).data('item-id');
+            const max = parseInt($(this).attr('max')) || 999;
+            let val = parseInt($(this).val()) || 1;
+            if (val > max) val = max;
+            if (val < 1) val = 1;
+            $(this).val(val);
+
+            if (selectedItems[itemId]) {
+                selectedItems[itemId].qty = val;
+                $('#row-qty-' + itemId).val(val);
+            }
+
+            updateBulkTransferModalSummary();
+            updateStickyBar();
+        });
+    }
+
+    function removeBulkTransferItem(itemId) {
+        delete selectedItems[itemId];
+        $(`.row-select-checkbox[data-item-id="${itemId}"]`).prop('checked', false);
+        $(`#bulk-tr-row-${itemId}`).remove();
+        updateBulkTransferModalSummary();
+        updateStickyBar();
+
+        if ($('#bulkTransferItemsTableBody tr').length === 0) {
+            $('#bulkTransferModal').modal('hide');
+        }
+    }
+
+    function updateBulkTransferModalSummary() {
+        const routes = {};
+        let totalUnits = 0;
+
+        $('#bulkTransferItemsTableBody tr').each(function() {
+            const fromBranch = $(this).find('.bulk-tr-source-select').val();
+            const qty = parseInt($(this).find('.bulk-tr-qty-input').val()) || 0;
+
+            if (fromBranch && qty > 0) {
+                routes[fromBranch] = (routes[fromBranch] || 0) + 1;
+                totalUnits += qty;
+            }
+        });
+
+        const challanCount = Object.keys(routes).length;
+        $('#bulkTransferOverallSummary').html(`
+            Will create: <strong class="text-info">${challanCount}</strong> Stock Transfer Challan(s) &bull; 
+            Total Transfer Units: <strong class="text-warning">${totalUnits}</strong>
+        `);
+    }
+
+    function collectBulkTransferPayload() {
+        const transfersMap = {};
+
+        $('#bulkTransferItemsTableBody tr').each(function() {
+            const fromBranchId = parseInt($(this).find('.bulk-tr-source-select').val());
+            const itemId = parseInt($(this).find('.bulk-tr-qty-input').data('item-id'));
+            const qty = parseInt($(this).find('.bulk-tr-qty-input').val()) || 0;
+
+            if (fromBranchId && itemId && qty > 0) {
+                if (!transfersMap[fromBranchId]) {
+                    transfersMap[fromBranchId] = {
+                        from_branch_id: fromBranchId,
+                        items: []
+                    };
+                }
+                transfersMap[fromBranchId].items.push({
+                    item_id: itemId,
+                    qty: qty
+                });
+            }
+        });
+
+        return Object.values(transfersMap);
     }
 
     function loadTableData(page = 1) {
-        // Abort previous in-flight search request to prevent stale results and save server resources
         if (activeAjaxRequest && activeAjaxRequest.readyState !== 4) {
             activeAjaxRequest.abort();
         }
 
         currentPage = page;
-        $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-spinner fa-spin mr-1 text-primary"></i> Loading fast search results...</td></tr>');
+        $('#tableBody').html('<tr><td colspan="10" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-spinner fa-spin mr-1 text-primary"></i> Loading fast search results...</td></tr>');
 
         activeAjaxRequest = $.ajax({
             url: "{{ route('inventory.replenishment.data') }}",
@@ -722,25 +1564,29 @@ body, .content-wrapper {
                 page: page
             },
             success: function(res) {
+                currentTableRows = res.data || [];
                 renderTable(res.data);
                 renderPagination(res);
             },
             error: function(xhr, status) {
                 if (status === 'abort') {
-                    return; // Ignore cancelled in-flight requests cleanly
+                    return;
                 }
-                $('#tableBody').html('<tr><td colspan="9" class="text-center py-3 text-danger font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Failed to load replenishment data.</td></tr>');
+                $('#tableBody').html('<tr><td colspan="10" class="text-center py-3 text-danger font-weight-bold"><i class="fas fa-exclamation-circle mr-1"></i> Failed to load replenishment data.</td></tr>');
             }
         });
     }
 
     function renderTable(rows) {
         if (!rows || rows.length === 0) {
-            $('#tableBody').html('<tr><td colspan="9" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.</td></tr>');
+            $('#tableBody').html('<tr><td colspan="10" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.</td></tr>');
+            $('#checkAllRows').prop('checked', false);
             return;
         }
 
+        let allCheckedOnPage = true;
         let html = '';
+
         rows.forEach(function(row) {
             const item = row.item || {};
             const itemName = item.name || 'Unnamed Item #' + row.item_id;
@@ -760,6 +1606,15 @@ body, .content-wrapper {
             const salesType = row.sales_type || 'Dead Stock';
             const supplierId = row.primary_supplier_id || (item.supplier_id || null);
 
+            // Determine quantity: if user has already customized it in selectedItems, keep that, otherwise use suggested qty or default
+            const isChecked = selectedItems.hasOwnProperty(row.item_id);
+            if (!isChecked) {
+                allCheckedOnPage = false;
+            }
+            const currentQty = (selectedItems[row.item_id] && selectedItems[row.item_id].qty)
+                ? selectedItems[row.item_id].qty
+                : (suggestedQty > 0 ? suggestedQty : (othStock > 0 ? Math.min(5, othStock) : 1));
+
             let statusChip = 'status-pill dead';
             if (status === 'Critical') statusChip = 'status-pill critical';
             else if (status === 'Low') statusChip = 'status-pill low';
@@ -778,7 +1633,10 @@ body, .content-wrapper {
             else if (status === 'Low') coverDaysColor = 'color: #d97706; font-weight: 800;';
 
             html += `
-                <tr>
+                <tr id="row-item-${row.item_id}">
+                    <td class="text-center align-middle">
+                        <input type="checkbox" class="row-select-checkbox" data-item-id="${row.item_id}" ${isChecked ? 'checked' : ''}>
+                    </td>
                     <td>
                         <div class="item-title">${escapeHtml(itemName)}</div>
                         <div class="item-subtitle">
@@ -803,11 +1661,21 @@ body, .content-wrapper {
                         <span class="badge badge-light border border-dark text-dark font-weight-bold px-2 py-1" style="font-size: 0.88rem;">${requiredStock} units</span>
                         <br><small class="text-dark font-weight-bold" style="font-size:0.7rem;">(${targetDays}d target)</small>
                     </td>
-                    <td class="text-center">
-                        ${suggestedQty > 0 
-                            ? `<span class="reorder-badge">${suggestedQty} Qty</span>` 
-                            : `<span class="text-dark font-weight-bold">&mdash;</span>`
-                        }
+                    <td class="text-center align-middle">
+                        <div class="d-flex flex-column align-items-center">
+                            <input type="number" 
+                                   min="1" 
+                                   id="row-qty-${row.item_id}" 
+                                   class="form-control form-control-sm text-center font-weight-bold row-qty-input modern-control shadow-sm" 
+                                   data-item-id="${row.item_id}" 
+                                   value="${currentQty}" 
+                                   title="Enter custom quantity to Order or Transfer"
+                                   style="width: 80px; height: 32px; font-size: 0.9rem; border: 1.5px solid #0f172a; border-radius: 6px;">
+                            ${suggestedQty > 0 
+                                ? `<small class="text-muted font-weight-bold mt-1" style="font-size:0.7rem;">Sugg: ${suggestedQty}</small>` 
+                                : (othStock > 0 ? `<small class="text-info font-weight-bold mt-1" style="font-size:0.7rem;">Surplus: ${othStock}</small>` : '')
+                            }
+                        </div>
                     </td>
                     <td class="text-center">
                         <span class="badge ${salesTypeBadge} px-2 py-1 font-weight-bold text-xs" style="border-radius:6px;">
@@ -817,18 +1685,18 @@ body, .content-wrapper {
                     <td class="text-center">
                         <span class="${statusChip}">${status}</span>
                     </td>
-                    <td class="text-center">
+                    <td class="text-center align-middle">
                         <div class="d-flex justify-content-center">
                             ${suggestedQty > 0 && supplierId
-                                ? `<button type="button" class="btn btn-action-dark btn-xs mr-1 shadow-sm font-weight-bold" onclick="triggerSingleItemPo(${row.item_id}, ${supplierId}, ${suggestedQty}, '${escapeJs(itemName)}')" title="Generate PO for this item">
+                                ? `<button type="button" class="btn btn-action-dark btn-xs mr-1 shadow-sm font-weight-bold" onclick="triggerRowPo(${row.item_id}, ${supplierId}, '${escapeJs(itemName)}')" title="Generate PO for this item">
                                      <i class="fas fa-cart-plus mr-1"></i> Order
                                    </button>` 
                                 : ''
                             }
-                            ${othStock > 0 && (status === 'Critical' || status === 'Low')
-                                ? `<a href="{{ route('inventory.replenishment.transfers') }}" class="btn btn-action-outline btn-xs shadow-sm font-weight-bold" title="View available transfer sources">
+                            ${othStock > 0 && (status === 'Critical' || status === 'Low' || suggestedQty > 0)
+                                ? `<button type="button" class="btn btn-action-outline btn-xs shadow-sm font-weight-bold" onclick="triggerRowTransfer(${row.item_id})" title="Transfer surplus stock from another store">
                                      <i class="fas fa-exchange-alt mr-1"></i> Transfer
-                                   </a>` 
+                                   </button>` 
                                 : ''
                             }
                         </div>
@@ -838,6 +1706,7 @@ body, .content-wrapper {
         });
 
         $('#tableBody').html(html);
+        $('#checkAllRows').prop('checked', allCheckedOnPage && rows.length > 0);
     }
 
     function renderPagination(res) {
@@ -867,8 +1736,10 @@ body, .content-wrapper {
         $('#paginationControls').html(html);
     }
 
-    function triggerSingleItemPo(itemId, supplierId, qty, itemName) {
-        if (!confirm(`Generate 1-Click Purchase Order for ${itemName} (${qty} units)?`)) {
+    // Trigger single row PO with user-decided custom quantity
+    function triggerRowPo(itemId, supplierId, itemName) {
+        const customQty = parseInt($('#row-qty-' + itemId).val()) || 1;
+        if (!confirm(`Generate Purchase Order for "${itemName}" with ${customQty} unit(s)?`)) {
             return;
         }
 
@@ -881,11 +1752,13 @@ body, .content-wrapper {
                 _token: "{{ csrf_token() }}",
                 supplier_id: supplierId,
                 branch_id: branchId,
-                items: [{ item_id: itemId, qty: qty }]
+                items: [{ item_id: itemId, qty: customQty }]
             },
             success: function(res) {
                 $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-white" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Order</a>`);
                 $('#statusAlert').removeClass('d-none');
+                delete selectedItems[itemId];
+                updateStickyBar();
                 loadTableData(currentPage);
             },
             error: function(xhr) {
@@ -894,57 +1767,17 @@ body, .content-wrapper {
         });
     }
 
-    function triggerQuickTransfer(itemId, fromBranchId, toBranchId, qty, itemName) {
-        if (!confirm(`Dispatch ${qty} units of ${itemName} from source store?`)) {
-            return;
-        }
+    // Trigger single row Transfer with user-decided custom quantity
+    function triggerRowTransfer(itemId) {
+        const rowObj = currentTableRows.find(r => r.item_id === itemId);
+        if (!rowObj) return;
 
-        $.ajax({
-            url: "{{ route('inventory.replenishment.create-transfer') }}",
-            type: 'POST',
-            data: {
-                _token: "{{ csrf_token() }}",
-                from_branch_id: fromBranchId,
-                to_branch_id: toBranchId,
-                items: [{ item_id: itemId, qty: qty }]
-            },
-            success: function(res) {
-                $('#statusAlertMessage').html(`${res.message} <a href="${res.redirect_url}" class="font-weight-bold ml-2 text-white" target="_blank"><i class="fas fa-external-link-alt mr-1"></i> View Transfer</a>`);
-                $('#statusAlert').removeClass('d-none');
-                loadTableData(currentPage);
-            },
-            error: function(xhr) {
-                alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error creating Stock Transfer.');
-            }
-        });
-    }
+        const customQty = parseInt($('#row-qty-' + itemId).val()) || getDefaultRowQty(rowObj);
+        selectedItems[itemId] = extractItemPayload(rowObj, customQty);
+        $(`.row-select-checkbox[data-item-id="${itemId}"]`).prop('checked', true);
+        updateStickyBar();
 
-    function openSupplierPoModal(supplierId, supplierName, count, val, items) {
-        currentModalSupplierId = supplierId;
-        currentModalItems = items || [];
-
-        $('#poModalTitle').html(`<i class="fas fa-truck text-primary mr-2"></i> PO Recommendation for ${supplierName}`);
-        $('#modalVendorName').text(supplierName);
-        $('#modalEstimatedVal').text(val);
-
-        let rowsHtml = '';
-        currentModalItems.forEach(function(item) {
-            rowsHtml += `
-                <tr>
-                    <td class="align-middle">
-                        <strong class="text-dark">${escapeHtml(item.name)}</strong>
-                    </td>
-                    <td class="text-right align-middle font-weight-bold text-dark">₹ ${Number(item.cost || 0).toFixed(2)}</td>
-                    <td class="text-center align-middle">
-                        <input type="number" class="form-control form-control-sm text-center font-weight-bold modal-item-qty modern-control" data-item-id="${item.item_id}" value="${item.qty}" min="1">
-                    </td>
-                    <td class="text-right align-middle font-weight-bold text-dark">₹ ${(item.qty * (item.cost || 0)).toFixed(2)}</td>
-                </tr>
-            `;
-        });
-
-        $('#poModalItemsTableBody').html(rowsHtml);
-        $('#poModal').modal('show');
+        $('#btnBulkTransferModalOpen').click();
     }
 
     function escapeHtml(text) {

@@ -294,7 +294,10 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
         Route::get('/transfers', [SmartReplenishmentController::class, 'transfers'])->name('transfers');
         Route::get('/supplier-orders', [SmartReplenishmentController::class, 'supplierOrders'])->name('supplier-orders');
         Route::post('/generate-po', [SmartReplenishmentController::class, 'generatePo'])->name('generate-po');
+        Route::post('/bulk-generate-po', [SmartReplenishmentController::class, 'bulkGeneratePo'])->name('bulk-generate-po');
         Route::post('/create-transfer', [SmartReplenishmentController::class, 'createTransfer'])->name('create-transfer');
+        Route::post('/bulk-create-transfer', [SmartReplenishmentController::class, 'bulkCreateTransfer'])->name('bulk-create-transfer');
+        Route::post('/transfer-sources', [SmartReplenishmentController::class, 'transferSources'])->name('transfer-sources');
     });
 
     // Stock Transfer

@@ -247,6 +247,118 @@ class SmartReplenishmentUiTest extends TestCase
         $this->assertEquals($this->item->id, $transfer->items->first()->item_id);
     }
 
+    public function test_bulk_generate_po_creates_multiple_purchase_orders_grouped_by_supplier(): void
+    {
+        $secondSupplier = Supplier::create(['name' => 'Supplier Two', 'status' => true]);
+        $secondItem = Item::create([
+            'name' => 'Second Test Item',
+            'item_code' => 'TEST-ITEM-2',
+            'supplier_id' => $secondSupplier->id,
+            'cost_price' => 100,
+            'sell_price' => 150,
+            'mrp' => 150,
+            'status' => true,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson(route('inventory.replenishment.bulk-generate-po'), [
+            'branch_id' => $this->branch->id,
+            'orders' => [
+                [
+                    'supplier_id' => $this->supplier->id,
+                    'items' => [
+                        ['item_id' => $this->item->id, 'qty' => 12],
+                    ],
+                ],
+                [
+                    'supplier_id' => $secondSupplier->id,
+                    'items' => [
+                        ['item_id' => $secondItem->id, 'qty' => 8],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'total_pos' => 2,
+            'total_qty' => 20,
+        ]);
+
+        $this->assertDatabaseHas('purchase_orders', [
+            'supplier_id' => $this->supplier->id,
+            'total_qty' => 12,
+        ]);
+        $this->assertDatabaseHas('purchase_orders', [
+            'supplier_id' => $secondSupplier->id,
+            'total_qty' => 8,
+        ]);
+    }
+
+    public function test_transfer_sources_returns_other_branch_stock_availability(): void
+    {
+        $response = $this->actingAs($this->user)->postJson(route('inventory.replenishment.transfer-sources'), [
+            'to_branch_id' => $this->branch->id,
+            'item_ids' => [$this->item->id],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+        $response->assertJsonStructure([
+            'items' => [
+                '*' => ['item_id', 'item_name', 'item_code', 'sources', 'recommended_branch_id', 'max_available_stock'],
+            ],
+        ]);
+    }
+
+    public function test_bulk_create_transfer_dispatches_multiple_transfers_grouped_by_source_branch(): void
+    {
+        $thirdBranch = Branch::create(['name' => 'Third Branch', 'status' => true]);
+        \App\Models\ItemStock::create([
+            'item_id' => $this->item->id,
+            'branch_id' => $thirdBranch->id,
+            'quantity' => 25,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson(route('inventory.replenishment.bulk-create-transfer'), [
+            'to_branch_id' => $this->branch->id,
+            'transfers' => [
+                [
+                    'from_branch_id' => $this->otherBranch->id,
+                    'items' => [
+                        ['item_id' => $this->item->id, 'qty' => 4],
+                    ],
+                ],
+                [
+                    'from_branch_id' => $thirdBranch->id,
+                    'items' => [
+                        ['item_id' => $this->item->id, 'qty' => 7],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'total_transfers' => 2,
+            'total_qty' => 11,
+        ]);
+
+        $this->assertDatabaseHas('stock_transfers', [
+            'from_branch_id' => $this->otherBranch->id,
+            'to_branch_id' => $this->branch->id,
+            'total_qty' => 4,
+        ]);
+        $this->assertDatabaseHas('stock_transfers', [
+            'from_branch_id' => $thirdBranch->id,
+            'to_branch_id' => $this->branch->id,
+            'total_qty' => 7,
+        ]);
+    }
+
     public function test_export_endpoint_downloads_excel_file(): void
     {
         $response = $this->actingAs($this->user)->get(route('inventory.replenishment.export', [
