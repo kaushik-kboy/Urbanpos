@@ -3,6 +3,8 @@
 @section('title', 'Supplier PO Recommendations')
 
 @push('css')
+<link rel="stylesheet" href="{{ asset('vendor/select2/css/select2.min.css') }}">
+<link rel="stylesheet" href="{{ asset('vendor/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
 <style>
 body, .content-wrapper {
     color: #0f172a !important;
@@ -18,6 +20,73 @@ body, .content-wrapper {
     color: #1e293b !important;
     font-weight: 600;
     font-size: 0.85rem;
+}
+
+.modern-filter-toolbar {
+    background: #ffffff;
+    border: 1.5px solid #0f172a;
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+    margin-bottom: 1.25rem;
+}
+.filter-field-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #0f172a;
+    margin-bottom: 0.3rem;
+    display: block;
+}
+.modern-control {
+    border-radius: 8px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+}
+.modern-control:focus {
+    border-color: #0f172a !important;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.15) !important;
+}
+
+/* Modern Select2 Styling */
+.select2-container--bootstrap4 .select2-selection--single {
+    height: 35px !important;
+    border-radius: 8px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-size: 0.83rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+}
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+    line-height: 32px !important;
+    color: #0f172a !important;
+    padding-left: 0.5rem !important;
+    font-weight: 700 !important;
+}
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+    height: 32px !important;
+}
+.select2-container--bootstrap4.select2-container--focus .select2-selection--single {
+    border-color: #0f172a !important;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.15) !important;
+}
+.select2-dropdown {
+    border: 1.5px solid #0f172a !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.15) !important;
+}
+.select2-results__option {
+    font-weight: 600 !important;
+    font-size: 0.83rem !important;
+    color: #0f172a !important;
+}
+.select2-results__option--highlighted {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
 }
 
 .modern-vendor-card {
@@ -102,9 +171,49 @@ body, .content-wrapper {
 @stop
 
 @section('content')
-    <div class="row">
+    {{-- Supplier Search & Filter Toolbar --}}
+    @if(count($supplierOrders) > 0)
+    <div class="modern-filter-toolbar">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5 col-12 mb-2 mb-md-0">
+                <label class="filter-field-label"><i class="fas fa-search mr-1 text-primary"></i> Filter by Supplier Name</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" id="filterSupplierSearch" class="form-control modern-control" placeholder="Type supplier name to filter..." value="{{ request('search', request('supplier_name', '')) }}" autocomplete="off">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary font-weight-bold d-none" type="button" id="btnClearSupplierSearch" title="Clear filter">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-5 col-12 mb-2 mb-md-0">
+                <label class="filter-field-label"><i class="fas fa-building mr-1 text-success"></i> Select Supplier Dropdown</label>
+                <select id="filterSupplierSelect" class="form-control form-control-sm select2">
+                    <option value="all">All Suppliers (Show All)</option>
+                    @foreach($supplierOrders as $group)
+                        <option value="{{ $group->supplier_id }}" {{ (string)request('supplier_id') === (string)$group->supplier_id ? 'selected' : '' }}>
+                            {{ $group->supplier_name }} ({{ $group->items_count }} items)
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2 col-12 text-md-right text-left">
+                <label class="filter-field-label d-none d-md-block">&nbsp;</label>
+                <span id="supplierVisibleCountBadge" class="badge badge-dark px-3 py-2 font-weight-bold" style="border-radius: 8px; font-size: 0.85rem;">
+                    {{ count($supplierOrders) }} Suppliers
+                </span>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <div class="row" id="supplierCardsRow">
         @forelse($supplierOrders as $group)
-            <div class="col-md-6 col-lg-4 mb-3">
+            <div class="col-md-6 col-lg-4 mb-3 vendor-card-col" 
+                 data-supplier-id="{{ $group->supplier_id }}" 
+                 data-supplier-name="{{ strtolower($group->supplier_name) }}">
                 <div class="modern-vendor-card">
                     <div class="modern-vendor-header">
                         <h3 class="modern-vendor-title">
@@ -161,5 +270,88 @@ body, .content-wrapper {
                 </div>
             </div>
         @endforelse
+
+        {{-- No Search Match Container --}}
+        <div class="col-12 d-none" id="noSupplierMatchCard">
+            <div class="modern-vendor-card text-center py-5">
+                <div class="card-body">
+                    <i class="fas fa-search text-muted mb-3" style="font-size: 3rem;"></i><br>
+                    <h4 class="font-weight-bold text-dark">No Matching Suppliers Found</h4>
+                    <p class="font-weight-bold text-muted text-sm">No supplier recommendation matches your search query.</p>
+                    <button type="button" class="btn btn-action-outline font-weight-bold" id="btnResetSupplierFilter">
+                        <i class="fas fa-redo mr-1"></i> Reset Filter
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 @stop
+
+@push('js')
+<script src="{{ asset('vendor/select2/js/select2.min.js') }}"></script>
+<script>
+$(document).ready(function() {
+    const totalSuppliersCount = {{ count($supplierOrders) }};
+
+    $('#filterSupplierSelect').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+
+    function applySupplierFilter() {
+        const query = ($('#filterSupplierSearch').val() || '').toLowerCase().trim();
+        const selectedId = $('#filterSupplierSelect').val();
+
+        if (query.length > 0) {
+            $('#btnClearSupplierSearch').removeClass('d-none');
+        } else {
+            $('#btnClearSupplierSearch').addClass('d-none');
+        }
+
+        let visibleCount = 0;
+        $('.vendor-card-col').each(function() {
+            const cardSupName = String($(this).data('supplier-name') || '');
+            const cardSupId = String($(this).data('supplier-id') || '');
+
+            const matchesSearch = (!query || cardSupName.indexOf(query) !== -1);
+            const matchesSelect = (selectedId === 'all' || cardSupId === selectedId);
+
+            if (matchesSearch && matchesSelect) {
+                $(this).removeClass('d-none');
+                visibleCount++;
+            } else {
+                $(this).addClass('d-none');
+            }
+        });
+
+        $('#supplierVisibleCountBadge').text(visibleCount + ' of ' + totalSuppliersCount + ' Suppliers');
+
+        if (visibleCount === 0 && totalSuppliersCount > 0) {
+            $('#noSupplierMatchCard').removeClass('d-none');
+        } else {
+            $('#noSupplierMatchCard').addClass('d-none');
+        }
+    }
+
+    $('#filterSupplierSearch').on('input keyup', applySupplierFilter);
+
+    $('#filterSupplierSelect').on('change.select2 change', function() {
+        applySupplierFilter();
+    });
+
+    $('#btnClearSupplierSearch').on('click', function() {
+        $('#filterSupplierSearch').val('').focus();
+        applySupplierFilter();
+    });
+
+    $('#btnResetSupplierFilter').on('click', function() {
+        $('#filterSupplierSearch').val('');
+        $('#filterSupplierSelect').val('all').trigger('change.select2');
+        applySupplierFilter();
+    });
+
+    // Run initial filter if values were preloaded from query parameters
+    applySupplierFilter();
+});
+</script>
+@endpush

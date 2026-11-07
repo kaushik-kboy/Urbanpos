@@ -325,6 +325,44 @@ body, .content-wrapper {
     justify-content: space-between;
     align-items: center;
 }
+
+/* Modern Select2 High-Contrast Styling */
+.select2-container--bootstrap4 .select2-selection--single {
+    height: 35px !important;
+    border-radius: 8px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-size: 0.83rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+}
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+    line-height: 32px !important;
+    color: #0f172a !important;
+    padding-left: 0.5rem !important;
+    font-weight: 700 !important;
+}
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+    height: 32px !important;
+}
+.select2-container--bootstrap4.select2-container--focus .select2-selection--single {
+    border-color: #0f172a !important;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.15) !important;
+}
+.select2-dropdown {
+    border: 1.5px solid #0f172a !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.15) !important;
+}
+.select2-results__option {
+    font-weight: 600 !important;
+    font-size: 0.83rem !important;
+    color: #0f172a !important;
+}
+.select2-results__option--highlighted {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+}
 </style>
 @endpush
 
@@ -374,11 +412,11 @@ body, .content-wrapper {
                     </div>
                 </div>
 
-                {{-- Filter Toolbar (Branch, Status, Movement, Action, Department, Category, Brand, Supplier, Search) --}}
+                {{-- Filter Toolbar (Branch, Status, Movement, Department, Category, Brand, Supplier, Search) --}}
                 <div class="modern-filter-toolbar">
                     <div class="row g-2 align-items-center">
-                        {{-- Row 1: Core Dimensions & Action --}}
-                        <div class="col-md-3 col-6 mb-2">
+                        {{-- Row 1: Core Dimensions --}}
+                        <div class="col-md-4 col-12 mb-2">
                             <label class="filter-field-label"><i class="fas fa-store mr-1 text-primary"></i> Branch</label>
                             <select id="filterBranch" class="form-control form-control-sm modern-control">
                                 <option value="all">All Branches</option>
@@ -390,7 +428,7 @@ body, .content-wrapper {
                             </select>
                         </div>
 
-                        <div class="col-md-3 col-6 mb-2">
+                        <div class="col-md-4 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-signal mr-1 text-primary"></i> Stock Status</label>
                             <select id="filterStatus" class="form-control form-control-sm modern-control">
                                 <option value="all" {{ request('status') === 'all' ? 'selected' : '' }}>All Statuses</option>
@@ -403,7 +441,7 @@ body, .content-wrapper {
                             </select>
                         </div>
 
-                        <div class="col-md-3 col-6 mb-2">
+                        <div class="col-md-4 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-tachometer-alt mr-1 text-success"></i> Sales Movement</label>
                             <select id="filterSalesType" class="form-control form-control-sm modern-control">
                                 <option value="all" {{ !request()->has('sales_type') || request('sales_type') === 'all' ? 'selected' : '' }}>All Velocities</option>
@@ -415,19 +453,10 @@ body, .content-wrapper {
                             </select>
                         </div>
 
-                        <div class="col-md-3 col-6 mb-2">
-                            <label class="filter-field-label"><i class="fas fa-tasks mr-1 text-primary"></i> Action</label>
-                            <select id="filterAction" class="form-control form-control-sm modern-control">
-                                <option value="all" {{ !request()->has('action') || request('action') === 'all' ? 'selected' : '' }}>All Actions</option>
-                                <option value="order" {{ request('action') === 'order' ? 'selected' : '' }}>🛒 Order (PO Needed)</option>
-                                <option value="transfer" {{ request('action') === 'transfer' ? 'selected' : '' }}>🔄 Transfer (Other Store Stock)</option>
-                            </select>
-                        </div>
-
-                        {{-- Row 2: Department, Category, Brand, Supplier from Item Master --}}
+                        {{-- Row 2: Department, Category, Brand, Supplier from Item Master (with Select2) --}}
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-layer-group mr-1 text-primary"></i> DEPARTMENT</label>
-                            <select id="filterDepartment" class="form-control form-control-sm modern-control">
+                            <select id="filterDepartment" class="form-control form-control-sm select2">
                                 <option value="all" {{ !request()->has('department_id') || request('department_id') === 'all' ? 'selected' : '' }}>All Departments</option>
                                 @foreach($departments as $d)
                                     <option value="{{ $d->id }}" {{ request('department_id') == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
@@ -437,7 +466,7 @@ body, .content-wrapper {
 
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-tags mr-1 text-primary"></i> CATEGORY</label>
-                            <select id="filterCategory" class="form-control form-control-sm modern-control">
+                            <select id="filterCategory" class="form-control form-control-sm select2">
                                 <option value="all" {{ !request()->has('category_id') || request('category_id') === 'all' ? 'selected' : '' }}>All Categories</option>
                                 @foreach($categories as $c)
                                     <option value="{{ $c->id }}" {{ request('category_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
@@ -447,7 +476,7 @@ body, .content-wrapper {
 
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-award mr-1 text-primary"></i> Brands</label>
-                            <select id="filterBrand" class="form-control form-control-sm modern-control">
+                            <select id="filterBrand" class="form-control form-control-sm select2">
                                 <option value="all" {{ !request()->has('brand_id') || request('brand_id') === 'all' ? 'selected' : '' }}>All Brands</option>
                                 @foreach($brands as $b)
                                     <option value="{{ $b->id }}" {{ request('brand_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
@@ -457,7 +486,7 @@ body, .content-wrapper {
 
                         <div class="col-md-3 col-6 mb-2">
                             <label class="filter-field-label"><i class="fas fa-building mr-1 text-primary"></i> Supplier</label>
-                            <select id="filterSupplier" class="form-control form-control-sm modern-control">
+                            <select id="filterSupplier" class="form-control form-control-sm select2">
                                 <option value="all" {{ !request()->has('supplier_id') || request('supplier_id') === 'all' ? 'selected' : '' }}>All Suppliers</option>
                                 @foreach($suppliers as $s)
                                     <option value="{{ $s->id }}" {{ request('supplier_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
@@ -494,18 +523,27 @@ body, .content-wrapper {
                     <table class="modern-table" id="replenishmentTable">
                         <thead>
                             <tr>
-                                <th style="width: 40px;" class="text-center">
+                                <th style="width: 40px;" class="text-center align-middle">
                                     <input type="checkbox" id="checkAllRows" class="table-checkbox-header" title="Select / Deselect all items on this page">
                                 </th>
-                                <th>Item Details</th>
-                                <th>Current Stock</th>
-                                <th class="text-center">Daily Avg</th>
-                                <th class="text-center">Cover Days</th>
-                                <th class="text-center">Required Stock</th>
-                                <th class="text-center" style="width: 140px;">Order / Transfer Qty</th>
-                                <th class="text-center">Sales Type</th>
-                                <th class="text-center">Stock Status</th>
-                                <th class="text-center" style="width: 140px;">Action</th>
+                                <th class="align-middle">Item Details</th>
+                                <th class="align-middle">Current Stock</th>
+                                <th class="text-center align-middle">Daily Avg</th>
+                                <th class="text-center align-middle">Cover Days</th>
+                                <th class="text-center align-middle">Required Stock</th>
+                                <th class="text-center align-middle" style="width: 140px;">Order / Transfer Qty</th>
+                                <th class="text-center align-middle">Sales Type</th>
+                                <th class="text-center align-middle">Stock Status</th>
+                                <th class="text-center align-middle" style="width: 175px;">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <span class="mb-1">ACTION</span>
+                                        <select id="columnFilterAction" class="form-control form-control-sm modern-control py-0 font-weight-bold" style="height: 27px; font-size: 0.74rem; background: #1e293b; color: #ffffff; border: 1.5px solid #475569; border-radius: 6px; cursor: pointer;" title="Filter table by Action">
+                                            <option value="all">View: All</option>
+                                            <option value="order">🛒 Order Only</option>
+                                            <option value="transfer">🔄 Transfer Only</option>
+                                        </select>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
@@ -708,10 +746,20 @@ body, .content-wrapper {
     let bulkTransferSourcesMap = {}; // itemId -> Array of source branch options
 
     $(document).ready(function() {
+        // Initialize Select2 for Department, Category, Brands, and Supplier dropdowns
+        $('#filterDepartment, #filterCategory, #filterBrand, #filterSupplier').select2({
+            theme: 'bootstrap4',
+            width: '100%'
+        });
+
         loadTableData(1);
 
         // Filter change triggers
-        $('#filterBranch, #filterStatus, #filterSalesType, #filterAction, #filterDepartment, #filterCategory, #filterBrand, #filterSupplier').on('change', function() {
+        $('#filterBranch, #filterStatus, #filterSalesType, #columnFilterAction').on('change', function() {
+            loadTableData(1);
+        });
+
+        $('#filterDepartment, #filterCategory, #filterBrand, #filterSupplier').on('change.select2 change', function() {
             loadTableData(1);
         });
 
@@ -755,11 +803,11 @@ body, .content-wrapper {
             clearTimeout(searchDebounceTimer);
             $('#filterStatus').val('needs_action');
             $('#filterSalesType').val('all');
-            $('#filterAction').val('all');
-            $('#filterDepartment').val('all');
-            $('#filterCategory').val('all');
-            $('#filterBrand').val('all');
-            $('#filterSupplier').val('all');
+            $('#columnFilterAction').val('all');
+            $('#filterDepartment').val('all').trigger('change.select2');
+            $('#filterCategory').val('all').trigger('change.select2');
+            $('#filterBrand').val('all').trigger('change.select2');
+            $('#filterSupplier').val('all').trigger('change.select2');
             $('#filterSearch').val('');
             $('#btnClearSearch').addClass('d-none');
             loadTableData(1);
@@ -771,7 +819,7 @@ body, .content-wrapper {
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
                 sales_type: $('#filterSalesType').val(),
-                action: $('#filterAction').val(),
+                action: $('#columnFilterAction').val(),
                 department_id: $('#filterDepartment').val(),
                 category_id: $('#filterCategory').val(),
                 brand_id: $('#filterBrand').val(),
@@ -790,7 +838,7 @@ body, .content-wrapper {
                 const rowObj = currentTableRows.find(r => r.item_id === itemId);
                 if (rowObj) {
                     if (isChecked) {
-                        const customQty = parseInt($('#row-qty-' + itemId).val()) || getDefaultRowQty(rowObj);
+                        const customQty = parseInt($('#row-qty-' + itemId).val()) || 0;
                         selectedItems[itemId] = extractItemPayload(rowObj, customQty);
                     } else {
                         delete selectedItems[itemId];
@@ -807,7 +855,7 @@ body, .content-wrapper {
             if (!rowObj) return;
 
             if ($(this).is(':checked')) {
-                const customQty = parseInt($('#row-qty-' + itemId).val()) || getDefaultRowQty(rowObj);
+                const customQty = parseInt($('#row-qty-' + itemId).val()) || 0;
                 selectedItems[itemId] = extractItemPayload(rowObj, customQty);
             } else {
                 delete selectedItems[itemId];
@@ -819,7 +867,7 @@ body, .content-wrapper {
         // Custom user quantity change in table row (delegated)
         $(document).on('input change', '.row-qty-input', function() {
             const itemId = $(this).data('item-id');
-            const newQty = Math.max(1, parseInt($(this).val()) || 1);
+            const newQty = parseInt($(this).val()) || 0;
             if (selectedItems[itemId]) {
                 selectedItems[itemId].qty = newQty;
                 updateStickyBar();
@@ -923,12 +971,49 @@ body, .content-wrapper {
                 alert('Please select at least one item from the table.');
                 return;
             }
+
+            // Strict Validation: Ensure all selected items have qty > 0
+            let invalidItemId = null;
+            for (let i = 0; i < itemIds.length; i++) {
+                const id = itemIds[i];
+                const q = parseInt(selectedItems[id].qty) || 0;
+                if (q <= 0) {
+                    invalidItemId = id;
+                    break;
+                }
+            }
+            if (invalidItemId) {
+                alert('Please enter a valid Order Quantity (> 0) for all selected items before placing orders.');
+                const $targetInput = $('#row-qty-' + invalidItemId);
+                if ($targetInput.length) {
+                    $targetInput.focus();
+                }
+                return;
+            }
+
             renderBulkPoModal();
             $('#bulkPoModal').modal('show');
         });
 
         // Confirm Bulk PO Generation
         $('#btnConfirmBulkPo').on('click', function() {
+            // Strict validation inside Bulk PO modal
+            let hasInvalidQty = false;
+            let firstInvalidInput = null;
+            $('.bulk-po-qty-input').each(function() {
+                const q = parseInt($(this).val()) || 0;
+                if (q <= 0) {
+                    hasInvalidQty = true;
+                    if (!firstInvalidInput) firstInvalidInput = $(this);
+                }
+            });
+
+            if (hasInvalidQty) {
+                alert('Please enter a valid Order Quantity (> 0) for all items in the purchase orders.');
+                if (firstInvalidInput) firstInvalidInput.focus();
+                return;
+            }
+
             const groupedOrders = collectBulkPoPayload();
             if (groupedOrders.length === 0) {
                 alert('Please ensure at least one item has a quantity greater than zero.');
@@ -986,6 +1071,25 @@ body, .content-wrapper {
                 return;
             }
 
+            // Strict Validation: Ensure all selected items have qty > 0
+            let invalidItemId = null;
+            for (let i = 0; i < itemIds.length; i++) {
+                const id = itemIds[i];
+                const q = parseInt(selectedItems[id].qty) || 0;
+                if (q <= 0) {
+                    invalidItemId = id;
+                    break;
+                }
+            }
+            if (invalidItemId) {
+                alert('Please enter a valid Transfer Quantity (> 0) for all selected items before transferring.');
+                const $targetInput = $('#row-qty-' + invalidItemId);
+                if ($targetInput.length) {
+                    $targetInput.focus();
+                }
+                return;
+            }
+
             const branchId = $('#filterBranch').val() !== 'all' ? $('#filterBranch').val() : {{ $activeBranchId }};
             $('#bulkTransferTableContainer').addClass('d-none');
             $('#bulkTransferLoading').removeClass('d-none');
@@ -1019,6 +1123,34 @@ body, .content-wrapper {
 
         // Confirm Bulk Transfer Generation
         $('#btnConfirmBulkTransfer').on('click', function() {
+            // Strict Validation inside Bulk Transfer modal
+            let hasInvalidQty = false;
+            let firstInvalidInput = null;
+            let missingSource = false;
+
+            $('#bulkTransferItemsTableBody tr').each(function() {
+                const fromBranch = $(this).find('.bulk-tr-source-select').val();
+                const q = parseInt($(this).find('.bulk-tr-qty-input').val()) || 0;
+                if (!fromBranch) {
+                    missingSource = true;
+                }
+                if (q <= 0) {
+                    hasInvalidQty = true;
+                    if (!firstInvalidInput) firstInvalidInput = $(this).find('.bulk-tr-qty-input');
+                }
+            });
+
+            if (missingSource) {
+                alert('Please select a valid source store for all transfer items.');
+                return;
+            }
+
+            if (hasInvalidQty) {
+                alert('Please enter a valid Transfer Quantity (> 0) for all transfer items.');
+                if (firstInvalidInput) firstInvalidInput.focus();
+                return;
+            }
+
             const groupedTransfers = collectBulkTransferPayload();
             if (groupedTransfers.length === 0) {
                 alert('Please select a valid source store and enter a transfer quantity greater than zero for at least one item.');
@@ -1070,12 +1202,13 @@ body, .content-wrapper {
     // Extract item metadata for selected state
     function extractItemPayload(rowObj, customQty) {
         const item = rowObj.item || {};
+        const qty = parseInt(customQty) > 0 ? parseInt(customQty) : 0;
         return {
             itemId: rowObj.item_id,
             name: item.name || 'SKU #' + rowObj.item_id,
             code: item.item_code || '-',
             cost: parseFloat(item.cost_price || 0),
-            qty: customQty,
+            qty: qty,
             supplierId: rowObj.primary_supplier_id || (item.supplier_id || null),
             supplierName: (rowObj.supplier && rowObj.supplier.name) ? rowObj.supplier.name : 'Unassigned Vendor',
             othStock: parseFloat(rowObj.other_branch_stock || 0),
@@ -1085,11 +1218,7 @@ body, .content-wrapper {
     }
 
     function getDefaultRowQty(rowObj) {
-        const sugg = parseInt(rowObj.suggested_qty || 0);
-        if (sugg > 0) return sugg;
-        const oth = parseFloat(rowObj.other_branch_stock || 0);
-        if (oth > 0) return Math.min(5, Math.floor(oth));
-        return 1;
+        return 0;
     }
 
     // Refresh Sticky Bottom Bar
@@ -1555,7 +1684,7 @@ body, .content-wrapper {
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
                 sales_type: $('#filterSalesType').val(),
-                action: $('#filterAction').val(),
+                action: $('#columnFilterAction').val(),
                 department_id: $('#filterDepartment').val(),
                 category_id: $('#filterCategory').val(),
                 brand_id: $('#filterBrand').val(),
@@ -1606,14 +1735,14 @@ body, .content-wrapper {
             const salesType = row.sales_type || 'Dead Stock';
             const supplierId = row.primary_supplier_id || (item.supplier_id || null);
 
-            // Determine quantity: if user has already customized it in selectedItems, keep that, otherwise use suggested qty or default
+            // Determine quantity: if user has already customized it in selectedItems, keep that, otherwise default to blank ""
             const isChecked = selectedItems.hasOwnProperty(row.item_id);
             if (!isChecked) {
                 allCheckedOnPage = false;
             }
-            const currentQty = (selectedItems[row.item_id] && selectedItems[row.item_id].qty)
+            const selectedQtyVal = (selectedItems[row.item_id] && selectedItems[row.item_id].qty > 0)
                 ? selectedItems[row.item_id].qty
-                : (suggestedQty > 0 ? suggestedQty : (othStock > 0 ? Math.min(5, othStock) : 1));
+                : '';
 
             let statusChip = 'status-pill dead';
             if (status === 'Critical') statusChip = 'status-pill critical';
@@ -1668,7 +1797,8 @@ body, .content-wrapper {
                                    id="row-qty-${row.item_id}" 
                                    class="form-control form-control-sm text-center font-weight-bold row-qty-input modern-control shadow-sm" 
                                    data-item-id="${row.item_id}" 
-                                   value="${currentQty}" 
+                                   value="${selectedQtyVal}" 
+                                   placeholder="Qty"
                                    title="Enter custom quantity to Order or Transfer"
                                    style="width: 80px; height: 32px; font-size: 0.9rem; border: 1.5px solid #0f172a; border-radius: 6px;">
                             ${suggestedQty > 0 
@@ -1738,7 +1868,14 @@ body, .content-wrapper {
 
     // Trigger single row PO with user-decided custom quantity
     function triggerRowPo(itemId, supplierId, itemName) {
-        const customQty = parseInt($('#row-qty-' + itemId).val()) || 1;
+        const $qtyInput = $('#row-qty-' + itemId);
+        const customQty = parseInt($qtyInput.val()) || 0;
+        if (!customQty || customQty <= 0) {
+            alert('Please enter a valid Order Quantity (> 0) before placing order.');
+            $qtyInput.focus();
+            return;
+        }
+
         if (!confirm(`Generate Purchase Order for "${itemName}" with ${customQty} unit(s)?`)) {
             return;
         }
@@ -1772,7 +1909,14 @@ body, .content-wrapper {
         const rowObj = currentTableRows.find(r => r.item_id === itemId);
         if (!rowObj) return;
 
-        const customQty = parseInt($('#row-qty-' + itemId).val()) || getDefaultRowQty(rowObj);
+        const $qtyInput = $('#row-qty-' + itemId);
+        const customQty = parseInt($qtyInput.val()) || 0;
+        if (!customQty || customQty <= 0) {
+            alert('Please enter a valid Transfer Quantity (> 0) before transferring stock.');
+            $qtyInput.focus();
+            return;
+        }
+
         selectedItems[itemId] = extractItemPayload(rowObj, customQty);
         $(`.row-select-checkbox[data-item-id="${itemId}"]`).prop('checked', true);
         updateStickyBar();
