@@ -534,16 +534,7 @@ body, .content-wrapper {
                                 <th class="text-center align-middle" style="width: 140px;">Order / Transfer Qty</th>
                                 <th class="text-center align-middle">Sales Type</th>
                                 <th class="text-center align-middle">Stock Status</th>
-                                <th class="text-center align-middle" style="width: 175px;">
-                                    <div class="d-flex flex-column align-items-center">
-                                        <span class="mb-1">ACTION</span>
-                                        <select id="columnFilterAction" class="form-control form-control-sm modern-control py-0 font-weight-bold" style="height: 27px; font-size: 0.74rem; background: #1e293b; color: #ffffff; border: 1.5px solid #475569; border-radius: 6px; cursor: pointer;" title="Filter table by Action">
-                                            <option value="all">View: All</option>
-                                            <option value="order">🛒 Order Only</option>
-                                            <option value="transfer">🔄 Transfer Only</option>
-                                        </select>
-                                    </div>
-                                </th>
+                                <th class="text-center align-middle" style="width: 140px;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
@@ -755,7 +746,7 @@ body, .content-wrapper {
         loadTableData(1);
 
         // Filter change triggers
-        $('#filterBranch, #filterStatus, #filterSalesType, #columnFilterAction').on('change', function() {
+        $('#filterBranch, #filterStatus, #filterSalesType').on('change', function() {
             loadTableData(1);
         });
 
@@ -803,7 +794,6 @@ body, .content-wrapper {
             clearTimeout(searchDebounceTimer);
             $('#filterStatus').val('needs_action');
             $('#filterSalesType').val('all');
-            $('#columnFilterAction').val('all');
             $('#filterDepartment').val('all').trigger('change.select2');
             $('#filterCategory').val('all').trigger('change.select2');
             $('#filterBrand').val('all').trigger('change.select2');
@@ -819,7 +809,6 @@ body, .content-wrapper {
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
                 sales_type: $('#filterSalesType').val(),
-                action: $('#columnFilterAction').val(),
                 department_id: $('#filterDepartment').val(),
                 category_id: $('#filterCategory').val(),
                 brand_id: $('#filterBrand').val(),
@@ -1684,7 +1673,6 @@ body, .content-wrapper {
                 branch_id: $('#filterBranch').val(),
                 status: $('#filterStatus').val(),
                 sales_type: $('#filterSalesType').val(),
-                action: $('#columnFilterAction').val(),
                 department_id: $('#filterDepartment').val(),
                 category_id: $('#filterCategory').val(),
                 brand_id: $('#filterBrand').val(),
