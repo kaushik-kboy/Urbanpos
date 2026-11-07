@@ -144,14 +144,14 @@ class WhatsAppPosSaveAndDirectModeTest extends TestCase
             ], 200),
         ]);
 
-        // Branch has sales_invoice_motera set
+        // Branch has an unsupported template set
         WhatsAppSetting::updateOrCreate(
             ['branch_id' => $this->branch->id],
             [
                 'api_url' => 'https://chatonclick.com',
                 'app_key' => 'test-app-key',
                 'auth_key' => 'test-auth-key',
-                'template_name' => 'sales_invoice_motera', // Known unapproved template
+                'template_name' => 'unsupported_test_template', // Known unapproved template
                 'is_active' => true,
             ]
         );

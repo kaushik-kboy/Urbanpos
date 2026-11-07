@@ -69,8 +69,14 @@ class AppServiceProvider extends ServiceProvider
             if (!config('replenishment.enabled', false)) {
                 return false;
             }
-            return $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])
-                || $user->hasPermissionTo('smart-replenishment.view');
+            if ($user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])) {
+                return true;
+            }
+            try {
+                return $user->hasPermissionTo('smart-replenishment.view');
+            } catch (\Throwable) {
+                return false;
+            }
         });
         Gate::define('access-finance-reports', function ($user) {
             return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Finance');

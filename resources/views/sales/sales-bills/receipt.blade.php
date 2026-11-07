@@ -593,7 +593,7 @@
             const pdfFormat = {!! $isA4 ? ($paperSize === 'a5' ? "'a5'" : "'a4'") : ($paperSize === 'a4' ? "'a4'" : ($paperSize === 'a5' ? "'a5'" : json_encode([$paperSize === '58mm' ? 58 : 80, 297]))) !!};
             const opt = {
                 margin:       {!! $isA4 ? '[6, 6, 6, 6]' : '[4, 4, 4, 4]' !!},
-                filename:     '{{ $salesBill->bill_number }}.pdf',
+                filename:     '{{ str_replace(['/', '\\', ' '], ['_', '_', '_'], $salesBill->bill_number) }}.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'mm', format: pdfFormat, orientation: 'portrait' }

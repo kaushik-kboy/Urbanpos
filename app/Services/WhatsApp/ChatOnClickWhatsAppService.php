@@ -319,15 +319,27 @@ class ChatOnClickWhatsAppService
             ];
         }
 
-        $knownRejected = ['sales_invoice_satellite', 'sales_invoice_motera'];
-        $isTemplateUnsupported = !empty($this->templateName) && (
-            in_array(strtolower($this->templateName), $knownRejected)
-            || \Illuminate\Support\Facades\Cache::get('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName)
+        $effectiveTemplate = $this->templateName;
+        if ($effectiveTemplate === 'auto') {
+            $branchNameLower = strtolower(trim($salesBill->branch?->name ?: ''));
+            if ($salesBill->branch_id == 2 || str_contains($branchNameLower, 'satellite')) {
+                $effectiveTemplate = 'sales_invoice_satellite';
+            } elseif ($salesBill->branch_id == 3 || str_contains($branchNameLower, 'motera')) {
+                $effectiveTemplate = 'sales_invoice_motera';
+            } else {
+                $effectiveTemplate = 'urban_tax_invoice_v3';
+            }
+        }
+
+        $knownRejected = ['unsupported_test_template'];
+        $isTemplateUnsupported = !empty($effectiveTemplate) && (
+            in_array(strtolower($effectiveTemplate), $knownRejected)
+            || \Illuminate\Support\Facades\Cache::get('chatonclick_template_unsupported_' . $this->appKey . '_' . $effectiveTemplate)
         );
 
         $directWhatsappUrl = "https://api.whatsapp.com/send?phone={$cleanPhone}&text=" . urlencode($this->formatInvoiceMessage($salesBill));
 
-        if (!empty($this->templateName) && !$isTemplateUnsupported) {
+        if (!empty($effectiveTemplate) && !$isTemplateUnsupported) {
             $customerName = trim($salesBill->customer?->name ?: 'Customer');
             $billNumber   = (string)$salesBill->bill_number;
             $billDate     = $salesBill->bill_date ? $salesBill->bill_date->format('d-m-Y h:i A') : now()->format('d-m-Y');
@@ -361,22 +373,22 @@ class ChatOnClickWhatsAppService
                 ],
                 [
                     'name'     => 'template_name',
-                    'contents' => $this->templateName,
+                    'contents' => $effectiveTemplate,
                 ],
                 [
                     'name'     => 'language',
-                    'contents' => $this->templateLang,
+                    'contents' => in_array($effectiveTemplate, ['sales_invoice_satellite', 'sales_invoice_motera']) ? 'en_US' : $this->templateLang,
                 ],
             ];
 
-            if (in_array($this->templateName, ['sales_invoice_satellite', 'sales_invoice_motera'])) {
+            if (in_array($effectiveTemplate, ['sales_invoice_satellite', 'sales_invoice_motera'])) {
                 // In Meta, sales_invoice_satellite and sales_invoice_motera are static templates with 0 parameters.
                 // Attach the public digital bill URL in the file parameter so receipt is attached.
                 $multipart[] = [
                     'name'     => 'file',
                     'contents' => (string) $publicUrl,
                 ];
-            } elseif ($this->templateName === 'urban_tax_invoice_v2') {
+            } elseif ($effectiveTemplate === 'urban_tax_invoice_v2') {
                 // Meta approved urban_tax_invoice_v2 variables in exact order:
                 // {{1}} = Net Amount Paid: Rs. {{1}}
                 // {{2}} = (via {{2}}) - Payment mode
@@ -408,7 +420,7 @@ class ChatOnClickWhatsAppService
                     'name'     => 'button_url',
                     'contents' => (string) $salesBill->id,
                 ];
-            } elseif ($this->templateName === 'urban_tax_invoice_v3') {
+            } elseif ($effectiveTemplate === 'urban_tax_invoice_v3') {
                 $variables = [
                     $customerName,
                     $billNumber,
@@ -490,12 +502,12 @@ class ChatOnClickWhatsAppService
             $isFailed = ($json['data']['status'] ?? '') === 'failed' || ($json['status'] ?? '') === 'failed';
 
             // Automatic fallback: if template was rejected (not found / unapproved on device), retry as direct message
-            if (!empty($this->templateName) && !$isTemplateUnsupported && (!$isSuccess || $isFailed)) {
+            if (!empty($effectiveTemplate) && !$isTemplateUnsupported && (!$isSuccess || $isFailed)) {
                 $templateErr = $json['error'] ?? ($json['message'] ?? 'Template rejected');
                 if (str_contains(strtolower((string)$templateErr), 'template not found') || str_contains(strtolower((string)$templateErr), 'not approved')) {
-                    \Illuminate\Support\Facades\Cache::put('chatonclick_template_unsupported_' . $this->appKey . '_' . $this->templateName, true, 86400);
+                    \Illuminate\Support\Facades\Cache::put('chatonclick_template_unsupported_' . $this->appKey . '_' . $effectiveTemplate, true, 86400);
                 }
-                Log::warning("WhatsApp template '{$this->templateName}' rejected by device ({$templateErr}). Falling back to direct formatted text message for Bill #{$salesBill->bill_number}.");
+                Log::warning("WhatsApp template '{$effectiveTemplate}' rejected by device ({$templateErr}). Falling back to direct formatted text message for Bill #{$salesBill->bill_number}.");
 
                 $directMessage = $this->formatInvoiceMessage($salesBill);
                 $fallbackResp = Http::asMultipart()

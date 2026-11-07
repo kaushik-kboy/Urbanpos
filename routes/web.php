@@ -579,6 +579,11 @@ Route::get('guest/receipt/{salesBill}', function ($salesBillId) {
     $service = app(\App\Services\WhatsApp\ChatOnClickWhatsAppService::class);
     return redirect()->to($service->getPublicReceiptUrl($bill));
 })->name('sales-bills.guest-receipt');
+Route::get('receipt/{salesBill}', function ($salesBillId) {
+    $bill = \App\Models\SalesBill::findOrFail($salesBillId);
+    $service = app(\App\Services\WhatsApp\ChatOnClickWhatsAppService::class);
+    return redirect()->to($service->getPublicReceiptUrl($bill));
+})->name('sales-bills.short-receipt');
 
 // Public route to download the UrbanPOS Android Mobile App APK
 Route::get('/downloads/urbanpos.apk', function () {
