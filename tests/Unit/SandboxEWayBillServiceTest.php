@@ -136,3 +136,4 @@ class SandboxEWayBillServiceTest extends TestCase
         $this->assertNull($bill->fresh()->eway_bill_no);
     }
 }
+

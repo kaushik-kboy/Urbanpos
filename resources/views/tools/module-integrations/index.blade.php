@@ -310,6 +310,13 @@
 
 @section('css')
 <style>
+    /* Absolute guard against stuck preloader overlay */
+    .preloader {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        opacity: 0 !important;
+    }
     .font-weight-600 { font-weight: 600; }
     .custom-switch-lg .custom-control-label::before {
         height: 1.5rem;
@@ -336,6 +343,7 @@
 @section('js')
 <script>
 $(document).ready(function() {
+    $('.preloader').remove();
     const currentRoleId = @json($selectedRoleId ?? 'global');
     const toggleUrl = @json(route('tools.module-integrations.toggle'));
     const bulkToggleUrl = @json(route('tools.module-integrations.bulk'));
