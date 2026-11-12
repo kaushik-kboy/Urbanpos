@@ -292,8 +292,8 @@ class EWayBillService
             $settings = GstSetting::current();
             $payload = $this->buildBillEntry($bill);
 
-            // Mock / Sandbox Mode — skip real GSP call
-            if ($settings->gsp_provider === 'mock' || $settings->is_sandbox) {
+            // Mock Mode — skip real GSP call when provider is mock or credentials are missing
+            if ($settings->gsp_provider === 'mock' || empty($settings->client_id) || empty($settings->client_secret)) {
                 $fakeEwbNo = '34' . str_pad(random_int(1000000000, 9999999999), 10, '0');
                 $validUntil = now()->addDays(
                     in_array($bill->transport_mode, ['2', '3', '4']) ? 15 : 1
@@ -343,7 +343,7 @@ class EWayBillService
 
             $settings = GstSetting::current();
 
-            if ($settings->gsp_provider !== 'mock' && !$settings->is_sandbox) {
+            if ($settings->gsp_provider !== 'mock' && !empty($settings->client_id) && !empty($settings->client_secret)) {
                 $result = $this->callEwbGspApi($settings, 'ewaycancel', [
                     'ewbNo'     => $bill->eway_bill_no,
                     'cancelRsnCode' => (int) $reasonCode,
@@ -383,7 +383,7 @@ class EWayBillService
             $settings = GstSetting::current();
             $cleanVehicle = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $vehicleNo));
 
-            if ($settings->gsp_provider !== 'mock' && !$settings->is_sandbox) {
+            if ($settings->gsp_provider !== 'mock' && !empty($settings->client_id) && !empty($settings->client_secret)) {
                 $result = $this->callEwbGspApi($settings, 'vehewb', [
                     'ewbNo'     => $bill->eway_bill_no,
                     'vehicleNo' => $cleanVehicle,
@@ -427,7 +427,7 @@ class EWayBillService
             $cleanVehicle = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $vehicleNo));
             $fromStateCode = $this->resolveStateCode($bill->branch?->gst_no, $bill->branch?->state);
 
-            if ($settings->gsp_provider !== 'mock' && !$settings->is_sandbox) {
+            if ($settings->gsp_provider !== 'mock' && !empty($settings->client_id) && !empty($settings->client_secret)) {
                 $result = $this->callEwbGspApi($settings, 'extendvalidity', [
                     'ewbNo'          => $bill->eway_bill_no,
                     'vehicleNo'      => $cleanVehicle,
@@ -466,21 +466,107 @@ class EWayBillService
     }
 
     /**
+     * Get or cache Sandbox.co.in Government E-Way Bill Taxpayer Session Token.
+     */
+    public function getSandboxEwbSessionToken(GstSetting $settings): ?string
+    {
+        $cacheKey = 'sandbox_ewb_session_' . md5($settings->gstin . $settings->username . ($settings->is_sandbox ? '1' : '0'));
+        return Cache::remember($cacheKey, 18000, function () use ($settings) {
+            $host = $settings->is_sandbox ? 'https://test-api.sandbox.co.in' : 'https://api.sandbox.co.in';
+
+            $baseCacheKey = 'sandbox_token_' . md5($settings->client_id . $settings->client_secret . ($settings->is_sandbox ? '1' : '0'));
+            $baseToken = Cache::remember($baseCacheKey, 82800, function () use ($settings, $host) {
+                try {
+                    $authRes = Http::withHeaders([
+                        'x-api-key' => $settings->client_id,
+                        'x-api-secret' => $settings->client_secret,
+                        'x-api-version' => '1.0',
+                    ])->timeout(10)->post($host . '/authenticate');
+
+                    if ($authRes->successful()) {
+                        return $authRes->json('data.access_token') ?? $authRes->json('access_token');
+                    }
+                    Log::error('Sandbox.co.in EWB base auth error: ' . $authRes->body());
+                    return null;
+                } catch (\Throwable $e) {
+                    Log::error('Sandbox.co.in EWB base auth exception: ' . $e->getMessage());
+                    return null;
+                }
+            });
+
+            if (!$baseToken) {
+                return null;
+            }
+
+            try {
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'authorization' => $baseToken,
+                    'x-api-key' => $settings->client_id,
+                    'x-api-version' => '1.0.0',
+                    'x-source' => 'primary',
+                ])->timeout(15)->post($host . '/gst/compliance/e-way-bill/tax-payer/authenticate?force=true', [
+                    'username' => $settings->username,
+                    'password' => $settings->password,
+                    'gstin' => $settings->gstin,
+                ]);
+
+                if ($response->successful()) {
+                    $body = $response->json();
+                    if (($body['data']['Status'] ?? 0) === 1 && !empty($body['data']['access_token'])) {
+                        return $body['data']['access_token'];
+                    }
+                    $errMsg = $body['data']['ErrorDetails'][0]['ErrorMessage'] ?? $response->body();
+                    Log::error("Sandbox EWB taxpayer session error: {$errMsg}");
+                    return null;
+                }
+
+                Log::error('Sandbox EWB taxpayer session HTTP error: ' . $response->body());
+                return null;
+            } catch (\Throwable $e) {
+                Log::error('Sandbox EWB taxpayer session exception: ' . $e->getMessage());
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Parse Indian NIC/Sandbox EWB date strings (e.g. "12/11/2026 02:30:00 PM") safely.
+     */
+    protected function parseEwbDate(?string $dateStr): \Carbon\Carbon
+    {
+        if (empty($dateStr)) {
+            return now();
+        }
+        foreach (['d/m/Y h:i:s A', 'd/m/Y H:i:s', 'd/m/Y', 'Y-m-d H:i:s'] as $format) {
+            try {
+                return \Carbon\Carbon::createFromFormat($format, trim($dateStr));
+            } catch (\Throwable) {
+                // try next format
+            }
+        }
+        try {
+            return \Carbon\Carbon::parse($dateStr);
+        } catch (\Throwable) {
+            return now();
+        }
+    }
+
+    /**
      * Shared HTTP helper for all EWB GSP API calls.
      * Endpoint action: 'ewbgenerate' | 'ewaycancel' | 'vehewb' | 'extendvalidity'
      */
     protected function callEwbGspApi(GstSetting $settings, string $action, array $data): array
     {
+        if ($settings->gsp_provider === 'sandbox') {
+            return $this->callSandboxEwbApi($settings, $action, $data);
+        }
+
         $baseUrl = $settings->is_sandbox
             ? 'https://einvoice1-uat.nic.in/EWB/apicall/'
             : 'https://ewaybillgst.gov.in/apicall/';
 
-        // Provider-specific base URL overrides
-        if ($settings->gsp_provider === 'sandbox') {
-            $baseUrl = $settings->is_sandbox
-                ? 'https://api-sandbox.co.in/gsp/eway/'
-                : 'https://api.sandbox.co.in/gsp/eway/';
-        } elseif ($settings->gsp_provider === 'cleartax') {
+        if ($settings->gsp_provider === 'cleartax') {
             $baseUrl = $settings->is_sandbox
                 ? 'https://api-sandbox.cleartax.in/gsp/eway/'
                 : 'https://api.cleartax.in/gsp/eway/';
@@ -491,38 +577,13 @@ class EWayBillService
         }
 
         try {
-            $headers = ['Content-Type' => 'application/json'];
-
-            if ($settings->gsp_provider === 'sandbox') {
-                $cacheKey = 'sandbox_token_' . md5($settings->client_id . $settings->client_secret);
-                $token = Cache::get($cacheKey);
-                if (!$token) {
-                    $authUrl = $settings->is_sandbox
-                        ? 'https://test-api.sandbox.co.in/authenticate'
-                        : 'https://api.sandbox.co.in/authenticate';
-                    $authRes = Http::withHeaders([
-                        'x-api-key' => $settings->client_id,
-                        'x-api-secret' => $settings->client_secret,
-                        'x-api-version' => '1.0',
-                    ])->timeout(10)->post($authUrl);
-                    if ($authRes->successful()) {
-                        $token = $authRes->json('data.access_token') ?? $authRes->json('access_token');
-                        Cache::put($cacheKey, $token, 82800);
-                    }
-                }
-                if ($token) {
-                    $headers['Authorization'] = $token;
-                }
-                $headers['x-api-key'] = $settings->client_id;
-                $headers['x-api-version'] = '1.0';
-                $headers['gstin'] = $settings->gstin;
-                $headers['username'] = $settings->username;
-            } else {
-                $headers['client_id'] = $settings->client_id;
-                $headers['client_secret'] = $settings->client_secret;
-                $headers['gstin'] = $settings->gstin;
-                $headers['username'] = $settings->username;
-            }
+            $headers = [
+                'Content-Type' => 'application/json',
+                'client_id' => $settings->client_id,
+                'client_secret' => $settings->client_secret,
+                'gstin' => $settings->gstin,
+                'username' => $settings->username,
+            ];
 
             $response = Http::withHeaders($headers)->timeout(15)->post($baseUrl . $action, $data);
 
@@ -531,8 +592,8 @@ class EWayBillService
                 return [
                     'success'     => true,
                     'ewb_no'      => (string) ($body['ewbNo'] ?? $body['EwbNo'] ?? ''),
-                    'ewb_date'    => isset($body['ewbDt']) ? \Carbon\Carbon::parse($body['ewbDt']) : now(),
-                    'valid_until' => isset($body['validUpto']) ? \Carbon\Carbon::parse($body['validUpto']) : now()->addDays(1),
+                    'ewb_date'    => isset($body['ewbDt']) ? $this->parseEwbDate($body['ewbDt']) : now(),
+                    'valid_until' => isset($body['validUpto']) ? $this->parseEwbDate($body['validUpto']) : now()->addDays(1),
                     'raw'         => $body,
                 ];
             }
@@ -543,6 +604,76 @@ class EWayBillService
             ];
         } catch (\Throwable $e) {
             return ['success' => false, 'error' => 'GSP Timeout: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Execute Sandbox.co.in E-Way Bill API request.
+     */
+    protected function callSandboxEwbApi(GstSetting $settings, string $action, array $data): array
+    {
+        $sessionToken = $this->getSandboxEwbSessionToken($settings);
+        if (!$sessionToken) {
+            return [
+                'success' => false,
+                'error' => 'Could not establish Government E-Way Bill session with Sandbox. Check credentials.',
+            ];
+        }
+
+        $host = $settings->is_sandbox ? 'https://test-api.sandbox.co.in' : 'https://api.sandbox.co.in';
+        $ewbNo = $data['ewbNo'] ?? '';
+
+        [$method, $endpoint] = match ($action) {
+            'ewbgenerate'    => ['POST', "{$host}/gst/compliance/e-way-bill/consignor/bill"],
+            'ewaycancel'     => ['POST', "{$host}/gst/compliance/e-way-bill/consignor/bill/{$ewbNo}/cancel"],
+            'vehewb'         => ['PUT',  "{$host}/gst/compliance/e-way-bill/consignor/bill/{$ewbNo}/vehicle"],
+            'extendvalidity' => ['POST', "{$host}/gst/compliance/e-way-bill/consignor/bill/{$ewbNo}/extend"],
+            default          => ['POST', "{$host}/gst/compliance/e-way-bill/consignor/bill"],
+        };
+
+        try {
+            $headers = [
+                'Content-Type' => 'application/json',
+                'authorization' => $sessionToken,
+                'x-api-key' => $settings->client_id,
+                'x-api-version' => '1.0.0',
+                'x-source' => 'primary',
+            ];
+
+            $http = Http::withHeaders($headers)->timeout(20);
+            $response = $method === 'PUT'
+                ? $http->put($endpoint, $data)
+                : $http->post($endpoint, $data);
+
+            $body = $response->json();
+            if ($response->successful() && ($body['code'] ?? 200) === 200) {
+                $statusVal = (string) ($body['data']['status'] ?? $body['data']['Status'] ?? '1');
+                if ($statusVal === '0') {
+                    $err = $body['data']['info']
+                        ?? ($body['data']['ErrorDetails'][0]['ErrorMessage'] ?? null)
+                        ?? ($body['data']['error']['errorCodes'] ?? null)
+                        ?? 'Government EWB portal rejected the request.';
+                    return ['success' => false, 'error' => (string) $err];
+                }
+
+                $ewbData = $body['data']['data'] ?? $body['data'] ?? $body;
+                return [
+                    'success'     => true,
+                    'ewb_no'      => (string) ($ewbData['ewayBillNo'] ?? $ewbData['ewbNo'] ?? $ewbData['EwbNo'] ?? $ewbNo),
+                    'ewb_date'    => $this->parseEwbDate($ewbData['ewayBillDate'] ?? $ewbData['ewbDt'] ?? null),
+                    'valid_until' => $this->parseEwbDate($ewbData['validUpto'] ?? null),
+                    'raw'         => $body,
+                ];
+            }
+
+            $err = $body['data']['info']
+                ?? ($body['data']['ErrorDetails'][0]['ErrorMessage'] ?? null)
+                ?? $body['message']
+                ?? $response->body();
+
+            return ['success' => false, 'error' => (string) $err];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => 'Sandbox EWB Gateway Timeout: ' . $e->getMessage()];
         }
     }
 }
