@@ -684,7 +684,7 @@
                 }, 80);
             });
 
-            // Auto-Replenish from MBQ Deficits (GoFrugal Replenishment Parity)
+            // Auto-Replenish from MBQ Deficits (UrbanPos Replenishment Parity)
             $('#btn-auto-replenish-mbq').on('click', function () {
                 const branchId = $('#branch_id').val();
                 if (!branchId) {

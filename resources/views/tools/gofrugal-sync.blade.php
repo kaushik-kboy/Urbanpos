@@ -1,11 +1,11 @@
 @extends('adminlte::page')
 
-@section('title', 'GoFrugal TruePOS Data Sync Manager')
+@section('title', 'UrbanPos TruePOS Data Sync Manager')
 
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1 class="m-0 text-dark"><i class="fas fa-sync-alt text-primary mr-2"></i>GoFrugal TruePOS Sync Manager</h1>
+            <h1 class="m-0 text-dark"><i class="fas fa-sync-alt text-primary mr-2"></i>UrbanPos TruePOS Sync Manager</h1>
             <small class="text-muted">Automated Credentials-Based Data Synchronization with UrbanPOS</small>
         </div>
         <div>
@@ -162,10 +162,10 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content bg-dark text-white shadow-lg">
             <div class="modal-header border-secondary">
-                <h5 class="modal-title"><i class="fas fa-sync-alt fa-spin mr-2 text-info"></i>GoFrugal Sync in Progress...</h5>
+                <h5 class="modal-title"><i class="fas fa-sync-alt fa-spin mr-2 text-info"></i>UrbanPos Sync in Progress...</h5>
             </div>
             <div class="modal-body p-3">
-                <div id="syncProgressText" class="mb-2 text-warning font-weight-bold">Connecting to GoFrugal TruePOS portal...</div>
+                <div id="syncProgressText" class="mb-2 text-warning font-weight-bold">Connecting to UrbanPos TruePOS portal...</div>
                 <div class="progress mb-3" style="height: 6px;">
                     <div id="syncProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 100%"></div>
                 </div>
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        if (!confirm(`Are you sure you want to run GoFrugal sync for date ${dateVal}?`)) {
+        if (!confirm(`Are you sure you want to run UrbanPos sync for date ${dateVal}?`)) {
             return;
         }
 

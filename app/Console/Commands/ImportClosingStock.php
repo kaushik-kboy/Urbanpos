@@ -179,7 +179,7 @@ class ImportClosingStock extends Command
                 // Resolve Item
                 $itemId = $itemsByCode[$itemCode] ?? ($itemsByName[$itemName] ?? ($isbn !== '' && isset($itemsByBarcode[$isbn]) ? $itemsByBarcode[$isbn] : null));
 
-                // Auto-create missing item if not found so no GoFrugal SKUs are missed
+                // Auto-create missing item if not found so no UrbanPos SKUs are missed
                 if (! $itemId && $itemCode !== '') {
                     $newItem = Item::create([
                         'item_code'    => $itemCode,

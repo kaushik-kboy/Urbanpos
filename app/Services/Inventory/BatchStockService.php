@@ -199,7 +199,7 @@ class BatchStockService
             ->orderBy('id', 'asc')
             ->get();
 
-        // 5. Fetch from Closing Stock (imported GoFrugal TruePOS batches) strictly in this branch
+        // 5. Fetch from Closing Stock (imported UrbanPos TruePOS batches) strictly in this branch
         $csRows = DB::table('closing_stocks')
             ->where(function ($q) use ($itemId, $item) {
                 $q->where('item_id', $itemId);

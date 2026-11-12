@@ -27,7 +27,7 @@ class GofrugalImportCommand extends Command
                             {--dry-run : Simulate imports without database commit} 
                             {--modules=all : Comma-separated modules to import (stock,sales,purchases,transfers,all)}';
 
-    protected $description = 'Universal data importer for GoFrugal TruePOS exported CSV records';
+    protected $description = 'Universal data importer for UrbanPos TruePOS exported CSV records';
 
     public function handle(): int
     {
@@ -39,7 +39,7 @@ class GofrugalImportCommand extends Command
         $dirPath = $this->option('path') ?: storage_path("app/gofrugal_sync/{$targetDate}");
 
         $this->info("==========================================================");
-        $this->info("       URBANPOS UNIVERSAL GOFRUGAL DATA IMPORTER          ");
+        $this->info("       URBANPOS UNIVERSAL TRUEPOS DATA IMPORTER           ");
         $this->info(" Target Date:  {$targetDate}");
         $this->info(" Source Dir:   {$dirPath}");
         $this->info(" Mode:         " . ($isDryRun ? "DRY-RUN (SIMULATION)" : "LIVE COMMIT"));
@@ -78,7 +78,7 @@ class GofrugalImportCommand extends Command
         }
 
         $this->info("\n==========================================================");
-        $this->info("      GOFRUGAL DATA IMPORT PROCESS COMPLETED!             ");
+        $this->info("      URBANPOS DATA IMPORT PROCESS COMPLETED!             ");
         $this->info("==========================================================");
 
         return 0;

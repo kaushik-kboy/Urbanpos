@@ -8,7 +8,7 @@
             <h1 class="m-0 text-dark font-weight-bold h5">
                 <i class="fas fa-layer-group text-primary mr-2"></i> Kit Recipe Master (Assembly Definitions)
             </h1>
-            <small class="text-muted">Define parent combo/bundle products and ingredient bills of materials (GoFrugal / TruePOS Parity)</small>
+            <small class="text-muted">Define parent combo/bundle products and ingredient bills of materials (UrbanPos / TruePOS Parity)</small>
         </div>
         <div>
             <a href="{{ route('inventory.kit-preparation.index') }}" class="btn btn-outline-info btn-sm mr-2 font-weight-bold">

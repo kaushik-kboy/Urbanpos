@@ -900,7 +900,7 @@
                         </div>
 
                         <div class="card card-outline card-warning p-3 mb-3">
-                            <h6 class="font-weight-bold text-dark mb-2">Automation Rules (GoFrugal / TFA E-Invoice Parity)</h6>
+                            <h6 class="font-weight-bold text-dark mb-2">Automation Rules (UrbanPos / TFA E-Invoice Parity)</h6>
                             <div class="form-group custom-control custom-switch mb-2">
                                 <input type="checkbox" class="custom-control-input" id="autoUploadSwitch" name="auto_upload_enabled" value="1" {{ $settings->auto_upload_enabled ? 'checked' : '' }}>
                                 <label class="custom-control-label font-weight-bold text-success" for="autoUploadSwitch">
@@ -931,7 +931,7 @@
                             </div>
                         </div>
 
-                        {{-- Registered Company Profile (GoFrugal TFA Register card) --}}
+                        {{-- Registered Company Profile (UrbanPos TFA Register card) --}}
                         <div class="p-2 mb-3 bg-light rounded border d-flex justify-content-between align-items-center">
                             <div>
                                 <span class="badge badge-primary px-2 py-1 mr-2">Registered Entity</span>

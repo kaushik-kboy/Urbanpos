@@ -414,7 +414,7 @@ class EWayBillService
 
     /**
      * Extend E-Way Bill validity (when goods not delivered within validity).
-     * GoFrugal allows extending from the current location with a new vehicle.
+     * UrbanPos allows extending from the current location with a new vehicle.
      */
     public function extendValidity(SalesBill $bill, string $vehicleNo, string $fromPlace, int $remainingDistance = 20): array
     {

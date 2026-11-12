@@ -155,7 +155,7 @@
         }
     });
 
-    // Auto-load components from Kit Recipe Master (GoFrugal / TruePOS Parity)
+    // Auto-load components from Kit Recipe Master (UrbanPos / TruePOS Parity)
     $('select[name="kit_item_id"]').on('change', function () {
         const kitItemId = $(this).val();
         if (!kitItemId) return;

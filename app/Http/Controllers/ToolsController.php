@@ -60,7 +60,7 @@ class ToolsController extends Controller
                 'columns' => ['Asset Category', 'Asset Ledger', 'Depreciation Ledger', 'Status'],
             ],
             'integrations-alert' => [
-                'title' => 'GoFrugal Alert Integration',
+                'title' => 'UrbanPos Alert Integration',
                 'section' => 'Tools > Integrations',
                 'icon' => 'fas fa-bell',
                 'newButton' => 'New Alert Rule',
@@ -74,7 +74,7 @@ class ToolsController extends Controller
                 'columns' => ['GSTIN', 'GSP Provider', 'API Environment', 'Token Status', 'Last Sync'],
             ],
             'integrations-gosure' => [
-                'title' => 'GOFRUGAL GoSure Mobile App Integration',
+                'title' => 'UrbanPos GoSure Mobile App Integration',
                 'section' => 'Tools > Integrations',
                 'icon' => 'fas fa-mobile-alt',
                 'newButton' => 'Register Mobile User',

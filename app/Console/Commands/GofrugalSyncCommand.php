@@ -16,7 +16,7 @@ class GofrugalSyncCommand extends Command
                             {--skip-extract : Skip headless extraction and only run import on existing CSVs} 
                             {--dry-run : Simulate imports without database commit}';
 
-    protected $description = 'Complete end-to-end extraction from GoFrugal TruePOS and synchronization into UrbanPOS';
+    protected $description = 'Complete end-to-end extraction from UrbanPos TruePOS and synchronization into UrbanPOS';
 
     public function handle(): int
     {
@@ -27,7 +27,7 @@ class GofrugalSyncCommand extends Command
         $modules = $this->option('modules') ?: 'all';
 
         $this->info("==========================================================");
-        $this->info("       GOFRUGAL TRUEPOS ➔ URBANPOS SYNC MASTER            ");
+        $this->info("       URBANPOS TRUEPOS ➔ URBANPOS SYNC MASTER            ");
         $this->info(" Target Date:  {$targetDate}");
         $this->info(" Extraction:   " . ($skipExtract ? "SKIPPED" : "ENABLED (Headless Engine)"));
         $this->info(" Mode:         " . ($isDryRun ? "DRY-RUN (SIMULATION)" : "LIVE COMMIT"));
@@ -35,9 +35,9 @@ class GofrugalSyncCommand extends Command
 
         $outDir = storage_path("app/gofrugal_sync/{$targetDate}");
 
-        // Step 1: Headless extraction from GoFrugal
+        // Step 1: Headless extraction from UrbanPos
         if (!$skipExtract) {
-            $this->info("\n>>> STEP 1: EXTRACTING REPORTS FROM GOFRUGAL TRUEPOS <<<");
+            $this->info("\n>>> STEP 1: EXTRACTING REPORTS FROM URBANPOS TRUEPOS <<<");
             $pythonScript = base_path('scripts/gofrugal_sync_engine.py');
 
             if (!file_exists($pythonScript)) {
@@ -76,7 +76,7 @@ class GofrugalSyncCommand extends Command
         ], $this->output);
 
         $this->info("\n==========================================================");
-        $this->info("        GOFRUGAL ➔ URBANPOS SYNCHRONIZATION FINISHED      ");
+        $this->info("        URBANPOS SYNCHRONIZATION FINISHED                 ");
         $this->info("==========================================================");
 
         return $exitCode;

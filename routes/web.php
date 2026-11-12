@@ -274,7 +274,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::middleware(['permission:kit-unpack.create', 'branch.access'])
         ->post('kit-unpack', [InventoryMoreController::class, 'processKitUnpack'])->name('kit-unpack.process');
 
-    // Kit Recipe Master (GoFrugal / TruePOS Recipe Definition Engine)
+    // Kit Recipe Master (UrbanPos / TruePOS Recipe Definition Engine)
     Route::get('kit-recipes/by-kit-item/{item}', [KitRecipeController::class, 'byKitItem'])->name('kit-recipes.by-kit-item');
     $gatedResource('kit-recipes', KitRecipeController::class, 'kit-recipes');
 
@@ -418,7 +418,7 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::get('eway-update', [\App\Http\Controllers\Sales\EWayBillController::class, 'toolsIndex'])->name('eway-update');
     Route::post('eway-bulk-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadBulkJson'])->name('eway-bulk-json');
     
-    // GST E-Filing & E-Invoice Integration Hub (from video 6.mp4 / GoFrugal TFA Parity)
+    // GST E-Filing & E-Invoice Integration Hub (from video 6.mp4 / UrbanPos TFA Parity)
     Route::get('integrations-gst', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('integrations-gst');
     Route::get('einvoice/hub', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'index'])->name('einvoice.hub');
     Route::get('einvoice/details/{salesBill}', [\App\Http\Controllers\GST\EInvoiceDashboardController::class, 'billDetails'])->name('einvoice.details');
@@ -467,7 +467,7 @@ Route::middleware('auth')->prefix('tools')->name('tools.')->group(function () {
     Route::post('document-sequences', [\App\Http\Controllers\Tools\DocumentSequenceController::class, 'update'])->name('document-sequences.update');
     Route::post('document-sequences/{sequence}/reset', [\App\Http\Controllers\Tools\DocumentSequenceController::class, 'reset'])->name('document-sequences.reset');
 
-    // GoFrugal TruePOS Automated Sync Manager
+    // UrbanPos TruePOS Automated Sync Manager
     Route::get('gofrugal-sync', [\App\Http\Controllers\Tools\GofrugalSyncController::class, 'index'])->name('gofrugal-sync');
     Route::post('gofrugal-sync/trigger', [\App\Http\Controllers\Tools\GofrugalSyncController::class, 'triggerSync'])->name('gofrugal-sync.trigger');
 
