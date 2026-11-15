@@ -70,7 +70,7 @@
         </div>
     </div>
 
-    {{-- KPI Cards --}}
+    {{-- KPI Cards commented out as per requirement (no direct click/detail destination)
     <div class="row mb-3">
         <div class="col-lg-4 col-6">
             <div class="small-box bg-danger">
@@ -91,6 +91,7 @@
             </div>
         </div>
     </div>
+    --}}
 
     {{-- Data Table --}}
     <div class="card card-outline card-danger">

@@ -508,6 +508,7 @@ Route::middleware('auth')->prefix('reports')->name('reports.')->group(function (
     Route::get('sales-margin-category', [ReportController::class, 'salesMarginCategorywise'])->name('sales-margin-category');
     Route::get('quotation-order-summary', [ReportController::class, 'quotationOrderSummary'])->name('quotation-order-summary');
     Route::get('reorder-report', [ReportController::class, 'reorderReport'])->name('reorder-report');
+    Route::get('stock-statement/drilldown', [ReportController::class, 'stockStatementDrilldown'])->name('stock-statement.drilldown');
     Route::get('view/{module}', [ReportController::class, 'renderGenericReport'])->name('view');
     Route::get('gst-sales-taxwise/export', [ReportController::class, 'exportGstSalesTaxwise'])->name('gst-sales-taxwise.export');
 

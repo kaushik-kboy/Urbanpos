@@ -44,6 +44,7 @@ class StockVerificationController extends Controller
         return view('inventory.stock-verification.review-queue', [
             'observations' => $data,
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
+            'suppliers' => \App\Models\Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 
@@ -60,6 +61,7 @@ class StockVerificationController extends Controller
         return view('inventory.stock-verification.history', [
             'observations' => $data,
             'branches' => Branch::orderBy('name')->pluck('name', 'id'),
+            'suppliers' => \App\Models\Supplier::where('status', true)->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 

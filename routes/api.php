@@ -51,6 +51,7 @@ Route::prefix('v1')->group(function () {
         // Product taxonomy for task assignment by Category or Brand (read-only).
         Route::get('/categories', [ReferenceDataController::class, 'categories']);
         Route::get('/brands', [ReferenceDataController::class, 'brands']);
+        Route::get('/suppliers', [ReferenceDataController::class, 'suppliers']);
 
         Route::get('/items/search', [ItemController::class, 'search']);
         Route::get('/items/barcode/{code}', [ItemController::class, 'byBarcode']);

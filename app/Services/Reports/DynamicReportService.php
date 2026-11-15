@@ -34,8 +34,11 @@ use Illuminate\Support\Facades\DB;
 class DynamicReportService
 {
     protected int $perPage = 50;
+    protected ?Request $request = null;
+
     public function generate(Request $request, string $module): array
     {
+        $this->request = $request;
         $requestedPerPage = (int) $request->input('per_page', 50);
         $this->perPage = $requestedPerPage > 0 ? $requestedPerPage : 50;
 
@@ -1018,6 +1021,16 @@ class DynamicReportService
         switch ($slug) {
             case 'closing-stock':
                 $query = ClosingStock::query()
+                    ->when($from && $to, function ($q) use ($from, $to) {
+                        $q->where(function ($dq) use ($from, $to) {
+                            $dq->whereBetween('as_on_date', [$from, $to])
+                               ->orWhere(function ($sq) use ($from, $to) {
+                                   $sq->whereNull('as_on_date')
+                                      ->whereDate('created_at', '>=', $from)
+                                      ->whereDate('created_at', '<=', $to);
+                               });
+                        });
+                    })
                     ->when($branchId, function ($q) use ($branchId) {
                         $branch = Branch::find($branchId);
                         $branchName = $branch ? strtoupper(trim($branch->name)) : '';
@@ -1074,6 +1087,16 @@ class DynamicReportService
 
                 // Filtered KPIs
                 $kpiQuery = ClosingStock::query()
+                    ->when($from && $to, function ($q) use ($from, $to) {
+                        $q->where(function ($dq) use ($from, $to) {
+                            $dq->whereBetween('as_on_date', [$from, $to])
+                               ->orWhere(function ($sq) use ($from, $to) {
+                                   $sq->whereNull('as_on_date')
+                                      ->whereDate('created_at', '>=', $from)
+                                      ->whereDate('created_at', '<=', $to);
+                               });
+                        });
+                    })
                     ->when($branchId, function ($q) use ($branchId) {
                         $branch = Branch::find($branchId);
                         $branchName = $branch ? strtoupper(trim($branch->name)) : '';
@@ -1137,14 +1160,17 @@ class DynamicReportService
                         ['label' => 'Total Catalog Batches', 'value' => number_format($totalBatches), 'icon' => 'fas fa-warehouse', 'color' => 'info'],
                         ['label' => 'In-Stock Batches', 'value' => number_format($inStockBatches), 'icon' => 'fas fa-check-circle', 'color' => 'warning'],
                     ],
-                    'hasDateFilter' => false,
+                    'hasDateFilter' => true,
                     'hasBranchFilter' => true,
                 ];
 
             case 'itemwise-stock-statement':
             case 'itemwise-stock-sales-detail':
-                $query = ItemStock::with(['item.brand', 'item.categoryValue', 'branch'])
+                $supplierId = $this->request?->input('supplier_id');
+
+                $query = ItemStock::with(['item.brand', 'item.categoryValue', 'item.supplier', 'branch'])
                     ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->when($supplierId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('supplier_id', $supplierId)))
                     ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
                     ->orderBy('branch_id')
                     ->orderBy('quantity', 'desc');
@@ -1155,8 +1181,19 @@ class DynamicReportService
                 $itemIds = $paginator->pluck('item_id')->unique()->filter()->values()->all();
 
                 $purInwardMap = [];
+                $salesRetInwardMap = [];
                 $trfInMap = [];
+                $posAdjMap = [];
+                $opAdjMap = [];
+
+                $salesOutwardMap = [];
+                $purRetOutwardMap = [];
+                $trfOutMap = [];
+                $negAdjMap = [];
+                $damageMap = [];
+
                 if (!empty($itemIds)) {
+                    // 1. INWARD: Purchases
                     $purInwardRows = DB::table('purchase_invoice_items')
                         ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
                         ->whereIn('purchase_invoice_items.item_id', $itemIds)
@@ -1167,11 +1204,26 @@ class DynamicReportService
                         ->groupBy('purchase_invoice_items.item_id', 'purchase_invoices.branch_id')
                         ->selectRaw('purchase_invoice_items.item_id, purchase_invoices.branch_id, SUM(purchase_invoice_items.qty) as total_qty')
                         ->get();
-
                     foreach ($purInwardRows as $row) {
                         $purInwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
                     }
 
+                    // 2. INWARD: Sales Returns
+                    $salesRetRows = DB::table('sales_return_items')
+                        ->join('sales_returns', 'sales_return_items.sales_return_id', '=', 'sales_returns.id')
+                        ->whereIn('sales_return_items.item_id', $itemIds)
+                        ->whereDate('sales_returns.return_date', '>=', $from)
+                        ->whereDate('sales_returns.return_date', '<=', $to)
+                        ->where('sales_returns.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('sales_returns.branch_id', $branchId))
+                        ->groupBy('sales_return_items.item_id', 'sales_returns.branch_id')
+                        ->selectRaw('sales_return_items.item_id, sales_returns.branch_id, SUM(sales_return_items.qty) as total_qty')
+                        ->get();
+                    foreach ($salesRetRows as $row) {
+                        $salesRetInwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
+
+                    // 3. INWARD: Transfers In
                     $trfInRows = DB::table('stock_transfer_items')
                         ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
                         ->whereIn('stock_transfer_items.item_id', $itemIds)
@@ -1182,15 +1234,41 @@ class DynamicReportService
                         ->groupBy('stock_transfer_items.item_id', 'stock_transfers.to_branch_id')
                         ->selectRaw('stock_transfer_items.item_id, stock_transfers.to_branch_id as branch_id, SUM(COALESCE(stock_transfer_items.received_qty, stock_transfer_items.qty)) as total_qty')
                         ->get();
-
                     foreach ($trfInRows as $row) {
                         $trfInMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
                     }
-                }
 
-                $salesOutwardMap = [];
-                $trfOutMap = [];
-                if (!empty($itemIds)) {
+                    // 4. INWARD: Positive Stock Adjustments
+                    $posAdjRows = DB::table('stock_update_items')
+                        ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                        ->whereIn('stock_update_items.item_id', $itemIds)
+                        ->whereDate('stock_updates.entry_date', '>=', $from)
+                        ->whereDate('stock_updates.entry_date', '<=', $to)
+                        ->where('stock_update_items.delta_qty', '>', 0)
+                        ->where('stock_updates.status', '!=', 'Rejected')
+                        ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                        ->groupBy('stock_update_items.item_id', 'stock_updates.branch_id')
+                        ->selectRaw('stock_update_items.item_id, stock_updates.branch_id, SUM(stock_update_items.delta_qty) as total_qty')
+                        ->get();
+                    foreach ($posAdjRows as $row) {
+                        $posAdjMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
+
+                    // 5. INWARD: Opening Adjustments if applicable
+                    $opAdjRows = DB::table('opening_stock_items')
+                        ->join('opening_stocks', 'opening_stock_items.opening_stock_id', '=', 'opening_stocks.id')
+                        ->whereIn('opening_stock_items.item_id', $itemIds)
+                        ->whereDate('opening_stocks.entry_date', '>=', $from)
+                        ->whereDate('opening_stocks.entry_date', '<=', $to)
+                        ->when($branchId, fn ($q) => $q->where('opening_stocks.branch_id', $branchId))
+                        ->groupBy('opening_stock_items.item_id', 'opening_stocks.branch_id')
+                        ->selectRaw('opening_stock_items.item_id, opening_stocks.branch_id, SUM(opening_stock_items.qty) as total_qty')
+                        ->get();
+                    foreach ($opAdjRows as $row) {
+                        $opAdjMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
+
+                    // 6. OUTWARD: Sales
                     $salesOutwardRows = DB::table('sales_bill_items')
                         ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
                         ->whereIn('sales_bill_items.item_id', $itemIds)
@@ -1201,11 +1279,26 @@ class DynamicReportService
                         ->groupBy('sales_bill_items.item_id', 'sales_bills.branch_id')
                         ->selectRaw('sales_bill_items.item_id, sales_bills.branch_id, SUM(sales_bill_items.qty) as total_qty')
                         ->get();
-
                     foreach ($salesOutwardRows as $row) {
                         $salesOutwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
                     }
 
+                    // 7. OUTWARD: Purchase Returns
+                    $purRetRows = DB::table('purchase_return_items')
+                        ->join('purchase_returns', 'purchase_return_items.purchase_return_id', '=', 'purchase_returns.id')
+                        ->whereIn('purchase_return_items.item_id', $itemIds)
+                        ->whereDate('purchase_returns.return_date', '>=', $from)
+                        ->whereDate('purchase_returns.return_date', '<=', $to)
+                        ->where('purchase_returns.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('purchase_returns.branch_id', $branchId))
+                        ->groupBy('purchase_return_items.item_id', 'purchase_returns.branch_id')
+                        ->selectRaw('purchase_return_items.item_id, purchase_returns.branch_id, SUM(purchase_return_items.qty) as total_qty')
+                        ->get();
+                    foreach ($purRetRows as $row) {
+                        $purRetOutwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
+
+                    // 8. OUTWARD: Transfers Out
                     $trfOutRows = DB::table('stock_transfer_items')
                         ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
                         ->whereIn('stock_transfer_items.item_id', $itemIds)
@@ -1216,39 +1309,91 @@ class DynamicReportService
                         ->groupBy('stock_transfer_items.item_id', 'stock_transfers.from_branch_id')
                         ->selectRaw('stock_transfer_items.item_id, stock_transfers.from_branch_id as branch_id, SUM(stock_transfer_items.qty) as total_qty')
                         ->get();
-
                     foreach ($trfOutRows as $row) {
                         $trfOutMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
                     }
+
+                    // 9. OUTWARD: Negative Stock Adjustments
+                    $negAdjRows = DB::table('stock_update_items')
+                        ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                        ->whereIn('stock_update_items.item_id', $itemIds)
+                        ->whereDate('stock_updates.entry_date', '>=', $from)
+                        ->whereDate('stock_updates.entry_date', '<=', $to)
+                        ->where('stock_update_items.delta_qty', '<', 0)
+                        ->where('stock_updates.status', '!=', 'Rejected')
+                        ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                        ->groupBy('stock_update_items.item_id', 'stock_updates.branch_id')
+                        ->selectRaw('stock_update_items.item_id, stock_updates.branch_id, SUM(ABS(stock_update_items.delta_qty)) as total_qty')
+                        ->get();
+                    foreach ($negAdjRows as $row) {
+                        $negAdjMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
+
+                    // 10. OUTWARD: Damage / Expiry Write-offs
+                    $damageRows = DB::table('damage_stock_items')
+                        ->join('damage_stocks', 'damage_stock_items.damage_stock_id', '=', 'damage_stocks.id')
+                        ->whereIn('damage_stock_items.item_id', $itemIds)
+                        ->whereDate('damage_stocks.entry_date', '>=', $from)
+                        ->whereDate('damage_stocks.entry_date', '<=', $to)
+                        ->where('damage_stocks.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('damage_stocks.branch_id', $branchId))
+                        ->groupBy('damage_stock_items.item_id', 'damage_stocks.branch_id')
+                        ->selectRaw('damage_stock_items.item_id, damage_stocks.branch_id, SUM(damage_stock_items.qty) as total_qty')
+                        ->get();
+                    foreach ($damageRows as $row) {
+                        $damageMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
+                    }
                 }
 
-                $rows = $paginator->through(function ($stock) use ($purInwardMap, $trfInMap, $salesOutwardMap, $trfOutMap) {
+                $rows = $paginator->through(function ($stock) use (
+                    $purInwardMap, $salesRetInwardMap, $trfInMap, $posAdjMap, $opAdjMap,
+                    $salesOutwardMap, $purRetOutwardMap, $trfOutMap, $negAdjMap, $damageMap
+                ) {
                     $itemId    = $stock->item_id;
                     $branchKey = $itemId . '_' . $stock->branch_id;
                     $closing   = (float) $stock->quantity;
 
                     $pur       = (float) ($purInwardMap[$branchKey] ?? 0);
+                    $salesRet  = (float) ($salesRetInwardMap[$branchKey] ?? 0);
                     $trfIn     = (float) ($trfInMap[$branchKey] ?? 0);
-                    $inward    = $pur + $trfIn;
+                    $posAdj    = (float) ($posAdjMap[$branchKey] ?? 0);
+                    $opAdj     = (float) ($opAdjMap[$branchKey] ?? 0);
+                    $inward    = $pur + $salesRet + $trfIn + $posAdj + $opAdj;
 
                     $sales     = (float) ($salesOutwardMap[$branchKey] ?? 0);
+                    $purRet    = (float) ($purRetOutwardMap[$branchKey] ?? 0);
                     $trfOut    = (float) ($trfOutMap[$branchKey] ?? 0);
-                    $outward   = $sales + $trfOut;
+                    $negAdj    = (float) ($negAdjMap[$branchKey] ?? 0);
+                    $damage    = (float) ($damageMap[$branchKey] ?? 0);
+                    $outward   = $sales + $purRet + $trfOut + $negAdj + $damage;
 
                     $opening   = max(0, $closing - $inward + $outward);
                     $costRate  = (float) ($stock->cost_price ?: ($stock->item?->cost_price ?? 0));
                     $valuation = round($closing * $costRate, 2);
+
+                    $safeItemName = htmlspecialchars($stock->item?->name ?? 'Item #' . $itemId, ENT_QUOTES, 'UTF-8');
+
+                    $openingBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-dark btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="opening" data-item-name="' . $safeItemName . '" title="View baseline opening count">' . number_format($opening) . '</button>';
+
+                    $inwardBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-success btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="inward" data-item-name="' . $safeItemName . '" title="Click to view all Inward transactions">+' . number_format($inward) . '</button>'
+                        . '<br><small class="text-muted text-nowrap" style="font-size:0.72rem;">(Pur: ' . number_format($pur) . ' | SR: ' . number_format($salesRet) . ' | Trf-In: ' . number_format($trfIn) . ($posAdj > 0 ? ' | Adj+: ' . number_format($posAdj) : '') . ')</small>';
+
+                    $outwardBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-danger btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="outward" data-item-name="' . $safeItemName . '" title="Click to view all Outward transactions">-' . number_format($outward) . '</button>'
+                        . '<br><small class="text-muted text-nowrap" style="font-size:0.72rem;">(Sale: ' . number_format($sales) . ' | PR: ' . number_format($purRet) . ' | Trf-Out: ' . number_format($trfOut) . ($negAdj > 0 ? ' | Adj-: ' . number_format($negAdj) : '') . ($damage > 0 ? ' | Dmg: ' . number_format($damage) : '') . ')</small>';
+
+                    $closingBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-primary btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="all" data-item-name="' . $safeItemName . '" title="Click to view full transaction ledger">' . number_format($closing) . '</button>';
 
                     return [
                         'cells' => [
                             '<code>' . e($stock->item?->item_code ?: ('#' . $stock->item_id)) . '</code>',
                             e($stock->item?->name ?: '-'),
                             e($stock->item?->brand?->name ?: '-'),
+                            e($stock->item?->supplier?->name ?: '-'),
                             e($stock->branch?->name ?: '-'),
-                            '<strong>' . number_format($opening) . '</strong>',
-                            '<span class="text-success font-weight-bold">+' . number_format($inward) . '</span> <br><small class="text-muted text-nowrap">(Purch: ' . number_format($pur) . ' | Trf-In: ' . number_format($trfIn) . ')</small>',
-                            '<span class="text-danger font-weight-bold">-' . number_format($outward) . '</span> <br><small class="text-muted text-nowrap">(Sales: ' . number_format($sales) . ' | Trf-Out: ' . number_format($trfOut) . ')</small>',
-                            '<strong class="text-primary">' . number_format($closing) . '</strong>',
+                            $openingBtn,
+                            $inwardBtn,
+                            $outwardBtn,
+                            $closingBtn,
                             '₹ ' . number_format($costRate, 2),
                             '<strong>₹ ' . number_format($valuation, 2) . '</strong>',
                         ],
@@ -1261,9 +1406,9 @@ class DynamicReportService
 
                 return [
                     'title' => 'Itemwise Stock Statement (Ledger)',
-                    'subtitle' => "Period Ledger from {$from} to {$to}: Mathematical formula Opening + Inward - Outward = Closing",
-                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Branch', 'Opening Stock', 'Inward (Purch + Trf-In)', 'Outward (Sales + Trf-Out)', 'Closing Stock', 'Unit Cost', 'Closing Valuation'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right'],
+                    'subtitle' => "Period Ledger from {$from} to {$to}: Formula: Opening + Inward - Outward = Closing",
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Supplier', 'Branch', 'Opening Stock', 'Inward (+)', 'Outward (-)', 'Closing Stock', 'Unit Cost', 'Closing Valuation'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right'],
                     'rows' => $rows,
                     'kpis' => [
                         ['label' => 'Total Closing Valuation', 'value' => '₹ ' . number_format($totalStockVal ?: 0, 2), 'icon' => 'fas fa-warehouse', 'color' => 'success'],
@@ -1271,6 +1416,9 @@ class DynamicReportService
                     ],
                     'hasDateFilter' => true,
                     'hasBranchFilter' => true,
+                    'hasSupplierFilter' => true,
+                    'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
+                    'supplierId' => $supplierId,
                 ];
 
             case 'branchwise-stock-age-analysis':
@@ -1278,20 +1426,62 @@ class DynamicReportService
             case 'item-age-analysis':
             case 'item-expiry-update-details':
             case 'issue-date-expiry-details':
+                $brandId = $this->request?->input('brand_id');
+                $supplierId = $this->request?->input('supplier_id');
+                $riskStatus = $this->request?->input('risk_status');
+                $minDays = $this->request?->input('min_days');
+                $maxDays = $this->request?->input('max_days');
+
                 $hasClosing = ClosingStock::whereNotNull('expiry_date')->where('closing_stock', '>', 0)->exists();
-                $todayTs = strtotime(date('Y-m-d'));
+                $todayDate = date('Y-m-d');
+                $todayTs = strtotime($todayDate);
 
                 if ($hasClosing) {
                     $query = ClosingStock::query()
-                        ->whereNotNull('expiry_date')
-                        ->where('closing_stock', '>', 0)
-                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->leftJoin('items', 'closing_stocks.item_id', '=', 'items.id')
+                        ->leftJoin('suppliers', 'items.supplier_id', '=', 'suppliers.id')
+                        ->leftJoin('brands', 'items.brand_id', '=', 'brands.id')
+                        ->whereNotNull('closing_stocks.expiry_date')
+                        ->where('closing_stocks.closing_stock', '>', 0)
+                        ->when($branchId, fn ($q) => $q->where('closing_stocks.branch_id', $branchId))
+                        ->when($brandId, function ($q) use ($brandId) {
+                            $q->where(function ($sub) use ($brandId) {
+                                $sub->where('items.brand_id', $brandId)
+                                    ->orWhere('closing_stocks.brand_code', (string) $brandId);
+                            });
+                        })
+                        ->when($supplierId, fn ($q) => $q->where('items.supplier_id', $supplierId))
+                        ->when($riskStatus, function ($q) use ($riskStatus, $todayDate, $minDays, $maxDays) {
+                            if ($riskStatus === 'expired') {
+                                $q->whereDate('closing_stocks.expiry_date', '<', $todayDate);
+                            } elseif ($riskStatus === 'under_30') {
+                                $q->whereDate('closing_stocks.expiry_date', '>=', $todayDate)
+                                  ->whereDate('closing_stocks.expiry_date', '<=', date('Y-m-d', strtotime('+30 days')));
+                            } elseif ($riskStatus === '31_60') {
+                                $q->whereDate('closing_stocks.expiry_date', '>', date('Y-m-d', strtotime('+30 days')))
+                                  ->whereDate('closing_stocks.expiry_date', '<=', date('Y-m-d', strtotime('+60 days')));
+                            } elseif ($riskStatus === '61_90') {
+                                $q->whereDate('closing_stocks.expiry_date', '>', date('Y-m-d', strtotime('+60 days')))
+                                  ->whereDate('closing_stocks.expiry_date', '<=', date('Y-m-d', strtotime('+90 days')));
+                            } elseif ($riskStatus === 'above_90' || $riskStatus === 'fresh') {
+                                $q->whereDate('closing_stocks.expiry_date', '>', date('Y-m-d', strtotime('+90 days')));
+                            } elseif ($riskStatus === 'custom') {
+                                if ($minDays !== null && $minDays !== '') {
+                                    $q->whereDate('closing_stocks.expiry_date', '>=', date('Y-m-d', strtotime("+{$minDays} days")));
+                                }
+                                if ($maxDays !== null && $maxDays !== '') {
+                                    $q->whereDate('closing_stocks.expiry_date', '<=', date('Y-m-d', strtotime("+{$maxDays} days")));
+                                }
+                            }
+                        })
                         ->when($search, fn ($q) => $q->where(function ($sq) use ($search) {
-                            $sq->where('item_name', 'like', "%{$search}%")
-                               ->orWhere('item_code', 'like', "%{$search}%")
-                               ->orWhere('batch_no', 'like', "%{$search}%");
+                            $sq->where('closing_stocks.item_name', 'like', "%{$search}%")
+                               ->orWhere('closing_stocks.item_code', 'like', "%{$search}%")
+                               ->orWhere('closing_stocks.batch_no', 'like', "%{$search}%")
+                               ->orWhere('suppliers.name', 'like', "%{$search}%");
                         }))
-                        ->orderBy('expiry_date');
+                        ->selectRaw('closing_stocks.*, suppliers.name as supplier_name, COALESCE(brands.name, closing_stocks.brand_name) as display_brand_name')
+                        ->orderBy('closing_stocks.expiry_date');
 
                     $paginator = $query->paginate($this->perPage)->withQueryString();
 
@@ -1302,11 +1492,13 @@ class DynamicReportService
                         if ($daysRemaining < 0) {
                             $statusBadge = '<span class="badge badge-danger font-weight-bold">🔴 EXPIRED (' . abs($daysRemaining) . 'd ago)</span>';
                         } elseif ($daysRemaining <= 30) {
-                            $statusBadge = '<span class="badge badge-warning font-weight-bold text-dark">🟠 0–30 Days (' . $daysRemaining . 'd left)</span>';
+                            $statusBadge = '<span class="badge badge-warning font-weight-bold text-dark">🟠 <30 Days (' . $daysRemaining . 'd left)</span>';
                         } elseif ($daysRemaining <= 60) {
                             $statusBadge = '<span class="badge badge-info font-weight-bold">🟡 31–60 Days (' . $daysRemaining . 'd)</span>';
+                        } elseif ($daysRemaining <= 90) {
+                            $statusBadge = '<span class="badge badge-primary font-weight-bold">🔵 61–90 Days (' . $daysRemaining . 'd)</span>';
                         } else {
-                            $statusBadge = '<span class="badge badge-success font-weight-bold">🟢 Fresh Stock (>60d)</span>';
+                            $statusBadge = '<span class="badge badge-success font-weight-bold">🟢 Fresh / 90+ Days (' . $daysRemaining . 'd)</span>';
                         }
 
                         $qty = (float) $item->closing_stock;
@@ -1317,7 +1509,8 @@ class DynamicReportService
                             'cells' => [
                                 '<code>' . e($item->item_code) . '</code>',
                                 e($item->item_name),
-                                e($item->brand_name ?: '-'),
+                                e($item->display_brand_name ?: '-'),
+                                e($item->supplier_name ?: '-'),
                                 e($item->store_name ?: '-'),
                                 '<span class="badge badge-light border">' . e($item->batch_no ?: 'Default') . '</span>',
                                 date('d M Y', $expTs),
@@ -1333,9 +1526,11 @@ class DynamicReportService
                     $expiredCount = ClosingStock::whereNotNull('expiry_date')->where('expiry_date', '<', date('Y-m-d'))->where('closing_stock', '>', 0)->count();
                     $riskValuation = ClosingStock::whereNotNull('expiry_date')->where('expiry_date', '<=', date('Y-m-d', strtotime('+30 days')))->where('closing_stock', '>', 0)->sum('closing_stock_amount');
                 } else {
-                    $query = ItemStock::with(['item.brand', 'branch'])
+                    $query = ItemStock::with(['item.brand', 'item.supplier', 'branch'])
                         ->where('quantity', '>', 0)
                         ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->when($brandId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('brand_id', $brandId)))
+                        ->when($supplierId, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('supplier_id', $supplierId)))
                         ->when($search, fn ($q) => $q->whereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%")))
                         ->orderBy('quantity', 'desc');
 
@@ -1350,11 +1545,13 @@ class DynamicReportService
                         if ($daysRemaining < 0) {
                             $statusBadge = '<span class="badge badge-danger font-weight-bold">🔴 EXPIRED (' . abs($daysRemaining) . 'd ago)</span>';
                         } elseif ($daysRemaining <= 30) {
-                            $statusBadge = '<span class="badge badge-warning font-weight-bold text-dark">🟠 0–30 Days (' . $daysRemaining . 'd left)</span>';
+                            $statusBadge = '<span class="badge badge-warning font-weight-bold text-dark">🟠 <30 Days (' . $daysRemaining . 'd left)</span>';
                         } elseif ($daysRemaining <= 60) {
                             $statusBadge = '<span class="badge badge-info font-weight-bold">🟡 31–60 Days (' . $daysRemaining . 'd)</span>';
+                        } elseif ($daysRemaining <= 90) {
+                            $statusBadge = '<span class="badge badge-primary font-weight-bold">🔵 61–90 Days (' . $daysRemaining . 'd)</span>';
                         } else {
-                            $statusBadge = '<span class="badge badge-success font-weight-bold">🟢 Fresh Stock (>60d)</span>';
+                            $statusBadge = '<span class="badge badge-success font-weight-bold">🟢 Fresh / 90+ Days (' . $daysRemaining . 'd)</span>';
                         }
 
                         $qty = (float) $stock->quantity;
@@ -1366,6 +1563,7 @@ class DynamicReportService
                                 '<code>' . e($stock->item?->item_code ?: ('#' . $stock->item_id)) . '</code>',
                                 e($stock->item?->name ?: '-'),
                                 e($stock->item?->brand?->name ?: '-'),
+                                e($stock->item?->supplier?->name ?: '-'),
                                 e($stock->branch?->name ?: '-'),
                                 '<span class="badge badge-light border">LOT-' . date('Ym', $createdTs) . '</span>',
                                 date('d M Y', $expTs),
@@ -1384,9 +1582,9 @@ class DynamicReportService
 
                 return [
                     'title' => 'Batch Expiry & Stock Ageing Analysis Report',
-                    'subtitle' => 'Live risk analysis grouped into Expired, <30 Days, <60 Days and Fresh Stock buckets with cost value at risk',
-                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Store', 'Batch No', 'Expiry Date', 'Days Left', 'Stock Qty', 'Unit Cost', 'Value at Risk', 'Risk Status'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-center', 'text-center', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
+                    'subtitle' => 'Live risk analysis grouped into Expired, <30 Days, 31–60 Days, 61–90 Days and Fresh Stock buckets with cost value at risk',
+                    'columns' => ['#', 'Item Code', 'Item Description', 'Brand', 'Supplier', 'Store', 'Batch No', 'Expiry Date', 'Days Left', 'Stock Qty', 'Unit Cost', 'Value at Risk', 'Risk Status'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-left', 'text-center', 'text-center', 'text-right', 'text-right', 'text-right', 'text-right', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
                         ['label' => 'Value at Immediate Risk (<30d)', 'value' => '₹ ' . number_format($riskValuation ?: 0, 2), 'icon' => 'fas fa-exclamation-triangle', 'color' => 'danger'],
@@ -1394,6 +1592,14 @@ class DynamicReportService
                     ],
                     'hasDateFilter' => false,
                     'hasBranchFilter' => true,
+                    'hasBrandFilter' => true,
+                    'hasSupplierFilter' => true,
+                    'hasRiskStatusFilter' => true,
+                    'brands' => Brand::orderBy('name')->pluck('name', 'id'),
+                    'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
+                    'riskStatus' => $riskStatus,
+                    'minDays' => $minDays,
+                    'maxDays' => $maxDays,
                 ];
 
             case 'mbq-detail':
@@ -1555,41 +1761,91 @@ class DynamicReportService
                 ];
 
             case 'stock-update-detail':
+                $varianceType = $this->request?->input('variance_type');
+                $statusFilter = $this->request?->input('status');
+
                 $query = DB::table('stock_update_items')
                     ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
                     ->join('items', 'stock_update_items.item_id', '=', 'items.id')
                     ->leftJoin('branches', 'stock_updates.branch_id', '=', 'branches.id')
+                    ->leftJoin('users as creator', 'stock_updates.created_by', '=', 'creator.id')
+                    ->leftJoin('users as approver', 'stock_updates.approved_by', '=', 'approver.id')
+                    ->whereDate('stock_updates.entry_date', '>=', $from)
+                    ->whereDate('stock_updates.entry_date', '<=', $to)
                     ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
-                    ->when($search, fn ($q) => $q->where('stock_updates.update_number', 'like', "%{$search}%")->orWhere('items.name', 'like', "%{$search}%")->orWhere('items.item_code', 'like', "%{$search}%"))
-                    ->selectRaw("stock_updates.update_number, stock_updates.entry_date, branches.name as branch_name, items.item_code, items.name as item_name, stock_update_items.system_qty_at_entry as sys_qty, stock_update_items.physical_qty as phys_qty, stock_update_items.delta_qty, stock_updates.remarks, stock_updates.status")
+                    ->when($varianceType, function ($q) use ($varianceType) {
+                        if ($varianceType === 'excess') {
+                            $q->where('stock_update_items.delta_qty', '>', 0);
+                        } elseif ($varianceType === 'shortage') {
+                            $q->where('stock_update_items.delta_qty', '<', 0);
+                        } elseif ($varianceType === 'no_diff') {
+                            $q->where('stock_update_items.delta_qty', '=', 0);
+                        }
+                    })
+                    ->when($statusFilter && in_array($statusFilter, ['Pending', 'Approved', 'Rejected']), fn ($q) => $q->where('stock_updates.status', $statusFilter))
+                    ->when($search, fn ($q) => $q->where(function ($sq) use ($search) {
+                        $sq->where('stock_updates.update_number', 'like', "%{$search}%")
+                           ->orWhere('items.name', 'like', "%{$search}%")
+                           ->orWhere('items.item_code', 'like', "%{$search}%");
+                    }))
+                    ->selectRaw("stock_updates.update_number, stock_updates.entry_date, branches.name as branch_name, items.item_code, items.name as item_name, stock_update_items.system_qty_at_entry as sys_qty, stock_update_items.physical_qty as phys_qty, stock_update_items.delta_qty, COALESCE(NULLIF(stock_update_items.cost_price, 0), items.cost_price, 0) as unit_cost, stock_updates.remarks, stock_updates.status, COALESCE(creator.name, 'Admin') as creator_name, COALESCE(approver.name, 'Admin') as approver_name")
                     ->orderBy('stock_updates.entry_date', 'desc');
+
                 $paginator = $query->paginate($this->perPage)->withQueryString();
-                $rows = $paginator->through(fn ($item) => [
-                    'cells' => [
-                        '<strong>' . e($item->update_number) . '</strong>',
-                        $item->entry_date ? date('d M Y', strtotime($item->entry_date)) : '-',
-                        e($item->branch_name ?: '-'),
-                        '<code>' . e($item->item_code) . '</code>',
-                        e($item->item_name),
-                        number_format($item->sys_qty),
-                        number_format($item->phys_qty),
-                        '<span class="' . ($item->delta_qty < 0 ? 'text-danger font-weight-bold' : ($item->delta_qty > 0 ? 'text-success font-weight-bold' : '')) . '">' . ($item->delta_qty > 0 ? '+' : '') . number_format($item->delta_qty) . '</span>',
-                        e($item->remarks ?: '-'),
-                        '<span class="badge badge-success">' . e($item->status ?: 'Completed') . '</span>'
-                    ]
-                ]);
+
+                $rows = $paginator->through(function ($item) {
+                    $unitCost = (float) $item->unit_cost;
+                    $varianceVal = round((float) $item->delta_qty * $unitCost, 2);
+
+                    $deltaBadge = '<span class="' . ($item->delta_qty < 0 ? 'text-danger font-weight-bold' : ($item->delta_qty > 0 ? 'text-success font-weight-bold' : 'text-muted')) . '">'
+                        . ($item->delta_qty > 0 ? '+' : '') . number_format($item->delta_qty) . '</span>';
+
+                    $valBadge = '<span class="' . ($varianceVal < 0 ? 'text-danger font-weight-bold' : ($varianceVal > 0 ? 'text-success font-weight-bold' : 'text-muted')) . '">'
+                        . ($varianceVal > 0 ? '+' : '') . '₹ ' . number_format($varianceVal, 2) . '</span>';
+
+                    $statusBadge = match ($item->status) {
+                        'Approved' => '<span class="badge badge-success font-weight-bold"><i class="fas fa-check-circle mr-1"></i>Approved</span>',
+                        'Pending' => '<span class="badge badge-warning text-dark font-weight-bold"><i class="fas fa-clock mr-1"></i>Pending</span>',
+                        'Rejected' => '<span class="badge badge-danger font-weight-bold"><i class="fas fa-times-circle mr-1"></i>Rejected</span>',
+                        default => '<span class="badge badge-secondary">' . e($item->status ?: 'Completed') . '</span>',
+                    };
+
+                    return [
+                        'cells' => [
+                            '<strong>' . e($item->update_number) . '</strong>',
+                            $item->entry_date ? date('d M Y', strtotime($item->entry_date)) : '-',
+                            e($item->branch_name ?: '-'),
+                            '<code>' . e($item->item_code) . '</code>',
+                            e($item->item_name),
+                            '<small class="font-weight-bold text-dark"><i class="fas fa-user-edit text-muted mr-1"></i>' . e($item->creator_name) . '</small>',
+                            '<small class="font-weight-bold text-dark"><i class="fas fa-user-check text-muted mr-1"></i>' . e($item->approver_name) . '</small>',
+                            number_format($item->sys_qty),
+                            number_format($item->phys_qty),
+                            $deltaBadge,
+                            '₹ ' . number_format($unitCost, 2),
+                            $valBadge,
+                            e($item->remarks ?: '-'),
+                            $statusBadge,
+                        ],
+                    ];
+                });
+
                 return [
                     'title' => 'Stock Physical Verification & Update Detail Report',
-                    'subtitle' => 'Audit log of physical stock count reconciliations, system variance deltas, and inventory adjustments',
-                    'columns' => ['#', 'Update Number', 'Entry Date', 'Branch', 'Item Code', 'Item Description', 'System Qty', 'Physical Count', 'Discrepancy (Delta)', 'Remarks', 'Status'],
-                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-left', 'text-center'],
+                    'subtitle' => "Audit log of physical stock count reconciliations, system variance deltas, and inventory adjustments from {$from} to {$to}",
+                    'columns' => ['#', 'Update Number', 'Entry Date', 'Branch', 'Item Code', 'Item Description', 'Counted By', 'Approved By', 'System Qty', 'Physical Count', 'Discrepancy (Delta)', 'Inventory Cost', 'Variance Value', 'Remarks', 'Status'],
+                    'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-left', 'text-center'],
                     'rows' => $rows,
                     'kpis' => [
                         ['label' => 'Total Audited Items', 'value' => DB::table('stock_update_items')->count(), 'icon' => 'fas fa-clipboard-check', 'color' => 'primary'],
                         ['label' => 'Physical Count Sessions', 'value' => StockUpdate::count(), 'icon' => 'fas fa-sync-alt', 'color' => 'info'],
                     ],
-                    'hasDateFilter' => false,
+                    'hasDateFilter' => true,
                     'hasBranchFilter' => true,
+                    'hasVarianceTypeFilter' => true,
+                    'hasStatusFilter' => true,
+                    'varianceType' => $varianceType,
+                    'status' => $statusFilter,
                 ];
 
             case 'wastage-damage-stock-detail':

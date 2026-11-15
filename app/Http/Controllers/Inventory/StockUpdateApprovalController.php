@@ -66,7 +66,7 @@ class StockUpdateApprovalController extends Controller
                 'mrp' => $l['mrp'] ?? null,
             ])->all());
 
-            $stockUpdate->update(['status' => 'Approved']);
+            $stockUpdate->update(['status' => 'Approved', 'approved_by' => auth()->id()]);
             $this->auditLogger->log('approve', $stockUpdate, ['status' => 'Pending'], ['status' => 'Approved']);
         });
 

@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Item;
 use App\Models\ItemCategory;
 use App\Models\ItemCategoryValue;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 
 /**
@@ -63,5 +64,23 @@ class ReferenceDataController extends Controller
         $brands = $query->orderBy('name')->get(['id', 'name']);
 
         return response()->json(['data' => $brands]);
+    }
+
+    public function suppliers(Request $request)
+    {
+        $query = Supplier::query()->where('status', true);
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $suppliers = $query->orderBy('name')->get(['id', 'name', 'mobile', 'phone']);
+
+        return response()->json(['data' => $suppliers]);
     }
 }

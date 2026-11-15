@@ -91,7 +91,7 @@
         </div>
     </div>
 
-    {{-- KPI Summary Cards --}}
+    {{-- KPI Summary Cards commented out as per requirement (no direct click/detail destination)
     @if ($lines->isNotEmpty())
     <div class="row mb-3">
         <div class="col-lg-3 col-6">
@@ -120,6 +120,7 @@
         </div>
     </div>
     @endif
+    --}}
 
     {{-- Data Table --}}
     <div class="card card-outline card-success">

@@ -192,6 +192,7 @@ class StockUpdateController extends Controller
             $stockUpdate = StockUpdate::create(array_merge($data['header'], [
                 'update_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['entry_date'] ?? null),
                 'status' => 'Pending',
+                'created_by' => auth()->id(),
             ]));
 
             $lines = $this->buildLines($data['items'], $stockUpdate->branch_id);

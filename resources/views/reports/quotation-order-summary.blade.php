@@ -75,7 +75,7 @@
         </div>
     </div>
 
-    {{-- Summary KPI Cards --}}
+    {{-- Summary KPI Cards commented out as per requirement (no direct click/detail destination)
     <div class="row mb-3">
         <div class="col-lg-3 col-6">
             <div class="small-box bg-info">
@@ -102,6 +102,7 @@
             </div>
         </div>
     </div>
+    --}}
 
     {{-- Data Table --}}
     <div class="card card-outline card-info">

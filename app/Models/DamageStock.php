@@ -14,7 +14,7 @@ class DamageStock extends Model
 
     protected $fillable = [
         'damage_number', 'branch_id', 'entry_date', 'wastage_type', 'total_qty', 'total_cost',
-        'remarks', 'message', 'status', 'posting_key',
+        'remarks', 'message', 'status', 'created_by', 'approved_by', 'posting_key',
     ];
 
     protected $casts = [
@@ -24,6 +24,16 @@ class DamageStock extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function items(): HasMany

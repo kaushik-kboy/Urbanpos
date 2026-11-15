@@ -26,7 +26,10 @@
                 <div class="card-header"><h3 class="card-title">Details</h3></div>
                 <div class="card-body">
                     <table class="table table-sm">
-                        <tr><th style="width:220px;">Type</th><td>{{ $observation['type'] === 'stock_count' ? 'Stock Count' : 'Expiry Check' }}</td></tr>
+                        <tr><th style="width:220px;">Type</th><td>{{ $observation['type'] === 'stock_count' ? (!empty($observation['supplier_name']) ? 'Inward / Stock Count' : 'Stock Count') : 'Expiry Check' }}</td></tr>
+                        @if (!empty($observation['supplier_name']))
+                            <tr><th>Supplier</th><td><span class="font-weight-bold text-dark"><i class="fas fa-truck mr-1 text-primary"></i> {{ $observation['supplier_name'] }}</span></td></tr>
+                        @endif
                         <tr><th>Product</th><td>{{ $observation['item_name'] ?? '-' }} ({{ $observation['item_code'] ?? '-' }})</td></tr>
                         <tr><th>Branch</th><td>{{ $observation['branch_name'] ?? '-' }}</td></tr>
                         <tr><th>Batch No</th><td>{{ $observation['batch_no'] ?? '-' }}</td></tr>

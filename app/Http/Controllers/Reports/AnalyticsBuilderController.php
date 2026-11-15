@@ -215,6 +215,8 @@ class AnalyticsBuilderController extends Controller
 
         $rows = $query->selectRaw('
             items.id as item_id,
+            items.id as group_id,
+            items.name as group_name,
             items.item_code,
             items.name as item_name,
             items.supplier_id as default_supplier_id,
@@ -1024,17 +1026,23 @@ class AnalyticsBuilderController extends Controller
         } elseif ($groupBy === 'item_supplier') {
             $item = Item::find($groupId);
             $supplier = Supplier::find($subId);
-            $title = 'Purchase Inwards for: '.($item ? $item->name : 'Item #'.$groupId).' ⇄ '.($supplier ? $supplier->name : 'Supplier #'.$subId);
+            $title = 'Purchase Invoices for: '.($item ? $item->name : 'Item #'.$groupId).($supplier ? (' ⇄ '.$supplier->name) : '');
 
             $query = DB::table('purchase_invoice_items')
                 ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
                 ->leftJoin('branches', 'purchase_invoices.branch_id', '=', 'branches.id')
                 ->where('purchase_invoices.status', '!=', 'Cancelled')
-                ->where('purchase_invoice_items.item_id', $groupId)
-                ->where('purchase_invoices.supplier_id', $subId);
+                ->where('purchase_invoice_items.item_id', $groupId);
+
+            if ($subId) {
+                $query->where('purchase_invoices.supplier_id', $subId);
+            }
 
             if ($from && $to) {
-                $query->whereBetween('purchase_invoices.invoice_date', [$from, $to]);
+                $fromDate = $from instanceof \Carbon\Carbon ? $from->format('Y-m-d') : Carbon::parse($from)->format('Y-m-d');
+                $toDate = $to instanceof \Carbon\Carbon ? $to->format('Y-m-d') : Carbon::parse($to)->format('Y-m-d');
+                $query->whereDate('purchase_invoices.invoice_date', '>=', $fromDate)
+                      ->whereDate('purchase_invoices.invoice_date', '<=', $toDate);
             }
             if ($branchId) {
                 $query->where('purchase_invoices.branch_id', $branchId);
@@ -1070,6 +1078,252 @@ class AnalyticsBuilderController extends Controller
                 'total_qty' => number_format($totalQty, 2),
                 'total_amount' => '₹ '.number_format($totalAmount, 2),
                 'count' => count($invoices),
+            ];
+
+        } elseif ($groupBy === 'brand') {
+            $brand = Brand::find($groupId);
+            $title = 'Sales Bills for Brand: '.($brand ? $brand->name : 'Brand #'.$groupId);
+
+            $query = DB::table('sales_bill_items')
+                ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
+                ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
+                ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
+                ->where('sales_bills.status', '!=', 'Cancelled')
+                ->where('items.brand_id', $groupId);
+
+            if ($from && $to) {
+                $query->whereBetween('sales_bills.bill_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $query->where('sales_bills.branch_id', $branchId);
+            }
+
+            $items = $query->selectRaw('
+                sales_bills.id as bill_id,
+                sales_bills.bill_number,
+                sales_bills.bill_date,
+                COALESCE(customers.name, "Walk-in Customer") as customer_name,
+                COALESCE(branches.name, "Main") as branch_name,
+                sales_bill_items.qty,
+                sales_bill_items.sell_price,
+                sales_bill_items.net_amount
+            ')
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
+
+            $totalQty = 0;
+            $totalAmount = 0;
+            foreach ($items as $it) {
+                $it->formatted_date = Carbon::parse($it->bill_date)->format('d-m-Y H:i');
+                $it->formatted_rate = '₹ '.number_format($it->sell_price, 2);
+                $it->formatted_amount = '₹ '.number_format($it->net_amount, 2);
+                $it->view_url = route('sales.sales-bills.show', $it->bill_id);
+                $it->receipt_url = route('sales.sales-bills.receipt', $it->bill_id);
+                $totalQty += (float) $it->qty;
+                $totalAmount += (float) $it->net_amount;
+            }
+
+            $records = $items;
+            $summary = [
+                'total_qty' => number_format($totalQty, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
+                'count' => count($items),
+            ];
+
+        } elseif ($groupBy === 'category') {
+            $cat = ItemCategoryValue::find($groupId);
+            $title = 'Sales Bills for Category: '.($cat ? $cat->name : 'Category #'.$groupId);
+
+            $query = DB::table('sales_bill_items')
+                ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
+                ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
+                ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
+                ->where('sales_bills.status', '!=', 'Cancelled')
+                ->where('items.category_value_id', $groupId);
+
+            if ($from && $to) {
+                $query->whereBetween('sales_bills.bill_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $query->where('sales_bills.branch_id', $branchId);
+            }
+
+            $items = $query->selectRaw('
+                sales_bills.id as bill_id,
+                sales_bills.bill_number,
+                sales_bills.bill_date,
+                COALESCE(customers.name, "Walk-in Customer") as customer_name,
+                COALESCE(branches.name, "Main") as branch_name,
+                sales_bill_items.qty,
+                sales_bill_items.sell_price,
+                sales_bill_items.net_amount
+            ')
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
+
+            $totalQty = 0;
+            $totalAmount = 0;
+            foreach ($items as $it) {
+                $it->formatted_date = Carbon::parse($it->bill_date)->format('d-m-Y H:i');
+                $it->formatted_rate = '₹ '.number_format($it->sell_price, 2);
+                $it->formatted_amount = '₹ '.number_format($it->net_amount, 2);
+                $it->view_url = route('sales.sales-bills.show', $it->bill_id);
+                $it->receipt_url = route('sales.sales-bills.receipt', $it->bill_id);
+                $totalQty += (float) $it->qty;
+                $totalAmount += (float) $it->net_amount;
+            }
+
+            $records = $items;
+            $summary = [
+                'total_qty' => number_format($totalQty, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
+                'count' => count($items),
+            ];
+
+        } elseif ($groupBy === 'subcategory' || $groupBy === 'department') {
+            $dept = ItemCategoryValue::find($groupId);
+            $title = 'Sales Bills for Subcategory: '.($dept ? $dept->name : 'Department #'.$groupId);
+
+            $query = DB::table('sales_bill_items')
+                ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                ->join('items', 'sales_bill_items.item_id', '=', 'items.id')
+                ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
+                ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
+                ->where('sales_bills.status', '!=', 'Cancelled')
+                ->where('items.department_value_id', $groupId);
+
+            if ($from && $to) {
+                $query->whereBetween('sales_bills.bill_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $query->where('sales_bills.branch_id', $branchId);
+            }
+
+            $items = $query->selectRaw('
+                sales_bills.id as bill_id,
+                sales_bills.bill_number,
+                sales_bills.bill_date,
+                COALESCE(customers.name, "Walk-in Customer") as customer_name,
+                COALESCE(branches.name, "Main") as branch_name,
+                sales_bill_items.qty,
+                sales_bill_items.sell_price,
+                sales_bill_items.net_amount
+            ')
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
+
+            $totalQty = 0;
+            $totalAmount = 0;
+            foreach ($items as $it) {
+                $it->formatted_date = Carbon::parse($it->bill_date)->format('d-m-Y H:i');
+                $it->formatted_rate = '₹ '.number_format($it->sell_price, 2);
+                $it->formatted_amount = '₹ '.number_format($it->net_amount, 2);
+                $it->view_url = route('sales.sales-bills.show', $it->bill_id);
+                $it->receipt_url = route('sales.sales-bills.receipt', $it->bill_id);
+                $totalQty += (float) $it->qty;
+                $totalAmount += (float) $it->net_amount;
+            }
+
+            $records = $items;
+            $summary = [
+                'total_qty' => number_format($totalQty, 2),
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
+                'count' => count($items),
+            ];
+
+        } elseif ($groupBy === 'cashier') {
+            $user = User::find($groupId);
+            $title = 'Sales Bills by Cashier: '.($user ? $user->name : 'Cashier #'.$groupId);
+
+            $query = DB::table('sales_bills')
+                ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
+                ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
+                ->where('sales_bills.status', '!=', 'Cancelled')
+                ->where('sales_bills.user_id', $groupId);
+
+            if ($from && $to) {
+                $query->whereBetween('sales_bills.bill_date', [$from, $to]);
+            }
+            if ($branchId) {
+                $query->where('sales_bills.branch_id', $branchId);
+            }
+
+            $bills = $query->selectRaw('
+                sales_bills.id as bill_id,
+                sales_bills.bill_number,
+                sales_bills.bill_date,
+                COALESCE(customers.name, "Walk-in") as customer_name,
+                COALESCE(branches.name, "Main") as branch_name,
+                sales_bills.total_qty,
+                sales_bills.total,
+                sales_bills.disc_amount,
+                sales_bills.payment_type
+            ')
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
+
+            $totalAmount = 0;
+            foreach ($bills as $b) {
+                $b->formatted_date = Carbon::parse($b->bill_date)->format('d-m-Y H:i');
+                $b->formatted_amount = '₹ '.number_format($b->total, 2);
+                $b->view_url = route('sales.sales-bills.show', $b->bill_id);
+                $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);
+                $totalAmount += (float) $b->total;
+            }
+
+            $records = $bills;
+            $summary = [
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
+                'count' => count($bills),
+            ];
+
+        } elseif ($groupBy === 'date') {
+            $title = 'Sales Bills on Date: '.$groupId;
+
+            $query = DB::table('sales_bills')
+                ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
+                ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
+                ->where('sales_bills.status', '!=', 'Cancelled')
+                ->whereDate('sales_bills.bill_date', $groupId);
+
+            if ($branchId) {
+                $query->where('sales_bills.branch_id', $branchId);
+            }
+
+            $bills = $query->selectRaw('
+                sales_bills.id as bill_id,
+                sales_bills.bill_number,
+                sales_bills.bill_date,
+                COALESCE(customers.name, "Walk-in") as customer_name,
+                COALESCE(branches.name, "Main") as branch_name,
+                sales_bills.total_qty,
+                sales_bills.total,
+                sales_bills.disc_amount,
+                sales_bills.payment_type
+            ')
+                ->orderBy('sales_bills.bill_date', 'desc')
+                ->limit(100)
+                ->get();
+
+            $totalAmount = 0;
+            foreach ($bills as $b) {
+                $b->formatted_date = Carbon::parse($b->bill_date)->format('d-m-Y H:i');
+                $b->formatted_amount = '₹ '.number_format($b->total, 2);
+                $b->view_url = route('sales.sales-bills.show', $b->bill_id);
+                $b->receipt_url = route('sales.sales-bills.receipt', $b->bill_id);
+                $totalAmount += (float) $b->total;
+            }
+
+            $records = $bills;
+            $summary = [
+                'total_amount' => '₹ '.number_format($totalAmount, 2),
+                'count' => count($bills),
             ];
 
         } elseif ($groupBy === 'supplier') {
@@ -1244,7 +1498,7 @@ class AnalyticsBuilderController extends Controller
         $rows = [];
 
         if ($groupBy === 'item_supplier') {
-            $headings = ['#', 'Invoice / GRN No', 'Invoice Date', 'Branch', 'Inward Qty', 'Cost Price (₹)', 'Net Value (₹)'];
+            $headings = ['#', 'Purchase Invoice No', 'Invoice Date', 'Branch', 'Inward Qty', 'Cost Price (₹)', 'Net Value (₹)'];
             foreach ($records as $idx => $r) {
                 $rows[] = [
                     $idx + 1,

@@ -38,6 +38,14 @@
                     <option value="expiry_check" @selected(request('type') === 'expiry_check')>Expiry Check</option>
                 </select>
 
+                <label class="mr-2 font-weight-bold">Supplier:</label>
+                <select name="supplier_id" class="form-control form-control-sm mr-3" style="max-width: 180px;">
+                    <option value="">All Suppliers</option>
+                    @foreach ($suppliers as $id => $name)
+                        <option value="{{ $id }}" @selected((string) request('supplier_id') === (string) $id)>{{ $name }}</option>
+                    @endforeach
+                </select>
+
                 <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Filter</button>
             </form>
         </div>
@@ -49,6 +57,7 @@
                         <tr>
                             <th>#</th>
                             <th>Type</th>
+                            <th>Supplier</th>
                             <th>Product</th>
                             <th>Batch</th>
                             <th>Physical Qty</th>
@@ -64,10 +73,19 @@
                             <tr>
                                 <td>{{ $o['id'] }}</td>
                                 <td>
-                                    @if ($o['type'] === 'stock_count')
+                                    @if (!empty($o['supplier_id']))
+                                        <span class="badge badge-success"><i class="fas fa-truck mr-1"></i> Inward</span>
+                                    @elseif ($o['type'] === 'stock_count')
                                         <span class="badge badge-secondary">Stock Count</span>
                                     @else
                                         <span class="badge badge-info">Expiry Check</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if (!empty($o['supplier_name']))
+                                        <span class="font-weight-bold text-dark"><i class="fas fa-building text-muted mr-1"></i> {{ $o['supplier_name'] }}</span>
+                                    @else
+                                        <span class="text-muted">-</span>
                                     @endif
                                 </td>
                                 <td>{{ $o['item_name'] }} <small class="text-muted">({{ $o['item_code'] }})</small></td>
@@ -117,7 +135,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="10" class="text-center text-muted py-4">No pending observations.</td></tr>
+                            <tr><td colspan="11" class="text-center text-muted py-4">No pending observations.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

@@ -13,6 +13,7 @@ class InventoryObservation extends Model
         'task_id',
         'item_id',
         'branch_id',
+        'supplier_id',
         'batch_no',
         'batch_correction_applied',
         'original_batch_no',
@@ -62,6 +63,11 @@ class InventoryObservation extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
     public function stockLedger(): BelongsTo

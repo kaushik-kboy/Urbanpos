@@ -548,16 +548,23 @@ class ReportController extends Controller
 
     public function currentStock(Request $request)
     {
-        $branchId = $this->resolveBranchId($request);
+        [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
         $brandId = $request->input('brand_id');
+        $supplierId = $request->input('supplier_id');
         $categoryValueId = $request->input('category_value_id');
         $search = $request->input('search');
+        $itemCode = trim((string) $request->input('item_code'));
 
-        $query = ItemStock::with(['item.brand', 'branch'])
+        $query = ItemStock::with(['item.brand', 'item.supplier', 'branch'])
             ->where('quantity', '>', 0);
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
+        }
+
+        if ($request->filled('from') || $request->filled('to')) {
+            $query->whereDate('item_stocks.updated_at', '>=', $from)
+                  ->whereDate('item_stocks.updated_at', '<=', $to);
         }
 
         if ($search) {
@@ -568,8 +575,16 @@ class ReportController extends Controller
             });
         }
 
+        if ($itemCode) {
+            $query->whereHas('item', fn ($q) => $q->where('item_code', 'like', "%{$itemCode}%"));
+        }
+
         if ($brandId) {
             $query->whereHas('item', fn ($q) => $q->where('brand_id', $brandId));
+        }
+
+        if ($supplierId) {
+            $query->whereHas('item', fn ($q) => $q->where('supplier_id', $supplierId));
         }
 
         if ($categoryValueId) {
@@ -583,6 +598,7 @@ class ReportController extends Controller
                     'Item Code' => fn ($r) => $r->item?->item_code ?? '',
                     'Item Name' => fn ($r) => $r->item?->name ?? '',
                     'Brand' => fn ($r) => $r->item?->brand?->name ?? '',
+                    'Supplier' => fn ($r) => $r->item?->supplier?->name ?? '',
                     'Category' => fn ($r) => $r->item?->categoryValue?->name ?? '',
                     'Branch / Location' => fn ($r) => $r->branch?->name ?? '',
                     'Stock Qty' => fn ($r) => (float) $r->quantity,
@@ -602,11 +618,18 @@ class ReportController extends Controller
             ->selectRaw('COALESCE(SUM(item_stocks.quantity * COALESCE(NULLIF(item_stocks.cost_price,0), ti.cost_price, 0)),0) as cost_value, COALESCE(SUM(item_stocks.quantity * COALESCE(NULLIF(item_stocks.sell_price,0), ti.sell_price, 0)),0) as sell_value, COALESCE(SUM(item_stocks.quantity),0) as qty')->first();
         $rows = $query->orderBy('branch_id')->orderBy('item_stocks.id')->paginate(100)->withQueryString();
 
+        // Calculate combined stocks across all branches per item for multi-branch view
+        $combinedStocks = ItemStock::where('quantity', '>', 0)
+            ->groupBy('item_id')
+            ->selectRaw('item_id, SUM(quantity) as total_combined_qty')
+            ->pluck('total_combined_qty', 'item_id');
+
         $branches = $this->getBranchesForUser();
         $brands = Brand::orderBy('name')->pluck('name', 'id');
+        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
         $categories = ItemCategoryValue::whereHas('category', fn ($q) => $q->where('name', 'CATEGORY'))->orderBy('name')->pluck('name', 'id');
 
-        return view('reports.current-stock', compact('rows', 'totals', 'branchId', 'branches', 'brands', 'categories', 'brandId', 'categoryValueId', 'search'));
+        return view('reports.current-stock', compact('rows', 'totals', 'branchId', 'branches', 'brands', 'suppliers', 'categories', 'brandId', 'supplierId', 'categoryValueId', 'search', 'itemCode', 'from', 'to', 'combinedStocks'));
     }
 
     public function salesReturnSummary(Request $request)
@@ -1110,15 +1133,30 @@ class ReportController extends Controller
     {
         [$from, $to, $branchId] = $this->dateAndBranchFilter($request);
         $search = $request->input('search');
+        $wastageType = $request->input('wastage_type');
+        $supplierId = $request->input('supplier_id');
 
-        $query = DamageStock::with(['branch', 'items.item'])
+        $query = DamageStock::with(['branch', 'creator', 'approver', 'items.item.brand', 'items.item.supplier'])
             ->whereDate('entry_date', '>=', $from)
             ->whereDate('entry_date', '<=', $to)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($wastageType, fn ($q) => $q->where('wastage_type', $wastageType))
+            ->when($supplierId, fn ($q) => $q->whereHas('items.item', fn ($iq) => $iq->where('supplier_id', $supplierId)));
 
         if ($search) {
-            $query->where('damage_number', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('damage_number', 'like', "%{$search}%")
+                  ->orWhere('remarks', 'like', "%{$search}%")
+                  ->orWhereHas('items.item', function ($iq) use ($search) {
+                      $iq->where('name', 'like', "%{$search}%")
+                         ->orWhere('item_code', 'like', "%{$search}%");
+                  });
+            });
         }
+
+        $totalLostAmount = (float) (clone $query)->sum('total_cost');
+        $totalDamagedQty = (float) (clone $query)->sum('total_qty');
+        $totalEntries = (clone $query)->count();
 
         if (in_array($request->query('export'), ['excel', 'xlsx', 'csv'])) {
             return $this->exportQueryOrData(
@@ -1128,6 +1166,8 @@ class ReportController extends Controller
                     'Entry Date' => fn ($ds) => $ds->entry_date->format('d-m-Y'),
                     'Branch' => fn ($ds) => $ds->branch?->name ?? '-',
                     'Wastage Type' => fn ($ds) => ucfirst($ds->wastage_type ?: 'Damage'),
+                    'Created By' => fn ($ds) => $ds->creator?->name ?? 'Admin',
+                    'Approved By' => fn ($ds) => $ds->approver?->name ?? 'Admin',
                     'Total Damaged Qty' => fn ($ds) => number_format((float) $ds->total_qty, 2),
                     'Total Loss Cost' => fn ($ds) => number_format((float) $ds->total_cost, 2),
                     'Remarks' => fn ($ds) => $ds->remarks ?: '-',
@@ -1141,8 +1181,10 @@ class ReportController extends Controller
 
         $damageStocks = $query->orderByDesc('entry_date')->paginate(30)->withQueryString();
         $branches = $this->getBranchesForUser();
+        $wastageTypes = DamageStock::whereNotNull('wastage_type')->distinct()->pluck('wastage_type');
+        $suppliers = Supplier::orderBy('name')->pluck('name', 'id');
 
-        return view('reports.damage-stock-summary', compact('damageStocks', 'from', 'to', 'branchId', 'branches', 'search'));
+        return view('reports.damage-stock-summary', compact('damageStocks', 'from', 'to', 'branchId', 'branches', 'search', 'wastageType', 'supplierId', 'wastageTypes', 'suppliers', 'totalLostAmount', 'totalDamagedQty', 'totalEntries'));
     }
 
     public function tenderSummary(Request $request)
@@ -1612,6 +1654,309 @@ class ReportController extends Controller
             'rows', 'kpi', 'branchId', 'brandId', 'categoryValueId', 'stockStatus',
             'search', 'threshold', 'branches', 'brands', 'categories'
         ));
+    }
+
+    public function stockStatementDrilldown(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $itemId = (int) $request->input('item_id');
+        $rawBranch = $request->input('branch_id');
+        $branchId = ($rawBranch && $rawBranch !== 'all' && $rawBranch !== '0') ? (string) $rawBranch : null;
+        $flow = $request->input('flow', 'all');
+        $from = $request->input('from', now()->subDays(60)->format('Y-m-d'));
+        $to = $request->input('to', now()->format('Y-m-d'));
+
+        $item = Item::with(['brand', 'supplier'])->find($itemId);
+        if (! $item) {
+            return response()->json(['success' => false, 'message' => 'Item not found'], 404);
+        }
+
+        $records = [];
+
+        // 1. Inward: Purchases
+        if ($flow === 'inward' || $flow === 'all' || $flow === 'closing') {
+            $purs = DB::table('purchase_invoice_items')
+                ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
+                ->leftJoin('suppliers', 'purchase_invoices.supplier_id', '=', 'suppliers.id')
+                ->leftJoin('branches', 'purchase_invoices.branch_id', '=', 'branches.id')
+                ->where('purchase_invoice_items.item_id', $itemId)
+                ->whereDate('purchase_invoices.invoice_date', '>=', $from)
+                ->whereDate('purchase_invoices.invoice_date', '<=', $to)
+                ->where('purchase_invoices.status', '!=', 'Cancelled')
+                ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
+                ->selectRaw('purchase_invoices.invoice_date as trans_date, purchase_invoices.invoice_number as doc_no, "Purchase (Inward)" as trans_type, purchase_invoice_items.qty as qty, COALESCE(suppliers.name, "Vendor") as party_name, COALESCE(branches.name, "-") as branch_name, purchase_invoices.id as doc_id, "purchase" as doc_kind')
+                ->get();
+            foreach ($purs as $p) {
+                $records[] = [
+                    'date' => Carbon::parse($p->trans_date)->format('d M Y'),
+                    'raw_date' => $p->trans_date,
+                    'doc_no' => $p->doc_no,
+                    'trans_type' => $p->trans_type,
+                    'qty' => (float) $p->qty,
+                    'qty_formatted' => '+' . number_format((float) $p->qty),
+                    'party' => $p->party_name,
+                    'branch' => $p->branch_name,
+                    'class' => 'text-success font-weight-bold',
+                ];
+            }
+
+            // Sales Returns (Inward)
+            $srs = DB::table('sales_return_items')
+                ->join('sales_returns', 'sales_return_items.sales_return_id', '=', 'sales_returns.id')
+                ->leftJoin('customers', 'sales_returns.customer_id', '=', 'customers.id')
+                ->leftJoin('branches', 'sales_returns.branch_id', '=', 'branches.id')
+                ->where('sales_return_items.item_id', $itemId)
+                ->whereDate('sales_returns.return_date', '>=', $from)
+                ->whereDate('sales_returns.return_date', '<=', $to)
+                ->where('sales_returns.status', '!=', 'Cancelled')
+                ->when($branchId, fn ($q) => $q->where('sales_returns.branch_id', $branchId))
+                ->selectRaw('sales_returns.return_date as trans_date, sales_returns.return_number as doc_no, "Sales Return (Inward)" as trans_type, sales_return_items.qty as qty, COALESCE(customers.name, "Walk-in") as party_name, COALESCE(branches.name, "-") as branch_name')
+                ->get();
+            foreach ($srs as $sr) {
+                $records[] = [
+                    'date' => Carbon::parse($sr->trans_date)->format('d M Y'),
+                    'raw_date' => $sr->trans_date,
+                    'doc_no' => $sr->doc_no,
+                    'trans_type' => $sr->trans_type,
+                    'qty' => (float) $sr->qty,
+                    'qty_formatted' => '+' . number_format((float) $sr->qty),
+                    'party' => $sr->party_name,
+                    'branch' => $sr->branch_name,
+                    'class' => 'text-success font-weight-bold',
+                ];
+            }
+
+            // Transfers In
+            $tis = DB::table('stock_transfer_items')
+                ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
+                ->leftJoin('branches as from_b', 'stock_transfers.from_branch_id', '=', 'from_b.id')
+                ->leftJoin('branches as to_b', 'stock_transfers.to_branch_id', '=', 'to_b.id')
+                ->where('stock_transfer_items.item_id', $itemId)
+                ->whereDate('stock_transfers.transfer_date', '>=', $from)
+                ->whereDate('stock_transfers.transfer_date', '<=', $to)
+                ->where('stock_transfers.status', '!=', 'Cancelled')
+                ->when($branchId, fn ($q) => $q->where('stock_transfers.to_branch_id', $branchId))
+                ->selectRaw('stock_transfers.transfer_date as trans_date, stock_transfers.transfer_number as doc_no, "Transfer In" as trans_type, COALESCE(stock_transfer_items.received_qty, stock_transfer_items.qty) as qty, CONCAT("From ", COALESCE(from_b.name, "Branch")) as party_name, COALESCE(to_b.name, "-") as branch_name')
+                ->get();
+            foreach ($tis as $ti) {
+                $records[] = [
+                    'date' => Carbon::parse($ti->trans_date)->format('d M Y'),
+                    'raw_date' => $ti->trans_date,
+                    'doc_no' => $ti->doc_no,
+                    'trans_type' => $ti->trans_type,
+                    'qty' => (float) $ti->qty,
+                    'qty_formatted' => '+' . number_format((float) $ti->qty),
+                    'party' => $ti->party_name,
+                    'branch' => $ti->branch_name,
+                    'class' => 'text-success font-weight-bold',
+                ];
+            }
+
+            // Positive Adjustments
+            $pas = DB::table('stock_update_items')
+                ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                ->leftJoin('branches', 'stock_updates.branch_id', '=', 'branches.id')
+                ->where('stock_update_items.item_id', $itemId)
+                ->where('stock_update_items.delta_qty', '>', 0)
+                ->whereDate('stock_updates.entry_date', '>=', $from)
+                ->whereDate('stock_updates.entry_date', '<=', $to)
+                ->where('stock_updates.status', '!=', 'Rejected')
+                ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                ->selectRaw('stock_updates.entry_date as trans_date, stock_updates.update_number as doc_no, "Positive Stock Adjustment" as trans_type, stock_update_items.delta_qty as qty, COALESCE(stock_updates.remarks, "Stock Audit") as party_name, COALESCE(branches.name, "-") as branch_name')
+                ->get();
+            foreach ($pas as $pa) {
+                $records[] = [
+                    'date' => Carbon::parse($pa->trans_date)->format('d M Y'),
+                    'raw_date' => $pa->trans_date,
+                    'doc_no' => $pa->doc_no,
+                    'trans_type' => $pa->trans_type,
+                    'qty' => (float) $pa->qty,
+                    'qty_formatted' => '+' . number_format((float) $pa->qty),
+                    'party' => $pa->party_name,
+                    'branch' => $pa->branch_name,
+                    'class' => 'text-success font-weight-bold',
+                ];
+            }
+
+            // Opening Stocks (within period)
+            $ops = DB::table('opening_stock_items')
+                ->join('opening_stocks', 'opening_stock_items.opening_stock_id', '=', 'opening_stocks.id')
+                ->leftJoin('branches', 'opening_stocks.branch_id', '=', 'branches.id')
+                ->where('opening_stock_items.item_id', $itemId)
+                ->whereDate('opening_stocks.entry_date', '>=', $from)
+                ->whereDate('opening_stocks.entry_date', '<=', $to)
+                ->when($branchId, fn ($q) => $q->where('opening_stocks.branch_id', $branchId))
+                ->selectRaw('opening_stocks.entry_date as trans_date, opening_stocks.entry_number as doc_no, "Opening Stock Initial" as trans_type, opening_stock_items.qty as qty, "Opening Balance Setup" as party_name, COALESCE(branches.name, "-") as branch_name')
+                ->get();
+            foreach ($ops as $op) {
+                $records[] = [
+                    'date' => Carbon::parse($op->trans_date)->format('d M Y'),
+                    'raw_date' => $op->trans_date,
+                    'doc_no' => $op->doc_no,
+                    'trans_type' => $op->trans_type,
+                    'qty' => (float) $op->qty,
+                    'qty_formatted' => '+' . number_format((float) $op->qty),
+                    'party' => $op->party_name,
+                    'branch' => $op->branch_name,
+                    'class' => 'text-success font-weight-bold',
+                ];
+            }
+        }
+
+        // 2. Outward: Sales, Purchase Returns, Transfers Out, Negative Adjustments, Damages
+        if ($flow === 'outward' || $flow === 'all' || $flow === 'closing') {
+            // Sales
+            $sbs = DB::table('sales_bill_items')
+                ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                ->leftJoin('customers', 'sales_bills.customer_id', '=', 'customers.id')
+                ->leftJoin('branches', 'sales_bills.branch_id', '=', 'branches.id')
+                ->where('sales_bill_items.item_id', $itemId)
+                ->whereDate('sales_bills.bill_date', '>=', $from)
+                ->whereDate('sales_bills.bill_date', '<=', $to)
+                ->where('sales_bills.status', '!=', 'Cancelled')
+                ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
+                ->selectRaw('sales_bills.bill_date as trans_date, sales_bills.bill_number as doc_no, "Sale" as trans_type, sales_bill_items.qty as qty, COALESCE(customers.name, "Walk-in Customer") as party_name, COALESCE(branches.name, "-") as branch_name')
+                ->get();
+            foreach ($sbs as $sb) {
+                $records[] = [
+                    'date' => Carbon::parse($sb->trans_date)->format('d M Y'),
+                    'raw_date' => $sb->trans_date,
+                    'doc_no' => $sb->doc_no,
+                    'trans_type' => $sb->trans_type,
+                    'qty' => -1 * (float) $sb->qty,
+                    'qty_formatted' => '-' . number_format((float) $sb->qty),
+                    'party' => $sb->party_name,
+                    'branch' => $sb->branch_name,
+                    'class' => 'text-danger font-weight-bold',
+                ];
+            }
+
+            // Purchase Returns
+            $prs = DB::table('purchase_return_items')
+                ->join('purchase_returns', 'purchase_return_items.purchase_return_id', '=', 'purchase_returns.id')
+                ->leftJoin('suppliers', 'purchase_returns.supplier_id', '=', 'suppliers.id')
+                ->leftJoin('branches', 'purchase_returns.branch_id', '=', 'branches.id')
+                ->where('purchase_return_items.item_id', $itemId)
+                ->whereDate('purchase_returns.return_date', '>=', $from)
+                ->whereDate('purchase_returns.return_date', '<=', $to)
+                ->where('purchase_returns.status', '!=', 'Cancelled')
+                ->when($branchId, fn ($q) => $q->where('purchase_returns.branch_id', $branchId))
+                ->selectRaw('purchase_returns.return_date as trans_date, purchase_returns.return_number as doc_no, "Purchase Return" as trans_type, purchase_return_items.qty as qty, COALESCE(suppliers.name, "Vendor") as party_name, COALESCE(branches.name, "-") as branch_name')
+                ->get();
+            foreach ($prs as $pr) {
+                $records[] = [
+                    'date' => Carbon::parse($pr->trans_date)->format('d M Y'),
+                    'raw_date' => $pr->trans_date,
+                    'doc_no' => $pr->doc_no,
+                    'trans_type' => $pr->trans_type,
+                    'qty' => -1 * (float) $pr->qty,
+                    'qty_formatted' => '-' . number_format((float) $pr->qty),
+                    'party' => $pr->party_name,
+                    'branch' => $pr->branch_name,
+                    'class' => 'text-danger font-weight-bold',
+                ];
+            }
+
+            // Transfers Out
+            $tos = DB::table('stock_transfer_items')
+                ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
+                ->leftJoin('branches as from_b', 'stock_transfers.from_branch_id', '=', 'from_b.id')
+                ->leftJoin('branches as to_b', 'stock_transfers.to_branch_id', '=', 'to_b.id')
+                ->where('stock_transfer_items.item_id', $itemId)
+                ->whereDate('stock_transfers.transfer_date', '>=', $from)
+                ->whereDate('stock_transfers.transfer_date', '<=', $to)
+                ->where('stock_transfers.status', '!=', 'Cancelled')
+                ->when($branchId, fn ($q) => $q->where('stock_transfers.from_branch_id', $branchId))
+                ->selectRaw('stock_transfers.transfer_date as trans_date, stock_transfers.transfer_number as doc_no, "Transfer Out" as trans_type, stock_transfer_items.qty as qty, CONCAT("To ", COALESCE(to_b.name, "Branch")) as party_name, COALESCE(from_b.name, "-") as branch_name')
+                ->get();
+            foreach ($tos as $toRecord) {
+                $records[] = [
+                    'date' => Carbon::parse($toRecord->trans_date)->format('d M Y'),
+                    'raw_date' => $toRecord->trans_date,
+                    'doc_no' => $toRecord->doc_no,
+                    'trans_type' => $toRecord->trans_type,
+                    'qty' => -1 * (float) $toRecord->qty,
+                    'qty_formatted' => '-' . number_format((float) $toRecord->qty),
+                    'party' => $toRecord->party_name,
+                    'branch' => $toRecord->branch_name,
+                    'class' => 'text-danger font-weight-bold',
+                ];
+            }
+
+            // Negative Adjustments
+            $nas = DB::table('stock_update_items')
+                ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                ->leftJoin('branches', 'stock_updates.branch_id', '=', 'branches.id')
+                ->where('stock_update_items.item_id', $itemId)
+                ->where('stock_update_items.delta_qty', '<', 0)
+                ->whereDate('stock_updates.entry_date', '>=', $from)
+                ->whereDate('stock_updates.entry_date', '<=', $to)
+                ->where('stock_updates.status', '!=', 'Rejected')
+                ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                ->selectRaw('stock_updates.entry_date as trans_date, stock_updates.update_number as doc_no, "Negative Stock Adjustment" as trans_type, ABS(stock_update_items.delta_qty) as qty, COALESCE(stock_updates.remarks, "Stock Discrepancy") as party_name, COALESCE(branches.name, "-") as branch_name')
+                ->get();
+            foreach ($nas as $na) {
+                $records[] = [
+                    'date' => Carbon::parse($na->trans_date)->format('d M Y'),
+                    'raw_date' => $na->trans_date,
+                    'doc_no' => $na->doc_no,
+                    'trans_type' => $na->trans_type,
+                    'qty' => -1 * (float) $na->qty,
+                    'qty_formatted' => '-' . number_format((float) $na->qty),
+                    'party' => $na->party_name,
+                    'branch' => $na->branch_name,
+                    'class' => 'text-danger font-weight-bold',
+                ];
+            }
+
+            // Damage / Expiry Write-offs
+            $dms = DB::table('damage_stock_items')
+                ->join('damage_stocks', 'damage_stock_items.damage_stock_id', '=', 'damage_stocks.id')
+                ->leftJoin('branches', 'damage_stocks.branch_id', '=', 'branches.id')
+                ->where('damage_stock_items.item_id', $itemId)
+                ->whereDate('damage_stocks.entry_date', '>=', $from)
+                ->whereDate('damage_stocks.entry_date', '<=', $to)
+                ->where('damage_stocks.status', '!=', 'Cancelled')
+                ->when($branchId, fn ($q) => $q->where('damage_stocks.branch_id', $branchId))
+                ->selectRaw('damage_stocks.entry_date as trans_date, damage_stocks.damage_number as doc_no, CONCAT(COALESCE(damage_stocks.wastage_type, "Damage"), " Write-off") as trans_type, damage_stock_items.qty as qty, COALESCE(damage_stocks.remarks, "Damaged stock") as party_name, COALESCE(branches.name, "-") as branch_name')
+                ->get();
+            foreach ($dms as $dm) {
+                $records[] = [
+                    'date' => Carbon::parse($dm->trans_date)->format('d M Y'),
+                    'raw_date' => $dm->trans_date,
+                    'doc_no' => $dm->doc_no,
+                    'trans_type' => $dm->trans_type,
+                    'qty' => -1 * (float) $dm->qty,
+                    'qty_formatted' => '-' . number_format((float) $dm->qty),
+                    'party' => $dm->party_name,
+                    'branch' => $dm->branch_name,
+                    'class' => 'text-danger font-weight-bold',
+                ];
+            }
+        }
+
+        // Sort descending by raw_date
+        usort($records, fn ($a, $b) => strcmp($b['raw_date'], $a['raw_date']));
+
+        $netQty = array_sum(array_column($records, 'qty'));
+
+        return response()->json([
+            'success' => true,
+            'item_id' => $itemId,
+            'item_name' => $item->name,
+            'item_code' => $item->item_code,
+            'brand' => $item->brand?->name ?? '-',
+            'flow' => $flow,
+            'flow_title' => match ($flow) {
+                'inward' => 'Inward Transactions (+)',
+                'outward' => 'Outward Transactions (-)',
+                'opening' => 'Opening Count & Setup',
+                default => 'Complete Stock Ledger Movement',
+            },
+            'period' => Carbon::parse($from)->format('d M Y') . ' to ' . Carbon::parse($to)->format('d M Y'),
+            'net_qty' => $netQty,
+            'records' => $records,
+            'count' => count($records),
+        ]);
     }
 
     public function renderGenericReport(Request $request, string $module, DynamicReportService $reportService)

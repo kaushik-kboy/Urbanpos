@@ -88,6 +88,8 @@ class ObservationController extends Controller
             'task_id' => $o->task_id,
             'item_id' => $o->item_id,
             'branch_id' => $o->branch_id,
+            'supplier_id' => $o->supplier_id,
+            'supplier_name' => $o->supplier?->name,
             'batch_no' => $o->batch_no,
             'batch_correction_applied' => $o->batch_correction_applied,
             'original_batch_no' => $o->original_batch_no,
@@ -136,6 +138,7 @@ class ObservationController extends Controller
             'task_id' => ['nullable', 'integer', 'exists:stock_count_tasks,id'],
             'item_id' => ['required', 'integer', 'exists:items,id'],
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'batch_no' => ['nullable', 'string', 'max:255'],
             'exp_date_observed' => ['nullable', 'date'],
             'physical_qty' => ['nullable', 'numeric', 'required_if:type,stock_count'],
@@ -230,6 +233,7 @@ class ObservationController extends Controller
                 'task_id' => $validated['task_id'] ?? null,
                 'item_id' => $validated['item_id'],
                 'branch_id' => $branchId,
+                'supplier_id' => $validated['supplier_id'] ?? null,
                 'batch_no' => $validated['batch_no'] ?? null,
                 'batch_correction_applied' => $batchCorrectionApplied,
                 'original_batch_no' => $originalBatchNo,
@@ -305,6 +309,8 @@ class ObservationController extends Controller
         $shape['item_name'] = $o->item?->name;
         $shape['item_code'] = $o->item?->item_code;
         $shape['branch_name'] = $o->branch?->name;
+        $shape['supplier_id'] = $o->supplier_id;
+        $shape['supplier_name'] = $o->supplier?->name;
         $shape['submitted_by_name'] = $o->submitter?->name;
         $shape['reviewed_by_name'] = $o->reviewer?->name;
 
@@ -315,6 +321,7 @@ class ObservationController extends Controller
     private const NAME_RELATIONS = [
         'item:id,name,item_code',
         'branch:id,name',
+        'supplier:id,name',
         'submitter:id,name',
         'reviewer:id,name',
     ];
@@ -419,6 +426,7 @@ class ObservationController extends Controller
 
         $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'type' => ['nullable', Rule::in(['stock_count', 'expiry_check'])],
             'task_id' => ['nullable', 'integer'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -436,6 +444,9 @@ class ObservationController extends Controller
                 return response()->json(['message' => 'You do not have access to this branch.'], 403);
             }
             $query->where('branch_id', $branchId);
+        }
+        if ($supplierId = $request->query('supplier_id')) {
+            $query->where('supplier_id', $supplierId);
         }
         if ($type = $request->query('type')) {
             $query->where('type', $type);

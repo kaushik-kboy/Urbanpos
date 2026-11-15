@@ -1501,11 +1501,12 @@ $(document).ready(function() {
                 } else if (col.key === 'bill_count' || col.key === 'invoice_count') {
                     let countNum = parseInt(val) || 0;
                     if (countNum > 0) {
+                        let btnNameEscaped = String(row.group_name || row.item_name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
                         val = `<button type="button" class="btn btn-xs btn-outline-primary btn-drilldown py-0 px-2 font-weight-bold" 
                                        data-group="${resp.group_by}" 
                                        data-id="${row.group_id || row.item_id}" 
                                        data-subid="${row.supplier_id || ''}" 
-                                       data-name="${row.group_name || row.item_name}" 
+                                       data-name="${btnNameEscaped}" 
                                        title="Click to view underlying transactions in modal">
                                        <i class="fas fa-search-plus mr-1"></i>${val} ${col.key === 'invoice_count' || resp.group_by === 'supplier' ? 'Invoices' : 'Bills'}
                                </button>`;
@@ -1516,16 +1517,16 @@ $(document).ready(function() {
             });
 
             // Action column with Drilldown button
-            let targetId = row.group_id || row.item_id;
+            let targetId = row.group_id || row.item_id || '';
             let targetSubId = row.supplier_id || '';
-            let targetName = row.group_name || row.item_name;
+            let targetNameEscaped = String(row.group_name || row.item_name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
             rowHtml += `
                 <td class="text-center" data-col-key="__action">
                     <button type="button" class="btn btn-xs btn-info btn-drilldown font-weight-bold px-2" 
                             data-group="${resp.group_by}" 
                             data-id="${targetId}" 
                             data-subid="${targetSubId}" 
-                            data-name="${targetName}" 
+                            data-name="${targetNameEscaped}" 
                             title="View underlying transactions">
                         <i class="fas fa-eye mr-1"></i> View / Details
                     </button>
@@ -1948,7 +1949,7 @@ $(document).ready(function() {
             $thead.html(`
                 <tr>
                     <th class="text-center" style="width: 45px;">#</th>
-                    <th>Invoice / GRN No</th>
+                    <th>Purchase Invoice No</th>
                     <th>Invoice Date</th>
                     <th>Branch</th>
                     <th class="text-right">Inward Qty</th>

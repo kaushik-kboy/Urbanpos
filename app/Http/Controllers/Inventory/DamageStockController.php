@@ -155,6 +155,8 @@ class DamageStockController extends Controller
                 'damage_number' => $this->nextNumber($data['header']['branch_id'] ?? null, $data['header']['entry_date'] ?? null),
                 'total_qty' => collect($lines)->sum('qty'),
                 'total_cost' => collect($lines)->sum('net_amount'),
+                'created_by' => auth()->id(),
+                'approved_by' => auth()->id(),
             ]));
 
             $createdItems = $damageStock->items()->createMany($lines);

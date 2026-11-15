@@ -25,6 +25,14 @@
                     <option value="expiry_check" @selected(request('type') === 'expiry_check')>Expiry Check</option>
                 </select>
 
+                <label class="mr-2 font-weight-bold">Supplier:</label>
+                <select name="supplier_id" class="form-control form-control-sm mr-3" style="max-width: 180px;">
+                    <option value="">All Suppliers</option>
+                    @foreach ($suppliers as $id => $name)
+                        <option value="{{ $id }}" @selected((string) request('supplier_id') === (string) $id)>{{ $name }}</option>
+                    @endforeach
+                </select>
+
                 <label class="mr-2 font-weight-bold">Status:</label>
                 <select name="status" class="form-control form-control-sm mr-3">
                     <option value="">All</option>
@@ -50,6 +58,7 @@
                         <tr>
                             <th>#</th>
                             <th>Type</th>
+                            <th>Supplier</th>
                             <th>Product</th>
                             <th>Branch</th>
                             <th>Physical Qty</th>
@@ -65,7 +74,22 @@
                         @forelse ($observations['data'] as $o)
                             <tr>
                                 <td>{{ $o['id'] }}</td>
-                                <td>{{ $o['type'] === 'stock_count' ? 'Stock Count' : 'Expiry Check' }}</td>
+                                <td>
+                                    @if (!empty($o['supplier_id']))
+                                        <span class="badge badge-success"><i class="fas fa-truck mr-1"></i> Inward</span>
+                                    @elseif ($o['type'] === 'stock_count')
+                                        <span class="badge badge-secondary">Stock Count</span>
+                                    @else
+                                        <span class="badge badge-info">Expiry Check</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if (!empty($o['supplier_name']))
+                                        <span class="font-weight-bold text-dark">{{ $o['supplier_name'] }}</span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
                                 <td>{{ $o['item_name'] }} <small class="text-muted">({{ $o['item_code'] }})</small></td>
                                 <td>{{ $o['branch_name'] }}</td>
                                 <td>{{ $o['physical_qty'] ?? '-' }}</td>
@@ -94,7 +118,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="11" class="text-center text-muted py-4">No observations match these filters.</td></tr>
+                            <tr><td colspan="12" class="text-center text-muted py-4">No observations match these filters.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

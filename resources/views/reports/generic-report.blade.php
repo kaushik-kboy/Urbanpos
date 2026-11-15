@@ -24,7 +24,7 @@
 @stop
 
 @section('content')
-    {{-- KPI Cards if available --}}
+    {{-- Top KPI Cards commented out as per requirement (no direct click/detail destination)
     @if (!empty($kpis) && is_array($kpis))
         <div class="row mb-3">
             @foreach ($kpis as $kpi)
@@ -46,26 +46,27 @@
             @endforeach
         </div>
     @endif
+    --}}
 
     {{-- Filter Card --}}
     <div class="card card-outline card-primary shadow-sm mb-3">
         <div class="card-body p-3">
-            <form method="GET" action="{{ url()->current() }}" class="form-row align-items-end">
+            <form method="GET" action="{{ url()->current() }}" class="form-row align-items-end" id="genericReportFilterForm">
                 @if ($hasDateFilter ?? true)
                     <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">From Date</label>
-                        <input type="date" name="from" class="form-control form-control-sm" value="{{ $from ?? now()->subDays(60)->format('Y-m-d') }}">
+                        <input type="date" name="from" id="filter_from" class="form-control form-control-sm" value="{{ $from ?? now()->subDays(60)->format('Y-m-d') }}">
                     </div>
                     <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">To Date</label>
-                        <input type="date" name="to" class="form-control form-control-sm" value="{{ $to ?? now()->format('Y-m-d') }}">
+                        <input type="date" name="to" id="filter_to" class="form-control form-control-sm" value="{{ $to ?? now()->format('Y-m-d') }}">
                     </div>
                 @endif
 
                 @if ($hasBranchFilter ?? true)
-                    <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
+                    <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">Branch / Location</label>
-                        <select name="branch_id" class="form-control form-control-sm" {{ $branches->count() <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
+                        <select name="branch_id" id="filter_branch_id" class="form-control form-control-sm" {{ $branches->count() <= 1 ? 'readonly style=pointer-events:none;background:#f4f6f9;' : '' }}>
                             @if($branches->count() > 1)
                                 <option value="all" @selected(empty($branchId) || request('branch_id') === 'all')>All Branches / Locations</option>
                             @endif
@@ -76,7 +77,82 @@
                     </div>
                 @endif
 
-                <div class="{{ ($hasDateFilter ?? true) ? 'col-md-3' : 'col-md-5' }} col-sm-6 mb-2 mb-md-0">
+                @if ($hasBrandFilter ?? false)
+                    <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+                        <label class="small font-weight-bold text-muted mb-1">Brand</label>
+                        <select name="brand_id" class="form-control form-control-sm">
+                            <option value="">All Brands</option>
+                            @if (isset($brands))
+                                @foreach ($brands as $bId => $bName)
+                                    <option value="{{ $bId }}" @selected((string)request('brand_id') === (string)$bId)>{{ $bName }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                @endif
+
+                @if ($hasSupplierFilter ?? false)
+                    <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+                        <label class="small font-weight-bold text-muted mb-1">Supplier</label>
+                        <select name="supplier_id" class="form-control form-control-sm">
+                            <option value="">All Suppliers</option>
+                            @if (isset($suppliers))
+                                @foreach ($suppliers as $sId => $sName)
+                                    <option value="{{ $sId }}" @selected((string)request('supplier_id') === (string)$sId)>{{ $sName }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                @endif
+
+                @if ($hasRiskStatusFilter ?? false)
+                    <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+                        <label class="small font-weight-bold text-muted mb-1">Risk Status</label>
+                        <select name="risk_status" id="risk_status_select" class="form-control form-control-sm">
+                            <option value="">All Statuses</option>
+                            <option value="expired" @selected(request('risk_status') === 'expired')>🔴 Expired (&lt; 0 Days)</option>
+                            <option value="under_30" @selected(request('risk_status') === 'under_30')>🟠 &lt;30 Days (0–30 Days)</option>
+                            <option value="31_60" @selected(request('risk_status') === '31_60')>🟡 31–60 Days</option>
+                            <option value="61_90" @selected(request('risk_status') === '61_90')>🔵 61–90 Days</option>
+                            <option value="above_90" @selected(request('risk_status') === 'above_90')>🟢 90+ Days / Fresh</option>
+                            <option value="fresh" @selected(request('risk_status') === 'fresh')>🟢 Fresh Stock</option>
+                            <option value="custom" @selected(request('risk_status') === 'custom')>⚙️ Custom Days Range</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6 mb-2 mb-md-0 {{ request('risk_status') === 'custom' ? '' : 'd-none' }}" id="custom_days_wrapper">
+                        <label class="small font-weight-bold text-muted mb-1">Days Range (Min - Max)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" name="min_days" class="form-control" placeholder="Min d" value="{{ request('min_days') }}">
+                            <input type="number" name="max_days" class="form-control" placeholder="Max d" value="{{ request('max_days') }}">
+                        </div>
+                    </div>
+                @endif
+
+                @if ($hasVarianceTypeFilter ?? false)
+                    <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+                        <label class="small font-weight-bold text-muted mb-1">Variance Type</label>
+                        <select name="variance_type" class="form-control form-control-sm">
+                            <option value="">All Types</option>
+                            <option value="excess" @selected(request('variance_type') === 'excess')>🟢 Excess (Physical &gt; System)</option>
+                            <option value="shortage" @selected(request('variance_type') === 'shortage')>🔴 Shortage (Physical &lt; System)</option>
+                            <option value="no_diff" @selected(request('variance_type') === 'no_diff')>⚪ No Difference (Matched)</option>
+                        </select>
+                    </div>
+                @endif
+
+                @if ($hasStatusFilter ?? false)
+                    <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+                        <label class="small font-weight-bold text-muted mb-1">Status</label>
+                        <select name="status" class="form-control form-control-sm">
+                            <option value="">All Statuses</option>
+                            <option value="Pending" @selected(request('status') === 'Pending')>🟡 Pending</option>
+                            <option value="Approved" @selected(request('status') === 'Approved')>🟢 Approved</option>
+                            <option value="Rejected" @selected(request('status') === 'Rejected')>🔴 Rejected</option>
+                        </select>
+                    </div>
+                @endif
+
+                <div class="col-md-2 col-sm-6 mb-2 mb-md-0 flex-grow-1">
                     <label class="small font-weight-bold text-muted mb-1">Search Keywords</label>
                     <div class="input-group input-group-sm">
                         <input type="text" name="search" class="form-control" placeholder="Search by name, code, ref..." value="{{ $search ?? '' }}">
@@ -86,8 +162,8 @@
                     </div>
                 </div>
 
-                <div class="col-md-3 col-sm-6 d-flex">
-                    <button type="submit" class="btn btn-primary btn-sm flex-fill mr-1 shadow-sm">
+                <div class="col-md-3 col-sm-6 d-flex mb-2 mb-md-0">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill mr-1 shadow-sm font-weight-bold">
                         <i class="fas fa-filter mr-1"></i> Filter
                     </button>
                     <button type="submit" name="export" value="excel" class="btn btn-success btn-sm font-weight-bold shadow-sm mr-1">
@@ -206,6 +282,154 @@
             </div>
         </div>
     </div>
+
+    {{-- Task 4: Stock Statement Transaction Drilldown Modal --}}
+    <div class="modal fade" id="stockStatementModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h5 class="modal-title font-weight-bold mb-0">
+                        <i class="fas fa-boxes text-warning mr-2"></i>
+                        <span id="ssModalItemName">Stock Transactions</span> &bull;
+                        <span id="ssModalFlowTitle" class="badge badge-info ml-1">Detail</span>
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="p-3 bg-light border-bottom d-flex flex-wrap justify-content-between align-items-center">
+                        <div class="small">
+                            <strong>Period:</strong> <span id="ssModalPeriod" class="badge badge-light border px-2 py-1 mr-2">-</span>
+                            <strong>Item Code:</strong> <code id="ssModalItemCode" class="mr-2">-</code>
+                            <strong>Brand:</strong> <span id="ssModalBrand" class="text-muted mr-2">-</span>
+                        </div>
+                        <div class="font-weight-bold" id="ssModalNetBadge">
+                            Total Net Flow: <span class="badge badge-primary px-2 py-1" id="ssModalNetQty">0</span>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="max-height: 520px;">
+                        <table class="table table-sm table-striped table-hover mb-0" id="ssDrilldownTable">
+                            <thead class="bg-light sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 45px;">#</th>
+                                    <th>Date</th>
+                                    <th>Document No</th>
+                                    <th>Transaction Type</th>
+                                    <th class="text-right">Quantity</th>
+                                    <th>Party / Particulars</th>
+                                    <th>Branch / Store</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ssDrilldownTbody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i> Loading transactions...
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="bg-light font-weight-bold" id="ssDrilldownTfoot" style="display:none;">
+                                <tr>
+                                    <td colspan="4" class="text-right">Period Total Quantity:</td>
+                                    <td class="text-right" id="ssTfootTotalQty">0</td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@stop
+
+@section('js')
+    <script>
+    $(function() {
+        // Toggle custom days input when risk status is 'custom'
+        $('#risk_status_select').on('change', function() {
+            if ($(this).val() === 'custom') {
+                $('#custom_days_wrapper').removeClass('d-none');
+            } else {
+                $('#custom_days_wrapper').addClass('d-none');
+            }
+        });
+
+        // Task 4: Stock Statement Quantity Drilldown Click
+        $(document).on('click', '.btn-stock-drilldown', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var itemId = $btn.data('item-id');
+            var branchId = $btn.data('branch-id') || $('#filter_branch_id').val() || 'all';
+            var flow = $btn.data('flow') || 'all';
+            var itemName = $btn.data('item-name') || 'Item';
+            var from = $('#filter_from').val() || '';
+            var to = $('#filter_to').val() || '';
+
+            $('#ssModalItemName').text(itemName);
+            $('#ssModalFlowTitle').text(flow.toUpperCase());
+            $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Loading underlying transactions...</td></tr>');
+            $('#ssDrilldownTfoot').hide();
+            $('#stockStatementModal').modal('show');
+
+            $.ajax({
+                url: '{{ route("reports.stock-statement.drilldown") }}',
+                method: 'GET',
+                data: {
+                    item_id: itemId,
+                    branch_id: branchId,
+                    flow: flow,
+                    from: from,
+                    to: to
+                },
+                dataType: 'json',
+                success: function(resp) {
+                    if (!resp.success) {
+                        $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-danger">' + (resp.message || 'Error loading transactions') + '</td></tr>');
+                        return;
+                    }
+
+                    $('#ssModalItemCode').text(resp.item_code || '-');
+                    $('#ssModalBrand').text(resp.brand || '-');
+                    $('#ssModalPeriod').text(resp.period || '-');
+                    $('#ssModalFlowTitle').text(resp.flow_title || flow.toUpperCase());
+                    $('#ssModalNetQty').text(resp.net_qty > 0 ? ('+' + resp.net_qty) : resp.net_qty);
+
+                    var rows = resp.records || [];
+                    if (rows.length === 0) {
+                        $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-info-circle mr-1"></i> No transactions found for this item in the selected period.</td></tr>');
+                        return;
+                    }
+
+                    var html = '';
+                    var totalQty = 0;
+                    rows.forEach(function(r, idx) {
+                        totalQty += parseFloat(r.qty) || 0;
+                        html += '<tr>' +
+                            '<td class="text-center text-muted font-weight-bold">' + (idx + 1) + '</td>' +
+                            '<td>' + (r.date || '-') + '</td>' +
+                            '<td><strong class="text-dark">' + (r.doc_no || '-') + '</strong></td>' +
+                            '<td><span class="badge badge-light border">' + (r.trans_type || '-') + '</span></td>' +
+                            '<td class="text-right ' + (r.class || '') + '">' + (r.qty_formatted || r.qty) + '</td>' +
+                            '<td>' + (r.party || '-') + '</td>' +
+                            '<td><small class="text-muted">' + (r.branch || '-') + '</small></td>' +
+                            '</tr>';
+                    });
+
+                    $('#ssDrilldownTbody').html(html);
+                    $('#ssTfootTotalQty').text((totalQty > 0 ? '+' : '') + totalQty.toLocaleString());
+                    $('#ssDrilldownTfoot').show();
+                },
+                error: function(xhr) {
+                    $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-danger">Server communication error. Please try again.</td></tr>');
+                }
+            });
+        });
+    });
+    </script>
 @stop
 
 @section('css')
