@@ -943,7 +943,7 @@ class SalesReturnController extends Controller
             'items.*.sales_bill_item_id' => ['nullable', 'exists:sales_bill_items,id'],
             'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.exp_date' => ['nullable', 'date'],
-            'items.*.qty' => ['required', 'integer', 'min:1'],
+            'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.sell_price' => ['required', 'numeric', 'min:0'],
             'items.*.mrp' => ['nullable', 'numeric', 'min:0'],
             'items.*.disc_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
