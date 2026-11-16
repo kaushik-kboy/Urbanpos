@@ -907,9 +907,54 @@ class SalesBillController extends Controller
             ];
         });
 
-        // Outstanding amount temporarily commented out
-        // $outstanding = $customer->getOutstandingBalance($branchId && $branchId !== 'all' ? (int) $branchId : null);
-        $outstanding = ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
+        // Fetch Customer Ledger balance from Indian Pet Company (Read-only view)
+        $outstanding = [
+            'amount' => 0.0,
+            'formatted' => '₹ 0.00',
+            'net_balance' => 0.0,
+            'is_pending' => false,
+            'status' => 'cleared',
+            'ledger_url' => null,
+        ];
+
+        $rawPhone = $customer->mobile ?: $customer->phone;
+        if (! empty($rawPhone)) {
+            $digits = preg_replace('/\D+/', '', (string) $rawPhone);
+            $phone10 = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
+
+            if (filled($phone10) && config('services.followup_sync.enabled', true)) {
+                try {
+                    $baseIpcUrl = config('services.followup_sync.url');
+                    $token      = config('services.followup_sync.token');
+
+                    if (filled($baseIpcUrl) && filled($token)) {
+                        $ledgerApiUrl = str_replace('/bill', '/customer-ledger', $baseIpcUrl);
+                        $res = \Illuminate\Support\Facades\Http::withToken($token)
+                            ->timeout(2)
+                            ->get($ledgerApiUrl, ['phone' => $phone10]);
+
+                        if ($res->successful()) {
+                            $ledgerData = $res->json();
+                            $net = (float) ($ledgerData['net_balance'] ?? 0);
+                            $pending = (float) ($ledgerData['pending_amount'] ?? max(0, $net));
+                            $status = $ledgerData['status'] ?? ($net > 0.01 ? 'pending' : ($net < -0.01 ? 'advance' : 'cleared'));
+                            $formatted = $ledgerData['formatted_pending'] ?? ('₹ ' . number_format(abs($net), 2));
+
+                            $outstanding = [
+                                'amount' => $pending,
+                                'net_balance' => $net,
+                                'formatted' => $formatted,
+                                'is_pending' => ($status === 'pending'),
+                                'status' => $status,
+                                'ledger_url' => $ledgerData['ledger_url'] ?? null,
+                            ];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("customerInvoices: Failed to fetch IPC ledger for customer #{$customer->id}: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json([
             'customer_id' => $customer->id,
@@ -919,10 +964,13 @@ class SalesBillController extends Controller
             'sales_type' => $customer->sales_type ?? 'Local',
             'payment_mode' => $customer->payment_mode ?? 'Cash Only',
             'is_credit_allowed' => $customer->isCreditAllowed(),
+            'outstanding' => $outstanding,
             'outstanding_amount' => $outstanding['amount'],
             'outstanding_formatted' => $outstanding['formatted'],
-            'unpaid_bills_count' => $outstanding['unpaid_bills_count'],
+            'unpaid_bills_count' => 0,
             'is_pending' => $outstanding['is_pending'],
+            'ledger_status' => $outstanding['status'],
+            'ledger_url' => $outstanding['ledger_url'],
             'outstanding' => $outstanding,
             'customer_edit_url' => url("master/customers/{$customer->id}/edit"),
             'pets' => $pets,

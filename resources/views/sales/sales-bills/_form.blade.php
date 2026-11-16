@@ -455,15 +455,14 @@
                 <input type="hidden" name="customer_id" value="{{ $bill->customer_id }}">
             @endif
         </div>
-        {{-- Customer Outstanding Badge (Temporarily Commented Out)
-        <div id="sb-customer-outstanding-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between" style="font-size: 0.85rem; cursor: pointer;" title="Click to view Customer Invoices & Ledger">
+        {{-- Customer Outstanding / Ledger Badge --}}
+        <div id="sb-customer-outstanding-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between" style="font-size: 0.85rem;" title="Customer Ledger Balance (Click to open in Indian Pet Company)">
             <div>
-                <i class="fas fa-wallet text-primary mr-1"></i>
-                <strong>Outstanding:</strong>
+                <i class="fas fa-book-open text-primary mr-1"></i>
+                <strong>Ledger:</strong>
             </div>
             <span id="sb-customer-outstanding-badge-inner" class="badge badge-success font-weight-bold px-2 py-1" style="font-size: 0.8rem; border-radius: 6px;">Pending: ₹ 0.00</span>
         </div>
-        --}}
         <div id="sb-customer-loyalty-badge" class="alert alert-light border py-1 px-3 d-none mb-1 shadow-sm align-items-center justify-content-between">
             <div>
                 <i class="fas fa-coins text-warning mr-1"></i>
@@ -1599,22 +1598,30 @@
                         window.SELECTED_CUSTOMER_PAYMENT_MODE = res.payment_mode;
                         window.SELECTED_CUSTOMER_IS_CREDIT_ALLOWED = (res.is_credit_allowed !== false);
                     }
-                    /* Outstanding amount temporarily commented out
                     if (res.outstanding || typeof res.outstanding_amount !== 'undefined') {
+                        const status = res.ledger_status || res.outstanding?.status || 'cleared';
                         const amt = typeof res.outstanding?.amount === 'number' ? res.outstanding.amount : (parseFloat(res.outstanding_amount) || 0);
                         const formatted = res.outstanding_formatted || res.outstanding?.formatted || ('₹ ' + amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                        const isPending = Boolean(res.is_pending ?? (amt > 0.01));
                         const $badge = $('#sb-customer-outstanding-badge-inner');
-                        if (isPending) {
-                            $badge.removeClass('badge-success').addClass('badge-danger')
+                        
+                        if (status === 'pending') {
+                            $badge.removeClass('badge-success badge-info').addClass('badge-danger')
                                 .html(`<i class="fas fa-exclamation-circle mr-1"></i> Pending: ${formatted}`);
+                        } else if (status === 'advance') {
+                            $badge.removeClass('badge-success badge-danger').addClass('badge-info')
+                                .html(`<i class="fas fa-info-circle mr-1"></i> Advance: ${formatted}`);
                         } else {
-                            $badge.removeClass('badge-danger').addClass('badge-success')
+                            $badge.removeClass('badge-danger badge-info').addClass('badge-success')
                                 .html(`<i class="fas fa-check-circle mr-1"></i> Pending: ₹ 0.00`);
+                        }
+                        
+                        if (res.ledger_url) {
+                            $('#sb-customer-outstanding-badge').attr('data-ledger-url', res.ledger_url).css('cursor', 'pointer');
+                        } else {
+                            $('#sb-customer-outstanding-badge').removeAttr('data-ledger-url').css('cursor', 'default');
                         }
                         $('#sb-customer-outstanding-badge').removeClass('d-none').addClass('d-flex');
                     }
-                    */
                     if (res.invoices) {
                         customerInvoicesData = res.invoices;
                         filteredInvoices = [...customerInvoicesData];
@@ -1630,7 +1637,10 @@
         }
 
         $(document).on('click', '#sb-customer-outstanding-badge', function () {
-            if (!$('#btn-customer-invoices').prop('disabled')) {
+            const ledgerUrl = $(this).attr('data-ledger-url');
+            if (ledgerUrl) {
+                window.open(ledgerUrl, '_blank');
+            } else if (!$('#btn-customer-invoices').prop('disabled')) {
                 $('#btn-customer-invoices').click();
             }
         });
