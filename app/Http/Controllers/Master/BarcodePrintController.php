@@ -36,6 +36,15 @@ class BarcodePrintController extends Controller
         [$labels, $storeName, $format] = $this->resolveLabelsAndStore($request);
         $output = $this->generateTspl($labels, $storeName, $format);
 
+        if ($request->wantsJson() || $request->query('raw') === '1' || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'tspl'    => $output,
+                'format'  => $format,
+                'count'   => count($labels),
+            ]);
+        }
+
         return response($output, 200, [
             'Content-Type' => 'text/plain; charset=utf-8',
             'Content-Disposition' => 'attachment; filename="labels_tsc_te244.prn"',
@@ -100,19 +109,11 @@ class BarcodePrintController extends Controller
     }
 
     /**
-     * Generate raw TSPL commands calibrated for TSC TE244.
+     * Generate raw TSPL commands calibrated for TSC TE244 (Standard 50x38 2-Up Horizontal).
      */
-    public function generateTspl(array $labels, string $storeName, string $format): string
+    public function generateTspl(array $labels, string $storeName, string $format = '50x38_2up'): string
     {
-        $is2Up = str_ends_with($format, '_2up') || $format === '38x25';
-        $rowHeightMm = match ($format) {
-            '50x38_2up' => 38,
-            '50x50_2up' => 50,
-            '102x64'    => 63.5,
-            default     => 25,
-        };
-
-        $output = "SIZE 102 mm, {$rowHeightMm} mm\r\n";
+        $output = "SIZE 102 mm, 38 mm\r\n";
         $output .= "GAP 2 mm, 0 mm\r\n";
         $output .= "DIRECTION 1\r\n";
         $output .= "REFERENCE 0,0\r\n";
@@ -121,84 +122,63 @@ class BarcodePrintController extends Controller
         $output .= "SET CUTTER OFF\r\n";
         $output .= "SET TEAR ON\r\n";
 
-        if ($is2Up) {
-            $buildLabel = function (array $lbl, int $x) use ($storeName): string {
-                $cleanStore = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $storeName), 0, 18);
-                $cleanName  = trim(preg_replace('/[^A-Za-z0-9 \-\.\,\&\/]/', '', $lbl['name']));
-                $code       = preg_replace('/[^A-Za-z0-9]/', '', $lbl['barcode']);
+        // Build a calibrated 90° horizontal label on the 2-Up thermal roll
+        $buildLabel = function (array $lbl, int $baseX) use ($storeName): string {
+            $cleanStore = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $storeName), 0, 20);
+            $cleanName  = trim(preg_replace('/[^A-Za-z0-9 \-\.\,\&\/]/', '', $lbl['name']));
+            $code       = preg_replace('/[^A-Za-z0-9]/', '', $lbl['barcode']);
 
-                $mrpDecimals = ($lbl['mrp'] == (int)$lbl['mrp']) ? 0 : 2;
-                $sellDecimals = ($lbl['sell_price'] == (int)$lbl['sell_price']) ? 0 : 2;
-                $mrpStr = 'Rs. ' . number_format($lbl['mrp'], $mrpDecimals);
-                $sellStr = 'Rs. ' . number_format($lbl['sell_price'], $sellDecimals);
+            $mrpDecimals  = ($lbl['mrp'] == (int)$lbl['mrp']) ? 0 : 2;
+            $sellDecimals = ($lbl['sell_price'] == (int)$lbl['sell_price']) ? 0 : 2;
+            $mrpStr  = 'Rs. ' . number_format($lbl['mrp'], $mrpDecimals);
+            $sellStr = 'Rs. ' . number_format($lbl['sell_price'], $sellDecimals);
 
-                $t = "TEXT {$x},15,\"3\",0,1,1,\"{$cleanStore}\"\r\n";
+            // Verified Calibrated Hardware Offsets:
+            // Store: base+0, Name: base-35, Barcode: base-75, MRP: base-195, Tax/Offer: base-230
+            $xStore   = $baseX;
+            $xName    = $baseX - 35;
+            $xBarcode = $baseX - 75;
+            $xMrp     = $baseX - 195;
+            $xBottom  = $baseX - 230;
 
-                // Smart Long Product Name Handling:
-                // <= 16 chars: Large Font "3" (1 line)
-                // > 16 chars: Medium Font "2" (2 lines auto-wrapped)
-                if (strlen($cleanName) > 16) {
-                    $wrapped = explode("\n", wordwrap($cleanName, 20, "\n", true));
-                    $line1 = substr(trim($wrapped[0]), 0, 22);
-                    $line2 = substr(trim($wrapped[1] ?? ''), 0, 22);
-                    if (count($wrapped) > 2 && strlen($line2) > 18) {
-                        $line2 = substr($line2, 0, 18) . '...';
-                    }
-                    $t .= "TEXT {$x},38,\"2\",0,1,1,\"{$line1}\"\r\n";
-                    if ($line2 !== '') {
-                        $t .= "TEXT {$x},60,\"2\",0,1,1,\"{$line2}\"\r\n";
-                    }
-                } else {
-                    $t .= "TEXT {$x},48,\"3\",0,1,1,\"{$cleanName}\"\r\n";
-                }
+            $t = "TEXT {$xStore},15,\"3\",90,1,1,\"{$cleanStore}\"\r\n";
 
-                $t .= "BARCODE {$x},88,\"128\",55,1,0,2,2,\"{$code}\"\r\n";
-
-                if ($lbl['mrp'] > $lbl['sell_price']) {
-                    $t .= "TEXT {$x},190,\"3\",0,1,1,\"MRP: {$mrpStr}\"\r\n";
-                    $t .= "TEXT {$x},225,\"3\",0,1,1,\"PRICE: {$sellStr}\"\r\n";
-                } else {
-                    $t .= "TEXT {$x},190,\"3\",0,1,1,\"MRP: {$mrpStr}\"\r\n";
-                    $t .= "TEXT {$x},225,\"2\",0,1,1,\"(Incl. TAX)\"\r\n";
-                }
-
-                return $t;
-            };
-
-            $chunks = array_chunk($labels, 2);
-            foreach ($chunks as $pair) {
-                $output .= "CLS\r\n";
-
-                // Left Sticker (X = 115)
-                $output .= $buildLabel($pair[0], 115);
-
-                // Right Sticker (X = 430, shifted inward for safe margin to prevent edge cut)
-                $lbl2 = $pair[1] ?? $pair[0];
-                $output .= $buildLabel($lbl2, 430);
-
-                $output .= "PRINT 1,1\r\n";
+            // If name is <= 18 chars, use bold Font 3; if longer, use compact Font 2
+            if (strlen($cleanName) <= 18) {
+                $t .= "TEXT {$xName},15,\"3\",90,1,1,\"{$cleanName}\"\r\n";
+            } else {
+                $shortName = substr($cleanName, 0, 26);
+                $t .= "TEXT {$xName},15,\"2\",90,1,1,\"{$shortName}\"\r\n";
             }
-        } else {
-            foreach ($labels as $lbl) {
-                $cleanStore = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $storeName), 0, 36);
-                $cleanName  = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl['name']), 0, 38);
-                $cleanCode  = preg_replace('/[^A-Za-z0-9]/', '', $lbl['barcode']);
-                $mrpText    = 'MRP: Rs. ' . number_format($lbl['mrp'], 2);
-                $priceText  = 'PRICE: Rs. ' . number_format($lbl['sell_price'], 2);
 
-                $output .= "CLS\r\n";
-                $output .= "TEXT 408,24,\"3\",0,1,1,2,\"{$cleanStore}\"\r\n";
-                $output .= "TEXT 50,70,\"3\",0,1,1,\"{$cleanName}\"\r\n";
-                $output .= "BARCODE 80,125,\"128\",90,1,0,2,4,\"{$cleanCode}\"\r\n";
-                if ($lbl['mrp'] > $lbl['sell_price']) {
-                    $output .= "TEXT 50,250,\"3\",0,1,1,\"{$mrpText}\"\r\n";
-                }
-                $output .= "TEXT 450,245,\"4\",0,1,1,\"{$priceText}\"\r\n";
-                if (!empty($lbl['exp_date'])) {
-                    $output .= "TEXT 50,300,\"2\",0,1,1,\"EXP: {$lbl['exp_date']}\"\r\n";
-                }
-                $output .= "PRINT 1\r\n";
+            // Wide scannable barcode rotated 90° with human-readable text
+            $t .= "BARCODE {$xBarcode},15,\"128\",75,1,90,3,3,\"{$code}\"\r\n";
+
+            // Price & Tax / Offer line
+            if ($lbl['mrp'] > $lbl['sell_price']) {
+                $t .= "TEXT {$xMrp},15,\"3\",90,1,1,\"MRP: {$mrpStr}\"\r\n";
+                $t .= "TEXT {$xBottom},15,\"3\",90,1,1,\"SALE: {$sellStr}\"\r\n";
+            } else {
+                $t .= "TEXT {$xMrp},15,\"3\",90,1,1,\"MRP : {$mrpStr}\"\r\n";
+                $t .= "TEXT {$xBottom},15,\"2\",90,1,1,\"(Incl. TAX)\"\r\n";
             }
+
+            return $t;
+        };
+
+        $chunks = array_chunk($labels, 2);
+        foreach ($chunks as $pair) {
+            $output .= "CLS\r\n";
+
+            // Left Sticker Base X = 375
+            $output .= $buildLabel($pair[0], 375);
+
+            // Right Sticker Base X = 715 (shifted by +340 dots)
+            // If only 1 label provided in pair, duplicate onto right sticker
+            $lbl2 = $pair[1] ?? $pair[0];
+            $output .= $buildLabel($lbl2, 715);
+
+            $output .= "PRINT 1,1\r\n";
         }
 
         return $output;

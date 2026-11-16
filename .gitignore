@@ -37,6 +37,8 @@ __pycache__/
 *.pyc
 scripts/*.py
 !scripts/gofrugal_sync_engine.py
+!scripts/urbanpos_print_bridge.py
+!scripts/start_print_bridge.bat
 scripts/*.txt
 scripts/*.json
 scripts/*.html

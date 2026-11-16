@@ -822,67 +822,38 @@
         </div>
 
         <div class="d-flex align-items-center my-1 flex-wrap">
-            <div class="btn-group btn-group-sm mr-2 my-1">
-                <a href="{{ request()->fullUrlWithQuery(['format' => 'a4_24']) }}" class="btn {{ in_array($format, ['a4_24', 'a4']) ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-success' }}" title="A4 Sticker Sheet: 24 Labels Per Sheet (3x8 Grid) - Standard Office Laser/Inkjet">
-                    <i class="fas fa-file-alt mr-1"></i> A4 (24-Up Laser) ★
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => 'a4_40']) }}" class="btn {{ $format === 'a4_40' ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-success' }}" title="A4 Sticker Sheet: 40 Labels Per Sheet (4x10 Grid) - Compact Office Laser/Inkjet">
-                    <i class="fas fa-th mr-1"></i> A4 (40-Up Laser)
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x25_2up']) }}" class="btn {{ $format === '50x25_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 2 Labels Per Row (50x25 mm each)">
-                    <i class="fas fa-th-large mr-1"></i> 50x25 (2-Up Thermal)
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x38_2up']) }}" class="btn {{ $format === '50x38_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 2 Labels Per Row (50x38 mm each)">
-                    <i class="fas fa-th-large mr-1"></i> 50x38 (2-Up Thermal)
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '102x64']) }}" class="btn {{ $format === '102x64' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 1 Single Big Label (102x63.5 mm)">
-                    102x64 (1-Up)
-                </a>
+            {{-- Standard Calibrated Size Badge (TSC TE244 50x38mm 2-Up Roll) --}}
+            <div class="my-1 mr-2">
+                <span class="badge badge-success px-3 py-2 font-weight-bold shadow-sm" style="font-size: 13px;" title="TSC TE244 Hardware Calibrated Standard Format">
+                    <i class="fas fa-barcode mr-1"></i> 50x38 mm (2-Up Thermal) ★
+                </span>
             </div>
 
-            {{-- Rotation Selector --}}
-            <div class="btn-group btn-group-sm mr-2 my-1">
-                <button type="button" class="btn btn-outline-secondary font-weight-bold dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-sync-alt mr-1"></i> <span id="rotLabel">Rotation: 0°</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right shadow">
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(0)"><i class="fas fa-arrow-up mr-2 text-primary"></i> 0° Sidha (Normal Portrait)</a>
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(90)"><i class="fas fa-arrow-right mr-2 text-warning"></i> 90° Ghumao (Clockwise)</a>
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(180)"><i class="fas fa-arrow-down mr-2 text-danger"></i> 180° Inverted (Ulta)</a>
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(270)"><i class="fas fa-arrow-left mr-2 text-info"></i> 270° Ghumao (Counter-CW)</a>
-                </div>
+            {{-- Live Printer Bridge Status Indicator --}}
+            <div class="my-1 mr-2">
+                <span id="bridgeStatusBadge" class="badge badge-light border px-2 py-2 font-weight-bold shadow-sm" style="font-size: 12px; color: #64748b;" title="TSC TE244 Local Print Bridge Status">
+                    <i class="fas fa-circle mr-1 text-secondary" id="bridgeStatusDot"></i> <span id="bridgeStatusText">Checking TSC TE244…</span>
+                </span>
             </div>
 
-            {{-- Text & Barcode Size / Scale Selector --}}
-            <div class="btn-group btn-group-sm mr-2 my-1">
-                <button type="button" class="btn btn-outline-dark font-weight-bold dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-text-height mr-1"></i> <span id="scaleLabel">Size: Bada (Large)</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right shadow">
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setScale('normal')">Chota (Normal)</a>
-                    <a class="dropdown-item font-weight-bold text-primary" href="javascript:void(0)" onclick="setScale('large')"><i class="fas fa-check text-primary mr-1"></i> Bada (Large - Recommended)</a>
-                    <a class="dropdown-item font-weight-bold text-success" href="javascript:void(0)" onclick="setScale('xl')"><i class="fas fa-expand-arrows-alt text-success mr-1"></i> Bahut Bada (Extra Large)</a>
-                </div>
-            </div>
-
-            {{-- Guide Modal Trigger --}}
-            <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" data-toggle="modal" data-target="#tscSetupModal">
-                <i class="fas fa-wrench mr-1"></i> TSC Setup Guide
+            {{-- 1-Click Direct Print to TSC TE244 via Local Bridge --}}
+            <button type="button" class="btn btn-warning font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="directPrintTsc()" title="Print directly to TSC TE244 without browser dialog">
+                <i class="fas fa-bolt mr-1 text-dark"></i> <strong>1-Click Direct Print (TSC TE244)</strong>
             </button>
+
+            {{-- Download Raw TSPL / PRN --}}
+            <a href="{{ route('master.barcodes.tspl', request()->query()) }}" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" title="Download raw TSPL file (labels_tsc_te244.prn)">
+                <i class="fas fa-file-download mr-1 text-primary"></i> Download .PRN
+            </a>
 
             {{-- Test Print (1 Row Only) --}}
-            <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" onclick="printTestRow()" title="Print only 2 test stickers to verify alignment">
-                <i class="fas fa-vial mr-1"></i> Test 1 Row (2 Stickers)
-            </button>
-
-            {{-- 1-Click Direct Print to TSC TE244 via Chrome --}}
-            <button type="button" class="btn btn-primary font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="window.print()" title="Open Chrome print dialog with calibrated TSC settings">
-                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Print (Chrome)
+            <button type="button" class="btn btn-outline-secondary btn-sm font-weight-bold shadow-sm px-2 my-1 mr-2" onclick="printTestRow()" title="Print only 2 test stickers to verify alignment">
+                <i class="fas fa-vial mr-1"></i> Test 1 Row
             </button>
 
             {{-- Main Print via Browser Dialog --}}
-            <button type="button" class="btn btn-success font-weight-bold shadow-sm px-4 my-1" onclick="window.print();" title="Open Chrome print preview dialog">
-                <i class="fas fa-print mr-2"></i> Print via Chrome (Ctrl + P)
+            <button type="button" class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3 my-1" onclick="window.print();" title="Open Chrome print preview dialog">
+                <i class="fas fa-print mr-1"></i> Chrome Print (Ctrl + P)
             </button>
         </div>
     </div>
@@ -1300,14 +1271,114 @@
             }
         });
 
-        function directPrintTsc() {
-            window.print();
+        const BRIDGE_URL = 'http://127.0.0.1:8989';
+        const TSPL_URL = '{{ route("master.barcodes.tspl", request()->query()) }}' + (window.location.search ? '&raw=1' : '?raw=1');
+
+        function showNotification(type, message) {
+            const alertClass = (type === 'success') ? 'alert-success border-success' : 'alert-danger border-danger';
+            const icon = (type === 'success') ? 'fa-check-circle text-success' : 'fa-exclamation-circle text-danger';
+            const html = `
+                <div class="alert ${alertClass} alert-dismissible fade show shadow-lg position-fixed" style="top: 70px; right: 20px; z-index: 9999; min-width: 320px;" role="alert">
+                    <i class="fas ${icon} mr-2"></i> <strong>${message}</strong>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            `;
+            $('body').append(html);
+            setTimeout(function () {
+                $('.alert-dismissible').fadeOut(400, function () { $(this).remove(); });
+            }, 4000);
         }
+
+        async function checkBridgeStatus() {
+            const $badge = $('#bridgeStatusBadge');
+            const $dot = $('#bridgeStatusDot');
+            const $text = $('#bridgeStatusText');
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1800);
+                const res = await fetch(BRIDGE_URL + '/status', { method: 'GET', mode: 'cors', signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (res.ok) {
+                    const data = await res.json();
+                    $dot.removeClass('text-secondary text-danger').addClass('text-success');
+                    $text.html('<strong>TSC TE244 Online</strong> (1-Click Ready)');
+                    $badge.removeClass('border-danger').addClass('border-success text-success');
+                    return true;
+                }
+            } catch (e) {
+                // Bridge not running
+            }
+
+            $dot.removeClass('text-secondary text-success').addClass('text-warning');
+            $text.html('TSC TE244 (Ready via Chrome / PRN)');
+            return false;
+        }
+
+        async function directPrintTsc() {
+            const $btn = $('#btnDirectPrint');
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing to TSC TE244…');
+
+            try {
+                // 1. Check if local bridge is running
+                let isOnline = await checkBridgeStatus();
+
+                // 2. Fetch calibrated TSPL
+                const tsplRes = await fetch(TSPL_URL, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!tsplRes.ok) {
+                    throw new Error('Failed to fetch TSPL commands from server.');
+                }
+
+                const data = await tsplRes.json();
+                const tsplCommands = data.tspl;
+
+                if (isOnline) {
+                    // Send to local bridge on USB001
+                    const printRes = await fetch(BRIDGE_URL + '/print', {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tspl: tsplCommands })
+                    });
+
+                    const result = await printRes.json();
+                    if (result.success) {
+                        showNotification('success', 'Printed directly to TSC TE244 (USB001)!');
+                    } else {
+                        showNotification('error', 'Printer bridge error: ' + (result.error || 'Failed to print'));
+                    }
+                } else {
+                    // Prompt user with options: Chrome print or download PRN
+                    window.location.href = '{{ route("master.barcodes.tspl", request()->query()) }}';
+                    showNotification('success', 'Downloaded raw TSPL (.prn). Opening Chrome print dialog...');
+                    setTimeout(function() {
+                        window.print();
+                    }, 400);
+                }
+            } catch (err) {
+                console.warn('Direct print fallback:', err);
+                window.print();
+            } finally {
+                $btn.prop('disabled', false).html(originalHtml);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            checkBridgeStatus();
+            renderAllBarcodes();
+        });
 
         $(document).ready(function () {
             @if(request()->boolean('autoprint') || request()->has('autoprint') || request()->has('direct'))
             setTimeout(function () {
-                window.print();
+                directPrintTsc();
             }, 450);
             @endif
         });

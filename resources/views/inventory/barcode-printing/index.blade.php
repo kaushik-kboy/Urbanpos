@@ -64,12 +64,10 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h3 class="card-title font-weight-bold">Print Queue</h3>
                         <div class="card-tools">
-                            <label class="mr-2 mb-0">Label Format:</label>
-                            <select name="label_size" class="form-control form-control-sm d-inline-block w-auto mr-2">
-                                <option value="standard">Standard Sticker (50mm x 25mm)</option>
-                                <option value="compact">Compact Sticker (38mm x 25mm)</option>
-                                <option value="shelf">Shelf Tag (65mm x 35mm)</option>
-                            </select>
+                            <input type="hidden" name="format" value="50x38_2up">
+                            <span class="badge badge-success px-2 py-1 mr-2 font-weight-bold">
+                                <i class="fas fa-barcode mr-1"></i> 50x38 mm (2-Up TSC TE244)
+                            </span>
                             <button type="submit" class="btn btn-success btn-sm font-weight-bold">
                                 <i class="fas fa-print mr-1"></i> Print Barcodes
                             </button>

@@ -6,11 +6,11 @@
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <h1 class="font-weight-bold text-dark"><i class="fas fa-barcode mr-2 text-primary"></i> Barcode Printing Studio</h1>
-            <small class="text-muted">A4 Sticker Sheets (Laser/Inkjet) & Thermal Rolls supported with live Purchase Invoice loading</small>
+            <small class="text-muted">TSC TE244 Calibrated 50x38 mm 2-Up Thermal Roll with live Purchase Invoice loading</small>
         </div>
         <div>
             <span class="badge badge-success px-3 py-2 font-weight-bold" style="font-size: 13px;">
-                <i class="fas fa-check-circle mr-1"></i> A4 Laser / Inkjet Ready
+                <i class="fas fa-check-circle mr-1"></i> TSC TE244 (50x38 mm 2-Up) Ready
             </span>
         </div>
     </div>
@@ -169,11 +169,7 @@
                                 <i class="fas fa-file-alt mr-1 text-primary"></i> Label Sheet / Roll Format:
                             </label>
                             <select name="format" id="formatSelect" class="form-control form-control-sm font-weight-bold">
-                                <option value="50x38_2up" selected>★ 50x38 mm (2-Up Thermal Roll - Recommended)</option>
-                                <option value="50x25_2up">50x25 mm (2-Up Thermal Roll)</option>
-                                <option value="a4_24">A4 Sheet (24-Up: 3x8 - Desmat / Avery Laser)</option>
-                                <option value="a4_40">A4 Sheet (40-Up: 4x10 - Compact Laser)</option>
-                                <option value="102x64">102x64 mm (1-Up Single Roll)</option>
+                                <option value="50x38_2up" selected>★ 50x38 mm (2-Up Thermal Roll - Standard TSC TE244)</option>
                             </select>
                         </div>
                         <div class="col-md-5 mb-2">
