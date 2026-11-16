@@ -344,6 +344,7 @@ class CustomerController extends Controller
             'std_code' => ['nullable', 'string', 'max:20'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
+            'google_map_link' => ['nullable', 'url', 'max:500'],
             'remarks' => ['nullable', 'string'],
             'gst_no' => ['nullable', 'string', 'size:15', 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/'],
             'aadhar_no' => ['nullable', 'string', 'max:20'],

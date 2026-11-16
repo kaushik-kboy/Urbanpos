@@ -148,16 +148,42 @@
             <div class="field-wrapper col-md-6" data-field="email" data-label="Email" data-default-order="9">
                 <x-field name="email" label="Email" type="email" :value="$c->email ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="remarks" data-label="Remarks" data-default-order="10">
+            <div class="field-wrapper col-md-6" data-field="google_map_link" data-label="Google Map Link" data-default-order="10">
+                <div class="form-group row">
+                    <label class="col-sm-3 col-form-label">Google Map Link</label>
+                    <div class="col-sm-6">
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-map-marker-alt text-danger"></i></span>
+                            </div>
+                            <input type="url" name="google_map_link"
+                                   class="form-control @error('google_map_link') is-invalid @enderror"
+                                   value="{{ old('google_map_link', $c->google_map_link ?? '') }}"
+                                   placeholder="https://maps.google.com/...">
+                            @if(!empty($c->google_map_link ?? null))
+                                <div class="input-group-append">
+                                    <a href="{{ $c->google_map_link }}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Open in Maps">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                        @error('google_map_link')
+                            <span class="invalid-feedback d-block">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="field-wrapper col-md-6" data-field="remarks" data-label="Remarks" data-default-order="11">
                 <x-textarea name="remarks" label="Remarks" :value="$c->remarks ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="gst_no" data-label="GST No" data-default-order="11">
+            <div class="field-wrapper col-md-6" data-field="gst_no" data-label="GST No" data-default-order="12">
                 <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="aadhar_no" data-label="Aadhar No" data-default-order="12">
+            <div class="field-wrapper col-md-6" data-field="aadhar_no" data-label="Aadhar No" data-default-order="13">
                 <x-field name="aadhar_no" label="Aadhar No" :value="$c->aadhar_no ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="pan_no" data-label="Pan No" data-default-order="13">
+            <div class="field-wrapper col-md-6" data-field="pan_no" data-label="Pan No" data-default-order="14">
                 <x-field name="pan_no" label="Pan No" :value="$c->pan_no ?? ''" />
             </div>
         </div>

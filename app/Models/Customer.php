@@ -17,7 +17,7 @@ class Customer extends Model
         'credit_limit', 'credit_balance', 'monthly_credit_balance', 'credit_days', 'branch_id',
         'status', 'sales_formula', 'gst_type', 'sms_consent',
         'address1', 'area_id', 'city', 'state', 'country', 'postal_code', 'std_code', 'phone',
-        'email', 'remarks', 'gst_no', 'aadhar_no', 'pan_no', 'mobile',
+        'email', 'google_map_link', 'remarks', 'gst_no', 'aadhar_no', 'pan_no', 'mobile',
         'gender', 'exempted_reason', 'customer_type',
     ];
 
