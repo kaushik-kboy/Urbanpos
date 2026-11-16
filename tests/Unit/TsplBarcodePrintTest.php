@@ -105,4 +105,35 @@ class TsplBarcodePrintTest extends TestCase
         $this->assertStringNotContainsString('MRP : Rs. 3,100.00', $tspl);
         $this->assertStringContainsString('(Incl. TAX)', $tspl);
     }
+
+    public function test_tspl_empty_labels_returns_empty_string(): void
+    {
+        $tspl = $this->controller->generateTspl([], 'URBAN POS', '50x38_2up');
+        $this->assertSame('', $tspl);
+    }
+
+    public function test_print_labels_view_contains_embedded_tspl_for_post(): void
+    {
+        $request = \Illuminate\Http\Request::create('/inventory/barcode/print', 'POST', [
+            'items' => [
+                [
+                    'id' => 1,
+                    'name' => 'Test Collar',
+                    'code' => '5240',
+                    'barcode' => '5240',
+                    'mrp' => 80,
+                    'sell_price' => 80,
+                    'qty' => 2,
+                ]
+            ]
+        ]);
+
+        $response = $this->controller->printLabels($request);
+        $this->assertInstanceOf(\Illuminate\View\View::class, $response);
+        $data = $response->getData();
+        $this->assertArrayHasKey('tspl', $data);
+        $this->assertStringContainsString('PRINT 1,1', $data['tspl']);
+        $this->assertStringContainsString('BARCODE', $data['tspl']);
+        $this->assertStringContainsString('Test Collar', $data['tspl']);
+    }
 }

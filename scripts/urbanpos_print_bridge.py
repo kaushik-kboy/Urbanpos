@@ -62,6 +62,17 @@ class PrintRequestHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
+            if not tspl_bytes or b"PRINT" not in tspl_bytes:
+                self.send_response(400)
+                self._send_cors_headers()
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "No PRINT commands found in TSPL payload. Ensure barcode items are selected."
+                }).encode("utf-8"))
+                return
+
             try:
                 p = win32print.OpenPrinter(PRINTER_NAME)
                 try:

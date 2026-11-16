@@ -19,12 +19,14 @@ class BarcodePrintController extends Controller
     public function printLabels(Request $request): View
     {
         [$labels, $storeName, $format, $options] = $this->resolveLabelsAndStore($request);
+        $tspl = !empty($labels) ? $this->generateTspl($labels, $storeName, $format) : '';
 
         return view('master.barcodes.print-labels', [
             'labels'    => $labels,
             'format'    => $format,
             'storeName' => $storeName,
             'options'   => $options,
+            'tspl'      => $tspl,
         ]);
     }
 
@@ -113,6 +115,10 @@ class BarcodePrintController extends Controller
      */
     public function generateTspl(array $labels, string $storeName, string $format = '50x38_2up'): string
     {
+        if (empty($labels)) {
+            return '';
+        }
+
         $output = "SIZE 102 mm, 38 mm\r\n";
         $output .= "GAP 2 mm, 0 mm\r\n";
         $output .= "DIRECTION 1\r\n";

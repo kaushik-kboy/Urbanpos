@@ -842,9 +842,9 @@
             </button>
 
             {{-- Download Raw TSPL / PRN --}}
-            <a href="{{ route('master.barcodes.tspl', request()->query()) }}" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm px-3 my-1" title="Download raw TSPL file (labels_tsc_te244.prn)">
+            <button type="button" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm px-3 my-1" onclick="downloadPrnFile()" title="Download raw TSPL file (labels_tsc_te244.prn)">
                 <i class="fas fa-file-download mr-1 text-primary"></i> Download .PRN
-            </a>
+            </button>
         </div>
     </div>
 
@@ -1147,7 +1147,23 @@
         });
 
         const BRIDGE_URL = 'http://127.0.0.1:8989';
-        const TSPL_URL = '{{ route("master.barcodes.tspl", request()->query()) }}' + (window.location.search ? '&raw=1' : '?raw=1');
+        const EMBEDDED_TSPL = @json($tspl ?? '');
+
+        function downloadPrnFile() {
+            if (!EMBEDDED_TSPL || !EMBEDDED_TSPL.includes('PRINT')) {
+                showNotification('error', 'No barcode data available to download.');
+                return;
+            }
+            const blob = new Blob([EMBEDDED_TSPL], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'labels_tsc_te244.prn';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         function showNotification(type, message) {
             const alertClass = (type === 'success') ? 'alert-success border-success' : 'alert-danger border-danger';
@@ -1199,20 +1215,13 @@
             $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing to TSC TE244…');
 
             try {
-                // 1. Check if local bridge is running
-                let isOnline = await checkBridgeStatus();
-
-                // 2. Fetch calibrated TSPL
-                const tsplRes = await fetch(TSPL_URL, {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                });
-
-                if (!tsplRes.ok) {
-                    throw new Error('Failed to fetch TSPL commands from server.');
+                if (!EMBEDDED_TSPL || !EMBEDDED_TSPL.includes('PRINT')) {
+                    showNotification('error', 'No barcode items to print!');
+                    return;
                 }
 
-                const data = await tsplRes.json();
-                const tsplCommands = data.tspl;
+                // 1. Check if local bridge is running
+                let isOnline = await checkBridgeStatus();
 
                 if (isOnline) {
                     // Send directly to local bridge on USB001
@@ -1220,7 +1229,7 @@
                         method: 'POST',
                         mode: 'cors',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tspl: tsplCommands })
+                        body: JSON.stringify({ tspl: EMBEDDED_TSPL })
                     });
 
                     const result = await printRes.json();
@@ -1231,7 +1240,7 @@
                     }
                 } else {
                     // Bridge is offline: download .prn file
-                    window.location.href = '{{ route("master.barcodes.tspl", request()->query()) }}';
+                    downloadPrnFile();
                     showNotification('warning', 'Local Print Bridge is offline. Downloaded .prn file. Start start_print_bridge.bat to enable 1-click printing.');
                 }
             } catch (err) {
