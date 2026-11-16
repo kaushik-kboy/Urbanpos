@@ -280,15 +280,15 @@
                         </div>
                     </div>
 
-                    {{-- Customer Outstanding Pending Balance Badge (Temporarily Commented Out)
+                    {{-- Customer Outstanding / Ledger Pending Balance Badge --}}
                     @php
                         $defaultBal = $defaultCustomer ? $defaultCustomer->getOutstandingBalance() : ['amount' => 0.0, 'formatted' => '₹ 0.00', 'unpaid_bills_count' => 0, 'is_pending' => false];
                     @endphp
-                    <div id="posCustomerOutstandingWrapper" class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center" style="font-size: 0.85rem;">
+                    <div id="posCustomerOutstandingWrapper" class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center" style="font-size: 0.85rem;" title="Customer Ledger Balance (Click to open in Indian Pet Company)">
                         <span class="text-muted small font-weight-bold">
-                            <i class="fas fa-wallet mr-1 text-primary"></i> Outstanding:
+                            <i class="fas fa-book-open mr-1 text-primary"></i> Ledger:
                         </span>
-                        <div id="posCustomerOutstandingBadgeContainer" style="cursor: pointer;" title="Click to view Unpaid Customer Invoices">
+                        <div id="posCustomerOutstandingBadgeContainer" style="cursor: pointer;" title="Click to view Customer Ledger in Indian Pet Company">
                             @if(!empty($defaultBal['is_pending']))
                                 <span class="badge badge-danger px-2 py-1 font-weight-bold shadow-sm" id="posCustomerOutstandingBadge" style="font-size: 0.82rem; border-radius: 6px;">
                                     <i class="fas fa-exclamation-circle mr-1"></i> Pending: {{ $defaultBal['formatted'] }}
@@ -300,7 +300,6 @@
                             @endif
                         </div>
                     </div>
-                    --}}
 
                     <!-- Customer Pet Details (Above Invoices & Favorites) -->
                     @php

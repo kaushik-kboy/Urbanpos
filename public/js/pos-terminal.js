@@ -3559,11 +3559,6 @@
     }
 
     function updateCustomerOutstandingBadge(outstanding) {
-        // Customer outstanding amount badge temporarily commented out
-        const $wrapper = $('#posCustomerOutstandingWrapper');
-        if ($wrapper.length) $wrapper.hide();
-        return;
-        /*
         const $wrapper = $('#posCustomerOutstandingWrapper');
         const $badge = $('#posCustomerOutstandingBadge');
         if (!$wrapper.length || !$badge.length) return;
@@ -3573,29 +3568,43 @@
             return;
         }
 
-        $wrapper.show();
+        $wrapper.removeClass('d-none').show();
         const amt = typeof outstanding.amount === 'number'
             ? outstanding.amount
             : (parseFloat(outstanding.outstanding_amount) || 0);
 
-        const formatted = outstanding.formatted || outstanding.outstanding_formatted || ('₹ ' + amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        const isPending = Boolean(outstanding.is_pending ?? (amt > 0.01));
+        const status = outstanding.status || (amt > 0.01 ? 'pending' : (amt < -0.01 ? 'advance' : 'cleared'));
+        const formatted = outstanding.formatted || outstanding.outstanding_formatted || ('₹ ' + Math.abs(amt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-        if (isPending) {
-            $badge.removeClass('badge-success').addClass('badge-danger')
-                .css({ 'font-size': '0.88rem', 'padding': '4px 8px' })
-                .html(`<i class="fas fa-exclamation-triangle text-warning mr-1"></i> Pending: ${formatted}`);
+        if (status === 'pending') {
+            $badge.removeClass('badge-success badge-info').addClass('badge-danger')
+                .css({ 'font-size': '0.88rem', 'padding': '4px 8px', 'border-radius': '6px' })
+                .html(`<i class="fas fa-exclamation-circle mr-1"></i> Pending: ${formatted}`);
+        } else if (status === 'advance') {
+            $badge.removeClass('badge-success badge-danger').addClass('badge-info')
+                .css({ 'font-size': '0.85rem', 'padding': '4px 8px', 'border-radius': '6px' })
+                .html(`<i class="fas fa-info-circle mr-1"></i> Advance: ${formatted}`);
         } else {
-            $badge.removeClass('badge-danger').addClass('badge-success')
-                .css({ 'font-size': '0.82rem', 'padding': '3px 6px' })
+            $badge.removeClass('badge-danger badge-info').addClass('badge-success')
+                .css({ 'font-size': '0.82rem', 'padding': '3px 6px', 'border-radius': '6px' })
                 .html(`<i class="fas fa-check-circle mr-1"></i> Pending: ₹ 0.00`);
         }
-        */
+
+        if (outstanding.ledger_url) {
+            $('#posCustomerOutstandingBadgeContainer').attr('data-ledger-url', outstanding.ledger_url).css('cursor', 'pointer');
+        } else {
+            $('#posCustomerOutstandingBadgeContainer').removeAttr('data-ledger-url');
+        }
     }
     window.posUpdateCustomerOutstandingBadge = updateCustomerOutstandingBadge;
 
     $(document).on('click', '#posCustomerOutstandingBadgeContainer', function () {
-        openCustomerInvoicesModal();
+        const ledgerUrl = $(this).attr('data-ledger-url');
+        if (ledgerUrl) {
+            window.open(ledgerUrl, '_blank');
+        } else {
+            openCustomerInvoicesModal();
+        }
     });
 
     function openCustomerInvoicesModal() {
