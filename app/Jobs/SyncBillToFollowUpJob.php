@@ -52,7 +52,13 @@ class SyncBillToFollowUpJob implements ShouldQueue
             return;
         }
 
-        $bill = SalesBill::with(['customer', 'branch', 'payments.tenderType'])->find($this->salesBillId);
+        $bill = SalesBill::with([
+            'customer.pets.petType',
+            'customer.pets.breed',
+            'customer.area',
+            'branch',
+            'payments.tenderType',
+        ])->find($this->salesBillId);
 
         if (! $bill) {
             Log::warning("SyncBillToFollowUpJob: SalesBill ID {$this->salesBillId} not found.");
@@ -124,14 +130,67 @@ class SyncBillToFollowUpJob implements ShouldQueue
             $paymentStatus = 'pending';
         }
 
+        $customer = $bill->customer;
+        $googleMapLink = $customer?->google_map_link ?: null;
+        $streetAddress = $customer?->address1 ?: null;
+        $city          = $customer?->city ?: null;
+        $state         = $customer?->state ?: null;
+        $postalCode    = $customer?->postal_code ?: null;
+        $areaName      = $customer?->area?->name ?: null;
+        $gstNo         = $customer?->gst_no ?: null;
+        $customerCode  = $customer?->customer_code ?: null;
+
+        // Custom field: Instagram ID
+        $instagramId = null;
+        if ($customer) {
+            try {
+                $customFields = $customer->custom_fields_map ?? [];
+                foreach ($customFields as $k => $v) {
+                    if (stripos((string) $k, 'instagram') !== false && filled($v)) {
+                        $instagramId = (string) $v;
+                        break;
+                    }
+                }
+            } catch (\Throwable) {
+                $instagramId = null;
+            }
+        }
+
+        // Pets
+        $pets = [];
+        if ($customer && $customer->pets) {
+            foreach ($customer->pets as $pet) {
+                if (blank($pet->name)) {
+                    continue;
+                }
+                $pets[] = [
+                    'name'       => (string) $pet->name,
+                    'pet_type'   => $pet->petType?->name ?: null,
+                    'breed'      => $pet->breed?->name ?: null,
+                    'gender'     => $pet->gender ?: null,
+                    'birth_date' => $pet->birth_date ? Carbon::parse($pet->birth_date)->format('Y-m-d') : null,
+                ];
+            }
+        }
+
         $payload = [
             'bill_number'      => (string) $bill->bill_number,
             'bill_date'        => $billDate,
             'amount'           => (float) $bill->total,
             'customer_name'    => $customerName ?: 'Customer',
             'customer_phone'   => $phone,
-            'customer_email'   => $bill->customer->email ?: null,
+            'customer_email'   => $customer?->email ?: null,
             'customer_address' => $fullAddress,
+            'street_address'   => $streetAddress,
+            'city'             => $city,
+            'state'            => $state,
+            'postal_code'      => $postalCode,
+            'area'             => $areaName,
+            'google_map_link'  => $googleMapLink,
+            'gst_no'           => $gstNo,
+            'customer_code'    => $customerCode,
+            'instagram_id'     => $instagramId,
+            'pets'             => $pets,
             'branch_name'      => $normalizedBranch ?: ($bill->branch?->name ?: null),
             'branch_code'      => $bill->branch?->erp_code ?: null,
             'sales_type'       => $salesType,
