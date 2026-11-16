@@ -837,43 +837,14 @@
             </div>
 
             {{-- 1-Click Direct Print to TSC TE244 via Local Bridge --}}
-            <button type="button" class="btn btn-warning font-weight-bold shadow-sm px-3 my-1 mr-2" id="btnDirectPrint" onclick="directPrintTsc()" title="Print directly to TSC TE244 without browser dialog">
-                <i class="fas fa-bolt mr-1 text-dark"></i> <strong>1-Click Direct Print (TSC TE244)</strong>
+            <button type="button" class="btn btn-warning btn-lg font-weight-bold shadow px-4 my-1 mr-3" id="btnDirectPrint" onclick="directPrintTsc()" title="Print directly to TSC TE244 thermal printer (USB001)">
+                <i class="fas fa-bolt mr-2 text-dark"></i> <strong>⚡ 1-Click Direct Print (TSC TE244)</strong>
             </button>
 
             {{-- Download Raw TSPL / PRN --}}
-            <a href="{{ route('master.barcodes.tspl', request()->query()) }}" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" title="Download raw TSPL file (labels_tsc_te244.prn)">
+            <a href="{{ route('master.barcodes.tspl', request()->query()) }}" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm px-3 my-1" title="Download raw TSPL file (labels_tsc_te244.prn)">
                 <i class="fas fa-file-download mr-1 text-primary"></i> Download .PRN
             </a>
-
-            {{-- Test Print (1 Row Only) --}}
-            <button type="button" class="btn btn-outline-secondary btn-sm font-weight-bold shadow-sm px-2 my-1 mr-2" onclick="printTestRow()" title="Print only 2 test stickers to verify alignment">
-                <i class="fas fa-vial mr-1"></i> Test 1 Row
-            </button>
-
-            {{-- Main Print via Browser Dialog --}}
-            <button type="button" class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3 my-1" onclick="window.print();" title="Open Chrome print preview dialog">
-                <i class="fas fa-print mr-1"></i> Chrome Print (Ctrl + P)
-            </button>
-        </div>
-    </div>
-
-    <!-- On-screen Guide for TSC TE244 (2-Up Roll) -->
-    <div class="container-fluid print-instructions mt-3">
-        <div class="alert alert-warning border border-warning shadow-sm py-2 px-3 mb-0 d-flex align-items-center justify-content-between flex-wrap">
-            <div class="d-flex align-items-center my-1">
-                <i class="fas fa-exclamation-triangle text-dark mr-2" style="font-size: 22px;"></i>
-                <span class="small font-weight-bold text-dark">
-                    <strong>TSC TE244 (2-Up Roll) Print Guide:</strong> &nbsp;
-                    1. Layout = <span class="badge badge-success" style="font-size: 12px;">LANDSCAPE</span> (Roll width is 102mm. If printed sideways, toggle Landscape/Portrait) &nbsp;|&nbsp;
-                    2. Paper Size = <strong>102 x 38 mm</strong> &nbsp;|&nbsp;
-                    3. Margins = <strong>None</strong> &nbsp;|&nbsp;
-                    4. Headers & Footers = <strong>OFF (Uncheck)</strong>
-                </span>
-            </div>
-            <div class="my-1">
-                <span class="badge badge-dark px-2 py-1">2 Stickers Side-by-Side (2-Up)</span>
-            </div>
         </div>
     </div>
 
@@ -1038,94 +1009,6 @@
         @endif
     </div>
 
-    <!-- TSC TE244 Setup Modal -->
-    <div class="modal fade" id="tscSetupModal" tabindex="-1" role="dialog" aria-labelledby="tscSetupModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-dark text-white py-3">
-                    <h5 class="modal-title font-weight-bold" id="tscSetupModalLabel">
-                        <i class="fas fa-print text-warning mr-2"></i> TSC TE244 (2-Up Barcode Roll) Step-by-Step Setup Guide
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body p-4" style="font-size: 14px; line-height: 1.6;">
-                    <div class="alert alert-info py-2 px-3 mb-3">
-                        <strong>Your label roll contains 2 stickers side-by-side per row (50x25mm or 50x38mm).</strong><br>
-                        Follow these 3 quick steps to avoid printing sideways or feeding blank labels:
-                    </div>
-
-                    <div class="card mb-3 border-primary">
-                        <div class="card-header bg-light font-weight-bold text-primary">
-                            <i class="fas fa-magic mr-1"></i> STEP 1: Printer Hardware Sensor Calibration
-                        </div>
-                        <div class="card-body py-2">
-                            <ol class="mb-0 pl-3">
-                                <li>Turn the printer <strong>POWER OFF</strong> using the rear switch.</li>
-                                <li>Hold down the front panel <strong>PAUSE</strong> button (or FEED button).</li>
-                                <li>While holding the button down, switch the printer <strong>POWER ON</strong>.</li>
-                                <li>Release the button as soon as the printer feeds paper and the LED begins flashing.</li>
-                                <li>The printer will feed 2-3 labels and align accurately at the gap marker.</li>
-                            </ol>
-                        </div>
-                    </div>
-
-                    <div class="card mb-3 border-success">
-                        <div class="card-header bg-light font-weight-bold text-success">
-                            <i class="fas fa-cogs mr-1"></i> STEP 2: Windows TSC Driver Preferences (One-time setup)
-                        </div>
-                        <div class="card-body py-2">
-                            <ol class="mb-0 pl-3">
-                                <li>Open <strong>Printers & Scanners</strong> from the Windows Start menu.</li>
-                                <li>Select <strong>TSC TE244</strong> and click <strong>Printing Preferences</strong>.</li>
-                                <li>In the <strong>Page Setup</strong> tab, click <strong>New...</strong>:
-                                    <ul>
-                                        <li>Name: <code>102x25</code> (or <code>102x38</code>)</li>
-                                        <li>Width: <strong>102.0 mm</strong> (combined roll width)</li>
-                                        <li>Height: <strong>25.0 mm</strong> (or label height e.g. 38.0 mm)</li>
-                                    </ul>
-                                </li>
-                                <li>In the <strong>Stock</strong> tab:
-                                    <ul>
-                                        <li>Type: <strong>Labels with Gaps</strong> (Gap height: <strong>2.0 mm</strong>)</li>
-                                    </ul>
-                                </li>
-                                <li>Click <strong>Apply</strong> and <strong>OK</strong>.</li>
-                            </ol>
-                        </div>
-                    </div>
-
-                    <div class="card mb-3 border-warning">
-                        <div class="card-header bg-light font-weight-bold text-dark">
-                            <i class="fas fa-desktop mr-1"></i> STEP 3: Chrome Print Dialog Settings (Ctrl + P)
-                        </div>
-                        <div class="card-body py-2">
-                            <ul class="mb-0 pl-3">
-                                <li><strong>Destination:</strong> Select <code>TSC TE244</code></li>
-                                <li><strong>Layout:</strong> <span class="badge badge-success">LANDSCAPE</span> (Roll width is 102mm. If printed sideways, switch to Landscape)</li>
-                                <li><strong>Paper size:</strong> <code>102x38 mm</code> (as created in Step 2)</li>
-                                <li><strong>Margins:</strong> <code>None</code> (0)</li>
-                                <li><strong>Scale:</strong> <code>100%</code> (Custom -> 100)</li>
-                                <li><strong>Headers and Footers:</strong> <code>Uncheck (OFF)</code></li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="alert alert-warning py-2 px-3 mb-0 font-weight-bold">
-                        💡 Save label roll paper by testing first with the <strong>"Test 1 Row (2 Stickers)"</strong> button!
-                    </div>
-                </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-warning font-weight-bold" onclick="$('#tscSetupModal').modal('hide'); printTestRow();">
-                        <i class="fas fa-vial mr-1"></i> Test Print 1 Row
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         function setRotation(deg) {
             document.body.classList.remove('rotate-0', 'rotate-90', 'rotate-180', 'rotate-270');
@@ -1163,14 +1046,6 @@
                 localStorage.setItem('urbanpos_barcode_scale', scaleName);
             } catch (e) {}
             renderAllBarcodes();
-        }
-
-        function printTestRow() {
-            document.body.classList.add('test-print-mode');
-            window.print();
-            setTimeout(function () {
-                document.body.classList.remove('test-print-mode');
-            }, 1200);
         }
 
         function renderAllBarcodes() {
@@ -1314,7 +1189,7 @@
             }
 
             $dot.removeClass('text-secondary text-success').addClass('text-warning');
-            $text.html('TSC TE244 (Ready via Chrome / PRN)');
+            $text.html('TSC Bridge Offline (Click to Download .PRN)');
             return false;
         }
 
@@ -1340,7 +1215,7 @@
                 const tsplCommands = data.tspl;
 
                 if (isOnline) {
-                    // Send to local bridge on USB001
+                    // Send directly to local bridge on USB001
                     const printRes = await fetch(BRIDGE_URL + '/print', {
                         method: 'POST',
                         mode: 'cors',
@@ -1350,21 +1225,18 @@
 
                     const result = await printRes.json();
                     if (result.success) {
-                        showNotification('success', 'Printed directly to TSC TE244 (USB001)!');
+                        showNotification('success', 'Printed directly to TSC TE244 on USB001!');
                     } else {
                         showNotification('error', 'Printer bridge error: ' + (result.error || 'Failed to print'));
                     }
                 } else {
-                    // Prompt user with options: Chrome print or download PRN
+                    // Bridge is offline: download .prn file
                     window.location.href = '{{ route("master.barcodes.tspl", request()->query()) }}';
-                    showNotification('success', 'Downloaded raw TSPL (.prn). Opening Chrome print dialog...');
-                    setTimeout(function() {
-                        window.print();
-                    }, 400);
+                    showNotification('warning', 'Local Print Bridge is offline. Downloaded .prn file. Start start_print_bridge.bat to enable 1-click printing.');
                 }
             } catch (err) {
-                console.warn('Direct print fallback:', err);
-                window.print();
+                console.warn('Direct print error:', err);
+                showNotification('error', 'Communication error: ' + err.message);
             } finally {
                 $btn.prop('disabled', false).html(originalHtml);
             }

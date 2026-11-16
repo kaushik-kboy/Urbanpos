@@ -198,11 +198,8 @@
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                         <span class="text-muted">Total Stickers: <strong id="totalLabels" class="text-primary font-weight-bold h5 mb-0">0</strong></span>
                         <div>
-                            <button type="button" class="btn btn-primary btn-lg font-weight-bold px-3 shadow-sm mr-2" id="btnDirectPrintStudio" disabled title="Calibrated settings ke sath Chrome print preview kholein">
-                                <i class="fas fa-bolt mr-1 text-warning"></i> 1-Click Print (Chrome)
-                            </button>
-                            <button type="submit" class="btn btn-success btn-lg font-weight-bold px-4 shadow-sm" id="printSubmit" disabled>
-                                <i class="fas fa-print mr-2"></i> Print Barcode Labels
+                            <button type="submit" class="btn btn-warning btn-lg font-weight-bold px-4 shadow" id="printSubmit" disabled title="Print directly to TSC TE244 thermal printer (USB001)">
+                                <i class="fas fa-bolt mr-2 text-dark"></i> <strong>⚡ 1-Click Direct Print (TSC TE244)</strong>
                             </button>
                         </div>
                     </div>
@@ -439,7 +436,6 @@
             $body.append($emptyRow);
             $totalLabels.text(0);
             $printSubmit.prop('disabled', true);
-            $('#btnDirectPrintStudio').prop('disabled', true);
             $printInputs.empty();
             return;
         }
@@ -493,7 +489,6 @@
 
         $totalLabels.text(total);
         $printSubmit.prop('disabled', false);
-        $('#btnDirectPrintStudio').prop('disabled', false);
 
         // Qty change
         $body.off('change', '.queue-qty-input').on('change', '.queue-qty-input', function () {
@@ -517,22 +512,17 @@
         renderQueue();
     });
 
-    // 1-Click Print from Studio via Chrome
-    $('#btnDirectPrintStudio').on('click', function () {
+    // Auto-trigger 1-Click Direct Print on form submit
+    $('#printForm').on('submit', function () {
         const items = Object.values(queue);
-        if (items.length === 0) return;
+        if (items.length === 0) return false;
 
-        const $form = $('#printForm');
-        let $auto = $form.find('input[name="autoprint"]');
+        let $auto = $(this).find('input[name="autoprint"]');
         if (!$auto.length) {
-            $form.append('<input type="hidden" name="autoprint" value="1">');
+            $(this).append('<input type="hidden" name="autoprint" value="1">');
         } else {
             $auto.val('1');
         }
-        $form.submit();
-        setTimeout(function () {
-            $form.find('input[name="autoprint"]').remove();
-        }, 800);
     });
 
     function escHtml(str) {
