@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureUserIsActiveAndWithinShift::class,
             \App\Http\Middleware\EnsureActiveBranch::class,
             \App\Http\Middleware\NormalizeDateInputs::class,
+            \App\Http\Middleware\CheckSubscriptionValidity::class,
         ]);
         // Mobile app uses bearer tokens (Sanctum personal access tokens), not cookies,
         // so EnsureFrontendRequestsAreStateful (Sanctum's cookie/SPA mode) is deliberately

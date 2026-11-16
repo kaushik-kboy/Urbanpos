@@ -473,6 +473,34 @@
         </div>
     </div>
 
+    {{-- Automobile Workshop Details (Active ONLY when business_type == 'automobile') --}}
+    @if(\App\Models\PosSetting::get('business_type') === 'automobile')
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="vehicle_no">
+        <div class="form-group mb-1">
+            <label for="vehicle_no" class="font-weight-bold mb-1">
+                <i class="fas fa-car text-primary mr-1"></i> Vehicle Number
+            </label>
+            <input type="text" name="vehicle_no" id="vehicle_no" class="form-control text-uppercase font-weight-bold" value="{{ old('vehicle_no', $bill->vehicle_no ?? '') }}" placeholder="e.g. RJ-14-CB-1234">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="odometer_km">
+        <div class="form-group mb-1">
+            <label for="odometer_km" class="font-weight-bold mb-1">
+                <i class="fas fa-tachometer-alt text-info mr-1"></i> Odometer (KM)
+            </label>
+            <input type="number" name="odometer_km" id="odometer_km" class="form-control" value="{{ old('odometer_km', $bill->odometer_km ?? '') }}" placeholder="e.g. 42500">
+        </div>
+    </div>
+    <div class="field-wrapper col-lg-3 col-md-3 col-sm-6" data-field="mechanic_name">
+        <div class="form-group mb-1">
+            <label for="mechanic_name" class="font-weight-bold mb-1">
+                <i class="fas fa-wrench text-warning mr-1"></i> Mechanic / Technician
+            </label>
+            <input type="text" name="mechanic_name" id="mechanic_name" class="form-control" value="{{ old('mechanic_name', $bill->mechanic_name ?? '') }}" placeholder="Technician Name">
+        </div>
+    </div>
+    @endif
+
     {{-- Branch (Hidden input, active branch controlled at top navbar) --}}
     <input type="hidden" name="branch_id" value="{{ $selectedBranch }}" id="sales_bill_branch_id">
 
@@ -2212,7 +2240,11 @@
                         data-other-hint="${availableInOtherBranches.length > 0 ? 'Available in other branch: ' + availableInOtherBranches.join(', ') : ''}">
                         <td data-col-key="seq" class="align-middle text-center font-weight-bold text-muted">${idx+1}</td>
                         <td data-col-key="name" class="align-middle font-weight-bold text-dark">
-                            ${it.name} ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}
+                            ${it.name}
+                            ${it.part_number ? `<span class="badge badge-warning text-dark ml-1 font-weight-normal"><i class="fas fa-cog mr-1"></i>${it.part_number}</span>` : ''}
+                            ${it.car_compatibility ? `<span class="badge badge-secondary ml-1 font-weight-normal"><i class="fas fa-car mr-1"></i>${it.car_compatibility}</span>` : ''}
+                            ${it.warranty_months ? `<span class="badge badge-info ml-1 font-weight-normal"><i class="fas fa-shield-alt mr-1"></i>${it.warranty_months}M</span>` : ''}
+                            ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : (parseFloat(it.qty) <= 0 && isAllowNeg ? '<span class="badge badge-warning ml-1 small">Allow Neg Stock</span>' : ''))}
                             ${otherAvailNotice}
                         </td>
                         <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>

@@ -344,6 +344,19 @@
                                 🐾 Pet: {{ $salesBill->customer->pets->pluck('name')->filter()->join(', ') }}
                             </div>
                         @endif
+
+                        {{-- Vehicle Details (Automobile Store Invoices) --}}
+                        @if (!empty($salesBill->vehicle_no))
+                            <div style="font-size: 10.5px; font-weight: bold; color: #1e293b; margin-top: 2px;">
+                                🚗 Vehicle: {{ $salesBill->vehicle_no }}{{ $salesBill->vehicle_model ? ' ('.$salesBill->vehicle_model.')' : '' }}
+                                @if(!empty($salesBill->odometer_km))
+                                    | KM: {{ number_format($salesBill->odometer_km) }}
+                                @endif
+                                @if(!empty($salesBill->mechanic_name))
+                                    | Mech: {{ $salesBill->mechanic_name }}
+                                @endif
+                            </div>
+                        @endif
                     </td>
                 </tr>
             @endif
@@ -453,6 +466,12 @@
                         <td class="text-right">₹{{ number_format($salesBill->total_gst, 2) }}</td>
                     </tr>
                 @endif
+            @endif
+            @if (!empty($salesBill->service_charge) && $salesBill->service_charge > 0)
+                <tr>
+                    <td class="text-left">Labor / Service Charge:</td>
+                    <td class="text-right">₹{{ number_format($salesBill->service_charge, 2) }}</td>
+                </tr>
             @endif
             @if ($salesBill->round_off != 0)
                 <tr>

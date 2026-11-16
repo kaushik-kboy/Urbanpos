@@ -24,7 +24,7 @@ class SalesBill extends Model
         'eway_bill_no', 'eway_bill_date', 'eway_valid_until',
         'transporter_id', 'transporter_name', 'transport_mode',
         'transport_doc_no', 'transport_doc_date',
-        'vehicle_no', 'vehicle_type', 'transport_distance', 'eway_status',
+        'vehicle_no', 'vehicle_model', 'odometer_km', 'mechanic_name', 'service_charge', 'vehicle_type', 'transport_distance', 'eway_status',
         'irn', 'ack_no', 'ack_date', 'signed_qr_code', 'signed_invoice',
         'einvoice_status', 'einvoice_error', 'einvoice_synced_at',
     ];

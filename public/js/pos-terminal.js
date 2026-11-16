@@ -1933,10 +1933,13 @@
                 }).join(' ');
             }
             const expBadge = item.exp_date ? `<span class="badge badge-info ml-1"><i class="far fa-calendar-alt mr-1"></i>${formatDmyDate(item.exp_date)}</span>` : '';
+            const partBadge = item.part_number ? `<span class="badge badge-warning text-dark ml-1 font-weight-normal"><i class="fas fa-cog mr-1"></i>${escapeHtml(item.part_number)}</span>` : '';
+            const carBadge = item.car_compatibility ? `<span class="badge badge-secondary ml-1 font-weight-normal"><i class="fas fa-car mr-1"></i>${escapeHtml(item.car_compatibility)}</span>` : '';
+            const warrantyBadge = item.warranty_months ? `<span class="badge badge-info ml-1 font-weight-normal"><i class="fas fa-shield-alt mr-1"></i>${item.warranty_months}M</span>` : '';
             html += `
                 <div class="pos-search-item" data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}'>
                     <div>
-                        <strong class="text-dark">${escapeHtml(item.name)}</strong>
+                        <strong class="text-dark">${escapeHtml(item.name)}</strong> ${partBadge} ${carBadge} ${warrantyBadge}
                         <div class="small text-muted">ID: <code>${item.id}</code> &bull; Code: <code>${escapeHtml(item.item_code || item.code || '-')}</code> &bull; ${stockBadge} ${otherStocksHtml} ${expBadge}</div>
                     </div>
                     <div class="text-right">
@@ -4712,6 +4715,9 @@
                         <td data-col-key="code" class="align-middle text-center">${codeBadge}</td>
                         <td data-col-key="name" class="align-middle font-weight-bold text-dark">
                             ${escapeHtml(it.name)}
+                            ${it.part_number ? `<span class="badge badge-warning text-dark ml-1 font-weight-normal"><i class="fas fa-cog mr-1"></i>${escapeHtml(it.part_number)}</span>` : ''}
+                            ${it.car_compatibility ? `<span class="badge badge-secondary ml-1 font-weight-normal"><i class="fas fa-car mr-1"></i>${escapeHtml(it.car_compatibility)}</span>` : ''}
+                            ${it.warranty_months ? `<span class="badge badge-info ml-1 font-weight-normal"><i class="fas fa-shield-alt mr-1"></i>${it.warranty_months}M</span>` : ''}
                             ${isExpired ? '<span class="badge badge-danger ml-1 small">EXPIRED</span>' : (isOutOfStock ? '<span class="badge badge-secondary ml-1 small">Out of Stock</span>' : '')}
                             ${otherAvailNotice}
                         </td>

@@ -1375,30 +1375,37 @@ class SalesBillController extends Controller
             // Barcode (ean_upc_code) only matches exact or prefix — never substring in middle of 13-digit barcode!
             // Item code matches exact or prefix
             // Item name matches multi-token or contiguous phrase
+            // Part number and car compatibility match exact or substring (Automobile Workshop support)
             $candJoins[] = "INNER JOIN (
                 SELECT id FROM items WHERE ({$nameWhereSql})
                 UNION SELECT id FROM items WHERE item_code = ?
                 UNION SELECT id FROM items WHERE item_code LIKE ?
                 UNION SELECT id FROM items WHERE ean_upc_code = ?
                 UNION SELECT id FROM items WHERE ean_upc_code LIKE ?
+                UNION SELECT id FROM items WHERE part_number = ?
+                UNION SELECT id FROM items WHERE part_number LIKE ?
+                UNION SELECT id FROM items WHERE car_compatibility LIKE ?
             ) cs ON cs.id = i.id";
-            $candParams = array_merge($candParams, $tokenParams, [$sExact, $sPrefix, $sExact, $sPrefix]);
+            $candParams = array_merge($candParams, $tokenParams, [$sExact, $sPrefix, $sExact, $sPrefix, $sExact, $sPrefix, $sWild]);
 
-            // Rank exact code / barcode match first, then prefix, then exact name, then prefix, then phrase, then multi-token
+            // Rank exact code / barcode / part_number match first, then prefix, then exact name, then prefix, then phrase, then car_compatibility, then multi-token
             $orderSql = '
                 CASE
                     WHEN i.item_code = ? THEN 1
                     WHEN i.ean_upc_code = ? THEN 2
-                    WHEN i.item_code LIKE ? THEN 3
-                    WHEN i.ean_upc_code LIKE ? THEN 4
-                    WHEN i.name = ? THEN 5
-                    WHEN i.name LIKE ? THEN 6
-                    WHEN i.name LIKE ? THEN 7
-                    ELSE 8
+                    WHEN i.part_number = ? THEN 3
+                    WHEN i.item_code LIKE ? THEN 4
+                    WHEN i.ean_upc_code LIKE ? THEN 5
+                    WHEN i.part_number LIKE ? THEN 6
+                    WHEN i.name = ? THEN 7
+                    WHEN i.name LIKE ? THEN 8
+                    WHEN i.car_compatibility LIKE ? THEN 9
+                    WHEN i.name LIKE ? THEN 10
+                    ELSE 11
                 END ASC,
                 i.name ASC
             ';
-            $orderParams = [$sExact, $sExact, $sPrefix, $sPrefix, $sExact, $sPrefix, $sWild];
+            $orderParams = [$sExact, $sExact, $sExact, $sPrefix, $sPrefix, $sPrefix, $sExact, $sPrefix, $sWild, $sWild];
         }
 
         if ($code !== '') {
@@ -1442,6 +1449,9 @@ class SalesBillController extends Controller
                 COALESCE(i.allow_negative_stock, 0) AS allow_negative_stock,
                 COALESCE(i.item_code, '')  AS item_code,
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
+                COALESCE(i.part_number, '') AS part_number,
+                COALESCE(i.car_compatibility, '') AS car_compatibility,
+                COALESCE(i.warranty_months, 0) AS warranty_months,
                 COALESCE(st.quantity, 0)   AS qty,
                 COALESCE(NULLIF(st.sell_price, 0), NULLIF(i.sell_price, 0), 0) AS sell_price,
                 COALESCE(NULLIF(st.mrp, 0), NULLIF(i.mrp, 0), 0)        AS mrp,
@@ -1643,6 +1653,9 @@ class SalesBillController extends Controller
                 'id' => (int) $row->id,
                 'name' => $row->name,
                 'code' => $row->item_code ?: ($row->ean_upc_code ?: ''),
+                'part_number' => $row->part_number ?? '',
+                'car_compatibility' => $row->car_compatibility ?? '',
+                'warranty_months' => (int) ($row->warranty_months ?? 0),
                 'exp_date' => $exp,
                 'qty' => (float) $row->qty,
                 'stock' => (float) $row->qty,
@@ -1671,21 +1684,26 @@ class SalesBillController extends Controller
         }
 
         if (! $item && $query !== '') {
-            // Check exact item_code or ean_upc_code first (crucial for barcode / code inputs)
+            // Check exact item_code, ean_upc_code, or part_number first (crucial for barcode / code / OEM inputs)
             $item = Item::where('status', true)
                 ->where(function ($q) use ($query) {
                     $q->where('item_code', $query)
                         ->orWhere('ean_upc_code', $query)
+                        ->orWhere('part_number', $query)
                         ->orWhere('alias', $query);
                 })
                 ->with('gstTax:id,percentage')
                 ->first();
 
-            // Check item name only if NOT exact_match_only
+            // Check item name, part number, car compatibility only if NOT exact_match_only
             if (! $item && ! $exactMatchOnly) {
                 $item = Item::where('status', true)
                     ->with('gstTax:id,percentage')
-                    ->where('name', 'like', "%{$query}%")
+                    ->where(function ($subQ) use ($query) {
+                        $subQ->where('name', 'like', "%{$query}%")
+                             ->orWhere('part_number', 'like', "%{$query}%")
+                             ->orWhere('car_compatibility', 'like', "%{$query}%");
+                    })
                     ->first();
             }
         }
@@ -1854,6 +1872,9 @@ class SalesBillController extends Controller
                 'name' => $item->name,
                 'item_code' => $item->item_code,
                 'ean_upc_code' => $item->ean_upc_code,
+                'part_number' => $item->part_number ?? '',
+                'car_compatibility' => $item->car_compatibility ?? '',
+                'warranty_months' => (int) ($item->warranty_months ?? 0),
                 'cost_price' => (float) $defaultCost,
                 'sell_price' => (float) $defaultSell,
                 'mrp' => (float) $defaultMrp,
