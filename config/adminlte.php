@@ -1207,7 +1207,6 @@ return [
                         ['text' => 'Multiple Dispatch', 'url' => 'tools/multiple-dispatch', 'icon' => 'fas fa-fw fa-paper-plane', 'can' => 'users.create'],
                         ['text' => 'Report Scheduler', 'url' => 'tools/report-scheduler', 'icon' => 'fas fa-fw fa-clock', 'can' => 'users.create'],
                         ['text' => 'E-way Update', 'url' => 'tools/eway-update', 'icon' => 'fas fa-fw fa-route', 'can' => 'eway-bills.create'],
-                        ['text' => 'Barcode Config', 'url' => 'tools/barcode-config', 'icon' => 'fas fa-fw fa-barcode', 'can' => 'users.create'],
                         ['text' => 'Service User Consent', 'url' => 'tools/service-consent', 'icon' => 'fas fa-fw fa-file-contract', 'can' => 'users.create'],
                     ],
                 ],

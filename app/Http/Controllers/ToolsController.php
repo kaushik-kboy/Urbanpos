@@ -9,6 +9,11 @@ class ToolsController extends Controller
 {
     public function renderModule(Request $request, string $module)
     {
+        // Redirect legacy barcode-config placeholder to the active Barcode Printing Studio
+        if ($module === 'barcode-config') {
+            return redirect()->route('inventory.barcode.index');
+        }
+
         $configs = [
             'userwise-config' => [
                 'title' => 'Userwise Configuration',
