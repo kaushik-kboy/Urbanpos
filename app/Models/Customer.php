@@ -83,6 +83,16 @@ class Customer extends Model
         return $this->hasMany(CustomerPet::class);
     }
 
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(CustomerAddress::class);
+    }
+
+    public function primaryAddress(): HasOne
+    {
+        return $this->hasOne(CustomerAddress::class)->where('is_primary', true);
+    }
+
     public function ledger(): HasOne
     {
         return $this->hasOne(Ledger::class);

@@ -3,6 +3,7 @@
 <ul class="nav nav-tabs" role="tablist">
     <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#tab-general">General</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-contact">Contact Details</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-addresses"><i class="fas fa-map-marker-alt text-danger mr-1"></i> Addresses (<span id="address-count-badge">{{ isset($c) && $c->addresses ? $c->addresses->count() : 0 }}</span>)</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-others">Others</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-pets">Pet Details</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#tab-custom-fields"><i class="fas fa-sliders-h text-primary mr-1"></i> Custom Fields</a></li>
@@ -96,17 +97,21 @@
                 <div class="form-group row">
                     <label for="customer_state" class="col-sm-3 col-form-label">State</label>
                     <div class="col-sm-6">
+                        @php
+                            $defaultCustState = old('state', $c->state ?? ($c && $c->exists ? '' : 'Gujarat'));
+                            $defaultCustCity = old('city', $c->city ?? ($c && $c->exists ? '' : 'Ahmedabad'));
+                        @endphp
                         <select name="state" id="customer_state" class="form-control select2 @error('state') is-invalid @enderror">
                             <option value="">-- Select State --</option>
                             <optgroup label="⭐ Top States">
-                                <option value="Gujarat" @selected(old('state', $c->state ?? '') === 'Gujarat')>Gujarat</option>
-                                <option value="Rajasthan" @selected(old('state', $c->state ?? '') === 'Rajasthan')>Rajasthan</option>
-                                <option value="Maharashtra" @selected(old('state', $c->state ?? '') === 'Maharashtra')>Maharashtra</option>
+                                <option value="Gujarat" @selected($defaultCustState === 'Gujarat')>Gujarat</option>
+                                <option value="Rajasthan" @selected($defaultCustState === 'Rajasthan')>Rajasthan</option>
+                                <option value="Maharashtra" @selected($defaultCustState === 'Maharashtra')>Maharashtra</option>
                             </optgroup>
                             <optgroup label="Other States & UTs">
                                 @foreach(\App\Helpers\IndianStates::states() as $stVal => $stLabel)
                                     @if(!in_array($stVal, ['Gujarat', 'Rajasthan', 'Maharashtra']))
-                                        <option value="{{ $stVal }}" @selected(old('state', $c->state ?? '') === $stVal)>{{ $stLabel }}</option>
+                                        <option value="{{ $stVal }}" @selected($defaultCustState === $stVal)>{{ $stLabel }}</option>
                                     @endif
                                 @endforeach
                             </optgroup>
@@ -123,8 +128,8 @@
                     <div class="col-sm-6">
                         <select name="city" id="customer_city" class="form-control select2 @error('city') is-invalid @enderror">
                             <option value="">-- Select City --</option>
-                            @if(!empty(old('city', $c->city ?? '')))
-                                <option value="{{ old('city', $c->city ?? '') }}" selected>{{ old('city', $c->city ?? '') }}</option>
+                            @if(!empty($defaultCustCity))
+                                <option value="{{ $defaultCustCity }}" selected>{{ $defaultCustCity }}</option>
                             @endif
                         </select>
                         @error('city')
@@ -186,6 +191,98 @@
             <div class="field-wrapper col-md-6" data-field="pan_no" data-label="Pan No" data-default-order="14">
                 <x-field name="pan_no" label="Pan No" :value="$c->pan_no ?? ''" />
             </div>
+        </div>
+    </div>
+
+    <div class="tab-pane" id="tab-addresses">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h6 class="font-weight-bold text-muted text-uppercase small mb-1"><i class="fas fa-map-marked-alt mr-1 text-primary"></i> Customer Delivery / Branch Addresses</h6>
+                <small class="text-muted">Manage multiple delivery locations (Home, Office, Shop, Warehouse). Select one as default primary address.</small>
+            </div>
+            <button type="button" id="add-address-btn" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> Add Address</button>
+        </div>
+
+        <div id="address-cards-container">
+            @php
+                $existingAddresses = ($c && $c->addresses && $c->addresses->isNotEmpty()) 
+                    ? $c->addresses 
+                    : ( ($c && !empty($c->address1)) ? collect([(object)[
+                        'id' => null,
+                        'address_type' => 'Home',
+                        'address_line' => $c->address1,
+                        'area_id' => $c->area_id,
+                        'area_name' => '',
+                        'city' => $c->city ?: 'Ahmedabad',
+                        'state' => $c->state ?: 'Gujarat',
+                        'country' => $c->country ?: 'India',
+                        'postal_code' => $c->postal_code,
+                        'landmark' => '',
+                        'is_primary' => true,
+                    ]]) : collect() );
+            @endphp
+
+            @forelse($existingAddresses as $addrIdx => $addr)
+                <div class="address-row card mb-3 border shadow-sm">
+                    <input type="hidden" name="addresses[{{ $addrIdx }}][id]" value="{{ $addr->id ?? '' }}">
+                    <input type="hidden" name="addresses[{{ $addrIdx }}][_delete]" class="address-delete-flag" value="0">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <div class="d-flex align-items-center">
+                            <span class="badge badge-info mr-2 address-idx-label">#{{ $addrIdx + 1 }}</span>
+                            <div class="custom-control custom-radio">
+                                <input type="radio" id="primary_addr_{{ $addrIdx }}" name="primary_address_radio" value="{{ $addrIdx }}" class="custom-control-input address-primary-radio" @checked(!empty($addr->is_primary))>
+                                <label class="custom-control-label font-weight-bold" for="primary_addr_{{ $addrIdx }}">Default / Primary Address</label>
+                            </div>
+                            <input type="hidden" name="addresses[{{ $addrIdx }}][is_primary]" class="address-is-primary-hidden" value="{{ !empty($addr->is_primary) ? '1' : '0' }}">
+                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-xs remove-address-row" title="Remove Address"><i class="fas fa-trash"></i> Remove</button>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold">Address Type <span class="text-danger">*</span></label>
+                                <select name="addresses[{{ $addrIdx }}][address_type]" class="form-control form-control-sm">
+                                    <option value="Home" @selected(($addr->address_type ?? 'Home') === 'Home')>Home</option>
+                                    <option value="Office" @selected(($addr->address_type ?? '') === 'Office')>Office</option>
+                                    <option value="Shop" @selected(($addr->address_type ?? '') === 'Shop')>Shop</option>
+                                    <option value="Warehouse" @selected(($addr->address_type ?? '') === 'Warehouse')>Warehouse</option>
+                                    <option value="Other" @selected(($addr->address_type ?? '') === 'Other')>Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="small font-weight-bold">Address Line / Flat / Street <span class="text-danger">*</span></label>
+                                <input type="text" name="addresses[{{ $addrIdx }}][address_line]" class="form-control form-control-sm" value="{{ $addr->address_line ?? '' }}" placeholder="Flat/Plot No, Society, Street">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold">Area</label>
+                                <select name="addresses[{{ $addrIdx }}][area_id]" class="form-control form-control-sm">
+                                    <option value="">-- Select Area --</option>
+                                    @foreach($areas as $aId => $aName)
+                                        <option value="{{ $aId }}" @selected(($addr->area_id ?? '') == $aId)>{{ $aName }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <label class="small font-weight-bold">State <span class="text-danger">*</span></label>
+                                <input type="text" name="addresses[{{ $addrIdx }}][state]" class="form-control form-control-sm" value="{{ $addr->state ?? 'Gujarat' }}" placeholder="Gujarat">
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <label class="small font-weight-bold">City <span class="text-danger">*</span></label>
+                                <input type="text" name="addresses[{{ $addrIdx }}][city]" class="form-control form-control-sm" value="{{ $addr->city ?? 'Ahmedabad' }}" placeholder="Ahmedabad">
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <label class="small font-weight-bold">Pincode</label>
+                                <input type="text" name="addresses[{{ $addrIdx }}][postal_code]" class="form-control form-control-sm" value="{{ $addr->postal_code ?? '' }}" placeholder="380001">
+                            </div>
+                            <div class="col-md-3 mt-2">
+                                <label class="small font-weight-bold">Landmark</label>
+                                <input type="text" name="addresses[{{ $addrIdx }}][landmark]" class="form-control form-control-sm" value="{{ $addr->landmark ?? '' }}" placeholder="Near SG Highway">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @empty
+            @endforelse
         </div>
     </div>
 
@@ -269,6 +366,67 @@
         </div>
     </div>
 </div>
+
+<template id="address-row-template">
+    <div class="address-row card mb-3 border shadow-sm">
+        <input type="hidden" name="addresses[__INDEX__][id]" value="">
+        <input type="hidden" name="addresses[__INDEX__][_delete]" class="address-delete-flag" value="0">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+            <div class="d-flex align-items-center">
+                <span class="badge badge-info mr-2 address-idx-label">#__DISPLAY_INDEX__</span>
+                <div class="custom-control custom-radio">
+                    <input type="radio" id="primary_addr___INDEX__" name="primary_address_radio" value="__INDEX__" class="custom-control-input address-primary-radio">
+                    <label class="custom-control-label font-weight-bold" for="primary_addr___INDEX__">Default / Primary Address</label>
+                </div>
+                <input type="hidden" name="addresses[__INDEX__][is_primary]" class="address-is-primary-hidden" value="0">
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-xs remove-address-row" title="Remove Address"><i class="fas fa-trash"></i> Remove</button>
+        </div>
+        <div class="card-body p-3">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="small font-weight-bold">Address Type <span class="text-danger">*</span></label>
+                    <select name="addresses[__INDEX__][address_type]" class="form-control form-control-sm">
+                        <option value="Home">Home</option>
+                        <option value="Office">Office</option>
+                        <option value="Shop">Shop</option>
+                        <option value="Warehouse">Warehouse</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="small font-weight-bold">Address Line / Flat / Street <span class="text-danger">*</span></label>
+                    <input type="text" name="addresses[__INDEX__][address_line]" class="form-control form-control-sm" placeholder="Flat/Plot No, Society, Street">
+                </div>
+                <div class="col-md-4">
+                    <label class="small font-weight-bold">Area</label>
+                    <select name="addresses[__INDEX__][area_id]" class="form-control form-control-sm">
+                        <option value="">-- Select Area --</option>
+                        @foreach($areas as $aId => $aName)
+                            <option value="{{ $aId }}">{{ $aName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3 mt-2">
+                    <label class="small font-weight-bold">State <span class="text-danger">*</span></label>
+                    <input type="text" name="addresses[__INDEX__][state]" class="form-control form-control-sm" value="Gujarat" placeholder="Gujarat">
+                </div>
+                <div class="col-md-3 mt-2">
+                    <label class="small font-weight-bold">City <span class="text-danger">*</span></label>
+                    <input type="text" name="addresses[__INDEX__][city]" class="form-control form-control-sm" value="Ahmedabad" placeholder="Ahmedabad">
+                </div>
+                <div class="col-md-3 mt-2">
+                    <label class="small font-weight-bold">Pincode</label>
+                    <input type="text" name="addresses[__INDEX__][postal_code]" class="form-control form-control-sm" placeholder="380001">
+                </div>
+                <div class="col-md-3 mt-2">
+                    <label class="small font-weight-bold">Landmark</label>
+                    <input type="text" name="addresses[__INDEX__][landmark]" class="form-control form-control-sm" placeholder="Near SG Highway">
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
 
 <template id="pet-row-template">
     <div class="pet-row border rounded p-3 mb-3 bg-light shadow-sm">
@@ -414,13 +572,62 @@
             }
             row.style.display = 'none';
         });
+
+        // Address Management Logic
+        let addressIndex = {{ max(1, count($existingAddresses ?? [])) }};
+
+        function updateAddressBadge() {
+            const visibleCount = $('#address-cards-container .address-row:visible').length;
+            $('#address-count-badge').text(visibleCount);
+        }
+
+        $('#add-address-btn').on('click', function () {
+            const displayIndex = $('#address-cards-container .address-row:visible').length + 1;
+            let tmpl = document.getElementById('address-row-template').innerHTML;
+            tmpl = tmpl.replaceAll('__INDEX__', addressIndex).replaceAll('__DISPLAY_INDEX__', displayIndex);
+            const $newRow = $(tmpl);
+
+            // If no address is currently marked primary, make this first one primary
+            const hasPrimary = $('#address-cards-container .address-primary-radio:checked').length > 0;
+            if (!hasPrimary) {
+                $newRow.find('.address-primary-radio').prop('checked', true);
+                $newRow.find('.address-is-primary-hidden').val('1');
+            }
+
+            $('#address-cards-container').append($newRow);
+            addressIndex++;
+            updateAddressBadge();
+        });
+
+        $('#address-cards-container').on('click', '.remove-address-row', function (e) {
+            e.preventDefault();
+            const $card = $(this).closest('.address-row');
+            $card.find('.address-delete-flag').val('1');
+            $card.find('.address-is-primary-hidden').val('0');
+            $card.hide();
+
+            // If the deleted address was primary, make the first visible one primary
+            const $visible = $('#address-cards-container .address-row:visible');
+            const hasPrimary = $visible.find('.address-primary-radio:checked').length > 0;
+            if (!hasPrimary && $visible.length > 0) {
+                $visible.first().find('.address-primary-radio').prop('checked', true);
+                $visible.first().find('.address-is-primary-hidden').val('1');
+            }
+
+            updateAddressBadge();
+        });
+
+        $('#address-cards-container').on('change', '.address-primary-radio', function () {
+            $('#address-cards-container .address-is-primary-hidden').val('0');
+            $(this).closest('.address-row').find('.address-is-primary-hidden').val('1');
+        });
     })();
 </script>
 <script src="{{ asset('js/indian-states-cities.js') }}"></script>
 <script>
     $(document).ready(function () {
         if (typeof initIndianStateCity === 'function') {
-            initIndianStateCity('#customer_state', '#customer_city', '{{ old('state', $c->state ?? '') }}', '{{ old('city', $c->city ?? '') }}');
+            initIndianStateCity('#customer_state', '#customer_city', '{{ old('state', $c->state ?? ($c && $c->exists ? '' : 'Gujarat')) }}', '{{ old('city', $c->city ?? ($c && $c->exists ? '' : 'Ahmedabad')) }}');
         }
     });
 </script>

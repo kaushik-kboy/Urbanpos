@@ -301,6 +301,20 @@
                         </div>
                     </div>
 
+                    <!-- Customer Delivery / Multiple Addresses Section -->
+                    <div id="posSelectedCustAddresses" class="mt-2 pt-2 border-top" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small font-weight-bold">
+                                <i class="fas fa-map-marker-alt mr-1 text-danger"></i> Delivery Address:
+                            </span>
+                            <span id="posCustAddressBadge" class="badge badge-light border text-dark font-weight-bold" style="font-size: 0.72rem;">Home</span>
+                        </div>
+                        <select id="posCustAddressSelect" class="form-control form-control-sm" style="font-size: 0.8rem;">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                        <div id="posCustAddressPreview" class="small text-muted mt-1 text-truncate" style="font-size: 0.75rem;"></div>
+                    </div>
+
                     <!-- Customer Pet Details (Above Invoices & Favorites) -->
                     @php
                         $defaultPetSummary = $defaultCustomer && $defaultCustomer->pets ? $defaultCustomer->pets->map(fn($p) => $p->name ? ($p->breed?->name ? "{$p->name} ({$p->breed->name})" : ($p->petType?->name ? "{$p->name} ({$p->petType->name})" : $p->name)) : ($p->breed?->name ?? ($p->petType?->name ?? 'Pet')))->filter()->implode(', ') : '';
@@ -814,7 +828,7 @@
                                     <select name="state" id="posCust_state" class="form-control form-control-sm">
                                         <option value="">-- Select State --</option>
                                         <optgroup label="⭐ Top States">
-                                            <option value="Gujarat">Gujarat</option>
+                                            <option value="Gujarat" selected>Gujarat</option>
                                             <option value="Rajasthan">Rajasthan</option>
                                             <option value="Maharashtra">Maharashtra</option>
                                         </optgroup>
@@ -831,6 +845,7 @@
                                     <label class="font-weight-600 small mb-1">City</label>
                                     <select name="city" id="posCust_city" class="form-control form-control-sm">
                                         <option value="">-- Select City --</option>
+                                        <option value="Ahmedabad" selected>Ahmedabad</option>
                                     </select>
                                 </div>
                                 <div class="field-wrapper col-md-4 mb-3" data-field="country" data-label="Country" data-default-order="5">
@@ -1775,7 +1790,7 @@
 <script>
 $(document).ready(function () {
     if (typeof initIndianStateCity === 'function') {
-        initIndianStateCity('#posCust_state', '#posCust_city', '', '');
+        initIndianStateCity('#posCust_state', '#posCust_city', 'Gujarat', 'Ahmedabad');
     }
 });
 </script>

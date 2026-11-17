@@ -83,6 +83,7 @@ class CustomerController extends Controller
         }
         $customer = Customer::create($data);
         $this->syncPets($request, $customer);
+        $this->syncAddresses($request, $customer);
         if ($request->has('custom_fields')) {
             $customer->syncCustomFields($request->input('custom_fields', []));
         }
@@ -107,13 +108,14 @@ class CustomerController extends Controller
 
     public function show(Request $request, Customer $customer)
     {
-        $customer->load('pets');
+        $customer->load(['pets', 'addresses.area']);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'customer' => $customer,
                 'pets' => $customer->pets,
+                'addresses' => $customer->addresses,
             ]);
         }
 
@@ -123,13 +125,14 @@ class CustomerController extends Controller
 
     public function edit(Request $request, Customer $customer)
     {
-        $customer->load('pets');
+        $customer->load(['pets', 'addresses.area']);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'customer' => $customer,
                 'pets' => $customer->pets,
+                'addresses' => $customer->addresses,
             ]);
         }
 
@@ -159,6 +162,7 @@ class CustomerController extends Controller
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);
+        $this->syncAddresses($request, $customer);
         if ($request->has('custom_fields')) {
             $customer->syncCustomFields($request->input('custom_fields', []));
         }
@@ -245,6 +249,97 @@ class CustomerController extends Controller
             } else {
                 $customer->pets()->create($attributes);
             }
+        }
+    }
+
+    private function syncAddresses(Request $request, Customer $customer): void
+    {
+        $addresses = $request->input('addresses', []);
+        if (! is_array($addresses)) {
+            $addresses = [];
+        }
+
+        $existingIds = [];
+        $hasPrimary = false;
+
+        foreach ($addresses as $index => $addr) {
+            if (! empty($addr['_delete'])) {
+                if (! empty($addr['id'])) {
+                    $customer->addresses()->where('id', $addr['id'])->delete();
+                }
+                continue;
+            }
+
+            $addrLine = trim($addr['address_line'] ?? '');
+            $areaId = !empty($addr['area_id']) ? $addr['area_id'] : null;
+            $areaName = trim($addr['area_name'] ?? '');
+
+            if ($addrLine === '' && empty($areaId) && $areaName === '') {
+                continue;
+            }
+
+            $isPrimary = !empty($addr['is_primary']) && ((string)$addr['is_primary'] === '1' || (string)$addr['is_primary'] === 'true');
+            if ($isPrimary) {
+                $hasPrimary = true;
+            }
+
+            $attributes = [
+                'address_type' => $addr['address_type'] ?? 'Home',
+                'address_line' => $addrLine,
+                'area_id' => $areaId,
+                'area_name' => $areaName,
+                'city' => trim($addr['city'] ?? '') ?: 'Ahmedabad',
+                'state' => trim($addr['state'] ?? '') ?: 'Gujarat',
+                'country' => trim($addr['country'] ?? '') ?: 'India',
+                'postal_code' => trim($addr['postal_code'] ?? '') ?: null,
+                'landmark' => trim($addr['landmark'] ?? '') ?: null,
+                'is_primary' => $isPrimary,
+            ];
+
+            if (! empty($addr['id'])) {
+                $customer->addresses()->where('id', $addr['id'])->update($attributes);
+                $existingIds[] = $addr['id'];
+            } else {
+                $created = $customer->addresses()->create($attributes);
+                $existingIds[] = $created->id;
+            }
+        }
+
+        if (! empty($addresses)) {
+            $customer->addresses()->whereNotIn('id', $existingIds)->delete();
+        }
+
+        // Guarantee at least one address is marked primary if any exist
+        if (! $hasPrimary && count($existingIds) > 0) {
+            $customer->addresses()->where('id', $existingIds[0])->update(['is_primary' => true]);
+        }
+
+        // Legacy fallback: if no addresses array provided, but address1 exists, create initial address
+        if (empty($addresses) && ! empty($customer->address1)) {
+            if ($customer->addresses()->count() === 0) {
+                $customer->addresses()->create([
+                    'address_type' => 'Home',
+                    'address_line' => $customer->address1,
+                    'area_id' => $customer->area_id,
+                    'city' => $customer->city ?: 'Ahmedabad',
+                    'state' => $customer->state ?: 'Gujarat',
+                    'country' => $customer->country ?: 'India',
+                    'postal_code' => $customer->postal_code,
+                    'is_primary' => true,
+                ]);
+            }
+        }
+
+        // Mirror primary address to customers table columns for backwards compatibility
+        $primary = $customer->addresses()->where('is_primary', true)->first();
+        if ($primary) {
+            $customer->updateQuietly([
+                'address1' => $primary->address_line,
+                'area_id' => $primary->area_id,
+                'city' => $primary->city,
+                'state' => $primary->state,
+                'postal_code' => $primary->postal_code,
+            ]);
         }
     }
 

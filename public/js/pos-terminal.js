@@ -2444,6 +2444,10 @@
         $('#posActiveTaggedPetName').text('None');
         $('#posCustPetChips').empty();
         $('#posPetSelectDropdown').empty();
+        state.customer_address_id = null;
+        $('#posSelectedCustAddresses').hide();
+        $('#posCustAddressSelect').empty();
+        $('#posCustAddressPreview').empty();
         $('#posLoyaltyContainer').hide();
         $('#posCustomerInvoicesTable tbody').empty();
 
@@ -2927,7 +2931,11 @@
                             is_pending: data.is_pending,
                             edit_url: data.edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                             pets: data.pets || [],
-                            pets_summary: data.pets_summary || ''
+                            pets_summary: data.pets_summary || '',
+                            addresses: data.addresses || [],
+                            address1: data.address1 || data.address || '',
+                            city: data.city || '',
+                            state: data.state || ''
                         };
                         state.customer = custPayload;
                         updateSelectedCustomerUI(custPayload);
@@ -2984,6 +2992,26 @@
             e.preventDefault();
             if (!state.customer_id) return;
             openCustomerEditModal(state.customer_id);
+        });
+
+        // Customer Delivery / Address Selector change handler
+        $('#posCustAddressSelect').on('change', function () {
+            const addrId = $(this).val();
+            state.customer_address_id = addrId ? parseInt(addrId, 10) : null;
+            const $opt = $(this).find('option:selected');
+            const type = $opt.data('type') || 'Home';
+            const formatted = $opt.data('formatted') || '';
+            const addrState = ($opt.data('state') || '').toString().trim();
+
+            $('#posCustAddressBadge').text(type);
+            $('#posCustAddressPreview').html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(formatted)}`);
+
+            // If address state is outside Gujarat, update purchase_type to Interstate
+            if (addrState && addrState.toLowerCase() !== 'gujarat') {
+                setPurchaseType('Interstate');
+            } else if (state.customer && (state.customer.sales_type === 'Local' || state.customer.purchase_type === 'Local')) {
+                setPurchaseType('Local');
+            }
         });
 
         // Change customer button -> opens search and immediately focuses input cursor
@@ -3273,6 +3301,50 @@
             $('#posPetSelectDropdown').empty();
         }
 
+        // Update Customer Delivery / Multiple Addresses Selector
+        const addresses = customer.addresses || [];
+        const $addrBox = $('#posSelectedCustAddresses');
+        const $addrSelect = $('#posCustAddressSelect');
+        const $addrPreview = $('#posCustAddressPreview');
+        const $addrBadge = $('#posCustAddressBadge');
+
+        if ($addrBox.length) {
+            if (addresses.length > 0) {
+                $addrBox.show();
+                $addrSelect.show();
+                let addrOptsHtml = '';
+                addresses.forEach(function (a) {
+                    const isPrim = Boolean(a.is_primary);
+                    const typeLabel = a.type || 'Home';
+                    const areaPart = a.area ? ` - ${a.area}` : '';
+                    const defaultTag = isPrim ? ' (Default)' : '';
+                    addrOptsHtml += `<option value="${a.id}" data-type="${escapeHtml(typeLabel)}" data-formatted="${escapeHtml(a.formatted || a.line || '')}" data-state="${escapeHtml(a.state || 'Gujarat')}" ${isPrim ? 'selected' : ''}>
+                        [${escapeHtml(typeLabel)}] ${escapeHtml(a.line || a.area || 'Address')}${escapeHtml(areaPart)}${defaultTag}
+                    </option>`;
+                });
+                $addrSelect.html(addrOptsHtml);
+
+                const activeAddr = addresses.find(a => a.is_primary) || addresses[0];
+                state.customer_address_id = activeAddr ? activeAddr.id : null;
+                if (activeAddr) {
+                    $addrBadge.text(activeAddr.type || 'Home');
+                    $addrPreview.html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(activeAddr.formatted || activeAddr.line || '')}`);
+                }
+            } else if (customer.address1 || customer.address) {
+                $addrBox.show();
+                $addrSelect.hide();
+                state.customer_address_id = null;
+                const singleAddr = customer.formatted_address || [customer.address1, customer.city || 'Ahmedabad', customer.state || 'Gujarat'].filter(Boolean).join(', ');
+                $addrBadge.text('Home');
+                $addrPreview.html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(singleAddr)}`);
+            } else {
+                state.customer_address_id = null;
+                $addrBox.hide();
+                $addrSelect.empty();
+                $addrPreview.empty();
+            }
+        }
+
         // Load Customer Favorites
         if (customer.id) {
             loadCustomerFavorites(customer.id);
@@ -3511,7 +3583,11 @@
                     is_pending: data.is_pending,
                     edit_url: data.customer_edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                     pets: data.pets || [],
-                    pets_summary: data.pets_summary || ''
+                    pets_summary: data.pets_summary || '',
+                    addresses: data.addresses || [],
+                    address1: data.address1 || '',
+                    city: data.city || '',
+                    state: data.state || ''
                 });
                 currentCustomerInvoices = data.invoices || [];
                 filteredCustomerInvoices = [...currentCustomerInvoices];
@@ -4288,6 +4364,7 @@
                 ? (new Date(window.EDIT_BILL.bill_date).toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }))
                 : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
             customer_id: (state.edit_id && window.EDIT_BILL && window.EDIT_BILL.customer_id) ? window.EDIT_BILL.customer_id : state.customer_id,
+            customer_address_id: state.customer_address_id || null,
             customer_pet_id: state.customer_pet_id || null,
             branch_id: state.branch_id,
             user_id: document.getElementById('posBillerSelect')?.value || null,

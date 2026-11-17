@@ -890,7 +890,7 @@ class SalesBillController extends Controller
                 ];
             });
 
-        $customer->load(['pets.petType', 'pets.breed']);
+        $customer->load(['pets.petType', 'pets.breed', 'addresses.area', 'area']);
         $pets = $customer->pets->map(function ($p) {
             $breedName = $p->breed?->name ?? '';
             $typeName = $p->petType?->name ?? '';
@@ -975,6 +975,20 @@ class SalesBillController extends Controller
             'customer_edit_url' => url("master/customers/{$customer->id}/edit"),
             'pets' => $pets,
             'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
+            'addresses' => $customer->addresses->map(fn($a) => [
+                'id' => $a->id,
+                'type' => $a->address_type ?: 'Home',
+                'line' => $a->address_line ?? '',
+                'area' => $a->area_name ?: ($a->area?->name ?? ''),
+                'city' => $a->city ?: 'Ahmedabad',
+                'state' => $a->state ?: 'Gujarat',
+                'postal_code' => $a->postal_code ?? '',
+                'is_primary' => (bool) $a->is_primary,
+                'formatted' => $a->formatted_address,
+            ]),
+            'address1' => $customer->address1 ?? '',
+            'city' => $customer->city ?? '',
+            'state' => $customer->state ?? '',
             'total_invoices' => count($bills),
             'invoices' => $bills,
         ]);
@@ -1876,7 +1890,7 @@ class SalesBillController extends Controller
         $q = trim((string) $request->input('q', ''));
         if ($q === '') {
             $customerModels = Customer::where('status', true)
-                ->with(['pets.petType', 'pets.breed'])
+                ->with(['pets.petType', 'pets.breed', 'addresses.area', 'area'])
                 ->orderBy('name')
                 ->limit(30)
                 ->get();
@@ -1918,6 +1932,17 @@ class SalesBillController extends Controller
                     'outstanding' => $bal,
                     'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                     'pets' => $pets,
+                    'addresses' => $c->addresses->map(fn($a) => [
+                        'id' => $a->id,
+                        'type' => $a->address_type ?: 'Home',
+                        'line' => $a->address_line ?? '',
+                        'area' => $a->area_name ?: ($a->area?->name ?? ''),
+                        'city' => $a->city ?: 'Ahmedabad',
+                        'state' => $a->state ?: 'Gujarat',
+                        'postal_code' => $a->postal_code ?? '',
+                        'is_primary' => (bool) $a->is_primary,
+                        'formatted' => $a->formatted_address,
+                    ]),
                 ];
             });
 
@@ -1926,7 +1951,7 @@ class SalesBillController extends Controller
 
         $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q))->exists();
         $customerModels = Customer::where('status', true)
-            ->with(['pets.petType', 'pets.breed'])
+            ->with(['pets.petType', 'pets.breed', 'addresses.area', 'area'])
             ->when($exactHit, function ($query) use ($q) {
                 // Exact mobile / phone: index lookup, strictly no customer_code matching.
                 $query->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q));
@@ -1978,6 +2003,17 @@ class SalesBillController extends Controller
                 'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                 'pets' => $pets,
                 'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
+                'addresses' => $c->addresses->map(fn($a) => [
+                    'id' => $a->id,
+                    'type' => $a->address_type ?: 'Home',
+                    'line' => $a->address_line ?? '',
+                    'area' => $a->area_name ?: ($a->area?->name ?? ''),
+                    'city' => $a->city ?: 'Ahmedabad',
+                    'state' => $a->state ?: 'Gujarat',
+                    'postal_code' => $a->postal_code ?? '',
+                    'is_primary' => (bool) $a->is_primary,
+                    'formatted' => $a->formatted_address,
+                ]),
             ];
         });
 
@@ -1988,6 +2024,9 @@ class SalesBillController extends Controller
     {
         $defaults = [
             'payment_mode' => 'Cash Only',
+            'state' => 'Gujarat',
+            'city' => 'Ahmedabad',
+            'country' => 'India',
             'credit_limit' => 0,
             'credit_balance' => 0,
             'monthly_credit_balance' => 0,
@@ -2269,6 +2308,7 @@ class SalesBillController extends Controller
             'bill_number' => ['nullable', 'string', 'max:100'],
             'bill_date' => ['required', 'date', 'after_or_equal:2020-01-01 00:00:00', "before_or_equal:{$now}"],
             'customer_id' => ['required', 'exists:customers,id'],
+            'customer_address_id' => ['nullable', 'exists:customer_addresses,id'],
             'customer_pet_id' => ['nullable', 'exists:customer_pets,id'],
             'branch_id' => ['required', 'exists:branches,id'],
             'user_id' => ['nullable', 'exists:users,id'],

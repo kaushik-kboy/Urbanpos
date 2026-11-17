@@ -199,18 +199,18 @@ class CustomerOutstandingAndStockStatementTest extends TestCase
         $cells = $row['cells'];
 
         // Cells:
-        // 0: Code, 1: Description, 2: Brand, 3: Branch, 4: Opening, 5: Inward, 6: Outward, 7: Closing, 8: Unit Cost, 9: Valuation
-        $inwardCell = $cells[5];
-        $outwardCell = $cells[6];
-        $openingCell = $cells[4];
-        $closingCell = $cells[7];
+        // 0: Code, 1: Description, 2: Brand, 3: Supplier, 4: Branch, 5: Opening, 6: Inward, 7: Outward, 8: Closing, 9: Unit Cost, 10: Valuation
+        $openingCell = $cells[5];
+        $inwardCell = $cells[6];
+        $outwardCell = $cells[7];
+        $closingCell = $cells[8];
 
         $this->assertStringContainsString('+80', $inwardCell);
-        $this->assertStringContainsString('Purch: 50', $inwardCell);
+        $this->assertStringContainsString('Pur: 50', $inwardCell);
         $this->assertStringContainsString('Trf-In: 30', $inwardCell);
 
         $this->assertStringContainsString('-60', $outwardCell);
-        $this->assertStringContainsString('Sales: 40', $outwardCell);
+        $this->assertStringContainsString('Sale: 40', $outwardCell);
         $this->assertStringContainsString('Trf-Out: 20', $outwardCell);
 
         $this->assertStringContainsString('130', $openingCell);
