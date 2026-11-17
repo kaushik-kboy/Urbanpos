@@ -80,7 +80,7 @@
                 @if ($hasBrandFilter ?? false)
                     <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">Brand</label>
-                        <select name="brand_id" class="form-control form-control-sm">
+                        <select name="brand_id" id="filter_brand_id" class="form-control form-control-sm select2" data-placeholder="All Brands">
                             <option value="">All Brands</option>
                             @if (isset($brands))
                                 @foreach ($brands as $bId => $bName)
@@ -94,7 +94,7 @@
                 @if ($hasSupplierFilter ?? false)
                     <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
                         <label class="small font-weight-bold text-muted mb-1">Supplier</label>
-                        <select name="supplier_id" class="form-control form-control-sm">
+                        <select name="supplier_id" id="filter_supplier_id" class="form-control form-control-sm select2" data-placeholder="All Suppliers">
                             <option value="">All Suppliers</option>
                             @if (isset($suppliers))
                                 @foreach ($suppliers as $sId => $sName)
@@ -263,6 +263,42 @@
                             </tr>
                         @endif
                     </tbody>
+                    @if (isset($footer_totals) && isset($rows) && count($rows) > 0)
+                        <tfoot class="bg-light font-weight-bold border-top">
+                            {{-- Page Total --}}
+                            <tr class="table-secondary">
+                                <td colspan="8" class="text-right text-dark font-weight-bold">
+                                    <i class="fas fa-file-alt text-secondary mr-1"></i> Page Total:
+                                </td>
+                                <td class="text-right text-dark">{{ number_format($footer_totals['page']['sys_qty']) }}</td>
+                                <td class="text-right text-primary">{{ number_format($footer_totals['page']['phys_qty']) }}</td>
+                                <td class="text-right {{ $footer_totals['page']['delta_qty'] < 0 ? 'text-danger' : ($footer_totals['page']['delta_qty'] > 0 ? 'text-success' : 'text-muted') }}">
+                                    {{ ($footer_totals['page']['delta_qty'] > 0 ? '+' : '') . number_format($footer_totals['page']['delta_qty']) }}
+                                </td>
+                                <td class="text-right text-dark">₹ {{ number_format($footer_totals['page']['inventory_cost'], 2) }}</td>
+                                <td class="text-right {{ $footer_totals['page']['variance_val'] < 0 ? 'text-danger' : ($footer_totals['page']['variance_val'] > 0 ? 'text-success' : 'text-muted') }}">
+                                    {{ ($footer_totals['page']['variance_val'] > 0 ? '+' : '') . '₹ ' . number_format($footer_totals['page']['variance_val'], 2) }}
+                                </td>
+                                <td colspan="2"></td>
+                            </tr>
+                            {{-- Filtered Grand Total --}}
+                            <tr class="bg-white border-top">
+                                <td colspan="8" class="text-right text-dark font-weight-bold" style="font-size: 0.95rem;">
+                                    <i class="fas fa-calculator text-primary mr-1"></i> Filtered Period Grand Total:
+                                </td>
+                                <td class="text-right text-dark font-weight-bold" style="font-size: 0.95rem;">{{ number_format($footer_totals['grand']['sys_qty']) }}</td>
+                                <td class="text-right text-primary font-weight-bold" style="font-size: 0.95rem;">{{ number_format($footer_totals['grand']['phys_qty']) }}</td>
+                                <td class="text-right font-weight-bold {{ $footer_totals['grand']['delta_qty'] < 0 ? 'text-danger' : ($footer_totals['grand']['delta_qty'] > 0 ? 'text-success' : 'text-muted') }}" style="font-size: 0.95rem;">
+                                    {{ ($footer_totals['grand']['delta_qty'] > 0 ? '+' : '') . number_format($footer_totals['grand']['delta_qty']) }}
+                                </td>
+                                <td class="text-right text-dark font-weight-bold" style="font-size: 0.95rem;">₹ {{ number_format($footer_totals['grand']['inventory_cost'], 2) }}</td>
+                                <td class="text-right font-weight-bold {{ $footer_totals['grand']['variance_val'] < 0 ? 'text-danger' : ($footer_totals['grand']['variance_val'] > 0 ? 'text-success' : 'text-muted') }}" style="font-size: 0.95rem;">
+                                    {{ ($footer_totals['grand']['variance_val'] > 0 ? '+' : '') . '₹ ' . number_format($footer_totals['grand']['variance_val'], 2) }}
+                                </td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    @endif
                 </table>
             </div>
         </div>
@@ -299,10 +335,22 @@
                 </div>
                 <div class="modal-body p-0">
                     <div class="p-3 bg-light border-bottom d-flex flex-wrap justify-content-between align-items-center">
-                        <div class="small">
+                        <div class="small mb-2 mb-md-0">
                             <strong>Period:</strong> <span id="ssModalPeriod" class="badge badge-light border px-2 py-1 mr-2">-</span>
                             <strong>Item Code:</strong> <code id="ssModalItemCode" class="mr-2">-</code>
                             <strong>Brand:</strong> <span id="ssModalBrand" class="text-muted mr-2">-</span>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center mb-2 mb-md-0">
+                            <label class="small font-weight-bold text-muted mb-0 mr-2"><i class="fas fa-filter text-primary mr-1"></i> Trans Type:</label>
+                            <select id="ssModalTransTypeFilter" class="form-control form-control-sm font-weight-bold mr-2" style="width: 210px;">
+                                <option value="all">All Transaction Types</option>
+                            </select>
+                            <div class="input-group input-group-sm" style="width: 170px;">
+                                <input type="text" id="ssModalSearchInput" class="form-control" placeholder="Search bill, party...">
+                                <div class="input-group-append">
+                                    <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                                </div>
+                            </div>
                         </div>
                         <div class="font-weight-bold" id="ssModalNetBadge">
                             Total Net Flow: <span class="badge badge-primary px-2 py-1" id="ssModalNetQty">0</span>
@@ -349,6 +397,133 @@
 @section('js')
     <script>
     $(function() {
+        // Task 1: Brand ⇄ Supplier dynamic bidirectional Select2 linking
+        var brandSupplierMap = @json($brandSupplierMap ?? []);
+        var supplierBrandMap = @json($supplierBrandMap ?? []);
+
+        var $brandSelect = $('#filter_brand_id');
+        var $supplierSelect = $('#filter_supplier_id');
+
+        if ($brandSelect.length && $supplierSelect.length && (Object.keys(brandSupplierMap).length > 0 || Object.keys(supplierBrandMap).length > 0)) {
+            // Cache all master options from initial DOM
+            var allBrands = [];
+            $brandSelect.find('option').each(function() {
+                var val = $(this).val();
+                if (val !== '') {
+                    allBrands.push({ id: String(val), text: $(this).text() });
+                }
+            });
+
+            var allSuppliers = [];
+            $supplierSelect.find('option').each(function() {
+                var val = $(this).val();
+                if (val !== '') {
+                    allSuppliers.push({ id: String(val), text: $(this).text() });
+                }
+            });
+
+            function updateSupplierDropdown(selectedBrandId, keepCurrent) {
+                var currentSupplier = keepCurrent ? String($supplierSelect.val() || '') : '';
+                var targetSuppliers = allSuppliers;
+
+                if (selectedBrandId && brandSupplierMap[selectedBrandId]) {
+                    var allowedSet = new Set(brandSupplierMap[selectedBrandId].map(String));
+                    targetSuppliers = allSuppliers.filter(function(s) {
+                        return allowedSet.has(s.id);
+                    });
+                }
+
+                $supplierSelect.empty();
+                $supplierSelect.append(new Option('All Suppliers', '', true, currentSupplier === ''));
+
+                var hasMatch = false;
+                targetSuppliers.forEach(function(s) {
+                    var isSelected = (currentSupplier === s.id);
+                    if (isSelected) hasMatch = true;
+                    $supplierSelect.append(new Option(s.text, s.id, isSelected, isSelected));
+                });
+
+                if (!hasMatch && currentSupplier !== '') {
+                    $supplierSelect.val('');
+                }
+                $supplierSelect.trigger('change.select2');
+            }
+
+            function updateBrandDropdown(selectedSupplierId, keepCurrent) {
+                var currentBrand = keepCurrent ? String($brandSelect.val() || '') : '';
+                var targetBrands = allBrands;
+
+                if (selectedSupplierId && supplierBrandMap[selectedSupplierId]) {
+                    var allowedSet = new Set(supplierBrandMap[selectedSupplierId].map(String));
+                    targetBrands = allBrands.filter(function(b) {
+                        return allowedSet.has(b.id);
+                    });
+                }
+
+                $brandSelect.empty();
+                $brandSelect.append(new Option('All Brands', '', true, currentBrand === ''));
+
+                var hasMatch = false;
+                targetBrands.forEach(function(b) {
+                    var isSelected = (currentBrand === b.id);
+                    if (isSelected) hasMatch = true;
+                    $brandSelect.append(new Option(b.text, b.id, isSelected, isSelected));
+                });
+
+                if (!hasMatch && currentBrand !== '') {
+                    $brandSelect.val('');
+                }
+                $brandSelect.trigger('change.select2');
+            }
+
+            var isUpdating = false;
+
+            $brandSelect.on('change', function(e) {
+                if (isUpdating) return;
+                isUpdating = true;
+                var bId = String($(this).val() || '');
+                if (bId) {
+                    updateSupplierDropdown(bId, true);
+                } else {
+                    var sId = String($supplierSelect.val() || '');
+                    if (sId) {
+                        updateBrandDropdown(sId, true);
+                    } else {
+                        updateSupplierDropdown('', true);
+                        updateBrandDropdown('', true);
+                    }
+                }
+                isUpdating = false;
+            });
+
+            $supplierSelect.on('change', function(e) {
+                if (isUpdating) return;
+                isUpdating = true;
+                var sId = String($(this).val() || '');
+                if (sId) {
+                    updateBrandDropdown(sId, true);
+                } else {
+                    var bId = String($brandSelect.val() || '');
+                    if (bId) {
+                        updateSupplierDropdown(bId, true);
+                    } else {
+                        updateSupplierDropdown('', true);
+                        updateBrandDropdown('', true);
+                    }
+                }
+                isUpdating = false;
+            });
+
+            // Initialize state on page load based on current selections
+            var initBrand = String($brandSelect.val() || '');
+            var initSupplier = String($supplierSelect.val() || '');
+            if (initBrand && !initSupplier) {
+                updateSupplierDropdown(initBrand, true);
+            } else if (initSupplier && !initBrand) {
+                updateBrandDropdown(initSupplier, true);
+            }
+        }
+
         // Toggle custom days input when risk status is 'custom'
         $('#risk_status_select').on('change', function() {
             if ($(this).val() === 'custom') {
@@ -356,6 +531,71 @@
             } else {
                 $('#custom_days_wrapper').addClass('d-none');
             }
+        });
+
+        var currentStockRecords = [];
+
+        function renderStockDrilldownRows(filterType, searchText) {
+            filterType = filterType || 'all';
+            searchText = (searchText || '').toLowerCase().trim();
+
+            var filtered = currentStockRecords.filter(function(r) {
+                var matchType = true;
+                if (filterType === 'inward_all') {
+                    matchType = (r.qty > 0);
+                } else if (filterType === 'outward_all') {
+                    matchType = (r.qty < 0);
+                } else if (filterType !== 'all') {
+                    matchType = (r.trans_type === filterType);
+                }
+
+                var matchSearch = true;
+                if (searchText) {
+                    var docNo = (r.doc_no || '').toLowerCase();
+                    var party = (r.party || '').toLowerCase();
+                    var branch = (r.branch || '').toLowerCase();
+                    var transType = (r.trans_type || '').toLowerCase();
+                    matchSearch = docNo.includes(searchText) || party.includes(searchText) || branch.includes(searchText) || transType.includes(searchText);
+                }
+
+                return matchType && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-info-circle mr-1"></i> No transactions found matching selected filter.</td></tr>');
+                $('#ssTfootTotalQty').text('0');
+                $('#ssModalNetQty').text('0');
+                return;
+            }
+
+            var html = '';
+            var totalQty = 0;
+            filtered.forEach(function(r, idx) {
+                totalQty += parseFloat(r.qty) || 0;
+                html += '<tr>' +
+                    '<td class="text-center text-muted font-weight-bold">' + (idx + 1) + '</td>' +
+                    '<td>' + (r.date || '-') + '</td>' +
+                    '<td><strong class="text-dark">' + (r.doc_no || '-') + '</strong></td>' +
+                    '<td><span class="badge badge-light border">' + (r.trans_type || '-') + '</span></td>' +
+                    '<td class="text-right ' + (r.class || '') + '">' + (r.qty_formatted || r.qty) + '</td>' +
+                    '<td>' + (r.party || '-') + '</td>' +
+                    '<td><small class="text-muted">' + (r.branch || '-') + '</small></td>' +
+                    '</tr>';
+            });
+
+            $('#ssDrilldownTbody').html(html);
+            var netFormatted = (totalQty > 0 ? '+' : '') + totalQty.toLocaleString();
+            $('#ssTfootTotalQty').text(netFormatted);
+            $('#ssModalNetQty').text(netFormatted);
+            $('#ssDrilldownTfoot').show();
+        }
+
+        $(document).on('change', '#ssModalTransTypeFilter', function() {
+            renderStockDrilldownRows($(this).val(), $('#ssModalSearchInput').val());
+        });
+
+        $(document).on('input', '#ssModalSearchInput', function() {
+            renderStockDrilldownRows($('#ssModalTransTypeFilter').val(), $(this).val());
         });
 
         // Task 4: Stock Statement Quantity Drilldown Click
@@ -398,30 +638,35 @@
                     $('#ssModalFlowTitle').text(resp.flow_title || flow.toUpperCase());
                     $('#ssModalNetQty').text(resp.net_qty > 0 ? ('+' + resp.net_qty) : resp.net_qty);
 
-                    var rows = resp.records || [];
-                    if (rows.length === 0) {
-                        $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-info-circle mr-1"></i> No transactions found for this item in the selected period.</td></tr>');
-                        return;
-                    }
+                    currentStockRecords = resp.records || [];
 
-                    var html = '';
-                    var totalQty = 0;
-                    rows.forEach(function(r, idx) {
-                        totalQty += parseFloat(r.qty) || 0;
-                        html += '<tr>' +
-                            '<td class="text-center text-muted font-weight-bold">' + (idx + 1) + '</td>' +
-                            '<td>' + (r.date || '-') + '</td>' +
-                            '<td><strong class="text-dark">' + (r.doc_no || '-') + '</strong></td>' +
-                            '<td><span class="badge badge-light border">' + (r.trans_type || '-') + '</span></td>' +
-                            '<td class="text-right ' + (r.class || '') + '">' + (r.qty_formatted || r.qty) + '</td>' +
-                            '<td>' + (r.party || '-') + '</td>' +
-                            '<td><small class="text-muted">' + (r.branch || '-') + '</small></td>' +
-                            '</tr>';
+                    // Populate Transaction Type filter dropdown dynamically
+                    var $filter = $('#ssModalTransTypeFilter');
+                    $filter.empty();
+                    $filter.append(new Option('All Transaction Types (' + currentStockRecords.length + ')', 'all', true, true));
+
+                    var typeCounts = {};
+                    var inwardCount = 0;
+                    var outwardCount = 0;
+
+                    currentStockRecords.forEach(function(r) {
+                        var t = r.trans_type || 'Other';
+                        typeCounts[t] = (typeCounts[t] || 0) + 1;
+                        if (r.qty > 0) inwardCount++;
+                        if (r.qty < 0) outwardCount++;
                     });
 
-                    $('#ssDrilldownTbody').html(html);
-                    $('#ssTfootTotalQty').text((totalQty > 0 ? '+' : '') + totalQty.toLocaleString());
-                    $('#ssDrilldownTfoot').show();
+                    if (inwardCount > 0 && outwardCount > 0) {
+                        $filter.append(new Option('🟢 All Inward (+) (' + inwardCount + ')', 'inward_all'));
+                        $filter.append(new Option('🔴 All Outward (-) (' + outwardCount + ')', 'outward_all'));
+                    }
+
+                    Object.keys(typeCounts).sort().forEach(function(t) {
+                        $filter.append(new Option(t + ' (' + typeCounts[t] + ')', t));
+                    });
+
+                    $('#ssModalSearchInput').val('');
+                    renderStockDrilldownRows('all', '');
                 },
                 error: function(xhr) {
                     $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-danger">Server communication error. Please try again.</td></tr>');
@@ -434,6 +679,20 @@
 
 @section('css')
     <style>
+        .select2-container .select2-selection--single {
+            height: 31px !important;
+            border: 1px solid #ced4da !important;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered,
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 29px !important;
+            font-size: 0.875rem !important;
+            padding-left: 8px !important;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow,
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 29px !important;
+        }
         .card-header::after {
             display: none !important;
         }

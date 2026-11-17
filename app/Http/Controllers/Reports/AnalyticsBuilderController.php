@@ -1051,6 +1051,7 @@ class AnalyticsBuilderController extends Controller
             $invoices = $query->selectRaw('
                 purchase_invoices.id as invoice_id,
                 purchase_invoices.invoice_number,
+                purchase_invoices.supplier_inv_no,
                 purchase_invoices.invoice_date,
                 COALESCE(branches.name, "Main") as branch_name,
                 purchase_invoice_items.qty,
@@ -1069,6 +1070,8 @@ class AnalyticsBuilderController extends Controller
                 $inv->formatted_cost = '₹ '.number_format($inv->cost_price, 2);
                 $inv->formatted_amount = '₹ '.number_format($inv->net_amount, 2);
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
+                $inv->supplier_inv_no = (string) ($inv->supplier_inv_no ?? '');
+                $inv->display_invoice_no = !empty(trim($inv->supplier_inv_no)) ? $inv->supplier_inv_no : $inv->invoice_number;
                 $totalQty += (float) $inv->qty;
                 $totalAmount += (float) $inv->net_amount;
             }
@@ -1354,6 +1357,7 @@ class AnalyticsBuilderController extends Controller
             $invoices = $query->selectRaw('
                 purchase_invoices.id as invoice_id,
                 purchase_invoices.invoice_number,
+                purchase_invoices.supplier_inv_no,
                 purchase_invoices.invoice_date,
                 COALESCE(branches.name, "Main") as branch_name,
                 purchase_invoices.total_qty,
@@ -1370,6 +1374,8 @@ class AnalyticsBuilderController extends Controller
                 $inv->formatted_date = Carbon::parse($inv->invoice_date)->format('d-m-Y');
                 $inv->formatted_amount = '₹ '.number_format($inv->total, 2);
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
+                $inv->supplier_inv_no = (string) ($inv->supplier_inv_no ?? '');
+                $inv->display_invoice_no = !empty(trim($inv->supplier_inv_no)) ? $inv->supplier_inv_no : $inv->invoice_number;
                 $totalQty += (float) $inv->total_qty;
                 $totalAmount += (float) $inv->total;
             }
@@ -1498,11 +1504,12 @@ class AnalyticsBuilderController extends Controller
         $rows = [];
 
         if ($groupBy === 'item_supplier') {
-            $headings = ['#', 'Purchase Invoice No', 'Invoice Date', 'Branch', 'Inward Qty', 'Cost Price (₹)', 'Net Value (₹)'];
+            $headings = ['#', 'Supplier Inv No', 'Invoice Date', 'Branch', 'Inward Qty', 'Cost Price (₹)', 'Net Value (₹)'];
             foreach ($records as $idx => $r) {
+                $invNo = !empty($r['supplier_inv_no']) ? $r['supplier_inv_no'] : ($r['display_invoice_no'] ?? $r['invoice_number'] ?? '');
                 $rows[] = [
                     $idx + 1,
-                    (string) ($r['invoice_number'] ?? ''),
+                    (string) $invNo,
                     (string) ($r['formatted_date'] ?? ''),
                     (string) ($r['branch_name'] ?? ''),
                     number_format((float) ($r['qty'] ?? 0), 2, '.', ''),
@@ -1524,11 +1531,12 @@ class AnalyticsBuilderController extends Controller
                 ];
             }
         } elseif ($groupBy === 'supplier') {
-            $headings = ['#', 'Invoice Number', 'Invoice Date', 'Branch', 'Total Qty', 'Status', 'Invoice Total (₹)'];
+            $headings = ['#', 'Supplier Inv No', 'Invoice Date', 'Branch', 'Total Qty', 'Status', 'Invoice Total (₹)'];
             foreach ($records as $idx => $r) {
+                $invNo = !empty($r['supplier_inv_no']) ? $r['supplier_inv_no'] : ($r['display_invoice_no'] ?? $r['invoice_number'] ?? '');
                 $rows[] = [
                     $idx + 1,
-                    (string) ($r['invoice_number'] ?? ''),
+                    (string) $invNo,
                     (string) ($r['formatted_date'] ?? ''),
                     (string) ($r['branch_name'] ?? ''),
                     (string) ($r['total_qty'] ?? ''),

@@ -1597,6 +1597,8 @@ class DynamicReportService
                     'hasRiskStatusFilter' => true,
                     'brands' => Brand::orderBy('name')->pluck('name', 'id'),
                     'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
+                    'brandSupplierMap' => $this->getBrandSupplierMaps()[0],
+                    'supplierBrandMap' => $this->getBrandSupplierMaps()[1],
                     'riskStatus' => $riskStatus,
                     'minDays' => $minDays,
                     'maxDays' => $maxDays,
@@ -1793,8 +1795,71 @@ class DynamicReportService
 
                 $paginator = $query->paginate($this->perPage)->withQueryString();
 
+                $pageSysQty = 0;
+                $pagePhysQty = 0;
+                $pageDeltaQty = 0;
+                $pageInventoryCost = 0;
+                $pageVarianceVal = 0;
+
+                foreach ($paginator->items() as $item) {
+                    $uCost = (float) $item->unit_cost;
+                    $pageSysQty += (float) $item->sys_qty;
+                    $pagePhysQty += (float) $item->phys_qty;
+                    $pageDeltaQty += (float) $item->delta_qty;
+                    $pageInventoryCost += ((float) $item->phys_qty * $uCost);
+                    $pageVarianceVal += ((float) $item->delta_qty * $uCost);
+                }
+
+                $grandQuery = DB::table('stock_update_items')
+                    ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                    ->join('items', 'stock_update_items.item_id', '=', 'items.id')
+                    ->whereDate('stock_updates.entry_date', '>=', $from)
+                    ->whereDate('stock_updates.entry_date', '<=', $to)
+                    ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                    ->when($varianceType, function ($q) use ($varianceType) {
+                        if ($varianceType === 'excess') {
+                            $q->where('stock_update_items.delta_qty', '>', 0);
+                        } elseif ($varianceType === 'shortage') {
+                            $q->where('stock_update_items.delta_qty', '<', 0);
+                        } elseif ($varianceType === 'no_diff') {
+                            $q->where('stock_update_items.delta_qty', '=', 0);
+                        }
+                    })
+                    ->when($statusFilter && in_array($statusFilter, ['Pending', 'Approved', 'Rejected']), fn ($q) => $q->where('stock_updates.status', $statusFilter))
+                    ->when($search, fn ($q) => $q->where(function ($sq) use ($search) {
+                        $sq->where('stock_updates.update_number', 'like', "%{$search}%")
+                           ->orWhere('items.name', 'like', "%{$search}%")
+                           ->orWhere('items.item_code', 'like', "%{$search}%");
+                    }));
+
+                $grand = $grandQuery->selectRaw("
+                    SUM(stock_update_items.system_qty_at_entry) as total_sys_qty,
+                    SUM(stock_update_items.physical_qty) as total_phys_qty,
+                    SUM(stock_update_items.delta_qty) as total_delta_qty,
+                    SUM(stock_update_items.physical_qty * COALESCE(NULLIF(stock_update_items.cost_price, 0), items.cost_price, 0)) as total_inventory_cost,
+                    SUM(stock_update_items.delta_qty * COALESCE(NULLIF(stock_update_items.cost_price, 0), items.cost_price, 0)) as total_variance_val
+                ")->first();
+
+                $footerTotals = [
+                    'page' => [
+                        'sys_qty' => $pageSysQty,
+                        'phys_qty' => $pagePhysQty,
+                        'delta_qty' => $pageDeltaQty,
+                        'inventory_cost' => $pageInventoryCost,
+                        'variance_val' => $pageVarianceVal,
+                    ],
+                    'grand' => [
+                        'sys_qty' => (float) ($grand->total_sys_qty ?? 0),
+                        'phys_qty' => (float) ($grand->total_phys_qty ?? 0),
+                        'delta_qty' => (float) ($grand->total_delta_qty ?? 0),
+                        'inventory_cost' => (float) ($grand->total_inventory_cost ?? 0),
+                        'variance_val' => (float) ($grand->total_variance_val ?? 0),
+                    ],
+                ];
+
                 $rows = $paginator->through(function ($item) {
                     $unitCost = (float) $item->unit_cost;
+                    $lineInventoryCost = round((float) $item->phys_qty * $unitCost, 2);
                     $varianceVal = round((float) $item->delta_qty * $unitCost, 2);
 
                     $deltaBadge = '<span class="' . ($item->delta_qty < 0 ? 'text-danger font-weight-bold' : ($item->delta_qty > 0 ? 'text-success font-weight-bold' : 'text-muted')) . '">'
@@ -1822,7 +1887,7 @@ class DynamicReportService
                             number_format($item->sys_qty),
                             number_format($item->phys_qty),
                             $deltaBadge,
-                            '₹ ' . number_format($unitCost, 2),
+                            '₹ ' . number_format($lineInventoryCost, 2) . '<small class="text-muted d-block" style="font-size:0.72rem;">@ ₹' . number_format($unitCost, 2) . '</small>',
                             $valBadge,
                             e($item->remarks ?: '-'),
                             $statusBadge,
@@ -1836,6 +1901,7 @@ class DynamicReportService
                     'columns' => ['#', 'Update Number', 'Entry Date', 'Branch', 'Item Code', 'Item Description', 'Counted By', 'Approved By', 'System Qty', 'Physical Count', 'Discrepancy (Delta)', 'Inventory Cost', 'Variance Value', 'Remarks', 'Status'],
                     'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-left', 'text-center'],
                     'rows' => $rows,
+                    'footer_totals' => $footerTotals,
                     'kpis' => [
                         ['label' => 'Total Audited Items', 'value' => DB::table('stock_update_items')->count(), 'icon' => 'fas fa-clipboard-check', 'color' => 'primary'],
                         ['label' => 'Physical Count Sessions', 'value' => StockUpdate::count(), 'icon' => 'fas fa-sync-alt', 'color' => 'info'],
@@ -2086,5 +2152,30 @@ class DynamicReportService
                     'hasBranchFilter' => true,
                 ];
         }
+    }
+
+    /**
+     * Build bidirectional relationship map between brands and suppliers based on items and purchase history.
+     */
+    protected function getBrandSupplierMaps(): array
+    {
+        $pairs = DB::table('items')
+            ->whereNotNull('brand_id')
+            ->whereNotNull('supplier_id')
+            ->select('brand_id', 'supplier_id')
+            ->distinct()
+            ->get();
+
+        $brandSuppliers = [];
+        $supplierBrands = [];
+
+        foreach ($pairs as $p) {
+            $bId = (string) $p->brand_id;
+            $sId = (string) $p->supplier_id;
+            $brandSuppliers[$bId][] = $sId;
+            $supplierBrands[$sId][] = $bId;
+        }
+
+        return [$brandSuppliers, $supplierBrands];
     }
 }
