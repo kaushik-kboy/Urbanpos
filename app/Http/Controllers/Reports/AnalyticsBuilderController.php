@@ -224,7 +224,7 @@ class AnalyticsBuilderController extends Controller
             suppliers.name as supplier_name,
             suppliers.mobile as supplier_mobile,
             suppliers.city as supplier_city,
-            SUM(purchase_invoice_items.qty) as total_qty,
+            SUM(purchase_invoice_items.qty + COALESCE(purchase_invoice_items.free_qty, 0)) as total_qty,
             SUM(purchase_invoice_items.net_amount) as total_amount,
             COUNT(DISTINCT purchase_invoices.id) as invoice_count,
             MAX(purchase_invoices.invoice_date) as last_date,
@@ -1055,6 +1055,7 @@ class AnalyticsBuilderController extends Controller
                 purchase_invoices.invoice_date,
                 COALESCE(branches.name, "Main") as branch_name,
                 purchase_invoice_items.qty,
+                COALESCE(purchase_invoice_items.free_qty, 0) as free_qty,
                 purchase_invoice_items.cost_price,
                 purchase_invoice_items.sell_price,
                 purchase_invoice_items.net_amount
@@ -1072,7 +1073,10 @@ class AnalyticsBuilderController extends Controller
                 $inv->view_url = route('purchase.purchase-invoices.show', $inv->invoice_id);
                 $inv->supplier_inv_no = (string) ($inv->supplier_inv_no ?? '');
                 $inv->display_invoice_no = !empty(trim($inv->supplier_inv_no)) ? $inv->supplier_inv_no : $inv->invoice_number;
-                $totalQty += (float) $inv->qty;
+                $invFree = (float) ($inv->free_qty ?? 0);
+                $invTotal = (float) $inv->qty + $invFree;
+                $inv->total_inward_qty = $invTotal;
+                $totalQty += $invTotal;
                 $totalAmount += (float) $inv->net_amount;
             }
 

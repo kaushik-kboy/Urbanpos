@@ -1193,7 +1193,7 @@ class DynamicReportService
                 $damageMap = [];
 
                 if (!empty($itemIds)) {
-                    // 1. INWARD: Purchases
+                    // 1. INWARD: Purchases (including Free quantity)
                     $purInwardRows = DB::table('purchase_invoice_items')
                         ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
                         ->whereIn('purchase_invoice_items.item_id', $itemIds)
@@ -1202,7 +1202,7 @@ class DynamicReportService
                         ->where('purchase_invoices.status', '!=', 'Cancelled')
                         ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
                         ->groupBy('purchase_invoice_items.item_id', 'purchase_invoices.branch_id')
-                        ->selectRaw('purchase_invoice_items.item_id, purchase_invoices.branch_id, SUM(purchase_invoice_items.qty) as total_qty')
+                        ->selectRaw('purchase_invoice_items.item_id, purchase_invoices.branch_id, SUM(purchase_invoice_items.qty + COALESCE(purchase_invoice_items.free_qty, 0)) as total_qty')
                         ->get();
                     foreach ($purInwardRows as $row) {
                         $purInwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;

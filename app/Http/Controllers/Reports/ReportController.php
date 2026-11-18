@@ -1683,16 +1683,24 @@ class ReportController extends Controller
                 ->whereDate('purchase_invoices.invoice_date', '<=', $to)
                 ->where('purchase_invoices.status', '!=', 'Cancelled')
                 ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
-                ->selectRaw('purchase_invoices.invoice_date as trans_date, purchase_invoices.invoice_number as doc_no, "Purchase (Inward)" as trans_type, purchase_invoice_items.qty as qty, COALESCE(suppliers.name, "Vendor") as party_name, COALESCE(branches.name, "-") as branch_name, purchase_invoices.id as doc_id, "purchase" as doc_kind')
+                ->selectRaw('purchase_invoices.invoice_date as trans_date, purchase_invoices.invoice_number as doc_no, "Purchase (Inward)" as trans_type, purchase_invoice_items.qty as qty, COALESCE(purchase_invoice_items.free_qty, 0) as free_qty, (purchase_invoice_items.qty + COALESCE(purchase_invoice_items.free_qty, 0)) as total_qty, COALESCE(suppliers.name, "Vendor") as party_name, COALESCE(branches.name, "-") as branch_name, purchase_invoices.id as doc_id, "purchase" as doc_kind')
                 ->get();
             foreach ($purs as $p) {
+                $freeQty = (float) ($p->free_qty ?? 0);
+                $totalQty = (float) ($p->total_qty ?? $p->qty);
+                $transType = $p->trans_type;
+                if ($freeQty > 0) {
+                    $transType .= ' (' . rtrim(rtrim(number_format((float) $p->qty, 2), '0'), '.') . ' + ' . rtrim(rtrim(number_format($freeQty, 2), '0'), '.') . ' Free)';
+                }
                 $records[] = [
                     'date' => Carbon::parse($p->trans_date)->format('d M Y'),
                     'raw_date' => $p->trans_date,
                     'doc_no' => $p->doc_no,
-                    'trans_type' => $p->trans_type,
-                    'qty' => (float) $p->qty,
-                    'qty_formatted' => '+' . number_format((float) $p->qty),
+                    'doc_id' => $p->doc_id ?? null,
+                    'doc_kind' => $p->doc_kind ?? 'purchase',
+                    'trans_type' => $transType,
+                    'qty' => $totalQty,
+                    'qty_formatted' => '+' . number_format($totalQty),
                     'party' => $p->party_name,
                     'branch' => $p->branch_name,
                     'class' => 'text-success font-weight-bold',
@@ -1735,9 +1743,10 @@ class ReportController extends Controller
                 ->whereDate('stock_transfers.transfer_date', '<=', $to)
                 ->where('stock_transfers.status', '!=', 'Cancelled')
                 ->when($branchId, fn ($q) => $q->where('stock_transfers.to_branch_id', $branchId))
-                ->selectRaw('stock_transfers.transfer_date as trans_date, stock_transfers.transfer_number as doc_no, "Transfer In" as trans_type, COALESCE(stock_transfer_items.received_qty, stock_transfer_items.qty) as qty, CONCAT("From ", COALESCE(from_b.name, "Branch")) as party_name, COALESCE(to_b.name, "-") as branch_name')
+                ->selectRaw('stock_transfers.transfer_date as trans_date, stock_transfers.transfer_number as doc_no, "Transfer In" as trans_type, COALESCE(stock_transfer_items.received_qty, stock_transfer_items.qty) as qty, from_b.name as from_branch_name, COALESCE(to_b.name, "-") as branch_name')
                 ->get();
             foreach ($tis as $ti) {
+                $partyName = 'From ' . ($ti->from_branch_name ?: 'Branch');
                 $records[] = [
                     'date' => Carbon::parse($ti->trans_date)->format('d M Y'),
                     'raw_date' => $ti->trans_date,
@@ -1745,7 +1754,7 @@ class ReportController extends Controller
                     'trans_type' => $ti->trans_type,
                     'qty' => (float) $ti->qty,
                     'qty_formatted' => '+' . number_format((float) $ti->qty),
-                    'party' => $ti->party_name,
+                    'party' => $partyName,
                     'branch' => $ti->branch_name,
                     'class' => 'text-success font-weight-bold',
                 ];
@@ -1866,9 +1875,10 @@ class ReportController extends Controller
                 ->whereDate('stock_transfers.transfer_date', '<=', $to)
                 ->where('stock_transfers.status', '!=', 'Cancelled')
                 ->when($branchId, fn ($q) => $q->where('stock_transfers.from_branch_id', $branchId))
-                ->selectRaw('stock_transfers.transfer_date as trans_date, stock_transfers.transfer_number as doc_no, "Transfer Out" as trans_type, stock_transfer_items.qty as qty, CONCAT("To ", COALESCE(to_b.name, "Branch")) as party_name, COALESCE(from_b.name, "-") as branch_name')
+                ->selectRaw('stock_transfers.transfer_date as trans_date, stock_transfers.transfer_number as doc_no, "Transfer Out" as trans_type, stock_transfer_items.qty as qty, to_b.name as to_branch_name, COALESCE(from_b.name, "-") as branch_name')
                 ->get();
             foreach ($tos as $toRecord) {
+                $partyName = 'To ' . ($toRecord->to_branch_name ?: 'Branch');
                 $records[] = [
                     'date' => Carbon::parse($toRecord->trans_date)->format('d M Y'),
                     'raw_date' => $toRecord->trans_date,
@@ -1876,7 +1886,7 @@ class ReportController extends Controller
                     'trans_type' => $toRecord->trans_type,
                     'qty' => -1 * (float) $toRecord->qty,
                     'qty_formatted' => '-' . number_format((float) $toRecord->qty),
-                    'party' => $toRecord->party_name,
+                    'party' => $partyName,
                     'branch' => $toRecord->branch_name,
                     'class' => 'text-danger font-weight-bold',
                 ];

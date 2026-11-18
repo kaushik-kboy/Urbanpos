@@ -191,11 +191,11 @@ body, .content-wrapper {
             </div>
             <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
                 <div class="d-flex align-items-center">
-                    <label for="filterDestBranch" class="mr-2 mb-0 font-weight-bold text-xs text-uppercase text-secondary text-nowrap">
-                        <i class="fas fa-map-marker-alt text-danger mr-1"></i> Deficit:
+                    <label for="filterDestBranch" class="mr-2 mb-0 font-weight-bold text-xs text-uppercase text-secondary text-nowrap" title="Stores that need stock (Deficit/Shortage)">
+                        <i class="fas fa-arrow-circle-down text-danger mr-1"></i> Receiving (Deficit):
                     </label>
                     <select id="filterDestBranch" class="form-control form-control-sm font-weight-bold">
-                        <option value="all">All Destination Stores</option>
+                        <option value="all">All Receiving Stores</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}" {{ $activeBranchId == $branch->id ? 'selected' : '' }}>
                                 {{ $branch->name }}
@@ -206,11 +206,11 @@ body, .content-wrapper {
             </div>
             <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
                 <div class="d-flex align-items-center">
-                    <label for="filterSourceBranch" class="mr-2 mb-0 font-weight-bold text-xs text-uppercase text-secondary text-nowrap">
-                        <i class="fas fa-warehouse text-success mr-1"></i> Surplus:
+                    <label for="filterSourceBranch" class="mr-2 mb-0 font-weight-bold text-xs text-uppercase text-secondary text-nowrap" title="Stores that have extra stock to send (Surplus/Excess)">
+                        <i class="fas fa-arrow-circle-up text-success mr-1"></i> Sending (Surplus):
                     </label>
                     <select id="filterSourceBranch" class="form-control form-control-sm font-weight-bold">
-                        <option value="all">All Surplus Stores</option>
+                        <option value="all">All Sending Stores</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                         @endforeach

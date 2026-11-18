@@ -1696,7 +1696,22 @@ body, .content-wrapper {
 
     function renderTable(rows) {
         if (!rows || rows.length === 0) {
-            $('#tableBody').html('<tr><td colspan="10" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.</td></tr>');
+            const currentSearch = ($('#filterSearch').val() || '').trim();
+            const currentStatus = $('#filterStatus').val() || '';
+            const statusLabel = $('#filterStatus option:selected').text().trim();
+
+            let emptyHtml = '<i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.';
+            if (currentSearch && currentStatus && currentStatus !== 'all') {
+                emptyHtml = '<div class="py-2">' +
+                    '<div class="mb-2 font-weight-bold text-dark"><i class="fas fa-filter mr-1 text-warning"></i> No items matching "<strong>' + escapeHtml(currentSearch) + '</strong>" under status "<strong>' + escapeHtml(statusLabel) + '</strong>".</div>' +
+                    '<div class="small text-muted mb-3">This item may be in Healthy or Overstock status at this branch.</div>' +
+                    '<button type="button" class="btn btn-sm btn-primary font-weight-bold" onclick="$(\'#filterStatus\').val(\'all\'); loadTableData(1);">' +
+                        '<i class="fas fa-search mr-1"></i> Search Across All Stock Statuses' +
+                    '</button>' +
+                '</div>';
+            }
+
+            $('#tableBody').html('<tr><td colspan="10" class="text-center py-4 font-weight-bold text-dark">' + emptyHtml + '</td></tr>');
             $('#checkAllRows').prop('checked', false);
             return;
         }

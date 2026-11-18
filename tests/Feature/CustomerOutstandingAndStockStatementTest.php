@@ -217,6 +217,146 @@ class CustomerOutstandingAndStockStatementTest extends TestCase
         $this->assertStringContainsString('150', $closingCell);
     }
 
+    public function test_itemwise_stock_statement_includes_free_quantity_in_purchase_inward_and_drilldown(): void
+    {
+        $supplier = Supplier::create(['name' => 'Vivaldis Pharma', 'status' => true]);
+
+        $item = Item::create([
+            'name' => 'Vivaldis PIMOBEN 5/10',
+            'item_code' => '3014',
+            'cost_price' => 323.40,
+            'sell_price' => 770.00,
+            'status' => true,
+        ]);
+
+        // Closing stock = 376
+        ItemStock::create([
+            'item_id' => $item->id,
+            'branch_id' => $this->branch1->id,
+            'quantity' => 376.00,
+            'cost_price' => 323.40,
+        ]);
+
+        $today = now()->toDateString();
+
+        // Purchase Invoice with Billed Qty = 297 and Free Qty = 99 -> Total physical = 396
+        $pi = PurchaseInvoice::create([
+            'invoice_number' => 'PI01/2627/000044',
+            'supplier_id' => $supplier->id,
+            'branch_id' => $this->branch1->id,
+            'status' => 'Approved',
+            'invoice_date' => $today,
+        ]);
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $pi->id,
+            'item_id' => $item->id,
+            'qty' => 297.00,
+            'free_qty' => 99.00,
+            'unit_cost' => 323.40,
+            'cost_price' => 323.40,
+        ]);
+
+        // Transfer In = 7
+        $stIn = StockTransfer::create([
+            'transfer_number' => 'ST-TEST-002',
+            'from_branch_id' => $this->branch2->id,
+            'to_branch_id' => $this->branch1->id,
+            'status' => 'Received',
+            'transfer_date' => $today,
+        ]);
+        StockTransferItem::create([
+            'stock_transfer_id' => $stIn->id,
+            'item_id' => $item->id,
+            'qty' => 7.00,
+            'received_qty' => 7.00,
+            'unit_cost' => 323.40,
+        ]);
+
+        // Sales Outward = 150
+        $customer = Customer::create(['name' => 'Walkin', 'mobile' => '9999911111', 'status' => true]);
+        $sb = SalesBill::create([
+            'bill_number' => 'SB-TEST-004',
+            'customer_id' => $customer->id,
+            'branch_id' => $this->branch1->id,
+            'status' => 'Paid',
+            'bill_date' => $today,
+        ]);
+        SalesBillItem::create([
+            'sales_bill_id' => $sb->id,
+            'item_id' => $item->id,
+            'qty' => 150.00,
+            'unit_price' => 770.00,
+        ]);
+
+        // Transfer Out = 4
+        $stOut = StockTransfer::create([
+            'transfer_number' => 'ST-TEST-003',
+            'from_branch_id' => $this->branch1->id,
+            'to_branch_id' => $this->branch2->id,
+            'status' => 'Received',
+            'transfer_date' => $today,
+        ]);
+        StockTransferItem::create([
+            'stock_transfer_id' => $stOut->id,
+            'item_id' => $item->id,
+            'qty' => 4.00,
+            'received_qty' => 4.00,
+            'unit_cost' => 323.40,
+        ]);
+
+        // Inward = Pur (297 + 99 = 396) + Trf-In (7) = 403
+        // Outward = Sale (150) + Trf-Out (4) = 154
+        // Closing = 376
+        // Opening = Closing (376) - Inward (403) + Outward (154) = 127
+
+        $reportService = app(\App\Services\Reports\DynamicReportService::class);
+        $request = new \Illuminate\Http\Request([
+            'from' => $today,
+            'to' => $today,
+            'branch_id' => $this->branch1->id,
+        ]);
+        $data = $reportService->generate($request, 'itemwise-stock-statement');
+
+        $this->assertNotEmpty($data['rows']);
+        $row = $data['rows']->where('raw.item_code', '3014')->first() ?? $data['rows']->first();
+        $cells = $row['cells'];
+
+        $openingCell = $cells[5];
+        $inwardCell = $cells[6];
+        $outwardCell = $cells[7];
+        $closingCell = $cells[8];
+
+        $this->assertStringContainsString('+403', $inwardCell);
+        $this->assertStringContainsString('Pur: 396', $inwardCell);
+        $this->assertStringContainsString('Trf-In: 7', $inwardCell);
+
+        $this->assertStringContainsString('-154', $outwardCell);
+        $this->assertStringContainsString('Sale: 150', $outwardCell);
+        $this->assertStringContainsString('Trf-Out: 4', $outwardCell);
+
+        $this->assertStringContainsString('127', $openingCell);
+        $this->assertStringContainsString('376', $closingCell);
+
+        // Also test stockStatementDrilldown endpoint
+        $drilldownResponse = $this->actingAs($this->user)->getJson(route('reports.stock-statement.drilldown', [
+            'item_id' => $item->id,
+            'branch_id' => $this->branch1->id,
+            'flow' => 'inward',
+            'from' => $today,
+            'to' => $today,
+        ]));
+
+        $drilldownResponse->assertOk();
+        $drilldownData = $drilldownResponse->json();
+        $this->assertTrue($drilldownData['success']);
+        $this->assertNotEmpty($drilldownData['records']);
+
+        $purchaseRecord = collect($drilldownData['records'])->firstWhere('doc_kind', 'purchase');
+        $this->assertNotNull($purchaseRecord);
+        $this->assertEquals(396.0, (float)$purchaseRecord['qty']);
+        $this->assertStringContainsString('297 + 99 Free', $purchaseRecord['trans_type']);
+    }
+
     public function test_purchase_invoice_view_contains_confirmation_guard(): void
     {
         $response = $this->actingAs($this->user)->get(route('purchase.purchase-invoices.create'));
