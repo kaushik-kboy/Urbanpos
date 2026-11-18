@@ -1450,18 +1450,6 @@ class PurchaseInvoiceController extends Controller
                             "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must not exceed MRP (₹{$mrp}) (Sell price must be <= MRP)."
                         );
                     }
-
-                    // Anomaly Guardrail: Detect Box/Carton wholesale price entered for single retail unit
-                    if ($itemModel && (float) $itemModel->mrp > 0 && $mrp > 0) {
-                        $existingMrp = (float) $itemModel->mrp;
-                        if ($mrp > ($existingMrp * 2.5) && $existingMrp < 500) {
-                            $rowNum = $idx + 1;
-                            $v->errors()->add(
-                                "items.{$idx}.mrp",
-                                "Item '{$itemModel->name}' (Row #{$rowNum}): Entered MRP (₹{$mrp}) is drastically higher than current retail MRP (₹{$existingMrp}). If this is a wholesale Case/Box, please enter individual pouch/unit quantity or verify rate."
-                            );
-                        }
-                    }
                 }
             }
         });
