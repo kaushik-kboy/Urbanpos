@@ -242,7 +242,7 @@
         @if (!($isPublicGuest ?? false))
             @php
                 $isFromPos = request()->get('from') === 'pos' || (request()->header('referer') && str_contains(request()->header('referer'), '/pos'));
-                $backUrl = $isFromPos ? route('pos.index') : route('sales.sales-bills.show', $salesBill);
+                $backUrl = $isFromPos ? route('pos.terminal') : route('sales.sales-bills.show', $salesBill);
                 $backText = $isFromPos ? 'Back to POS Terminal' : 'Back to Bill';
                 $backIcon = $isFromPos ? 'fa-cash-register' : 'fa-arrow-left';
             @endphp
