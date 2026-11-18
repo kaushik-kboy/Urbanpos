@@ -56,6 +56,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
             'customer.pets.petType',
             'customer.pets.breed',
             'customer.area',
+            'customerAddress.area',
             'branch',
             'payments.tenderType',
         ])->find($this->salesBillId);
@@ -80,13 +81,6 @@ class SyncBillToFollowUpJob implements ShouldQueue
 
         $customerName = trim((string) ($bill->customer->name ?? 'Customer'));
         $billDate     = $bill->bill_date ? Carbon::parse($bill->bill_date)->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s');
-        $addressParts = array_filter([
-            $bill->customer->address1,
-            $bill->customer->city,
-            $bill->customer->state,
-            $bill->customer->postal_code,
-        ]);
-        $fullAddress  = ! empty($addressParts) ? implode(', ', $addressParts) : null;
 
         // Normalize branch name strictly to Motera or Satellite for CRM parity
         $rawBranch = (string) ($bill->branch?->name ?? '');
@@ -131,12 +125,36 @@ class SyncBillToFollowUpJob implements ShouldQueue
         }
 
         $customer = $bill->customer;
-        $googleMapLink = $customer?->google_map_link ?: null;
-        $streetAddress = $customer?->address1 ?: null;
-        $city          = $customer?->city ?: null;
-        $state         = $customer?->state ?: null;
-        $postalCode    = $customer?->postal_code ?: null;
-        $areaName      = $customer?->area?->name ?: null;
+        $custAddr = $bill->customer_address_id ? $bill->customerAddress : null;
+
+        // Prioritize bill-selected delivery address, fallback to customer profile address
+        if ($custAddr) {
+            $streetAddress = $custAddr->address_line ?: $customer?->address1;
+            $city          = $custAddr->city ?: $customer?->city;
+            $state         = $custAddr->state ?: $customer?->state;
+            $postalCode    = $custAddr->postal_code ?: $customer?->postal_code;
+            $areaName      = $custAddr->area?->name ?: $custAddr->area_name ?: $customer?->area?->name;
+            $fullAddress   = $custAddr->formatted_address ?: null;
+            $googleMapLink = $customer?->google_map_link ?: null;
+        } else {
+            $streetAddress = $customer?->address1 ?: null;
+            $city          = $customer?->city ?: null;
+            $state         = $customer?->state ?: null;
+            $postalCode    = $customer?->postal_code ?: null;
+            $areaName      = $customer?->area?->name ?: null;
+            $googleMapLink = $customer?->google_map_link ?: null;
+        }
+
+        if (empty($fullAddress)) {
+            $addressParts = array_filter([
+                $streetAddress,
+                $city,
+                $state,
+                $postalCode,
+            ]);
+            $fullAddress = ! empty($addressParts) ? implode(', ', $addressParts) : null;
+        }
+
         $gstNo         = $customer?->gst_no ?: null;
         $customerCode  = $customer?->customer_code ?: null;
 

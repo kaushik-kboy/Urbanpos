@@ -987,6 +987,8 @@ class SalesBillController extends Controller
                 'formatted' => $a->formatted_address,
             ]),
             'address1' => $customer->address1 ?? '',
+            'google_map_link' => $customer->google_map_link ?? '',
+            'postal_code' => $customer->postal_code ?? '',
             'city' => $customer->city ?? '',
             'state' => $customer->state ?? '',
             'total_invoices' => count($bills),

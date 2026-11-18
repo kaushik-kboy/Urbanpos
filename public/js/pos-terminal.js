@@ -2448,6 +2448,7 @@
         $('#posSelectedCustAddresses').hide();
         $('#posCustAddressSelect').empty();
         $('#posCustAddressPreview').empty();
+        $('#posCustMapLinkBtn').attr('href', '#').hide();
         $('#posLoyaltyContainer').hide();
         $('#posCustomerInvoicesTable tbody').empty();
 
@@ -3002,15 +3003,37 @@
             const type = $opt.data('type') || 'Home';
             const formatted = $opt.data('formatted') || '';
             const addrState = ($opt.data('state') || '').toString().trim();
+            const mapLink = $opt.data('map-link') || state.customer?.google_map_link || '';
 
             $('#posCustAddressBadge').text(type);
             $('#posCustAddressPreview').html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(formatted)}`);
+
+            const $mapBtn = $('#posCustMapLinkBtn');
+            if (mapLink) {
+                const href = /^https?:\/\//i.test(mapLink) ? mapLink : ('https://' + mapLink);
+                $mapBtn.attr('href', href).show();
+            } else {
+                $mapBtn.attr('href', '#').hide();
+            }
 
             // If address state is outside Gujarat, update purchase_type to Interstate
             if (addrState && addrState.toLowerCase() !== 'gujarat') {
                 setPurchaseType('Interstate');
             } else if (state.customer && (state.customer.sales_type === 'Local' || state.customer.purchase_type === 'Local')) {
                 setPurchaseType('Local');
+            }
+        });
+
+        // Google Map Link live preview toggle in POS Customer Modal
+        $('#posCust_google_map_link').on('input change', function () {
+            const val = $(this).val().trim();
+            if (val) {
+                const mapUrl = /^https?:\/\//i.test(val) ? val : ('https://' + val);
+                $('#posCust_map_link_anchor').attr('href', mapUrl);
+                $('#posCust_map_preview_btn').show();
+            } else {
+                $('#posCust_map_preview_btn').hide();
+                $('#posCust_map_link_anchor').attr('href', '#');
             }
         });
 
@@ -3307,6 +3330,17 @@
         const $addrSelect = $('#posCustAddressSelect');
         const $addrPreview = $('#posCustAddressPreview');
         const $addrBadge = $('#posCustAddressBadge');
+        const $mapBtn = $('#posCustMapLinkBtn');
+
+        function updateMapButton(link) {
+            const trimmed = (link || '').toString().trim();
+            if (trimmed) {
+                const href = /^https?:\/\//i.test(trimmed) ? trimmed : ('https://' + trimmed);
+                $mapBtn.attr('href', href).show();
+            } else {
+                $mapBtn.attr('href', '#').hide();
+            }
+        }
 
         if ($addrBox.length) {
             if (addresses.length > 0) {
@@ -3318,7 +3352,8 @@
                     const typeLabel = a.type || 'Home';
                     const areaPart = a.area ? ` - ${a.area}` : '';
                     const defaultTag = isPrim ? ' (Default)' : '';
-                    addrOptsHtml += `<option value="${a.id}" data-type="${escapeHtml(typeLabel)}" data-formatted="${escapeHtml(a.formatted || a.line || '')}" data-state="${escapeHtml(a.state || 'Gujarat')}" ${isPrim ? 'selected' : ''}>
+                    const mapLink = a.google_map_link || customer.google_map_link || '';
+                    addrOptsHtml += `<option value="${a.id}" data-type="${escapeHtml(typeLabel)}" data-formatted="${escapeHtml(a.formatted || a.line || '')}" data-state="${escapeHtml(a.state || 'Gujarat')}" data-map-link="${escapeHtml(mapLink)}" ${isPrim ? 'selected' : ''}>
                         [${escapeHtml(typeLabel)}] ${escapeHtml(a.line || a.area || 'Address')}${escapeHtml(areaPart)}${defaultTag}
                     </option>`;
                 });
@@ -3329,19 +3364,24 @@
                 if (activeAddr) {
                     $addrBadge.text(activeAddr.type || 'Home');
                     $addrPreview.html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(activeAddr.formatted || activeAddr.line || '')}`);
+                    updateMapButton(activeAddr.google_map_link || customer.google_map_link);
+                } else {
+                    updateMapButton(customer.google_map_link);
                 }
-            } else if (customer.address1 || customer.address) {
+            } else if (customer.address1 || customer.address || customer.formatted_address) {
                 $addrBox.show();
                 $addrSelect.hide();
                 state.customer_address_id = null;
                 const singleAddr = customer.formatted_address || [customer.address1, customer.city || 'Ahmedabad', customer.state || 'Gujarat'].filter(Boolean).join(', ');
                 $addrBadge.text('Home');
                 $addrPreview.html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(singleAddr)}`);
+                updateMapButton(customer.google_map_link);
             } else {
                 state.customer_address_id = null;
                 $addrBox.hide();
                 $addrSelect.empty();
                 $addrPreview.empty();
+                updateMapButton(null);
             }
         }
 
@@ -3457,6 +3497,9 @@
         $('#posCust_sms_consent').val('1');
         $('#posCust_country').val('India');
         $('#posCust_customer_type').val('RETAIL INVOICE');
+        $('#posCust_google_map_link').val('');
+        $('#posCust_map_preview_btn').hide();
+        $('#posCust_map_link_anchor').attr('href', '#');
 
         const activeBranch = state.branch_id || window.CURRENT_USER_BRANCH_ID || '';
         if (activeBranch) {
@@ -3536,6 +3579,14 @@
                 $('#posCust_std_code').val(c.std_code || '');
                 $('#posCust_phone').val(c.phone || '');
                 $('#posCust_email').val(c.email || '');
+                $('#posCust_google_map_link').val(c.google_map_link || '');
+                if (c.google_map_link) {
+                    $('#posCust_map_preview_btn').show();
+                    $('#posCust_map_link_anchor').attr('href', c.google_map_link);
+                } else {
+                    $('#posCust_map_preview_btn').hide();
+                    $('#posCust_map_link_anchor').attr('href', '#');
+                }
                 $('#posCust_remarks').val(c.remarks || '');
                 $('#posCust_gst_no').val(c.gst_no || '');
                 $('#posCust_aadhar_no').val(c.aadhar_no || '');
