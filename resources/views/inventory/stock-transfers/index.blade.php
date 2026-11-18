@@ -96,8 +96,10 @@
                     <tr>
                         <x-sortable-th column="transfer_number" label="Transfer No" />
                         <x-sortable-th column="transfer_date" label="Date" />
-                        <th>From Branch</th>
-                        <th>To Branch</th>
+                        <th>From Branch (Source)</th>
+                        <th>Created By</th>
+                        <th>To Branch (Dest)</th>
+                        <th>Received By</th>
                         <th>Total Qty</th>
                         <th>Total Value</th>
                         <x-sortable-th column="status" label="Status" />
@@ -107,12 +109,30 @@
                 <tbody>
                     @forelse ($stockTransfers as $transfer)
                         <tr>
-                            <td>{{ $transfer->transfer_number }}</td>
+                            <td class="font-weight-bold">
+                                <a href="{{ route('inventory.stock-transfers.show', $transfer) }}" class="text-primary">
+                                    {{ $transfer->transfer_number }}
+                                </a>
+                            </td>
                             <td>{{ $transfer->transfer_date->format('d-m-Y') }}</td>
-                            <td>{{ $transfer->fromBranch?->name }}</td>
-                            <td>{{ $transfer->toBranch?->name }}</td>
-                            <td>{{ $transfer->total_qty }}</td>
-                            <td>{{ number_format($transfer->total_value, 2) }}</td>
+                            <td><span class="badge badge-light border"><i class="fas fa-store mr-1 text-muted"></i>{{ $transfer->fromBranch?->name }}</span></td>
+                            <td>
+                                <span class="font-weight-bold text-dark"><i class="fas fa-user-edit mr-1 text-muted"></i>{{ $transfer->creator?->name ?? 'Staff' }}</span>
+                            </td>
+                            <td><span class="badge badge-light border"><i class="fas fa-store mr-1 text-muted"></i>{{ $transfer->toBranch?->name }}</span></td>
+                            <td>
+                                @if ($transfer->receiver)
+                                    <span class="font-weight-bold text-success"><i class="fas fa-user-check mr-1 text-success"></i>{{ $transfer->receiver->name }}</span>
+                                @elseif ($transfer->status === 'Received')
+                                    <span class="text-success font-weight-bold"><i class="fas fa-check mr-1"></i>Received</span>
+                                @elseif ($transfer->status === 'Cancelled')
+                                    <span class="text-muted small">Cancelled</span>
+                                @else
+                                    <span class="badge badge-warning text-dark"><i class="fas fa-clock mr-1"></i>Pending</span>
+                                @endif
+                            </td>
+                            <td class="font-weight-bold">{{ number_format($transfer->total_qty, 0) }}</td>
+                            <td>₹ {{ number_format($transfer->total_value, 2) }}</td>
                             <td>
                                 @php
                                     $badge = match ($transfer->status) {
@@ -136,7 +156,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-3">No stock transfers yet.</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted py-3">No stock transfers yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

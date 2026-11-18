@@ -73,8 +73,10 @@
                             <th style="width: 130px;">Transfer No</th>
                             <th style="width: 110px;">Date</th>
                             <th>Source Branch (Transfer Out)</th>
+                            <th>Created By</th>
                             <th>Destination Branch (Transfer In)</th>
-                            <th style="width: 100px;" class="text-right">Total Qty</th>
+                            <th>Received By</th>
+                            <th style="width: 90px;" class="text-right">Total Qty</th>
                             <th style="width: 120px;" class="text-center">Status</th>
                             <th style="width: 170px;">Timeline</th>
                             <th style="width: 150px;" class="text-right">Actions</th>
@@ -95,9 +97,23 @@
                                     </span>
                                 </td>
                                 <td class="align-middle">
+                                    <span class="font-weight-bold text-dark"><i class="fas fa-user-edit mr-1 text-muted"></i>{{ $transfer->creator?->name ?? 'Staff' }}</span>
+                                </td>
+                                <td class="align-middle">
                                     <span class="badge badge-light border">
                                         <i class="fas fa-map-marker-alt mr-1 text-muted"></i>{{ $transfer->toBranch?->name ?? 'N/A' }}
                                     </span>
+                                </td>
+                                <td class="align-middle">
+                                    @if ($transfer->receiver)
+                                        <span class="font-weight-bold text-success"><i class="fas fa-user-check mr-1 text-success"></i>{{ $transfer->receiver->name }}</span>
+                                    @elseif ($transfer->status === 'Received')
+                                        <span class="text-success font-weight-bold"><i class="fas fa-check mr-1"></i>Received</span>
+                                    @elseif ($transfer->status === 'Cancelled')
+                                        <span class="text-muted small">Cancelled</span>
+                                    @else
+                                        <span class="badge badge-warning text-dark"><i class="fas fa-clock mr-1"></i>Pending</span>
+                                    @endif
                                 </td>
                                 <td class="text-right font-weight-bold align-middle">{{ number_format($transfer->total_qty, 0) }}</td>
                                 <td class="text-center align-middle">
@@ -141,7 +157,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-5">
+                                <td colspan="10" class="text-center text-muted py-5">
                                     <i class="fas fa-dolly fa-3x mb-3 text-secondary d-block"></i>
                                     <h6 class="font-weight-bold">No transfers found</h6>
                                     @if ($status === 'Dispatched')

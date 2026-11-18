@@ -403,6 +403,14 @@ class CustomerController extends Controller
             }
         }
 
+        // Normalize google_map_link to always include https:// if user pasted plain domain
+        if ($request->filled('google_map_link')) {
+            $rawMap = trim((string) $request->input('google_map_link'));
+            if ($rawMap !== '' && !preg_match('#^https?://#i', $rawMap)) {
+                $request->merge(['google_map_link' => 'https://' . $rawMap]);
+            }
+        }
+
         // Customer's sales_type represents Tax Territory (Local vs Interstate) as defined in customers enum.
         $allowedSalesTypes = ['Local', 'Interstate'];
         $dbSalesTypes = SalesType::where('status', true)->pluck('name')->toArray();

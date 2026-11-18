@@ -357,6 +357,101 @@ class CustomerOutstandingAndStockStatementTest extends TestCase
         $this->assertStringContainsString('297 + 99 Free', $purchaseRecord['trans_type']);
     }
 
+    public function test_purchase_invoice_can_be_updated_when_units_already_sold(): void
+    {
+        $supplier = Supplier::create(['name' => 'Tineta Pharma', 'status' => true]);
+
+        $item = Item::create([
+            'name' => 'Tineta Dog Smile Please C',
+            'item_code' => '8659',
+            'cost_price' => 100.00,
+            'sell_price' => 200.00,
+            'status' => true,
+        ]);
+
+        $stockLedger = app(\App\Services\Inventory\StockLedgerService::class);
+
+        // 1. Create Purchase Invoice with 8 units (6 billed + 2 free)
+        $pi = PurchaseInvoice::create([
+            'invoice_number' => 'PI-TEST-TINETA-01',
+            'supplier_id' => $supplier->id,
+            'branch_id' => $this->branch1->id,
+            'status' => 'Posted',
+            'invoice_date' => now()->toDateString(),
+            'total' => 600.00,
+        ]);
+        PurchaseInvoiceItem::create([
+            'purchase_invoice_id' => $pi->id,
+            'item_id' => $item->id,
+            'qty' => 6.00,
+            'free_qty' => 2.00,
+            'cost_price' => 100.00,
+            'sell_price' => 200.00,
+            'net_amount' => 600.00,
+        ]);
+
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch1->id,
+            movementType: 'PURCHASE_RECEIPT',
+            qtyDelta: 8.0,
+            unitCost: 100.0,
+            referenceType: PurchaseInvoice::class,
+            referenceId: $pi->id,
+            documentDate: now()->toDateString(),
+        );
+
+        // 2. POS sells 1 unit -> available stock drops to 7
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch1->id,
+            movementType: 'SALE',
+            qtyDelta: -1.0,
+            unitCost: 100.0,
+            referenceType: 'SalesBill',
+            referenceId: 99999,
+            documentDate: now()->toDateString(),
+        );
+
+        $currentStock = ItemStock::where('item_id', $item->id)->where('branch_id', $this->branch1->id)->value('quantity');
+        $this->assertEquals(7.0, (float)$currentStock);
+
+        // 3. User edits Purchase Invoice (e.g. updates remarks/message, keeps 8 units)
+        $updatePayload = [
+            'invoice_number' => $pi->invoice_number,
+            'invoice_date' => now()->toDateString(),
+            'supplier_id' => $supplier->id,
+            'branch_id' => $this->branch1->id,
+            'purchase_type' => 'Local',
+            'c_form' => 'No Forms',
+            'supplier_inv_amount' => 600.00,
+            'remarks' => 'Updated remarks message',
+            'items' => [
+                [
+                    'item_id' => $item->id,
+                    'qty' => 6.00,
+                    'free_qty' => 2.00,
+                    'cost_price' => 100.00,
+                    'sell_price' => 200.00,
+                    'mrp' => 200.00,
+                    'disc_percent' => 0,
+                    'disc_amt' => 0,
+                    'gst_rate' => 0,
+                ]
+            ]
+        ];
+
+        $response = $this->actingAs($this->user)->put(route('purchase.purchase-invoices.update', $pi), $updatePayload);
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        // 4. Verify stock remains 7 and remarks updated
+        $pi->refresh();
+        $this->assertEquals('Updated remarks message', $pi->remarks);
+        $finalStock = ItemStock::where('item_id', $item->id)->where('branch_id', $this->branch1->id)->value('quantity');
+        $this->assertEquals(7.0, (float)$finalStock);
+    }
+
     public function test_purchase_invoice_view_contains_confirmation_guard(): void
     {
         $response = $this->actingAs($this->user)->get(route('purchase.purchase-invoices.create'));

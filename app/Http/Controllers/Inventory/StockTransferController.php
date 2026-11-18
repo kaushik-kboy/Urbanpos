@@ -29,7 +29,7 @@ class StockTransferController extends Controller
 
     public function index(Request $request)
     {
-        $query = StockTransfer::with(['fromBranch', 'toBranch']);
+        $query = StockTransfer::with(['fromBranch', 'toBranch', 'creator', 'receiver']);
 
         $user = $request->user();
         $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
@@ -133,6 +133,7 @@ class StockTransferController extends Controller
                 'posting_key' => $data['header']['posting_key'] ?? null,
                 'dispatched_at' => now(),
                 'total_qty' => collect($data['items'])->sum('qty'),
+                'created_by' => auth()->id(),
             ]);
 
             $itemsById = Item::with('gstTax')->whereIn('id', collect($data['items'])->pluck('item_id')->unique())->get()->keyBy('id');
@@ -284,7 +285,7 @@ class StockTransferController extends Controller
 
         $status = $request->input('status', 'Dispatched');
 
-        $query = StockTransfer::with(['fromBranch', 'toBranch'])
+        $query = StockTransfer::with(['fromBranch', 'toBranch', 'creator', 'receiver'])
             ->when($branchId, fn ($q) => $q->where('to_branch_id', $branchId));
 
         if ($status && $status !== 'All') {
@@ -453,6 +454,7 @@ class StockTransferController extends Controller
             $stockTransfer->update([
                 'status' => 'Received',
                 'received_at' => now(),
+                'received_by' => auth()->id(),
                 'remarks' => $newRemarks,
             ]);
         });

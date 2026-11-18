@@ -1773,9 +1773,7 @@ body, .content-wrapper {
                         <div class="item-title">${escapeHtml(itemName)}</div>
                         <div class="item-subtitle">
                             <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius:4px;">SKU: ${escapeHtml(itemCode)}</span> &bull; 
-                            <span class="font-weight-bold text-dark"><i class="fas fa-award text-muted mr-1"></i>${escapeHtml(brand)}</span> &bull; 
-                            <span class="badge badge-secondary px-2 py-0 font-weight-bold text-xs">Dept: ${escapeHtml(department)}</span> &bull; 
-                            <span class="badge badge-light border border-dark text-dark px-2 py-0 font-weight-bold text-xs">Cat: ${escapeHtml(category)}</span>
+                            <span class="font-weight-bold text-dark"><i class="fas fa-award text-muted mr-1"></i>${escapeHtml(brand)}</span>
                         </div>
                     </td>
                     <td>

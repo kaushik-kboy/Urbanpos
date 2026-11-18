@@ -45,6 +45,7 @@ class StockLedgerService
         ?string $expDate = null,
         ?string $batchNo = null,
         ?float $mrp = null,
+        bool $allowTemporaryNegative = false,
     ): StockLedger {
         if ($qtyDelta === 0.0) {
             throw new \InvalidArgumentException('StockLedgerService::post() called with a zero quantity delta.');
@@ -53,6 +54,7 @@ class StockLedgerService
         return DB::transaction(function () use (
             $itemId, $branchId, $movementType, $qtyDelta, $unitCost,
             $referenceType, $referenceId, $documentDate, $userId, $reasonCode, $reversalOf, $expDate, $batchNo, $mrp,
+            $allowTemporaryNegative,
         ) {
             $stock = ItemStock::firstOrCreate(
                 ['item_id' => $itemId, 'branch_id' => $branchId],
@@ -78,7 +80,7 @@ class StockLedgerService
             } else {
                 $qtyOutAbs = abs($qtyDelta);
                 $item = Item::find($itemId);
-                $allowNeg = (bool) ($item && $item->allow_negative_stock);
+                $allowNeg = (bool) ($allowTemporaryNegative || ($item && $item->allow_negative_stock));
                 if (! $allowNeg && round($oldQty, 4) < round($qtyOutAbs, 4)) {
                     $itemName = $item ? $item->name : "Item #{$itemId}";
                     throw ValidationException::withMessages([
@@ -134,7 +136,7 @@ class StockLedgerService
      * a source document, instead of deleting history. Safe to call more than once — rows
      * that already have a reversal are skipped.
      */
-    public function reverseByReference(string $referenceType, int $referenceId): void
+    public function reverseByReference(string $referenceType, int $referenceId, bool $allowTemporaryNegative = false): void
     {
         $originals = StockLedger::where('reference_type', $referenceType)
             ->where('reference_id', $referenceId)
@@ -166,6 +168,7 @@ class StockLedgerService
                 expDate: $original->exp_date?->toDateString(),
                 batchNo: $original->batch_no,
                 mrp: $original->mrp ? (float) $original->mrp : null,
+                allowTemporaryNegative: $allowTemporaryNegative,
             );
         }
     }

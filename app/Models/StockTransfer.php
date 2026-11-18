@@ -15,6 +15,7 @@ class StockTransfer extends Model
     protected $fillable = [
         'transfer_number', 'transfer_date', 'from_branch_id', 'to_branch_id', 'status',
         'posting_key', 'remarks', 'total_qty', 'total_value', 'dispatched_at', 'received_at',
+        'created_by', 'received_by',
     ];
 
     protected $casts = [
@@ -22,6 +23,16 @@ class StockTransfer extends Model
         'dispatched_at' => 'datetime',
         'received_at' => 'datetime',
     ];
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
 
     public function fromBranch(): BelongsTo
     {

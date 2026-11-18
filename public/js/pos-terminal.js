@@ -4418,7 +4418,7 @@
 
                 // Action Handling: Print, WhatsApp, or Save
                 if (action === 'print' && billId) {
-                    window.open(`${window.APP_URL || ''}/sales/sales-bills/${billId}/receipt`, '_blank');
+                    window.open(`${window.APP_URL || ''}/sales/sales-bills/${billId}/receipt?from=pos`, '_blank');
                 } else if (action === 'whatsapp' && billId) {
                     // WhatsApp invoice is dispatched directly from backend via ChatOnClick API
                     if (result.whatsapp_sent === false && result.whatsapp_error) {

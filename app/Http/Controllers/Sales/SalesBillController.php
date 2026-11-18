@@ -1916,11 +1916,27 @@ class SalesBillController extends Controller
                     ];
                 });
 
+                $mainAddrParts = array_filter([
+                    $c->address1,
+                    $c->area?->name,
+                    $c->city ?: 'Ahmedabad',
+                    $c->state ?: 'Gujarat',
+                    $c->postal_code,
+                ]);
+                $formattedMainAddr = !empty($mainAddrParts) ? implode(', ', $mainAddrParts) : '';
+
                 return [
                     'id' => $c->id,
                     'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
                     'name' => $c->name,
                     'mobile' => $c->mobile ?? '',
+                    'address1' => $c->address1 ?? '',
+                    'google_map_link' => $c->google_map_link ?? '',
+                    'city' => $c->city ?? 'Ahmedabad',
+                    'state' => $c->state ?? 'Gujarat',
+                    'postal_code' => $c->postal_code ?? '',
+                    'area_name' => $c->area?->name ?? '',
+                    'formatted_address' => $formattedMainAddr,
                     'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                     'sales_type' => $c->sales_type ?? 'Local',
                     'payment_mode' => $c->payment_mode ?? 'Cash Only',
@@ -1942,6 +1958,7 @@ class SalesBillController extends Controller
                         'postal_code' => $a->postal_code ?? '',
                         'is_primary' => (bool) $a->is_primary,
                         'formatted' => $a->formatted_address,
+                        'google_map_link' => $c->google_map_link ?? '',
                     ]),
                 ];
             });
@@ -1985,11 +2002,27 @@ class SalesBillController extends Controller
                 ];
             });
 
+            $mainAddrParts = array_filter([
+                $c->address1,
+                $c->area?->name,
+                $c->city ?: 'Ahmedabad',
+                $c->state ?: 'Gujarat',
+                $c->postal_code,
+            ]);
+            $formattedMainAddr = !empty($mainAddrParts) ? implode(', ', $mainAddrParts) : '';
+
             return [
                 'id' => $c->id,
                 'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
                 'name' => $c->name,
                 'mobile' => $c->mobile ?? '',
+                'address1' => $c->address1 ?? '',
+                'google_map_link' => $c->google_map_link ?? '',
+                'city' => $c->city ?? 'Ahmedabad',
+                'state' => $c->state ?? 'Gujarat',
+                'postal_code' => $c->postal_code ?? '',
+                'area_name' => $c->area?->name ?? '',
+                'formatted_address' => $formattedMainAddr,
                 'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                 'sales_type' => $c->sales_type ?? 'Local',
                 'purchase_type' => $c->sales_type ?? 'Local',
@@ -2013,6 +2046,7 @@ class SalesBillController extends Controller
                     'postal_code' => $a->postal_code ?? '',
                     'is_primary' => (bool) $a->is_primary,
                     'formatted' => $a->formatted_address,
+                    'google_map_link' => $c->google_map_link ?? '',
                 ]),
             ];
         });
