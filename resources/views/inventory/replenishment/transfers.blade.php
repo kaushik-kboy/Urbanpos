@@ -174,14 +174,12 @@ body, .content-wrapper {
     {{-- Filter Toolbar Card --}}
     <div class="modern-card mb-3 p-3">
         <div class="row align-items-center">
-            <div class="col-md-4 mb-2 mb-md-0">
+            <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                <label for="transferSearchInput" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary">
+                    <i class="fas fa-search text-primary mr-1"></i> Search SKU / Name:
+                </label>
                 <div class="input-group input-group-sm">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text bg-white border-right-0 text-muted">
-                            <i class="fas fa-search"></i>
-                        </span>
-                    </div>
-                    <input type="text" id="transferSearchInput" class="form-control border-left-0 font-weight-bold text-dark" placeholder="Filter by SKU or Item Name...">
+                    <input type="text" id="transferSearchInput" class="form-control font-weight-bold text-dark" placeholder="Search SKU or Item Name..." autocomplete="off">
                     <div class="input-group-append">
                         <button type="button" class="btn btn-outline-secondary" id="btnClearSearch" title="Clear Search">
                             <i class="fas fa-times"></i>
@@ -189,35 +187,50 @@ body, .content-wrapper {
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
-                <div class="d-flex align-items-center">
-                    <label for="filterDestBranch" class="mr-2 mb-0 font-weight-bold text-xs text-uppercase text-secondary text-nowrap" title="Stores that need stock (Deficit/Shortage)">
-                        <i class="fas fa-arrow-circle-down text-danger mr-1"></i> Receiving (Deficit):
-                    </label>
-                    <select id="filterDestBranch" class="form-control form-control-sm font-weight-bold">
-                        <option value="all">All Receiving Stores</option>
-                        @foreach($branches as $branch)
-                            <option value="{{ $branch->id }}" {{ $activeBranchId == $branch->id ? 'selected' : '' }}>
-                                {{ $branch->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+            <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                <label for="filterStoreInvolved" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="View all transfers concerning this branch (inward deficit or outward surplus)">
+                    <i class="fas fa-store text-primary mr-1"></i> Store Involved:
+                </label>
+                <select id="filterStoreInvolved" class="form-control form-control-sm font-weight-bold">
+                    <option value="all">All Stores (Show Both)</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ $activeBranchId == $branch->id ? 'selected' : '' }}>
+                            {{ $branch->name }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
-            <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
-                <div class="d-flex align-items-center">
-                    <label for="filterSourceBranch" class="mr-2 mb-0 font-weight-bold text-xs text-uppercase text-secondary text-nowrap" title="Stores that have extra stock to send (Surplus/Excess)">
-                        <i class="fas fa-arrow-circle-up text-success mr-1"></i> Sending (Surplus):
-                    </label>
-                    <select id="filterSourceBranch" class="form-control form-control-sm font-weight-bold">
-                        <option value="all">All Sending Stores</option>
-                        @foreach($branches as $branch)
-                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+            <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
+                <label for="filterFlowRole" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="Filter by Inward (Deficit) or Outward (Surplus)">
+                    <i class="fas fa-exchange-alt text-info mr-1"></i> Transfer Flow:
+                </label>
+                <select id="filterFlowRole" class="form-control form-control-sm font-weight-bold">
+                    <option value="all">All Flows (In & Out)</option>
+                    <option value="receiving">Inward / Receiving Only</option>
+                    <option value="sending">Outward / Sending Only</option>
+                </select>
             </div>
-            <div class="col-md-2 text-right">
+            <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
+                <label for="filterSpecificRoute" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="Direct Route Filter">
+                    <i class="fas fa-route text-success mr-1"></i> Specific Route:
+                </label>
+                <select id="filterSpecificRoute" class="form-control form-control-sm font-weight-bold">
+                    <option value="all">All Routes</option>
+                    @foreach($branches as $bSrc)
+                        @foreach($branches as $bDest)
+                            @if($bSrc->id !== $bDest->id)
+                                <option value="{{ $bSrc->id }}_to_{{ $bDest->id }}">
+                                    {{ $bSrc->name }} &rarr; {{ $bDest->name }}
+                                </option>
+                            @endif
+                        @endforeach
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-4 text-lg-right text-left mt-2 mt-md-0 d-flex align-items-end justify-content-lg-end" style="padding-top: 1.35rem;">
+                <button type="button" class="btn btn-primary btn-sm font-weight-bold mr-1" id="btnApplyFilters" title="Apply selected filters">
+                    <i class="fas fa-filter mr-1"></i> Filter
+                </button>
                 <button type="button" class="btn btn-outline-secondary btn-sm font-weight-bold" id="btnResetFilters" title="Reset all filters">
                     <i class="fas fa-undo mr-1"></i> Reset
                 </button>
@@ -269,13 +282,13 @@ body, .content-wrapper {
                         <tr class="transfer-data-row"
                             id="transfer-row-{{ $transfer->item_id }}-{{ $transfer->source_branch_id }}-{{ $transfer->dest_branch_id }}"
                             data-item-id="{{ $transfer->item_id }}"
-                            data-item-name="{{ $transfer->item_name }}"
-                            data-item-code="{{ $transfer->item_code }}"
+                            data-item-name="{{ e($transfer->item_name) }}"
+                            data-item-code="{{ e($transfer->item_code) }}"
                             data-dest-branch-id="{{ $transfer->dest_branch_id }}"
-                            data-dest-branch-name="{{ $transfer->dest_branch_name }}"
+                            data-dest-branch-name="{{ e($transfer->dest_branch_name) }}"
                             data-dest-stock="{{ (int)$transfer->dest_stock }}"
                             data-source-branch-id="{{ $transfer->source_branch_id }}"
-                            data-source-branch-name="{{ $transfer->source_branch_name }}"
+                            data-source-branch-name="{{ e($transfer->source_branch_name) }}"
                             data-source-stock="{{ (int)$transfer->source_stock }}"
                             data-suggested-qty="{{ $transfer->suggested_transfer_qty }}">
                             <td class="text-center">
@@ -431,9 +444,15 @@ body, .content-wrapper {
 
     $(document).ready(function() {
         // Search & Filters
+        $('#btnApplyFilters').on('click', applyFilters);
         $('#transferSearchInput').on('input', applyFilters);
-        $('#filterDestBranch').on('change', applyFilters);
-        $('#filterSourceBranch').on('change', applyFilters);
+        $('#transferSearchInput').on('keypress', function(e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                applyFilters();
+            }
+        });
+        $('#filterStoreInvolved, #filterFlowRole, #filterSpecificRoute').on('change', applyFilters);
 
         // Run filters immediately on load so preset activeBranchId or search is respected
         applyFilters();
@@ -445,8 +464,9 @@ body, .content-wrapper {
 
         $('#btnResetFilters').on('click', function() {
             $('#transferSearchInput').val('');
-            $('#filterDestBranch').val('all');
-            $('#filterSourceBranch').val('all');
+            $('#filterStoreInvolved').val('all');
+            $('#filterFlowRole').val('all');
+            $('#filterSpecificRoute').val('all');
             applyFilters();
         });
 
@@ -709,30 +729,45 @@ body, .content-wrapper {
         }
     }
 
-    // Apply Live Table Filters (Search + Branches)
+    // Apply Live Table Filters (Search + Stores + Flow Direction + Route)
     function applyFilters() {
         const query = $.trim($('#transferSearchInput').val()).toLowerCase();
-        const destBranch = $('#filterDestBranch').val();
-        const sourceBranch = $('#filterSourceBranch').val();
+        const storeInvolved = $('#filterStoreInvolved').val();
+        const flowRole = $('#filterFlowRole').val();
+        const specificRoute = $('#filterSpecificRoute').val();
 
         let visibleCount = 0;
 
         $('.transfer-data-row').each(function() {
             const $row = $(this);
-            const itemName = ($row.data('item-name') || '').toLowerCase();
-            const itemCode = ($row.data('item-code') || '').toLowerCase();
-            const rowDestBranch = String($row.data('dest-branch-id'));
-            const rowSourceBranch = String($row.data('source-branch-id'));
+            const itemName = String($row.attr('data-item-name') || $row.data('item-name') || '').toLowerCase();
+            const itemCode = String($row.attr('data-item-code') || $row.data('item-code') || '').toLowerCase();
+            const rowDestBranch = String($row.attr('data-dest-branch-id') || $row.data('dest-branch-id') || '');
+            const rowSourceBranch = String($row.attr('data-source-branch-id') || $row.data('source-branch-id') || '');
 
             let matchesSearch = true;
             if (query.length > 0) {
                 matchesSearch = itemName.includes(query) || itemCode.includes(query);
             }
 
-            let matchesDest = (destBranch === 'all' || rowDestBranch === destBranch);
-            let matchesSource = (sourceBranch === 'all' || rowSourceBranch === sourceBranch);
+            let matchesRoute = true;
+            if (specificRoute && specificRoute !== 'all') {
+                const parts = specificRoute.split('_to_');
+                matchesRoute = (rowSourceBranch === parts[0] && rowDestBranch === parts[1]);
+            }
 
-            if (matchesSearch && matchesDest && matchesSource) {
+            let matchesStore = true;
+            if (storeInvolved && storeInvolved !== 'all') {
+                if (flowRole === 'receiving') {
+                    matchesStore = (rowDestBranch === storeInvolved);
+                } else if (flowRole === 'sending') {
+                    matchesStore = (rowSourceBranch === storeInvolved);
+                } else {
+                    matchesStore = (rowDestBranch === storeInvolved || rowSourceBranch === storeInvolved);
+                }
+            }
+
+            if (matchesSearch && matchesRoute && matchesStore) {
                 $row.show();
                 visibleCount++;
             } else {

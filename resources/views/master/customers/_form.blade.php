@@ -59,40 +59,43 @@
             <div class="field-wrapper col-md-6" data-field="mobile" data-label="Mobile Number" data-default-order="3" data-core="1">
                 <x-field name="mobile" label="Mobile Number" :value="$c->mobile ?? ''" required />
             </div>
-            <div class="field-wrapper col-md-6" data-field="customer_category_id" data-label="Category" data-default-order="4">
+            <div class="field-wrapper col-md-6" data-field="email" data-label="Email" data-default-order="4">
+                <x-field name="email" label="Email" type="email" :value="$c->email ?? ''" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="customer_category_id" data-label="Category" data-default-order="5">
                 <x-select name="customer_category_id" label="Category" :options="$customerCategories" :selected="$c->customer_category_id ?? ''" placeholder="Select a category" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="customer_code" data-label="Customer Id" data-default-order="5">
+            <div class="field-wrapper col-md-6" data-field="customer_code" data-label="Customer Id" data-default-order="6">
                 <x-field name="customer_code" label="Customer Id" :value="$c->customer_code ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="sales_type" data-label="Purchase Type" data-default-order="6">
+            <div class="field-wrapper col-md-6" data-field="sales_type" data-label="Purchase Type" data-default-order="7">
                 <x-select name="sales_type" label="Purchase Type (Local / Interstate)" :options="$salesTypes ?? ['Local' => 'Local', 'Interstate' => 'Interstate']" :selected="$c->sales_type ?? 'Local'" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="payment_mode" data-label="Payment Mode" data-default-order="7">
+            <div class="field-wrapper col-md-6" data-field="payment_mode" data-label="Payment Mode" data-default-order="8">
                 <x-select name="payment_mode" label="Payment Mode" :options="['Cash Only' => 'Cash Only', 'No Credit' => 'No Credit', 'Credit Only' => 'Credit Only', 'Both Cash and Credit' => 'Both Cash and Credit', 'Cash on Delivery' => 'Cash on Delivery']" :selected="$c->payment_mode ?? 'Cash Only'" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="credit_limit" data-label="Credit Limit" data-default-order="8">
+            <div class="field-wrapper col-md-6" data-field="credit_limit" data-label="Credit Limit" data-default-order="9">
                 <x-field name="credit_limit" label="Credit Limit" type="number" step="0.01" :value="$c->credit_limit ?? 1000000" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="credit_balance" data-label="Credit Balance" data-default-order="9">
+            <div class="field-wrapper col-md-6" data-field="credit_balance" data-label="Credit Balance" data-default-order="10">
                 <x-field name="credit_balance" label="Credit Balance" type="number" step="0.01" :value="$c->credit_balance ?? 0" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="monthly_credit_balance" data-label="Monthly Credit Balance" data-default-order="10">
+            <div class="field-wrapper col-md-6" data-field="monthly_credit_balance" data-label="Monthly Credit Balance" data-default-order="11">
                 <x-field name="monthly_credit_balance" label="Monthly Credit Balance" type="number" step="0.01" :value="$c->monthly_credit_balance ?? 0" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="credit_days" data-label="Credit Days" data-default-order="11">
+            <div class="field-wrapper col-md-6" data-field="credit_days" data-label="Credit Days" data-default-order="12">
                 <x-field name="credit_days" label="Credit Days" type="number" :value="$c->credit_days ?? 1000" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="12">
+            <div class="field-wrapper col-md-6" data-field="branch_id" data-label="Branch" data-default-order="13">
                 <x-select name="branch_id" label="Branch" :options="$branches" :selected="$c->branch_id ?? ''" placeholder="All Branches" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="13">
+            <div class="field-wrapper col-md-6" data-field="status" data-label="Status" data-default-order="14">
                 <x-bool-select name="status" label="Status" :value="$c->status ?? true" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="sales_formula" data-label="Sales Formula" data-default-order="14">
+            <div class="field-wrapper col-md-6" data-field="sales_formula" data-label="Sales Formula" data-default-order="15">
                 <x-field name="sales_formula" label="Sales Formula" :value="$c->sales_formula ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="gst_type" data-label="GST Type" data-default-order="15">
+            <div class="field-wrapper col-md-6" data-field="gst_type" data-label="GST Type" data-default-order="16">
                 @php
                     $gstTypeOptions = \App\Models\GstType::where('status', true)->orderBy('name')->pluck('name', 'name');
                     if ($gstTypeOptions->isEmpty()) {
@@ -101,7 +104,10 @@
                 @endphp
                 <x-select name="gst_type" label="GST Type" :options="$gstTypeOptions" :selected="$c->gst_type ?? 'Un Register'" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="sms_consent" data-label="I wish to receive SMS" data-default-order="16">
+            <div class="field-wrapper col-md-6" data-field="gst_no" data-label="GST No" data-default-order="17">
+                <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="sms_consent" data-label="I wish to receive SMS" data-default-order="18">
                 <x-bool-select name="sms_consent" label="I wish to receive SMS" :value="$c->sms_consent ?? true" true-label="Yes" false-label="No" />
             </div>
         </div>
@@ -123,19 +129,13 @@
             <div class="field-wrapper col-md-6" data-field="std_code" data-label="STD Code" data-default-order="2">
                 <x-field name="std_code" label="STD Code" :value="$c->std_code ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="email" data-label="Email" data-default-order="3">
-                <x-field name="email" label="Email" type="email" :value="$c->email ?? ''" />
-            </div>
-            <div class="field-wrapper col-md-6" data-field="gst_no" data-label="GST No" data-default-order="4">
-                <x-field name="gst_no" label="GST No" :value="$c->gst_no ?? ''" maxlength="15" placeholder="e.g. 22AAAAA0000A1Z5" hint="Format: 2-digit state + 10-char PAN + 1 entity + Z + check (15 chars)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);" />
-            </div>
-            <div class="field-wrapper col-md-6" data-field="pan_no" data-label="Pan No" data-default-order="5">
+            <div class="field-wrapper col-md-6" data-field="pan_no" data-label="Pan No" data-default-order="3">
                 <x-field name="pan_no" label="Pan No" :value="$c->pan_no ?? ''" />
             </div>
-            <div class="field-wrapper col-md-6" data-field="aadhar_no" data-label="Aadhar No" data-default-order="6">
+            <div class="field-wrapper col-md-6" data-field="aadhar_no" data-label="Aadhar No" data-default-order="4">
                 <x-field name="aadhar_no" label="Aadhar No" :value="$c->aadhar_no ?? ''" />
             </div>
-            <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
+            <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="5">
                 <x-textarea name="remarks" label="Remarks" :value="$c->remarks ?? ''" />
             </div>
         </div>
