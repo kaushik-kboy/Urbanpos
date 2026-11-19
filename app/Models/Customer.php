@@ -85,7 +85,7 @@ class Customer extends Model
 
     public function addresses(): HasMany
     {
-        return $this->hasMany(CustomerAddress::class);
+        return $this->hasMany(CustomerAddress::class)->orderByDesc('is_primary')->orderBy('id');
     }
 
     public function primaryAddress(): HasOne

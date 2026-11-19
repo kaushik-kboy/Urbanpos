@@ -293,6 +293,7 @@ class CustomerController extends Controller
                 'country' => trim($addr['country'] ?? '') ?: 'India',
                 'postal_code' => trim($addr['postal_code'] ?? '') ?: null,
                 'landmark' => trim($addr['landmark'] ?? '') ?: null,
+                'google_map_link' => trim($addr['google_map_link'] ?? '') ?: null,
                 'is_primary' => $isPrimary,
             ];
 
@@ -325,6 +326,7 @@ class CustomerController extends Controller
                     'state' => $customer->state ?: 'Gujarat',
                     'country' => $customer->country ?: 'India',
                     'postal_code' => $customer->postal_code,
+                    'google_map_link' => $customer->google_map_link,
                     'is_primary' => true,
                 ]);
             }
@@ -339,6 +341,7 @@ class CustomerController extends Controller
                 'city' => $primary->city,
                 'state' => $primary->state,
                 'postal_code' => $primary->postal_code,
+                'google_map_link' => $primary->google_map_link ?: $customer->google_map_link,
             ]);
         }
     }
@@ -408,6 +411,37 @@ class CustomerController extends Controller
             $rawMap = trim((string) $request->input('google_map_link'));
             if ($rawMap !== '' && !preg_match('#^https?://#i', $rawMap)) {
                 $request->merge(['google_map_link' => 'https://' . $rawMap]);
+            }
+        }
+
+        // Normalize multiple addresses map links and auto-mirror primary address to top-level fields
+        $inputAddresses = $request->input('addresses', []);
+        if (is_array($inputAddresses) && !empty($inputAddresses)) {
+            $primaryAddr = null;
+            foreach ($inputAddresses as $k => $addr) {
+                if (!empty($addr['google_map_link'])) {
+                    $rawAddrMap = trim((string) $addr['google_map_link']);
+                    if ($rawAddrMap !== '' && !preg_match('#^https?://#i', $rawAddrMap)) {
+                        $inputAddresses[$k]['google_map_link'] = 'https://' . $rawAddrMap;
+                    }
+                }
+                if (empty($addr['_delete'])) {
+                    if (!empty($addr['is_primary']) || $primaryAddr === null) {
+                        $primaryAddr = $inputAddresses[$k];
+                    }
+                }
+            }
+            $request->merge(['addresses' => $inputAddresses]);
+
+            if ($primaryAddr) {
+                $request->mergeIfMissing([
+                    'address1' => $primaryAddr['address_line'] ?? null,
+                    'area_id' => !empty($primaryAddr['area_id']) ? $primaryAddr['area_id'] : null,
+                    'city' => !empty($primaryAddr['city']) ? $primaryAddr['city'] : 'Ahmedabad',
+                    'state' => !empty($primaryAddr['state']) ? $primaryAddr['state'] : 'Gujarat',
+                    'postal_code' => $primaryAddr['postal_code'] ?? null,
+                    'google_map_link' => $primaryAddr['google_map_link'] ?? null,
+                ]);
             }
         }
 

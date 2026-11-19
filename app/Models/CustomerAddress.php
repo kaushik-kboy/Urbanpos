@@ -21,6 +21,7 @@ class CustomerAddress extends Model
         'country',
         'postal_code',
         'landmark',
+        'google_map_link',
         'is_primary',
     ];
 

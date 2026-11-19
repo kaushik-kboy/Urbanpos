@@ -985,6 +985,7 @@ class SalesBillController extends Controller
                 'postal_code' => $a->postal_code ?? '',
                 'is_primary' => (bool) $a->is_primary,
                 'formatted' => $a->formatted_address,
+                'google_map_link' => $a->google_map_link ?: ($customer->google_map_link ?? ''),
             ]),
             'address1' => $customer->address1 ?? '',
             'google_map_link' => $customer->google_map_link ?? '',
@@ -1933,7 +1934,7 @@ class SalesBillController extends Controller
                     'name' => $c->name,
                     'mobile' => $c->mobile ?? '',
                     'address1' => $c->address1 ?? '',
-                    'google_map_link' => $c->google_map_link ?? '',
+                    'google_map_link' => $a->google_map_link ?: ($c->google_map_link ?? ''),
                     'city' => $c->city ?? 'Ahmedabad',
                     'state' => $c->state ?? 'Gujarat',
                     'postal_code' => $c->postal_code ?? '',
@@ -1960,7 +1961,7 @@ class SalesBillController extends Controller
                         'postal_code' => $a->postal_code ?? '',
                         'is_primary' => (bool) $a->is_primary,
                         'formatted' => $a->formatted_address,
-                        'google_map_link' => $c->google_map_link ?? '',
+                        'google_map_link' => $a->google_map_link ?: ($c->google_map_link ?? ''),
                     ]),
                 ];
             });
@@ -2048,7 +2049,7 @@ class SalesBillController extends Controller
                     'postal_code' => $a->postal_code ?? '',
                     'is_primary' => (bool) $a->is_primary,
                     'formatted' => $a->formatted_address,
-                    'google_map_link' => $c->google_map_link ?? '',
+                    'google_map_link' => $a->google_map_link ?: ($c->google_map_link ?? ''),
                 ]),
             ];
         });
