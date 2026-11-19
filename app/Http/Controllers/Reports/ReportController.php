@@ -1683,7 +1683,7 @@ class ReportController extends Controller
                 ->whereDate('purchase_invoices.invoice_date', '<=', $to)
                 ->where('purchase_invoices.status', '!=', 'Cancelled')
                 ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
-                ->selectRaw('purchase_invoices.invoice_date as trans_date, purchase_invoices.invoice_number as doc_no, "Purchase (Inward)" as trans_type, purchase_invoice_items.qty as qty, COALESCE(purchase_invoice_items.free_qty, 0) as free_qty, (purchase_invoice_items.qty + COALESCE(purchase_invoice_items.free_qty, 0)) as total_qty, COALESCE(suppliers.name, "Vendor") as party_name, COALESCE(branches.name, "-") as branch_name, purchase_invoices.id as doc_id, "purchase" as doc_kind')
+                ->selectRaw('purchase_invoices.invoice_date as trans_date, purchase_invoices.invoice_number as doc_no, purchase_invoices.supplier_inv_no as supplier_inv_no, "Purchase (Inward)" as trans_type, purchase_invoice_items.qty as qty, COALESCE(purchase_invoice_items.free_qty, 0) as free_qty, (purchase_invoice_items.qty + COALESCE(purchase_invoice_items.free_qty, 0)) as total_qty, COALESCE(suppliers.name, "Vendor") as party_name, COALESCE(branches.name, "-") as branch_name, purchase_invoices.id as doc_id, "purchase" as doc_kind')
                 ->get();
             foreach ($purs as $p) {
                 $freeQty = (float) ($p->free_qty ?? 0);
@@ -1692,10 +1692,12 @@ class ReportController extends Controller
                 if ($freeQty > 0) {
                     $transType .= ' (' . rtrim(rtrim(number_format((float) $p->qty, 2), '0'), '.') . ' + ' . rtrim(rtrim(number_format($freeQty, 2), '0'), '.') . ' Free)';
                 }
+                $suppInvNo = ! empty($p->supplier_inv_no) ? trim((string) $p->supplier_inv_no) : '';
+                $docDisplay = $p->doc_no . ($suppInvNo !== '' ? (' - ' . $suppInvNo . '(Supplier Inv No)') : '');
                 $records[] = [
                     'date' => Carbon::parse($p->trans_date)->format('d M Y'),
                     'raw_date' => $p->trans_date,
-                    'doc_no' => $p->doc_no,
+                    'doc_no' => $docDisplay,
                     'doc_id' => $p->doc_id ?? null,
                     'doc_kind' => $p->doc_kind ?? 'purchase',
                     'trans_type' => $transType,

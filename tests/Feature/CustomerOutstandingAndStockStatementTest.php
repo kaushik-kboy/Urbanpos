@@ -242,6 +242,7 @@ class CustomerOutstandingAndStockStatementTest extends TestCase
         // Purchase Invoice with Billed Qty = 297 and Free Qty = 99 -> Total physical = 396
         $pi = PurchaseInvoice::create([
             'invoice_number' => 'PI01/2627/000044',
+            'supplier_inv_no' => 'PEDITAXINV-396',
             'supplier_id' => $supplier->id,
             'branch_id' => $this->branch1->id,
             'status' => 'Approved',
@@ -353,6 +354,7 @@ class CustomerOutstandingAndStockStatementTest extends TestCase
 
         $purchaseRecord = collect($drilldownData['records'])->firstWhere('doc_kind', 'purchase');
         $this->assertNotNull($purchaseRecord);
+        $this->assertEquals('PI01/2627/000044 - PEDITAXINV-396(Supplier Inv No)', $purchaseRecord['doc_no']);
         $this->assertEquals(396.0, (float)$purchaseRecord['qty']);
         $this->assertStringContainsString('297 + 99 Free', $purchaseRecord['trans_type']);
     }
