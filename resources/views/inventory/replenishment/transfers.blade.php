@@ -435,6 +435,9 @@ body, .content-wrapper {
         $('#filterDestBranch').on('change', applyFilters);
         $('#filterSourceBranch').on('change', applyFilters);
 
+        // Run filters immediately on load so preset activeBranchId or search is respected
+        applyFilters();
+
         $('#btnClearSearch').on('click', function() {
             $('#transferSearchInput').val('');
             applyFilters();

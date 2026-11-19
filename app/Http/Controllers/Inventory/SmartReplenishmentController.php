@@ -16,6 +16,7 @@ use App\Models\ReplenishmentStockRule;
 use App\Models\StockTransfer;
 use App\Models\Supplier;
 use App\Services\Accounting\DocumentNumberingService;
+use App\Services\Inventory\StockLedgerService;
 use App\Services\ReplenishmentCalculationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,10 +28,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class SmartReplenishmentController extends Controller
 {
     protected ReplenishmentCalculationService $service;
+    protected StockLedgerService $stockLedger;
 
-    public function __construct(ReplenishmentCalculationService $service)
+    public function __construct(ReplenishmentCalculationService $service, StockLedgerService $stockLedger)
     {
         $this->service = $service;
+        $this->stockLedger = $stockLedger;
     }
 
     /**
@@ -64,10 +67,23 @@ class SmartReplenishmentController extends Controller
             abort(404, 'Smart Replenishment is not enabled in this environment.');
         }
 
-        $branches = Branch::where('status', true)->get();
-        $activeBranchId = $request->filled('branch_id') && $request->get('branch_id') !== 'all'
+        $user = $request->user() ?: auth()->user();
+        $isGlobalAdmin = $user && (
+            $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) ||
+            $user->email === 'admin@urbanpos.com'
+        );
+
+        $userBranchId = ($user && $user->branch_id && ! $isGlobalAdmin) ? (int) $user->branch_id : null;
+
+        $branches = Branch::where('status', true);
+        if ($userBranchId) {
+            $branches = $branches->where('id', $userBranchId);
+        }
+        $branches = $branches->get();
+
+        $activeBranchId = $userBranchId ?: ($request->filled('branch_id') && $request->get('branch_id') !== 'all'
             ? (int) $request->get('branch_id')
-            : ($branches->first()->id ?? 1);
+            : ($branches->first()->id ?? 1));
 
         $summary = $this->service->getDashboardSummary($activeBranchId);
         $transferRecommendations = $this->service->getTransferRecommendations($activeBranchId, 10);
@@ -335,12 +351,32 @@ class SmartReplenishmentController extends Controller
             abort(404);
         }
 
-        $branches = Branch::where('status', true)->get();
-        $activeBranchId = $request->filled('branch_id') && $request->get('branch_id') !== 'all'
-            ? (int) $request->get('branch_id')
-            : null;
+        $user = $request->user() ?: auth()->user();
+        $isGlobalAdmin = $user && (
+            $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) ||
+            $user->email === 'admin@urbanpos.com'
+        );
+        $userBranchId = ($user && $user->branch_id && ! $isGlobalAdmin) ? (int) $user->branch_id : null;
 
-        $transferRecommendations = $this->service->getTransferRecommendations($activeBranchId, 500);
+        $branches = Branch::where('status', true);
+        if ($userBranchId) {
+            $branches = $branches->where('id', $userBranchId);
+        }
+        $branches = $branches->get();
+
+        $activeBranchId = $userBranchId ?: ($request->filled('branch_id') && $request->get('branch_id') !== 'all'
+            ? (int) $request->get('branch_id')
+            : null);
+
+        // Fetch all transfer recommendations (destBranchId = null) so the client dropdown can filter across branches seamlessly
+        $transferRecommendations = $this->service->getTransferRecommendations(null, 1000);
+
+        if ($userBranchId) {
+            // Staff members only see transfers concerning their assigned branch (either receiving deficit or sending surplus)
+            $transferRecommendations = $transferRecommendations->filter(function ($t) use ($userBranchId) {
+                return (int) $t->dest_branch_id === $userBranchId || (int) $t->source_branch_id === $userBranchId;
+            })->values();
+        }
 
         return view('inventory.replenishment.transfers', compact('branches', 'activeBranchId', 'transferRecommendations'));
     }
@@ -354,10 +390,22 @@ class SmartReplenishmentController extends Controller
             abort(404);
         }
 
-        $branches = Branch::where('status', true)->get();
-        $activeBranchId = $request->filled('branch_id') && $request->get('branch_id') !== 'all'
+        $user = $request->user() ?: auth()->user();
+        $isGlobalAdmin = $user && (
+            $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) ||
+            $user->email === 'admin@urbanpos.com'
+        );
+        $userBranchId = ($user && $user->branch_id && ! $isGlobalAdmin) ? (int) $user->branch_id : null;
+
+        $branches = Branch::where('status', true);
+        if ($userBranchId) {
+            $branches = $branches->where('id', $userBranchId);
+        }
+        $branches = $branches->get();
+
+        $activeBranchId = $userBranchId ?: ($request->filled('branch_id') && $request->get('branch_id') !== 'all'
             ? (int) $request->get('branch_id')
-            : null;
+            : null);
 
         $supplierOrders = $this->service->getSupplierOrderRecommendations($activeBranchId);
 
@@ -672,9 +720,26 @@ class SmartReplenishmentController extends Controller
                 'total_qty' => $totalQty,
                 'total_value' => $totalValue,
                 'dispatched_at' => now(),
+                'created_by' => auth()->id(),
             ]);
 
             $stockTransfer->items()->createMany($transferLines);
+
+            // Post Stock Ledger TRANSFER_OUT for sending store
+            foreach ($transferLines as $tLine) {
+                $this->stockLedger->post(
+                    itemId: $tLine['item_id'],
+                    branchId: $fromBranchId,
+                    movementType: 'TRANSFER_OUT',
+                    qtyDelta: -((float) $tLine['qty']),
+                    unitCost: (float) ($tLine['unit_cost'] ?? 0),
+                    referenceType: StockTransfer::class,
+                    referenceId: $stockTransfer->id,
+                    documentDate: $today,
+                    batchNo: $tLine['batch_no'] ?? null,
+                    mrp: (float) ($tLine['mrp'] ?? 0),
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -684,7 +749,7 @@ class SmartReplenishmentController extends Controller
                 'total_qty' => $totalQty,
                 'total_value' => $totalValue,
                 'redirect_url' => route('inventory.stock-transfers.show', $stockTransfer->id),
-                'message' => "Stock Transfer {$stockTransfer->transfer_number} dispatched successfully with {$totalQty} units!",
+                'message' => "Stock Transfer {$stockTransfer->transfer_number} dispatched successfully ({$totalQty} units deducted from source). Receiving branch can confirm & accept at Pending Receipt.",
             ]);
         });
     }
@@ -856,9 +921,26 @@ class SmartReplenishmentController extends Controller
                     'total_qty' => $totalQty,
                     'total_value' => $totalValue,
                     'dispatched_at' => now(),
+                    'created_by' => auth()->id(),
                 ]);
 
                 $stockTransfer->items()->createMany($transferLines);
+
+                // Post Stock Ledger TRANSFER_OUT for sending store
+                foreach ($transferLines as $tLine) {
+                    $this->stockLedger->post(
+                        itemId: $tLine['item_id'],
+                        branchId: $fromBranchId,
+                        movementType: 'TRANSFER_OUT',
+                        qtyDelta: -((float) $tLine['qty']),
+                        unitCost: (float) ($tLine['unit_cost'] ?? 0),
+                        referenceType: StockTransfer::class,
+                        referenceId: $stockTransfer->id,
+                        documentDate: $today,
+                        batchNo: $tLine['batch_no'] ?? null,
+                        mrp: (float) ($tLine['mrp'] ?? 0),
+                    );
+                }
 
                 $totalOverallQty += $totalQty;
 

@@ -80,14 +80,15 @@ class StockLedgerService
             } else {
                 $qtyOutAbs = abs($qtyDelta);
                 $item = Item::find($itemId);
-                $allowNeg = (bool) ($allowTemporaryNegative || ($item && $item->allow_negative_stock));
+                $isService = (bool) ($item && $item->isService());
+                $allowNeg = (bool) ($allowTemporaryNegative || $isService || ($item && $item->allow_negative_stock));
                 if (! $allowNeg && round($oldQty, 4) < round($qtyOutAbs, 4)) {
                     $itemName = $item ? $item->name : "Item #{$itemId}";
                     throw ValidationException::withMessages([
                         'stock' => "Stock cannot be negative for \"{$itemName}\". Available: {$oldQty}, attempted to deduct: {$qtyOutAbs}.",
                     ]);
                 }
-                $newQty = $allowNeg ? round($oldQty - $qtyOutAbs, 4) : max(0.0, round($oldQty - $qtyOutAbs, 4));
+                $newQty = $isService ? 0.0 : ($allowNeg ? round($oldQty - $qtyOutAbs, 4) : max(0.0, round($oldQty - $qtyOutAbs, 4)));
                 $newAvgCost = $oldAvgCost; // outgoing movements never change the average
 
                 $qtyIn = 0.0;

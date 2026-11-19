@@ -1340,13 +1340,13 @@ class SalesBillController extends Controller
             }
         }
 
-        // By default show only products in stock (quantity > 0 or allow_negative_stock) unless show_all is checked
+        // By default show only products in stock (quantity > 0 or allow_negative_stock or service) unless show_all is checked
         if (! $showAll) {
             if (! empty($editBillItemIds)) {
                 $idListStr = implode(',', $editBillItemIds);
-                $where[] = "(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1 OR i.id IN ({$idListStr}))";
+                $where[] = "(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1 OR i.product_type IN ('Service', 'Service Component') OR i.id IN ({$idListStr}))";
             } else {
-                $where[] = '(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1)';
+                $where[] = "(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1 OR i.product_type IN ('Service', 'Service Component'))";
             }
         }
 
@@ -1456,6 +1456,7 @@ class SalesBillController extends Controller
             SELECT
                 i.id,
                 i.name,
+                COALESCE(i.product_type, 'Standard') AS product_type,
                 COALESCE(i.allow_negative_stock, 0) AS allow_negative_stock,
                 COALESCE(i.item_code, '')  AS item_code,
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
@@ -1656,18 +1657,22 @@ class SalesBillController extends Controller
                 continue;
             }
 
+            $isService = in_array($row->product_type ?? 'Standard', ['Service', 'Service Component', 'Service Item', 'Non-Inventory'], true) || stripos($row->name ?? '', 'Pickup and Drop Service') !== false;
+
             $result[] = [
                 'id' => (int) $row->id,
                 'name' => $row->name,
                 'code' => $row->item_code ?: ($row->ean_upc_code ?: ''),
                 'exp_date' => $exp,
-                'qty' => (float) $row->qty,
-                'stock' => (float) $row->qty,
+                'qty' => $isService ? 999999 : (float) $row->qty,
+                'stock' => $isService ? 999999 : (float) $row->qty,
+                'is_service' => $isService,
+                'product_type' => $row->product_type ?? 'Standard',
                 'other_stocks' => $otherStocksByItem[$row->id] ?? [],
                 'sell_price' => (float) $row->sell_price,
                 'mrp' => (float) $row->mrp,
                 'gst_percent' => (float) $row->gst_percent,
-                'allow_negative_stock' => (bool) ($row->allow_negative_stock ?? false),
+                'allow_negative_stock' => $isService ? true : (bool) ($row->allow_negative_stock ?? false),
             ];
         }
 
@@ -1864,6 +1869,9 @@ class SalesBillController extends Controller
             ->values()
             ->all();
 
+        $isService = $item->isService();
+        $effectiveStock = $isService ? 999999 : $stock;
+
         return response()->json([
             'found' => true,
             'item' => [
@@ -1876,12 +1884,14 @@ class SalesBillController extends Controller
                 'mrp' => (float) $defaultMrp,
                 'exp_date' => $defaultExp,
                 'batch_no' => $defaultBatchNo,
-                'stock' => $stock,
-                'total_branch_stock' => $salesBillId ? $stock : (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0),
+                'stock' => $effectiveStock,
+                'total_branch_stock' => $isService ? 999999 : ($salesBillId ? $stock : (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0)),
+                'is_service' => $isService,
+                'product_type' => $item->product_type,
                 'other_stocks' => $otherStocks,
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
                 'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
-                'allow_negative_stock' => (bool) ($item->allow_negative_stock ?? false),
+                'allow_negative_stock' => $isService ? true : (bool) ($item->allow_negative_stock ?? false),
             ],
             'other_stocks' => $otherStocks,
             'batches' => $batches,

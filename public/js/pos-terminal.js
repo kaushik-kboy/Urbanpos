@@ -3141,7 +3141,12 @@
                         name: custName,
                         mobile: custMobile,
                         sales_type: $('#posCust_sales_type').val() || 'Local',
-                        edit_url: editUrl
+                        edit_url: editUrl,
+                        addresses: customer.addresses || [],
+                        address1: customer.address1 || '',
+                        city: customer.city || '',
+                        state: customer.state || '',
+                        google_map_link: customer.google_map_link || ''
                     });
                     loadCustomerLoyalty(newCustId);
                     loadCustomerInvoices(newCustId);

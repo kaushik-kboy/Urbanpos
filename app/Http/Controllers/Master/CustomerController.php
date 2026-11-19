@@ -175,6 +175,11 @@ class CustomerController extends Controller
                     'name' => $customer->name,
                     'mobile' => $customer->mobile,
                     'text' => $customer->mobile ? "{$customer->name} ({$customer->mobile})" : $customer->name,
+                    'address1' => $customer->address1,
+                    'city' => $customer->city,
+                    'state' => $customer->state,
+                    'google_map_link' => $customer->google_map_link,
+                    'addresses' => $customer->addresses()->orderByDesc('is_primary')->orderBy('id')->get(),
                 ],
                 'message' => 'Customer updated successfully.',
             ]);
@@ -254,6 +259,62 @@ class CustomerController extends Controller
 
     private function syncAddresses(Request $request, Customer $customer): void
     {
+        // 1. If request comes from Quick Customer Modal (POS terminal) which submits address1 directly (no addresses array)
+        if (! $request->has('addresses') && $request->has('address1')) {
+            $addrLine = trim((string) $request->input('address1', ''));
+            $mapLink = trim((string) ($request->input('google_map_link') ?? '')) ?: null;
+            $areaId = $request->input('area_id') ?: null;
+            $city = trim((string) ($request->input('city') ?? '')) ?: 'Ahmedabad';
+            $state = trim((string) ($request->input('state') ?? '')) ?: 'Gujarat';
+            $postalCode = trim((string) ($request->input('postal_code') ?? '')) ?: null;
+
+            if ($addrLine === '') {
+                // User intentionally cleared/emptied the address in POS modal
+                $customer->addresses()->delete();
+                $customer->updateQuietly([
+                    'address1' => null,
+                    'area_id' => null,
+                    'postal_code' => null,
+                    'google_map_link' => null,
+                ]);
+                return;
+            } else {
+                // User entered or edited the address in POS modal
+                $primary = $customer->addresses()->where('is_primary', true)->first();
+                if ($primary) {
+                    $primary->update([
+                        'address_line' => $addrLine,
+                        'area_id' => $areaId,
+                        'city' => $city,
+                        'state' => $state,
+                        'postal_code' => $postalCode,
+                        'google_map_link' => $mapLink ?: $primary->google_map_link,
+                    ]);
+                } else {
+                    $customer->addresses()->create([
+                        'address_type' => 'Home',
+                        'address_line' => $addrLine,
+                        'area_id' => $areaId,
+                        'city' => $city,
+                        'state' => $state,
+                        'country' => 'India',
+                        'postal_code' => $postalCode,
+                        'google_map_link' => $mapLink,
+                        'is_primary' => true,
+                    ]);
+                }
+                $customer->updateQuietly([
+                    'address1' => $addrLine,
+                    'area_id' => $areaId,
+                    'city' => $city,
+                    'state' => $state,
+                    'postal_code' => $postalCode,
+                    'google_map_link' => $mapLink,
+                ]);
+                return;
+            }
+        }
+
         $addresses = $request->input('addresses', []);
         if (! is_array($addresses)) {
             $addresses = [];
