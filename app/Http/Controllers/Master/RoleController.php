@@ -255,6 +255,8 @@ class RoleController extends Controller
                     'brands' => ['label' => 'Brands', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'uoms' => ['label' => 'Units of Measure (UOM)', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'kit-mapping' => ['label' => 'Kit Recipe & Assembly Mapping', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'states' => ['label' => 'States Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'cities' => ['label' => 'Cities Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'areas' => ['label' => 'Areas / Geographies', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'pet-types' => ['label' => 'Pet Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'breeds' => ['label' => 'Breeds Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],

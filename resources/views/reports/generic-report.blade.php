@@ -534,6 +534,14 @@
         });
 
         var currentStockRecords = [];
+        var currentExpectedTypes = [];
+        var currentStandardOutwardTypes = [
+            'Sale',
+            'Purchase Return',
+            'Transfer Out',
+            'Negative Stock Adjustment',
+            'Damage Write-off'
+        ];
 
         function renderStockDrilldownRows(filterType, searchText) {
             filterType = filterType || 'all';
@@ -546,7 +554,7 @@
                 } else if (filterType === 'outward_all') {
                     matchType = (r.qty < 0);
                 } else if (filterType !== 'all') {
-                    matchType = (r.trans_type === filterType);
+                    matchType = (r.trans_type === filterType || (r.trans_type && r.trans_type.indexOf(filterType) === 0));
                 }
 
                 var matchSearch = true;
@@ -562,9 +570,26 @@
             });
 
             if (filtered.length === 0) {
-                $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-info-circle mr-1"></i> No transactions found matching selected filter.</td></tr>');
+                if (currentStockRecords.length === 0 && currentExpectedTypes.length > 0) {
+                    var zeroHtml = '<div class="p-4 text-center">' +
+                        '<div class="mb-3 text-muted"><i class="fas fa-info-circle fa-2x text-info mb-2"></i><br><strong class="h6">No transactions recorded in this period.</strong><br><small class="text-muted">Transaction type breakdown for this item:</small></div>' +
+                        '<div class="d-flex justify-content-center flex-wrap" style="gap: 8px;">' +
+                        currentExpectedTypes.map(function(et) {
+                            var isOut = currentStandardOutwardTypes.indexOf(et) !== -1;
+                            var badgeClass = isOut ? 'badge-danger' : 'badge-success';
+                            return '<div class="card p-2 m-1 shadow-sm border text-left" style="min-width: 170px;">' +
+                                '<div class="small font-weight-bold text-muted mb-1"><span class="badge ' + badgeClass + ' mr-1">' + (isOut ? 'Outward (-)' : 'Inward (+)') + '</span> ' + et + '</div>' +
+                                '<div class="h5 mb-0 font-weight-bold text-dark">0 <small class="text-muted font-weight-normal">units</small></div>' +
+                                '</div>';
+                        }).join('') +
+                        '</div></div>';
+                    $('#ssDrilldownTbody').html('<tr><td colspan="7" class="p-0">' + zeroHtml + '</td></tr>');
+                } else {
+                    $('#ssDrilldownTbody').html('<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-info-circle mr-1"></i> No transactions found matching selected filter (' + (filterType !== 'all' ? filterType : 'None') + ').</td></tr>');
+                }
                 $('#ssTfootTotalQty').text('0');
                 $('#ssModalNetQty').text('0');
+                $('#ssDrilldownTfoot').hide();
                 return;
             }
 
@@ -640,6 +665,30 @@
 
                     currentStockRecords = resp.records || [];
 
+                    // Standard transaction types for each flow so user always sees the list even when 0
+                    var standardInwardTypes = [
+                        'Purchase (Inward)',
+                        'Sales Return (Inward)',
+                        'Transfer In',
+                        'Positive Stock Adjustment',
+                        'Opening Stock Initial'
+                    ];
+                    var standardOutwardTypes = [
+                        'Sale',
+                        'Purchase Return',
+                        'Transfer Out',
+                        'Negative Stock Adjustment',
+                        'Damage Write-off'
+                    ];
+
+                    if (flow === 'inward') {
+                        currentExpectedTypes = standardInwardTypes;
+                    } else if (flow === 'outward') {
+                        currentExpectedTypes = standardOutwardTypes;
+                    } else {
+                        currentExpectedTypes = standardInwardTypes.concat(standardOutwardTypes);
+                    }
+
                     // Populate Transaction Type filter dropdown dynamically
                     var $filter = $('#ssModalTransTypeFilter');
                     $filter.empty();
@@ -649,9 +698,19 @@
                     var inwardCount = 0;
                     var outwardCount = 0;
 
+                    // Initialize expected types with count 0 so they always appear in the dropdown list!
+                    currentExpectedTypes.forEach(function(et) {
+                        typeCounts[et] = 0;
+                    });
+
                     currentStockRecords.forEach(function(r) {
                         var t = r.trans_type || 'Other';
-                        typeCounts[t] = (typeCounts[t] || 0) + 1;
+                        var baseType = t.split(' (')[0].trim();
+                        var matched = currentExpectedTypes.find(function(et) {
+                            return et.toLowerCase() === baseType.toLowerCase() || et.toLowerCase() === t.toLowerCase() || t.toLowerCase().indexOf(et.toLowerCase()) === 0;
+                        });
+                        var key = matched || t;
+                        typeCounts[key] = (typeCounts[key] || 0) + 1;
                         if (r.qty > 0) inwardCount++;
                         if (r.qty < 0) outwardCount++;
                     });
@@ -661,8 +720,11 @@
                         $filter.append(new Option('🔴 All Outward (-) (' + outwardCount + ')', 'outward_all'));
                     }
 
+                    // Always list all transaction types
                     Object.keys(typeCounts).sort().forEach(function(t) {
-                        $filter.append(new Option(t + ' (' + typeCounts[t] + ')', t));
+                        var isOut = currentStandardOutwardTypes.indexOf(t) !== -1;
+                        var icon = isOut ? '🔴 ' : '🟢 ';
+                        $filter.append(new Option(icon + t + ' (' + typeCounts[t] + ')', t));
                     });
 
                     $('#ssModalSearchInput').val('');

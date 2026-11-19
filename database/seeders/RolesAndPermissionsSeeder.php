@@ -99,7 +99,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'damage-stocks', 'opening-stocks', 'stock-updates', 'stock-transfers', 'repack', 'kit-preparation', 'kit-unpack', 'kit-recipes', 'barcode-printing',
         'bill-settlements', 'loyalty-programs',
         'item-categories', 'item-category-values', 'product-types', 'brands', 'uoms', 'kit-mapping',
-        'customer-categories', 'customer-types', 'sales-types', 'customers', 'customer-pets', 'loyalty-points', 'areas', 'pet-types', 'breeds', 'colors',
+        'customer-categories', 'customer-types', 'sales-types', 'customers', 'customer-pets', 'loyalty-points', 'states', 'cities', 'areas', 'pet-types', 'breeds', 'colors',
         'suppliers', 'registers', 'tender-types', 'tender-type-values', 'gst-types', 'till',
         // Reports & Analytics
         'reports-dashboard', 'reports-sales', 'reports-purchase', 'reports-inventory', 'reports-finance', 'reports-audit', 'reports-smart-analytics',

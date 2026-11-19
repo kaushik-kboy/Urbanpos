@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Master\AreaController;
+use App\Http\Controllers\Master\StateController;
+use App\Http\Controllers\Master\CityController;
 use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\Master\BreedController;
 use App\Http\Controllers\Master\ColorController;
@@ -112,6 +114,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         'customer-types' => CustomerTypeController::class,
         'sales-types' => SalesTypeController::class,
         'customers' => CustomerController::class,
+        'states' => StateController::class,
+        'cities' => CityController::class,
         'areas' => AreaController::class,
         'pet-types' => PetTypeController::class,
         'breeds' => BreedController::class,
@@ -130,6 +134,9 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::match(['get', 'post'], 'barcodes/print', [\App\Http\Controllers\Master\BarcodePrintController::class, 'printLabels'])->name('barcodes.print');
     Route::get('barcodes/tspl', [\App\Http\Controllers\Master\BarcodePrintController::class, 'downloadTspl'])->name('barcodes.tspl');
     Route::get('sales-types/by-branch', [\App\Http\Controllers\Master\SalesTypeController::class, 'byBranch'])->name('sales-types.by-branch');
+    Route::get('states/api-list', [StateController::class, 'apiList'])->name('states.api-list');
+    Route::get('cities/api-list', [CityController::class, 'apiList'])->name('cities.api-list');
+    Route::get('areas/api-list', [AreaController::class, 'apiList'])->name('areas.api-list');
 
     foreach ($masterResources as $uri => $controller) {
         $viewPermission = ($uri === 'customers') ? 'customers.view' : null;

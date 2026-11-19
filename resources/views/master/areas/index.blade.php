@@ -29,7 +29,7 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Branch</th>
+                        <th>City</th>
                         <th>Status</th>
                         <th class="text-right">Actions</th>
                     </tr>
@@ -38,14 +38,14 @@
                     @forelse ($areas as $area)
                         <tr>
                             <td>{{ $area->name }}</td>
-                            <td>{{ $area->branch?->name ?? 'All Branches' }}</td>
+                            <td>{{ $area->city?->name ?? 'Ahmedabad' }}</td>
                             <td><x-status-badge :active="$area->status" /></td>
                             <td class="text-right">
                                 <a href="{{ route('master.areas.edit', $area) }}" class="btn btn-xs btn-outline-secondary"><i class="fas fa-pen"></i></a>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="3" class="text-center text-muted py-3">No areas yet.</td></tr>
+                        <tr><td colspan="4" class="text-center text-muted py-3">No areas yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

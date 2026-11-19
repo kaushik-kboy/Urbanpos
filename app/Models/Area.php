@@ -10,11 +10,16 @@ class Area extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'branch_id', 'status'];
+    protected $fillable = ['name', 'city_id', 'branch_id', 'status'];
 
     protected $casts = [
         'status' => 'boolean',
     ];
+
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
+    }
 
     public function branch(): BelongsTo
     {

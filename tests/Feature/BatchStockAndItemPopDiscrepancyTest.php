@@ -434,4 +434,116 @@ class BatchStockAndItemPopDiscrepancyTest extends TestCase
         $this->assertEquals(4000.0, (float) $b4000['sell_price']);
         $this->assertEquals(4000.0, (float) $b4000['mrp']);
     }
+
+    public function test_fresh_transferred_batch_is_not_wiped_out_by_legacy_closing_stock_safety_cap(): void
+    {
+        $item = Item::create([
+            'name' => 'Vivaldis PIMOBEN 5/10',
+            'item_code' => '3014',
+            'cost_price' => 303.06,
+            'sell_price' => 770,
+            'mrp' => 770,
+            'status' => true,
+        ]);
+
+        // Legacy closing stock with MRP 770 (exp 2028-04-30, qty 237) and old batch (exp 2027-01-01, qty 42)
+        \DB::table('closing_stocks')->insert([
+            [
+                'item_id' => $item->id,
+                'branch_id' => $this->branch2->id,
+                'item_code' => '3014',
+                'batch_no' => 'B_OLD_BATCH',
+                'expiry_date' => '2027-01-01',
+                'closing_stock' => 42,
+                'mrp' => 770,
+                'net_cost' => 303.06,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'item_id' => $item->id,
+                'branch_id' => $this->branch2->id,
+                'item_code' => '3014',
+                'batch_no' => '30/04/2028',
+                'expiry_date' => '2028-04-30',
+                'closing_stock' => 237,
+                'mrp' => 770,
+                'net_cost' => 303.06,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        // Inward stock transfer: 1 unit received at Satellite with batch V3014-1973, MRP 720, Exp 2028-01-31
+        $transfer = \App\Models\StockTransfer::create([
+            'transfer_number' => 'ST02/2627/000129',
+            'from_branch_id' => $this->branch1->id,
+            'to_branch_id' => $this->branch2->id,
+            'transfer_date' => now()->toDateString(),
+            'status' => 'Received',
+            'created_by' => $this->admin->id,
+        ]);
+
+        \App\Models\StockTransferItem::create([
+            'stock_transfer_id' => $transfer->id,
+            'item_id' => $item->id,
+            'qty' => 1,
+            'received_qty' => 1,
+            'unit_cost' => 303.06,
+            'sell_price' => 720,
+            'mrp' => 720,
+            'exp_date' => '2028-01-31',
+            'batch_no' => 'V3014-1973',
+            'total_cost' => 303.06,
+        ]);
+
+        $stockLedger = app(StockLedgerService::class);
+        $stockLedger->post(
+            itemId: $item->id,
+            branchId: $this->branch2->id,
+            movementType: 'TRANSFER_IN',
+            qtyDelta: 1,
+            unitCost: 303.06,
+            referenceType: \App\Models\StockTransfer::class,
+            referenceId: $transfer->id,
+            documentDate: now()->toDateString(),
+            expDate: '2028-01-31',
+            batchNo: 'V3014-1973',
+            mrp: 720,
+        );
+
+        // Branch physical stock is 238
+        ItemStock::updateOrCreate(
+            ['item_id' => $item->id, 'branch_id' => $this->branch2->id],
+            ['quantity' => 238, 'sell_price' => 720, 'mrp' => 720]
+        );
+
+        // BatchStockService must return BOTH batches with positive stock:
+        // 1. Transferred batch V3014-1973 with MRP 720 and remaining_qty = 1 (NOT 0!)
+        // 2. Closing stock batch with MRP 770 and remaining_qty = 237
+        $batchService = app(BatchStockService::class);
+        $batches = $batchService->getItemBatches($item->id, $this->branch2->id);
+
+        $transferBatch = $batches->firstWhere('batch_no', 'V3014-1973');
+        $closingBatch = $batches->firstWhere('batch_no', '30/04/2028');
+
+        $this->assertNotNull($transferBatch, 'Transfer batch with MRP 720 must be present');
+        $this->assertEquals(720.0, (float) $transferBatch['mrp']);
+        $this->assertEquals(1.0, (float) $transferBatch['remaining_qty'], 'Transferred batch must retain 1 unit remaining');
+
+        $this->assertNotNull($closingBatch, 'Closing stock batch with MRP 770 must be present');
+        $this->assertEquals(770.0, (float) $closingBatch['mrp']);
+        $this->assertEquals(237.0, (float) $closingBatch['remaining_qty'], 'Closing stock batch must retain 237 units remaining');
+
+        // Lookup-item API returns multiple positive batches so POS can prompt batch selection modal
+        $this->actingAs($this->admin);
+        $response = $this->getJson(route('sales.sales-bills.lookup-item', [
+            'item_id' => $item->id,
+            'branch_id' => $this->branch2->id,
+        ]));
+
+        $response->assertOk();
+        $apiBatches = collect($response->json('batches'))->filter(fn ($b) => (float) $b['qty'] > 0);
+        $this->assertGreaterThanOrEqual(2, $apiBatches->count(), 'At least 2 batches with stock > 0 must be returned to POS');
+    }
 }
