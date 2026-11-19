@@ -680,6 +680,23 @@ class SalesBillController extends Controller
         ]);
     }
 
+    public function openByBillNumber(string $billNumber)
+    {
+        $cleanNumber = trim(urldecode($billNumber));
+        $salesBill = SalesBill::where('bill_number', $cleanNumber)->first();
+
+        if (! $salesBill) {
+            $salesBill = SalesBill::where('bill_number', 'like', "%{$cleanNumber}%")->first();
+        }
+
+        if ($salesBill) {
+            return redirect()->route('sales.sales-bills.show', $salesBill);
+        }
+
+        return redirect()->route('sales.sales-bills.index', ['search' => $cleanNumber])
+            ->with('warning', "Sales bill \"{$cleanNumber}\" could not be found directly.");
+    }
+
     /**
      * Public guest view for client to access/print receipt from WhatsApp link without login.
      */

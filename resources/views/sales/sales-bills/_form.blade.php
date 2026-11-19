@@ -4125,7 +4125,7 @@
 
             if (credit > 0) {
                 let custOption = $('#customer_id').find('option:selected');
-                let custPaymentMode = (window.SELECTED_CUSTOMER_PAYMENT_MODE || custOption.data('payment-mode') || '').toLowerCase().trim();
+                let custPaymentMode = String(window.SELECTED_CUSTOMER_PAYMENT_MODE || custOption.data('payment-mode') || '').toLowerCase().trim();
                 let isCreditAllowed = (window.SELECTED_CUSTOMER_IS_CREDIT_ALLOWED !== false) && !['no credit', 'cash only'].includes(custPaymentMode);
                 if (!isCreditAllowed) {
                     let msg = `Credit sale is not allowed for this customer (Payment Mode: ${(window.SELECTED_CUSTOMER_PAYMENT_MODE || 'No Credit').toUpperCase()}).`;

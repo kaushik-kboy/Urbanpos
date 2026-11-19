@@ -333,6 +333,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::post('sales-bills/quick-customer', [SalesBillController::class, 'quickCustomerStore'])->name('sales-bills.quick-customer');
     Route::get('sales-bills/quick-customer/{customer}', [SalesBillController::class, 'quickCustomerShow'])->name('sales-bills.quick-customer-show');
     Route::match(['put', 'post'], 'sales-bills/quick-customer/{customer}', [SalesBillController::class, 'quickCustomerUpdate'])->name('sales-bills.quick-customer-update');
+    Route::get('sales-bills/open-by-number/{billNumber}', [SalesBillController::class, 'openByBillNumber'])->name('sales-bills.open-by-number')->where('billNumber', '.*');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
     Route::post('sales-bills/{salesBill}/send-whatsapp', [SalesBillController::class, 'sendWhatsApp'])->name('sales-bills.send-whatsapp');
     Route::get('sales-bills/{salesBill}/eway-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadJson'])->name('sales-bills.eway-json');

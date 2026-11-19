@@ -3933,11 +3933,11 @@
     });
 
     $(document).on('input', '#cfmSearchInput', function () {
-        const q = $(this).val().toLowerCase().trim();
+        const q = String($(this).val() || '').toLowerCase().trim();
         filteredCustomerFavorites = currentCustomerFavorites.filter(item => {
-            return (item.name && item.name.toLowerCase().includes(q)) ||
-                   (item.item_code && item.item_code.toLowerCase().includes(q)) ||
-                   (item.ean_upc_code && item.ean_upc_code.toLowerCase().includes(q));
+            return (item.name && String(item.name).toLowerCase().includes(q)) ||
+                   (item.item_code && String(item.item_code).toLowerCase().includes(q)) ||
+                   (item.ean_upc_code && String(item.ean_upc_code).toLowerCase().includes(q));
         });
         renderCustomerFavoritesTable();
     });
