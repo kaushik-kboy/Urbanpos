@@ -437,11 +437,13 @@
 
             @if($receiptSettings->show_signature_box ?? true)
                 <div style="margin-top: 45px; display: flex; justify-content: space-between; padding: 0 20px;">
-                    <div style="width: 220px; border-top: 1px solid #334155; text-align: center; padding-top: 6px; font-size: 11px; font-weight: 600;">
-                        Dispatched By (From Branch)
+                    <div style="width: 240px; border-top: 1px solid #334155; text-align: center; padding-top: 6px; font-size: 11px;">
+                        <div style="font-weight: 700;">Dispatched By: {{ $stockTransfer->creator?->name ?: 'Staff' }}</div>
+                        <div style="color: #64748b; font-size: 10px;">({{ $stockTransfer->fromBranch?->name }}) @if($stockTransfer->dispatched_at) &bull; {{ \Carbon\Carbon::parse($stockTransfer->dispatched_at)->format('d-m-Y h:i A') }} @endif</div>
                     </div>
-                    <div style="width: 220px; border-top: 1px solid #334155; text-align: center; padding-top: 6px; font-size: 11px; font-weight: 600;">
-                        Received By (To Branch)
+                    <div style="width: 240px; border-top: 1px solid #334155; text-align: center; padding-top: 6px; font-size: 11px;">
+                        <div style="font-weight: 700;">Received By: {{ $stockTransfer->receiver?->name ?: ($stockTransfer->status === 'Received' ? 'Staff' : 'Pending Receipt') }}</div>
+                        <div style="color: #64748b; font-size: 10px;">({{ $stockTransfer->toBranch?->name }}) @if($stockTransfer->received_at) &bull; {{ \Carbon\Carbon::parse($stockTransfer->received_at)->format('d-m-Y h:i A') }} @endif</div>
                     </div>
                 </div>
             @endif
@@ -592,10 +594,14 @@
             @if($receiptSettings->show_signature_box ?? true)
                 <div style="margin-top: 25px; font-size: 10px; display: flex; justify-content: space-between;">
                     <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
-                        Dispatched By
+                        <div><strong>Dispatched By:</strong></div>
+                        <div>{{ $stockTransfer->creator?->name ?: 'Staff' }}</div>
+                        @if($stockTransfer->dispatched_at)<div style="font-size: 8.5px; color:#555;">{{ \Carbon\Carbon::parse($stockTransfer->dispatched_at)->format('d-m-Y H:i') }}</div>@endif
                     </div>
                     <div style="width: 48%; border-top: 1px solid #333; text-align: center; padding-top: 4px;">
-                        Received By
+                        <div><strong>Received By:</strong></div>
+                        <div>{{ $stockTransfer->receiver?->name ?: ($stockTransfer->status === 'Received' ? 'Staff' : 'Pending Receipt') }}</div>
+                        @if($stockTransfer->received_at)<div style="font-size: 8.5px; color:#555;">{{ \Carbon\Carbon::parse($stockTransfer->received_at)->format('d-m-Y H:i') }}</div>@endif
                     </div>
                 </div>
             @endif

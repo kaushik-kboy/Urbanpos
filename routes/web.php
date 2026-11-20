@@ -305,6 +305,7 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
         Route::post('/create-transfer', [SmartReplenishmentController::class, 'createTransfer'])->name('create-transfer');
         Route::post('/bulk-create-transfer', [SmartReplenishmentController::class, 'bulkCreateTransfer'])->name('bulk-create-transfer');
         Route::post('/transfer-sources', [SmartReplenishmentController::class, 'transferSources'])->name('transfer-sources');
+        Route::get('/item-batches', [SmartReplenishmentController::class, 'itemBatches'])->name('item-batches');
     });
 
     // Stock Transfer

@@ -20,11 +20,53 @@
             </div>
         </div>
         <div class="card-body">
-            <div class="row mb-3">
+            <div class="row mb-2">
                 <div class="col-md-3"><strong>Date:</strong> {{ $stockTransfer->transfer_date->format('d-m-Y') }}</div>
-                <div class="col-md-3"><strong>From:</strong> {{ $stockTransfer->fromBranch?->name }}</div>
-                <div class="col-md-3"><strong>To:</strong> {{ $stockTransfer->toBranch?->name }}</div>
-                <div class="col-md-3"><strong>Status:</strong> {{ $stockTransfer->status }}</div>
+                <div class="col-md-3"><strong>From:</strong> <span class="badge badge-light border border-dark text-dark font-weight-bold px-2 py-1"><i class="fas fa-warehouse text-success mr-1"></i>{{ $stockTransfer->fromBranch?->name }}</span></div>
+                <div class="col-md-3"><strong>To:</strong> <span class="badge badge-light border border-dark text-dark font-weight-bold px-2 py-1"><i class="fas fa-map-marker-alt text-danger mr-1"></i>{{ $stockTransfer->toBranch?->name }}</span></div>
+                <div class="col-md-3">
+                    <strong>Status:</strong>
+                    @if($stockTransfer->status === 'Received')
+                        <span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i>Received</span>
+                    @elseif($stockTransfer->status === 'Dispatched')
+                        <span class="badge badge-warning px-2 py-1 text-dark"><i class="fas fa-truck mr-1"></i>Dispatched (In-Transit)</span>
+                    @else
+                        <span class="badge badge-secondary px-2 py-1">{{ $stockTransfer->status }}</span>
+                    @endif
+                </div>
+            </div>
+            <div class="row mb-3 pb-2 border-bottom">
+                <div class="col-md-3">
+                    <strong>Dispatched By:</strong>
+                    <span class="badge badge-info px-2 py-1">
+                        <i class="fas fa-user-check mr-1"></i>{{ $stockTransfer->creator?->name ?: 'Staff' }}
+                    </span>
+                    @if($stockTransfer->dispatched_at)
+                        <div class="text-muted text-xs mt-1">{{ \Carbon\Carbon::parse($stockTransfer->dispatched_at)->format('d-m-Y h:i A') }}</div>
+                    @endif
+                </div>
+                <div class="col-md-3">
+                    <strong>Received By:</strong>
+                    @if($stockTransfer->receiver)
+                        <span class="badge badge-success px-2 py-1">
+                            <i class="fas fa-user-check mr-1"></i>{{ $stockTransfer->receiver->name }}
+                        </span>
+                        @if($stockTransfer->received_at)
+                            <div class="text-muted text-xs mt-1">{{ \Carbon\Carbon::parse($stockTransfer->received_at)->format('d-m-Y h:i A') }}</div>
+                        @endif
+                    @elseif($stockTransfer->status === 'Received')
+                        <span class="badge badge-success px-2 py-1">Staff</span>
+                    @else
+                        <span class="badge badge-light border text-muted px-2 py-1">
+                            <i class="fas fa-hourglass-half mr-1"></i>Awaiting Receipt
+                        </span>
+                    @endif
+                </div>
+                @if($stockTransfer->remarks)
+                    <div class="col-md-6">
+                        <strong>Remarks:</strong> <span class="text-muted">{{ $stockTransfer->remarks }}</span>
+                    </div>
+                @endif
             </div>
             <table class="table table-sm table-bordered" id="st-show-items-table">
                 <thead class="thead-light">
@@ -130,7 +172,12 @@
                             </td>
                             <td class="text-right align-middle font-weight-bold" data-col-key="mrp">{{ number_format((float) ($line->mrp ?: ($line->item?->mrp ?: 0)), 2) }}</td>
                             <td class="text-right align-middle" data-col-key="unit_cost">{{ number_format($unitCost, 2) }}</td>
-                            <td class="text-right align-middle font-weight-bold" data-col-key="qty">{{ (float)$line->qty == (int)$line->qty ? number_format($line->qty, 0) : number_format($line->qty, 3) }}</td>
+                            <td class="text-right align-middle font-weight-bold" data-col-key="qty">
+                                {{ (float)$line->qty == (int)$line->qty ? number_format($line->qty, 0) : number_format($line->qty, 3) }}
+                                @if(!empty($line->requested_qty) && (float)$line->requested_qty != (float)$line->qty)
+                                    <br><small class="text-muted" title="Recommended Deficit Qty">(Req: {{ (float)$line->requested_qty == (int)$line->requested_qty ? number_format($line->requested_qty, 0) : number_format($line->requested_qty, 3) }})</small>
+                                @endif
+                            </td>
                             <td class="text-right align-middle font-weight-bold text-primary" data-col-key="amount">{{ number_format($lineAmount, 2) }}</td>
                             <td class="text-right align-middle" data-col-key="received_qty">{{ $line->received_qty !== null ? ((float)$line->received_qty == (int)$line->received_qty ? number_format($line->received_qty, 0) : number_format($line->received_qty, 3)) : '—' }}</td>
                         </tr>

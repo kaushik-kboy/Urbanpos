@@ -245,7 +245,7 @@ class StockTransferController extends Controller
             }
         }
 
-        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch']);
+        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch', 'creator', 'receiver']);
 
         return view('inventory.stock-transfers.show', compact('stockTransfer'));
     }
@@ -260,7 +260,7 @@ class StockTransferController extends Controller
             }
         }
 
-        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch']);
+        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch', 'creator', 'receiver']);
 
         return view('inventory.stock-transfers.print', compact('stockTransfer'));
     }
@@ -458,6 +458,14 @@ class StockTransferController extends Controller
                 'remarks' => $newRemarks,
             ]);
         });
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'transfer_number' => $stockTransfer->transfer_number,
+                'message' => "Stock Transfer #{$stockTransfer->transfer_number} received successfully by " . (auth()->user()?->name ?? 'Staff') . ".",
+            ]);
+        }
 
         return redirect()->route('inventory.stock-transfers.pending-receipt')->with('status', "Stock Transfer #{$stockTransfer->transfer_number} received successfully.");
     }

@@ -16,8 +16,10 @@ use App\Models\ReplenishmentStockRule;
 use App\Models\StockTransfer;
 use App\Models\Supplier;
 use App\Services\Accounting\DocumentNumberingService;
+use App\Services\Inventory\BatchStockService;
 use App\Services\Inventory\StockLedgerService;
 use App\Services\ReplenishmentCalculationService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -378,7 +380,31 @@ class SmartReplenishmentController extends Controller
             })->values();
         }
 
-        return view('inventory.replenishment.transfers', compact('branches', 'activeBranchId', 'transferRecommendations'));
+        // Fetch In-Transit (Dispatched) Stock Transfers for 2-way verification & receiving
+        $inTransitQuery = StockTransfer::with([
+            'fromBranch:id,name',
+            'toBranch:id,name',
+            'creator:id,name',
+            'items.item:id,name,item_code,ean_upc_code',
+        ])
+            ->where('status', 'Dispatched')
+            ->orderBy('id', 'desc');
+
+        if ($userBranchId) {
+            $inTransitQuery->where(function ($q) use ($userBranchId) {
+                $q->where('to_branch_id', $userBranchId)
+                    ->orWhere('from_branch_id', $userBranchId);
+            });
+        } elseif ($activeBranchId) {
+            $inTransitQuery->where(function ($q) use ($activeBranchId) {
+                $q->where('to_branch_id', $activeBranchId)
+                    ->orWhere('from_branch_id', $activeBranchId);
+            });
+        }
+
+        $inTransitTransfers = $inTransitQuery->limit(100)->get();
+
+        return view('inventory.replenishment.transfers', compact('branches', 'activeBranchId', 'transferRecommendations', 'inTransitTransfers'));
     }
 
     /**
@@ -656,14 +682,20 @@ class SmartReplenishmentController extends Controller
             'to_branch_id' => 'required|exists:branches,id|different:from_branch_id',
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:items,id',
-            'items.*.qty' => 'required|integer|min:1',
+            'items.*.qty' => 'required|numeric|min:0.001',
+            'items.*.requested_qty' => 'nullable|numeric|min:0',
+            'items.*.batch_no' => 'nullable|string|max:100',
+            'items.*.exp_date' => 'nullable|string|max:30',
+            'items.*.mrp' => 'nullable|numeric|min:0',
+            'remarks' => 'nullable|string|max:1000',
         ]);
 
         $fromBranchId = (int) $validated['from_branch_id'];
         $toBranchId = (int) $validated['to_branch_id'];
         $today = now()->format('Y-m-d');
+        $dispatchRemarks = trim((string) ($validated['remarks'] ?? ''));
 
-        return DB::transaction(function () use ($fromBranchId, $toBranchId, $validated, $today) {
+        return DB::transaction(function () use ($fromBranchId, $toBranchId, $validated, $today, $dispatchRemarks) {
             $transferNumber = app(DocumentNumberingService::class)->generate('stock_transfer', $fromBranchId, $today);
 
             $itemIds = collect($validated['items'])->pluck('item_id')->unique();
@@ -679,10 +711,25 @@ class SmartReplenishmentController extends Controller
                     continue;
                 }
 
-                $qty = (int) $line['qty'];
+                $qty = (float) $line['qty'];
+                $requestedQty = isset($line['requested_qty']) && (float) $line['requested_qty'] > 0
+                    ? (float) $line['requested_qty']
+                    : $qty;
+
                 $unitCost = (float) $item->cost_price;
                 $sellPrice = (float) $item->sell_price;
-                $mrp = (float) $item->mrp;
+                $mrp = isset($line['mrp']) && (float) $line['mrp'] > 0 ? (float) $line['mrp'] : (float) $item->mrp;
+                $batchNo = ! empty($line['batch_no']) && $line['batch_no'] !== 'Default' && $line['batch_no'] !== 'NA'
+                    ? trim($line['batch_no'])
+                    : null;
+                $expDate = null;
+                if (! empty($line['exp_date'])) {
+                    try {
+                        $expDate = Carbon::parse($line['exp_date'])->format('Y-m-d');
+                    } catch (\Throwable) {
+                        $expDate = null;
+                    }
+                }
                 $gstPercent = (float) ($item->gstTax?->percentage ?? 0);
 
                 $taxableValue = round($qty * $unitCost, 2);
@@ -695,12 +742,14 @@ class SmartReplenishmentController extends Controller
 
                 $transferLines[] = [
                     'item_id' => $item->id,
-                    'batch_no' => 'NA',
+                    'batch_no' => $batchNo,
+                    'exp_date' => $expDate,
                     'qty' => $qty,
+                    'requested_qty' => $requestedQty,
                     'unit_cost' => $unitCost,
                     'sell_price' => $sellPrice,
                     'mrp' => $mrp,
-                    'received_qty' => 0,
+                    'received_qty' => null,
                     'gst_percent' => $gstPercent,
                     'taxable_value' => $taxableValue,
                     'gst_tax_amount' => $gstAmount,
@@ -710,13 +759,17 @@ class SmartReplenishmentController extends Controller
                 ];
             }
 
+            $finalRemarks = ! empty($dispatchRemarks)
+                ? $dispatchRemarks
+                : 'Smart Replenishment inter-branch transfer';
+
             $stockTransfer = StockTransfer::create([
                 'transfer_number' => $transferNumber,
                 'transfer_date' => $today,
                 'from_branch_id' => $fromBranchId,
                 'to_branch_id' => $toBranchId,
                 'status' => 'Dispatched',
-                'remarks' => 'Automated Inter-Branch transfer recommended by Smart Replenishment Engine (V1)',
+                'remarks' => $finalRemarks,
                 'total_qty' => $totalQty,
                 'total_value' => $totalValue,
                 'dispatched_at' => now(),
@@ -738,8 +791,11 @@ class SmartReplenishmentController extends Controller
                     documentDate: $today,
                     batchNo: $tLine['batch_no'] ?? null,
                     mrp: (float) ($tLine['mrp'] ?? 0),
+                    expDate: $tLine['exp_date'] ?? null,
                 );
             }
+
+            $senderName = auth()->user()?->name ?? 'Staff';
 
             return response()->json([
                 'success' => true,
@@ -749,9 +805,51 @@ class SmartReplenishmentController extends Controller
                 'total_qty' => $totalQty,
                 'total_value' => $totalValue,
                 'redirect_url' => route('inventory.stock-transfers.show', $stockTransfer->id),
-                'message' => "Stock Transfer {$stockTransfer->transfer_number} dispatched successfully ({$totalQty} units deducted from source). Receiving branch can confirm & accept at Pending Receipt.",
+                'print_url' => route('inventory.stock-transfers.print', $stockTransfer->id),
+                'message' => "Stock Transfer {$stockTransfer->transfer_number} dispatched successfully by {$senderName} ({$totalQty} units deducted from source). Receiving branch can verify & accept at In-Transit tab.",
             ]);
         });
+    }
+
+    /**
+     * Fetch active batches for an item in a specific branch with remaining positive stock.
+     */
+    public function itemBatches(Request $request): JsonResponse
+    {
+        $itemId = (int) $request->input('item_id');
+        $branchId = (int) $request->input('branch_id');
+
+        if (! $itemId || ! $branchId) {
+            return response()->json(['batches' => []]);
+        }
+
+        $batchService = app(BatchStockService::class);
+        $resolvedBatches = $batchService->getItemBatches($itemId, $branchId);
+
+        $batches = $resolvedBatches->filter(function ($b) {
+            return (float) ($b['remaining_qty'] ?? 0) > 0;
+        })->values()->map(function ($b) {
+            $rawB = trim((string) ($b['raw_batch_no'] ?? ''));
+            $dispB = trim((string) ($b['batch_no'] ?? ''));
+            $finalB = $rawB ?: ($dispB ?: 'Default');
+
+            return [
+                'batch_no' => $finalB,
+                'raw_batch_no' => $rawB,
+                'exp_date' => $b['exp_date'] ?? null,
+                'exp_date_formatted' => ! empty($b['exp_date']) ? Carbon::parse($b['exp_date'])->format('d-m-Y') : 'No Expiry',
+                'mrp' => (float) ($b['mrp'] ?? 0),
+                'cost_price' => (float) ($b['cost_price'] ?? 0),
+                'sell_price' => (float) ($b['sell_price'] ?? 0),
+                'available_qty' => (float) ($b['remaining_qty'] ?? 0),
+                'source' => $b['source'] ?? 'purchase',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'batches' => $batches,
+        ]);
     }
 
     /**
@@ -838,6 +936,7 @@ class SmartReplenishmentController extends Controller
             'transfers.*.items' => 'required|array|min:1',
             'transfers.*.items.*.item_id' => 'required|exists:items,id',
             'transfers.*.items.*.qty' => 'required|integer|min:1',
+            'transfers.*.items.*.requested_qty' => 'nullable|numeric|min:0',
         ]);
 
         $defaultToBranchId = (int) ($validated['to_branch_id'] ?? 0);
@@ -876,6 +975,9 @@ class SmartReplenishmentController extends Controller
                     if ($qty <= 0) {
                         continue;
                     }
+                    $requestedQty = isset($line['requested_qty']) && (float) $line['requested_qty'] > 0
+                        ? (float) $line['requested_qty']
+                        : $qty;
 
                     $unitCost = (float) $item->cost_price;
                     $sellPrice = (float) $item->sell_price;
@@ -894,6 +996,7 @@ class SmartReplenishmentController extends Controller
                         'item_id' => $item->id,
                         'batch_no' => 'NA',
                         'qty' => $qty,
+                        'requested_qty' => $requestedQty,
                         'unit_cost' => $unitCost,
                         'sell_price' => $sellPrice,
                         'mrp' => $mrp,
