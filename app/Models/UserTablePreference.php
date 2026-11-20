@@ -34,6 +34,42 @@ class UserTablePreference extends Model
         return $record ? $record->preferences : null;
     }
 
+    public static function getResolvedForUser(?User $user, string $tableKey): ?array
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $canCustomize = $user->hasRole(['Owner', 'Super Admin', 'Admin', 'Administrator'])
+            || $user->can('layout-customizer.customize')
+            || $user->can('layout.customize');
+
+        // Only authorized users can maintain and view personal override layouts
+        if ($canCustomize) {
+            $userPref = static::getForUser($user->id, $tableKey);
+            if ($userPref !== null) {
+                return $userPref;
+            }
+        }
+
+        // Look up Role layout for this user's assigned roles
+        $roleIds = $user->roles->pluck('id')->filter()->all();
+        if (! empty($roleIds)) {
+            $rolePref = RoleTablePreference::getForRoles($roleIds, $tableKey);
+            if ($rolePref !== null) {
+                return $rolePref;
+            }
+        }
+
+        // Fallback to global role layout (role_id = null)
+        $globalPref = RoleTablePreference::getGlobal($tableKey);
+        if ($globalPref !== null) {
+            return $globalPref;
+        }
+
+        return null;
+    }
+
     public static function setForUser(int $userId, string $tableKey, array $preferences): static
     {
         return static::updateOrCreate(

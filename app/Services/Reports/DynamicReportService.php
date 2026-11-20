@@ -27,6 +27,7 @@ use App\Models\StockTransfer;
 use App\Models\StockUpdate;
 use App\Models\Supplier;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -1193,7 +1194,7 @@ class DynamicReportService
                 $damageMap = [];
 
                 if (!empty($itemIds)) {
-                    // 1. INWARD: Purchases
+                    // 1. INWARD: Purchases (including Free quantity)
                     $purInwardRows = DB::table('purchase_invoice_items')
                         ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
                         ->whereIn('purchase_invoice_items.item_id', $itemIds)
@@ -1202,7 +1203,7 @@ class DynamicReportService
                         ->where('purchase_invoices.status', '!=', 'Cancelled')
                         ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
                         ->groupBy('purchase_invoice_items.item_id', 'purchase_invoices.branch_id')
-                        ->selectRaw('purchase_invoice_items.item_id, purchase_invoices.branch_id, SUM(purchase_invoice_items.qty) as total_qty')
+                        ->selectRaw('purchase_invoice_items.item_id, purchase_invoices.branch_id, SUM(purchase_invoice_items.qty + COALESCE(purchase_invoice_items.free_qty, 0)) as total_qty')
                         ->get();
                     foreach ($purInwardRows as $row) {
                         $purInwardMap[$row->item_id . '_' . $row->branch_id] = (float) $row->total_qty;
@@ -1345,13 +1346,175 @@ class DynamicReportService
                     }
                 }
 
+                // If $to is in the past, calculate movements after $to to reconstruct historical closing stock as of $to
+                $purAfterMap = [];
+                $salesRetAfterMap = [];
+                $trfInAfterMap = [];
+                $posAdjAfterMap = [];
+                $opAdjAfterMap = [];
+                $salesAfterMap = [];
+                $purRetAfterMap = [];
+                $trfOutAfterMap = [];
+                $negAdjAfterMap = [];
+                $damageAfterMap = [];
+
+                $isPastPeriod = Carbon::parse($to)->startOfDay()->lt(now()->startOfDay());
+                if (!empty($itemIds) && $isPastPeriod) {
+                    $pRows = DB::table('purchase_invoice_items')
+                        ->join('purchase_invoices', 'purchase_invoice_items.purchase_invoice_id', '=', 'purchase_invoices.id')
+                        ->whereIn('purchase_invoice_items.item_id', $itemIds)
+                        ->whereDate('purchase_invoices.invoice_date', '>', $to)
+                        ->where('purchase_invoices.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('purchase_invoices.branch_id', $branchId))
+                        ->groupBy('purchase_invoice_items.item_id', 'purchase_invoices.branch_id')
+                        ->selectRaw('purchase_invoice_items.item_id, purchase_invoices.branch_id, SUM(purchase_invoice_items.qty + COALESCE(purchase_invoice_items.free_qty, 0)) as total_qty')
+                        ->get();
+                    foreach ($pRows as $r) {
+                        $purAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $srRows = DB::table('sales_return_items')
+                        ->join('sales_returns', 'sales_return_items.sales_return_id', '=', 'sales_returns.id')
+                        ->whereIn('sales_return_items.item_id', $itemIds)
+                        ->whereDate('sales_returns.return_date', '>', $to)
+                        ->where('sales_returns.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('sales_returns.branch_id', $branchId))
+                        ->groupBy('sales_return_items.item_id', 'sales_returns.branch_id')
+                        ->selectRaw('sales_return_items.item_id, sales_returns.branch_id, SUM(sales_return_items.qty) as total_qty')
+                        ->get();
+                    foreach ($srRows as $r) {
+                        $salesRetAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $tiRows = DB::table('stock_transfer_items')
+                        ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
+                        ->whereIn('stock_transfer_items.item_id', $itemIds)
+                        ->whereDate('stock_transfers.transfer_date', '>', $to)
+                        ->where('stock_transfers.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('stock_transfers.to_branch_id', $branchId))
+                        ->groupBy('stock_transfer_items.item_id', 'stock_transfers.to_branch_id')
+                        ->selectRaw('stock_transfer_items.item_id, stock_transfers.to_branch_id as branch_id, SUM(COALESCE(stock_transfer_items.received_qty, stock_transfer_items.qty)) as total_qty')
+                        ->get();
+                    foreach ($tiRows as $r) {
+                        $trfInAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $paRows = DB::table('stock_update_items')
+                        ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                        ->whereIn('stock_update_items.item_id', $itemIds)
+                        ->whereDate('stock_updates.entry_date', '>', $to)
+                        ->where('stock_update_items.delta_qty', '>', 0)
+                        ->where('stock_updates.status', '!=', 'Rejected')
+                        ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                        ->groupBy('stock_update_items.item_id', 'stock_updates.branch_id')
+                        ->selectRaw('stock_update_items.item_id, stock_updates.branch_id, SUM(stock_update_items.delta_qty) as total_qty')
+                        ->get();
+                    foreach ($paRows as $r) {
+                        $posAdjAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $oaRows = DB::table('opening_stock_items')
+                        ->join('opening_stocks', 'opening_stock_items.opening_stock_id', '=', 'opening_stocks.id')
+                        ->whereIn('opening_stock_items.item_id', $itemIds)
+                        ->whereDate('opening_stocks.entry_date', '>', $to)
+                        ->when($branchId, fn ($q) => $q->where('opening_stocks.branch_id', $branchId))
+                        ->groupBy('opening_stock_items.item_id', 'opening_stocks.branch_id')
+                        ->selectRaw('opening_stock_items.item_id, opening_stocks.branch_id, SUM(opening_stock_items.qty) as total_qty')
+                        ->get();
+                    foreach ($oaRows as $r) {
+                        $opAdjAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $soRows = DB::table('sales_bill_items')
+                        ->join('sales_bills', 'sales_bill_items.sales_bill_id', '=', 'sales_bills.id')
+                        ->whereIn('sales_bill_items.item_id', $itemIds)
+                        ->whereDate('sales_bills.bill_date', '>', $to)
+                        ->where('sales_bills.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('sales_bills.branch_id', $branchId))
+                        ->groupBy('sales_bill_items.item_id', 'sales_bills.branch_id')
+                        ->selectRaw('sales_bill_items.item_id, sales_bills.branch_id, SUM(sales_bill_items.qty) as total_qty')
+                        ->get();
+                    foreach ($soRows as $r) {
+                        $salesAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $prRows = DB::table('purchase_return_items')
+                        ->join('purchase_returns', 'purchase_return_items.purchase_return_id', '=', 'purchase_returns.id')
+                        ->whereIn('purchase_return_items.item_id', $itemIds)
+                        ->whereDate('purchase_returns.return_date', '>', $to)
+                        ->where('purchase_returns.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('purchase_returns.branch_id', $branchId))
+                        ->groupBy('purchase_return_items.item_id', 'purchase_returns.branch_id')
+                        ->selectRaw('purchase_return_items.item_id, purchase_returns.branch_id, SUM(purchase_return_items.qty) as total_qty')
+                        ->get();
+                    foreach ($prRows as $r) {
+                        $purRetAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $toRows = DB::table('stock_transfer_items')
+                        ->join('stock_transfers', 'stock_transfer_items.stock_transfer_id', '=', 'stock_transfers.id')
+                        ->whereIn('stock_transfer_items.item_id', $itemIds)
+                        ->whereDate('stock_transfers.transfer_date', '>', $to)
+                        ->where('stock_transfers.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('stock_transfers.from_branch_id', $branchId))
+                        ->groupBy('stock_transfer_items.item_id', 'stock_transfers.from_branch_id')
+                        ->selectRaw('stock_transfer_items.item_id, stock_transfers.from_branch_id as branch_id, SUM(stock_transfer_items.qty) as total_qty')
+                        ->get();
+                    foreach ($toRows as $r) {
+                        $trfOutAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $naRows = DB::table('stock_update_items')
+                        ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                        ->whereIn('stock_update_items.item_id', $itemIds)
+                        ->whereDate('stock_updates.entry_date', '>', $to)
+                        ->where('stock_update_items.delta_qty', '<', 0)
+                        ->where('stock_updates.status', '!=', 'Rejected')
+                        ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                        ->groupBy('stock_update_items.item_id', 'stock_updates.branch_id')
+                        ->selectRaw('stock_update_items.item_id, stock_updates.branch_id, SUM(ABS(stock_update_items.delta_qty)) as total_qty')
+                        ->get();
+                    foreach ($naRows as $r) {
+                        $negAdjAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+
+                    $dmRows = DB::table('damage_stock_items')
+                        ->join('damage_stocks', 'damage_stock_items.damage_stock_id', '=', 'damage_stocks.id')
+                        ->whereIn('damage_stock_items.item_id', $itemIds)
+                        ->whereDate('damage_stocks.entry_date', '>', $to)
+                        ->where('damage_stocks.status', '!=', 'Cancelled')
+                        ->when($branchId, fn ($q) => $q->where('damage_stocks.branch_id', $branchId))
+                        ->groupBy('damage_stock_items.item_id', 'damage_stocks.branch_id')
+                        ->selectRaw('damage_stock_items.item_id, damage_stocks.branch_id, SUM(damage_stock_items.qty) as total_qty')
+                        ->get();
+                    foreach ($dmRows as $r) {
+                        $damageAfterMap[$r->item_id . '_' . $r->branch_id] = (float) $r->total_qty;
+                    }
+                }
+
                 $rows = $paginator->through(function ($stock) use (
                     $purInwardMap, $salesRetInwardMap, $trfInMap, $posAdjMap, $opAdjMap,
-                    $salesOutwardMap, $purRetOutwardMap, $trfOutMap, $negAdjMap, $damageMap
+                    $salesOutwardMap, $purRetOutwardMap, $trfOutMap, $negAdjMap, $damageMap,
+                    $purAfterMap, $salesRetAfterMap, $trfInAfterMap, $posAdjAfterMap, $opAdjAfterMap,
+                    $salesAfterMap, $purRetAfterMap, $trfOutAfterMap, $negAdjAfterMap, $damageAfterMap
                 ) {
                     $itemId    = $stock->item_id;
                     $branchKey = $itemId . '_' . $stock->branch_id;
-                    $closing   = (float) $stock->quantity;
+                    $currentLive = (float) $stock->quantity;
+
+                    $inwardAfter = (float) ($purAfterMap[$branchKey] ?? 0)
+                        + (float) ($salesRetAfterMap[$branchKey] ?? 0)
+                        + (float) ($trfInAfterMap[$branchKey] ?? 0)
+                        + (float) ($posAdjAfterMap[$branchKey] ?? 0)
+                        + (float) ($opAdjAfterMap[$branchKey] ?? 0);
+
+                    $outwardAfter = (float) ($salesAfterMap[$branchKey] ?? 0)
+                        + (float) ($purRetAfterMap[$branchKey] ?? 0)
+                        + (float) ($trfOutAfterMap[$branchKey] ?? 0)
+                        + (float) ($negAdjAfterMap[$branchKey] ?? 0)
+                        + (float) ($damageAfterMap[$branchKey] ?? 0);
+
+                    $closing = round($currentLive - $inwardAfter + $outwardAfter, 4);
 
                     $pur       = (float) ($purInwardMap[$branchKey] ?? 0);
                     $salesRet  = (float) ($salesRetInwardMap[$branchKey] ?? 0);
@@ -1376,10 +1539,10 @@ class DynamicReportService
                     $openingBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-dark btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="opening" data-item-name="' . $safeItemName . '" title="View baseline opening count">' . number_format($opening) . '</button>';
 
                     $inwardBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-success btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="inward" data-item-name="' . $safeItemName . '" title="Click to view all Inward transactions">+' . number_format($inward) . '</button>'
-                        . '<br><small class="text-muted text-nowrap" style="font-size:0.72rem;">(Pur: ' . number_format($pur) . ' | SR: ' . number_format($salesRet) . ' | Trf-In: ' . number_format($trfIn) . ($posAdj > 0 ? ' | Adj+: ' . number_format($posAdj) : '') . ')</small>';
+                        . '<br><small class="text-muted text-nowrap" style="font-size:0.72rem;">(Pur: ' . number_format($pur) . ' | SR: ' . number_format($salesRet) . ' | Trf-In: ' . number_format($trfIn) . ' | Adj+: ' . number_format($posAdj) . ($opAdj > 0 ? ' | Op: ' . number_format($opAdj) : '') . ')</small>';
 
                     $outwardBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-danger btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="outward" data-item-name="' . $safeItemName . '" title="Click to view all Outward transactions">-' . number_format($outward) . '</button>'
-                        . '<br><small class="text-muted text-nowrap" style="font-size:0.72rem;">(Sale: ' . number_format($sales) . ' | PR: ' . number_format($purRet) . ' | Trf-Out: ' . number_format($trfOut) . ($negAdj > 0 ? ' | Adj-: ' . number_format($negAdj) : '') . ($damage > 0 ? ' | Dmg: ' . number_format($damage) : '') . ')</small>';
+                        . '<br><small class="text-muted text-nowrap" style="font-size:0.72rem;">(Sale: ' . number_format($sales) . ' | PR: ' . number_format($purRet) . ' | Trf-Out: ' . number_format($trfOut) . ' | Adj-: ' . number_format($negAdj) . ' | Dmg: ' . number_format($damage) . ')</small>';
 
                     $closingBtn = '<button type="button" class="btn btn-link btn-sm p-0 font-weight-bold text-primary btn-stock-drilldown" data-item-id="' . $itemId . '" data-branch-id="' . $stock->branch_id . '" data-flow="all" data-item-name="' . $safeItemName . '" title="Click to view full transaction ledger">' . number_format($closing) . '</button>';
 
@@ -1597,6 +1760,8 @@ class DynamicReportService
                     'hasRiskStatusFilter' => true,
                     'brands' => Brand::orderBy('name')->pluck('name', 'id'),
                     'suppliers' => Supplier::orderBy('name')->pluck('name', 'id'),
+                    'brandSupplierMap' => $this->getBrandSupplierMaps()[0],
+                    'supplierBrandMap' => $this->getBrandSupplierMaps()[1],
                     'riskStatus' => $riskStatus,
                     'minDays' => $minDays,
                     'maxDays' => $maxDays,
@@ -1793,8 +1958,71 @@ class DynamicReportService
 
                 $paginator = $query->paginate($this->perPage)->withQueryString();
 
+                $pageSysQty = 0;
+                $pagePhysQty = 0;
+                $pageDeltaQty = 0;
+                $pageInventoryCost = 0;
+                $pageVarianceVal = 0;
+
+                foreach ($paginator->items() as $item) {
+                    $uCost = (float) $item->unit_cost;
+                    $pageSysQty += (float) $item->sys_qty;
+                    $pagePhysQty += (float) $item->phys_qty;
+                    $pageDeltaQty += (float) $item->delta_qty;
+                    $pageInventoryCost += ((float) $item->phys_qty * $uCost);
+                    $pageVarianceVal += ((float) $item->delta_qty * $uCost);
+                }
+
+                $grandQuery = DB::table('stock_update_items')
+                    ->join('stock_updates', 'stock_update_items.stock_update_id', '=', 'stock_updates.id')
+                    ->join('items', 'stock_update_items.item_id', '=', 'items.id')
+                    ->whereDate('stock_updates.entry_date', '>=', $from)
+                    ->whereDate('stock_updates.entry_date', '<=', $to)
+                    ->when($branchId, fn ($q) => $q->where('stock_updates.branch_id', $branchId))
+                    ->when($varianceType, function ($q) use ($varianceType) {
+                        if ($varianceType === 'excess') {
+                            $q->where('stock_update_items.delta_qty', '>', 0);
+                        } elseif ($varianceType === 'shortage') {
+                            $q->where('stock_update_items.delta_qty', '<', 0);
+                        } elseif ($varianceType === 'no_diff') {
+                            $q->where('stock_update_items.delta_qty', '=', 0);
+                        }
+                    })
+                    ->when($statusFilter && in_array($statusFilter, ['Pending', 'Approved', 'Rejected']), fn ($q) => $q->where('stock_updates.status', $statusFilter))
+                    ->when($search, fn ($q) => $q->where(function ($sq) use ($search) {
+                        $sq->where('stock_updates.update_number', 'like', "%{$search}%")
+                           ->orWhere('items.name', 'like', "%{$search}%")
+                           ->orWhere('items.item_code', 'like', "%{$search}%");
+                    }));
+
+                $grand = $grandQuery->selectRaw("
+                    SUM(stock_update_items.system_qty_at_entry) as total_sys_qty,
+                    SUM(stock_update_items.physical_qty) as total_phys_qty,
+                    SUM(stock_update_items.delta_qty) as total_delta_qty,
+                    SUM(stock_update_items.physical_qty * COALESCE(NULLIF(stock_update_items.cost_price, 0), items.cost_price, 0)) as total_inventory_cost,
+                    SUM(stock_update_items.delta_qty * COALESCE(NULLIF(stock_update_items.cost_price, 0), items.cost_price, 0)) as total_variance_val
+                ")->first();
+
+                $footerTotals = [
+                    'page' => [
+                        'sys_qty' => $pageSysQty,
+                        'phys_qty' => $pagePhysQty,
+                        'delta_qty' => $pageDeltaQty,
+                        'inventory_cost' => $pageInventoryCost,
+                        'variance_val' => $pageVarianceVal,
+                    ],
+                    'grand' => [
+                        'sys_qty' => (float) ($grand->total_sys_qty ?? 0),
+                        'phys_qty' => (float) ($grand->total_phys_qty ?? 0),
+                        'delta_qty' => (float) ($grand->total_delta_qty ?? 0),
+                        'inventory_cost' => (float) ($grand->total_inventory_cost ?? 0),
+                        'variance_val' => (float) ($grand->total_variance_val ?? 0),
+                    ],
+                ];
+
                 $rows = $paginator->through(function ($item) {
                     $unitCost = (float) $item->unit_cost;
+                    $lineInventoryCost = round((float) $item->phys_qty * $unitCost, 2);
                     $varianceVal = round((float) $item->delta_qty * $unitCost, 2);
 
                     $deltaBadge = '<span class="' . ($item->delta_qty < 0 ? 'text-danger font-weight-bold' : ($item->delta_qty > 0 ? 'text-success font-weight-bold' : 'text-muted')) . '">'
@@ -1822,7 +2050,7 @@ class DynamicReportService
                             number_format($item->sys_qty),
                             number_format($item->phys_qty),
                             $deltaBadge,
-                            '₹ ' . number_format($unitCost, 2),
+                            '₹ ' . number_format($lineInventoryCost, 2) . '<small class="text-muted d-block" style="font-size:0.72rem;">@ ₹' . number_format($unitCost, 2) . '</small>',
                             $valBadge,
                             e($item->remarks ?: '-'),
                             $statusBadge,
@@ -1836,6 +2064,7 @@ class DynamicReportService
                     'columns' => ['#', 'Update Number', 'Entry Date', 'Branch', 'Item Code', 'Item Description', 'Counted By', 'Approved By', 'System Qty', 'Physical Count', 'Discrepancy (Delta)', 'Inventory Cost', 'Variance Value', 'Remarks', 'Status'],
                     'column_alignments' => ['text-center', 'text-left', 'text-center', 'text-left', 'text-left', 'text-left', 'text-left', 'text-left', 'text-right', 'text-right', 'text-right', 'text-right', 'text-right', 'text-left', 'text-center'],
                     'rows' => $rows,
+                    'footer_totals' => $footerTotals,
                     'kpis' => [
                         ['label' => 'Total Audited Items', 'value' => DB::table('stock_update_items')->count(), 'icon' => 'fas fa-clipboard-check', 'color' => 'primary'],
                         ['label' => 'Physical Count Sessions', 'value' => StockUpdate::count(), 'icon' => 'fas fa-sync-alt', 'color' => 'info'],
@@ -2086,5 +2315,30 @@ class DynamicReportService
                     'hasBranchFilter' => true,
                 ];
         }
+    }
+
+    /**
+     * Build bidirectional relationship map between brands and suppliers based on items and purchase history.
+     */
+    protected function getBrandSupplierMaps(): array
+    {
+        $pairs = DB::table('items')
+            ->whereNotNull('brand_id')
+            ->whereNotNull('supplier_id')
+            ->select('brand_id', 'supplier_id')
+            ->distinct()
+            ->get();
+
+        $brandSuppliers = [];
+        $supplierBrands = [];
+
+        foreach ($pairs as $p) {
+            $bId = (string) $p->brand_id;
+            $sId = (string) $p->supplier_id;
+            $brandSuppliers[$bId][] = $sId;
+            $supplierBrands[$sId][] = $bId;
+        }
+
+        return [$brandSuppliers, $supplierBrands];
     }
 }

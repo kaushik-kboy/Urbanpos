@@ -1015,6 +1015,12 @@
                     <label class="small font-weight-bold mb-1">Address / City</label>
                     <input type="text" id="qc-address" class="form-control form-control-sm" placeholder="Address (Optional)">
                 </div>
+                <div class="form-group mb-2">
+                    <label class="small font-weight-bold mb-1 text-danger">
+                        <i class="fas fa-map-marked-alt mr-1"></i> Google Map Link (Delivery Location)
+                    </label>
+                    <input type="url" id="qc-google-map-link" class="form-control form-control-sm" placeholder="https://maps.app.goo.gl/... (Optional)">
+                </div>
                 @can('customers.create')
                 <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                     <a href="{{ route('master.customers.create') }}" target="_blank" class="small text-primary font-weight-bold">
@@ -1445,6 +1451,7 @@
             $('#qc-name').val('');
             $('#qc-email').val('');
             $('#qc-address').val('');
+            $('#qc-google-map-link').val('');
             $('#qc-gst-no').val('');
             $('#sb-quick-customer-modal').modal('show');
             setTimeout(function () {
@@ -1503,6 +1510,7 @@
                     sms_consent: 1,
                     email: $('#qc-email').val() || '',
                     address1: $('#qc-address').val() || '',
+                    google_map_link: $('#qc-google-map-link').val() || '',
                     branch_id: $('[name="branch_id"]').val() || null
                 },
                 success: function (res) {
@@ -4149,7 +4157,7 @@
 
             if (credit > 0) {
                 let custOption = $('#customer_id').find('option:selected');
-                let custPaymentMode = (window.SELECTED_CUSTOMER_PAYMENT_MODE || custOption.data('payment-mode') || '').toLowerCase().trim();
+                let custPaymentMode = String(window.SELECTED_CUSTOMER_PAYMENT_MODE || custOption.data('payment-mode') || '').toLowerCase().trim();
                 let isCreditAllowed = (window.SELECTED_CUSTOMER_IS_CREDIT_ALLOWED !== false) && !['no credit', 'cash only'].includes(custPaymentMode);
                 if (!isCreditAllowed) {
                     let msg = `Credit sale is not allowed for this customer (Payment Mode: ${(window.SELECTED_CUSTOMER_PAYMENT_MODE || 'No Credit').toUpperCase()}).`;

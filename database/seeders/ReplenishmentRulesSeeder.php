@@ -111,10 +111,19 @@ class ReplenishmentRulesSeeder extends Seeder
 
         // 3. Permission & Roles Provisioning
         if (class_exists(Permission::class)) {
-            $permission = Permission::firstOrCreate(['name' => 'smart-replenishment.view', 'guard_name' => 'web']);
-            foreach (Role::whereIn('name', ['Super Admin', 'Admin', 'Owner', 'Manager'])->get() as $role) {
-                $role->givePermissionTo($permission);
+            $actions = ['view', 'create', 'edit', 'sync', 'export'];
+            $permissions = [];
+            foreach ($actions as $action) {
+                $permissions[] = Permission::firstOrCreate([
+                    'name' => "smart-replenishment.{$action}",
+                    'guard_name' => 'web',
+                ]);
             }
+
+            foreach (Role::whereIn('name', ['Super Admin', 'Admin', 'Owner', 'Manager'])->get() as $role) {
+                $role->givePermissionTo($permissions);
+            }
+            app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         }
     }
 }

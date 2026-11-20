@@ -175,7 +175,7 @@ body, .content-wrapper {
     @if(count($supplierOrders) > 0)
     <div class="modern-filter-toolbar">
         <div class="row g-2 align-items-center">
-            <div class="col-md-5 col-12 mb-2 mb-md-0">
+            <div class="col-md-4 col-12 mb-2 mb-md-0">
                 <label class="filter-field-label"><i class="fas fa-search mr-1 text-primary"></i> Filter by Supplier Name</label>
                 <div class="input-group input-group-sm">
                     <input type="text" id="filterSupplierSearch" class="form-control modern-control" placeholder="Type supplier name to filter..." value="{{ request('search', request('supplier_name', '')) }}" autocomplete="off">
@@ -187,7 +187,7 @@ body, .content-wrapper {
                 </div>
             </div>
 
-            <div class="col-md-5 col-12 mb-2 mb-md-0">
+            <div class="col-md-4 col-12 mb-2 mb-md-0">
                 <label class="filter-field-label"><i class="fas fa-building mr-1 text-success"></i> Select Supplier Dropdown</label>
                 <select id="filterSupplierSelect" class="form-control form-control-sm select2">
                     <option value="all">All Suppliers (Show All)</option>
@@ -199,8 +199,13 @@ body, .content-wrapper {
                 </select>
             </div>
 
-            <div class="col-md-2 col-12 text-md-right text-left">
-                <label class="filter-field-label d-none d-md-block">&nbsp;</label>
+            <div class="col-md-4 col-12 text-md-right text-left d-flex align-items-end justify-content-md-end justify-content-between mt-2 mt-md-0">
+                <button type="button" class="btn btn-primary btn-sm font-weight-bold mr-1" id="btnApplySupplierFilter">
+                    <i class="fas fa-filter mr-1"></i> Filter
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm font-weight-bold mr-2" id="btnResetSupplierFilter">
+                    <i class="fas fa-undo mr-1"></i> Reset
+                </button>
                 <span id="supplierVisibleCountBadge" class="badge badge-dark px-3 py-2 font-weight-bold" style="border-radius: 8px; font-size: 0.85rem;">
                     {{ count($supplierOrders) }} Suppliers
                 </span>
@@ -333,7 +338,15 @@ $(document).ready(function() {
         }
     }
 
+    $('#btnApplySupplierFilter').on('click', applySupplierFilter);
+
     $('#filterSupplierSearch').on('input keyup', applySupplierFilter);
+    $('#filterSupplierSearch').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            applySupplierFilter();
+        }
+    });
 
     $('#filterSupplierSelect').on('change.select2 change', function() {
         applySupplierFilter();

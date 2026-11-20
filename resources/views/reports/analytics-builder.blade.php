@@ -1949,7 +1949,7 @@ $(document).ready(function() {
             $thead.html(`
                 <tr>
                     <th class="text-center" style="width: 45px;">#</th>
-                    <th>Purchase Invoice No</th>
+                    <th>Supplier Inv No</th>
                     <th>Invoice Date</th>
                     <th>Branch</th>
                     <th class="text-right">Inward Qty</th>
@@ -1965,12 +1965,13 @@ $(document).ready(function() {
             }
 
             resp.records.forEach(function(r, idx) {
+                let dispInvoiceNo = (r.supplier_inv_no && r.supplier_inv_no.trim() !== '') ? r.supplier_inv_no : (r.display_invoice_no || r.invoice_number);
                 $tbody.append(`
                     <tr>
                         <td class="text-center text-muted font-weight-bold">${idx + 1}</td>
                         <td class="font-weight-bold">
-                            <a href="${r.view_url}" target="_blank" class="text-primary" title="Open Purchase Bill in New Tab">
-                                ${r.invoice_number} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
+                            <a href="${r.view_url}" target="_blank" class="text-primary font-weight-bold" title="Open Purchase Bill in New Tab">
+                                ${dispInvoiceNo} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
                             </a>
                         </td>
                         <td>${r.formatted_date}</td>
@@ -2036,7 +2037,7 @@ $(document).ready(function() {
             $thead.html(`
                 <tr>
                     <th class="text-center" style="width: 45px;">#</th>
-                    <th>Invoice Number</th>
+                    <th>Supplier Inv No</th>
                     <th>Invoice Date</th>
                     <th>Branch</th>
                     <th class="text-center">Total Qty</th>
@@ -2052,12 +2053,13 @@ $(document).ready(function() {
             }
 
             resp.records.forEach(function(r, idx) {
+                let dispInvoiceNo = (r.supplier_inv_no && r.supplier_inv_no.trim() !== '') ? r.supplier_inv_no : (r.display_invoice_no || r.invoice_number);
                 $tbody.append(`
                     <tr>
                         <td class="text-center text-muted font-weight-bold">${idx + 1}</td>
                         <td class="font-weight-bold">
-                            <a href="${r.view_url}" target="_blank" class="text-primary" title="Open Purchase Bill in New Tab">
-                                ${r.invoice_number} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
+                            <a href="${r.view_url}" target="_blank" class="text-primary font-weight-bold" title="Open Purchase Bill in New Tab">
+                                ${dispInvoiceNo} <i class="fas fa-external-link-alt fa-xs ml-1"></i>
                             </a>
                         </td>
                         <td>${r.formatted_date}</td>

@@ -121,6 +121,12 @@ class Item extends Model
         return $code;
     }
 
+    public function isService(): bool
+    {
+        return in_array($this->product_type, ['Service', 'Service Component', 'Service Item', 'Non-Inventory'], true)
+            || stripos($this->name ?? '', 'Pickup and Drop Service') !== false;
+    }
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);

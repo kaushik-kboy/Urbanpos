@@ -150,6 +150,8 @@
                                                                 <span class="badge badge-success px-1 py-0 mr-1"><i class="fas fa-paper-plane"></i></span>
                                                             @elseif($actionKey === 'print')
                                                                 <span class="badge badge-dark px-1 py-0 mr-1"><i class="fas fa-print"></i></span>
+                                                            @elseif($actionKey === 'sync')
+                                                                <span class="badge badge-warning px-1 py-0 mr-1"><i class="fas fa-sync-alt"></i></span>
                                                             @else
                                                                 <span class="badge badge-secondary px-1 py-0 mr-1"><i class="fas fa-check-circle"></i></span>
                                                             @endif

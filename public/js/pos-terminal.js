@@ -2447,6 +2447,11 @@
         $('#posActiveTaggedPetName').text('None');
         $('#posCustPetChips').empty();
         $('#posPetSelectDropdown').empty();
+        state.customer_address_id = null;
+        $('#posSelectedCustAddresses').hide();
+        $('#posCustAddressSelect').empty();
+        $('#posCustAddressPreview').empty();
+        $('#posCustMapLinkBtn').attr('href', '#').hide();
         $('#posLoyaltyContainer').hide();
         $('#posCustomerInvoicesTable tbody').empty();
 
@@ -2930,7 +2935,11 @@
                             is_pending: data.is_pending,
                             edit_url: data.edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                             pets: data.pets || [],
-                            pets_summary: data.pets_summary || ''
+                            pets_summary: data.pets_summary || '',
+                            addresses: data.addresses || [],
+                            address1: data.address1 || data.address || '',
+                            city: data.city || '',
+                            state: data.state || ''
                         };
                         state.customer = custPayload;
                         updateSelectedCustomerUI(custPayload);
@@ -2987,6 +2996,48 @@
             e.preventDefault();
             if (!state.customer_id) return;
             openCustomerEditModal(state.customer_id);
+        });
+
+        // Customer Delivery / Address Selector change handler
+        $('#posCustAddressSelect').on('change', function () {
+            const addrId = $(this).val();
+            state.customer_address_id = addrId ? parseInt(addrId, 10) : null;
+            const $opt = $(this).find('option:selected');
+            const type = $opt.data('type') || 'Home';
+            const formatted = $opt.data('formatted') || '';
+            const addrState = ($opt.data('state') || '').toString().trim();
+            const mapLink = $opt.data('map-link') || state.customer?.google_map_link || '';
+
+            $('#posCustAddressBadge').text(type);
+            $('#posCustAddressPreview').html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(formatted)}`);
+
+            const $mapBtn = $('#posCustMapLinkBtn');
+            if (mapLink) {
+                const href = /^https?:\/\//i.test(mapLink) ? mapLink : ('https://' + mapLink);
+                $mapBtn.attr('href', href).show();
+            } else {
+                $mapBtn.attr('href', '#').hide();
+            }
+
+            // If address state is outside Gujarat, update purchase_type to Interstate
+            if (addrState && addrState.toLowerCase() !== 'gujarat') {
+                setPurchaseType('Interstate');
+            } else if (state.customer && (state.customer.sales_type === 'Local' || state.customer.purchase_type === 'Local')) {
+                setPurchaseType('Local');
+            }
+        });
+
+        // Google Map Link live preview toggle in POS Customer Modal
+        $('#posCust_google_map_link').on('input change', function () {
+            const val = $(this).val().trim();
+            if (val) {
+                const mapUrl = /^https?:\/\//i.test(val) ? val : ('https://' + val);
+                $('#posCust_map_link_anchor').attr('href', mapUrl);
+                $('#posCust_map_preview_btn').show();
+            } else {
+                $('#posCust_map_preview_btn').hide();
+                $('#posCust_map_link_anchor').attr('href', '#');
+            }
         });
 
         // Change customer button -> opens search and immediately focuses input cursor
@@ -3093,7 +3144,12 @@
                         name: custName,
                         mobile: custMobile,
                         sales_type: $('#posCust_sales_type').val() || 'Local',
-                        edit_url: editUrl
+                        edit_url: editUrl,
+                        addresses: customer.addresses || [],
+                        address1: customer.address1 || '',
+                        city: customer.city || '',
+                        state: customer.state || '',
+                        google_map_link: customer.google_map_link || ''
                     });
                     loadCustomerLoyalty(newCustId);
                     loadCustomerInvoices(newCustId);
@@ -3276,6 +3332,67 @@
             $('#posPetSelectDropdown').empty();
         }
 
+        // Update Customer Delivery / Multiple Addresses Selector
+        const addresses = customer.addresses || [];
+        const $addrBox = $('#posSelectedCustAddresses');
+        const $addrSelect = $('#posCustAddressSelect');
+        const $addrPreview = $('#posCustAddressPreview');
+        const $addrBadge = $('#posCustAddressBadge');
+        const $mapBtn = $('#posCustMapLinkBtn');
+
+        function updateMapButton(link) {
+            const trimmed = (link || '').toString().trim();
+            if (trimmed) {
+                const href = /^https?:\/\//i.test(trimmed) ? trimmed : ('https://' + trimmed);
+                $mapBtn.attr('href', href).show();
+            } else {
+                $mapBtn.attr('href', '#').hide();
+            }
+        }
+
+        if ($addrBox.length) {
+            if (addresses.length > 0) {
+                $addrBox.show();
+                $addrSelect.show();
+                let addrOptsHtml = '';
+                addresses.forEach(function (a) {
+                    const isPrim = Boolean(a.is_primary);
+                    const typeLabel = a.type || 'Home';
+                    const areaPart = a.area ? ` - ${a.area}` : '';
+                    const defaultTag = isPrim ? ' (Default)' : '';
+                    const mapLink = a.google_map_link || customer.google_map_link || '';
+                    addrOptsHtml += `<option value="${a.id}" data-type="${escapeHtml(typeLabel)}" data-formatted="${escapeHtml(a.formatted || a.line || '')}" data-state="${escapeHtml(a.state || 'Gujarat')}" data-map-link="${escapeHtml(mapLink)}" ${isPrim ? 'selected' : ''}>
+                        [${escapeHtml(typeLabel)}] ${escapeHtml(a.line || a.area || 'Address')}${escapeHtml(areaPart)}${defaultTag}
+                    </option>`;
+                });
+                $addrSelect.html(addrOptsHtml);
+
+                const activeAddr = addresses.find(a => a.is_primary) || addresses[0];
+                state.customer_address_id = activeAddr ? activeAddr.id : null;
+                if (activeAddr) {
+                    $addrBadge.text(activeAddr.type || 'Home');
+                    $addrPreview.html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(activeAddr.formatted || activeAddr.line || '')}`);
+                    updateMapButton(activeAddr.google_map_link || customer.google_map_link);
+                } else {
+                    updateMapButton(customer.google_map_link);
+                }
+            } else if (customer.address1 || customer.address || customer.formatted_address) {
+                $addrBox.show();
+                $addrSelect.hide();
+                state.customer_address_id = null;
+                const singleAddr = customer.formatted_address || [customer.address1, customer.city || 'Ahmedabad', customer.state || 'Gujarat'].filter(Boolean).join(', ');
+                $addrBadge.text('Home');
+                $addrPreview.html(`<i class="fas fa-map-marker-alt text-danger mr-1"></i> ${escapeHtml(singleAddr)}`);
+                updateMapButton(customer.google_map_link);
+            } else {
+                state.customer_address_id = null;
+                $addrBox.hide();
+                $addrSelect.empty();
+                $addrPreview.empty();
+                updateMapButton(null);
+            }
+        }
+
         // Load Customer Favorites
         if (customer.id) {
             loadCustomerFavorites(customer.id);
@@ -3388,6 +3505,9 @@
         $('#posCust_sms_consent').val('1');
         $('#posCust_country').val('India');
         $('#posCust_customer_type').val('RETAIL INVOICE');
+        $('#posCust_google_map_link').val('');
+        $('#posCust_map_preview_btn').hide();
+        $('#posCust_map_link_anchor').attr('href', '#');
 
         const activeBranch = state.branch_id || window.CURRENT_USER_BRANCH_ID || '';
         if (activeBranch) {
@@ -3467,6 +3587,14 @@
                 $('#posCust_std_code').val(c.std_code || '');
                 $('#posCust_phone').val(c.phone || '');
                 $('#posCust_email').val(c.email || '');
+                $('#posCust_google_map_link').val(c.google_map_link || '');
+                if (c.google_map_link) {
+                    $('#posCust_map_preview_btn').show();
+                    $('#posCust_map_link_anchor').attr('href', c.google_map_link);
+                } else {
+                    $('#posCust_map_preview_btn').hide();
+                    $('#posCust_map_link_anchor').attr('href', '#');
+                }
                 $('#posCust_remarks').val(c.remarks || '');
                 $('#posCust_gst_no').val(c.gst_no || '');
                 $('#posCust_aadhar_no').val(c.aadhar_no || '');
@@ -3514,7 +3642,11 @@
                     is_pending: data.is_pending,
                     edit_url: data.customer_edit_url || `${window.CUSTOMER_EDIT_BASE_URL || ''}/${custId}/edit`,
                     pets: data.pets || [],
-                    pets_summary: data.pets_summary || ''
+                    pets_summary: data.pets_summary || '',
+                    addresses: data.addresses || [],
+                    address1: data.address1 || '',
+                    city: data.city || '',
+                    state: data.state || ''
                 });
                 currentCustomerInvoices = data.invoices || [];
                 filteredCustomerInvoices = [...currentCustomerInvoices];
@@ -3804,11 +3936,11 @@
     });
 
     $(document).on('input', '#cfmSearchInput', function () {
-        const q = $(this).val().toLowerCase().trim();
+        const q = String($(this).val() || '').toLowerCase().trim();
         filteredCustomerFavorites = currentCustomerFavorites.filter(item => {
-            return (item.name && item.name.toLowerCase().includes(q)) ||
-                   (item.item_code && item.item_code.toLowerCase().includes(q)) ||
-                   (item.ean_upc_code && item.ean_upc_code.toLowerCase().includes(q));
+            return (item.name && String(item.name).toLowerCase().includes(q)) ||
+                   (item.item_code && String(item.item_code).toLowerCase().includes(q)) ||
+                   (item.ean_upc_code && String(item.ean_upc_code).toLowerCase().includes(q));
         });
         renderCustomerFavoritesTable();
     });
@@ -4291,6 +4423,7 @@
                 ? (new Date(window.EDIT_BILL.bill_date).toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }))
                 : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }),
             customer_id: (state.edit_id && window.EDIT_BILL && window.EDIT_BILL.customer_id) ? window.EDIT_BILL.customer_id : state.customer_id,
+            customer_address_id: state.customer_address_id || null,
             customer_pet_id: state.customer_pet_id || null,
             branch_id: state.branch_id,
             user_id: document.getElementById('posBillerSelect')?.value || null,
@@ -4344,7 +4477,7 @@
 
                 // Action Handling: Print, WhatsApp, or Save
                 if (action === 'print' && billId) {
-                    window.open(`${window.APP_URL || ''}/sales/sales-bills/${billId}/receipt`, '_blank');
+                    window.open(`${window.APP_URL || ''}/sales/sales-bills/${billId}/receipt?from=pos`, '_blank');
                 } else if (action === 'whatsapp' && billId) {
                     // WhatsApp invoice is dispatched directly from backend via ChatOnClick API
                     if (result.whatsapp_sent === false && result.whatsapp_error) {
@@ -4766,19 +4899,27 @@
                     if (bsData) bsData._triggerElement = null;
 
                     let it = JSON.parse(rawItem);
-                    $modal.modal('hide');
-                    await resolveAndAddItem(it);
-
-                    // If batch modal did not pop up, focus target Qty immediately
-                    if (!$('#pos-batch-modal').is(':visible') && !$('#pos-batch-modal').hasClass('show')) {
-                        const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
-                        if (targetIdx >= 0) {
-                            focusRowQty(targetIdx);
-                            setTimeout(() => focusRowQty(targetIdx), 50);
-                            setTimeout(() => focusRowQty(targetIdx), 150);
-                            setTimeout(() => focusRowQty(targetIdx), 300);
-                            setTimeout(() => focusRowQty(targetIdx), 500);
+                    const executeAdd = async () => {
+                        await resolveAndAddItem(it);
+                        if (!$('#pos-batch-modal').is(':visible') && !$('#pos-batch-modal').hasClass('show')) {
+                            const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+                            if (targetIdx >= 0) {
+                                focusRowQty(targetIdx);
+                                setTimeout(() => focusRowQty(targetIdx), 50);
+                                setTimeout(() => focusRowQty(targetIdx), 150);
+                                setTimeout(() => focusRowQty(targetIdx), 300);
+                                setTimeout(() => focusRowQty(targetIdx), 500);
+                            }
                         }
+                    };
+
+                    if ($modal.is(':visible') || $modal.hasClass('show')) {
+                        $modal.one('hidden.bs.modal.islAdd', function () {
+                            executeAdd();
+                        });
+                        $modal.modal('hide');
+                    } else {
+                        executeAdd();
                     }
                 }
             });
@@ -4945,6 +5086,13 @@
             }
         }
     }, true);
+
+    // Multi-modal backdrop and scroll preservation guard
+    $(document).on('hidden.bs.modal', function () {
+        if ($('.modal.show:visible').length > 0) {
+            $('body').addClass('modal-open');
+        }
+    });
 
     // Expose methods to window for inline onclick handlers
     window.lockPosScreen = lockPosScreen;

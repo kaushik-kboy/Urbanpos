@@ -34,6 +34,42 @@ class UserFormPreference extends Model
         return $record ? $record->preferences : null;
     }
 
+    public static function getResolvedForUser(?User $user, string $formKey): ?array
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $canCustomize = $user->hasRole(['Owner', 'Super Admin', 'Admin', 'Administrator'])
+            || $user->can('layout-customizer.customize')
+            || $user->can('layout.customize');
+
+        // Only authorized users can maintain and view personal override layouts
+        if ($canCustomize) {
+            $userPref = static::getForUser($user->id, $formKey);
+            if ($userPref !== null) {
+                return $userPref;
+            }
+        }
+
+        // Look up Role layout for this user's assigned roles
+        $roleIds = $user->roles->pluck('id')->filter()->all();
+        if (! empty($roleIds)) {
+            $rolePref = RoleFormPreference::getForRoles($roleIds, $formKey);
+            if ($rolePref !== null) {
+                return $rolePref;
+            }
+        }
+
+        // Fallback to global role layout (role_id = null)
+        $globalPref = RoleFormPreference::getGlobal($formKey);
+        if ($globalPref !== null) {
+            return $globalPref;
+        }
+
+        return null;
+    }
+
     public static function setForUser(int $userId, string $formKey, array $preferences): static
     {
         return static::updateOrCreate(

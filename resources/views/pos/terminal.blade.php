@@ -118,7 +118,7 @@
             @endif
         </div>
         <div>
-            <a href="{{ route('sales.sales-bills.receipt', $editBill->id) }}" target="_blank" class="btn btn-warning btn-sm font-weight-bold py-1 px-3 mr-2 shadow-sm">
+            <a href="{{ route('sales.sales-bills.receipt', $editBill->id) }}?from=pos" target="_blank" class="btn btn-warning btn-sm font-weight-bold py-1 px-3 mr-2 shadow-sm">
                 <i class="fas fa-print mr-1"></i> Print Bill
             </a>
             <a href="{{ route('pos.terminal') }}" class="btn btn-primary btn-sm font-weight-bold py-1 px-3 shadow-sm">
@@ -299,6 +299,25 @@
                                 </span>
                             @endif
                         </div>
+                    </div>
+
+                    <!-- Customer Delivery / Multiple Addresses Section -->
+                    <div id="posSelectedCustAddresses" class="mt-2 pt-2 border-top" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small font-weight-bold">
+                                <i class="fas fa-map-marker-alt mr-1 text-danger"></i> Delivery Address:
+                            </span>
+                            <div class="d-flex align-items-center">
+                                <a href="#" id="posCustMapLinkBtn" target="_blank" rel="noopener" class="btn btn-xs btn-outline-danger py-0 px-2 mr-1 font-weight-bold" style="display: none; font-size: 0.72rem;" title="Open in Google Maps">
+                                    <i class="fas fa-map-marked-alt mr-1"></i> Map
+                                </a>
+                                <span id="posCustAddressBadge" class="badge badge-light border text-dark font-weight-bold" style="font-size: 0.72rem;">Home</span>
+                            </div>
+                        </div>
+                        <select id="posCustAddressSelect" class="form-control form-control-sm" style="font-size: 0.8rem;">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                        <div id="posCustAddressPreview" class="small text-muted mt-1 text-truncate" style="font-size: 0.75rem;"></div>
                     </div>
 
                     <!-- Customer Pet Details (Above Invoices & Favorites) -->
@@ -559,7 +578,7 @@
                     <div class="pos-view-actions-card p-3 bg-light rounded border text-center my-2 shadow-sm">
                         <div class="text-info font-weight-bold mb-2"><i class="fas fa-eye mr-1"></i> Bill #{{ $editBill->bill_number }} (Read Only)</div>
                         <div class="d-flex mb-2" style="gap: 6px;">
-                            <a href="{{ route('sales.sales-bills.receipt', $editBill->id) }}" target="_blank" class="btn btn-warning font-weight-bold flex-fill py-2 shadow-sm">
+                            <a href="{{ route('sales.sales-bills.receipt', $editBill->id) }}?from=pos" target="_blank" class="btn btn-warning font-weight-bold flex-fill py-2 shadow-sm">
                                 <i class="fas fa-print mr-1"></i> Print Receipt
                             </a>
                             <a href="{{ route('pos.terminal') }}" class="btn btn-primary font-weight-bold flex-fill py-2 shadow-sm">
@@ -814,7 +833,7 @@
                                     <select name="state" id="posCust_state" class="form-control form-control-sm">
                                         <option value="">-- Select State --</option>
                                         <optgroup label="⭐ Top States">
-                                            <option value="Gujarat">Gujarat</option>
+                                            <option value="Gujarat" selected>Gujarat</option>
                                             <option value="Rajasthan">Rajasthan</option>
                                             <option value="Maharashtra">Maharashtra</option>
                                         </optgroup>
@@ -831,6 +850,7 @@
                                     <label class="font-weight-600 small mb-1">City</label>
                                     <select name="city" id="posCust_city" class="form-control form-control-sm">
                                         <option value="">-- Select City --</option>
+                                        <option value="Ahmedabad" selected>Ahmedabad</option>
                                     </select>
                                 </div>
                                 <div class="field-wrapper col-md-4 mb-3" data-field="country" data-label="Country" data-default-order="5">
@@ -869,7 +889,22 @@
                                     <input type="text" name="pan_no" id="posCust_pan_no" class="form-control form-control-sm" placeholder="PAN number">
                                 </div>
 
-                                <div class="field-wrapper col-md-12 mb-2" data-field="remarks" data-label="Remarks" data-default-order="13">
+                                <div class="field-wrapper col-md-12 mb-3" data-field="google_map_link" data-label="Google Map Link" data-default-order="13">
+                                    <label class="font-weight-600 small mb-1 text-danger">
+                                        <i class="fas fa-map-marked-alt mr-1"></i> Google Map Link (Delivery Location)
+                                    </label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="url" name="google_map_link" id="posCust_google_map_link" class="form-control form-control-sm" placeholder="https://maps.app.goo.gl/... or paste Google Maps share link">
+                                        <div class="input-group-append" id="posCust_map_preview_btn" style="display: none;">
+                                            <a href="#" target="_blank" rel="noopener" class="btn btn-outline-danger" id="posCust_map_link_anchor" title="Open Map">
+                                                <i class="fas fa-external-link-alt mr-1"></i> Test Link
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Used for rider navigation and delivery tracking in IndianPet Delivery module.</small>
+                                </div>
+
+                                <div class="field-wrapper col-md-12 mb-2" data-field="remarks" data-label="Remarks" data-default-order="14">
                                     <label class="font-weight-600 small mb-1">Remarks</label>
                                     <textarea name="remarks" id="posCust_remarks" class="form-control form-control-sm" rows="2" placeholder="Additional customer notes..."></textarea>
                                 </div>
@@ -1250,7 +1285,7 @@
                 </div>
             </div>
             <div class="modal-footer py-2 px-3 bg-white justify-content-between">
-                <span class="text-muted small"><i class="fas fa-info-circle mr-1 text-primary"></i>Active Branch: <strong class="text-dark">{{ $branch->name ?? 'Default Branch' }}</strong></span>
+                <span class="text-muted small"><i class="fas fa-info-circle mr-1 text-primary"></i>Active Branch: <strong class="text-dark">{{ $activeBrName ?? ($branch->name ?? 'Default Branch') }}</strong></span>
                 <button type="button" class="btn btn-secondary btn-sm px-3 font-weight-bold" data-dismiss="modal">Close (Esc)</button>
             </div>
         </div>
@@ -1775,7 +1810,7 @@
 <script>
 $(document).ready(function () {
     if (typeof initIndianStateCity === 'function') {
-        initIndianStateCity('#posCust_state', '#posCust_city', '', '');
+        initIndianStateCity('#posCust_state', '#posCust_city', 'Gujarat', 'Ahmedabad');
     }
 });
 </script>

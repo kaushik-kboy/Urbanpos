@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Master\AreaController;
+use App\Http\Controllers\Master\StateController;
+use App\Http\Controllers\Master\CityController;
 use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\Master\BreedController;
 use App\Http\Controllers\Master\ColorController;
@@ -112,6 +114,8 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
         'customer-types' => CustomerTypeController::class,
         'sales-types' => SalesTypeController::class,
         'customers' => CustomerController::class,
+        'states' => StateController::class,
+        'cities' => CityController::class,
         'areas' => AreaController::class,
         'pet-types' => PetTypeController::class,
         'breeds' => BreedController::class,
@@ -130,6 +134,9 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::match(['get', 'post'], 'barcodes/print', [\App\Http\Controllers\Master\BarcodePrintController::class, 'printLabels'])->name('barcodes.print');
     Route::get('barcodes/tspl', [\App\Http\Controllers\Master\BarcodePrintController::class, 'downloadTspl'])->name('barcodes.tspl');
     Route::get('sales-types/by-branch', [\App\Http\Controllers\Master\SalesTypeController::class, 'byBranch'])->name('sales-types.by-branch');
+    Route::get('states/api-list', [StateController::class, 'apiList'])->name('states.api-list');
+    Route::get('cities/api-list', [CityController::class, 'apiList'])->name('cities.api-list');
+    Route::get('areas/api-list', [AreaController::class, 'apiList'])->name('areas.api-list');
 
     foreach ($masterResources as $uri => $controller) {
         $viewPermission = ($uri === 'customers') ? 'customers.view' : null;
@@ -287,17 +294,18 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::middleware(['permission:smart-replenishment.view', 'branch.access'])->prefix('smart-replenishment')->name('replenishment.')->group(function () {
         Route::get('/', [SmartReplenishmentController::class, 'index'])->name('index');
         Route::get('/data', [SmartReplenishmentController::class, 'data'])->name('data');
-        Route::get('/export', [SmartReplenishmentController::class, 'export'])->name('export');
-        Route::post('/sync', [SmartReplenishmentController::class, 'sync'])->name('sync');
-        Route::get('/settings', [SmartReplenishmentController::class, 'settings'])->name('settings');
-        Route::post('/settings', [SmartReplenishmentController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/export', [SmartReplenishmentController::class, 'export'])->middleware('permission:smart-replenishment.export')->name('export');
+        Route::post('/sync', [SmartReplenishmentController::class, 'sync'])->middleware('permission:smart-replenishment.sync')->name('sync');
+        Route::get('/settings', [SmartReplenishmentController::class, 'settings'])->middleware('permission:smart-replenishment.edit')->name('settings');
+        Route::post('/settings', [SmartReplenishmentController::class, 'updateSettings'])->middleware('permission:smart-replenishment.edit')->name('settings.update');
         Route::get('/transfers', [SmartReplenishmentController::class, 'transfers'])->name('transfers');
         Route::get('/supplier-orders', [SmartReplenishmentController::class, 'supplierOrders'])->name('supplier-orders');
-        Route::post('/generate-po', [SmartReplenishmentController::class, 'generatePo'])->name('generate-po');
-        Route::post('/bulk-generate-po', [SmartReplenishmentController::class, 'bulkGeneratePo'])->name('bulk-generate-po');
-        Route::post('/create-transfer', [SmartReplenishmentController::class, 'createTransfer'])->name('create-transfer');
-        Route::post('/bulk-create-transfer', [SmartReplenishmentController::class, 'bulkCreateTransfer'])->name('bulk-create-transfer');
+        Route::post('/generate-po', [SmartReplenishmentController::class, 'generatePo'])->middleware('permission:smart-replenishment.create')->name('generate-po');
+        Route::post('/bulk-generate-po', [SmartReplenishmentController::class, 'bulkGeneratePo'])->middleware('permission:smart-replenishment.create')->name('bulk-generate-po');
+        Route::post('/create-transfer', [SmartReplenishmentController::class, 'createTransfer'])->middleware('permission:smart-replenishment.create')->name('create-transfer');
+        Route::post('/bulk-create-transfer', [SmartReplenishmentController::class, 'bulkCreateTransfer'])->middleware('permission:smart-replenishment.create')->name('bulk-create-transfer');
         Route::post('/transfer-sources', [SmartReplenishmentController::class, 'transferSources'])->name('transfer-sources');
+        Route::get('/item-batches', [SmartReplenishmentController::class, 'itemBatches'])->name('item-batches');
     });
 
     // Stock Transfer
@@ -326,6 +334,7 @@ Route::middleware('auth')->prefix('sales')->name('sales.')->group(function () us
     Route::post('sales-bills/quick-customer', [SalesBillController::class, 'quickCustomerStore'])->name('sales-bills.quick-customer');
     Route::get('sales-bills/quick-customer/{customer}', [SalesBillController::class, 'quickCustomerShow'])->name('sales-bills.quick-customer-show');
     Route::match(['put', 'post'], 'sales-bills/quick-customer/{customer}', [SalesBillController::class, 'quickCustomerUpdate'])->name('sales-bills.quick-customer-update');
+    Route::get('sales-bills/open-by-number/{billNumber}', [SalesBillController::class, 'openByBillNumber'])->name('sales-bills.open-by-number')->where('billNumber', '.*');
     Route::get('sales-bills/{salesBill}/receipt', [SalesBillController::class, 'receipt'])->name('sales-bills.receipt');
     Route::post('sales-bills/{salesBill}/send-whatsapp', [SalesBillController::class, 'sendWhatsApp'])->name('sales-bills.send-whatsapp');
     Route::get('sales-bills/{salesBill}/eway-json', [\App\Http\Controllers\Sales\EWayBillController::class, 'downloadJson'])->name('sales-bills.eway-json');

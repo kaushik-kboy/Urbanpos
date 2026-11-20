@@ -362,8 +362,8 @@ class PurchaseInvoiceController extends Controller
         $oldTotal = (float) $purchaseInvoice->total;
 
         DB::transaction(function () use ($data, $purchaseInvoice, $oldSupplierId, $oldTotal) {
-            // Reverse the previous version's stock/ledger effect instead of deleting it.
-            $this->stockLedger->reverseByReference(PurchaseInvoice::class, $purchaseInvoice->id);
+            // Reverse the previous version's stock/ledger effect (allow temporary intermediate state while updating)
+            $this->stockLedger->reverseByReference(PurchaseInvoice::class, $purchaseInvoice->id, allowTemporaryNegative: true);
 
             $purchaseInvoice->loadMissing('items');
             $lines = $this->computeLines($data['items'], $data['header'], $purchaseInvoice);
@@ -378,6 +378,8 @@ class PurchaseInvoiceController extends Controller
 
             $this->postStockAndItemMaster($purchaseInvoice, $lines);
             $this->ledgerPosting->postPurchaseInvoice($purchaseInvoice);
+
+            $this->assertNoNegativeStockForInvoice($purchaseInvoice);
         });
 
         $returnFilters = $request->session()->get('purchase_invoices_filters', []);
@@ -471,6 +473,25 @@ class PurchaseInvoiceController extends Controller
                 ['item_id' => $line['item_id'], 'branch_id' => $purchaseInvoice->branch_id],
                 array_filter($itemStockData, fn ($v) => $v !== null)
             );
+        }
+    }
+
+    private function assertNoNegativeStockForInvoice(PurchaseInvoice $purchaseInvoice): void
+    {
+        $itemIds = $purchaseInvoice->items->pluck('item_id')->unique()->values();
+        $stocks = ItemStock::where('branch_id', $purchaseInvoice->branch_id)
+            ->whereIn('item_id', $itemIds)
+            ->with('item')
+            ->get();
+
+        foreach ($stocks as $stock) {
+            if ($stock->quantity < 0 && ! ($stock->item?->allow_negative_stock)) {
+                $itemName = $stock->item ? $stock->item->name : "Item #{$stock->item_id}";
+                $shortage = abs($stock->quantity);
+                throw ValidationException::withMessages([
+                    'stock' => "Cannot update purchase invoice: Resulting stock for \"{$itemName}\" would become negative ({$stock->quantity}) because {$shortage} unit(s) were already sold.",
+                ]);
+            }
         }
     }
 
@@ -1428,18 +1449,6 @@ class PurchaseInvoiceController extends Controller
                             "items.{$idx}.sell_price",
                             "Item '{$itemModel->name}' (Row #{$rowNum}): Sell price (₹{$sellPrice}) must not exceed MRP (₹{$mrp}) (Sell price must be <= MRP)."
                         );
-                    }
-
-                    // Anomaly Guardrail: Detect Box/Carton wholesale price entered for single retail unit
-                    if ($itemModel && (float) $itemModel->mrp > 0 && $mrp > 0) {
-                        $existingMrp = (float) $itemModel->mrp;
-                        if ($mrp > ($existingMrp * 2.5) && $existingMrp < 500) {
-                            $rowNum = $idx + 1;
-                            $v->errors()->add(
-                                "items.{$idx}.mrp",
-                                "Item '{$itemModel->name}' (Row #{$rowNum}): Entered MRP (₹{$mrp}) is drastically higher than current retail MRP (₹{$existingMrp}). If this is a wholesale Case/Box, please enter individual pouch/unit quantity or verify rate."
-                            );
-                        }
                     }
                 }
             }

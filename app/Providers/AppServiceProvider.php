@@ -78,6 +78,20 @@ class AppServiceProvider extends ServiceProvider
                 return false;
             }
         });
+
+        Gate::define('access-smart-replenishment-settings', function ($user) {
+            if (!config('replenishment.enabled', false)) {
+                return false;
+            }
+            if ($user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator', 'Manager'])) {
+                return true;
+            }
+            try {
+                return $user->hasPermissionTo('smart-replenishment.edit');
+            } catch (\Throwable) {
+                return false;
+            }
+        });
         Gate::define('access-finance-reports', function ($user) {
             return \App\Services\Reports\ReportPermissionRegistry::hasCategoryAccess($user, 'Finance');
         });

@@ -11,9 +11,15 @@
 @php
     $safeKey = \Illuminate\Support\Str::slug($tableKey, '-');
     $modalId = 'table-col-modal-' . $safeKey;
-    $userId = auth()->id();
-    $savedPrefs = $userId ? (\App\Models\UserTablePreference::getForUser($userId, $tableKey) ?? []) : [];
+    $user = auth()->user();
+    $canCustomizeLayout = $user && (
+        $user->hasRole(['Owner', 'Super Admin', 'Admin', 'Administrator']) ||
+        $user->can('layout-customizer.customize') ||
+        $user->can('layout.customize')
+    );
+    $savedPrefs = $user ? (\App\Models\UserTablePreference::getResolvedForUser($user, $tableKey) ?? []) : [];
     $isModalTable = str_starts_with($tableKey, 'modal.');
+    $allRoles = $canCustomizeLayout ? \Spatie\Permission\Models\Role::orderBy('name')->get() : collect();
 @endphp
 
 <div class="d-inline-block table-customizer-wrapper position-relative" 
@@ -23,6 +29,7 @@
      data-is-modal-table="{{ $isModalTable ? '1' : '0' }}"
      data-saved-prefs='@json($savedPrefs)'>
 
+    @if($canCustomizeLayout)
     <button type="button" 
             class="{{ $buttonClass }} btn-table-customizer-trigger" 
             @if(!$isModalTable)
@@ -63,6 +70,31 @@
 
             <div class="list-group list-group-flush border rounded col-customizer-list mb-3" style="max-height: 260px; overflow-y: auto;">
                 {{-- Items populated dynamically via JavaScript based on table <th> --}}
+            </div>
+
+            <div class="role-target-box bg-light border rounded p-2 mb-2">
+                <div class="d-flex flex-wrap align-items-center justify-content-between">
+                    <div class="d-flex align-items-center mb-1 mb-sm-0">
+                        <label class="small font-weight-bold text-dark mb-0 mr-2" style="font-size: 11px;">
+                            <i class="fas fa-users-cog text-primary mr-1"></i> Apply To:
+                        </label>
+                        <select class="form-control form-control-sm sel-layout-target py-0" style="height: 28px; font-size: 11px; width: auto; min-width: 170px;">
+                            <option value="user">My Account Only</option>
+                            <optgroup label="Role Standard Layouts">
+                                @foreach($allRoles as $r)
+                                    <option value="role:{{ $r->id }}">All {{ $r->name }} Users</option>
+                                @endforeach
+                                <option value="role:all">All System Roles (Global)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input chk-sync-role-users" id="sync-users-pop-{{ $safeKey }}" checked>
+                        <label class="custom-control-label small text-muted font-weight-normal" for="sync-users-pop-{{ $safeKey }}" style="font-size: 11px;">
+                            Reset user overrides
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <div class="d-flex justify-content-between align-items-center pt-2 border-top">
@@ -108,20 +140,47 @@
                         {{-- Items populated dynamically via JavaScript based on table <th> --}}
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2 d-flex justify-content-between">
-                    <button type="button" class="btn btn-outline-danger btn-sm btn-reset-customizer" title="Restore default columns">
-                        <i class="fas fa-undo mr-1"></i> Reset to Default
-                    </button>
-                    <div>
-                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary btn-sm btn-save-customizer">
-                            <i class="fas fa-save mr-1"></i> Save View
+                <div class="modal-footer bg-light py-2 d-flex flex-column">
+                    <div class="role-target-box bg-white border rounded p-2 mb-2 w-100">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between">
+                            <div class="d-flex align-items-center mb-1 mb-sm-0">
+                                <label class="small font-weight-bold text-dark mb-0 mr-2" style="font-size: 12px;">
+                                    <i class="fas fa-users-cog text-primary mr-1"></i> Apply Layout To:
+                                </label>
+                                <select class="form-control form-control-sm sel-layout-target py-0" style="height: 30px; font-size: 12px; width: auto; min-width: 190px;">
+                                    <option value="user">My Account Only (Personal)</option>
+                                    <optgroup label="Role Standard Layouts">
+                                        @foreach($allRoles as $r)
+                                            <option value="role:{{ $r->id }}">All {{ $r->name }} Users</option>
+                                        @endforeach
+                                        <option value="role:all">All System Roles (Global)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input chk-sync-role-users" id="sync-users-modal-{{ $safeKey }}" checked>
+                                <label class="custom-control-label small text-muted font-weight-normal" for="sync-users-modal-{{ $safeKey }}" style="font-size: 12px;">
+                                    Reset existing user overrides
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-reset-customizer" title="Restore default columns">
+                            <i class="fas fa-undo mr-1"></i> Reset to Default
                         </button>
+                        <div>
+                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary btn-sm btn-save-customizer">
+                                <i class="fas fa-save mr-1"></i> Save View
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    @endif
     @endif
 </div>
 
@@ -526,6 +585,35 @@
                 applyPreferences(newPrefs);
                 closeCustomizer();
 
+                // Extract Target Role Options if configured
+                let targetType = 'user';
+                let targetRoleId = null;
+                let syncUsers = false;
+
+                const targetSelect = (popover && popover.style.display !== 'none')
+                    ? popover.querySelector('.sel-layout-target')
+                    : (modal ? modal.querySelector('.sel-layout-target') : wrapper.querySelector('.sel-layout-target'));
+
+                if (targetSelect) {
+                    const selVal = targetSelect.value || 'user';
+                    if (selVal.startsWith('role:')) {
+                        const parts = selVal.split(':');
+                        if (parts[1] === 'all') {
+                            targetType = 'all_roles';
+                        } else {
+                            targetType = 'role';
+                            targetRoleId = parseInt(parts[1], 10);
+                        }
+                    }
+                }
+
+                const syncCheckbox = (popover && popover.style.display !== 'none')
+                    ? popover.querySelector('.chk-sync-role-users')
+                    : (modal ? modal.querySelector('.chk-sync-role-users') : wrapper.querySelector('.chk-sync-role-users'));
+                if (syncCheckbox && syncCheckbox.checked) {
+                    syncUsers = true;
+                }
+
                 // Save to database asynchronously
                 btnSave.disabled = true;
                 const originalHtml = btnSave.innerHTML;
@@ -540,7 +628,10 @@
                     },
                     body: JSON.stringify({
                         table_key: tableKey,
-                        preferences: newPrefs
+                        preferences: newPrefs,
+                        target_type: targetType,
+                        target_role_id: targetRoleId,
+                        sync_users: syncUsers
                     })
                 })
                 .then(r => r.json())
@@ -549,7 +640,13 @@
                     btnSave.innerHTML = originalHtml;
                     if (data.status === 'success') {
                         if (window.toastr) {
-                            toastr.success('Column layout saved permanently across devices!');
+                            toastr.success(data.message || 'Column layout saved permanently across devices!');
+                        }
+                    } else if (data.message) {
+                        if (window.toastr) {
+                            toastr.warning(data.message);
+                        } else {
+                            alert(data.message);
                         }
                     }
                 })
@@ -572,6 +669,25 @@
                 btnReset.disabled = true;
                 btnReset.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Resetting...';
 
+                let targetType = 'user';
+                let targetRoleId = null;
+                const targetSelect = (popover && popover.style.display !== 'none')
+                    ? popover.querySelector('.sel-layout-target')
+                    : (modal ? modal.querySelector('.sel-layout-target') : wrapper.querySelector('.sel-layout-target'));
+
+                if (targetSelect) {
+                    const selVal = targetSelect.value || 'user';
+                    if (selVal.startsWith('role:')) {
+                        const parts = selVal.split(':');
+                        if (parts[1] === 'all') {
+                            targetType = 'all_roles';
+                        } else {
+                            targetType = 'role';
+                            targetRoleId = parseInt(parts[1], 10);
+                        }
+                    }
+                }
+
                 savedPrefs = [];
                 wrapper.setAttribute('data-saved-prefs', '[]');
                 applyPreferences([]);
@@ -585,7 +701,9 @@
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        table_key: tableKey
+                        table_key: tableKey,
+                        target_type: targetType,
+                        target_role_id: targetRoleId
                     })
                 })
                 .then(r => r.json().catch(() => null).then(data => ({ ok: r.ok, data })))

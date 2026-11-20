@@ -11,8 +11,14 @@
 @php
     $safeKey = \Illuminate\Support\Str::slug($formKey, '-');
     $modalId = 'form-layout-modal-' . $safeKey;
-    $userId = auth()->id();
-    $savedPrefs = $userId ? (\App\Models\UserFormPreference::getForUser($userId, $formKey) ?? []) : [];
+    $user = auth()->user();
+    $canCustomizeLayout = $user && (
+        $user->hasRole(['Owner', 'Super Admin', 'Admin', 'Administrator']) ||
+        $user->can('layout-customizer.customize') ||
+        $user->can('layout.customize')
+    );
+    $savedPrefs = $user ? (\App\Models\UserFormPreference::getResolvedForUser($user, $formKey) ?? []) : [];
+    $allRoles = $canCustomizeLayout ? \Spatie\Permission\Models\Role::orderBy('name')->get() : collect();
 @endphp
 
 <div class="d-inline-block form-customizer-wrapper"
@@ -21,6 +27,7 @@
      data-container-id="{{ $containerId }}"
      data-saved-prefs='@json($savedPrefs)'>
 
+    @if($canCustomizeLayout)
     <button type="button"
             class="{{ $buttonClass }}"
             data-toggle="modal"
@@ -59,20 +66,47 @@
                         {{-- Populated dynamically via JavaScript based on .field-wrapper --}}
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2 d-flex justify-content-between">
-                    <button type="button" class="btn btn-outline-danger btn-sm btn-reset-form-customizer" title="Restore standard default layout">
-                        <i class="fas fa-undo mr-1"></i> Reset to Default
-                    </button>
-                    <div>
-                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary btn-sm btn-save-form-customizer font-weight-bold shadow-sm">
-                            <i class="fas fa-save mr-1"></i> Save Layout
+                <div class="modal-footer bg-light py-2 d-flex flex-column">
+                    <div class="role-target-box bg-white border rounded p-2 mb-2 w-100">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between">
+                            <div class="d-flex align-items-center mb-1 mb-sm-0">
+                                <label class="small font-weight-bold text-dark mb-0 mr-2" style="font-size: 12px;">
+                                    <i class="fas fa-users-cog text-primary mr-1"></i> Apply Layout To:
+                                </label>
+                                <select class="form-control form-control-sm sel-form-layout-target py-0" style="height: 30px; font-size: 12px; width: auto; min-width: 190px;">
+                                    <option value="user">My Account Only (Personal)</option>
+                                    <optgroup label="Role Standard Layouts">
+                                        @foreach($allRoles as $r)
+                                            <option value="role:{{ $r->id }}">All {{ $r->name }} Users</option>
+                                        @endforeach
+                                        <option value="role:all">All System Roles (Global)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input chk-sync-form-role-users" id="sync-form-users-{{ $safeKey }}" checked>
+                                <label class="custom-control-label small text-muted font-weight-normal" for="sync-form-users-{{ $safeKey }}" style="font-size: 12px;">
+                                    Reset existing user overrides
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-reset-form-customizer" title="Restore standard default layout">
+                            <i class="fas fa-undo mr-1"></i> Reset to Default
                         </button>
+                        <div>
+                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary btn-sm btn-save-form-customizer font-weight-bold shadow-sm">
+                                <i class="fas fa-save mr-1"></i> Save Layout
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    @endif
 </div>
 
 @once
@@ -398,6 +432,30 @@
                 }
             });
 
+            // Extract Target Role Options if configured
+            let targetType = 'user';
+            let targetRoleId = null;
+            let syncUsers = false;
+
+            const $targetSelect = $modal.find('.sel-form-layout-target');
+            if ($targetSelect.length) {
+                const selVal = $targetSelect.val() || 'user';
+                if (selVal.startsWith('role:')) {
+                    const parts = selVal.split(':');
+                    if (parts[1] === 'all') {
+                        targetType = 'all_roles';
+                    } else {
+                        targetType = 'role';
+                        targetRoleId = parseInt(parts[1], 10);
+                    }
+                }
+            }
+
+            const $syncCheckbox = $modal.find('.chk-sync-form-role-users');
+            if ($syncCheckbox.length && $syncCheckbox.is(':checked')) {
+                syncUsers = true;
+            }
+
             // Send AJAX to store
             $.ajax({
                 url: '{{ route("tools.form-preferences.store") }}',
@@ -410,13 +468,19 @@
                 data: JSON.stringify({
                     _token: '{{ csrf_token() }}',
                     form_key: formKey,
-                    preferences: updatedPrefs
+                    preferences: updatedPrefs,
+                    target_type: targetType,
+                    target_role_id: targetRoleId,
+                    sync_users: syncUsers
                 }),
                 success: function(resp) {
                     applyLayoutToDOM();
                     $wrapper.attr('data-saved-prefs', JSON.stringify(updatedPrefs));
                     $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Layout');
                     $modal.modal('hide');
+                    if (window.toastr && resp.message) {
+                        toastr.success(resp.message);
+                    }
                 },
                 error: function(xhr) {
                     let msg = 'Failed to save layout preferences. Please try again.';
@@ -439,6 +503,22 @@
             let $btn = $(this);
             $btn.prop('disabled', true);
 
+            let targetType = 'user';
+            let targetRoleId = null;
+            const $targetSelect = $modal.find('.sel-form-layout-target');
+            if ($targetSelect.length) {
+                const selVal = $targetSelect.val() || 'user';
+                if (selVal.startsWith('role:')) {
+                    const parts = selVal.split(':');
+                    if (parts[1] === 'all') {
+                        targetType = 'all_roles';
+                    } else {
+                        targetType = 'role';
+                        targetRoleId = parseInt(parts[1], 10);
+                    }
+                }
+            }
+
             $.ajax({
                 url: '{{ route("tools.form-preferences.reset") }}',
                 method: 'POST',
@@ -449,7 +529,9 @@
                 },
                 data: JSON.stringify({
                     _token: '{{ csrf_token() }}',
-                    form_key: formKey
+                    form_key: formKey,
+                    target_type: targetType,
+                    target_role_id: targetRoleId
                 }),
                 success: function(resp) {
                     // Revert in-memory metadata

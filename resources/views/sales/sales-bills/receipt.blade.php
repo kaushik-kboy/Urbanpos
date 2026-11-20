@@ -240,8 +240,14 @@
 
     <div class="screen-toolbar">
         @if (!($isPublicGuest ?? false))
-            <a href="{{ route('sales.sales-bills.show', $salesBill) }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left" style="margin-right: 5px;"></i> Back to Bill
+            @php
+                $isFromPos = request()->get('from') === 'pos' || (request()->header('referer') && str_contains(request()->header('referer'), '/pos'));
+                $backUrl = $isFromPos ? route('pos.terminal') : route('sales.sales-bills.show', $salesBill);
+                $backText = $isFromPos ? 'Back to POS Terminal' : 'Back to Bill';
+                $backIcon = $isFromPos ? 'fa-cash-register' : 'fa-arrow-left';
+            @endphp
+            <a href="{{ $backUrl }}" class="btn btn-secondary" onclick="return handleBackToSource(event, '{{ $isFromPos ? 'pos' : 'bill' }}', '{{ $backUrl }}');">
+                <i class="fas {{ $backIcon }}" style="margin-right: 5px;"></i> {{ $backText }}
             </a>
             <button id="btn-whatsapp-send" type="button" class="btn btn-success" onclick="sendWhatsAppInvoice()">
                 <i class="fab fa-whatsapp" style="margin-right: 5px; font-size: 14px;"></i> WhatsApp
@@ -687,6 +693,20 @@
                 btn.innerHTML = origHtml;
                 alert('Network error while dispatching WhatsApp: ' + err.message);
             });
+        }
+
+        function handleBackToSource(e, source, fallbackUrl) {
+            if (source === 'pos') {
+                if (window.opener && !window.opener.closed) {
+                    try {
+                        window.opener.focus();
+                        window.close();
+                        return false;
+                    } catch (err) {}
+                }
+            }
+            window.location.href = fallbackUrl;
+            return false;
         }
         @endif
     </script>

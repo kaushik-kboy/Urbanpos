@@ -10,6 +10,11 @@ Artisan::command('inspire', function () {
 
 Schedule::command('pos:heartbeat')->hourly();
 
+// Hourly recalculation of Smart Replenishment demand velocity & stock metrics
+Schedule::command('replenishment:calculate')
+    ->hourly()
+    ->withoutOverlapping();
+
 // Nightly Automated Database Backup at 11:00 PM IST (23:00)
 Schedule::command('pos:backup --type=nightly')
     ->dailyAt('23:00')

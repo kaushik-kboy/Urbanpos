@@ -29,7 +29,7 @@ class StockTransferController extends Controller
 
     public function index(Request $request)
     {
-        $query = StockTransfer::with(['fromBranch', 'toBranch']);
+        $query = StockTransfer::with(['fromBranch', 'toBranch', 'creator', 'receiver']);
 
         $user = $request->user();
         $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
@@ -133,6 +133,7 @@ class StockTransferController extends Controller
                 'posting_key' => $data['header']['posting_key'] ?? null,
                 'dispatched_at' => now(),
                 'total_qty' => collect($data['items'])->sum('qty'),
+                'created_by' => auth()->id(),
             ]);
 
             $itemsById = Item::with('gstTax')->whereIn('id', collect($data['items'])->pluck('item_id')->unique())->get()->keyBy('id');
@@ -244,7 +245,7 @@ class StockTransferController extends Controller
             }
         }
 
-        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch']);
+        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch', 'creator', 'receiver']);
 
         return view('inventory.stock-transfers.show', compact('stockTransfer'));
     }
@@ -259,7 +260,7 @@ class StockTransferController extends Controller
             }
         }
 
-        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch']);
+        $stockTransfer->load(['items.item', 'fromBranch', 'toBranch', 'creator', 'receiver']);
 
         return view('inventory.stock-transfers.print', compact('stockTransfer'));
     }
@@ -284,7 +285,7 @@ class StockTransferController extends Controller
 
         $status = $request->input('status', 'Dispatched');
 
-        $query = StockTransfer::with(['fromBranch', 'toBranch'])
+        $query = StockTransfer::with(['fromBranch', 'toBranch', 'creator', 'receiver'])
             ->when($branchId, fn ($q) => $q->where('to_branch_id', $branchId));
 
         if ($status && $status !== 'All') {
@@ -453,9 +454,18 @@ class StockTransferController extends Controller
             $stockTransfer->update([
                 'status' => 'Received',
                 'received_at' => now(),
+                'received_by' => auth()->id(),
                 'remarks' => $newRemarks,
             ]);
         });
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'transfer_number' => $stockTransfer->transfer_number,
+                'message' => "Stock Transfer #{$stockTransfer->transfer_number} received successfully by " . (auth()->user()?->name ?? 'Staff') . ".",
+            ]);
+        }
 
         return redirect()->route('inventory.stock-transfers.pending-receipt')->with('status', "Stock Transfer #{$stockTransfer->transfer_number} received successfully.");
     }

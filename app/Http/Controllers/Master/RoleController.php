@@ -180,6 +180,22 @@ class RoleController extends Controller
                     'barcode-printing' => ['label' => 'Barcode Label Studio', 'actions' => ['print' => 'Print Barcode Labels']],
                 ]
             ],
+            'replenishment' => [
+                'label' => 'Smart Replenishment Studio',
+                'icon' => 'fas fa-brain text-info',
+                'modules' => [
+                    'smart-replenishment' => [
+                        'label' => 'Smart Replenishment & Demand Forecasting',
+                        'actions' => [
+                            'view' => 'View Studio & Recommendations',
+                            'create' => 'Dispatch Transfers & Generate POs',
+                            'edit' => 'Configure Rules & Replenishment Settings',
+                            'sync' => 'Recalculate & Sync Velocity',
+                            'export' => 'Export Replenishment Data',
+                        ]
+                    ]
+                ]
+            ],
             'pricing' => [
                 'label' => 'Pricing, Margins & Catalog Items',
                 'icon' => 'fas fa-tags text-danger',
@@ -226,6 +242,7 @@ class RoleController extends Controller
                     'custom-fields' => ['label' => 'No-Code Custom Fields Builder', 'actions' => ['create' => 'Create Fields', 'edit' => 'Modify Fields', 'cancel' => 'Delete Fields']],
                     'form-validations' => ['label' => 'Form Field Validation Manager', 'actions' => ['edit' => 'Configure Validation Rules']],
                     'receipt-designer' => ['label' => 'Thermal Receipt & Invoice Print Designer', 'actions' => ['edit' => 'Customize Print Layout']],
+                    'layout-customizer' => ['label' => 'UI Layout & Table Columns Customizer', 'actions' => ['customize' => 'Customize & Freeze Layouts']],
                     'bulk-updater' => ['label' => 'Universal Bulk Field Updater', 'actions' => ['apply' => 'Execute Bulk Updates']],
                 ]
             ],
@@ -255,6 +272,8 @@ class RoleController extends Controller
                     'brands' => ['label' => 'Brands', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'uoms' => ['label' => 'Units of Measure (UOM)', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'kit-mapping' => ['label' => 'Kit Recipe & Assembly Mapping', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'states' => ['label' => 'States Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
+                    'cities' => ['label' => 'Cities Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'areas' => ['label' => 'Areas / Geographies', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'pet-types' => ['label' => 'Pet Types', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],
                     'breeds' => ['label' => 'Breeds Master', 'actions' => ['create' => 'Create', 'edit' => 'Edit', 'cancel' => 'Cancel']],

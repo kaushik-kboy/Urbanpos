@@ -377,12 +377,16 @@ body, .content-wrapper {
             </div>
         </div>
         <div class="d-flex align-items-center mt-2 mt-md-0">
+            @can('smart-replenishment.edit')
             <a href="{{ route('inventory.replenishment.settings') }}" class="btn btn-action-outline mr-2 shadow-sm">
                 <i class="fas fa-sliders-h mr-1"></i> Rules & Settings
             </a>
+            @endcan
+            @can('smart-replenishment.sync')
             <button type="button" class="btn btn-action-dark shadow-sm" id="btnSyncLive">
                 <i class="fas fa-sync-alt mr-1" id="syncIcon"></i> <span id="syncText">Sync Live Stock</span>
             </button>
+            @endcan
         </div>
     </div>
 @stop
@@ -406,9 +410,11 @@ body, .content-wrapper {
                     </h3>
                     <div class="d-flex align-items-center">
                         <span class="badge badge-dark font-weight-bold px-3 py-2 mr-2" id="totalFilteredRows" style="font-size: 0.8rem; border-radius: 6px;">Loading...</span>
+                        @can('smart-replenishment.export')
                         <button type="button" class="btn btn-action-dark btn-sm shadow-sm" id="btnExportExcel" title="Export current filtered view to Excel spreadsheet">
                             <i class="fas fa-file-excel text-success mr-1"></i> Export Excel (.xlsx)
                         </button>
+                        @endcan
                     </div>
                 </div>
 
@@ -1696,7 +1702,22 @@ body, .content-wrapper {
 
     function renderTable(rows) {
         if (!rows || rows.length === 0) {
-            $('#tableBody').html('<tr><td colspan="10" class="text-center py-4 font-weight-bold text-dark"><i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.</td></tr>');
+            const currentSearch = ($('#filterSearch').val() || '').trim();
+            const currentStatus = $('#filterStatus').val() || '';
+            const statusLabel = $('#filterStatus option:selected').text().trim();
+
+            let emptyHtml = '<i class="fas fa-box-open mr-1"></i> No items found matching the selected filter criteria.';
+            if (currentSearch && currentStatus && currentStatus !== 'all') {
+                emptyHtml = '<div class="py-2">' +
+                    '<div class="mb-2 font-weight-bold text-dark"><i class="fas fa-filter mr-1 text-warning"></i> No items matching "<strong>' + escapeHtml(currentSearch) + '</strong>" under status "<strong>' + escapeHtml(statusLabel) + '</strong>".</div>' +
+                    '<div class="small text-muted mb-3">This item may be in Healthy or Overstock status at this branch.</div>' +
+                    '<button type="button" class="btn btn-sm btn-primary font-weight-bold" onclick="$(\'#filterStatus\').val(\'all\'); loadTableData(1);">' +
+                        '<i class="fas fa-search mr-1"></i> Search Across All Stock Statuses' +
+                    '</button>' +
+                '</div>';
+            }
+
+            $('#tableBody').html('<tr><td colspan="10" class="text-center py-4 font-weight-bold text-dark">' + emptyHtml + '</td></tr>');
             $('#checkAllRows').prop('checked', false);
             return;
         }
@@ -1758,9 +1779,7 @@ body, .content-wrapper {
                         <div class="item-title">${escapeHtml(itemName)}</div>
                         <div class="item-subtitle">
                             <span class="badge badge-dark px-2 py-1 font-weight-bold text-xs" style="border-radius:4px;">SKU: ${escapeHtml(itemCode)}</span> &bull; 
-                            <span class="font-weight-bold text-dark"><i class="fas fa-award text-muted mr-1"></i>${escapeHtml(brand)}</span> &bull; 
-                            <span class="badge badge-secondary px-2 py-0 font-weight-bold text-xs">Dept: ${escapeHtml(department)}</span> &bull; 
-                            <span class="badge badge-light border border-dark text-dark px-2 py-0 font-weight-bold text-xs">Cat: ${escapeHtml(category)}</span>
+                            <span class="font-weight-bold text-dark"><i class="fas fa-award text-muted mr-1"></i>${escapeHtml(brand)}</span>
                         </div>
                     </td>
                     <td>

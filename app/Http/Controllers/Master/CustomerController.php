@@ -83,6 +83,7 @@ class CustomerController extends Controller
         }
         $customer = Customer::create($data);
         $this->syncPets($request, $customer);
+        $this->syncAddresses($request, $customer);
         if ($request->has('custom_fields')) {
             $customer->syncCustomFields($request->input('custom_fields', []));
         }
@@ -107,13 +108,14 @@ class CustomerController extends Controller
 
     public function show(Request $request, Customer $customer)
     {
-        $customer->load('pets');
+        $customer->load(['pets', 'addresses.area']);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'customer' => $customer,
                 'pets' => $customer->pets,
+                'addresses' => $customer->addresses,
             ]);
         }
 
@@ -123,13 +125,14 @@ class CustomerController extends Controller
 
     public function edit(Request $request, Customer $customer)
     {
-        $customer->load('pets');
+        $customer->load(['pets', 'addresses.area']);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'customer' => $customer,
                 'pets' => $customer->pets,
+                'addresses' => $customer->addresses,
             ]);
         }
 
@@ -159,6 +162,7 @@ class CustomerController extends Controller
         $this->assertCreditFieldsUnchangedUnlessOwner($request, $customer, $data);
         $customer->update($data);
         $this->syncPets($request, $customer);
+        $this->syncAddresses($request, $customer);
         if ($request->has('custom_fields')) {
             $customer->syncCustomFields($request->input('custom_fields', []));
         }
@@ -171,6 +175,11 @@ class CustomerController extends Controller
                     'name' => $customer->name,
                     'mobile' => $customer->mobile,
                     'text' => $customer->mobile ? "{$customer->name} ({$customer->mobile})" : $customer->name,
+                    'address1' => $customer->address1,
+                    'city' => $customer->city,
+                    'state' => $customer->state,
+                    'google_map_link' => $customer->google_map_link,
+                    'addresses' => $customer->addresses()->orderByDesc('is_primary')->orderBy('id')->get(),
                 ],
                 'message' => 'Customer updated successfully.',
             ]);
@@ -248,6 +257,156 @@ class CustomerController extends Controller
         }
     }
 
+    private function syncAddresses(Request $request, Customer $customer): void
+    {
+        // 1. If request comes from Quick Customer Modal (POS terminal) which submits address1 directly (no addresses array)
+        if (! $request->has('addresses') && $request->has('address1')) {
+            $addrLine = trim((string) $request->input('address1', ''));
+            $mapLink = trim((string) ($request->input('google_map_link') ?? '')) ?: null;
+            $areaId = $request->input('area_id') ?: null;
+            $city = trim((string) ($request->input('city') ?? '')) ?: 'Ahmedabad';
+            $state = trim((string) ($request->input('state') ?? '')) ?: 'Gujarat';
+            $postalCode = trim((string) ($request->input('postal_code') ?? '')) ?: null;
+
+            if ($addrLine === '') {
+                // User intentionally cleared/emptied the address in POS modal
+                $customer->addresses()->delete();
+                $customer->updateQuietly([
+                    'address1' => null,
+                    'area_id' => null,
+                    'postal_code' => null,
+                    'google_map_link' => null,
+                ]);
+                return;
+            } else {
+                // User entered or edited the address in POS modal
+                $primary = $customer->addresses()->where('is_primary', true)->first();
+                if ($primary) {
+                    $primary->update([
+                        'address_line' => $addrLine,
+                        'area_id' => $areaId,
+                        'city' => $city,
+                        'state' => $state,
+                        'postal_code' => $postalCode,
+                        'google_map_link' => $mapLink ?: $primary->google_map_link,
+                    ]);
+                } else {
+                    $customer->addresses()->create([
+                        'address_type' => 'Home',
+                        'address_line' => $addrLine,
+                        'area_id' => $areaId,
+                        'city' => $city,
+                        'state' => $state,
+                        'country' => 'India',
+                        'postal_code' => $postalCode,
+                        'google_map_link' => $mapLink,
+                        'is_primary' => true,
+                    ]);
+                }
+                $customer->updateQuietly([
+                    'address1' => $addrLine,
+                    'area_id' => $areaId,
+                    'city' => $city,
+                    'state' => $state,
+                    'postal_code' => $postalCode,
+                    'google_map_link' => $mapLink,
+                ]);
+                return;
+            }
+        }
+
+        $addresses = $request->input('addresses', []);
+        if (! is_array($addresses)) {
+            $addresses = [];
+        }
+
+        $existingIds = [];
+        $hasPrimary = false;
+
+        foreach ($addresses as $index => $addr) {
+            if (! empty($addr['_delete'])) {
+                if (! empty($addr['id'])) {
+                    $customer->addresses()->where('id', $addr['id'])->delete();
+                }
+                continue;
+            }
+
+            $addrLine = trim($addr['address_line'] ?? '');
+            $areaId = !empty($addr['area_id']) ? $addr['area_id'] : null;
+            $areaName = trim($addr['area_name'] ?? '');
+
+            if ($addrLine === '' && empty($areaId) && $areaName === '') {
+                continue;
+            }
+
+            $isPrimary = !empty($addr['is_primary']) && ((string)$addr['is_primary'] === '1' || (string)$addr['is_primary'] === 'true');
+            if ($isPrimary) {
+                $hasPrimary = true;
+            }
+
+            $attributes = [
+                'address_type' => $addr['address_type'] ?? 'Home',
+                'address_line' => $addrLine,
+                'area_id' => $areaId,
+                'area_name' => $areaName,
+                'city' => trim($addr['city'] ?? '') ?: 'Ahmedabad',
+                'state' => trim($addr['state'] ?? '') ?: 'Gujarat',
+                'country' => trim($addr['country'] ?? '') ?: 'India',
+                'postal_code' => trim($addr['postal_code'] ?? '') ?: null,
+                'landmark' => trim($addr['landmark'] ?? '') ?: null,
+                'google_map_link' => trim($addr['google_map_link'] ?? '') ?: null,
+                'is_primary' => $isPrimary,
+            ];
+
+            if (! empty($addr['id'])) {
+                $customer->addresses()->where('id', $addr['id'])->update($attributes);
+                $existingIds[] = $addr['id'];
+            } else {
+                $created = $customer->addresses()->create($attributes);
+                $existingIds[] = $created->id;
+            }
+        }
+
+        if (! empty($addresses)) {
+            $customer->addresses()->whereNotIn('id', $existingIds)->delete();
+        }
+
+        // Guarantee at least one address is marked primary if any exist
+        if (! $hasPrimary && count($existingIds) > 0) {
+            $customer->addresses()->where('id', $existingIds[0])->update(['is_primary' => true]);
+        }
+
+        // Legacy fallback: if no addresses array provided, but address1 exists, create initial address
+        if (empty($addresses) && ! empty($customer->address1)) {
+            if ($customer->addresses()->count() === 0) {
+                $customer->addresses()->create([
+                    'address_type' => 'Home',
+                    'address_line' => $customer->address1,
+                    'area_id' => $customer->area_id,
+                    'city' => $customer->city ?: 'Ahmedabad',
+                    'state' => $customer->state ?: 'Gujarat',
+                    'country' => $customer->country ?: 'India',
+                    'postal_code' => $customer->postal_code,
+                    'google_map_link' => $customer->google_map_link,
+                    'is_primary' => true,
+                ]);
+            }
+        }
+
+        // Mirror primary address to customers table columns for backwards compatibility
+        $primary = $customer->addresses()->where('is_primary', true)->first();
+        if ($primary) {
+            $customer->updateQuietly([
+                'address1' => $primary->address_line,
+                'area_id' => $primary->area_id,
+                'city' => $primary->city,
+                'state' => $primary->state,
+                'postal_code' => $primary->postal_code,
+                'google_map_link' => $primary->google_map_link ?: $customer->google_map_link,
+            ]);
+        }
+    }
+
     private function formOptions(?Customer $customer = null): array
     {
         $customerTypesQuery = CustomerType::where('status', true);
@@ -305,6 +464,45 @@ class CustomerController extends Controller
                 $request->merge(['sales_type' => 'Local']);
             } elseif (stripos($st, 'inter') !== false) {
                 $request->merge(['sales_type' => 'Interstate']);
+            }
+        }
+
+        // Normalize google_map_link to always include https:// if user pasted plain domain
+        if ($request->filled('google_map_link')) {
+            $rawMap = trim((string) $request->input('google_map_link'));
+            if ($rawMap !== '' && !preg_match('#^https?://#i', $rawMap)) {
+                $request->merge(['google_map_link' => 'https://' . $rawMap]);
+            }
+        }
+
+        // Normalize multiple addresses map links and auto-mirror primary address to top-level fields
+        $inputAddresses = $request->input('addresses', []);
+        if (is_array($inputAddresses) && !empty($inputAddresses)) {
+            $primaryAddr = null;
+            foreach ($inputAddresses as $k => $addr) {
+                if (!empty($addr['google_map_link'])) {
+                    $rawAddrMap = trim((string) $addr['google_map_link']);
+                    if ($rawAddrMap !== '' && !preg_match('#^https?://#i', $rawAddrMap)) {
+                        $inputAddresses[$k]['google_map_link'] = 'https://' . $rawAddrMap;
+                    }
+                }
+                if (empty($addr['_delete'])) {
+                    if (!empty($addr['is_primary']) || $primaryAddr === null) {
+                        $primaryAddr = $inputAddresses[$k];
+                    }
+                }
+            }
+            $request->merge(['addresses' => $inputAddresses]);
+
+            if ($primaryAddr) {
+                $request->mergeIfMissing([
+                    'address1' => $primaryAddr['address_line'] ?? null,
+                    'area_id' => !empty($primaryAddr['area_id']) ? $primaryAddr['area_id'] : null,
+                    'city' => !empty($primaryAddr['city']) ? $primaryAddr['city'] : 'Ahmedabad',
+                    'state' => !empty($primaryAddr['state']) ? $primaryAddr['state'] : 'Gujarat',
+                    'postal_code' => $primaryAddr['postal_code'] ?? null,
+                    'google_map_link' => $primaryAddr['google_map_link'] ?? null,
+                ]);
             }
         }
 

@@ -37,9 +37,16 @@
         Physical stock was already received on {{ optional($sourceRn->receipt_date)->format('d M Y') }}; saving this invoice books financial liabilities and updates item prices without duplicating inventory.
     </div>
 @elseif ($sourcePo)
-    <div class="alert alert-info py-2 mb-3">
-        <i class="fas fa-file-invoice mr-1"></i> Converting directly from Purchase Order <strong>{{ $sourcePo->po_number }}</strong>.
-        Items, quantities, and costs have been loaded automatically. Stock will be added to inventory upon saving this invoice.
+    <div class="alert alert-info py-2 mb-3 d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-file-invoice mr-1"></i> Converting directly from Purchase Order <strong>{{ $sourcePo->po_number }}</strong>.
+            Items, quantities, and costs have been loaded automatically. Stock will be added to inventory upon saving this invoice.
+        </div>
+        <div>
+            <a href="{{ route('purchase.purchase-orders.print', ['purchase_order' => $sourcePo->id, 'format' => 'supplier']) }}" target="_blank" class="btn btn-sm btn-dark font-weight-bold shadow-sm">
+                <i class="fas fa-print mr-1"></i> Print Supplier PO Format
+            </a>
+        </div>
     </div>
 @endif
 

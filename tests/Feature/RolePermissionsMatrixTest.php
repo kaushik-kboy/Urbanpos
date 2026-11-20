@@ -38,23 +38,22 @@ class RolePermissionsMatrixTest extends TestCase
         $groups = RoleController::getPermissionGroups();
 
         // Verify key modules are present
-        $this->assertArrayHasKey('reports', $groups);
+        $this->assertArrayHasKey('replenishment', $groups);
         $this->assertArrayHasKey('compliance', $groups);
         $this->assertArrayHasKey('tools', $groups);
         $this->assertArrayHasKey('system', $groups);
         $this->assertArrayHasKey('inventory', $groups);
         $this->assertArrayHasKey('masters', $groups);
 
-        // Verify Reports modules
-        $reportModules = array_keys($groups['reports']['modules']);
-        $this->assertContains('reports-dashboard', $reportModules);
-        $this->assertContains('reports-sales', $reportModules);
-        $this->assertContains('reports-purchase', $reportModules);
-        $this->assertContains('reports-inventory', $reportModules);
-        $this->assertContains('reports-finance', $reportModules);
-        $this->assertContains('reports-audit', $reportModules);
-        $this->assertContains('reports-analytics-builder', $reportModules);
-        $this->assertContains('reports-smart-analytics', $reportModules);
+        // Verify Replenishment module
+        $replenishModules = array_keys($groups['replenishment']['modules']);
+        $this->assertContains('smart-replenishment', $replenishModules);
+        $replenishActions = array_keys($groups['replenishment']['modules']['smart-replenishment']['actions']);
+        $this->assertContains('view', $replenishActions);
+        $this->assertContains('create', $replenishActions);
+        $this->assertContains('edit', $replenishActions);
+        $this->assertContains('sync', $replenishActions);
+        $this->assertContains('export', $replenishActions);
 
         // Verify Compliance modules
         $complianceModules = array_keys($groups['compliance']['modules']);
@@ -90,12 +89,12 @@ class RolePermissionsMatrixTest extends TestCase
             ->get(route('master.roles.create'));
 
         $response->assertOk();
-        $response->assertSee('Reports & Business Intelligence');
+        $response->assertSee('Smart Replenishment Studio');
         $response->assertSee('GST, E-Way Bill & E-Invoice Compliance');
         $response->assertSee('Tools & Configuration Settings');
         $response->assertSee('System Maintenance & Diagnostic Logs');
-        $response->assertSee('reports-dashboard.view');
-        $response->assertSee('reports-analytics-builder');
+        $response->assertSee('smart-replenishment.view');
+        $response->assertSee('smart-replenishment.create');
 
         $cashierRole = Role::where('name', 'Cashier')->firstOrFail();
         $editResponse = $this->actingAs($this->ownerUser)
@@ -103,7 +102,7 @@ class RolePermissionsMatrixTest extends TestCase
             ->get(route('master.roles.edit', $cashierRole->id));
 
         $editResponse->assertOk();
-        $editResponse->assertSee('Reports & Business Intelligence');
+        $editResponse->assertSee('Smart Replenishment Studio');
         $editResponse->assertSee('Cashier');
     }
 

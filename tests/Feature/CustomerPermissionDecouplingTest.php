@@ -100,11 +100,11 @@ class CustomerPermissionDecouplingTest extends TestCase
         $this->assertCount(1, $res->json('results'));
         $this->assertEquals($customer->id, $res->json('results.0.id'));
 
-        // Blank search must return 0 results (privacy protection)
+        // Blank search in POS terminal returns top customers for cashier convenience
         $emptyRes = $this->actingAs($this->cashier)
             ->getJson(route('sales.sales-bills.customer-search', ['q' => '']));
         $emptyRes->assertOk();
-        $this->assertCount(0, $emptyRes->json('results'));
+        $this->assertGreaterThanOrEqual(1, count($emptyRes->json('results')));
     }
 
     public function test_cashier_can_fetch_and_update_customer_for_inline_billing(): void

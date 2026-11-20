@@ -6,31 +6,48 @@ use App\Http\Controllers\Concerns\HasPerPage;
 use App\Http\Controllers\Concerns\Importable;
 use App\Http\Controllers\Controller;
 use App\Models\Area;
-use App\Models\Branch;
+use App\Models\City;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AreaController extends Controller
 {
     use HasPerPage, Importable;
 
-
-    public function index()
+    public function index(Request $request)
     {
-        $areas = Area::with('branch')->orderBy('name')->paginate($this->perPage());
+        $search = $request->input('search');
+        $cityId = $request->input('city_id');
 
-        return view('master.areas.index', compact('areas'));
+        $areas = Area::with('city')
+            ->when($cityId, fn ($q) => $q->where('city_id', $cityId))
+            ->when($search, function ($q, $s) {
+                $q->where('name', 'like', "%{$s}%")
+                    ->orWhereHas('city', fn ($cq) => $cq->where('name', 'like', "%{$s}%"));
+            })
+            ->orderBy('name')
+            ->paginate($this->perPage());
+
+        $cities = City::where('status', true)->orderBy('name')->pluck('name', 'id');
+
+        return view('master.areas.index', compact('areas', 'cities', 'search', 'cityId'));
     }
 
     public function create()
     {
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $cities = City::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $defaultCityId = City::where('name', 'Ahmedabad')->value('id') ?? $cities->keys()->first();
 
-        return view('master.areas.create', compact('branches'));
+        return view('master.areas.create', compact('cities', 'defaultCityId'));
     }
 
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+        if (empty($data['city_id'])) {
+            $data['city_id'] = City::where('name', 'Ahmedabad')->value('id');
+        }
         Area::create($data);
 
         return redirect()->route('master.areas.index')->with('status', 'Area created successfully.');
@@ -38,14 +55,18 @@ class AreaController extends Controller
 
     public function edit(Area $area)
     {
-        $branches = Branch::orderBy('name')->pluck('name', 'id');
+        $cities = City::where('status', true)->orderBy('name')->pluck('name', 'id');
+        $defaultCityId = $area->city_id ?? (City::where('name', 'Ahmedabad')->value('id') ?? $cities->keys()->first());
 
-        return view('master.areas.edit', compact('area', 'branches'));
+        return view('master.areas.edit', compact('area', 'cities', 'defaultCityId'));
     }
 
     public function update(Request $request, Area $area)
     {
         $data = $this->validateData($request, $area);
+        if (empty($data['city_id'])) {
+            $data['city_id'] = City::where('name', 'Ahmedabad')->value('id');
+        }
         $area->update($data);
 
         return redirect()->route('master.areas.index')->with('status', 'Area updated successfully.');
@@ -56,6 +77,24 @@ class AreaController extends Controller
         return redirect()->route('master.areas.index')->with('error', 'Master records cannot be deleted. You can set status to Inactive instead.');
     }
 
+    public function apiList(Request $request): JsonResponse
+    {
+        $cityId = $request->input('city_id');
+        $cityName = $request->input('city_name');
+
+        $query = Area::where('status', true);
+
+        if ($cityId) {
+            $query->where('city_id', $cityId);
+        } elseif ($cityName) {
+            $query->whereHas('city', fn ($q) => $q->where('name', $cityName));
+        }
+
+        $areas = $query->orderBy('name')->get(['id', 'name', 'city_id']);
+
+        return response()->json(['success' => true, 'areas' => $areas]);
+    }
+
     private function validateData(Request $request, ?Area $area = null): array
     {
         return $request->validate([
@@ -63,11 +102,11 @@ class AreaController extends Controller
                 'required',
                 'string',
                 'max:255',
-                \Illuminate\Validation\Rule::unique('areas', 'name')
-                    ->where(fn ($q) => $q->where('branch_id', $request->input('branch_id')))
+                Rule::unique('areas', 'name')
+                    ->where(fn ($q) => $q->where('city_id', $request->input('city_id')))
                     ->ignore($area?->id),
             ],
-            'branch_id' => ['nullable', 'exists:branches,id'],
+            'city_id' => ['nullable', 'exists:cities,id'],
             'status' => ['required', 'boolean'],
         ]);
     }
@@ -86,14 +125,14 @@ class AreaController extends Controller
 
     protected function importUniqueBy(): array
     {
-        return ['name', 'branch_id'];
+        return ['name', 'city_id'];
     }
 
     protected function importRelations(): array
     {
         return [
-            'Branch' => fn (string $v) => $v === '' ? ['branch_id' => null]
-                : ['branch_id' => Branch::firstOrCreate(['name' => $v], ['language' => 'English', 'business_type' => 'BRANCH', 'webstore' => false, 'country_code' => 'IN', 'enable_thirdparty_loyalty' => false, 'gst_type' => 'Un Register', 'gst_filing' => 'Monthly', 'status' => true])->id],
+            'City' => fn (string $v) => $v === '' ? ['city_id' => null]
+                : ['city_id' => City::firstOrCreate(['name' => $v], ['state_id' => null, 'status' => true])->id],
         ];
     }
 }

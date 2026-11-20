@@ -177,6 +177,54 @@ function initIndianStateCity(stateElem, cityElem, initialSelectedState, initialS
     if (selectedState) {
         populateCities(selectedState, selectedCity);
     }
+
+    // Dynamic Master Sync: If new states or cities were added via Master UI, merge them asynchronously
+    if (typeof fetch === 'function') {
+        const baseUrl = window.APP_URL || '';
+        fetch(`${baseUrl}/master/states/api-list`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (d && d.success && Array.isArray(d.states)) {
+                    let added = false;
+                    d.states.forEach(s => {
+                        if (s.name && !INDIAN_STATES.includes(s.name)) {
+                            INDIAN_STATES.push(s.name);
+                            added = true;
+                        }
+                    });
+                    if (added && $state.is('select')) {
+                        const cur = $state.val();
+                        $state.empty().append('<option value="">-- Select State --</option>');
+                        let topGroup = $('<optgroup label="⭐ Top States"></optgroup>');
+                        let otherGroup = $('<optgroup label="Other States & UTs"></optgroup>');
+                        INDIAN_STATES.forEach(function (state, index) {
+                            let $opt = $('<option></option>').val(state).text(state);
+                            if (index < 3) topGroup.append($opt); else otherGroup.append($opt);
+                        });
+                        $state.append(topGroup).append(otherGroup);
+                        if (cur) $state.val(cur);
+                    }
+                }
+            }).catch(() => {});
+
+        fetch(`${baseUrl}/master/cities/api-list`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (d && d.success && Array.isArray(d.cities)) {
+                    d.cities.forEach(c => {
+                        const sName = c.state_name || 'Gujarat';
+                        if (!INDIAN_CITIES[sName]) INDIAN_CITIES[sName] = [];
+                        if (c.name && !INDIAN_CITIES[sName].includes(c.name)) {
+                            INDIAN_CITIES[sName].push(c.name);
+                        }
+                    });
+                    const curState = $state.val() || selectedState;
+                    if (curState) {
+                        populateCities(curState, $city.val());
+                    }
+                }
+            }).catch(() => {});
+    }
 }
 
 // Global exposure

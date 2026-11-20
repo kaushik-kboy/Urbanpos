@@ -88,8 +88,10 @@ class ReplenishmentCalculationService
         }
         $otherStocksMap = $otherStocksQuery->pluck('other_qty', 'item_id');
 
-        // 4. Query active items
-        $itemsQuery = Item::where('status', true)->select('id', 'supplier_id', 'cost_price');
+        // 4. Query active items (excluding non-inventory services)
+        $itemsQuery = Item::where('status', true)
+            ->whereNotIn('product_type', ['Service', 'Service Component', 'Service Item', 'Non-Inventory'])
+            ->select('id', 'supplier_id', 'cost_price');
         if ($itemId) {
             $itemsQuery->where('id', $itemId);
         }
@@ -262,7 +264,9 @@ class ReplenishmentCalculationService
             ->join('branches as b_src', 'src.branch_id', '=', 'b_src.id')
             ->whereIn('dest.stock_status', ['Critical', 'Low'])
             ->whereIn('src.stock_status', ['Healthy', 'Overstock'])
-            ->where('src.current_stock', '>', 0);
+            ->where('src.current_stock', '>', 0)
+            ->where('items.status', 1)
+            ->whereNotIn('items.product_type', ['Service', 'Service Component', 'Service Item', 'Non-Inventory']);
 
         if ($destBranchId) {
             $query->where('dest.branch_id', $destBranchId);
@@ -316,8 +320,13 @@ class ReplenishmentCalculationService
      */
     public function getSupplierOrderRecommendations(?int $branchId = null): Collection
     {
-        $query = ReplenishmentItemMetric::with(['item:id,name,item_code,cost_price,supplier_id', 'supplier:id,name,phone'])
-            ->where('suggested_qty', '>', 0);
+        $query = ReplenishmentItemMetric::with([
+            'item' => fn ($iq) => $iq->select('id', 'name', 'item_code', 'cost_price', 'supplier_id', 'product_type', 'status'),
+            'supplier' => fn ($sq) => $sq->select('id', 'name', 'phone', 'status')
+        ])
+            ->where('suggested_qty', '>', 0)
+            ->whereHas('supplier', fn ($sq) => $sq->where('status', true))
+            ->whereHas('item', fn ($iq) => $iq->where('status', true)->whereNotIn('product_type', ['Service', 'Service Component', 'Service Item', 'Non-Inventory']));
 
         if ($branchId) {
             $query->where('branch_id', $branchId);

@@ -680,6 +680,23 @@ class SalesBillController extends Controller
         ]);
     }
 
+    public function openByBillNumber(string $billNumber)
+    {
+        $cleanNumber = trim(urldecode($billNumber));
+        $salesBill = SalesBill::where('bill_number', $cleanNumber)->first();
+
+        if (! $salesBill) {
+            $salesBill = SalesBill::where('bill_number', 'like', "%{$cleanNumber}%")->first();
+        }
+
+        if ($salesBill) {
+            return redirect()->route('sales.sales-bills.show', $salesBill);
+        }
+
+        return redirect()->route('sales.sales-bills.index', ['search' => $cleanNumber])
+            ->with('warning', "Sales bill \"{$cleanNumber}\" could not be found directly.");
+    }
+
     /**
      * Public guest view for client to access/print receipt from WhatsApp link without login.
      */
@@ -890,7 +907,7 @@ class SalesBillController extends Controller
                 ];
             });
 
-        $customer->load(['pets.petType', 'pets.breed']);
+        $customer->load(['pets.petType', 'pets.breed', 'addresses.area', 'area']);
         $pets = $customer->pets->map(function ($p) {
             $breedName = $p->breed?->name ?? '';
             $typeName = $p->petType?->name ?? '';
@@ -975,6 +992,23 @@ class SalesBillController extends Controller
             'customer_edit_url' => url("master/customers/{$customer->id}/edit"),
             'pets' => $pets,
             'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
+            'addresses' => $customer->addresses->map(fn($a) => [
+                'id' => $a->id,
+                'type' => $a->address_type ?: 'Home',
+                'line' => $a->address_line ?? '',
+                'area' => $a->area_name ?: ($a->area?->name ?? ''),
+                'city' => $a->city ?: 'Ahmedabad',
+                'state' => $a->state ?: 'Gujarat',
+                'postal_code' => $a->postal_code ?? '',
+                'is_primary' => (bool) $a->is_primary,
+                'formatted' => $a->formatted_address,
+                'google_map_link' => $a->google_map_link ?: ($customer->google_map_link ?? ''),
+            ]),
+            'address1' => $customer->address1 ?? '',
+            'google_map_link' => $customer->google_map_link ?? '',
+            'postal_code' => $customer->postal_code ?? '',
+            'city' => $customer->city ?? '',
+            'state' => $customer->state ?? '',
             'total_invoices' => count($bills),
             'invoices' => $bills,
         ]);
@@ -1323,13 +1357,13 @@ class SalesBillController extends Controller
             }
         }
 
-        // By default show only products in stock (quantity > 0 or allow_negative_stock) unless show_all is checked
+        // By default show only products in stock (quantity > 0 or allow_negative_stock or service) unless show_all is checked
         if (! $showAll) {
             if (! empty($editBillItemIds)) {
                 $idListStr = implode(',', $editBillItemIds);
-                $where[] = "(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1 OR i.id IN ({$idListStr}))";
+                $where[] = "(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1 OR i.product_type IN ('Service', 'Service Component') OR i.id IN ({$idListStr}))";
             } else {
-                $where[] = '(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1)';
+                $where[] = "(COALESCE(st.quantity, 0) > 0 OR COALESCE(i.allow_negative_stock, 0) = 1 OR i.product_type IN ('Service', 'Service Component'))";
             }
         }
 
@@ -1446,6 +1480,7 @@ class SalesBillController extends Controller
             SELECT
                 i.id,
                 i.name,
+                COALESCE(i.product_type, 'Standard') AS product_type,
                 COALESCE(i.allow_negative_stock, 0) AS allow_negative_stock,
                 COALESCE(i.item_code, '')  AS item_code,
                 COALESCE(i.ean_upc_code, '') AS ean_upc_code,
@@ -1649,6 +1684,8 @@ class SalesBillController extends Controller
                 continue;
             }
 
+            $isService = in_array($row->product_type ?? 'Standard', ['Service', 'Service Component', 'Service Item', 'Non-Inventory'], true) || stripos($row->name ?? '', 'Pickup and Drop Service') !== false;
+
             $result[] = [
                 'id' => (int) $row->id,
                 'name' => $row->name,
@@ -1657,13 +1694,15 @@ class SalesBillController extends Controller
                 'car_compatibility' => $row->car_compatibility ?? '',
                 'warranty_months' => (int) ($row->warranty_months ?? 0),
                 'exp_date' => $exp,
-                'qty' => (float) $row->qty,
-                'stock' => (float) $row->qty,
+                'qty' => $isService ? 999999 : (float) $row->qty,
+                'stock' => $isService ? 999999 : (float) $row->qty,
+                'is_service' => $isService,
+                'product_type' => $row->product_type ?? 'Standard',
                 'other_stocks' => $otherStocksByItem[$row->id] ?? [],
                 'sell_price' => (float) $row->sell_price,
                 'mrp' => (float) $row->mrp,
                 'gst_percent' => (float) $row->gst_percent,
-                'allow_negative_stock' => (bool) ($row->allow_negative_stock ?? false),
+                'allow_negative_stock' => $isService ? true : (bool) ($row->allow_negative_stock ?? false),
             ];
         }
 
@@ -1865,6 +1904,9 @@ class SalesBillController extends Controller
             ->values()
             ->all();
 
+        $isService = $item->isService();
+        $effectiveStock = $isService ? 999999 : $stock;
+
         return response()->json([
             'found' => true,
             'item' => [
@@ -1880,12 +1922,14 @@ class SalesBillController extends Controller
                 'mrp' => (float) $defaultMrp,
                 'exp_date' => $defaultExp,
                 'batch_no' => $defaultBatchNo,
-                'stock' => $stock,
-                'total_branch_stock' => $salesBillId ? $stock : (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0),
+                'stock' => $effectiveStock,
+                'total_branch_stock' => $isService ? 999999 : ($salesBillId ? $stock : (float) (ItemStock::where('item_id', $item->id)->where('branch_id', $branchId)->value('quantity') ?? 0)),
+                'is_service' => $isService,
+                'product_type' => $item->product_type,
                 'other_stocks' => $otherStocks,
                 'gst_percent' => (float) ($item->gstTax?->percentage ?? 0),
                 'batch_expiry_details' => $item->batch_expiry_details ?? 'Not Required',
-                'allow_negative_stock' => (bool) ($item->allow_negative_stock ?? false),
+                'allow_negative_stock' => $isService ? true : (bool) ($item->allow_negative_stock ?? false),
             ],
             'other_stocks' => $otherStocks,
             'batches' => $batches,
@@ -1897,7 +1941,7 @@ class SalesBillController extends Controller
         $q = trim((string) $request->input('q', ''));
         if ($q === '') {
             $customerModels = Customer::where('status', true)
-                ->with(['pets.petType', 'pets.breed'])
+                ->with(['pets.petType', 'pets.breed', 'addresses.area', 'area'])
                 ->orderBy('name')
                 ->limit(30)
                 ->get();
@@ -1923,11 +1967,27 @@ class SalesBillController extends Controller
                     ];
                 });
 
+                $mainAddrParts = array_filter([
+                    $c->address1,
+                    $c->area?->name,
+                    $c->city ?: 'Ahmedabad',
+                    $c->state ?: 'Gujarat',
+                    $c->postal_code,
+                ]);
+                $formattedMainAddr = !empty($mainAddrParts) ? implode(', ', $mainAddrParts) : '';
+
                 return [
                     'id' => $c->id,
                     'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
                     'name' => $c->name,
                     'mobile' => $c->mobile ?? '',
+                    'address1' => $c->address1 ?? '',
+                    'google_map_link' => $a->google_map_link ?: ($c->google_map_link ?? ''),
+                    'city' => $c->city ?? 'Ahmedabad',
+                    'state' => $c->state ?? 'Gujarat',
+                    'postal_code' => $c->postal_code ?? '',
+                    'area_name' => $c->area?->name ?? '',
+                    'formatted_address' => $formattedMainAddr,
                     'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                     'sales_type' => $c->sales_type ?? 'Local',
                     'payment_mode' => $c->payment_mode ?? 'Cash Only',
@@ -1939,6 +1999,18 @@ class SalesBillController extends Controller
                     'outstanding' => $bal,
                     'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                     'pets' => $pets,
+                    'addresses' => $c->addresses->map(fn($a) => [
+                        'id' => $a->id,
+                        'type' => $a->address_type ?: 'Home',
+                        'line' => $a->address_line ?? '',
+                        'area' => $a->area_name ?: ($a->area?->name ?? ''),
+                        'city' => $a->city ?: 'Ahmedabad',
+                        'state' => $a->state ?: 'Gujarat',
+                        'postal_code' => $a->postal_code ?? '',
+                        'is_primary' => (bool) $a->is_primary,
+                        'formatted' => $a->formatted_address,
+                        'google_map_link' => $a->google_map_link ?: ($c->google_map_link ?? ''),
+                    ]),
                 ];
             });
 
@@ -1947,7 +2019,7 @@ class SalesBillController extends Controller
 
         $exactHit = Customer::where('status', true)->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q))->exists();
         $customerModels = Customer::where('status', true)
-            ->with(['pets.petType', 'pets.breed'])
+            ->with(['pets.petType', 'pets.breed', 'addresses.area', 'area'])
             ->when($exactHit, function ($query) use ($q) {
                 // Exact mobile / phone: index lookup, strictly no customer_code matching.
                 $query->where(fn ($e) => $e->where('mobile', $q)->orWhere('phone', $q));
@@ -1981,11 +2053,27 @@ class SalesBillController extends Controller
                 ];
             });
 
+            $mainAddrParts = array_filter([
+                $c->address1,
+                $c->area?->name,
+                $c->city ?: 'Ahmedabad',
+                $c->state ?: 'Gujarat',
+                $c->postal_code,
+            ]);
+            $formattedMainAddr = !empty($mainAddrParts) ? implode(', ', $mainAddrParts) : '';
+
             return [
                 'id' => $c->id,
                 'text' => $c->mobile ? "{$c->name} ({$c->mobile})" : $c->name,
                 'name' => $c->name,
                 'mobile' => $c->mobile ?? '',
+                'address1' => $c->address1 ?? '',
+                'google_map_link' => $c->google_map_link ?? '',
+                'city' => $c->city ?? 'Ahmedabad',
+                'state' => $c->state ?? 'Gujarat',
+                'postal_code' => $c->postal_code ?? '',
+                'area_name' => $c->area?->name ?? '',
+                'formatted_address' => $formattedMainAddr,
                 'customer_type' => $c->customer_type ?? 'RETAIL INVOICE',
                 'sales_type' => $c->sales_type ?? 'Local',
                 'purchase_type' => $c->sales_type ?? 'Local',
@@ -1999,6 +2087,18 @@ class SalesBillController extends Controller
                 'edit_url' => (auth()->user()?->can('customers.edit') ? url("master/customers/{$c->id}/edit") : url("sales/sales-bills/quick-customer/{$c->id}")),
                 'pets' => $pets,
                 'pets_summary' => $pets->pluck('display')->filter()->implode(', '),
+                'addresses' => $c->addresses->map(fn($a) => [
+                    'id' => $a->id,
+                    'type' => $a->address_type ?: 'Home',
+                    'line' => $a->address_line ?? '',
+                    'area' => $a->area_name ?: ($a->area?->name ?? ''),
+                    'city' => $a->city ?: 'Ahmedabad',
+                    'state' => $a->state ?: 'Gujarat',
+                    'postal_code' => $a->postal_code ?? '',
+                    'is_primary' => (bool) $a->is_primary,
+                    'formatted' => $a->formatted_address,
+                    'google_map_link' => $a->google_map_link ?: ($c->google_map_link ?? ''),
+                ]),
             ];
         });
 
@@ -2009,6 +2109,9 @@ class SalesBillController extends Controller
     {
         $defaults = [
             'payment_mode' => 'Cash Only',
+            'state' => 'Gujarat',
+            'city' => 'Ahmedabad',
+            'country' => 'India',
             'credit_limit' => 0,
             'credit_balance' => 0,
             'monthly_credit_balance' => 0,
@@ -2290,6 +2393,7 @@ class SalesBillController extends Controller
             'bill_number' => ['nullable', 'string', 'max:100'],
             'bill_date' => ['required', 'date', 'after_or_equal:2020-01-01 00:00:00', "before_or_equal:{$now}"],
             'customer_id' => ['required', 'exists:customers,id'],
+            'customer_address_id' => ['nullable', 'exists:customer_addresses,id'],
             'customer_pet_id' => ['nullable', 'exists:customer_pets,id'],
             'branch_id' => ['required', 'exists:branches,id'],
             'user_id' => ['nullable', 'exists:users,id'],

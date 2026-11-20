@@ -350,9 +350,10 @@
 
             // Scanner mode exact match
             if (scannerMode) {
+                const qLower = String(q || '').toLowerCase();
                 const exact = items.find(it =>
-                    (it.barcode || '').toLowerCase() === q.toLowerCase() ||
-                    (it.item_code || '').toLowerCase() === q.toLowerCase()
+                    String(it.barcode || '').toLowerCase() === qLower ||
+                    String(it.item_code || '').toLowerCase() === qLower
                 ) || (items.length === 1 ? items[0] : null);
 
                 if (exact) {

@@ -191,8 +191,9 @@ class PurchaseOrderController extends Controller
         }
 
         $purchaseOrder->load(['supplier', 'branch', 'items.item']);
+        $format = request('format', 'supplier');
 
-        return view('purchase.purchase-orders.print', compact('purchaseOrder'));
+        return view('purchase.purchase-orders.print', compact('purchaseOrder', 'format'));
     }
 
     public function edit(PurchaseOrder $purchaseOrder)
