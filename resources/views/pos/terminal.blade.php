@@ -1285,7 +1285,7 @@
                 </div>
             </div>
             <div class="modal-footer py-2 px-3 bg-white justify-content-between">
-                <span class="text-muted small"><i class="fas fa-info-circle mr-1 text-primary"></i>Active Branch: <strong class="text-dark">{{ $branch->name ?? 'Default Branch' }}</strong></span>
+                <span class="text-muted small"><i class="fas fa-info-circle mr-1 text-primary"></i>Active Branch: <strong class="text-dark">{{ $activeBrName ?? ($branch->name ?? 'Default Branch') }}</strong></span>
                 <button type="button" class="btn btn-secondary btn-sm px-3 font-weight-bold" data-dismiss="modal">Close (Esc)</button>
             </div>
         </div>

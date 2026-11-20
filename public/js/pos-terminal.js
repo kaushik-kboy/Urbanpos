@@ -4893,19 +4893,27 @@
                     if (bsData) bsData._triggerElement = null;
 
                     let it = JSON.parse(rawItem);
-                    $modal.modal('hide');
-                    await resolveAndAddItem(it);
-
-                    // If batch modal did not pop up, focus target Qty immediately
-                    if (!$('#pos-batch-modal').is(':visible') && !$('#pos-batch-modal').hasClass('show')) {
-                        const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
-                        if (targetIdx >= 0) {
-                            focusRowQty(targetIdx);
-                            setTimeout(() => focusRowQty(targetIdx), 50);
-                            setTimeout(() => focusRowQty(targetIdx), 150);
-                            setTimeout(() => focusRowQty(targetIdx), 300);
-                            setTimeout(() => focusRowQty(targetIdx), 500);
+                    const executeAdd = async () => {
+                        await resolveAndAddItem(it);
+                        if (!$('#pos-batch-modal').is(':visible') && !$('#pos-batch-modal').hasClass('show')) {
+                            const targetIdx = state.last_added_idx >= 0 ? state.last_added_idx : (state.cart.length - 1);
+                            if (targetIdx >= 0) {
+                                focusRowQty(targetIdx);
+                                setTimeout(() => focusRowQty(targetIdx), 50);
+                                setTimeout(() => focusRowQty(targetIdx), 150);
+                                setTimeout(() => focusRowQty(targetIdx), 300);
+                                setTimeout(() => focusRowQty(targetIdx), 500);
+                            }
                         }
+                    };
+
+                    if ($modal.is(':visible') || $modal.hasClass('show')) {
+                        $modal.one('hidden.bs.modal.islAdd', function () {
+                            executeAdd();
+                        });
+                        $modal.modal('hide');
+                    } else {
+                        executeAdd();
                     }
                 }
             });
@@ -5072,6 +5080,13 @@
             }
         }
     }, true);
+
+    // Multi-modal backdrop and scroll preservation guard
+    $(document).on('hidden.bs.modal', function () {
+        if ($('.modal.show:visible').length > 0) {
+            $('body').addClass('modal-open');
+        }
+    });
 
     // Expose methods to window for inline onclick handlers
     window.lockPosScreen = lockPosScreen;
