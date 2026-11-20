@@ -180,6 +180,22 @@ class RoleController extends Controller
                     'barcode-printing' => ['label' => 'Barcode Label Studio', 'actions' => ['print' => 'Print Barcode Labels']],
                 ]
             ],
+            'replenishment' => [
+                'label' => 'Smart Replenishment Studio',
+                'icon' => 'fas fa-brain text-info',
+                'modules' => [
+                    'smart-replenishment' => [
+                        'label' => 'Smart Replenishment & Demand Forecasting',
+                        'actions' => [
+                            'view' => 'View Studio & Recommendations',
+                            'create' => 'Dispatch Transfers & Generate POs',
+                            'edit' => 'Configure Rules & Replenishment Settings',
+                            'sync' => 'Recalculate & Sync Velocity',
+                            'export' => 'Export Replenishment Data',
+                        ]
+                    ]
+                ]
+            ],
             'pricing' => [
                 'label' => 'Pricing, Margins & Catalog Items',
                 'icon' => 'fas fa-tags text-danger',

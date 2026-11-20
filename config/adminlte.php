@@ -754,7 +754,7 @@ return [
                     'url' => 'inventory/smart-replenishment/settings',
                     'icon' => 'fas fa-fw fa-sliders-h',
                     'active' => ['inventory/smart-replenishment/settings*'],
-                    'can' => 'access-smart-replenishment',
+                    'can' => 'access-smart-replenishment-settings',
                 ],
             ],
         ],

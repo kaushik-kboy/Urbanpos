@@ -294,16 +294,16 @@ Route::middleware('auth')->prefix('inventory')->name('inventory.')->group(functi
     Route::middleware(['permission:smart-replenishment.view', 'branch.access'])->prefix('smart-replenishment')->name('replenishment.')->group(function () {
         Route::get('/', [SmartReplenishmentController::class, 'index'])->name('index');
         Route::get('/data', [SmartReplenishmentController::class, 'data'])->name('data');
-        Route::get('/export', [SmartReplenishmentController::class, 'export'])->name('export');
-        Route::post('/sync', [SmartReplenishmentController::class, 'sync'])->name('sync');
-        Route::get('/settings', [SmartReplenishmentController::class, 'settings'])->name('settings');
-        Route::post('/settings', [SmartReplenishmentController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/export', [SmartReplenishmentController::class, 'export'])->middleware('permission:smart-replenishment.export')->name('export');
+        Route::post('/sync', [SmartReplenishmentController::class, 'sync'])->middleware('permission:smart-replenishment.sync')->name('sync');
+        Route::get('/settings', [SmartReplenishmentController::class, 'settings'])->middleware('permission:smart-replenishment.edit')->name('settings');
+        Route::post('/settings', [SmartReplenishmentController::class, 'updateSettings'])->middleware('permission:smart-replenishment.edit')->name('settings.update');
         Route::get('/transfers', [SmartReplenishmentController::class, 'transfers'])->name('transfers');
         Route::get('/supplier-orders', [SmartReplenishmentController::class, 'supplierOrders'])->name('supplier-orders');
-        Route::post('/generate-po', [SmartReplenishmentController::class, 'generatePo'])->name('generate-po');
-        Route::post('/bulk-generate-po', [SmartReplenishmentController::class, 'bulkGeneratePo'])->name('bulk-generate-po');
-        Route::post('/create-transfer', [SmartReplenishmentController::class, 'createTransfer'])->name('create-transfer');
-        Route::post('/bulk-create-transfer', [SmartReplenishmentController::class, 'bulkCreateTransfer'])->name('bulk-create-transfer');
+        Route::post('/generate-po', [SmartReplenishmentController::class, 'generatePo'])->middleware('permission:smart-replenishment.create')->name('generate-po');
+        Route::post('/bulk-generate-po', [SmartReplenishmentController::class, 'bulkGeneratePo'])->middleware('permission:smart-replenishment.create')->name('bulk-generate-po');
+        Route::post('/create-transfer', [SmartReplenishmentController::class, 'createTransfer'])->middleware('permission:smart-replenishment.create')->name('create-transfer');
+        Route::post('/bulk-create-transfer', [SmartReplenishmentController::class, 'bulkCreateTransfer'])->middleware('permission:smart-replenishment.create')->name('bulk-create-transfer');
         Route::post('/transfer-sources', [SmartReplenishmentController::class, 'transferSources'])->name('transfer-sources');
         Route::get('/item-batches', [SmartReplenishmentController::class, 'itemBatches'])->name('item-batches');
     });

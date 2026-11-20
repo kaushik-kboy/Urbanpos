@@ -96,7 +96,7 @@ class RolesAndPermissionsSeeder extends Seeder
     private const MANAGER_MODULES = [
         'purchase-invoices', 'purchase-returns', 'purchase-receipt-notes', 'purchase-orders', 'purchase-indents',
         'sales-bills', 'sales-returns', 'sales-quotations', 'sales-orders', 'sales-delivery-notes',
-        'damage-stocks', 'opening-stocks', 'stock-updates', 'stock-transfers', 'repack', 'kit-preparation', 'kit-unpack', 'kit-recipes', 'barcode-printing',
+        'damage-stocks', 'opening-stocks', 'stock-updates', 'stock-transfers', 'repack', 'kit-preparation', 'kit-unpack', 'kit-recipes', 'barcode-printing', 'smart-replenishment',
         'bill-settlements', 'loyalty-programs',
         'item-categories', 'item-category-values', 'product-types', 'brands', 'uoms', 'kit-mapping',
         'customer-categories', 'customer-types', 'sales-types', 'customers', 'customer-pets', 'loyalty-points', 'states', 'cities', 'areas', 'pet-types', 'breeds', 'colors',

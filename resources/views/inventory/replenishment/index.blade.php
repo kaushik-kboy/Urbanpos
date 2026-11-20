@@ -377,12 +377,16 @@ body, .content-wrapper {
             </div>
         </div>
         <div class="d-flex align-items-center mt-2 mt-md-0">
+            @can('smart-replenishment.edit')
             <a href="{{ route('inventory.replenishment.settings') }}" class="btn btn-action-outline mr-2 shadow-sm">
                 <i class="fas fa-sliders-h mr-1"></i> Rules & Settings
             </a>
+            @endcan
+            @can('smart-replenishment.sync')
             <button type="button" class="btn btn-action-dark shadow-sm" id="btnSyncLive">
                 <i class="fas fa-sync-alt mr-1" id="syncIcon"></i> <span id="syncText">Sync Live Stock</span>
             </button>
+            @endcan
         </div>
     </div>
 @stop
@@ -406,9 +410,11 @@ body, .content-wrapper {
                     </h3>
                     <div class="d-flex align-items-center">
                         <span class="badge badge-dark font-weight-bold px-3 py-2 mr-2" id="totalFilteredRows" style="font-size: 0.8rem; border-radius: 6px;">Loading...</span>
+                        @can('smart-replenishment.export')
                         <button type="button" class="btn btn-action-dark btn-sm shadow-sm" id="btnExportExcel" title="Export current filtered view to Excel spreadsheet">
                             <i class="fas fa-file-excel text-success mr-1"></i> Export Excel (.xlsx)
                         </button>
+                        @endcan
                     </div>
                 </div>
 
