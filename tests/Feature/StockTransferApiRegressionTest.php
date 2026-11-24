@@ -238,4 +238,90 @@ class StockTransferApiRegressionTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    /** @test */
+    public function get_item_by_code_prioritizes_unexpired_batch_when_old_expired_batch_exists(): void
+    {
+        $multiBatchItem = Item::create([
+            'name'       => 'Multi Batch Item',
+            'item_code'  => 'MBI-001',
+            'cost_price' => 100.00,
+            'status'     => true,
+        ]);
+
+        // Post 1 unit of EXPIRED stock (e.g. 2020-01-01)
+        $this->stockLedger->post(
+            itemId: $multiBatchItem->id,
+            branchId: $this->branch->id,
+            movementType: 'OPENING',
+            qtyDelta: 1,
+            unitCost: 100.00,
+            referenceType: null,
+            referenceId: null,
+            documentDate: '2020-01-01',
+            expDate: '2020-01-01',
+            batchNo: 'EXP-BATCH',
+        );
+
+        // Post 4 units of VALID unexpired stock (e.g. 2028-12-31)
+        $this->stockLedger->post(
+            itemId: $multiBatchItem->id,
+            branchId: $this->branch->id,
+            movementType: 'OPENING',
+            qtyDelta: 4,
+            unitCost: 100.00,
+            referenceType: null,
+            referenceId: null,
+            documentDate: '2026-01-01',
+            expDate: '2028-12-31',
+            batchNo: 'VALID-BATCH',
+        );
+
+        $response = $this->getJson(route('inventory.stock-transfers.item-by-code', [
+            'code'      => 'MBI-001',
+            'branch_id' => $this->branch->id,
+        ]));
+
+        $response->assertOk()
+                 ->assertJsonPath('found', true);
+
+        $itemData = $response->json('item');
+        $this->assertEquals('VALID-BATCH', $itemData['batch_no'], 'Default batch must be the unexpired batch, not the expired one.');
+        $this->assertEquals('2028-12-31', $itemData['exp_date']);
+        $this->assertCount(2, $itemData['batches']);
+    }
+
+    /** @test */
+    public function get_item_by_code_returns_error_when_all_batches_are_expired(): void
+    {
+        $expiredItem = Item::create([
+            'name'       => 'All Expired Item',
+            'item_code'  => 'AEI-001',
+            'cost_price' => 100.00,
+            'status'     => true,
+        ]);
+
+        // Post only expired stock
+        $this->stockLedger->post(
+            itemId: $expiredItem->id,
+            branchId: $this->branch->id,
+            movementType: 'OPENING',
+            qtyDelta: 2,
+            unitCost: 100.00,
+            referenceType: null,
+            referenceId: null,
+            documentDate: '2020-01-01',
+            expDate: '2020-01-01',
+            batchNo: 'OLD-BATCH',
+        );
+
+        $response = $this->getJson(route('inventory.stock-transfers.item-by-code', [
+            'code'      => 'AEI-001',
+            'branch_id' => $this->branch->id,
+        ]));
+
+        $response->assertOk()
+                 ->assertJsonPath('found', false);
+        $this->assertStringContainsString('expired', strtolower($response->json('error')));
+    }
 }
