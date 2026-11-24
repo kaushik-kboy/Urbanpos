@@ -124,11 +124,11 @@
         </div>
         <div class="row align-items-center">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="small font-weight-bold text-primary mb-0">
+                <div class="d-flex justify-content-between align-items-center flex-wrap mb-1">
+                    <label class="small font-weight-bold text-primary mb-1">
                         <i class="fas fa-receipt mr-1"></i> Select Item(s) from Sales Bill to Return:
                     </label>
-                    <div class="btn-group btn-group-sm">
+                    <div class="btn-group btn-group-sm mb-1">
                         <button type="button" class="btn btn-xs btn-outline-primary font-weight-bold" id="sr-btn-select-all-bill-items">
                             <i class="fas fa-check-square mr-1"></i>Select All
                         </button>
@@ -162,23 +162,25 @@
         'actions'      => ['label' => 'Actions', 'default' => true],
     ];
 @endphp
-<div class="d-flex justify-content-between align-items-center mb-1 tx-compact-section-header">
-    <h6 class="mb-0 font-weight-bold text-dark">
+<div class="d-flex justify-content-between align-items-center flex-wrap mb-1 tx-compact-section-header">
+    <h6 class="mb-0 font-weight-bold text-dark my-1">
         <i class="fas fa-boxes mr-1 text-primary"></i> Return Items
     </h6>
-    <div class="d-flex align-items-center">
-        <button type="button" class="btn btn-outline-info btn-xs font-weight-bold mr-2" id="sr-btn-open-history-header" title="Pick items from customer's previous bills across multiple dates">
+    <div class="d-flex align-items-center flex-wrap my-1">
+        <button type="button" class="btn btn-outline-info btn-xs font-weight-bold mr-2 mb-1" id="sr-btn-open-history-header" title="Pick items from customer's previous bills across multiple dates">
             <i class="fas fa-history mr-1"></i> Pick from Purchase History
         </button>
-        <button type="button" class="btn btn-outline-danger btn-xs font-weight-bold mr-2 btn-reset-table" id="sr-btn-reset-table" title="Clear all table items and reset to 1 empty row">
+        <button type="button" class="btn btn-outline-danger btn-xs font-weight-bold mr-2 mb-1 btn-reset-table" id="sr-btn-reset-table" title="Clear all table items and reset to 1 empty row">
             <i class="fas fa-undo mr-1"></i> Reset Table
         </button>
-        <x-table-column-customizer
-            table-key="sales.sales-returns.items"
-            table-id="sr-items-table"
-            :columns="$srItemColumns"
-        />
-        <button type="button" id="sr-add-row" class="btn btn-primary btn-xs font-weight-bold ml-2">
+        <div class="mb-1">
+            <x-table-column-customizer
+                table-key="sales.sales-returns.items"
+                table-id="sr-items-table"
+                :columns="$srItemColumns"
+            />
+        </div>
+        <button type="button" id="sr-add-row" class="btn btn-primary btn-xs font-weight-bold ml-2 mb-1">
             <i class="fas fa-plus mr-1"></i> Add Row
         </button>
     </div>
