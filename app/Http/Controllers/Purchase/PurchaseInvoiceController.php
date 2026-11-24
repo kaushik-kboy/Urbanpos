@@ -335,11 +335,41 @@ class PurchaseInvoiceController extends Controller
         $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
         if (! $isGlobalAdmin && $user->branch_id) {
             if ((int) $purchaseInvoice->branch_id !== (int) $user->branch_id) {
-                abort(403, 'You do not have access to this branch.');
+                $invBranch = Branch::find($purchaseInvoice->branch_id)?->name ?? "Branch #{$purchaseInvoice->branch_id}";
+                abort(403, "You do not have access to this invoice because it belongs to '{$invBranch}'. Please switch to '{$invBranch}' branch first.");
             }
         }
 
         $purchaseInvoice->load('items.item.gstTax');
+
+        // Calculate sold quantity / minimum allowed quantity for each line item on this purchase invoice
+        $itemIds = $purchaseInvoice->items->pluck('item_id')->filter()->unique();
+        $itemStocks = ItemStock::where('branch_id', $purchaseInvoice->branch_id)
+            ->whereIn('item_id', $itemIds)
+            ->get()
+            ->keyBy('item_id');
+
+        $invoiceItemTotals = [];
+        foreach ($purchaseInvoice->items as $line) {
+            $itemId = (int) $line->item_id;
+            $invoiceItemTotals[$itemId] = ($invoiceItemTotals[$itemId] ?? 0) + (float) $line->qty + (float) $line->free_qty;
+        }
+
+        foreach ($purchaseInvoice->items as $line) {
+            $itemId = (int) $line->item_id;
+            $currStock = (float) ($itemStocks->get($itemId)?->quantity ?? 0);
+            $totalInvoiced = (float) ($invoiceItemTotals[$itemId] ?? 0);
+            $soldFromInvoice = max(0, $totalInvoiced - $currStock);
+
+            if ($soldFromInvoice > 0) {
+                $lineQty = (float) $line->qty;
+                $line->sold_qty = round($soldFromInvoice, 2);
+                $line->min_qty = min($lineQty, round($soldFromInvoice, 2));
+            } else {
+                $line->sold_qty = 0;
+                $line->min_qty = 0;
+            }
+        }
 
         return view('purchase.purchase-invoices.edit', array_merge(['purchaseInvoice' => $purchaseInvoice], $this->formOptions($purchaseInvoice)));
     }
@@ -350,7 +380,8 @@ class PurchaseInvoiceController extends Controller
         $isGlobalAdmin = ! $user || $user->branch_id === null || $user->hasRole(['Owner', 'Admin', 'Super Admin', 'Administrator']) || $user->email === 'admin@urbanpos.com';
         if (! $isGlobalAdmin && $user->branch_id) {
             if ((int) $purchaseInvoice->branch_id !== (int) $user->branch_id) {
-                abort(403, 'You do not have access to this branch.');
+                $invBranch = Branch::find($purchaseInvoice->branch_id)?->name ?? "Branch #{$purchaseInvoice->branch_id}";
+                abort(403, "You do not have access to this invoice because it belongs to '{$invBranch}'. Please switch to '{$invBranch}' branch first.");
             }
         }
 
@@ -360,8 +391,9 @@ class PurchaseInvoiceController extends Controller
         $this->financialYearGuard->assertOpenForPosting($data['header']['invoice_date']);
         $oldSupplierId = $purchaseInvoice->supplier_id;
         $oldTotal = (float) $purchaseInvoice->total;
+        $oldItemIds = $purchaseInvoice->items()->pluck('item_id')->filter()->unique()->toArray();
 
-        DB::transaction(function () use ($data, $purchaseInvoice, $oldSupplierId, $oldTotal) {
+        DB::transaction(function () use ($data, $purchaseInvoice, $oldSupplierId, $oldTotal, $oldItemIds) {
             // Reverse the previous version's stock/ledger effect (allow temporary intermediate state while updating)
             $this->stockLedger->reverseByReference(PurchaseInvoice::class, $purchaseInvoice->id, allowTemporaryNegative: true);
 
@@ -379,7 +411,7 @@ class PurchaseInvoiceController extends Controller
             $this->postStockAndItemMaster($purchaseInvoice, $lines);
             $this->ledgerPosting->postPurchaseInvoice($purchaseInvoice);
 
-            $this->assertNoNegativeStockForInvoice($purchaseInvoice);
+            $this->assertNoNegativeStockForInvoice($purchaseInvoice, $oldItemIds);
         });
 
         $returnFilters = $request->session()->get('purchase_invoices_filters', []);
@@ -476,9 +508,14 @@ class PurchaseInvoiceController extends Controller
         }
     }
 
-    private function assertNoNegativeStockForInvoice(PurchaseInvoice $purchaseInvoice): void
+    private function assertNoNegativeStockForInvoice(PurchaseInvoice $purchaseInvoice, array $extraItemIds = []): void
     {
-        $itemIds = $purchaseInvoice->items->pluck('item_id')->unique()->values();
+        $itemIds = collect($extraItemIds)
+            ->merge($purchaseInvoice->items->pluck('item_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
         $stocks = ItemStock::where('branch_id', $purchaseInvoice->branch_id)
             ->whereIn('item_id', $itemIds)
             ->with('item')
