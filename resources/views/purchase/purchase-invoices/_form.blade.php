@@ -1445,6 +1445,15 @@
                     discPct = 0;
                     $discPct.val('');
                 }
+            } else if (source === 'initial') {
+                // Initial load on existing saved invoice: preserve saved discAmt from DB (avoids 2-decimal percentage rounding drift)
+                if (!discAmt && discPct > 0 && base > 0) {
+                    discAmt = Math.round((base * discPct / 100) * 100) / 100;
+                    $discAmt.val(discAmt > 0 ? discAmt.toFixed(2) : '');
+                } else if (!discPct && discAmt > 0 && base > 0) {
+                    discPct = Math.round(((discAmt / base) * 100) * 100) / 100;
+                    $discPct.val(discPct > 0 ? discPct.toFixed(2) : '');
+                }
             } else {
                 // Qty, Cost, or Free Qty changed
                 if (discPct > 0 && base > 0) {
