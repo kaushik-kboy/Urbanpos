@@ -78,6 +78,10 @@
         border-top-right-radius: 0.25rem !important;
         border-bottom-right-radius: 0.25rem !important;
     }
+    .form-fields-grid .field-wrapper .input-group .form-control {
+        width: auto !important;
+        flex: 1 1 auto;
+    }
 </style>
 
 <div class="row g-2 form-fields-grid tx-header-fields-grid" id="pinv-header-fields-grid">
@@ -142,18 +146,14 @@
     </div>
 
     <div class="field-wrapper col-md-2" data-field="supplier_inv_amount" data-label="Inv Amount (Supplier)" data-default-order="11" data-core="1">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-            <label class="mb-0 font-weight-bold small text-muted">Inv Amount (Supplier) <span class="text-danger">*</span></label>
-            <button type="button" class="btn btn-xs btn-outline-primary btn-sync-inv-amount py-0 px-1 font-weight-bold" style="font-size: 0.72rem;" title="Sync with calculated Final Total">
-                <i class="fas fa-sync-alt"></i> Match Total
-            </button>
-        </div>
-        <input type="number" step="0.01" name="supplier_inv_amount" class="form-control form-control-sm font-weight-bold" value="{{ isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : '' }}" required>
-        <div class="form-group row mt-1 mb-1" id="supplier-inv-amount-match-container">
-            <div class="col-sm-12">
-                <div id="supplier-inv-amount-match-status" class="small font-weight-bold"></div>
-            </div>
-        </div>
+        <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required>
+            <x-slot:addon>
+                <button type="button" class="btn btn-outline-primary btn-sync-inv-amount py-0 px-2 font-weight-bold" style="font-size: 0.75rem;" title="Match with calculated Final Total">
+                    <i class="fas fa-sync-alt mr-1"></i>Match
+                </button>
+            </x-slot:addon>
+        </x-field>
+        <div id="supplier-inv-amount-match-status" class="small font-weight-bold text-truncate mt-n1" style="font-size:0.75rem; min-height: 18px;"></div>
     </div>
 </div>
 
@@ -1755,14 +1755,14 @@
             let diff = Math.round((invAmt - finalTotal) * 100) / 100;
 
             if (invAmt > 0 && Math.abs(diff) <= 0.01) {
-                $statusDiv.html('<span class="text-success"><i class="fas fa-check-circle"></i> Inv Amount (Supplier) matches Final Amount (₹' + finalTotal.toFixed(2) + ')</span>');
-                $badgeDiv.html('<span class="badge badge-success px-3 py-2 font-weight-bold"><i class="fas fa-check-circle"></i> Amounts Matched (₹' + finalTotal.toFixed(2) + ')</span>');
+                $statusDiv.html('<span class="text-success"><i class="fas fa-check-circle"></i> Matched (₹' + finalTotal.toFixed(2) + ')</span>');
+                $badgeDiv.html('<span class="badge badge-success px-2 py-1 font-weight-bold"><i class="fas fa-check-circle"></i> Matched (₹' + finalTotal.toFixed(2) + ')</span>');
                 $invAmtInput.removeClass('is-invalid').addClass('is-valid');
             } else {
                 let diffText = (diff > 0 ? '+' : '') + diff.toFixed(2);
-                let msg = 'Diff: ₹' + diffText + ' (Supplier Inv: ₹' + invAmt.toFixed(2) + ' vs Final: ₹' + finalTotal.toFixed(2) + ')';
-                $statusDiv.html('<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span> <a href="javascript:void(0)" class="btn btn-xs btn-outline-primary ml-1 btn-sync-inv-amount font-weight-bold"><i class="fas fa-sync-alt"></i> Match Total</a>');
-                $badgeDiv.html('<span class="badge badge-danger px-3 py-2 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span> <button type="button" class="btn btn-xs btn-light text-primary font-weight-bold ml-2 btn-sync-inv-amount"><i class="fas fa-sync-alt"></i> Sync Total</button>');
+                let msg = 'Diff: ₹' + diffText + ' (Final: ₹' + finalTotal.toFixed(2) + ')';
+                $statusDiv.html('<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span>');
+                $badgeDiv.html('<span class="badge badge-danger px-2 py-1 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span> <button type="button" class="btn btn-xs btn-light text-primary font-weight-bold ml-1 btn-sync-inv-amount"><i class="fas fa-sync-alt"></i> Match</button>');
                 if (invAmtVal) {
                     $invAmtInput.removeClass('is-valid').addClass('is-invalid');
                 }

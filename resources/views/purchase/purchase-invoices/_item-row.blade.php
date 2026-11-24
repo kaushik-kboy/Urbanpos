@@ -74,20 +74,20 @@
     </td>
     {{-- Description --}}
     <td class="px-1" style="min-width:180px; width:195px;" data-col-key="item">
-        <input type="text"
-               class="form-control form-control-sm pinv-item-desc bg-light font-weight-bold text-truncate px-1"
-               readonly
-               tabindex="-1"
-               value="{{ $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '' }}"
-               placeholder="Description"
-               title="Product description">
-        @if($soldQty > 0)
-            <div class="mt-1">
-                <span class="badge badge-warning text-dark px-1 font-weight-bold" style="font-size:0.68rem;" title="Units already sold/consumed. Minimum required quantity: {{ (int)$minQty }}">
-                    <i class="fas fa-shield-alt mr-1"></i>{{ (int)$soldQty }} Sold (Min Qty: {{ (int)$minQty }})
+        <div class="d-flex align-items-center">
+            <input type="text"
+                   class="form-control form-control-sm pinv-item-desc bg-light font-weight-bold text-truncate px-1 flex-grow-1"
+                   readonly
+                   tabindex="-1"
+                   value="{{ $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '' }}"
+                   placeholder="Description"
+                   title="{{ $selectedItem ? $selectedItem->name : 'Product description' }}{{ $soldQty > 0 ? ' ('.(int)$soldQty.' Sold - Min Qty: '.(int)$minQty.')' : '' }}">
+            @if($soldQty > 0)
+                <span class="badge badge-warning text-dark ml-1 font-weight-bold d-inline-flex align-items-center flex-shrink-0" style="font-size:0.65rem; padding: 2px 4px; height: 23px; line-height: 1;" title="{{ (int)$soldQty }} unit(s) already sold. Minimum allowed quantity: {{ (int)$minQty }}">
+                    <i class="fas fa-shield-alt mr-1"></i>{{ (int)$soldQty }}
                 </span>
-            </div>
-        @endif
+            @endif
+        </div>
         <input type="hidden"
                name="items[{{ $index }}][item_id]"
                class="pinv-item-select"
