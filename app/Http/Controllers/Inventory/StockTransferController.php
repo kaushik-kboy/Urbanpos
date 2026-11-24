@@ -538,6 +538,12 @@ class StockTransferController extends Controller
         }
 
         foreach ($totalQtyByBatch as $bReq) {
+            $itemBatches = $batchService->getItemBatches($bReq['item_id'], $fromBranchId);
+            // If item has no batch ledger entries at all, overall stock check above already covers it
+            if ($itemBatches->isEmpty()) {
+                continue;
+            }
+
             $bStock = $batchService->getBatchStock($bReq['item_id'], $fromBranchId, $bReq['batch_no'], $bReq['exp_date'], $bReq['mrp']);
             $bAvail = (float) ($bStock['remaining_qty'] ?? 0);
             if (round($bReq['qty'], 4) > round($bAvail, 4)) {
@@ -869,16 +875,52 @@ class StockTransferController extends Controller
             ];
         }
 
-        $defaultBatch = !empty($batches) ? $batches[0] : null;
+        $todayStr = now()->toDateString();
+
+        // Sort batches: unexpired batches first (FEFO: earliest unexpired exp_date ASC), expired batches at the end
+        usort($batches, function ($a, $b) use ($todayStr) {
+            $aExpired = !empty($a['exp_date']) && $a['exp_date'] < $todayStr;
+            $bExpired = !empty($b['exp_date']) && $b['exp_date'] < $todayStr;
+
+            if ($aExpired !== $bExpired) {
+                return $aExpired ? 1 : -1; // unexpired comes first
+            }
+
+            $aExp = $a['exp_date'] ?: '9999-12-31';
+            $bExp = $b['exp_date'] ?: '9999-12-31';
+            if ($aExp !== $bExp) {
+                return strcmp($aExp, $bExp);
+            }
+
+            return ($b['qty'] ?? 0) <=> ($a['qty'] ?? 0);
+        });
+
+        // Default to the first UNEXPIRED batch if available, otherwise first batch
+        $defaultBatch = null;
+        foreach ($batches as $b) {
+            if (empty($b['exp_date']) || $b['exp_date'] >= $todayStr) {
+                $defaultBatch = $b;
+                break;
+            }
+        }
+        if (!$defaultBatch && !empty($batches)) {
+            $defaultBatch = $batches[0];
+        }
+
         // Use the RAW batch_no (actual DB value) for top-level item.batch_no so hidden input is correct
         $rawDefaultBatchNo = $defaultBatch ? ($defaultBatch['raw_batch_no'] ?? '') : null;
         $expDate  = $defaultBatch ? $defaultBatch['exp_date'] : $this->resolveItemExpiry($item, $stock);
         $availQty = $defaultBatch ? (float) $defaultBatch['qty'] : $avail;
 
-        if ($expDate && $expDate < now()->toDateString()) {
+        // Block ONLY if ALL available stock is expired!
+        $allExpired = !empty($batches) && collect($batches)->every(function ($b) use ($todayStr) {
+            return !empty($b['exp_date']) && $b['exp_date'] < $todayStr;
+        });
+
+        if ($allExpired && $expDate && $expDate < $todayStr) {
             return response()->json([
                 'found' => false,
-                'error' => "Product '{$item->name}' has expired on {$expDate}. Transfer of expired items is not permitted.",
+                'error' => "All stock for '{$item->name}' has expired (expired on {$expDate}). Transfer of expired items is not permitted.",
             ]);
         }
 
