@@ -142,10 +142,15 @@
     </div>
 
     <div class="field-wrapper col-md-2" data-field="supplier_inv_amount" data-label="Inv Amount (Supplier)" data-default-order="11" data-core="1">
-        <x-field name="supplier_inv_amount" label="Inv Amount (Supplier)" type="number" step="0.01" :value="isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : ''" required />
-        <div class="form-group row mt-n2 mb-2" id="supplier-inv-amount-match-container">
-            <div class="col-sm-3"></div>
-            <div class="col-sm-6">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="mb-0 font-weight-bold small text-muted">Inv Amount (Supplier) <span class="text-danger">*</span></label>
+            <button type="button" class="btn btn-xs btn-outline-primary btn-sync-inv-amount py-0 px-1 font-weight-bold" style="font-size: 0.72rem;" title="Sync with calculated Final Total">
+                <i class="fas fa-sync-alt"></i> Match Total
+            </button>
+        </div>
+        <input type="number" step="0.01" name="supplier_inv_amount" class="form-control form-control-sm font-weight-bold" value="{{ isset($inv->supplier_inv_amount) && $inv->supplier_inv_amount != 0 ? $inv->supplier_inv_amount : '' }}" required>
+        <div class="form-group row mt-1 mb-1" id="supplier-inv-amount-match-container">
+            <div class="col-sm-12">
                 <div id="supplier-inv-amount-match-status" class="small font-weight-bold"></div>
             </div>
         </div>
@@ -1747,8 +1752,8 @@
             } else {
                 let diffText = (diff > 0 ? '+' : '') + diff.toFixed(2);
                 let msg = 'Diff: ₹' + diffText + ' (Supplier Inv: ₹' + invAmt.toFixed(2) + ' vs Final: ₹' + finalTotal.toFixed(2) + ')';
-                $statusDiv.html('<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + msg + ' — Both amounts must match to save</span>');
-                $badgeDiv.html('<span class="badge badge-danger px-3 py-2 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span>');
+                $statusDiv.html('<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span> <a href="javascript:void(0)" class="btn btn-xs btn-outline-primary ml-1 btn-sync-inv-amount font-weight-bold"><i class="fas fa-sync-alt"></i> Match Total</a>');
+                $badgeDiv.html('<span class="badge badge-danger px-3 py-2 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> ' + msg + '</span> <button type="button" class="btn btn-xs btn-light text-primary font-weight-bold ml-2 btn-sync-inv-amount"><i class="fas fa-sync-alt"></i> Sync Total</button>');
                 if (invAmtVal) {
                     $invAmtInput.removeClass('is-valid').addClass('is-invalid');
                 }
@@ -2201,6 +2206,21 @@
                 $(this).removeClass('is-invalid border-danger');
                 $(this).siblings('.pinv-qty-error-msg').css('display', 'none').text('');
             }
+            if ($(this).hasClass('pinv-qty')) {
+                let minQty = parseInt($(this).data('min-qty'), 10) || 0;
+                if (minQty > 0 && qty < minQty && qty > 0) {
+                    $(this).addClass('is-invalid border-warning');
+                    let desc = $(this).closest('tr').find('.pinv-item-desc').val() || 'item';
+                    if (window.toastr && !$(this).data('warned')) {
+                        $(this).data('warned', true);
+                        toastr.warning('Minimum allowed quantity for ' + desc + ' is ' + minQty + ' because units were already sold.', 'Stock Protection');
+                        let $el = $(this);
+                        setTimeout(function () { $el.removeData('warned'); }, 3000);
+                    }
+                } else if (qty >= minQty) {
+                    $(this).removeClass('is-invalid border-warning');
+                }
+            }
         });
 
 
@@ -2383,6 +2403,29 @@
                 return false;
             }
 
+            // Stock Guard: check for items with min-qty constraint
+            let stockGuardFailed = false;
+            $('#pinv-items-body tr').each(function () {
+                let $q = $(this).find('.pinv-qty');
+                let minQty = parseInt($q.data('min-qty'), 10) || 0;
+                let qty = parseInt($q.val(), 10) || 0;
+                if (minQty > 0 && qty < minQty) {
+                    stockGuardFailed = true;
+                    e.preventDefault();
+                    $q.focus().addClass('is-invalid border-danger');
+                    let desc = $(this).find('.pinv-item-desc').val() || 'This item';
+                    if (window.toastr) {
+                        toastr.error('Cannot save: Quantity for "' + desc + '" cannot be less than ' + minQty + ' because units were already sold.', 'Stock Protection');
+                    } else {
+                        alert('Cannot save: Quantity for "' + desc + '" cannot be less than ' + minQty + ' because units were already sold.');
+                    }
+                    return false;
+                }
+            });
+            if (stockGuardFailed) {
+                return false;
+            }
+
             let invAmt = parseFloat($('input[name="supplier_inv_amount"]').val()) || 0;
             let finalTotal = getLiveFinalTotal();
             let diff = Math.round((invAmt - finalTotal) * 100) / 100;
@@ -2506,12 +2549,35 @@
         });
 
         // 6. Remove Row
-        $('#pinv-items-body').on('click', '.pinv-remove-row', function () {
+        $('#pinv-items-body').on('click', '.pinv-remove-row', function (e) {
+            if ($(this).data('locked') || $(this).hasClass('disabled')) {
+                e.preventDefault();
+                e.stopPropagation();
+                let minQty = $(this).data('min-qty') || 1;
+                let desc = $(this).closest('tr').find('.pinv-item-desc').val() || 'This item';
+                if (window.toastr) {
+                    toastr.error('Cannot remove "' + desc + '" because stock from this invoice has already been sold (Min Qty: ' + minQty + ').', 'Stock Protected');
+                } else {
+                    alert('Cannot remove "' + desc + '" because stock from this invoice has already been sold.');
+                }
+                return false;
+            }
             let rows = $('#pinv-items-body tr');
             if (rows.length <= 1) return;
             $(this).closest('tr').remove();
             updateRowNumbers();
             calculateTotals();
+        });
+
+        // 6b. Sync Supplier Invoice Amount with Final Total
+        $(document).on('click', '.btn-sync-inv-amount', function (e) {
+            e.preventDefault();
+            let finalTotal = getLiveFinalTotal();
+            $('input[name="supplier_inv_amount"]').val(finalTotal.toFixed(2)).trigger('input').trigger('change');
+            checkAmountMatch(finalTotal);
+            if (window.toastr) {
+                toastr.success('Supplier Invoice Amount synced to ₹' + finalTotal.toFixed(2), 'Amount Synced');
+            }
         });
 
         // 7. Initial Run on existing rows

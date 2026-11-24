@@ -1961,7 +1961,7 @@ class SalesBillController extends Controller
                     'name' => $c->name,
                     'mobile' => $c->mobile ?? '',
                     'address1' => $c->address1 ?? '',
-                    'google_map_link' => $a->google_map_link ?: ($c->google_map_link ?? ''),
+                    'google_map_link' => $c->google_map_link ?? '',
                     'city' => $c->city ?? 'Ahmedabad',
                     'state' => $c->state ?? 'Gujarat',
                     'postal_code' => $c->postal_code ?? '',

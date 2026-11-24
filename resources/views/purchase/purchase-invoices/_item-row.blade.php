@@ -62,6 +62,9 @@
     $sellExclGstVal = ($baseSellVal > 0) ? ($baseSellVal / (1 + ($gstVal / 100))) : 0;
     $marginVal = ($sellExclGstVal > 0 && $effectiveCostForProfit > 0) ? round((($sellExclGstVal - $effectiveCostForProfit) / $sellExclGstVal) * 100, 2) : null;
     $profitVal = ($effectiveCostForProfit > 0 && $sellExclGstVal > 0) ? round((($sellExclGstVal - $effectiveCostForProfit) / $effectiveCostForProfit) * 100, 2) : null;
+
+    $minQty = isset($line->min_qty) ? (float)$line->min_qty : 0;
+    $soldQty = isset($line->sold_qty) ? (float)$line->sold_qty : 0;
 @endphp
 <tr style="line-height: 1.15;">
     <td class="text-center align-middle font-weight-bold pinv-sr-no px-0" style="width:28px; min-width:28px;" data-col-key="seq">{{ is_numeric($index) ? $index + 1 : 1 }}</td>
@@ -78,6 +81,13 @@
                value="{{ $selectedItem ? ($selectedItem->name . ($selectedItem->item_code ? ' ['.$selectedItem->item_code.']' : '')) : '' }}"
                placeholder="Description"
                title="Product description">
+        @if($soldQty > 0)
+            <div class="mt-1">
+                <span class="badge badge-warning text-dark px-1 font-weight-bold" style="font-size:0.68rem;" title="Units already sold/consumed. Minimum required quantity: {{ (int)$minQty }}">
+                    <i class="fas fa-shield-alt mr-1"></i>{{ (int)$soldQty }} Sold (Min Qty: {{ (int)$minQty }})
+                </span>
+            </div>
+        @endif
         <input type="hidden"
                name="items[{{ $index }}][item_id]"
                class="pinv-item-select"
@@ -104,7 +114,18 @@
         <small class="pinv-exp-badge text-danger font-weight-bold {{ ($isExpRequired && !$expDateVal) ? '' : 'd-none' }}" style="font-size:0.68rem;"><i class="fas fa-exclamation-circle"></i> Required</small>
     </td>
     {{-- Qty --}}
-    <td class="px-1" style="width:65px; min-width:65px;" data-col-key="qty"><input type="number" step="1" min="1" name="items[{{ $index }}][qty]" value="{{ $qtyVal ? (int)$qtyVal : '' }}" class="form-control form-control-sm pinv-qty text-right px-1" autocomplete="off" onkeypress="return event.charCode >= 48 && event.charCode <= 57"></td>
+    <td class="px-1" style="width:65px; min-width:65px;" data-col-key="qty">
+        <input type="number"
+               step="1"
+               min="{{ $minQty > 0 ? (int)$minQty : 1 }}"
+               data-min-qty="{{ (int)$minQty }}"
+               name="items[{{ $index }}][qty]"
+               value="{{ $qtyVal ? (int)$qtyVal : '' }}"
+               class="form-control form-control-sm pinv-qty text-right px-1 {{ $minQty > 0 ? 'border-warning font-weight-bold' : '' }}"
+               autocomplete="off"
+               title="{{ $minQty > 0 ? 'Minimum allowed quantity is ' . (int)$minQty . ' because units were already sold' : 'Quantity' }}"
+               onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+    </td>
     {{-- Free --}}
     <td class="px-0" style="width:45px; min-width:45px;" data-col-key="free"><input type="number" step="1" min="0" name="items[{{ $index }}][free_qty]" value="{{ $freeQtyVal ? (int)$freeQtyVal : '' }}" class="form-control form-control-sm pinv-free-qty text-right px-1" autocomplete="off" placeholder="0" title="Free Quantity" onkeypress="return event.charCode >= 48 && event.charCode <= 57"></td>
     {{-- Cost Price --}}
@@ -131,6 +152,13 @@
     <td class="px-1 text-right align-middle font-weight-bold text-success pinv-row-net" style="width:85px; min-width:85px; font-size:0.84rem;" data-col-key="net_amt">{{ $netAmtVal }}</td>
     {{-- Remove --}}
     <td class="px-0 text-center align-middle" style="width:32px; min-width:32px;" data-col-key="actions">
-        <button type="button" class="btn btn-xs btn-outline-danger pinv-remove-row" tabindex="-1"><i class="fas fa-times"></i></button>
+        <button type="button"
+                class="btn btn-xs {{ $minQty > 0 ? 'btn-outline-secondary disabled' : 'btn-outline-danger' }} pinv-remove-row"
+                {{ $minQty > 0 ? 'data-locked=1' : '' }}
+                data-min-qty="{{ (int)$minQty }}"
+                title="{{ $minQty > 0 ? 'Cannot remove: ' . (int)$soldQty . ' unit(s) already sold from this invoice' : 'Remove row' }}"
+                tabindex="-1">
+            <i class="fas fa-times"></i>
+        </button>
     </td>
 </tr>
