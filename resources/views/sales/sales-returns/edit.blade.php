@@ -5,9 +5,9 @@
 @section('classes_body', 'sidebar-mini sidebar-collapse tx-viewport-fixed')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center py-0">
-        <h1 class="m-0 font-weight-bold text-dark h5"><i class="fas fa-undo mr-1 text-primary"></i> Edit Sales Return: <span class="text-primary">{{ $salesReturn->return_number }}</span></h1>
-        <a href="{{ route('sales.sales-returns.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm">
+    <div class="d-flex justify-content-between align-items-center flex-wrap py-0">
+        <h1 class="m-0 font-weight-bold text-dark h5 my-1"><i class="fas fa-undo mr-1 text-primary"></i> Edit Sales Return: <span class="text-primary">{{ $salesReturn->return_number }}</span></h1>
+        <a href="{{ route('sales.sales-returns.index') }}" class="btn btn-secondary btn-xs font-weight-bold shadow-sm my-1">
             <i class="fas fa-arrow-left mr-1"></i> Back to Returns
         </a>
     </div>
