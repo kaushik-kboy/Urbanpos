@@ -29,7 +29,11 @@
                 save-btn-text="Save Invoice"
                 cancel-route="{{ route('purchase.purchase-invoices.index') }}"
                 reset-btn-id="btn-reset-form"
-            />
+            >
+                <x-slot:customLeft>
+                    <div id="final-amount-match-badge" class="d-inline-block ml-2"></div>
+                </x-slot:customLeft>
+            </x-transaction-rich-footer>
         </form>
     </div>
 @stop
