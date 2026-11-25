@@ -98,10 +98,10 @@ class SyncBillToFollowUpJob implements ShouldQueue
         $fulfillment  = trim((string) ($bill->fulfillment ?? $bill->delivery_type ?? ''));
         $deliveryType = trim((string) ($bill->delivery_type ?? 'Delivered'));
 
-        // If Fulfillment is Delivery OR Other (or legacy Home / Home Delivery), it is Home Delivery
-        $isHomeDelivery = in_array(strtolower($fulfillment), ['delivery', 'other', 'home delivery', 'home'], true)
-            || in_array(strtolower($deliveryType), ['home delivery', 'home', 'delivery', 'other'], true)
-            || in_array(strtolower($salesType), ['home', 'home delivery'], true);
+        // If Fulfillment is Delivery OR Other (or legacy Home / Home Delivery / Delivered), it is Home Delivery
+        $isHomeDelivery = in_array(strtolower($fulfillment), ['delivery', 'delivered', 'other', 'home delivery', 'home'], true)
+            || in_array(strtolower($deliveryType), ['home delivery', 'home', 'delivery', 'delivered', 'other'], true)
+            || in_array(strtolower($salesType), ['home', 'home delivery', 'delivery'], true);
 
         $effectiveDeliveryType = $isHomeDelivery ? ($fulfillment ?: 'Home Delivery') : ($fulfillment ?: $deliveryType);
         $deliveryDate = $bill->delivery_time 
