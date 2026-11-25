@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Item;
+use App\Models\ItemStock;
 use App\Models\SalesBill;
 use App\Models\SalesBillItem;
 use App\Models\SalesReturn;
@@ -17,6 +18,7 @@ use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SalesReturnController extends Controller
 {
@@ -208,8 +210,9 @@ class SalesReturnController extends Controller
 
         $data = $this->validateData($request);
         $this->financialYearGuard->assertOpenForPosting($data['header']['return_date']);
+        $oldItemIds = $salesReturn->items()->pluck('item_id')->filter()->unique()->toArray();
 
-        DB::transaction(function () use ($data, $salesReturn) {
+        DB::transaction(function () use ($data, $salesReturn, $oldItemIds) {
             Customer::whereKey($data['header']['customer_id'])->lockForUpdate()->first();
             $allBillIds = collect($data['items'])->pluck('sales_bill_id')->filter()->unique()->all();
             if (! empty($data['header']['sales_bill_id'])) {
@@ -221,7 +224,8 @@ class SalesReturnController extends Controller
             }
             $this->assertReturnableAgainstBill($data['header'], $data['items'], $salesReturn->id);
 
-            $this->stockLedger->reverseByReference(SalesReturn::class, $salesReturn->id);
+            // Reverse the previous version's stock/ledger effect (allow temporary intermediate state while updating)
+            $this->stockLedger->reverseByReference(SalesReturn::class, $salesReturn->id, allowTemporaryNegative: true);
 
             $lines = $this->computeLines($data['items'], $data['header']);
             $totals = $this->computeTotals($lines, $data);
@@ -232,6 +236,8 @@ class SalesReturnController extends Controller
 
             $this->postStock($createdItems, $salesReturn);
             $this->ledgerPosting->postSalesReturn($salesReturn);
+
+            $this->assertNoNegativeStockForReturn($salesReturn, $oldItemIds);
         });
 
         return redirect()->route('sales.sales-returns.index')->with('status', "Sales Return {$salesReturn->return_number} updated successfully.");
@@ -994,5 +1000,29 @@ class SalesReturnController extends Controller
         }
 
         return ['header' => $header, 'items' => $validated['items']];
+    }
+
+    private function assertNoNegativeStockForReturn(SalesReturn $salesReturn, array $extraItemIds = []): void
+    {
+        $itemIds = collect($extraItemIds)
+            ->merge($salesReturn->items->pluck('item_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $stocks = ItemStock::where('branch_id', $salesReturn->branch_id)
+            ->whereIn('item_id', $itemIds)
+            ->with('item')
+            ->get();
+
+        foreach ($stocks as $stock) {
+            if ($stock->quantity < 0 && ! ($stock->item?->allow_negative_stock)) {
+                $itemName = $stock->item ? $stock->item->name : "Item #{$stock->item_id}";
+                $shortage = abs($stock->quantity);
+                throw ValidationException::withMessages([
+                    'stock' => "Cannot update sales return: Resulting stock for \"{$itemName}\" would become negative ({$stock->quantity}) because {$shortage} unit(s) were already sold.",
+                ]);
+            }
+        }
     }
 }
