@@ -135,7 +135,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
             $postalCode    = $custAddr->postal_code ?: $customer?->postal_code;
             $areaName      = $custAddr->area?->name ?: $custAddr->area_name ?: $customer?->area?->name;
             $fullAddress   = $custAddr->formatted_address ?: null;
-            $googleMapLink = $customer?->google_map_link ?: null;
+            $googleMapLink = $custAddr->google_map_link ?: ($customer?->google_map_link ?: null);
         } else {
             $streetAddress = $customer?->address1 ?: null;
             $city          = $customer?->city ?: null;
@@ -148,6 +148,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
         if (empty($fullAddress)) {
             $addressParts = array_filter([
                 $streetAddress,
+                $areaName,
                 $city,
                 $state,
                 $postalCode,

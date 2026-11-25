@@ -7,7 +7,7 @@
 @stop
 
 @section('content')
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <h5><i class="icon fas fa-ban mr-1"></i> Please correct the following errors:</h5>
             <ul class="mb-0 pl-3">

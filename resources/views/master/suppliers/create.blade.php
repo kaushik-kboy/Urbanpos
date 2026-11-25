@@ -7,7 +7,7 @@
 @stop
 
 @section('content')
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger alert-dismissible fade show">
             <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
             <h5><i class="icon fas fa-ban"></i> Please fix the following errors:</h5>

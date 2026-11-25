@@ -242,6 +242,7 @@ class RoleController extends Controller
                     'custom-fields' => ['label' => 'No-Code Custom Fields Builder', 'actions' => ['create' => 'Create Fields', 'edit' => 'Modify Fields', 'cancel' => 'Delete Fields']],
                     'form-validations' => ['label' => 'Form Field Validation Manager', 'actions' => ['edit' => 'Configure Validation Rules']],
                     'receipt-designer' => ['label' => 'Thermal Receipt & Invoice Print Designer', 'actions' => ['edit' => 'Customize Print Layout']],
+                    'layout-customizer' => ['label' => 'UI Layout & Table Columns Customizer', 'actions' => ['customize' => 'Customize & Freeze Layouts']],
                     'bulk-updater' => ['label' => 'Universal Bulk Field Updater', 'actions' => ['apply' => 'Execute Bulk Updates']],
                 ]
             ],

@@ -32,23 +32,30 @@ class ItemController extends Controller
             } elseif (Item::where('ean_upc_code', $rawTerm)->exists()) {
                 // 2. Exact Barcode Match Priority
                 $query->where('ean_upc_code', $rawTerm);
+            } elseif (Item::where('part_number', $rawTerm)->exists()) {
+                // 3. Exact Part Number Match Priority
+                $query->where('part_number', $rawTerm);
             } else {
                 $tokens = preg_split('/\s+/', $rawTerm, -1, PREG_SPLIT_NO_EMPTY);
 
                 $query->where(function ($q) use ($rawTerm, $tokens) {
-                    // Phrase match on name/alias, prefix match on item_code/barcode (never middle-of-barcode substring)
+                    // Phrase match on name/alias/part_number/car_compatibility, prefix match on item_code/barcode (never middle-of-barcode substring)
                     $q->where('name', 'like', "%{$rawTerm}%")
                       ->orWhere('alias', 'like', "%{$rawTerm}%")
+                      ->orWhere('part_number', 'like', "%{$rawTerm}%")
+                      ->orWhere('car_compatibility', 'like', "%{$rawTerm}%")
                       ->orWhere('item_code', 'like', "{$rawTerm}%")
                       ->orWhere('ean_upc_code', 'like', "{$rawTerm}%");
 
-                    // Multi-token match across name, alias, item_code, barcode
+                    // Multi-token match across name, alias, part_number, car_compatibility, item_code, barcode
                     if (count($tokens) > 1) {
                         $q->orWhere(function ($subQ) use ($tokens) {
                             foreach ($tokens as $token) {
                                 $subQ->where(function ($tokenQ) use ($token) {
                                     $tokenQ->where('name', 'like', "%{$token}%")
                                            ->orWhere('alias', 'like', "%{$token}%")
+                                           ->orWhere('part_number', 'like', "%{$token}%")
+                                           ->orWhere('car_compatibility', 'like', "%{$token}%")
                                            ->orWhere('item_code', 'like', "{$token}%")
                                            ->orWhere('ean_upc_code', 'like', "{$token}%");
 
@@ -257,7 +264,8 @@ class ItemController extends Controller
         $nullableFields = [
             'brand_id', 'supplier_id', 'department_value_id', 'category_value_id',
             'brand_value_id', 'gst_tax_id', 'shelf_life_days', 'minimum_shelf_life_days',
-            'hsn_code', 'alias', 'ean_upc_code', 'item_code'
+            'hsn_code', 'alias', 'ean_upc_code', 'item_code',
+            'part_number', 'car_compatibility', 'warranty_months'
         ];
         foreach ($nullableFields as $field) {
             if (array_key_exists($field, $data) && ($data[$field] === '' || (is_string($data[$field]) && trim($data[$field]) === ''))) {
@@ -389,6 +397,11 @@ class ItemController extends Controller
             // GST
             'gst_tax_id' => ['nullable', 'exists:gst_taxes,id'],
             'hsn_code' => ['nullable', 'regex:/^\d{4,8}$/'],
+
+            // Automobile Specific Fields (Nullable)
+            'part_number' => ['nullable', 'string', 'max:100'],
+            'car_compatibility' => ['nullable', 'string', 'max:255'],
+            'warranty_months' => ['nullable', 'integer', 'min:0', 'max:120'],
         ];
 
         $messages = [
@@ -428,6 +441,9 @@ class ItemController extends Controller
             'Minimum Shelf Life Days' => ['column' => 'minimum_shelf_life_days', 'cast' => fn ($v) => (int) $v],
             'Allow Negative Stock' => ['column' => 'allow_negative_stock', 'cast' => fn ($v) => $this->importBool($v)],
             'HSN Code' => ['column' => 'hsn_code'],
+            'OEM Part Number' => ['column' => 'part_number'],
+            'Car Compatibility' => ['column' => 'car_compatibility'],
+            'Warranty Months' => ['column' => 'warranty_months', 'cast' => fn ($v) => (int) $v],
         ];
     }
 

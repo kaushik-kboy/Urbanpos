@@ -19,7 +19,7 @@
     <form action="{{ route('purchase.purchase-receipt-notes.store') }}" method="POST" id="grn-form" novalidate>
         @csrf
 
-        @if ($errors->any())
+        @if (isset($errors) && $errors->any())
             <div class="alert alert-danger alert-dismissible fade show">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
                 <h5 class="alert-heading"><i class="fas fa-exclamation-triangle mr-1"></i> Please fix the errors below:</h5>

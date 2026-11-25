@@ -81,6 +81,17 @@
             <div class="field-wrapper col-md-6" data-field="store_pickup" data-label="Store Pickup" data-default-order="12">
                 <x-bool-select name="store_pickup" label="Store Pickup" :value="$i?->store_pickup" true-label="Yes" false-label="No" placeholder="Select Store Pickup" />
             </div>
+            @if(\App\Models\PosSetting::get('business_type') === 'automobile')
+            <div class="field-wrapper col-md-6" data-field="part_number" data-label="OEM Part Number" data-default-order="13">
+                <x-field name="part_number" label="OEM Part Number" :value="old('part_number', $i->part_number ?? '')" placeholder="e.g. BOSCH-OF-042, MAR-1102" hint="OEM or Manufacturer Part Number for fast lookup" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="car_compatibility" data-label="Car Compatibility" data-default-order="14">
+                <x-field name="car_compatibility" label="Car Compatibility" :value="old('car_compatibility', $i->car_compatibility ?? '')" placeholder="e.g. Swift, Baleno, Creta (2018-2023)" hint="Compatible car models / variants" />
+            </div>
+            <div class="field-wrapper col-md-6" data-field="warranty_months" data-label="Warranty (Months)" data-default-order="15">
+                <x-field name="warranty_months" label="Warranty (Months)" type="number" :value="old('warranty_months', $i->warranty_months ?? '')" placeholder="e.g. 12" hint="Warranty period in months (Optional)" />
+            </div>
+            @endif
         </div>
     </div>
 

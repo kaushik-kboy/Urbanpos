@@ -101,7 +101,22 @@
                         <tr>
                             <td data-col-key="id">{{ $item->id }}</td>
                             <td data-col-key="item_code"><span class="badge badge-light border font-weight-bold">{{ $item->item_code ?: ($item->ean_upc_code ?: '—') }}</span></td>
-                            <td data-col-key="name">{{ $item->name }}</td>
+                            <td data-col-key="name">
+                                <div class="font-weight-bold">{{ $item->name }}</div>
+                                @if(\App\Models\PosSetting::get('business_type') === 'automobile')
+                                    <div class="small mt-1">
+                                        @if($item->part_number)
+                                            <span class="badge badge-warning text-dark"><i class="fas fa-cog mr-1"></i>Part: {{ $item->part_number }}</span>
+                                        @endif
+                                        @if($item->car_compatibility)
+                                            <span class="badge badge-light border text-muted"><i class="fas fa-car mr-1"></i>{{ $item->car_compatibility }}</span>
+                                        @endif
+                                        @if($item->warranty_months)
+                                            <span class="badge badge-info"><i class="fas fa-shield-alt mr-1"></i>{{ $item->warranty_months }}M Warranty</span>
+                                        @endif
+                                    </div>
+                                @endif
+                            </td>
                             <td data-col-key="alias">{{ $item->alias }}</td>
                             <td data-col-key="sell_price">{{ number_format($item->sell_price, 2) }}</td>
                             <td data-col-key="supplier">{{ $item->supplier?->name }}</td>
