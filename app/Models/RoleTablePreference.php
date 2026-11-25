@@ -28,11 +28,15 @@ class RoleTablePreference extends Model
 
     public static function getForRole(int $roleId, string $tableKey): ?array
     {
-        $record = static::where('role_id', $roleId)
-            ->where('table_key', $tableKey)
-            ->first();
+        try {
+            $record = static::where('role_id', $roleId)
+                ->where('table_key', $tableKey)
+                ->first();
 
-        return $record ? $record->preferences : null;
+            return $record ? $record->preferences : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public static function getForRoles(array $roleIds, string $tableKey): ?array
@@ -41,20 +45,28 @@ class RoleTablePreference extends Model
             return null;
         }
 
-        $record = static::whereIn('role_id', $roleIds)
-            ->where('table_key', $tableKey)
-            ->first();
+        try {
+            $record = static::whereIn('role_id', $roleIds)
+                ->where('table_key', $tableKey)
+                ->first();
 
-        return $record ? $record->preferences : null;
+            return $record ? $record->preferences : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public static function getGlobal(string $tableKey): ?array
     {
-        $record = static::whereNull('role_id')
-            ->where('table_key', $tableKey)
-            ->first();
+        try {
+            $record = static::whereNull('role_id')
+                ->where('table_key', $tableKey)
+                ->first();
 
-        return $record ? $record->preferences : null;
+            return $record ? $record->preferences : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public static function setForRole(?int $roleId, string $tableKey, array $preferences): static

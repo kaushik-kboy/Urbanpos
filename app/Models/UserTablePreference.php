@@ -27,11 +27,15 @@ class UserTablePreference extends Model
 
     public static function getForUser(int $userId, string $tableKey): ?array
     {
-        $record = static::where('user_id', $userId)
-            ->where('table_key', $tableKey)
-            ->first();
+        try {
+            $record = static::where('user_id', $userId)
+                ->where('table_key', $tableKey)
+                ->first();
 
-        return $record ? $record->preferences : null;
+            return $record ? $record->preferences : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public static function getResolvedForUser(?User $user, string $tableKey): ?array
