@@ -16,7 +16,7 @@
         </div>
     @endif
 
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger alert-dismissible fade show">
             <button type="button" class="close" data-dismiss="alert">&times;</button>
             <i class="fas fa-exclamation-triangle mr-1"></i> <strong>Please correct the following errors:</strong>

@@ -17,7 +17,7 @@
 @stop
 
 @section('content')
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger alert-dismissible fade show shadow-sm">
             <button type="button" class="close" data-dismiss="alert">&times;</button>
             <ul class="mb-0 pl-3">

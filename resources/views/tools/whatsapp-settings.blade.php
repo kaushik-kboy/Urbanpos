@@ -33,7 +33,7 @@
         </div>
     @endif
 
-    @if($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
             <i class="fas fa-exclamation-triangle mr-2"></i> <strong>Please correct the following errors:</strong>
             <ul class="mb-0 mt-1 pl-3">

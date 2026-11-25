@@ -140,6 +140,24 @@ class InventoryDamageOpeningTest extends TestCase
         $this->assertEquals(1, StockLedger::where('reference_type', DamageStock::class)->whereNotNull('reversal_of')->count());
     }
 
+    public function test_damage_update_more_than_available_is_rejected_with_clean_validation(): void
+    {
+        $i = Item::create(['name' => 'Dmg6B']);
+        $this->seedStock($i, 10, 20);
+        $this->post(route('inventory.damage-stocks.store'), $this->damagePayload($i, 4));
+        $d = DamageStock::latest('id')->first();
+        $this->assertEquals(6, $this->qty($i));
+
+        // Attempt to update with 15 (which exceeds total available 10)
+        $this->put(route('inventory.damage-stocks.update', $d), $this->damagePayload($i, 15))
+            ->assertSessionHasErrors('items');
+
+        // Original damaged quantity and remaining stock must be retained safely
+        $this->assertEquals(6, $this->qty($i));
+        $d->refresh();
+        $this->assertEquals(4, (float) $d->total_qty);
+    }
+
     public function test_damage_destroy_restores_stock_exactly(): void
     {
         $i = Item::create(['name' => 'Dmg7']);
@@ -157,7 +175,7 @@ class InventoryDamageOpeningTest extends TestCase
     public function test_damage_gst_is_calculated_on_line(): void
     {
         $tax = GstTax::create(['description' => 'GST 12%', 'percentage' => 12, 'status' => true]);
-        $i = Item::create(['name' => 'Dmg8', 'gst_tax_id' => $tax->id]);
+        $i = Item::create(['name' => 'Dmg8', 'gst_tax_id' => $tax->id, 'tax_inclusive' => false]);
         $this->seedStock($i, 10, 100);
         $this->post(route('inventory.damage-stocks.store'), $this->damagePayload($i, 2, ['items' => [['item_id' => $i->id, 'qty' => 2, 'cost_price' => 100]]]));
         $line = DamageStock::latest('id')->first()->items->first();

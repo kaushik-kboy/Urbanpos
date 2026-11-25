@@ -31,7 +31,7 @@
         </div>
     </div>
 
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <h5 class="alert-heading"><i class="fas fa-exclamation-triangle mr-1"></i> Validation Errors</h5>
             <ul class="mb-0 pl-3">

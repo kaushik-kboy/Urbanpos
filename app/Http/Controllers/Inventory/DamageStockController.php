@@ -185,6 +185,8 @@ class DamageStockController extends Controller
         DB::transaction(function () use ($data, $damageStock) {
             $this->stockLedger->reverseByReference(DamageStock::class, $damageStock->id);
 
+            $this->assertStockAvailable($data['items'], (int) $data['header']['branch_id']);
+
             $lines = $this->computeLines($data['items']);
 
             $damageStock->update(array_merge($data['header'], [

@@ -36,7 +36,7 @@
     <form action="{{ route('sales.delivery-notes.store') }}" method="POST" id="sdn-form" novalidate>
         @csrf
 
-        @if ($errors->any())
+        @if (isset($errors) && $errors->any())
             <div class="alert alert-danger alert-dismissible fade show shadow-sm">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
                 <h5 class="alert-heading"><i class="fas fa-exclamation-triangle mr-1"></i> Please fix the errors below:</h5>

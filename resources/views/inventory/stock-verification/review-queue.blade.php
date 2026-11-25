@@ -13,7 +13,7 @@
             <i class="fas fa-check-circle mr-1"></i> {{ session('status') }}
         </div>
     @endif
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="alert alert-danger alert-dismissible fade show">
             <button type="button" class="close" data-dismiss="alert">&times;</button>
             {{ $errors->first() }}
