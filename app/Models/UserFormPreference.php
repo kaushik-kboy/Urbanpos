@@ -27,11 +27,15 @@ class UserFormPreference extends Model
 
     public static function getForUser(int $userId, string $formKey): ?array
     {
-        $record = static::where('user_id', $userId)
-            ->where('form_key', $formKey)
-            ->first();
+        try {
+            $record = static::where('user_id', $userId)
+                ->where('form_key', $formKey)
+                ->first();
 
-        return $record ? $record->preferences : null;
+            return $record ? $record->preferences : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public static function getResolvedForUser(?User $user, string $formKey): ?array
