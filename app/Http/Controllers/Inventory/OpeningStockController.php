@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Item;
+use App\Models\ItemStock;
 use App\Models\OpeningStock;
 use App\Models\Supplier;
 use App\Services\Accounting\FinancialYearGuard;
@@ -13,6 +14,7 @@ use App\Services\Inventory\StockLedgerService;
 use App\Services\Tax\TaxEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class OpeningStockController extends Controller
 {
@@ -215,9 +217,11 @@ class OpeningStockController extends Controller
 
         $data = $this->validateData($request);
         $this->financialYearGuard->assertOpenForPosting($data['header']['entry_date']);
+        $oldItemIds = $openingStock->items()->pluck('item_id')->filter()->unique()->toArray();
 
-        DB::transaction(function () use ($data, $openingStock) {
-            $this->stockLedger->reverseByReference(OpeningStock::class, $openingStock->id);
+        DB::transaction(function () use ($data, $openingStock, $oldItemIds) {
+            // Reverse the previous version's stock/ledger effect (allow temporary intermediate state while updating)
+            $this->stockLedger->reverseByReference(OpeningStock::class, $openingStock->id, allowTemporaryNegative: true);
 
             $lines = $this->computeLines($data['items']);
 
@@ -229,6 +233,8 @@ class OpeningStockController extends Controller
             $openingStock->items()->createMany($lines);
 
             $this->postStockAndItemMaster($lines, $openingStock);
+
+            $this->assertNoNegativeStockForOpeningStock($openingStock, $oldItemIds);
         });
 
         return redirect()->route('inventory.opening-stocks.index')->with('status', "Opening Stock {$openingStock->entry_number} updated successfully.");
@@ -375,5 +381,29 @@ class OpeningStockController extends Controller
         ]);
 
         return ['header' => $header, 'items' => $validated['items']];
+    }
+
+    private function assertNoNegativeStockForOpeningStock(OpeningStock $openingStock, array $extraItemIds = []): void
+    {
+        $itemIds = collect($extraItemIds)
+            ->merge($openingStock->items->pluck('item_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $stocks = ItemStock::where('branch_id', $openingStock->branch_id)
+            ->whereIn('item_id', $itemIds)
+            ->with('item')
+            ->get();
+
+        foreach ($stocks as $stock) {
+            if ($stock->quantity < 0 && ! ($stock->item?->allow_negative_stock)) {
+                $itemName = $stock->item ? $stock->item->name : "Item #{$stock->item_id}";
+                $shortage = abs($stock->quantity);
+                throw ValidationException::withMessages([
+                    'stock' => "Cannot update opening stock: Resulting stock for \"{$itemName}\" would become negative ({$stock->quantity}) because {$shortage} unit(s) were already sold.",
+                ]);
+            }
+        }
     }
 }
