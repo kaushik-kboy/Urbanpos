@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\ItemController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ObservationController;
 use App\Http\Controllers\Api\V1\PurchaseLookupController;
+use App\Http\Controllers\Api\V1\PurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReferenceDataController;
 use App\Http\Controllers\Api\V1\TaskController;
 use Illuminate\Support\Facades\Route;
@@ -96,6 +97,10 @@ Route::prefix('v1')->group(function () {
 
         // --- Purchase from Barcode Scan Lookup ---
         Route::get('/purchases/item-lookup/{code}', [PurchaseLookupController::class, 'lookup']);
+
+        // --- Purchase Orders (PO-linked Inward) ---
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);
+        Route::get('/purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'show']);
 
         // --- Phase 10: role-aware dashboard summary (Staff: personal; Manager/Owner: branch-wide) ---
         // Permission checked inline in DashboardController@summary for the Manager/Owner path
