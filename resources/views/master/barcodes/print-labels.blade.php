@@ -227,26 +227,26 @@
         }
 
         /* ── Scale Size Modifiers (Normal / Large / Extra Large) ───────────── */
-        body.scale-large .format-50x25_2up .label-store-name { font-size: 9pt; }
-        body.scale-large .format-50x25_2up .label-item-name { font-size: 9.5pt; font-weight: 900; }
-        body.scale-large .format-50x25_2up .label-barcode-svg { max-height: 14mm; }
-        body.scale-large .format-50x25_2up .label-sell { font-size: 12pt; }
-        body.scale-large .format-50x25_2up .label-mrp { font-size: 8pt; }
+        body.scale-large.format-50x25_2up .label-store-name, body.scale-large .format-50x25_2up .label-store-name { font-size: 8.5pt; }
+        body.scale-large.format-50x25_2up .label-item-name, body.scale-large .format-50x25_2up .label-item-name { font-size: 9pt; font-weight: 800; }
+        body.scale-large.format-50x25_2up .label-barcode-svg, body.scale-large .format-50x25_2up .label-barcode-svg { max-height: 12mm; }
+        body.scale-large.format-50x25_2up .label-sell, body.scale-large .format-50x25_2up .label-sell { font-size: 11pt; }
+        body.scale-large.format-50x25_2up .label-mrp, body.scale-large .format-50x25_2up .label-mrp { font-size: 7.5pt; }
 
-        body.scale-xl .format-50x25_2up .label-store-name { font-size: 10pt; }
-        body.scale-xl .format-50x25_2up .label-item-name { font-size: 10.5pt; font-weight: 900; }
-        body.scale-xl .format-50x25_2up .label-barcode-svg { max-height: 15mm; }
-        body.scale-xl .format-50x25_2up .label-sell { font-size: 13.5pt; }
+        body.scale-xl.format-50x25_2up .label-store-name, body.scale-xl .format-50x25_2up .label-store-name { font-size: 9pt; }
+        body.scale-xl.format-50x25_2up .label-item-name, body.scale-xl .format-50x25_2up .label-item-name { font-size: 9.5pt; font-weight: 800; }
+        body.scale-xl.format-50x25_2up .label-barcode-svg, body.scale-xl .format-50x25_2up .label-barcode-svg { max-height: 13mm; }
+        body.scale-xl.format-50x25_2up .label-sell, body.scale-xl .format-50x25_2up .label-sell { font-size: 12pt; }
 
-        body.scale-large .format-50x38_2up .label-store-name { font-size: 10.5pt; }
-        body.scale-large .format-50x38_2up .label-item-name { font-size: 11.5pt; font-weight: 900; }
-        body.scale-large .format-50x38_2up .label-barcode-svg { max-height: 22mm; }
-        body.scale-large .format-50x38_2up .label-sell { font-size: 15.5pt; }
+        body.scale-large.format-50x38_2up .label-store-name, body.scale-large .format-50x38_2up .label-store-name { font-size: 9pt; }
+        body.scale-large.format-50x38_2up .label-item-name, body.scale-large .format-50x38_2up .label-item-name { font-size: 9.5pt; font-weight: 800; }
+        body.scale-large.format-50x38_2up .label-barcode-svg, body.scale-large .format-50x38_2up .label-barcode-svg { max-height: 14mm; }
+        body.scale-large.format-50x38_2up .label-sell, body.scale-large .format-50x38_2up .label-sell { font-size: 13pt; }
 
-        body.scale-xl .format-50x38_2up .label-store-name { font-size: 12pt; }
-        body.scale-xl .format-50x38_2up .label-item-name { font-size: 13pt; font-weight: 900; }
-        body.scale-xl .format-50x38_2up .label-barcode-svg { max-height: 25mm; }
-        body.scale-xl .format-50x38_2up .label-sell { font-size: 17.5pt; }
+        body.scale-xl.format-50x38_2up .label-store-name, body.scale-xl .format-50x38_2up .label-store-name { font-size: 10pt; }
+        body.scale-xl.format-50x38_2up .label-item-name, body.scale-xl .format-50x38_2up .label-item-name { font-size: 10.5pt; font-weight: 800; }
+        body.scale-xl.format-50x38_2up .label-barcode-svg, body.scale-xl .format-50x38_2up .label-barcode-svg { max-height: 15mm; }
+        body.scale-xl.format-50x38_2up .label-sell, body.scale-xl .format-50x38_2up .label-sell { font-size: 14pt; }
 
         /* ── 50x50mm 2-Up ─────────────────────────────────────────────────── */
         .format-50x50_2up .barcode-label-pair {
@@ -559,17 +559,17 @@
         @page {
             margin: 0mm !important;
             @if($format === '50x38_2up')
-            size: 102mm 38mm landscape;
+            size: 102mm 38mm;
             @elseif($format === '50x25_2up')
-            size: 102mm 25mm landscape;
+            size: 102mm 25mm;
             @elseif($format === '50x50_2up')
-            size: 102mm 50mm landscape;
+            size: 102mm 50mm;
             @elseif($format === '102x64')
-            size: 102mm 64mm portrait;
+            size: 102mm 64mm;
             @elseif($format === '50x25')
-            size: 50mm 25mm portrait;
+            size: 50mm 25mm;
             @elseif(in_array($format, ['a4', 'a4_24', 'a4_40']))
-            size: 210mm 297mm portrait;
+            size: 210mm 297mm;
             @endif
         }
 
@@ -615,65 +615,86 @@
             }
 
             /* 50x25mm 2-Up */
-            .format-50x25_2up html, .format-50x25_2up body {
+            body.format-50x25_2up, .format-50x25_2up html, .format-50x25_2up body {
                 width: 102mm !important;
             }
-            .format-50x25_2up .barcode-label-pair {
+            body.format-50x25_2up .barcode-label-pair, .format-50x25_2up .barcode-label-pair {
                 width: 102mm !important;
-                height: 24.5mm !important;
-                max-height: 24.5mm !important;
+                height: 25.0mm !important;
+                max-height: 25.0mm !important;
                 margin: 0 !important;
-                padding: 0 !important;
+                padding: 0.5mm 1mm !important;
                 display: flex !important;
                 justify-content: space-between !important;
+                align-items: center !important;
                 page-break-after: always !important;
                 break-after: page !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                box-sizing: border-box !important;
                 overflow: hidden !important;
             }
-            .format-50x25_2up .barcode-label-pair:last-child {
+            body.format-50x25_2up .barcode-label-pair:last-child, .format-50x25_2up .barcode-label-pair:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
             }
-            .format-50x25_2up .barcode-label-card {
-                width: 49.5mm !important;
-                height: 24.5mm !important;
-                max-height: 24.5mm !important;
+            body.format-50x25_2up .barcode-label-card, .format-50x25_2up .barcode-label-card {
+                width: 49.0mm !important;
+                height: 24.0mm !important;
+                max-height: 24.0mm !important;
                 margin: 0 !important;
+                padding: 0.5mm 1mm !important;
                 box-sizing: border-box !important;
+                border: none !important;
+                box-shadow: none !important;
                 overflow: hidden !important;
             }
 
             /* 50x38mm 2-Up */
-            .format-50x38_2up html, .format-50x38_2up body {
+            body.format-50x38_2up, .format-50x38_2up html, .format-50x38_2up body {
                 width: 102mm !important;
             }
-            .format-50x38_2up .barcode-label-pair {
+            body.format-50x38_2up .barcode-label-pair, .format-50x38_2up .barcode-label-pair {
                 width: 102mm !important;
-                height: 36.0mm !important;
-                max-height: 36.0mm !important;
+                height: 38.0mm !important;
+                max-height: 38.0mm !important;
                 margin: 0 !important;
-                padding: 0 !important;
+                padding: 0.5mm 1mm !important;
                 display: flex !important;
                 justify-content: space-between !important;
+                align-items: center !important;
                 page-break-after: always !important;
                 break-after: page !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                box-sizing: border-box !important;
                 overflow: hidden !important;
             }
-            .format-50x38_2up .barcode-label-pair:last-child {
+            body.format-50x38_2up .barcode-label-pair:last-child, .format-50x38_2up .barcode-label-pair:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
             }
-            .format-50x38_2up .barcode-label-card {
-                width: 49.5mm !important;
-                height: 35.5mm !important;
-                max-height: 35.5mm !important;
+            body.format-50x38_2up .barcode-label-card, .format-50x38_2up .barcode-label-card {
+                width: 49.0mm !important;
+                height: 36.5mm !important;
+                max-height: 36.5mm !important;
                 margin: 0 !important;
+                padding: 1mm 1.5mm !important;
                 box-sizing: border-box !important;
+                border: none !important;
+                box-shadow: none !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                text-align: center !important;
                 overflow: hidden !important;
+            }
+            body.format-50x38_2up .label-barcode-svg, .format-50x38_2up .label-barcode-svg {
+                max-width: 96% !important;
+                max-height: 14mm !important;
+                height: 13mm !important;
+                margin: 0 auto !important;
+                display: block !important;
             }
 
             /* 50x50mm 2-Up */
@@ -1265,6 +1286,13 @@
             const $dot = $('#bridgeStatusDot');
             const $text = $('#bridgeStatusText');
 
+            @if(PHP_OS_FAMILY === 'Windows')
+                $dot.removeClass('text-secondary text-danger text-warning').addClass('text-success');
+                $text.html('<strong>TSC TE244 Ready</strong> (Direct USB001)');
+                $badge.removeClass('border-danger text-danger').addClass('border-success text-success');
+                return true;
+            @endif
+
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 1800);
@@ -1273,9 +1301,9 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    $dot.removeClass('text-secondary text-danger').addClass('text-success');
+                    $dot.removeClass('text-secondary text-danger text-warning').addClass('text-success');
                     $text.html('<strong>TSC TE244 Online</strong> (1-Click Ready)');
-                    $badge.removeClass('border-danger').addClass('border-success text-success');
+                    $badge.removeClass('border-danger text-danger').addClass('border-success text-success');
                     return true;
                 }
             } catch (e) {
@@ -1283,7 +1311,7 @@
             }
 
             $dot.removeClass('text-secondary text-success').addClass('text-warning');
-            $text.html('TSC Bridge Offline (Click to Download .PRN)');
+            $text.html('TSC Bridge Offline (Browser / .PRN Ready)');
             return false;
         }
 
@@ -1298,11 +1326,33 @@
                     return;
                 }
 
-                // 1. Check if local bridge is running
-                let isOnline = await checkBridgeStatus();
+                // 1. First attempt: call local server directPrint (prints instantly via Windows win32print on local!)
+                try {
+                    const serverRes = await fetch('{{ route("master.barcodes.direct-print") }}' + window.location.search, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ format: '{{ $format }}' })
+                    });
 
+                    if (serverRes.ok) {
+                        const sData = await serverRes.json();
+                        if (sData.success && sData.is_local) {
+                            showNotification('success', sData.message || 'Printed directly to TSC TE244 on USB001!');
+                            return;
+                        }
+                    }
+                } catch (srvErr) {
+                    console.log('Server direct print skipped, checking bridge...', srvErr);
+                }
+
+                // 2. Second attempt: check local bridge daemon on port 8989
+                let isOnline = await checkBridgeStatus();
                 if (isOnline) {
-                    // Send directly to local bridge on USB001
                     const printRes = await fetch(BRIDGE_URL + '/print', {
                         method: 'POST',
                         mode: 'cors',
@@ -1313,12 +1363,13 @@
                     const result = await printRes.json();
                     if (result.success) {
                         showNotification('success', 'Printed directly to TSC TE244 on USB001!');
+                        return;
                     } else {
                         showNotification('error', 'Printer bridge error: ' + (result.error || 'Failed to print'));
                     }
                 } else {
                     // Bridge is offline: open browser print dialog directly so user can print immediately!
-                    showNotification('info', 'Local Print Bridge is offline. Opening Browser Print Dialog...');
+                    showNotification('info', 'Opening Browser Print Dialog for TSC TE244...');
                     window.print();
                 }
             } catch (err) {
