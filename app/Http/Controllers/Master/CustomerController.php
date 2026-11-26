@@ -26,7 +26,28 @@ class CustomerController extends Controller
 
     public function index(Request $request)
     {
-        $query = Customer::with('category');
+        $statsData = $this->getPetStatsAndFilterIds();
+        $stats = $statsData['counts'];
+        $filterIds = $statsData['customer_ids'];
+
+        $query = Customer::with(['category', 'pets']);
+
+        $filter = $request->input('filter');
+        if ($filter === 'today_birthdays') {
+            $query->whereIn('id', !empty($filterIds['today_birthdays']) ? $filterIds['today_birthdays'] : [0]);
+        } elseif ($filter === 'month_birthdays') {
+            $query->whereIn('id', !empty($filterIds['month_birthdays']) ? $filterIds['month_birthdays'] : [0]);
+        } elseif ($filter === 'has_pets' || $filter === 'total_pets') {
+            $query->has('pets');
+        } elseif ($filter === 'baby') {
+            $query->whereIn('id', !empty($filterIds['baby']) ? $filterIds['baby'] : [0]);
+        } elseif ($filter === 'puppy') {
+            $query->whereIn('id', !empty($filterIds['puppy']) ? $filterIds['puppy'] : [0]);
+        } elseif ($filter === 'adult') {
+            $query->whereIn('id', !empty($filterIds['adult']) ? $filterIds['adult'] : [0]);
+        } elseif ($filter === 'senior') {
+            $query->whereIn('id', !empty($filterIds['senior']) ? $filterIds['senior'] : [0]);
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -66,7 +87,127 @@ class CustomerController extends Controller
         $customers = $query->paginate($this->perPage())->withQueryString();
         $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
 
-        return view('master.customers.index', compact('customers', 'categories'));
+        return view('master.customers.index', compact('customers', 'categories', 'stats', 'filter'));
+    }
+
+    private function getPetStatsAndFilterIds(): array
+    {
+        $todayDay = (int) date('d');
+        $todayMonth = (int) date('m');
+        $todayYear = (int) date('Y');
+
+        $todaysBirthdaysCustIds = [];
+        $monthBirthdaysCustIds = [];
+        $babyCustIds = [];
+        $puppyCustIds = [];
+        $adultCustIds = [];
+        $seniorCustIds = [];
+
+        $totalPets = 0;
+        $todayBirthdaysCount = 0;
+        $monthBirthdaysCount = 0;
+        $babyCount = 0;
+        $puppyCount = 0;
+        $adultCount = 0;
+        $seniorCount = 0;
+
+        $pets = \App\Models\CustomerPet::select('id', 'customer_id', 'birth_date', 'age')->get();
+        $totalPets = $pets->count();
+
+        foreach ($pets as $pet) {
+            $raw = trim((string) ($pet->birth_date ?? ''));
+            $day = null;
+            $month = null;
+            $year = null;
+
+            if ($raw !== '') {
+                if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $raw, $m)) {
+                    $day = (int) $m[1];
+                    $month = (int) $m[2];
+                    $year = (int) $m[3];
+                } elseif (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})/', $raw, $m)) {
+                    $year = (int) $m[1];
+                    $month = (int) $m[2];
+                    $day = (int) $m[3];
+                } elseif (preg_match('/^(\d{1,2})-(\d{4})$/', $raw, $m)) {
+                    $month = (int) $m[1];
+                    $year = (int) $m[2];
+                }
+            }
+
+            // Fallback: parse age string if available (e.g. "2 yrs", "5 months")
+            if (! $month && ! empty($pet->age)) {
+                $ageStr = strtolower(trim($pet->age));
+                if (preg_match('/(\d+)\s*(yr|year)/', $ageStr, $am)) {
+                    $ageYears = (int) $am[1];
+                    $year = $todayYear - $ageYears;
+                    $month = $todayMonth;
+                } elseif (preg_match('/(\d+)\s*(m|month)/', $ageStr, $am)) {
+                    $ageMonths = (int) $am[1];
+                    $totMonths = ($todayYear * 12 + $todayMonth) - $ageMonths;
+                    $year = (int) floor($totMonths / 12);
+                    $month = ($totMonths % 12) ?: 12;
+                }
+            }
+
+            if ($month) {
+                if ($month === $todayMonth) {
+                    $monthBirthdaysCount++;
+                    $monthBirthdaysCustIds[] = $pet->customer_id;
+                    if ($day && $day === $todayDay) {
+                        $todayBirthdaysCount++;
+                        $todaysBirthdaysCustIds[] = $pet->customer_id;
+                    }
+                }
+
+                if ($year) {
+                    $ageInMonths = ($todayYear - $year) * 12 + ($todayMonth - $month);
+                    if ($day && $todayDay < $day) {
+                        $ageInMonths--;
+                    }
+                    if ($ageInMonths < 0) {
+                        $ageInMonths = 0;
+                    }
+
+                    if ($ageInMonths < 3) {
+                        $babyCount++;
+                        $babyCustIds[] = $pet->customer_id;
+                    } elseif ($ageInMonths < 15) {
+                        $puppyCount++;
+                        $puppyCustIds[] = $pet->customer_id;
+                    } elseif ($ageInMonths <= 84) {
+                        $adultCount++;
+                        $adultCustIds[] = $pet->customer_id;
+                    } else {
+                        $seniorCount++;
+                        $seniorCustIds[] = $pet->customer_id;
+                    }
+                }
+            }
+        }
+
+        $totalCustomers = Customer::count();
+
+        return [
+            'counts' => [
+                'total_customers' => $totalCustomers,
+                'today_birthdays' => $todayBirthdaysCount,
+                'month_birthdays' => $monthBirthdaysCount,
+                'total_pets' => $totalPets,
+                'baby' => $babyCount,
+                'puppy' => $puppyCount,
+                'adult' => $adultCount,
+                'senior' => $seniorCount,
+            ],
+            'customer_ids' => [
+                'today_birthdays' => array_values(array_unique($todaysBirthdaysCustIds)),
+                'month_birthdays' => array_values(array_unique($monthBirthdaysCustIds)),
+                'baby' => array_values(array_unique($babyCustIds)),
+                'puppy' => array_values(array_unique($puppyCustIds)),
+                'adult' => array_values(array_unique($adultCustIds)),
+                'senior' => array_values(array_unique($seniorCustIds)),
+            ],
+        ];
     }
 
     public function create()
