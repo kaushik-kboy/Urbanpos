@@ -1249,7 +1249,7 @@
         async function directPrintTsc() {
             const $btn = $('#btnDirectPrint');
             const originalHtml = $btn.html();
-            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending to TSC TE244...');
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing to TSC TE244...');
 
             try {
                 if (!EMBEDDED_TSPL || !EMBEDDED_TSPL.includes('PRINT')) {
@@ -1257,6 +1257,31 @@
                     return;
                 }
 
+                // 1. Try local HTTP Bridge first (instant 1-click print, no Save-As popup)
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1200);
+                    const printRes = await fetch(BRIDGE_URL + '/print', {
+                        method: 'POST',
+                        mode: 'cors',
+                        signal: controller.signal,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tspl: EMBEDDED_TSPL })
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (printRes.ok) {
+                        const result = await printRes.json();
+                        if (result.success) {
+                            showNotification('success', 'Printed directly to ' + (result.printer || 'TSC TE244') + '!');
+                            return;
+                        }
+                    }
+                } catch (bridgeErr) {
+                    console.log('Local bridge not reachable, falling back to .prn download:', bridgeErr);
+                }
+
+                // 2. Fallback: download .prn file (picked up by background spooler)
                 downloadPrnFile();
                 showNotification('success', 'Print job sent to TSC TE244! (Pehli baar setup ke liye More -> Client PC Setup run karein)');
             } catch (err) {
@@ -1265,7 +1290,7 @@
             } finally {
                 setTimeout(function () {
                     $btn.prop('disabled', false).html(originalHtml);
-                }, 600);
+                }, 400);
             }
         }
 
