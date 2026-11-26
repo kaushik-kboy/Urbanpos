@@ -836,8 +836,13 @@
                 </span>
             </div>
 
+            {{-- Standard Browser Print Dialog (Always works with all printers) --}}
+            <button type="button" class="btn btn-primary btn-lg font-weight-bold shadow px-4 my-1 mr-2" onclick="window.print()" title="Print stickers via Browser Print dialog (Works with any printer)">
+                <i class="fas fa-print mr-2"></i> <strong>Print Labels (Browser Dialog)</strong>
+            </button>
+
             {{-- 1-Click Direct Print to TSC TE244 via Local Bridge --}}
-            <button type="button" class="btn btn-warning btn-lg font-weight-bold shadow px-4 my-1 mr-3" id="btnDirectPrint" onclick="directPrintTsc()" title="Print directly to TSC TE244 thermal printer (USB001)">
+            <button type="button" class="btn btn-warning btn-lg font-weight-bold shadow px-4 my-1 mr-2" id="btnDirectPrint" onclick="directPrintTsc()" title="Print directly to TSC TE244 thermal printer (USB001)">
                 <i class="fas fa-bolt mr-2 text-dark"></i> <strong>⚡ 1-Click Direct Print (TSC TE244)</strong>
             </button>
 
@@ -1239,9 +1244,9 @@
                         showNotification('error', 'Printer bridge error: ' + (result.error || 'Failed to print'));
                     }
                 } else {
-                    // Bridge is offline: download .prn file
-                    downloadPrnFile();
-                    showNotification('warning', 'Local Print Bridge is offline. Downloaded .prn file. Start start_print_bridge.bat to enable 1-click printing.');
+                    // Bridge is offline: open browser print dialog directly so user can print immediately!
+                    showNotification('info', 'Local Print Bridge is offline. Opening Browser Print Dialog...');
+                    window.print();
                 }
             } catch (err) {
                 console.warn('Direct print error:', err);
