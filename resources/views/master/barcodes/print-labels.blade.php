@@ -820,21 +820,21 @@
 </head>
 <body class="format-{{ $format }}">
 
-    <!-- Toolbar -->
-    <div class="print-toolbar d-flex justify-content-between align-items-center flex-wrap">
+    <!-- Toolbar (Clean & Simple) -->
+    <div class="print-toolbar d-flex justify-content-between align-items-center flex-wrap px-3 py-2">
         <div class="d-flex align-items-center my-1">
-            <a href="{{ route('master.items.index') }}" class="btn btn-primary btn-sm mr-2 font-weight-bold shadow-sm">
-                <i class="fas fa-boxes mr-1"></i> Items Listing
-            </a>
             @if(request()->filled('purchase_invoice_id'))
                 <a href="{{ route('purchase.purchase-invoices.edit', request('purchase_invoice_id')) }}" class="btn btn-outline-secondary btn-sm mr-2 font-weight-bold">
-                    <i class="fas fa-edit mr-1"></i> Back to Invoice
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Invoice
                 </a>
             @else
                 <button type="button" class="btn btn-outline-secondary btn-sm mr-2 font-weight-bold" onclick="if (window.opener) { window.close(); } else { window.location.href='{{ route('master.items.index') }}'; }">
                     <i class="fas fa-arrow-left mr-1"></i> Back
                 </button>
             @endif
+            <a href="{{ route('master.items.index') }}" class="btn btn-outline-primary btn-sm mr-2 font-weight-bold">
+                <i class="fas fa-boxes mr-1"></i> Items Listing
+            </a>
             <h5 class="mb-0 font-weight-bold text-dark mx-2">
                 <i class="fas fa-barcode text-primary mr-1"></i> Barcode Stickers
             </h5>
@@ -844,97 +844,24 @@
         </div>
 
         <div class="d-flex align-items-center my-1 flex-wrap">
-            {{-- Format Selector --}}
-            <div class="btn-group btn-group-sm mr-2 my-1">
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x38_2up']) }}" class="btn {{ $format === '50x38_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 2 Labels Per Row (50x38 mm each)">
-                    <i class="fas fa-barcode mr-1"></i> 50x38 (2-Up Thermal) ★
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '50x25_2up']) }}" class="btn {{ $format === '50x25_2up' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 2 Labels Per Row (50x25 mm each)">
-                    50x25 (2-Up)
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => '102x64']) }}" class="btn {{ $format === '102x64' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-primary' }}" title="Thermal Roll: 1 Single Big Label (102x63.5 mm)">
-                    102x64 (1-Up)
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => 'a4_24']) }}" class="btn {{ in_array($format, ['a4_24', 'a4']) ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-success' }}" title="A4 Sticker Sheet: 24 Labels Per Sheet (3x8 Grid)">
-                    A4 (24-Up)
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => 'a4_40']) }}" class="btn {{ $format === 'a4_40' ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-success' }}" title="A4 Sticker Sheet: 40 Labels Per Sheet (4x10 Grid)">
-                    A4 (40-Up)
-                </a>
-            </div>
+            {{-- Big Clean 1-Click Print Button --}}
+            <button type="button" class="btn btn-success btn-lg font-weight-bold shadow px-4 mr-2" id="btnDirectPrint" onclick="directPrintTsc()" title="Print labels directly to TSC TE244">
+                <i class="fas fa-print mr-2"></i> Print Labels (TSC TE244)
+            </button>
 
-            {{-- Rotation Selector --}}
-            <div class="btn-group btn-group-sm mr-2 my-1">
-                <button type="button" class="btn btn-outline-secondary font-weight-bold dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-sync-alt mr-1"></i> <span id="rotLabel">Rotation: 0°</span>
+            {{-- Clean More Dropdown (for backup only) --}}
+            <div class="dropdown">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle font-weight-bold" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="More Options">
+                    <i class="fas fa-ellipsis-v mr-1"></i> More
                 </button>
                 <div class="dropdown-menu dropdown-menu-right shadow">
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(0)"><i class="fas fa-arrow-up mr-2 text-primary"></i> 0° Sidha (Normal Portrait)</a>
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(90)"><i class="fas fa-arrow-right mr-2 text-warning"></i> 90° Ghumao (Clockwise)</a>
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(180)"><i class="fas fa-arrow-down mr-2 text-danger"></i> 180° Inverted (Ulta)</a>
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setRotation(270)"><i class="fas fa-arrow-left mr-2 text-info"></i> 270° Ghumao (Counter-CW)</a>
+                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="downloadPrnFile()">
+                        <i class="fas fa-file-download mr-2 text-primary"></i> Download .PRN File
+                    </a>
+                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="window.print()">
+                        <i class="fas fa-print mr-2 text-secondary"></i> Browser Print Dialog
+                    </a>
                 </div>
-            </div>
-
-            {{-- Text & Barcode Size / Scale Selector --}}
-            <div class="btn-group btn-group-sm mr-2 my-1">
-                <button type="button" class="btn btn-outline-dark font-weight-bold dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-text-height mr-1"></i> <span id="scaleLabel">Size: Bada (Large)</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right shadow">
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setScale('normal')">Chota (Normal)</a>
-                    <a class="dropdown-item font-weight-bold text-primary" href="javascript:void(0)" onclick="setScale('large')"><i class="fas fa-check text-primary mr-1"></i> Bada (Large - Recommended)</a>
-                    <a class="dropdown-item font-weight-bold" href="javascript:void(0)" onclick="setScale('xl')">Extra Bada (XL)</a>
-                </div>
-            </div>
-
-            {{-- Test 1 Row Print Button --}}
-            <button type="button" class="btn btn-outline-warning btn-sm font-weight-bold shadow-sm px-3 my-1 mr-2" onclick="printTestRow()" title="Roll bachane ke liye sirf 1 row (2 stickers) test print karein">
-                <i class="fas fa-vial mr-1 text-dark"></i> Test 1 Row
-            </button>
-
-            {{-- Live Printer Bridge Status Indicator --}}
-            <div class="my-1 mr-2">
-                <span id="bridgeStatusBadge" class="badge badge-light border px-2 py-2 font-weight-bold shadow-sm" style="font-size: 12px; color: #64748b;" title="TSC TE244 Local Print Bridge Status">
-                    <i class="fas fa-circle mr-1 text-secondary" id="bridgeStatusDot"></i> <span id="bridgeStatusText">Checking TSC TE244…</span>
-                </span>
-            </div>
-
-            {{-- 1-Click Direct Print to TSC TE244 via Local Bridge --}}
-            <button type="button" class="btn btn-warning btn-lg font-weight-bold shadow px-4 my-1 mr-2" id="btnDirectPrint" onclick="directPrintTsc()" title="Print directly to TSC TE244 thermal printer (USB001)">
-                <i class="fas fa-bolt mr-2 text-dark"></i> <strong>⚡ 1-Click Direct Print (TSC TE244)</strong>
-            </button>
-
-            {{-- Standard Browser Print Dialog (Always works with all printers) --}}
-            <button type="button" class="btn btn-primary btn-lg font-weight-bold shadow px-4 my-1 mr-2" onclick="window.print()" title="Print stickers via Browser Print dialog (Works with any printer)">
-                <i class="fas fa-print mr-2"></i> <strong>Print Labels (Browser Dialog)</strong>
-            </button>
-
-            {{-- Download Raw TSPL / PRN --}}
-            <button type="button" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm px-3 my-1" onclick="downloadPrnFile()" title="Download raw TSPL file (labels_tsc_te244.prn)">
-                <i class="fas fa-file-download mr-1 text-primary"></i> Download .PRN
-            </button>
-        </div>
-    </div>
-
-    <!-- On-screen Guide for TSC TE244 (2-Up Roll) -->
-    <div class="container-fluid print-instructions mt-2 px-3">
-        <div class="alert alert-warning border border-warning shadow-sm py-2 px-3 mb-0 d-flex align-items-center justify-content-between flex-wrap">
-            <div class="d-flex align-items-center my-1">
-                <i class="fas fa-print text-dark mr-2" style="font-size: 20px;"></i>
-                <span class="small font-weight-bold text-dark">
-                    <strong>TSC TE244 (2-Up Roll) Print Guide:</strong> &nbsp;
-                    1. Destination = <strong>TSC TE244</strong> &nbsp;|&nbsp;
-                    2. Layout = <span class="badge badge-success" style="font-size: 11px;">LANDSCAPE</span> (Kyunki 102mm roll width badi hai) &nbsp;|&nbsp;
-                    3. Paper Size = <strong>102 x 38 mm</strong> (ya 102 x 25 mm) &nbsp;|&nbsp;
-                    4. Margins = <strong>None</strong> &nbsp;|&nbsp;
-                    5. Headers & Footers = <strong>OFF (Uncheck)</strong>
-                </span>
-            </div>
-            <div class="my-1">
-                <button type="button" class="btn btn-dark btn-sm font-weight-bold shadow-sm" onclick="printTestRow()">
-                    <i class="fas fa-vial mr-1 text-warning"></i> Test 1 Row (2 Stickers)
-                </button>
             </div>
         </div>
     </div>
