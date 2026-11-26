@@ -1046,15 +1046,11 @@
                     <option value="Female">Female</option>
                 </select>
             </div>
-            <div class="col-md-3 mb-2">
-                <label class="font-weight-600 small mb-1">Age</label>
-                <input type="text" name="pets[__INDEX__][age]" class="form-control form-control-sm pos-pet-age" placeholder="e.g. 2 yrs">
+            <div class="col-md-4 mb-2">
+                <label class="font-weight-600 small mb-1">Birth Date <small class="text-muted">(DD-MM-YYYY or MM-YYYY)</small></label>
+                <input type="text" name="pets[__INDEX__][birth_date]" class="form-control form-control-sm pos-pet-birthdate" placeholder="DD-MM-YYYY or MM-YYYY" maxlength="10" autocomplete="off">
             </div>
-            <div class="col-md-3 mb-2">
-                <label class="font-weight-600 small mb-1">Birth Date</label>
-                <input type="date" name="pets[__INDEX__][birth_date]" class="form-control form-control-sm pos-pet-birthdate">
-            </div>
-            <div class="col-md-6 mb-2">
+            <div class="col-md-8 mb-2">
                 <label class="font-weight-600 small mb-1">Remarks</label>
                 <textarea name="pets[__INDEX__][remarks]" rows="1" class="form-control form-control-sm pos-pet-remarks" placeholder="Notes, allergy, etc."></textarea>
             </div>

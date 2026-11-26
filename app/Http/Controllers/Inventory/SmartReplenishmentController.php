@@ -143,7 +143,7 @@ class SmartReplenishmentController extends Controller
             ->select([
                 'replenishment_item_metrics.*',
                 DB::raw('COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0) as live_stock'),
-                DB::raw('GREATEST(0, COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) as live_other_stock'),
+                DB::raw('CASE WHEN (COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) < 0 THEN 0 ELSE (COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) END as live_other_stock'),
             ])
             ->with([
                 'item:id,name,item_code,brand_id,brand_value_id,department_value_id,category_value_id,supplier_id,cost_price,sell_price',
@@ -1149,7 +1149,7 @@ class SmartReplenishmentController extends Controller
             ->select([
                 'replenishment_item_metrics.*',
                 DB::raw('COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0) as live_stock'),
-                DB::raw('GREATEST(0, COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) as live_other_stock'),
+                DB::raw('CASE WHEN (COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) < 0 THEN 0 ELSE (COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) END as live_other_stock'),
             ])
             ->with([
                 'item:id,name,item_code,brand_id,brand_value_id,department_value_id,category_value_id,supplier_id,cost_price',

@@ -44,7 +44,7 @@ class CustomerPetBirthDateAndPersistenceTest extends TestCase
         ]);
     }
 
-    public function test_customer_pet_birth_date_serializes_as_exact_ymd_string(): void
+    public function test_customer_pet_birth_date_serializes_and_formats_both_dd_mm_yyyy_and_mm_yyyy(): void
     {
         $customer = Customer::create([
             'name' => 'John Doe',
@@ -52,21 +52,34 @@ class CustomerPetBirthDateAndPersistenceTest extends TestCase
             'customer_type' => 'RETAIL INVOICE',
         ]);
 
-        $pet = CustomerPet::create([
+        // Full date
+        $petFull = CustomerPet::create([
             'customer_id' => $customer->id,
             'name' => 'Bruno',
             'gender' => 'Male',
-            'birth_date' => '2024-05-15',
+            'birth_date' => '15-05-2024',
         ]);
 
-        $array = $pet->toArray();
-        $this->assertEquals('2024-05-15', $array['birth_date']);
+        $this->assertEquals('15-05-2024', (string) $petFull->birth_date);
+        $this->assertEquals('15-05-2024', optional($petFull->birth_date)->format('d-m-Y'));
+        $jsonFull = json_decode($petFull->toJson(), true);
+        $this->assertEquals('15-05-2024', $jsonFull['birth_date']);
 
-        $json = json_decode($pet->toJson(), true);
-        $this->assertEquals('2024-05-15', $json['birth_date']);
+        // Month and Year only
+        $petMonthYear = CustomerPet::create([
+            'customer_id' => $customer->id,
+            'name' => 'Milo',
+            'gender' => 'Male',
+            'birth_date' => '10-2023',
+        ]);
+
+        $this->assertEquals('10-2023', (string) $petMonthYear->birth_date);
+        $this->assertEquals('10-2023', optional($petMonthYear->birth_date)->format('d-m-Y'));
+        $jsonMY = json_decode($petMonthYear->toJson(), true);
+        $this->assertEquals('10-2023', $jsonMY['birth_date']);
     }
 
-    public function test_sync_pets_saves_pet_when_only_birth_date_and_gender_provided(): void
+    public function test_sync_pets_saves_pet_when_only_month_year_birth_date_provided(): void
     {
         $customer = Customer::create([
             'name' => 'Jane Doe',
@@ -81,7 +94,7 @@ class CustomerPetBirthDateAndPersistenceTest extends TestCase
             'pets' => [
                 [
                     'gender' => 'Female',
-                    'birth_date' => '2023-11-20',
+                    'birth_date' => '11-2023',
                     'name' => '',
                     'breed_id' => '',
                     'pet_type_id' => '',
@@ -93,7 +106,7 @@ class CustomerPetBirthDateAndPersistenceTest extends TestCase
         $this->assertDatabaseHas('customer_pets', [
             'customer_id' => $customer->id,
             'gender' => 'Female',
-            'birth_date' => '2023-11-20',
+            'birth_date' => '11-2023',
         ]);
     }
 }

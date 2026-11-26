@@ -292,7 +292,7 @@
                                 <x-field name="pets[{{ $index }}][age]" label="Age" :value="$pet->age ?? ''" />
                             </div>
                             <div class="field-wrapper col-md-6" data-field="birth_date" data-label="Birth Date" data-default-order="6">
-                                <x-field name="pets[{{ $index }}][birth_date]" label="Birth Date" type="date" :value="optional($pet->birth_date ?? null)->format('Y-m-d')" />
+                                <x-field name="pets[{{ $index }}][birth_date]" label="Birth Date (DD-MM-YYYY or MM-YYYY)" placeholder="DD-MM-YYYY or MM-YYYY" :value="(string)($pet->birth_date ?? '')" />
                             </div>
                             <div class="field-wrapper col-md-12" data-field="remarks" data-label="Remarks" data-default-order="7">
                                 <x-textarea name="pets[{{ $index }}][remarks]" label="Remarks" :value="$pet->remarks ?? ''" col="6" rows="2" />
@@ -453,7 +453,7 @@
             <div class="field-wrapper col-md-6" data-field="birth_date" data-label="Birth Date" data-default-order="6">
                 <div class="form-group row">
                     <label class="col-sm-3 col-form-label">Birth Date</label>
-                    <div class="col-sm-6"><input type="date" name="pets[__INDEX__][birth_date]" class="form-control"></div>
+                    <div class="col-sm-6"><input type="text" name="pets[__INDEX__][birth_date]" class="form-control" placeholder="DD-MM-YYYY or MM-YYYY" maxlength="10"></div>
                 </div>
             </div>
 

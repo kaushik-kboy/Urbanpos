@@ -290,6 +290,29 @@ body, .content-wrapper {
             </div>
         </div>
     </div>
+
+    {{-- Supplier Pagination Footer --}}
+    @if(count($supplierOrders) > 0)
+    <div class="row mt-3 mb-4" id="supplierPaginationRow">
+        <div class="col-12">
+            <div class="p-3 bg-white border border-dark rounded d-flex justify-content-between align-items-center flex-wrap shadow-sm">
+                <div class="d-flex align-items-center mb-2 mb-md-0">
+                    <span class="font-weight-bold text-dark text-sm mr-3" id="supplierPaginationInfo">Showing 0 of 0</span>
+                    <div class="d-flex align-items-center">
+                        <label class="small font-weight-bold mr-1 mb-0 text-muted">Per Page:</label>
+                        <select id="supplierPerPage" class="form-control form-control-sm" style="width: 75px; height: 31px; border-radius: 6px; font-weight: 700;">
+                            <option value="9" selected>9</option>
+                            <option value="18">18</option>
+                            <option value="36">36</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                </div>
+                <ul class="pagination pagination-sm m-0" id="supplierPaginationControls"></ul>
+            </div>
+        </div>
+    </div>
+    @endif
 @stop
 
 @push('js')
@@ -297,13 +320,19 @@ body, .content-wrapper {
 <script>
 $(document).ready(function() {
     const totalSuppliersCount = {{ count($supplierOrders) }};
+    let supplierCurrentPage = 1;
+    let supplierPerPage = 9;
+    let matchingSupplierCards = [];
 
     $('#filterSupplierSelect').select2({
         theme: 'bootstrap4',
         width: '100%'
     });
 
-    function applySupplierFilter() {
+    function applySupplierFilter(resetPage = true) {
+        if (resetPage) {
+            supplierCurrentPage = 1;
+        }
         const query = ($('#filterSupplierSearch').val() || '').toLowerCase().trim();
         const selectedId = $('#filterSupplierSelect').val();
 
@@ -313,58 +342,147 @@ $(document).ready(function() {
             $('#btnClearSupplierSearch').addClass('d-none');
         }
 
-        let visibleCount = 0;
+        matchingSupplierCards = [];
         $('.vendor-card-col').each(function() {
-            const cardSupName = String($(this).data('supplier-name') || '');
-            const cardSupId = String($(this).data('supplier-id') || '');
+            const $card = $(this);
+            const cardSupName = String($card.data('supplier-name') || '');
+            const cardSupId = String($card.data('supplier-id') || '');
 
             const matchesSearch = (!query || cardSupName.indexOf(query) !== -1);
             const matchesSelect = (selectedId === 'all' || cardSupId === selectedId);
 
             if (matchesSearch && matchesSelect) {
-                $(this).removeClass('d-none');
-                visibleCount++;
+                matchingSupplierCards.push($card);
             } else {
-                $(this).addClass('d-none');
+                $card.addClass('d-none');
             }
         });
 
-        $('#supplierVisibleCountBadge').text(visibleCount + ' of ' + totalSuppliersCount + ' Suppliers');
+        const totalMatching = matchingSupplierCards.length;
+        $('#supplierVisibleCountBadge').text(totalMatching + ' of ' + totalSuppliersCount + ' Suppliers');
 
-        if (visibleCount === 0 && totalSuppliersCount > 0) {
+        if (totalMatching === 0 && totalSuppliersCount > 0) {
             $('#noSupplierMatchCard').removeClass('d-none');
+            $('#supplierPaginationRow').addClass('d-none');
         } else {
             $('#noSupplierMatchCard').addClass('d-none');
+            $('#supplierPaginationRow').removeClass('d-none');
         }
+
+        renderSupplierPagination();
     }
 
-    $('#btnApplySupplierFilter').on('click', applySupplierFilter);
+    function renderSupplierPagination(page = null) {
+        if (page !== null) {
+            supplierCurrentPage = page;
+        }
+        const total = matchingSupplierCards.length;
+        let perPage = supplierPerPage === 'all' ? (total > 0 ? total : 9) : parseInt(supplierPerPage, 10);
+        if (!perPage || perPage <= 0) perPage = 9;
 
-    $('#filterSupplierSearch').on('input keyup', applySupplierFilter);
+        const totalPages = Math.max(1, Math.ceil(total / perPage));
+        if (supplierCurrentPage > totalPages) {
+            supplierCurrentPage = totalPages;
+        }
+        if (supplierCurrentPage < 1) {
+            supplierCurrentPage = 1;
+        }
+
+        const startIndex = (supplierCurrentPage - 1) * perPage;
+        const endIndex = supplierPerPage === 'all' ? total : Math.min(startIndex + perPage, total);
+
+        matchingSupplierCards.forEach(function($card, idx) {
+            if (idx >= startIndex && idx < endIndex) {
+                $card.removeClass('d-none');
+            } else {
+                $card.addClass('d-none');
+            }
+        });
+
+        if (total === 0) {
+            $('#supplierPaginationInfo').text('Showing 0 of 0');
+        } else {
+            $('#supplierPaginationInfo').text(`Showing page ${supplierCurrentPage} of ${totalPages} (${total} total suppliers)`);
+        }
+
+        let html = '';
+        if (totalPages > 1) {
+            html += `<li class="page-item ${supplierCurrentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToSupplierPage(${supplierCurrentPage - 1})">&laquo;</a>
+                     </li>`;
+
+            let start = Math.max(1, supplierCurrentPage - 2);
+            let end = Math.min(totalPages, supplierCurrentPage + 2);
+
+            if (start > 1) {
+                html += `<li class="page-item"><a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToSupplierPage(1)">1</a></li>`;
+                if (start > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link font-weight-bold text-dark">...</span></li>`;
+                }
+            }
+
+            for (let i = start; i <= end; i++) {
+                html += `<li class="page-item ${i === supplierCurrentPage ? 'active' : ''}">
+                            <a class="page-link font-weight-bold ${i === supplierCurrentPage ? 'bg-dark text-white border-dark' : 'text-dark'}" href="javascript:void(0)" onclick="goToSupplierPage(${i})">${i}</a>
+                         </li>`;
+            }
+
+            if (end < totalPages) {
+                if (end < totalPages - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link font-weight-bold text-dark">...</span></li>`;
+                }
+                html += `<li class="page-item"><a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToSupplierPage(${totalPages})">${totalPages}</a></li>`;
+            }
+
+            html += `<li class="page-item ${supplierCurrentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToSupplierPage(${supplierCurrentPage + 1})">&raquo;</a>
+                     </li>`;
+        }
+
+        $('#supplierPaginationControls').html(html);
+    }
+
+    window.goToSupplierPage = function(page) {
+        renderSupplierPagination(page);
+        const gridOffset = $('#supplierCardsRow').offset();
+        if (gridOffset && $(window).scrollTop() > gridOffset.top - 100) {
+            $('html, body').animate({ scrollTop: gridOffset.top - 100 }, 200);
+        }
+    };
+
+    $('#supplierPerPage').on('change', function() {
+        supplierPerPage = $(this).val();
+        supplierCurrentPage = 1;
+        renderSupplierPagination(1);
+    });
+
+    $('#btnApplySupplierFilter').on('click', function() { applySupplierFilter(true); });
+
+    $('#filterSupplierSearch').on('input keyup', function() { applySupplierFilter(true); });
     $('#filterSupplierSearch').on('keypress', function(e) {
         if (e.which === 13) {
             e.preventDefault();
-            applySupplierFilter();
+            applySupplierFilter(true);
         }
     });
 
     $('#filterSupplierSelect').on('change.select2 change', function() {
-        applySupplierFilter();
+        applySupplierFilter(true);
     });
 
     $('#btnClearSupplierSearch').on('click', function() {
         $('#filterSupplierSearch').val('').focus();
-        applySupplierFilter();
+        applySupplierFilter(true);
     });
 
     $('#btnResetSupplierFilter').on('click', function() {
         $('#filterSupplierSearch').val('');
         $('#filterSupplierSelect').val('all').trigger('change.select2');
-        applySupplierFilter();
+        applySupplierFilter(true);
     });
 
     // Run initial filter if values were preloaded from query parameters
-    applySupplierFilter();
+    applySupplierFilter(true);
 });
 </script>
 @endpush
