@@ -102,24 +102,144 @@ function Get-TargetPrinter {
     return "TSC TE244"
 }
 
-$regDownloads = [Microsoft.Win32.Registry]::GetValue("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders", "{374DE290-123F-4565-9164-39C4925E467B}", $null)
-if ($regDownloads) {
-    $regDownloads = [System.Environment]::ExpandEnvironmentVariables($regDownloads)
-}
-$watchFolders = @(
-    [System.IO.Path]::Combine($env:USERPROFILE, "Downloads"),
-    [System.IO.Path]::Combine($env:USERPROFILE, "OneDrive\Downloads")
-)
-if ($regDownloads -and (Test-Path $regDownloads) -and ($watchFolders -notcontains $regDownloads)) {
-    $watchFolders += $regDownloads
+function Get-AllWatchFolders {
+    $folders = New-Object System.Collections.Generic.List[string]
+    $candidates = @(
+        [System.IO.Path]::Combine($env:USERPROFILE, "Downloads"),
+        [System.IO.Path]::Combine($env:USERPROFILE, "OneDrive\Downloads"),
+        [System.IO.Path]::Combine($env:USERPROFILE, "Desktop")
+    )
+
+    $regDownloads = [Microsoft.Win32.Registry]::GetValue("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders", "{374DE290-123F-4565-9164-39C4925E467B}", $null)
+    if ($regDownloads) {
+        $candidates += [System.Environment]::ExpandEnvironmentVariables($regDownloads)
+    }
+
+    # Also read Chrome & Edge last Save-As / Download directories from Preferences
+    $browserRoots = @(
+        [System.IO.Path]::Combine($env:LOCALAPPDATA, "Google\Chrome\User Data"),
+        [System.IO.Path]::Combine($env:LOCALAPPDATA, "Microsoft\Edge\User Data")
+    )
+    foreach ($root in $browserRoots) {
+        if (Test-Path $root) {
+            $prefFiles = Get-ChildItem -Path $root -Filter "Preferences" -Recurse -Depth 2 -File -ErrorAction SilentlyContinue
+            foreach ($pf in $prefFiles) {
+                try {
+                    $json = Get-Content -Path $pf.FullName -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json -ErrorAction SilentlyContinue
+                    if ($json.savefile -and $json.savefile.default_directory) { $candidates += $json.savefile.default_directory }
+                    if ($json.download -and $json.download.default_directory) { $candidates += $json.download.default_directory }
+                } catch {}
+            }
+        }
+    }
+
+    foreach ($c in $candidates) {
+        if ($c -and (Test-Path $c) -and (-not $folders.Contains($c))) {
+            $folders.Add($c)
+        }
+    }
+    return $folders
 }
 
+function Send-TsplToPrinter($bytes, $sourceName) {
+    $printer = Get-TargetPrinter
+    $wmi = Get-WmiObject Win32_Printer -Filter "Name='$printer'" -ErrorAction SilentlyContinue
+    if ($wmi -and $wmi.WorkOffline) {
+        $wmi.WorkOffline = $false
+        $wmi.Put() | Out-Null
+    }
+    $res = [RawPrinter]::SendBytes($printer, $bytes)
+    Write-SpoolLog "Print job ($sourceName) to '$printer': Success=$res"
+    return @{ Success = $res; Printer = $printer }
+}
+
+$watchFolders = Get-AllWatchFolders
 Write-SpoolLog "UrbanPOS Spooler started. Watching: $($watchFolders -join ', ')"
 $activePrinter = Get-TargetPrinter
 Write-SpoolLog "Initial target printer: $activePrinter"
 
+# Start local HTTP bridge on 127.0.0.1:8989 for instant 1-click printing (no Save-As popup)
+$httpListener = $null
+$httpTask = $null
+try {
+    $httpListener = New-Object System.Net.HttpListener
+    $httpListener.Prefixes.Add("http://127.0.0.1:8989/")
+    $httpListener.Start()
+    $httpTask = $httpListener.GetContextAsync()
+    Write-SpoolLog "HTTP Bridge listening on http://127.0.0.1:8989/"
+} catch {
+    Write-SpoolLog "HTTP Bridge skipped (port busy or unavailable): $_"
+    $httpListener = $null
+}
+
+$lastFolderRefresh = Get-Date
+
 while ($true) {
     try {
+        # 1. Handle HTTP Bridge requests (non-blocking)
+        while ($httpListener -and $httpTask -and $httpTask.IsCompleted) {
+            try {
+                $ctx = $httpTask.GetAwaiter().GetResult()
+                $httpTask = $httpListener.GetContextAsync()
+
+                $req = $ctx.Request
+                $resp = $ctx.Response
+                $resp.Headers.Add("Access-Control-Allow-Origin", "*")
+                $resp.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                $resp.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Access-Control-Request-Private-Network")
+                $resp.Headers.Add("Access-Control-Allow-Private-Network", "true")
+
+                if ($req.HttpMethod -eq "OPTIONS") {
+                    $resp.StatusCode = 204
+                    $resp.Close()
+                } elseif ($req.Url.AbsolutePath -eq "/status") {
+                    $pName = Get-TargetPrinter
+                    $body = (@{ ok = $true; printer = $pName } | ConvertTo-Json -Compress)
+                    $buf = [System.Text.Encoding]::UTF8.GetBytes($body)
+                    $resp.ContentType = "application/json"
+                    $resp.StatusCode = 200
+                    $resp.OutputStream.Write($buf, 0, $buf.Length)
+                    $resp.Close()
+                } elseif ($req.Url.AbsolutePath -eq "/print" -and $req.HttpMethod -eq "POST") {
+                    $sr = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+                    $rawBody = $sr.ReadToEnd()
+                    $sr.Close()
+
+                    $tsplText = $rawBody
+                    if ($rawBody.TrimStart().StartsWith("{")) {
+                        try {
+                            $parsed = $rawBody | ConvertFrom-Json
+                            if ($parsed.tspl) { $tsplText = $parsed.tspl }
+                        } catch {}
+                    }
+
+                    $tsplBytes = [System.Text.Encoding]::ASCII.GetBytes($tsplText)
+                    $result = Send-TsplToPrinter $tsplBytes "HTTP-Bridge"
+                    $respJson = (@{ success = $result.Success; printer = $result.Printer } | ConvertTo-Json -Compress)
+                    $buf = [System.Text.Encoding]::UTF8.GetBytes($respJson)
+                    $resp.ContentType = "application/json"
+                    $resp.StatusCode = 200
+                    $resp.OutputStream.Write($buf, 0, $buf.Length)
+                    $resp.Close()
+                } else {
+                    $resp.StatusCode = 404
+                    $resp.Close()
+                }
+            } catch {
+                Write-SpoolLog "HTTP request error: $_"
+                if ($httpListener -and (-not $httpTask -or $httpTask.IsCompleted)) {
+                    $httpTask = $httpListener.GetContextAsync()
+                }
+            }
+        }
+
+        # Refresh watch folders every 5 seconds in case user changed Chrome Save-As folder
+        if (((Get-Date) - $lastFolderRefresh).TotalSeconds -ge 5) {
+            $watchFolders = Get-AllWatchFolders
+            $lastFolderRefresh = Get-Date
+        }
+
+        # 2. Watch folders for .prn files (fallback)
         foreach ($folder in $watchFolders) {
             if (Test-Path $folder) {
                 $files = Get-ChildItem -Path $folder -Filter "*.prn" -File -ErrorAction SilentlyContinue
@@ -140,19 +260,9 @@ while ($true) {
                         if ($bytes -and $bytes.Length -gt 0) {
                             $text = [System.Text.Encoding]::ASCII.GetString($bytes)
                             if ($text.Contains("PRINT") -or $text.Contains("SIZE")) {
-                                $printer = Get-TargetPrinter
-                                
-                                # Ensure printer is online
-                                $wmi = Get-WmiObject Win32_Printer -Filter "Name='$printer'" -ErrorAction SilentlyContinue
-                                if ($wmi -and $wmi.WorkOffline) {
-                                    $wmi.WorkOffline = $false
-                                    $wmi.Put() | Out-Null
-                                }
+                                $result = Send-TsplToPrinter $bytes $file.Name
 
-                                $res = [RawPrinter]::SendBytes($printer, $bytes)
-                                Write-SpoolLog "Print job for '$($file.Name)' to '$printer': Success=$res"
-
-                                if ($res) {
+                                if ($result.Success) {
                                     Remove-Item -Path $file.FullName -Force -ErrorAction SilentlyContinue
                                 } else {
                                     $errCode = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
@@ -171,5 +281,5 @@ while ($true) {
         Write-SpoolLog "Loop error: $_"
     }
 
-    Start-Sleep -Milliseconds 450
+    Start-Sleep -Milliseconds 200
 }
