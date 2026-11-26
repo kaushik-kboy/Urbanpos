@@ -100,6 +100,16 @@ Route::get('printer-setup', function () {
     ]);
 })->name('printer-setup.download');
 
+Route::get('printer-spooler', function () {
+    $path = public_path('urbanpos_spooler.ps1');
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path, [
+        'Content-Type' => 'text/plain; charset=utf-8',
+    ]);
+})->name('printer-spooler.download');
+
 Route::get('/', function () {
     return redirect()->route('login');
 });

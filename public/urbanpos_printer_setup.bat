@@ -1,121 +1,57 @@
 @echo off
 title UrbanPOS TSC TE244 1-Click Print Setup
 color 0A
+setlocal enabledelayedexpansion
+
 echo ===============================================================
 echo     UrbanPOS TSC TE244 1-Click Print Utility Setup
 echo ===============================================================
 echo.
-echo Detecting printers and configuring background print service...
-echo.
 
-set TARGET_DIR=%LOCALAPPDATA%\UrbanPOS
+set "TARGET_DIR=%LOCALAPPDATA%\UrbanPOS"
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
-set PS_SCRIPT=%TARGET_DIR%\urbanpos_spooler.ps1
-set STARTUP_VBS=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\urbanpos_spooler.vbs
+set "PS_SCRIPT=%TARGET_DIR%\urbanpos_spooler.ps1"
+set "STARTUP_VBS=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\urbanpos_spooler.vbs"
 
-REM Write enhanced PowerShell Spooler with auto-printer detection & logging
-(
-echo # UrbanPOS Native Windows PRN Spooler for TSC TE244
-echo $code = @'
-echo using System;
-echo using System.IO;
-echo using System.Runtime.InteropServices;
-echo public class RawPrinter {
-echo     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi^)]
-echo     public class DOCINFOA {
-echo         [MarshalAs(UnmanagedType.LPStr^)] public string pDocName;
-echo         [MarshalAs(UnmanagedType.LPStr^)] public string pOutputFile;
-echo         [MarshalAs(UnmanagedType.LPStr^)] public string pDataType;
-echo     }
-echo     [DllImport("winspool.Drv", EntryPoint = "OpenPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall^)]
-echo     public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr^)] string szPrinter, out IntPtr hPrinter, IntPtr pd^);
-echo     [DllImport("winspool.Drv", EntryPoint = "ClosePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall^)]
-echo     public static extern bool ClosePrinter(IntPtr hPrinter^);
-echo     [DllImport("winspool.Drv", EntryPoint = "StartDocPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall^)]
-echo     public static extern bool StartDocPrinter(IntPtr hPrinter, int level, [In] DOCINFOA di^);
-echo     [DllImport("winspool.Drv", EntryPoint = "EndDocPrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall^)]
-echo     public static extern bool EndDocPrinter(IntPtr hPrinter^);
-echo     [DllImport("winspool.Drv", EntryPoint = "StartPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall^)]
-echo     public static extern bool StartPagePrinter(IntPtr hPrinter^);
-echo     [DllImport("winspool.Drv", EntryPoint = "EndPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall^)]
-echo     public static extern bool EndPagePrinter(IntPtr hPrinter^);
-echo     [DllImport("winspool.Drv", EntryPoint = "WritePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall^)]
-echo     public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int dwCount, out int dwWritten^);
-echo     public static bool SendBytes(string printerName, byte[] bytes^) {
-echo         IntPtr hPrinter;
-echo         if (!OpenPrinter(printerName, out hPrinter, IntPtr.Zero^)^) return false;
-echo         try {
-echo             DOCINFOA di = new DOCINFOA { pDocName = "UrbanPOS Direct Print", pDataType = "RAW" };
-echo             if (!StartDocPrinter(hPrinter, 1, di^)^) return false;
-echo             try {
-echo                 if (!StartPagePrinter(hPrinter^)^) return false;
-echo                 try {
-echo                     IntPtr pUnmanagedBytes = Marshal.AllocCoTaskMem(bytes.Length^);
-echo                     try {
-echo                         Marshal.Copy(bytes, 0, pUnmanagedBytes, bytes.Length^);
-echo                         int written;
-echo                         return WritePrinter(hPrinter, pUnmanagedBytes, bytes.Length, out written^);
-echo                     } finally { Marshal.FreeCoTaskMem(pUnmanagedBytes^); }
-echo                 } finally { EndPagePrinter(hPrinter^); }
-echo             } finally { EndDocPrinter(hPrinter^); }
-echo         } finally { ClosePrinter(hPrinter^); }
-echo     }
-echo }
-echo '@
-echo Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue
-echo function Get-TargetPrinter {
-echo     $printers = Get-WmiObject Win32_Printer ^| Select-Object -ExpandProperty Name
-echo     foreach ($p in $printers^) {
-echo         if ($p -match "TSC|TE244|TE 244|TTP|Thermal|Label|BarCode"^) { return $p }
-echo     }
-echo     $def = (Get-WmiObject Win32_Printer ^| Where-Object { $_.Default -eq $true } ^| Select-Object -ExpandProperty Name^)
-echo     if ($def^) { return $def }
-echo     return "TSC TE244"
-echo }
-echo $downloads = [System.IO.Path]::Combine($env:USERPROFILE, "Downloads"^)
-echo while ($true^) {
-echo     try {
-echo         $files = Get-ChildItem -Path $downloads -Filter "*.prn" -File -ErrorAction SilentlyContinue
-echo         foreach ($file in $files^) {
-echo             try {
-echo                 Start-Sleep -Milliseconds 120
-echo                 $bytes = [System.IO.File]::ReadAllBytes($file.FullName^)
-echo                 if ($bytes.Length -gt 0^) {
-echo                     $text = [System.Text.Encoding]::ASCII.GetString($bytes^)
-echo                     if ($text.Contains("PRINT"^) -or $text.Contains("SIZE"^)^) {
-echo                         $pName = Get-TargetPrinter
-echo                         $ok = [RawPrinter]::SendBytes($pName, $bytes^)
-echo                         if ($ok^) {
-echo                             Remove-Item -Path $file.FullName -Force -ErrorAction SilentlyContinue
-echo                         }
-echo                     }
-echo                 }
-echo             } catch {}
-echo         }
-echo     } catch {}
-echo     Start-Sleep -Milliseconds 350
-echo }
-) > "%PS_SCRIPT%"
+echo [1/3] Downloading print spooler service...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent', 'UrbanPOS-Setup'); try { $wc.DownloadFile('https://pos.indianpetcompany.com/printer-spooler', '%PS_SCRIPT%'); Write-Host '>> Spooler service downloaded successfully!' -ForegroundColor Green } catch { Write-Host '>> Could not download fresh script, checking local cache...' -ForegroundColor Yellow }"
 
-REM Create Silent Startup VBS
+if not exist "%PS_SCRIPT%" (
+    echo [ERROR] Could not download spooler service. Please ensure you are connected to internet.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [2/3] Detecting printers on this computer...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$printers = Get-WmiObject Win32_Printer; foreach ($p in $printers) { Write-Host ('  - ' + $p.Name + ' [' + $p.PortName + '] [Offline: ' + $p.WorkOffline + ']') }; $target = $printers | Where-Object { $_.Name -match 'TSC|TE244|TE 244|TTP|Thermal|Label|BarCode' } | Select-Object -First 1; if ($target) { Write-Host ''; Write-Host ('>> Detected Thermal Printer: ' + $target.Name) -ForegroundColor Green; if ($target.WorkOffline) { Write-Host '>> Setting printer to ONLINE mode...' -ForegroundColor Yellow; $wmi = Get-WmiObject Win32_Printer -Filter ('Name=''' + $target.Name + ''''); $wmi.WorkOffline = $false; $wmi.Put() | Out-Null }; [System.IO.File]::WriteAllText('%TARGET_DIR%\printer_name.txt', $target.Name) } else { Write-Host '>> Using default TSC TE244' -ForegroundColor Yellow; [System.IO.File]::WriteAllText('%TARGET_DIR%\printer_name.txt', 'TSC TE244') }"
+
+echo.
+echo [3/3] Starting background auto-print service...
+
+:: Stop any old running instance
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'urbanpos_spooler\.ps1' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+
+:: Create startup VBS launcher
 (
 echo Set WshShell = CreateObject("WScript.Shell"^)
-echo WshShell.Run "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File """ ^& "%PS_SCRIPT%" ^& """", 0, False
+echo WshShell.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""%PS_SCRIPT%""", 0, False
 ) > "%STARTUP_VBS%"
 
-REM Kill any old spooler instance
-taskkill /F /FI "WINDOWTITLE eq UrbanPOS_Spooler*" >nul 2>&1
-
-REM Launch Spooler right now
+:: Start the background spooler
 wscript.exe "%STARTUP_VBS%"
 
+:: Wait 1.5 seconds and confirm running state
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 1500; $proc = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'urbanpos_spooler\.ps1' }; if ($proc) { Write-Host ''; Write-Host ('>> SUCCESS: Auto-Print Service is ACTIVE and RUNNING! (PID: ' + $proc.ProcessId + ')') -ForegroundColor Green; Write-Host ('>> Watching folder: ' + [System.IO.Path]::Combine($env:USERPROFILE, 'Downloads')) -ForegroundColor Cyan } else { Write-Host '>> Service registered in Windows Startup.' -ForegroundColor Yellow }"
+
 echo.
 echo ===============================================================
-echo  SUCCESS! UrbanPOS TSC TE244 Print Utility is now ACTIVE!
-echo  From now on, clicking "Print Labels" on UrbanPOS will
-echo  instantly print directly to your TSC TE244 printer.
+echo  SETUP COMPLETE!
+echo.
+echo  Ab aap https://pos.indianpetcompany.com par jakar
+echo  "Print Labels" dabayein - print sidha machine se niklega!
 echo ===============================================================
 echo.
-mshta "javascript:alert('UrbanPOS TSC TE244 Printer Utility Setup Successful!\n\nYou can now print 1-click labels directly from pos.indianpetcompany.com');close();"
+pause
 exit /b 0
