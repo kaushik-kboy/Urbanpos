@@ -90,6 +90,16 @@ $gatedResource = function (string $uri, string $controller, string $module, arra
     }
 };
 
+Route::get('printer-setup', function () {
+    $path = public_path('urbanpos_printer_setup.bat');
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response()->download($path, 'urbanpos_printer_setup.bat', [
+        'Content-Type' => 'application/octet-stream',
+    ]);
+})->name('printer-setup.download');
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
