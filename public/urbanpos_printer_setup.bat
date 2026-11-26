@@ -5,7 +5,7 @@ echo ===============================================================
 echo     UrbanPOS TSC TE244 1-Click Print Utility Setup
 echo ===============================================================
 echo.
-echo Setting up automatic background print service for TSC TE244...
+echo Detecting printers and configuring background print service...
 echo.
 
 set TARGET_DIR=%LOCALAPPDATA%\UrbanPOS
@@ -14,7 +14,7 @@ if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 set PS_SCRIPT=%TARGET_DIR%\urbanpos_spooler.ps1
 set STARTUP_VBS=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\urbanpos_spooler.vbs
 
-REM Write the PowerShell Spooler Script
+REM Write enhanced PowerShell Spooler with auto-printer detection & logging
 (
 echo # UrbanPOS Native Windows PRN Spooler for TSC TE244
 echo $code = @'
@@ -64,7 +64,15 @@ echo     }
 echo }
 echo '@
 echo Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue
-echo $printerName = "TSC TE244"
+echo function Get-TargetPrinter {
+echo     $printers = Get-WmiObject Win32_Printer ^| Select-Object -ExpandProperty Name
+echo     foreach ($p in $printers^) {
+echo         if ($p -match "TSC|TE244|TE 244|TTP|Thermal|Label|BarCode"^) { return $p }
+echo     }
+echo     $def = (Get-WmiObject Win32_Printer ^| Where-Object { $_.Default -eq $true } ^| Select-Object -ExpandProperty Name^)
+echo     if ($def^) { return $def }
+echo     return "TSC TE244"
+echo }
 echo $downloads = [System.IO.Path]::Combine($env:USERPROFILE, "Downloads"^)
 echo while ($true^) {
 echo     try {
@@ -76,8 +84,11 @@ echo                 $bytes = [System.IO.File]::ReadAllBytes($file.FullName^)
 echo                 if ($bytes.Length -gt 0^) {
 echo                     $text = [System.Text.Encoding]::ASCII.GetString($bytes^)
 echo                     if ($text.Contains("PRINT"^) -or $text.Contains("SIZE"^)^) {
-echo                         [RawPrinter]::SendBytes($printerName, $bytes^)
-echo                         Remove-Item -Path $file.FullName -Force -ErrorAction SilentlyContinue
+echo                         $pName = Get-TargetPrinter
+echo                         $ok = [RawPrinter]::SendBytes($pName, $bytes^)
+echo                         if ($ok^) {
+echo                             Remove-Item -Path $file.FullName -Force -ErrorAction SilentlyContinue
+echo                         }
 echo                     }
 echo                 }
 echo             } catch {}
@@ -93,7 +104,7 @@ echo Set WshShell = CreateObject("WScript.Shell"^)
 echo WshShell.Run "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File """ ^& "%PS_SCRIPT%" ^& """", 0, False
 ) > "%STARTUP_VBS%"
 
-REM Kill any existing powershell spooler instance
+REM Kill any old spooler instance
 taskkill /F /FI "WINDOWTITLE eq UrbanPOS_Spooler*" >nul 2>&1
 
 REM Launch Spooler right now
