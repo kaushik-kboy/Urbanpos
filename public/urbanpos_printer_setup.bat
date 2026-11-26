@@ -25,7 +25,7 @@ if not exist "%PS_SCRIPT%" (
 
 echo.
 echo [2/3] Detecting printers on this computer...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$printers = Get-WmiObject Win32_Printer; foreach ($p in $printers) { Write-Host ('  - ' + $p.Name + ' [' + $p.PortName + '] [Offline: ' + $p.WorkOffline + ']') }; $target = $printers | Where-Object { $_.Name -match 'TSC|TE244|TE 244|TTP|Thermal|Label|BarCode' } | Select-Object -First 1; if ($target) { Write-Host ''; Write-Host ('>> Detected Thermal Printer: ' + $target.Name) -ForegroundColor Green; if ($target.WorkOffline) { Write-Host '>> Setting printer to ONLINE mode...' -ForegroundColor Yellow; $wmi = Get-WmiObject Win32_Printer -Filter ('Name=''' + $target.Name + ''''); $wmi.WorkOffline = $false; $wmi.Put() | Out-Null }; [System.IO.File]::WriteAllText('%TARGET_DIR%\printer_name.txt', $target.Name) } else { Write-Host '>> Using default TSC TE244' -ForegroundColor Yellow; [System.IO.File]::WriteAllText('%TARGET_DIR%\printer_name.txt', 'TSC TE244') }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$printers = Get-WmiObject Win32_Printer; foreach ($p in $printers) { Write-Host ('  - ' + $p.Name + ' [' + $p.PortName + '] [Offline: ' + $p.WorkOffline + ']') }; $target = $printers | Where-Object { $_.Name -match 'TSC|TE244|TE 244|TTP|Thermal|Label|BarCode' -and -not $_.WorkOffline } | Select-Object -First 1; if (-not $target) { $target = $printers | Where-Object { $_.Name -match 'TSC|TE244|TE 244|TTP|Thermal|Label|BarCode' } | Select-Object -First 1 }; if ($target) { Write-Host ''; Write-Host ('>> Detected Thermal Printer: ' + $target.Name) -ForegroundColor Green; if ($target.WorkOffline) { Write-Host '>> Setting printer to ONLINE mode...' -ForegroundColor Yellow; $wmi = Get-WmiObject Win32_Printer -Filter ('Name=''' + $target.Name + ''''); $wmi.WorkOffline = $false; $wmi.Put() | Out-Null }; [System.IO.File]::WriteAllText('%TARGET_DIR%\printer_name.txt', $target.Name) } else { Write-Host '>> No TSC printer detected! Using default: TSC TE244' -ForegroundColor Red; [System.IO.File]::WriteAllText('%TARGET_DIR%\printer_name.txt', 'TSC TE244') }"
 
 echo.
 echo [3/3] Starting background auto-print service...
@@ -42,8 +42,8 @@ echo WshShell.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyl
 :: Start the background spooler
 wscript.exe "%STARTUP_VBS%"
 
-:: Wait 1.5 seconds and confirm running state
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 1500; $proc = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'urbanpos_spooler\.ps1' }; if ($proc) { Write-Host ''; Write-Host ('>> SUCCESS: Auto-Print Service is ACTIVE and RUNNING! (PID: ' + $proc.ProcessId + ')') -ForegroundColor Green; Write-Host ('>> Watching folder: ' + [System.IO.Path]::Combine($env:USERPROFILE, 'Downloads')) -ForegroundColor Cyan } else { Write-Host '>> Service registered in Windows Startup.' -ForegroundColor Yellow }"
+:: Wait 2 seconds and confirm running state + log
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 2000; $proc = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'urbanpos_spooler\.ps1' }; if ($proc) { Write-Host ''; Write-Host ('>> SUCCESS: Auto-Print Service is ACTIVE and RUNNING! (PID: ' + $proc.ProcessId + ')') -ForegroundColor Green } else { Write-Host '>> WARNING: Background process not detected. Trying direct start...' -ForegroundColor Yellow }; $logPath = '%TARGET_DIR%\spooler.log'; if (Test-Path $logPath) { Write-Host '>> Recent Spooler Log:' -ForegroundColor Cyan; Get-Content $logPath -Tail 3 | ForEach-Object { Write-Host ('   ' + $_) -ForegroundColor Gray } }"
 
 echo.
 echo ===============================================================
