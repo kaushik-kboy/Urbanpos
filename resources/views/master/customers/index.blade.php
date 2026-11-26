@@ -180,21 +180,29 @@
     </div>
 
     @if(!empty($filter))
-        <div class="alert alert-info py-2 px-3 d-flex justify-content-between align-items-center mb-3 shadow-sm" style="border-radius: 8px;">
-            <div>
+        <div class="alert alert-info py-2 px-3 d-flex justify-content-between align-items-center mb-3 shadow-sm flex-wrap" style="border-radius: 8px;">
+            <div class="my-1">
                 <i class="fas fa-filter mr-1"></i> Showing customers filtered by: <strong>{{ ucwords(str_replace('_', ' ', $filter)) }}</strong> (<strong>{{ $customers->total() }}</strong> customers matched)
             </div>
-            <a href="{{ route('master.customers.index') }}" class="btn btn-xs btn-outline-dark font-weight-bold">
-                Show All Customers
-            </a>
+            <div class="my-1">
+                <a href="{{ route('master.customers.export', request()->query()) }}" class="btn btn-xs btn-success font-weight-bold mr-2">
+                    <i class="fas fa-file-excel mr-1"></i> Export Filtered (.xlsx)
+                </a>
+                <a href="{{ route('master.customers.index') }}" class="btn btn-xs btn-outline-dark font-weight-bold">
+                    Show All Customers
+                </a>
+            </div>
         </div>
     @endif
 
     <div class="card card-primary card-outline">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h3 class="card-title font-weight-bold mb-0"><i class="fas fa-users mr-1"></i> Customer List</h3>
-            <div class="card-tools d-flex align-items-center ml-auto">
-                <a href="{{ route('master.customers.create') }}" class="btn btn-primary btn-sm mr-2">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+            <h3 class="card-title font-weight-bold mb-0 my-1"><i class="fas fa-users mr-1"></i> Customer List</h3>
+            <div class="card-tools d-flex align-items-center ml-auto flex-wrap my-1">
+                <a href="{{ route('master.customers.export', request()->query()) }}" class="btn btn-success btn-sm font-weight-bold mr-2 shadow-sm" title="Download customers matching current search and filters to Excel">
+                    <i class="fas fa-file-excel mr-1"></i> Export Excel
+                </a>
+                <a href="{{ route('master.customers.create') }}" class="btn btn-primary btn-sm mr-2 shadow-sm">
                     <i class="fas fa-plus mr-1"></i> Add Customer
                 </a>
                 <x-table-column-customizer table-key="master.customers" table-id="customers-table" button-class="btn btn-sm btn-outline-secondary mr-2" />

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\GenericReportExport;
 use App\Http\Controllers\Concerns\HasPerPage;
 use App\Http\Controllers\Concerns\HasSorting;
 use App\Http\Controllers\Concerns\Importable;
@@ -18,6 +19,7 @@ use App\Models\PetType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CustomerController extends Controller
 {
@@ -28,9 +30,117 @@ class CustomerController extends Controller
     {
         $statsData = $this->getPetStatsAndFilterIds();
         $stats = $statsData['counts'];
+        $filter = $request->input('filter');
+
+        $query = $this->buildFilteredQuery($request)->with(['category', 'pets']);
+
+        $allowedSorts = [
+            'id' => 'id',
+            'name' => 'name',
+            'customer_code' => 'customer_code',
+            'category' => fn ($q, $dir) => $q->orderBy(CustomerCategory::select('name')->whereColumn('customer_categories.id', 'customers.customer_category_id'), $dir),
+            'status' => 'status',
+            'mobile' => 'mobile',
+            'created_at' => 'created_at',
+        ];
+        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
+
+        $customers = $query->paginate($this->perPage())->withQueryString();
+        $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
+
+        return view('master.customers.index', compact('customers', 'categories', 'stats', 'filter'));
+    }
+
+    public function export(Request $request)
+    {
+        $query = $this->buildFilteredQuery($request)
+            ->with(['category', 'pets.petType', 'pets.breed', 'area', 'branch']);
+
+        $allowedSorts = [
+            'id' => 'id',
+            'name' => 'name',
+            'customer_code' => 'customer_code',
+            'status' => 'status',
+            'mobile' => 'mobile',
+            'created_at' => 'created_at',
+        ];
+        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
+
+        $customers = $query->get();
+
+        $headings = [
+            'Customer Code',
+            'Customer Name',
+            'Mobile',
+            'Phone',
+            'Email',
+            'Category',
+            'City',
+            'State',
+            'Area',
+            'Address',
+            'GST No',
+            'Credit Balance (₹)',
+            'Credit Limit (₹)',
+            'Total Pets',
+            'Pet Details',
+            'Status',
+            'Created Date',
+        ];
+
+        $rows = [];
+        foreach ($customers as $c) {
+            $petDetails = $c->pets->map(function ($p) {
+                $parts = [];
+                $parts[] = $p->name ?: 'Pet';
+                if ($p->petType) {
+                    $parts[] = $p->petType->name;
+                }
+                if ($p->breed) {
+                    $parts[] = $p->breed->name;
+                }
+                if (!empty($p->birth_date)) {
+                    $parts[] = 'DOB: ' . (string) $p->birth_date;
+                }
+                if (!empty($p->gender)) {
+                    $parts[] = ucfirst($p->gender);
+                }
+                return implode(' - ', $parts);
+            })->implode('; ');
+
+            $rows[] = [
+                $c->customer_code ?? '',
+                $c->name ?? '',
+                $c->mobile ?? '',
+                $c->phone ?? '',
+                $c->email ?? '',
+                $c->category->name ?? '',
+                $c->city ?? '',
+                $c->state ?? '',
+                $c->area->name ?? '',
+                $c->address1 ?? '',
+                $c->gst_no ?? '',
+                (float) ($c->credit_balance ?? 0),
+                (float) ($c->credit_limit ?? 0),
+                $c->pets->count(),
+                $petDetails,
+                $c->status ? 'Active' : 'Inactive',
+                $c->created_at ? $c->created_at->format('d-m-Y H:i') : '',
+            ];
+        }
+
+        $filterLabel = $request->filled('filter') ? '_' . $request->input('filter') : '';
+        $filename = 'customers' . $filterLabel . '_' . date('Y-m-d_His') . '.xlsx';
+
+        return Excel::download(new GenericReportExport($rows, $headings), $filename);
+    }
+
+    private function buildFilteredQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    {
+        $statsData = $this->getPetStatsAndFilterIds();
         $filterIds = $statsData['customer_ids'];
 
-        $query = Customer::with(['category', 'pets']);
+        $query = Customer::query();
 
         $filter = $request->input('filter');
         if ($filter === 'today_birthdays') {
@@ -73,21 +183,7 @@ class CustomerController extends Controller
             }
         }
 
-        $allowedSorts = [
-            'id' => 'id',
-            'name' => 'name',
-            'customer_code' => 'customer_code',
-            'category' => fn ($q, $dir) => $q->orderBy(CustomerCategory::select('name')->whereColumn('customer_categories.id', 'customers.customer_category_id'), $dir),
-            'status' => 'status',
-            'mobile' => 'mobile',
-            'created_at' => 'created_at',
-        ];
-        $this->applySorting($query, $allowedSorts, ['name' => 'asc']);
-
-        $customers = $query->paginate($this->perPage())->withQueryString();
-        $categories = CustomerCategory::orderBy('name')->pluck('name', 'id');
-
-        return view('master.customers.index', compact('customers', 'categories', 'stats', 'filter'));
+        return $query;
     }
 
     private function getPetStatsAndFilterIds(): array
