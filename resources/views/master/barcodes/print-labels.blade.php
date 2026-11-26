@@ -1260,7 +1260,7 @@
                 // 1. Try local HTTP Bridge first (instant 1-click print, no Save-As popup)
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 1200);
+                    const timeoutId = setTimeout(() => controller.abort(), 3500);
                     const printRes = await fetch(BRIDGE_URL + '/print', {
                         method: 'POST',
                         mode: 'cors',
@@ -1273,7 +1273,7 @@
                     if (printRes.ok) {
                         const result = await printRes.json();
                         if (result.success) {
-                            showNotification('success', 'Printed directly to ' + (result.printer || 'TSC TE244') + '!');
+                            showNotification('success', 'Printed to ' + (result.printer || 'TSC TE244') + '!');
                             return;
                         }
                     }
@@ -1283,7 +1283,7 @@
 
                 // 2. Fallback: download .prn file (picked up by background spooler)
                 downloadPrnFile();
-                showNotification('success', 'Print job sent to TSC TE244! (Pehli baar setup ke liye More -> Client PC Setup run karein)');
+                showNotification('success', 'Print sent to TSC TE244!');
             } catch (err) {
                 console.warn('Direct print error:', err);
                 showNotification('error', 'Print error: ' + err.message);

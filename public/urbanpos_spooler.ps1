@@ -143,12 +143,15 @@ function Get-AllWatchFolders {
 
 function Send-TsplToPrinter($bytes, $sourceName) {
     $printer = Get-TargetPrinter
-    $wmi = Get-WmiObject Win32_Printer -Filter "Name='$printer'" -ErrorAction SilentlyContinue
-    if ($wmi -and $wmi.WorkOffline) {
-        $wmi.WorkOffline = $false
-        $wmi.Put() | Out-Null
-    }
     $res = [RawPrinter]::SendBytes($printer, $bytes)
+    if (-not $res) {
+        $wmi = Get-WmiObject Win32_Printer -Filter "Name='$printer'" -ErrorAction SilentlyContinue
+        if ($wmi -and $wmi.WorkOffline) {
+            $wmi.WorkOffline = $false
+            $wmi.Put() | Out-Null
+            $res = [RawPrinter]::SendBytes($printer, $bytes)
+        }
+    }
     Write-SpoolLog "Print job ($sourceName) to '$printer': Success=$res"
     return @{ Success = $res; Printer = $printer }
 }
@@ -184,7 +187,9 @@ while ($true) {
 
                 $req = $ctx.Request
                 $resp = $ctx.Response
-                $resp.Headers.Add("Access-Control-Allow-Origin", "*")
+                $origin = $req.Headers["Origin"]
+                if (-not $origin) { $origin = "*" }
+                $resp.Headers.Add("Access-Control-Allow-Origin", $origin)
                 $resp.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
                 $resp.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Access-Control-Request-Private-Network")
                 $resp.Headers.Add("Access-Control-Allow-Private-Network", "true")
