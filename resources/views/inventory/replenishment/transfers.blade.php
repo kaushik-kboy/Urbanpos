@@ -226,10 +226,10 @@ body, .content-wrapper {
                 <div class="row align-items-center">
                     <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
                         <label for="transferSearchInput" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary">
-                            <i class="fas fa-search text-primary mr-1"></i> Search SKU / Name:
+                            <i class="fas fa-search text-primary mr-1"></i> Search SKU / Name / Barcode:
                         </label>
                         <div class="input-group input-group-sm">
-                            <input type="text" id="transferSearchInput" class="form-control font-weight-bold text-dark" placeholder="Search SKU or Item Name..." autocomplete="off">
+                            <input type="text" id="transferSearchInput" class="form-control font-weight-bold text-dark" placeholder="Search SKU, Barcode, or Name..." autocomplete="off">
                             <div class="input-group-append">
                                 <button type="button" class="btn btn-outline-secondary" id="btnClearSearch" title="Clear Search">
                                     <i class="fas fa-times"></i>
@@ -237,47 +237,39 @@ body, .content-wrapper {
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
-                        <label for="filterStoreInvolved" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="View all transfers concerning this branch (inward deficit or outward surplus)">
-                            <i class="fas fa-store text-primary mr-1"></i> Store Involved:
+                    <div class="col-lg-2 col-md-6 mb-2 mb-lg-0">
+                        <label for="filterSourceBranch" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="Surplus Store (Sending)">
+                            <i class="fas fa-warehouse text-warning mr-1"></i> Surplus (From):
                         </label>
-                        <select id="filterStoreInvolved" class="form-control form-control-sm font-weight-bold">
-                            <option value="all">All Stores (Show Both)</option>
+                        <select id="filterSourceBranch" class="form-control form-control-sm font-weight-bold">
+                            <option value="all">All Surplus Stores</option>
                             @foreach($branches as $branch)
-                                <option value="{{ $branch->id }}" {{ $activeBranchId == $branch->id ? 'selected' : '' }}>
-                                    {{ $branch->name }}
-                                </option>
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
-                        <label for="filterFlowRole" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="Filter by Inward (Deficit) or Outward (Surplus)">
-                            <i class="fas fa-exchange-alt text-info mr-1"></i> Transfer Flow:
+                    <div class="col-lg-2 col-md-6 mb-2 mb-lg-0">
+                        <label for="filterDestBranch" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="Deficit Store (Receiving)">
+                            <i class="fas fa-store text-danger mr-1"></i> Deficit (To):
                         </label>
-                        <select id="filterFlowRole" class="form-control form-control-sm font-weight-bold">
-                            <option value="all">All Flows (In & Out)</option>
-                            <option value="receiving">Inward / Receiving Only</option>
-                            <option value="sending">Outward / Sending Only</option>
-                        </select>
-                    </div>
-                    <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
-                        <label for="filterSpecificRoute" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="Direct Route Filter">
-                            <i class="fas fa-route text-success mr-1"></i> Specific Route:
-                        </label>
-                        <select id="filterSpecificRoute" class="form-control form-control-sm font-weight-bold">
-                            <option value="all">All Routes</option>
-                            @foreach($branches as $bSrc)
-                                @foreach($branches as $bDest)
-                                    @if($bSrc->id !== $bDest->id)
-                                        <option value="{{ $bSrc->id }}_to_{{ $bDest->id }}">
-                                            {{ $bSrc->name }} &rarr; {{ $bDest->name }}
-                                        </option>
-                                    @endif
-                                @endforeach
+                        <select id="filterDestBranch" class="form-control form-control-sm font-weight-bold">
+                            <option value="all">All Deficit Stores</option>
+                            @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}" {{ $activeBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-lg-2 col-md-4 text-lg-right text-left mt-2 mt-md-0 d-flex align-items-end justify-content-lg-end" style="padding-top: 1.35rem;">
+                    <div class="col-lg-2 col-md-6 mb-2 mb-lg-0">
+                        <label for="filterDeficitStatus" class="mb-1 font-weight-bold text-xs text-uppercase text-secondary" title="Deficit Urgency Status">
+                            <i class="fas fa-signal text-info mr-1"></i> Deficit Status:
+                        </label>
+                        <select id="filterDeficitStatus" class="form-control form-control-sm font-weight-bold">
+                            <option value="all">All Statuses</option>
+                            <option value="Critical">🔴 Critical Only</option>
+                            <option value="Low">🟡 Low Only</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-6 text-lg-right text-left mt-2 mt-md-0 d-flex align-items-end justify-content-lg-end" style="padding-top: 1.35rem;">
                         <button type="button" class="btn btn-primary btn-sm font-weight-bold mr-1" id="btnApplyFilters" title="Apply selected filters">
                             <i class="fas fa-filter mr-1"></i> Filter
                         </button>
@@ -334,9 +326,11 @@ body, .content-wrapper {
                                     data-item-id="{{ $transfer->item_id }}"
                                     data-item-name="{{ e($transfer->item_name) }}"
                                     data-item-code="{{ e($transfer->item_code) }}"
+                                    data-ean-upc-code="{{ e($transfer->ean_upc_code ?? '') }}"
                                     data-dest-branch-id="{{ $transfer->dest_branch_id }}"
                                     data-dest-branch-name="{{ e($transfer->dest_branch_name) }}"
                                     data-dest-stock="{{ (int)$transfer->dest_stock }}"
+                                    data-dest-status="{{ e($transfer->dest_status ?? '') }}"
                                     data-source-branch-id="{{ $transfer->source_branch_id }}"
                                     data-source-branch-name="{{ e($transfer->source_branch_name) }}"
                                     data-source-stock="{{ (int)$transfer->source_stock }}"
@@ -887,7 +881,7 @@ body, .content-wrapper {
                 applyFilters();
             }
         });
-        $('#filterStoreInvolved, #filterFlowRole, #filterSpecificRoute').on('change', applyFilters);
+        $('#filterSourceBranch, #filterDestBranch, #filterDeficitStatus').on('change', applyFilters);
 
         // Run filters immediately on load so preset activeBranchId or search is respected
         applyFilters();
@@ -899,9 +893,9 @@ body, .content-wrapper {
 
         $('#btnResetFilters').on('click', function() {
             $('#transferSearchInput').val('');
-            $('#filterStoreInvolved').val('all');
-            $('#filterFlowRole').val('all');
-            $('#filterSpecificRoute').val('all');
+            $('#filterSourceBranch').val('all');
+            $('#filterDestBranch').val('all');
+            $('#filterDeficitStatus').val('all');
             applyFilters();
         });
 
@@ -1566,12 +1560,12 @@ body, .content-wrapper {
         }
     }
 
-    // Apply Live Table Filters (Search + Stores + Flow Direction + Route)
+    // Apply Live Table Filters (Search + Surplus Store + Deficit Store + Status)
     function applyFilters() {
         const query = $.trim($('#transferSearchInput').val()).toLowerCase();
-        const storeInvolved = $('#filterStoreInvolved').val();
-        const flowRole = $('#filterFlowRole').val();
-        const specificRoute = $('#filterSpecificRoute').val();
+        const fromBranch = String($('#filterSourceBranch').val() || 'all');
+        const toBranch = String($('#filterDestBranch').val() || 'all');
+        const status = String($('#filterDeficitStatus').val() || 'all');
 
         let visibleCount = 0;
 
@@ -1579,32 +1573,32 @@ body, .content-wrapper {
             const $row = $(this);
             const itemName = String($row.attr('data-item-name') || $row.data('item-name') || '').toLowerCase();
             const itemCode = String($row.attr('data-item-code') || $row.data('item-code') || '').toLowerCase();
+            const barcode = String($row.attr('data-ean-upc-code') || $row.data('ean-upc-code') || '').toLowerCase();
             const rowDestBranch = String($row.attr('data-dest-branch-id') || $row.data('dest-branch-id') || '');
             const rowSourceBranch = String($row.attr('data-source-branch-id') || $row.data('source-branch-id') || '');
+            const rowDestStatus = String($row.attr('data-dest-status') || $row.data('dest-status') || '');
 
             let matchesSearch = true;
             if (query.length > 0) {
-                matchesSearch = itemName.includes(query) || itemCode.includes(query);
+                matchesSearch = itemName.includes(query) || itemCode.includes(query) || barcode.includes(query);
             }
 
-            let matchesRoute = true;
-            if (specificRoute && specificRoute !== 'all') {
-                const parts = specificRoute.split('_to_');
-                matchesRoute = (rowSourceBranch === parts[0] && rowDestBranch === parts[1]);
+            let matchesFrom = true;
+            if (fromBranch !== 'all') {
+                matchesFrom = (rowSourceBranch === fromBranch);
             }
 
-            let matchesStore = true;
-            if (storeInvolved && storeInvolved !== 'all') {
-                if (flowRole === 'receiving') {
-                    matchesStore = (rowDestBranch === storeInvolved);
-                } else if (flowRole === 'sending') {
-                    matchesStore = (rowSourceBranch === storeInvolved);
-                } else {
-                    matchesStore = (rowDestBranch === storeInvolved || rowSourceBranch === storeInvolved);
-                }
+            let matchesTo = true;
+            if (toBranch !== 'all') {
+                matchesTo = (rowDestBranch === toBranch);
             }
 
-            if (matchesSearch && matchesRoute && matchesStore) {
+            let matchesStatus = true;
+            if (status !== 'all') {
+                matchesStatus = (rowDestStatus === status);
+            }
+
+            if (matchesSearch && matchesFrom && matchesTo && matchesStatus) {
                 $row.show();
                 visibleCount++;
             } else {
@@ -1618,6 +1612,21 @@ body, .content-wrapper {
             $('#noMatchingRows').removeClass('d-none');
         } else {
             $('#noMatchingRows').addClass('d-none');
+        }
+
+        // Also filter in-transit rows if user is searching on Tab 2
+        if ($('#inTransitTableBody tr').length > 0) {
+            let inTransitVisible = 0;
+            $('#inTransitTableBody tr').each(function() {
+                const text = $(this).text().toLowerCase();
+                if (query.length === 0 || text.includes(query)) {
+                    $(this).show();
+                    inTransitVisible++;
+                } else {
+                    $(this).hide();
+                }
+            });
+            $('#inTransitTableCount').text(inTransitVisible);
         }
     }
 
