@@ -42,8 +42,8 @@ echo WshShell.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyl
 :: Start the background spooler
 wscript.exe "%STARTUP_VBS%"
 
-:: Wait 2 seconds and confirm running state + log
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 2000; $proc = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'urbanpos_spooler\.ps1' }; if ($proc) { Write-Host ''; Write-Host ('>> SUCCESS: Auto-Print Service is ACTIVE and RUNNING! (PID: ' + $proc.ProcessId + ')') -ForegroundColor Green } else { Write-Host '>> WARNING: Background process not detected. Trying direct start...' -ForegroundColor Yellow }; $logPath = '%TARGET_DIR%\spooler.log'; if (Test-Path $logPath) { Write-Host '>> Recent Spooler Log:' -ForegroundColor Cyan; Get-Content $logPath -Tail 3 | ForEach-Object { Write-Host ('   ' + $_) -ForegroundColor Gray } }"
+:: Wait 2 seconds and confirm running state + HTTP bridge + log
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 2000; $proc = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'urbanpos_spooler\.ps1' }; if ($proc) { Write-Host ''; Write-Host ('>> SUCCESS: Auto-Print Service is ACTIVE and RUNNING! (PID: ' + $proc.ProcessId + ')') -ForegroundColor Green } else { Write-Host '>> WARNING: Background process not detected.' -ForegroundColor Yellow }; try { $st = Invoke-RestMethod -Uri 'http://127.0.0.1:8989/status' -TimeoutSec 2; if ($st.ok) { Write-Host ('>> HTTP Bridge: READY on 127.0.0.1:8989 (' + $st.printer + ')') -ForegroundColor Green } } catch { Write-Host ('>> HTTP Bridge: NOT REACHABLE (' + $_.Exception.Message + ')') -ForegroundColor Yellow }; $logPath = '%TARGET_DIR%\spooler.log'; if (Test-Path $logPath) { Write-Host '>> Recent Spooler Log:' -ForegroundColor Cyan; Get-Content $logPath -Tail 3 | ForEach-Object { Write-Host ('   ' + $_) -ForegroundColor Gray } }"
 
 echo.
 echo ===============================================================

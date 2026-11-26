@@ -1264,6 +1264,7 @@
                     const printRes = await fetch(BRIDGE_URL + '/print', {
                         method: 'POST',
                         mode: 'cors',
+                        targetAddressSpace: 'local',
                         signal: controller.signal,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ tspl: EMBEDDED_TSPL })

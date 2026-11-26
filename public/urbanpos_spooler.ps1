@@ -182,7 +182,7 @@ while ($true) {
         # 1. Handle HTTP Bridge requests (non-blocking)
         while ($httpListener -and $httpTask -and $httpTask.IsCompleted) {
             try {
-                $ctx = $httpTask.GetAwaiter().GetResult()
+                $ctx = $httpTask.Result
                 $httpTask = $httpListener.GetContextAsync()
 
                 $req = $ctx.Request
@@ -190,12 +190,15 @@ while ($true) {
                 $origin = $req.Headers["Origin"]
                 if (-not $origin) { $origin = "*" }
                 $resp.Headers.Add("Access-Control-Allow-Origin", $origin)
+                $resp.Headers.Add("Vary", "Origin")
                 $resp.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
                 $resp.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Access-Control-Request-Private-Network")
                 $resp.Headers.Add("Access-Control-Allow-Private-Network", "true")
+                $resp.Headers.Add("Access-Control-Max-Age", "86400")
 
                 if ($req.HttpMethod -eq "OPTIONS") {
                     $resp.StatusCode = 204
+                    $resp.ContentLength64 = 0
                     $resp.Close()
                 } elseif ($req.Url.AbsolutePath -eq "/status") {
                     $pName = Get-TargetPrinter
@@ -203,6 +206,7 @@ while ($true) {
                     $buf = [System.Text.Encoding]::UTF8.GetBytes($body)
                     $resp.ContentType = "application/json"
                     $resp.StatusCode = 200
+                    $resp.ContentLength64 = $buf.Length
                     $resp.OutputStream.Write($buf, 0, $buf.Length)
                     $resp.Close()
                 } elseif ($req.Url.AbsolutePath -eq "/print" -and $req.HttpMethod -eq "POST") {
@@ -224,10 +228,12 @@ while ($true) {
                     $buf = [System.Text.Encoding]::UTF8.GetBytes($respJson)
                     $resp.ContentType = "application/json"
                     $resp.StatusCode = 200
+                    $resp.ContentLength64 = $buf.Length
                     $resp.OutputStream.Write($buf, 0, $buf.Length)
                     $resp.Close()
                 } else {
                     $resp.StatusCode = 404
+                    $resp.ContentLength64 = 0
                     $resp.Close()
                 }
             } catch {
