@@ -1247,9 +1247,26 @@
         }
 
         async function directPrintTsc() {
-            // Simple and reliable: use browser's native print dialog
-            // User selects TSC TE244 printer in Chrome print dialog → labels print perfectly
-            window.print();
+            const $btn = $('#btnDirectPrint');
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending to TSC TE244...');
+
+            try {
+                if (!EMBEDDED_TSPL || !EMBEDDED_TSPL.includes('PRINT')) {
+                    showNotification('error', 'No barcode items to print!');
+                    return;
+                }
+
+                downloadPrnFile();
+                showNotification('success', 'Print job sent to TSC TE244! (Pehli baar setup ke liye More -> Client PC Setup run karein)');
+            } catch (err) {
+                console.warn('Direct print error:', err);
+                showNotification('error', 'Print error: ' + err.message);
+            } finally {
+                setTimeout(function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }, 600);
+            }
         }
 
         document.addEventListener("DOMContentLoaded", function () {

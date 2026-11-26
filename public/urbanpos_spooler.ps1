@@ -90,7 +90,11 @@ function Get-TargetPrinter {
         }
     }
 
-    $detected = Get-WmiObject Win32_Printer | Where-Object { $_.Name -match "TSC|TE244|TE 244|TTP|Thermal|Label|BarCode" } | Select-Object -First 1
+    $printers = Get-WmiObject Win32_Printer
+    $detected = $printers | Where-Object { $_.Name -match "TSC|TE244|TE 244|TTP|Thermal|Label|BarCode" -and -not $_.WorkOffline } | Select-Object -First 1
+    if (-not $detected) {
+        $detected = $printers | Where-Object { $_.Name -match "TSC|TE244|TE 244|TTP|Thermal|Label|BarCode" } | Select-Object -First 1
+    }
     if ($detected) {
         return $detected.Name
     }
@@ -99,6 +103,9 @@ function Get-TargetPrinter {
 }
 
 $regDownloads = [Microsoft.Win32.Registry]::GetValue("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders", "{374DE290-123F-4565-9164-39C4925E467B}", $null)
+if ($regDownloads) {
+    $regDownloads = [System.Environment]::ExpandEnvironmentVariables($regDownloads)
+}
 $watchFolders = @(
     [System.IO.Path]::Combine($env:USERPROFILE, "Downloads"),
     [System.IO.Path]::Combine($env:USERPROFILE, "OneDrive\Downloads")
@@ -107,7 +114,7 @@ if ($regDownloads -and (Test-Path $regDownloads) -and ($watchFolders -notcontain
     $watchFolders += $regDownloads
 }
 
-Write-SpoolLog "UrbanPOS Spooler started. Watching Downloads folders..."
+Write-SpoolLog "UrbanPOS Spooler started. Watching: $($watchFolders -join ', ')"
 $activePrinter = Get-TargetPrinter
 Write-SpoolLog "Initial target printer: $activePrinter"
 
@@ -147,6 +154,10 @@ while ($true) {
 
                                 if ($res) {
                                     Remove-Item -Path $file.FullName -Force -ErrorAction SilentlyContinue
+                                } else {
+                                    $errCode = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+                                    Write-SpoolLog "SendBytes failed for '$($file.Name)' (Win32Error=$errCode). Moving to .failed"
+                                    Move-Item -Path $file.FullName -Destination ($file.FullName + ".failed") -Force -ErrorAction SilentlyContinue
                                 }
                             }
                         }
