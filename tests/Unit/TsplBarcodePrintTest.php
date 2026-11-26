@@ -46,11 +46,11 @@ class TsplBarcodePrintTest extends TestCase
 
         $tspl = $this->controller->generateTspl($labels, 'URBAN POS', '50x38_2up');
 
-        // Left sticker at X=375, Right sticker at X=715 (both rotated 90)
-        $this->assertStringContainsString('TEXT 375,15,"3",90,1,1,"URBAN POS"', $tspl);
-        $this->assertStringContainsString('TEXT 715,15,"3",90,1,1,"URBAN POS"', $tspl);
-        $this->assertStringContainsString('BARCODE 300,15,"128",75,1,90,3,3,"8850477013575"', $tspl);
-        $this->assertStringContainsString('BARCODE 640,15,"128",75,1,90,3,3,"8850477013575"', $tspl);
+        // Left sticker at X=359, Right sticker at X=699 (both rotated 90)
+        $this->assertStringContainsString('TEXT 359,15,"3",90,1,1,"URBAN POS"', $tspl);
+        $this->assertStringContainsString('TEXT 699,15,"3",90,1,1,"URBAN POS"', $tspl);
+        $this->assertStringContainsString('BARCODE 284,15,"128",75,1,90,3,3,"8850477013575"', $tspl);
+        $this->assertStringContainsString('BARCODE 624,15,"128",75,1,90,3,3,"8850477013575"', $tspl);
     }
 
     public function test_tspl_short_name_uses_single_line_font_3(): void
@@ -66,8 +66,8 @@ class TsplBarcodePrintTest extends TestCase
 
         $tspl = $this->controller->generateTspl($labels, 'URBAN POS', '50x38_2up');
 
-        $this->assertStringContainsString('TEXT 340,15,"3",90,1,1,"Apro Cat 20kg"', $tspl);
-        $this->assertStringContainsString('TEXT 680,15,"3",90,1,1,"Apro Cat 20kg"', $tspl);
+        $this->assertStringContainsString('TEXT 324,15,"3",90,1,1,"Apro Cat 20kg"', $tspl);
+        $this->assertStringContainsString('TEXT 664,15,"3",90,1,1,"Apro Cat 20kg"', $tspl);
     }
 
     public function test_tspl_long_name_auto_wraps_into_font_2(): void
@@ -83,9 +83,9 @@ class TsplBarcodePrintTest extends TestCase
 
         $tspl = $this->controller->generateTspl($labels, 'URBAN POS', '50x38_2up');
 
-        // Uses Font "2" at X=340/680
-        $this->assertStringContainsString('TEXT 340,15,"2",90,1,1,"Royal Canin Maxi Adult Dog"', $tspl);
-        $this->assertStringContainsString('TEXT 680,15,"2",90,1,1,"Royal Canin Maxi Adult Dog"', $tspl);
+        // Uses Font "2" at X=324/664
+        $this->assertStringContainsString('TEXT 324,15,"2",90,1,1,"Royal Canin Maxi Adult Dog"', $tspl);
+        $this->assertStringContainsString('TEXT 664,15,"2",90,1,1,"Royal Canin Maxi Adult Dog"', $tspl);
     }
 
     public function test_tspl_prices_format_integers_without_trailing_decimals(): void

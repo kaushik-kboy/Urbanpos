@@ -199,7 +199,7 @@ class BarcodePrintController extends Controller
         $output = "SIZE 102 mm, {$rowHeight}\r\n";
         $output .= "GAP 2 mm, 0 mm\r\n";
         $output .= "DIRECTION 1\r\n";
-        $output .= "REFERENCE 0,12\r\n";
+        $output .= "REFERENCE 0,20\r\n";
         $output .= "OFFSET 0 mm\r\n";
         $output .= "SET PEEL OFF\r\n";
         $output .= "SET CUTTER OFF\r\n";
@@ -253,13 +253,13 @@ class BarcodePrintController extends Controller
         foreach ($chunks as $pair) {
             $output .= "CLS\r\n";
 
-            // Left Sticker Base X = 375
-            $output .= $buildLabel($pair[0], 375);
+            // Left Sticker Base X = 359 (2mm top margin from 400-dot edge)
+            $output .= $buildLabel($pair[0], 359);
 
-            // Right Sticker Base X = 715 (shifted by +340 dots)
+            // Right Sticker Base X = 699 (shifted by +340 dots)
             // If only 1 label provided in pair, duplicate onto right sticker
             $lbl2 = $pair[1] ?? $pair[0];
-            $output .= $buildLabel($lbl2, 715);
+            $output .= $buildLabel($lbl2, 699);
 
             $output .= "PRINT 1,1\r\n";
         }
