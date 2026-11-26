@@ -1247,68 +1247,9 @@
         }
 
         async function directPrintTsc() {
-            const $btn = $('#btnDirectPrint');
-            const originalHtml = $btn.html();
-            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Printing to TSC TE244…');
-
-            try {
-                if (!EMBEDDED_TSPL || !EMBEDDED_TSPL.includes('PRINT')) {
-                    showNotification('error', 'No barcode items to print!');
-                    return;
-                }
-
-                // 1. First attempt: call local server directPrint (prints instantly via Windows win32print on local!)
-                try {
-                    const serverRes = await fetch('{{ route("master.barcodes.direct-print") }}' + window.location.search, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify({ format: '{{ $format }}' })
-                    });
-
-                    if (serverRes.ok) {
-                        const sData = await serverRes.json();
-                        if (sData.success && sData.is_local) {
-                            showNotification('success', sData.message || 'Printed directly to TSC TE244 on USB001!');
-                            return;
-                        }
-                    }
-                } catch (srvErr) {
-                    console.log('Server direct print skipped, checking bridge...', srvErr);
-                }
-
-                // 2. Second attempt: check local bridge daemon on port 8989
-                let isOnline = await checkBridgeStatus();
-                if (isOnline) {
-                    const printRes = await fetch(BRIDGE_URL + '/print', {
-                        method: 'POST',
-                        mode: 'cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tspl: EMBEDDED_TSPL })
-                    });
-
-                    const result = await printRes.json();
-                    if (result.success) {
-                        showNotification('success', 'Printed directly to TSC TE244 on USB001!');
-                        return;
-                    } else {
-                        showNotification('error', 'Printer bridge error: ' + (result.error || 'Failed to print'));
-                    }
-                } else {
-                    // Download .prn file: instantly picked up by UrbanPOS PRN Spooler in Downloads folder and sent directly to TSC TE244!
-                    downloadPrnFile();
-                    showNotification('success', '⚡ Sent PRN to TSC TE244! Labels printing on hardware…');
-                }
-            } catch (err) {
-                console.warn('Direct print error:', err);
-                showNotification('error', 'Communication error: ' + err.message);
-            } finally {
-                $btn.prop('disabled', false).html(originalHtml);
-            }
+            // Simple and reliable: use browser's native print dialog
+            // User selects TSC TE244 printer in Chrome print dialog → labels print perfectly
+            window.print();
         }
 
         document.addEventListener("DOMContentLoaded", function () {
