@@ -51,7 +51,7 @@ class StockLedgerService
             throw new \InvalidArgumentException('StockLedgerService::post() called with a zero quantity delta.');
         }
 
-        return DB::transaction(function () use (
+        $entry = DB::transaction(function () use (
             $itemId, $branchId, $movementType, $qtyDelta, $unitCost,
             $referenceType, $referenceId, $documentDate, $userId, $reasonCode, $reversalOf, $expDate, $batchNo, $mrp,
             $allowTemporaryNegative,
@@ -130,6 +130,17 @@ class StockLedgerService
                 'posted_at' => now(),
             ]);
         });
+
+        // Auto-refresh smart replenishment metrics for this item & branch in real-time
+        try {
+            if (config('replenishment.enabled', false)) {
+                app(\App\Services\ReplenishmentCalculationService::class)->calculateForBranch($branchId, $itemId);
+            }
+        } catch (\Throwable $e) {
+            // Non-blocking background sync
+        }
+
+        return $entry;
     }
 
     /**

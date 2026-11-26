@@ -262,9 +262,17 @@ class ReplenishmentCalculationService
             ->join('items', 'dest.item_id', '=', 'items.id')
             ->join('branches as b_dest', 'dest.branch_id', '=', 'b_dest.id')
             ->join('branches as b_src', 'src.branch_id', '=', 'b_src.id')
+            ->leftJoin('item_stocks as dest_st', function ($j) {
+                $j->on('dest_st.item_id', '=', 'dest.item_id')
+                  ->on('dest_st.branch_id', '=', 'dest.branch_id');
+            })
+            ->leftJoin('item_stocks as src_st', function ($j) {
+                $j->on('src_st.item_id', '=', 'src.item_id')
+                  ->on('src_st.branch_id', '=', 'src.branch_id');
+            })
             ->whereIn('dest.stock_status', ['Critical', 'Low'])
             ->whereIn('src.stock_status', ['Healthy', 'Overstock'])
-            ->where('src.current_stock', '>', 0)
+            ->where(DB::raw('COALESCE(src_st.quantity, src.current_stock, 0)'), '>', 0)
             ->where('items.status', 1)
             ->whereNotIn('items.product_type', ['Service', 'Service Component', 'Service Item', 'Non-Inventory']);
 
@@ -276,15 +284,16 @@ class ReplenishmentCalculationService
             'dest.item_id',
             'items.name as item_name',
             'items.item_code',
+            'items.ean_upc_code',
             'dest.branch_id as dest_branch_id',
             'b_dest.name as dest_branch_name',
-            'dest.current_stock as dest_stock',
+            DB::raw('COALESCE(dest_st.quantity, dest.current_stock, 0) as dest_stock'),
             'dest.cover_days as dest_cover_days',
             'dest.stock_status as dest_status',
             'dest.suggested_qty as dest_suggested_qty',
             'src.branch_id as source_branch_id',
             'b_src.name as source_branch_name',
-            'src.current_stock as source_stock',
+            DB::raw('COALESCE(src_st.quantity, src.current_stock, 0) as source_stock'),
             'src.cover_days as source_cover_days',
             'src.stock_status as source_status',
             'src.daily_avg_sales as source_daily_avg',

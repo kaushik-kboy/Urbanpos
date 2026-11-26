@@ -135,7 +135,16 @@ class SmartReplenishmentController extends Controller
         $search = $request->get('search');
 
         $query = ReplenishmentItemMetric::query()
-            ->select('replenishment_item_metrics.*')
+            ->leftJoin('item_stocks as cur_st', function ($join) {
+                $join->on('cur_st.item_id', '=', 'replenishment_item_metrics.item_id')
+                     ->on('cur_st.branch_id', '=', 'replenishment_item_metrics.branch_id');
+            })
+            ->leftJoin(DB::raw('(SELECT item_id, SUM(quantity) as total_qty FROM item_stocks GROUP BY item_id) as total_st'), 'total_st.item_id', '=', 'replenishment_item_metrics.item_id')
+            ->select([
+                'replenishment_item_metrics.*',
+                DB::raw('COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0) as live_stock'),
+                DB::raw('GREATEST(0, COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) as live_other_stock'),
+            ])
             ->with([
                 'item:id,name,item_code,brand_id,brand_value_id,department_value_id,category_value_id,supplier_id,cost_price,sell_price',
                 'item.brand:id,name',
@@ -222,6 +231,46 @@ class SmartReplenishmentController extends Controller
             ->orderBy('replenishment_item_metrics.cover_days', 'asc');
 
         $paginator = $query->paginate($request->get('per_page', 25));
+
+        $stockRules = ReplenishmentStockRule::where('is_active', true)
+            ->orderBy('min_cover_days', 'desc')
+            ->get();
+
+        foreach ($paginator->items() as $item) {
+            if (isset($item->live_stock)) {
+                $curStock = (float) $item->live_stock;
+                $othStock = (float) ($item->live_other_stock ?? $item->other_branch_stock);
+                $dailyAvg = (float) $item->daily_avg_sales;
+                $targetDays = (int) ($item->target_cover_days ?: 7);
+
+                $item->current_stock = $curStock;
+                $item->other_branch_stock = $othStock;
+
+                if ($dailyAvg > 0) {
+                    $item->cover_days = max(0.0, round($curStock / $dailyAvg, 1));
+                    $requiredStock = $dailyAvg * $targetDays;
+                    $item->suggested_qty = (int) max(0, ceil($requiredStock - $curStock));
+
+                    $matchedRule = $stockRules->first(function ($r) use ($item) {
+                        return $item->cover_days >= (float) $r->min_cover_days
+                            && ($r->max_cover_days === null || $item->cover_days <= (float) $r->max_cover_days);
+                    });
+                    $item->stock_status = $matchedRule ? $matchedRule->stock_type : 'Healthy';
+                } else {
+                    $item->suggested_qty = 0;
+                    if ($curStock > 0) {
+                        $item->cover_days = 999.0;
+                        $item->stock_status = 'Overstock';
+                    } elseif ($curStock < 0) {
+                        $item->cover_days = 0.0;
+                        $item->stock_status = 'Critical';
+                    } else {
+                        $item->cover_days = 0.0;
+                        $item->stock_status = 'Dead Stock';
+                    }
+                }
+            }
+        }
 
         return response()->json([
             'data' => $paginator->items(),
@@ -1092,7 +1141,16 @@ class SmartReplenishmentController extends Controller
         $search = $request->get('search');
 
         $query = ReplenishmentItemMetric::query()
-            ->select('replenishment_item_metrics.*')
+            ->leftJoin('item_stocks as cur_st', function ($join) {
+                $join->on('cur_st.item_id', '=', 'replenishment_item_metrics.item_id')
+                     ->on('cur_st.branch_id', '=', 'replenishment_item_metrics.branch_id');
+            })
+            ->leftJoin(DB::raw('(SELECT item_id, SUM(quantity) as total_qty FROM item_stocks GROUP BY item_id) as total_st'), 'total_st.item_id', '=', 'replenishment_item_metrics.item_id')
+            ->select([
+                'replenishment_item_metrics.*',
+                DB::raw('COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0) as live_stock'),
+                DB::raw('GREATEST(0, COALESCE(total_st.total_qty, 0) - COALESCE(cur_st.quantity, replenishment_item_metrics.current_stock, 0)) as live_other_stock'),
+            ])
             ->with([
                 'item:id,name,item_code,brand_id,brand_value_id,department_value_id,category_value_id,supplier_id,cost_price',
                 'item.brand:id,name',
@@ -1177,12 +1235,46 @@ class SmartReplenishmentController extends Controller
         $query->orderByDesc('replenishment_item_metrics.suggested_qty')
             ->orderBy('replenishment_item_metrics.cover_days', 'asc');
 
+        $stockRules = ReplenishmentStockRule::where('is_active', true)
+            ->orderBy('min_cover_days', 'desc')
+            ->get();
+
         $rows = [];
         foreach ($query->cursor() as $metric) {
             $item = $metric->item;
             $unitCost = (float) ($item->cost_price ?? 0);
-            $reorderVal = round($metric->suggested_qty * $unitCost, 2);
             $brandName = $item->brand->name ?? ($item->brandValue->name ?? '-');
+
+            $curStock = isset($metric->live_stock) ? (float) $metric->live_stock : (float) $metric->current_stock;
+            $othStock = isset($metric->live_other_stock) ? (float) $metric->live_other_stock : (float) $metric->other_branch_stock;
+            $dailyAvg = (float) $metric->daily_avg_sales;
+            $targetDays = (int) ($metric->target_cover_days ?: 7);
+
+            if ($dailyAvg > 0) {
+                $coverDays = max(0.0, round($curStock / $dailyAvg, 1));
+                $requiredStock = $dailyAvg * $targetDays;
+                $suggestedQty = (int) max(0, ceil($requiredStock - $curStock));
+
+                $matchedRule = $stockRules->first(function ($r) use ($coverDays) {
+                    return $coverDays >= (float) $r->min_cover_days
+                        && ($r->max_cover_days === null || $coverDays <= (float) $r->max_cover_days);
+                });
+                $stockStatus = $matchedRule ? $matchedRule->stock_type : 'Healthy';
+            } else {
+                $suggestedQty = 0;
+                if ($curStock > 0) {
+                    $coverDays = 999.0;
+                    $stockStatus = 'Overstock';
+                } elseif ($curStock < 0) {
+                    $coverDays = 0.0;
+                    $stockStatus = 'Critical';
+                } else {
+                    $coverDays = 0.0;
+                    $stockStatus = 'Dead Stock';
+                }
+            }
+
+            $reorderVal = round($suggestedQty * $unitCost, 2);
 
             $rows[] = [
                 $item->item_code ?? '-',
@@ -1191,17 +1283,17 @@ class SmartReplenishmentController extends Controller
                 $item->categoryValue->name ?? '-',
                 $brandName,
                 $metric->supplier->name ?? '-',
-                (float) $metric->current_stock,
-                (float) $metric->other_branch_stock,
-                (float) ($metric->current_stock + $metric->other_branch_stock),
+                $curStock,
+                $othStock,
+                (float) ($curStock + $othStock),
                 (float) $metric->sales_30d,
-                (float) $metric->daily_avg_sales,
-                (float) $metric->cover_days,
-                (int) $metric->target_cover_days,
-                (int) ceil($metric->daily_avg_sales * $metric->target_cover_days),
-                (int) $metric->suggested_qty,
+                $dailyAvg,
+                $coverDays,
+                $targetDays,
+                (int) ceil($dailyAvg * $targetDays),
+                $suggestedQty,
                 $metric->sales_type ?? 'Dead Stock',
-                $metric->stock_status,
+                $stockStatus,
                 $unitCost,
                 $reorderVal,
             ];
