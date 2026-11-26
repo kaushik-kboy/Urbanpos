@@ -137,6 +137,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
     Route::get('states/api-list', [StateController::class, 'apiList'])->name('states.api-list');
     Route::get('cities/api-list', [CityController::class, 'apiList'])->name('cities.api-list');
     Route::get('areas/api-list', [AreaController::class, 'apiList'])->name('areas.api-list');
+    Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
 
     foreach ($masterResources as $uri => $controller) {
         $viewPermission = ($uri === 'customers') ? 'customers.view' : null;

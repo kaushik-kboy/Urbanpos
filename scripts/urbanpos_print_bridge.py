@@ -17,6 +17,7 @@ class PrintRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Authorization")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
 
     def do_OPTIONS(self):
         self.send_response(200)

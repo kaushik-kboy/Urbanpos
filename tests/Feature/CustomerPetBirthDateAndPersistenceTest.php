@@ -109,4 +109,40 @@ class CustomerPetBirthDateAndPersistenceTest extends TestCase
             'birth_date' => '11-2023',
         ]);
     }
+
+    public function test_customer_export_downloads_excel_file_with_filters(): void
+    {
+        $cust1 = Customer::create([
+            'name' => 'Alice Pet Parent',
+            'mobile' => '9876543220',
+            'customer_type' => 'RETAIL INVOICE',
+        ]);
+
+        $cust2 = Customer::create([
+            'name' => 'Bob No Pets',
+            'mobile' => '9876543221',
+            'customer_type' => 'RETAIL INVOICE',
+        ]);
+
+        CustomerPet::create([
+            'customer_id' => $cust1->id,
+            'name' => 'Tommy',
+            'gender' => 'Male',
+            'birth_date' => date('d-m-Y'),
+        ]);
+
+        // 1. Export all customers
+        $resAll = $this->get(route('master.customers.export'));
+        $resAll->assertOk();
+        $this->assertStringContainsString('customers_', (string) $resAll->headers->get('content-disposition'));
+
+        // 2. Export filtered customers
+        $resFilter = $this->get(route('master.customers.export', ['filter' => 'today_birthdays']));
+        $resFilter->assertOk();
+        $this->assertStringContainsString('customers_today_birthdays_', (string) $resFilter->headers->get('content-disposition'));
+
+        // 3. Export search filtered
+        $resSearch = $this->get(route('master.customers.export', ['search' => 'Alice']));
+        $resSearch->assertOk();
+    }
 }
