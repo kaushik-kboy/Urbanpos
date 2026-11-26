@@ -66,47 +66,46 @@ class BarcodePrintController extends Controller
 
         $tspl = $this->generateTspl($labels, $storeName, $format);
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'tsc_');
-        file_put_contents($tempFile, $tspl);
-
-        // Check if shell_exec is disabled or if running in cloud environment
+        // Check if running on Windows (Local Laragon / Store PC)
+        $isWindows = (PHP_OS_FAMILY === 'Windows');
         $isShellDisabled = !function_exists('shell_exec') || stripos((string) ini_get('disable_functions'), 'shell_exec') !== false;
-        $isCloud = request()->getHost() !== 'localhost' && request()->getHost() !== '127.0.0.1';
 
-        if ($isShellDisabled || $isCloud) {
+        if ($isWindows && !$isShellDisabled) {
+            $tempFile = tempnam(sys_get_temp_dir(), 'tsc_');
+            file_put_contents($tempFile, $tspl);
+
+            $scriptPath = base_path('scripts/print_tspl_direct.py');
+            $cmd = "python " . escapeshellarg($scriptPath) . " " . escapeshellarg($tempFile);
+            $output = '';
+            try {
+                $output = (string) @shell_exec($cmd . " 2>&1");
+            } catch (\Throwable $e) {
+                $output = $e->getMessage();
+            }
             @unlink($tempFile);
+
+            if ($output && str_contains($output, 'SUCCESS')) {
+                return response()->json([
+                    'success' => true,
+                    'is_local' => true,
+                    'message' => 'Printed ' . count($labels) . ' stickers directly to TSC TE244 on USB001!',
+                    'count'   => count($labels),
+                ]);
+            }
+
             return response()->json([
-                'success' => true,
-                'browser_print' => true,
-                'message' => 'Direct printing is handled via Chrome print preview on cloud servers. Opening print dialog...',
-                'count'   => count($labels),
-            ]);
+                'success' => false,
+                'message' => 'Printer error: ' . ($output ?: 'Printer communication failed'),
+            ], 500);
         }
 
-        $scriptPath = base_path('scripts/print_tspl_direct.py');
-        $cmd = "python " . escapeshellarg($scriptPath) . " " . escapeshellarg($tempFile);
-        $output = '';
-        try {
-            $output = (string) @shell_exec($cmd . " 2>&1");
-        } catch (\Throwable $e) {
-            $output = $e->getMessage();
-        }
-        @unlink($tempFile);
-
-        if ($output && str_contains($output, 'SUCCESS')) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Printed ' . count($labels) . ' stickers directly to TSC TE244!',
-                'count'   => count($labels),
-            ]);
-        }
-
-        // Fallback to browser print on any printer communication issue
+        // On Cloud / Linux servers, return TSPL payload for browser / local bridge
         return response()->json([
-            'success' => true,
-            'browser_print' => true,
-            'message' => 'Printer communication fallback: Please print using Chrome (Ctrl + P).',
-            'count'   => count($labels),
+            'success'  => true,
+            'is_cloud' => true,
+            'tspl'     => $tspl,
+            'count'    => count($labels),
+            'message'  => 'Cloud environment: print via local bridge or browser dialog.',
         ]);
     }
 
