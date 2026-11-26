@@ -199,7 +199,7 @@ class BarcodePrintController extends Controller
         $output = "SIZE 102 mm, {$rowHeight}\r\n";
         $output .= "GAP 2 mm, 0 mm\r\n";
         $output .= "DIRECTION 1\r\n";
-        $output .= "REFERENCE 0,0\r\n";
+        $output .= "REFERENCE 0,12\r\n";
         $output .= "OFFSET 0 mm\r\n";
         $output .= "SET PEEL OFF\r\n";
         $output .= "SET CUTTER OFF\r\n";
