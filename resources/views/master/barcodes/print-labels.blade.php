@@ -855,7 +855,7 @@
                     <i class="fas fa-ellipsis-v mr-1"></i> More
                 </button>
                 <div class="dropdown-menu dropdown-menu-right shadow">
-                    <a class="dropdown-item font-weight-bold text-success" href="{{ asset('urbanpos_printer_setup.bat') }}" download="urbanpos_printer_setup.bat" title="Pehli baar is laptop par print karne ke liye ek baar run karein">
+                    <a class="dropdown-item font-weight-bold text-success" href="{{ route('printer-setup.download') }}" download="urbanpos_printer_setup.bat" title="Pehli baar is laptop par print karne ke liye ek baar run karein">
                         <i class="fas fa-tools mr-2 text-success"></i> <strong>Client PC Setup (Run Once)</strong>
                     </a>
                     <div class="dropdown-divider"></div>
