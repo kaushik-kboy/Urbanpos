@@ -1368,9 +1368,9 @@
                         showNotification('error', 'Printer bridge error: ' + (result.error || 'Failed to print'));
                     }
                 } else {
-                    // Bridge is offline: open browser print dialog directly so user can print immediately!
-                    showNotification('info', 'Opening Browser Print Dialog for TSC TE244...');
-                    window.print();
+                    // Download .prn file: instantly picked up by UrbanPOS PRN Spooler in Downloads folder and sent directly to TSC TE244!
+                    downloadPrnFile();
+                    showNotification('success', '⚡ Sent PRN to TSC TE244! Labels printing on hardware…');
                 }
             } catch (err) {
                 console.warn('Direct print error:', err);

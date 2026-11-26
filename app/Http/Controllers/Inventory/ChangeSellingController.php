@@ -43,7 +43,8 @@ class ChangeSellingController extends Controller
         }
         if ($search) {
             $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
-                ->orWhere('item_code', 'like', "%{$search}%"));
+                ->orWhere('item_code', 'like', "%{$search}%")
+                ->orWhere('ean_upc_code', 'like', "%{$search}%"));
         }
 
         $items = $query->orderBy('name')->paginate($this->perPage());

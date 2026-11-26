@@ -38,7 +38,10 @@ __pycache__/
 scripts/*.py
 !scripts/gofrugal_sync_engine.py
 !scripts/urbanpos_print_bridge.py
+!scripts/urbanpos_prn_spooler.py
+!scripts/print_tspl_direct.py
 !scripts/start_print_bridge.bat
+scripts/spool/
 scripts/*.txt
 scripts/*.json
 scripts/*.html

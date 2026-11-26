@@ -110,7 +110,7 @@ class BarcodePrintController extends Controller
     }
 
     /**
-     * Generate raw TSPL commands calibrated for TSC TE244 (Standard 50x38 2-Up Horizontal).
+     * Generate raw TSPL commands calibrated for TSC TE244 (Standard 50x38 2-Up Horizontal or 102x64 1-Up).
      */
     public function generateTspl(array $labels, string $storeName, string $format = '50x38_2up'): string
     {
@@ -118,7 +118,85 @@ class BarcodePrintController extends Controller
             return '';
         }
 
-        $output = "SIZE 102 mm, 38 mm\r\n";
+        if ($format === '102x64') {
+            $output = "SIZE 102 mm, 63.5 mm\r\n";
+            $output .= "GAP 2 mm, 0 mm\r\n";
+            $output .= "DIRECTION 1\r\n";
+            $output .= "REFERENCE 0,0\r\n";
+            $output .= "OFFSET 0 mm\r\n";
+            $output .= "SET PEEL OFF\r\n";
+            $output .= "SET CUTTER OFF\r\n";
+            $output .= "SET TEAR ON\r\n";
+
+            foreach ($labels as $lbl) {
+                $cleanStore = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $storeName), 0, 36);
+                $cleanName  = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl['name']), 0, 38);
+                $cleanCode  = preg_replace('/[^A-Za-z0-9]/', '', $lbl['barcode']);
+                $mrpText    = 'MRP: Rs. ' . number_format($lbl['mrp'], 2);
+                $priceText  = 'PRICE: Rs. ' . number_format($lbl['sell_price'], 2);
+
+                $output .= "CLS\r\n";
+                $output .= "TEXT 408,24,\"3\",0,1,1,2,\"{$cleanStore}\"\r\n";
+                $output .= "TEXT 50,70,\"3\",0,1,1,\"{$cleanName}\"\r\n";
+                $output .= "BARCODE 80,125,\"128\",90,1,0,2,4,\"{$cleanCode}\"\r\n";
+                if ($lbl['mrp'] > $lbl['sell_price']) {
+                    $output .= "TEXT 50,250,\"3\",0,1,1,\"{$mrpText}\"\r\n";
+                }
+                $output .= "TEXT 450,245,\"4\",0,1,1,\"{$priceText}\"\r\n";
+                if (!empty($lbl['exp_date'])) {
+                    $output .= "TEXT 50,300,\"2\",0,1,1,\"EXP: {$lbl['exp_date']}\"\r\n";
+                }
+                $output .= "PRINT 1\r\n";
+            }
+
+            return $output;
+        }
+
+        if ($format === '50x50_2up') {
+            $output = "SIZE 102 mm, 50 mm\r\n";
+            $output .= "GAP 2 mm, 0 mm\r\n";
+            $output .= "DIRECTION 1\r\n";
+            $output .= "REFERENCE 0,0\r\n";
+            $output .= "OFFSET 0 mm\r\n";
+            $output .= "SET PEEL OFF\r\n";
+            $output .= "SET CUTTER OFF\r\n";
+            $output .= "SET TEAR ON\r\n";
+
+            $chunks = array_chunk($labels, 2);
+            foreach ($chunks as $pair) {
+                $output .= "CLS\r\n";
+
+                $lbl1 = $pair[0];
+                $name1 = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl1['name']), 0, 24);
+                $code1 = preg_replace('/[^A-Za-z0-9]/', '', $lbl1['barcode']);
+                $price1 = 'Rs. ' . number_format($lbl1['sell_price'], 2);
+
+                $output .= "TEXT 20,10,\"2\",0,1,1,\"{$name1}\"\r\n";
+                $output .= "BARCODE 20,35,\"128\",45,1,0,2,2,\"{$code1}\"\r\n";
+                $output .= "TEXT 20,115,\"3\",0,1,1,\"{$price1}\"\r\n";
+
+                if (isset($pair[1])) {
+                    $lbl2 = $pair[1];
+                    $name2 = substr(preg_replace('/[^A-Za-z0-9 \-]/', '', $lbl2['name']), 0, 24);
+                    $code2 = preg_replace('/[^A-Za-z0-9]/', '', $lbl2['barcode']);
+                    $price2 = 'Rs. ' . number_format($lbl2['sell_price'], 2);
+
+                    $output .= "TEXT 430,10,\"2\",0,1,1,\"{$name2}\"\r\n";
+                    $output .= "BARCODE 430,35,\"128\",45,1,0,2,2,\"{$code2}\"\r\n";
+                    $output .= "TEXT 430,115,\"3\",0,1,1,\"{$price2}\"\r\n";
+                }
+                $output .= "PRINT 1\r\n";
+            }
+
+            return $output;
+        }
+
+        $rowHeight = '38 mm';
+        if (in_array($format, ['38x25', '50x25_2up', '50x25'])) {
+            $rowHeight = '25 mm';
+        }
+
+        $output = "SIZE 102 mm, {$rowHeight}\r\n";
         $output .= "GAP 2 mm, 0 mm\r\n";
         $output .= "DIRECTION 1\r\n";
         $output .= "REFERENCE 0,0\r\n";
