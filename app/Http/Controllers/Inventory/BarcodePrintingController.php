@@ -74,6 +74,33 @@ class BarcodePrintingController extends Controller
 
     public function print(Request $request)
     {
-        return app(\App\Http\Controllers\Master\BarcodePrintController::class)->printLabels($request);
+        $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.name' => ['required', 'string'],
+            'items.*.barcode' => ['required', 'string'],
+            'items.*.mrp' => ['nullable', 'numeric'],
+            'items.*.sell_price' => ['nullable', 'numeric'],
+            'items.*.qty' => ['required', 'integer', 'min:1'],
+            'label_size' => ['nullable', 'string'],
+        ]);
+
+        $labels = [];
+        $labelSize = $request->input('label_size', 'standard'); // 'standard' (50x25mm) or 'compact' (38x25mm)
+        $storeName = config('app.name', 'Urban Pets');
+
+        foreach ($request->input('items') as $item) {
+            $qty = (int) $item['qty'];
+            for ($i = 0; $i < $qty; $i++) {
+                $labels[] = [
+                    'store' => $storeName,
+                    'name' => $item['name'],
+                    'barcode' => $item['barcode'],
+                    'mrp' => (float) ($item['mrp'] ?? 0),
+                    'sell_price' => (float) ($item['sell_price'] ?? 0),
+                ];
+            }
+        }
+
+        return view('inventory.barcode-printing.print', compact('labels', 'labelSize'));
     }
 }

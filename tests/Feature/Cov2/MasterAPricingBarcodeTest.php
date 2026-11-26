@@ -239,6 +239,7 @@ class MasterAPricingBarcodeTest extends TestCase
         $this->asRole('Manager');
         $coded = $this->item(['item_code' => 'CODE77']);
         $bare = $this->item();
+        \Illuminate\Support\Facades\DB::table('items')->where('id', $bare->id)->update(['item_code' => null]);
 
         $r = $this->get(route('master.barcodes.print', ['item_id' => $coded->id, 'qty' => 0]))->assertOk();
         $this->assertCount(1, $r->viewData('labels'));
