@@ -286,7 +286,7 @@
                                 <x-field name="pets[{{ $index }}][name]" label="Name" :value="$pet->name ?? ''" />
                             </div>
                             <div class="field-wrapper col-md-6" data-field="gender" data-label="Gender" data-default-order="4">
-                                <x-select name="pets[{{ $index }}][gender]" label="Gender" :options="['' => 'None', 'Male' => 'Male', 'Female' => 'Female']" :selected="$pet->gender ?? ''" />
+                                <x-select name="pets[{{ $index }}][gender]" label="Gender" :options="['Male' => 'Male', 'Female' => 'Female']" :selected="$pet->gender ?? 'Male'" />
                             </div>
                             <div class="field-wrapper col-md-6" data-field="age" data-label="Age" data-default-order="5">
                                 <x-field name="pets[{{ $index }}][age]" label="Age" :value="$pet->age ?? ''" />
@@ -436,8 +436,7 @@
                     <label class="col-sm-3 col-form-label">Gender <span class="text-danger">*</span></label>
                     <div class="col-sm-6">
                         <select name="pets[__INDEX__][gender]" class="form-control">
-                            <option value="">None</option>
-                            <option value="Male">Male</option>
+                            <option value="Male" selected>Male</option>
                             <option value="Female">Female</option>
                         </select>
                     </div>
