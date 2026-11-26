@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('gender', ['Male', 'Female'])->nullable();
             $table->string('age')->nullable();
             $table->text('remarks')->nullable();
-            $table->date('birth_date')->nullable();
+            $table->string('birth_date', 30)->nullable();
             $table->timestamps();
         });
     }

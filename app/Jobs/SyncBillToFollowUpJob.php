@@ -187,7 +187,7 @@ class SyncBillToFollowUpJob implements ShouldQueue
                     'pet_type'   => $pet->petType?->name ?: null,
                     'breed'      => $pet->breed?->name ?: null,
                     'gender'     => $pet->gender ?: null,
-                    'birth_date' => $pet->birth_date ? Carbon::parse($pet->birth_date)->format('Y-m-d') : null,
+                    'birth_date' => $pet->birth_date ? (method_exists($pet->birth_date, 'toDateString') ? $pet->birth_date->toDateString() : (string) $pet->birth_date) : null,
                 ];
             }
         }

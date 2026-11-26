@@ -2790,7 +2790,8 @@
             if (petData.pet_type_id) row.querySelector('.pos-pet-type').value = petData.pet_type_id;
             row.querySelector('.pos-pet-name').value = petData.name || '';
             row.querySelector('.pos-pet-gender').value = petData.gender || 'Male';
-            row.querySelector('.pos-pet-age').value = petData.age || '';
+            const ageInput = row.querySelector('.pos-pet-age');
+            if (ageInput) ageInput.value = petData.age || '';
             row.querySelector('.pos-pet-remarks').value = petData.remarks || '';
             if (petData.birth_date) {
                 let bd = '';
@@ -2801,15 +2802,21 @@
                             const y = d.getFullYear();
                             const m = String(d.getMonth() + 1).padStart(2, '0');
                             const day = String(d.getDate()).padStart(2, '0');
-                            bd = `${y}-${m}-${day}`;
+                            bd = `${day}-${m}-${y}`;
                         } else {
                             bd = petData.birth_date.substring(0, 10);
                         }
+                    } else if (/^\d{4}-\d{2}-\d{2}$/.test(petData.birth_date)) {
+                        const parts = petData.birth_date.split('-');
+                        bd = `${parts[2]}-${parts[1]}-${parts[0]}`;
                     } else {
-                        bd = petData.birth_date.substring(0, 10);
+                        bd = petData.birth_date;
                     }
+                } else if (petData.birth_date && typeof petData.birth_date === 'object') {
+                    bd = String(petData.birth_date.value || petData.birth_date);
                 }
-                row.querySelector('.pos-pet-birthdate').value = bd;
+                const bdInput = row.querySelector('.pos-pet-birthdate');
+                if (bdInput) bdInput.value = bd;
             }
         } else {
             const genderSelect = row.querySelector('.pos-pet-gender');
@@ -3009,6 +3016,37 @@
             }
         });
 
+        // Flexible Pet Birth Date input formatting (DD-MM-YYYY or MM-YYYY)
+        $(document).on('input', '.pos-pet-birthdate', function () {
+            let val = $(this).val();
+            val = val.replace(/[\/\.]/g, '-');
+            val = val.replace(/[^0-9\-]/g, '');
+            $(this).val(val);
+        });
+
+        $(document).on('blur change', '.pos-pet-birthdate', function () {
+            let val = $(this).val().trim().replace(/[\/\.]/g, '-');
+            if (!val) return;
+
+            // Raw digits without hyphens
+            if (/^\d{6}$/.test(val)) {
+                // e.g. 102024 -> 10-2024
+                val = val.substring(0, 2) + '-' + val.substring(2);
+            } else if (/^\d{8}$/.test(val)) {
+                // e.g. 15102024 -> 15-10-2024
+                val = val.substring(0, 2) + '-' + val.substring(2, 4) + '-' + val.substring(4);
+            } else if (/^(\d{1,2})-(\d{4})$/.test(val)) {
+                // Pad single digit month: 5-2024 -> 05-2024
+                const parts = val.split('-');
+                val = parts[0].padStart(2, '0') + '-' + parts[1];
+            } else if (/^(\d{1,2})-(\d{1,2})-(\d{4})$/.test(val)) {
+                // Pad single digit day or month: 5-8-2024 -> 05-08-2024
+                const parts = val.split('-');
+                val = parts[0].padStart(2, '0') + '-' + parts[1].padStart(2, '0') + '-' + parts[2];
+            }
+            $(this).val(val);
+        });
+
         // Edit Customer Button Handler (Opens Edit modal in POS terminal)
         $('#posEditCustomerBtn').on('click', function (e) {
             e.preventDefault();
@@ -3091,12 +3129,11 @@
                 const name = $(this).find('.pos-pet-name').val()?.trim() || '';
                 const breed = $(this).find('select[name*="[breed_id]"]').val() || '';
                 const petType = $(this).find('select[name*="[pet_type_id]"]').val() || '';
-                const age = $(this).find('input[name*="[age]"]').val()?.trim() || '';
                 const gender = $(this).find('.pos-pet-gender').val() || '';
-                const birthDate = $(this).find('.pos-pet-birthdate').val() || '';
+                const birthDate = $(this).find('.pos-pet-birthdate').val()?.trim() || '';
                 const remarks = $(this).find('.pos-pet-remarks').val()?.trim() || '';
 
-                const hasData = name || breed || petType || age || birthDate || remarks;
+                const hasData = name || breed || petType || birthDate || remarks;
                 if (hasData && (!gender || (gender !== 'Male' && gender !== 'Female'))) {
                     $(this).find('.pos-pet-gender').val('Male');
                 }

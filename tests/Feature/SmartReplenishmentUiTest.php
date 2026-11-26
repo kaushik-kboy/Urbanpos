@@ -66,6 +66,18 @@ class SmartReplenishmentUiTest extends TestCase
             'status' => true,
         ]);
 
+        \App\Models\ItemStock::create([
+            'item_id' => $this->item->id,
+            'branch_id' => $this->branch->id,
+            'quantity' => 100,
+        ]);
+
+        \App\Models\ItemStock::create([
+            'item_id' => $this->item->id,
+            'branch_id' => $this->otherBranch->id,
+            'quantity' => 100,
+        ]);
+
         $this->user = User::factory()->create([
             'branch_id' => $this->branch->id,
         ]);

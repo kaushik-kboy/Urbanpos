@@ -420,6 +420,23 @@ body, .content-wrapper {
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Table Pagination Footer --}}
+                <div class="p-3 bg-white border-top d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="d-flex align-items-center mb-2 mb-md-0">
+                        <span class="font-weight-bold text-dark text-sm mr-3" id="transfersPaginationInfo">Showing 0 of 0</span>
+                        <div class="d-flex align-items-center">
+                            <label class="small font-weight-bold mr-1 mb-0 text-muted">Per Page:</label>
+                            <select id="transfersPerPage" class="form-control form-control-sm" style="width: 75px; height: 31px; border-radius: 6px; font-weight: 700;">
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                    </div>
+                    <ul class="pagination pagination-sm m-0" id="transfersPaginationControls"></ul>
+                </div>
             </div>
         </div>
 
@@ -897,6 +914,12 @@ body, .content-wrapper {
             $('#filterDestBranch').val('all');
             $('#filterDeficitStatus').val('all');
             applyFilters();
+        });
+
+        $('#transfersPerPage').on('change', function() {
+            transferPerPage = $(this).val();
+            transferCurrentPage = 1;
+            renderTransferPagination(1);
         });
 
         // Header Checkbox (Select all visible)
@@ -1560,14 +1583,22 @@ body, .content-wrapper {
         }
     }
 
+    // Pagination state
+    let transferCurrentPage = 1;
+    let transferPerPage = 25;
+    let matchingTransferRows = [];
+
     // Apply Live Table Filters (Search + Surplus Store + Deficit Store + Status)
-    function applyFilters() {
+    function applyFilters(resetPage = true) {
+        if (resetPage) {
+            transferCurrentPage = 1;
+        }
         const query = $.trim($('#transferSearchInput').val()).toLowerCase();
         const fromBranch = String($('#filterSourceBranch').val() || 'all');
         const toBranch = String($('#filterDestBranch').val() || 'all');
         const status = String($('#filterDeficitStatus').val() || 'all');
 
-        let visibleCount = 0;
+        matchingTransferRows = [];
 
         $('.transfer-data-row').each(function() {
             const $row = $(this);
@@ -1599,19 +1630,22 @@ body, .content-wrapper {
             }
 
             if (matchesSearch && matchesFrom && matchesTo && matchesStatus) {
-                $row.show();
-                visibleCount++;
+                matchingTransferRows.push($row);
             } else {
                 $row.hide();
             }
         });
 
+        const visibleCount = matchingTransferRows.length;
         $('#visibleRowCount').text(visibleCount);
 
         if (visibleCount === 0 && $('.transfer-data-row').length > 0) {
             $('#noMatchingRows').removeClass('d-none');
+            $('#transfersPaginationControls').empty();
+            $('#transfersPaginationInfo').text('Showing 0 of 0');
         } else {
             $('#noMatchingRows').addClass('d-none');
+            renderTransferPagination();
         }
 
         // Also filter in-transit rows if user is searching on Tab 2
@@ -1630,12 +1664,100 @@ body, .content-wrapper {
         }
     }
 
+    function renderTransferPagination(page = null) {
+        if (page !== null) {
+            transferCurrentPage = page;
+        }
+        const total = matchingTransferRows.length;
+        let perPage = transferPerPage === 'all' ? (total > 0 ? total : 25) : parseInt(transferPerPage, 10);
+        if (!perPage || perPage <= 0) perPage = 25;
+
+        const totalPages = Math.max(1, Math.ceil(total / perPage));
+        if (transferCurrentPage > totalPages) {
+            transferCurrentPage = totalPages;
+        }
+        if (transferCurrentPage < 1) {
+            transferCurrentPage = 1;
+        }
+
+        const startIndex = (transferCurrentPage - 1) * perPage;
+        const endIndex = transferPerPage === 'all' ? total : Math.min(startIndex + perPage, total);
+
+        matchingTransferRows.forEach(function($row, idx) {
+            if (idx >= startIndex && idx < endIndex) {
+                $row.show();
+            } else {
+                $row.hide();
+            }
+        });
+
+        if (total === 0) {
+            $('#transfersPaginationInfo').text('Showing 0 of 0');
+        } else {
+            $('#transfersPaginationInfo').text(`Showing page ${transferCurrentPage} of ${totalPages} (${total} total items)`);
+        }
+
+        let html = '';
+        if (totalPages > 1) {
+            html += `<li class="page-item ${transferCurrentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToTransferPage(${transferCurrentPage - 1})">&laquo;</a>
+                     </li>`;
+
+            let start = Math.max(1, transferCurrentPage - 2);
+            let end = Math.min(totalPages, transferCurrentPage + 2);
+
+            if (start > 1) {
+                html += `<li class="page-item"><a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToTransferPage(1)">1</a></li>`;
+                if (start > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link font-weight-bold text-dark">...</span></li>`;
+                }
+            }
+
+            for (let i = start; i <= end; i++) {
+                html += `<li class="page-item ${i === transferCurrentPage ? 'active' : ''}">
+                            <a class="page-link font-weight-bold ${i === transferCurrentPage ? 'bg-dark text-white border-dark' : 'text-dark'}" href="javascript:void(0)" onclick="goToTransferPage(${i})">${i}</a>
+                         </li>`;
+            }
+
+            if (end < totalPages) {
+                if (end < totalPages - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link font-weight-bold text-dark">...</span></li>`;
+                }
+                html += `<li class="page-item"><a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToTransferPage(${totalPages})">${totalPages}</a></li>`;
+            }
+
+            html += `<li class="page-item ${transferCurrentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link font-weight-bold text-dark" href="javascript:void(0)" onclick="goToTransferPage(${transferCurrentPage + 1})">&raquo;</a>
+                     </li>`;
+        }
+
+        $('#transfersPaginationControls').html(html);
+
+        // Update header checkbox for visible rows on current page
+        const visibleRowsOnPage = $('.transfer-data-row:visible');
+        const checkedVisibleCount = visibleRowsOnPage.find('.row-transfer-checkbox:checked').length;
+        $('#checkAllRows').prop('checked', visibleRowsOnPage.length > 0 && checkedVisibleCount === visibleRowsOnPage.length);
+    }
+
+    window.goToTransferPage = function(page) {
+        renderTransferPagination(page);
+        const tableOffset = $('#transfersTable').offset();
+        if (tableOffset && $(window).scrollTop() > tableOffset.top - 100) {
+            $('html, body').animate({ scrollTop: tableOffset.top - 100 }, 200);
+        }
+    };
+
     function refreshVisibleCount() {
         const remaining = $('.transfer-data-row').length;
-        $('#visibleRowCount').text(remaining);
         $('#tabRecommendationsCount').text(remaining);
         if (remaining === 0) {
             $('#emptyTableRow').removeClass('d-none');
+            $('#noMatchingRows').addClass('d-none');
+            $('#transfersPaginationControls').empty();
+            $('#transfersPaginationInfo').text('Showing 0 of 0');
+            $('#visibleRowCount').text(0);
+        } else {
+            applyFilters(false);
         }
     }
 

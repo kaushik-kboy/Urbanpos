@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PetBirthDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,9 +16,36 @@ class CustomerPet extends Model
         'remarks', 'birth_date',
     ];
 
-    protected $casts = [
-        'birth_date' => 'date:Y-m-d',
-    ];
+    /**
+     * Get birth_date as a PetBirthDate instance (supports DD-MM-YYYY and MM-YYYY)
+     */
+    public function getBirthDateAttribute($value): ?PetBirthDate
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return new PetBirthDate($value);
+    }
+
+    /**
+     * Clean and store birth date string
+     */
+    public function setBirthDateAttribute($value): void
+    {
+        if (empty($value)) {
+            $this->attributes['birth_date'] = null;
+            return;
+        }
+
+        $cleaned = trim(str_replace(['/', '.'], '-', (string) $value));
+        // If YYYY-MM-DD was passed, convert to DD-MM-YYYY
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $cleaned, $m)) {
+            $cleaned = "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+
+        $this->attributes['birth_date'] = $cleaned;
+    }
 
     public function customer(): BelongsTo
     {
