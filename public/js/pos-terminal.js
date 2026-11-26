@@ -2793,9 +2793,27 @@
             row.querySelector('.pos-pet-age').value = petData.age || '';
             row.querySelector('.pos-pet-remarks').value = petData.remarks || '';
             if (petData.birth_date) {
-                const bd = typeof petData.birth_date === 'string' ? petData.birth_date.substring(0, 10) : '';
+                let bd = '';
+                if (typeof petData.birth_date === 'string') {
+                    if (petData.birth_date.includes('T')) {
+                        const d = new Date(petData.birth_date);
+                        if (!isNaN(d.getTime())) {
+                            const y = d.getFullYear();
+                            const m = String(d.getMonth() + 1).padStart(2, '0');
+                            const day = String(d.getDate()).padStart(2, '0');
+                            bd = `${y}-${m}-${day}`;
+                        } else {
+                            bd = petData.birth_date.substring(0, 10);
+                        }
+                    } else {
+                        bd = petData.birth_date.substring(0, 10);
+                    }
+                }
                 row.querySelector('.pos-pet-birthdate').value = bd;
             }
+        } else {
+            const genderSelect = row.querySelector('.pos-pet-gender');
+            if (genderSelect) genderSelect.value = 'Male';
         }
 
         const container = document.getElementById('pos-pet-rows');
@@ -3067,9 +3085,7 @@
         $('#posQuickCustomerForm').on('submit', function (e) {
             e.preventDefault();
 
-            // Validate Pet Details (Point 4: Gender is compulsory if pet details entered)
-            let petGenderInvalid = false;
-            let invalidPetSelect = null;
+            // Validate Pet Details (Ensure valid gender for any pet row with data)
             $('#pos-pet-rows .pos-pet-row').each(function () {
                 if ($(this).find('.pos-pet-delete-flag').val() === '1') return;
                 const name = $(this).find('.pos-pet-name').val()?.trim() || '';
@@ -3077,25 +3093,14 @@
                 const petType = $(this).find('select[name*="[pet_type_id]"]').val() || '';
                 const age = $(this).find('input[name*="[age]"]').val()?.trim() || '';
                 const gender = $(this).find('.pos-pet-gender').val() || '';
+                const birthDate = $(this).find('.pos-pet-birthdate').val() || '';
+                const remarks = $(this).find('.pos-pet-remarks').val()?.trim() || '';
 
-                const hasData = name || breed || petType || age || gender;
+                const hasData = name || breed || petType || age || birthDate || remarks;
                 if (hasData && (!gender || (gender !== 'Male' && gender !== 'Female'))) {
-                    petGenderInvalid = true;
-                    invalidPetSelect = $(this).find('.pos-pet-gender');
-                    return false;
+                    $(this).find('.pos-pet-gender').val('Male');
                 }
             });
-
-            if (petGenderInvalid) {
-                $('#posCustFormAlertText').text('Pet Gender is compulsory (Male / Female). Please select Male or Female.');
-                $('#posCustFormAlert').removeClass('d-none');
-                $('#pos-tab-pets-link').tab('show');
-                if (invalidPetSelect) {
-                    invalidPetSelect.addClass('is-invalid border-danger').focus();
-                }
-                showNotification('Pet Gender is compulsory (Male / Female). Please select a gender.', 'danger');
-                return false;
-            }
 
             const custId = $('#posCustId').val();
             const isEdit = Boolean(custId);

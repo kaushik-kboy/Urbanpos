@@ -1042,8 +1042,7 @@
             <div class="col-md-3 mb-2">
                 <label class="font-weight-600 small mb-1">Gender <span class="text-danger">*</span></label>
                 <select name="pets[__INDEX__][gender]" class="form-control form-control-sm pos-pet-gender" required>
-                    <option value="">None</option>
-                    <option value="Male">Male</option>
+                    <option value="Male" selected>Male</option>
                     <option value="Female">Female</option>
                 </select>
             </div>

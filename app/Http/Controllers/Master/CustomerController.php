@@ -234,18 +234,30 @@ class CustomerController extends Controller
                 continue;
             }
 
-            if (empty($pet['pet_type_id']) && empty($pet['breed_id']) && empty($pet['name'])) {
+            // Ensure pet is not dropped if any detail is provided or if it's an existing pet
+            $hasMeaningfulData = !empty($pet['id'])
+                || !empty(trim($pet['name'] ?? ''))
+                || !empty($pet['pet_type_id'])
+                || !empty($pet['breed_id'])
+                || !empty($pet['color_id'])
+                || !empty(trim($pet['age'] ?? ''))
+                || !empty($pet['birth_date'])
+                || !empty(trim($pet['remarks'] ?? ''));
+
+            if (!$hasMeaningfulData) {
                 continue;
             }
+
+            $gender = !empty($pet['gender']) && in_array($pet['gender'], ['Male', 'Female']) ? $pet['gender'] : 'Male';
 
             $attributes = [
                 'pet_type_id' => !empty($pet['pet_type_id']) ? $pet['pet_type_id'] : null,
                 'breed_id' => !empty($pet['breed_id']) ? $pet['breed_id'] : null,
                 'color_id' => !empty($pet['color_id']) ? $pet['color_id'] : null,
-                'name' => $pet['name'] ?? null,
-                'gender' => !empty($pet['gender']) ? $pet['gender'] : null,
-                'age' => $pet['age'] ?? null,
-                'remarks' => $pet['remarks'] ?? null,
+                'name' => isset($pet['name']) && trim($pet['name']) !== '' ? trim($pet['name']) : null,
+                'gender' => $gender,
+                'age' => isset($pet['age']) && trim($pet['age']) !== '' ? trim($pet['age']) : null,
+                'remarks' => isset($pet['remarks']) && trim($pet['remarks']) !== '' ? trim($pet['remarks']) : null,
                 'birth_date' => !empty($pet['birth_date']) ? $pet['birth_date'] : null,
             ];
 
@@ -568,16 +580,28 @@ class CustomerController extends Controller
         $validated = $request->validate($rules, $messages);
 
         if ($request->has('pets')) {
-            foreach ($request->input('pets', []) as $idx => $pet) {
+            $pets = $request->input('pets', []);
+            $modified = false;
+            foreach ($pets as $idx => $pet) {
                 if (!empty($pet['_delete'])) {
                     continue;
                 }
-                $hasPetInfo = !empty($pet['name']) || !empty($pet['pet_type_id']) || !empty($pet['breed_id']) || !empty($pet['age']) || !empty($pet['birth_date']) || !empty($pet['gender']);
+                $hasPetInfo = !empty($pet['id'])
+                    || !empty(trim($pet['name'] ?? ''))
+                    || !empty($pet['pet_type_id'])
+                    || !empty($pet['breed_id'])
+                    || !empty($pet['color_id'])
+                    || !empty(trim($pet['age'] ?? ''))
+                    || !empty($pet['birth_date'])
+                    || !empty(trim($pet['remarks'] ?? ''));
+
                 if ($hasPetInfo && (empty($pet['gender']) || !in_array($pet['gender'], ['Male', 'Female']))) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        "pets.{$idx}.gender" => 'Pet Gender is compulsory (Male / Female). Please select a valid gender.',
-                    ]);
+                    $pets[$idx]['gender'] = 'Male';
+                    $modified = true;
                 }
+            }
+            if ($modified) {
+                $request->merge(['pets' => $pets]);
             }
         }
 
