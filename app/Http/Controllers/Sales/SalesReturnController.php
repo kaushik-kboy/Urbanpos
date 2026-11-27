@@ -265,8 +265,8 @@ class SalesReturnController extends Controller
     {
         $ignoreReturnId = $request->integer('ignore_return_id');
 
-        // Calculate already returned quantities for each item in this sales bill (excluding the return being edited)
-        $alreadyReturnedByItem = DB::table('sales_return_items as sri')
+        // Calculate already returned quantities for each item + expiry batch in this sales bill (excluding the return being edited)
+        $alreadyReturnedRows = DB::table('sales_return_items as sri')
             ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
             ->where(function ($q) use ($salesBill) {
                 $q->where('sri.sales_bill_id', $salesBill->id)
@@ -275,14 +275,34 @@ class SalesReturnController extends Controller
                   });
             })
             ->when($ignoreReturnId, fn ($q) => $q->where('sr.id', '!=', $ignoreReturnId))
-            ->groupBy('sri.item_id')
-            ->select('sri.item_id', DB::raw('SUM(sri.qty) as returned_qty'))
-            ->pluck('returned_qty', 'item_id')
-            ->all();
+            ->select('sri.item_id', 'sri.exp_date', 'sri.qty')
+            ->get();
 
-        $items = $salesBill->items()->with('item')->get()->map(function ($line) use ($alreadyReturnedByItem) {
+        $returnedPool = [];
+        foreach ($alreadyReturnedRows as $row) {
+            $expKey = $row->exp_date ? substr((string) $row->exp_date, 0, 10) : '';
+            $k = $row->item_id . '|' . $expKey;
+            $returnedPool[$k] = ($returnedPool[$k] ?? 0.0) + (float) $row->qty;
+        }
+
+        $items = $salesBill->items()->with('item')->get()->map(function ($line) use (&$returnedPool) {
             $originalQty = (float) $line->qty;
-            $alreadyReturned = (float) ($alreadyReturnedByItem[$line->item_id] ?? 0);
+            $expKey = $line->exp_date ? $line->exp_date->format('Y-m-d') : '';
+            $exactKey = $line->item_id . '|' . $expKey;
+            $fallbackKey = $line->item_id . '|';
+
+            $alreadyReturned = 0.0;
+            if (!empty($returnedPool[$exactKey])) {
+                $take = min($originalQty, (float) $returnedPool[$exactKey]);
+                $alreadyReturned += $take;
+                $returnedPool[$exactKey] -= $take;
+            }
+            if ($expKey !== '' && $alreadyReturned < $originalQty && !empty($returnedPool[$fallbackKey])) {
+                $take = min($originalQty - $alreadyReturned, (float) $returnedPool[$fallbackKey]);
+                $alreadyReturned += $take;
+                $returnedPool[$fallbackKey] -= $take;
+            }
+            $alreadyReturned = round($alreadyReturned, 4);
             $remainingQty = max(0, round($originalQty - $alreadyReturned, 4));
 
             $discPercent = (float) ($line->disc_percent ?? 0);
@@ -427,7 +447,7 @@ class SalesReturnController extends Controller
 
         $bills = $billsQuery->with(['items.item', 'branch'])->latest('bill_date')->get();
 
-        // Calculate already returned quantities per bill and item
+        // Calculate already returned quantities per bill, item, and expiry batch
         $alreadyReturnedRows = DB::table('sales_return_items as sri')
             ->join('sales_returns as sr', 'sr.id', '=', 'sri.sales_return_id')
             ->where('sr.customer_id', $customer->id)
@@ -436,16 +456,17 @@ class SalesReturnController extends Controller
             ->select(
                 DB::raw('COALESCE(sri.sales_bill_id, sr.sales_bill_id) as bill_id'),
                 'sri.item_id',
-                DB::raw('SUM(sri.qty) as returned_qty')
+                'sri.exp_date',
+                'sri.qty'
             )
-            ->groupBy('bill_id', 'sri.item_id')
             ->get();
 
         $returnedMap = [];
         foreach ($alreadyReturnedRows as $row) {
             if ($row->bill_id) {
-                $key = $row->bill_id . '_' . $row->item_id;
-                $returnedMap[$key] = ($returnedMap[$key] ?? 0.0) + (float) $row->returned_qty;
+                $expKey = $row->exp_date ? substr((string) $row->exp_date, 0, 10) : '';
+                $key = $row->bill_id . '|' . $row->item_id . '|' . $expKey;
+                $returnedMap[$key] = ($returnedMap[$key] ?? 0.0) + (float) $row->qty;
             }
         }
 
@@ -458,8 +479,22 @@ class SalesReturnController extends Controller
             foreach ($bill->items as $line) {
                 $totalItemsCount++;
                 $origQty = (float) $line->qty;
-                $key = $bill->id . '_' . $line->item_id;
-                $alreadyRet = (float) ($returnedMap[$key] ?? 0);
+                $expKey = $line->exp_date ? $line->exp_date->format('Y-m-d') : '';
+                $exactKey = $bill->id . '|' . $line->item_id . '|' . $expKey;
+                $fallbackKey = $bill->id . '|' . $line->item_id . '|';
+
+                $alreadyRet = 0.0;
+                if (!empty($returnedMap[$exactKey])) {
+                    $take = min($origQty, (float) $returnedMap[$exactKey]);
+                    $alreadyRet += $take;
+                    $returnedMap[$exactKey] -= $take;
+                }
+                if ($expKey !== '' && $alreadyRet < $origQty && !empty($returnedMap[$fallbackKey])) {
+                    $take = min($origQty - $alreadyRet, (float) $returnedMap[$fallbackKey]);
+                    $alreadyRet += $take;
+                    $returnedMap[$fallbackKey] -= $take;
+                }
+                $alreadyRet = round($alreadyRet, 4);
                 $remQty = max(0, round($origQty - $alreadyRet, 4));
 
                 if ($remQty > 0) {
