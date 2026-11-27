@@ -1207,11 +1207,17 @@
             if (!btn) return;
             const row = btn.closest('tr');
             const itemId = row.querySelector('.sr-item-select')?.value;
+            const expDate = (row.querySelector('.sr-exp-date')?.value || '').trim();
             row.remove();
             // Keep the bill-item checkbox list in sync: manually removing a row
-            // here should uncheck its checkbox above, not leave it stuck checked.
+            // here should uncheck only the matching (item_id + exp_date) checkbox above.
             if (itemId) {
-                $(`.sr-bill-item-checkbox[data-item-id="${itemId}"]`).prop('checked', false);
+                $(`.sr-bill-item-checkbox[data-item-id="${itemId}"]`).each(function () {
+                    const cbExp = String($(this).attr('data-exp-date') || '').trim();
+                    if (!expDate || !cbExp || cbExp === expDate) {
+                        $(this).prop('checked', false);
+                    }
+                });
             }
             recalculateAll();
         });
@@ -1554,6 +1560,17 @@
             }, 50);
         }
 
+        function findReturnRow(itemId, expDate) {
+            const targetExp = String(expDate || '').trim();
+            return $('#sr-items-body .sr-item-row').filter(function () {
+                const rowItem = String($(this).find('.sr-item-select').val() || '');
+                if (rowItem !== String(itemId)) return false;
+                if (!targetExp) return true;
+                const rowExp = String($(this).find('.sr-exp-date').val() || '').trim();
+                return !rowExp || rowExp === targetExp;
+            }).first();
+        }
+
         // Render the checkbox list of items from the loaded Sales Bill. Re-run
         // whenever cachedBillItems changes AND whenever Return Items rows change
         // out from under it (bill reload, row removed) so checked-state always
@@ -1571,7 +1588,7 @@
                 let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
                 let origQty = parseFloat(item.original_qty) || 0;
                 let retQty = parseFloat(item.already_returned_qty) || 0;
-                let isChecked = $(`#sr-items-body .sr-item-row .sr-item-select[value="${item.item_id}"]`).length > 0;
+                let isChecked = findReturnRow(item.item_id, item.exp_date).length > 0;
                 let isExhausted = remQty <= 0 && !isChecked;
                 let remStr = isExhausted
                     ? ' <span class="text-danger font-weight-bold">[No returnable qty available]</span>'
@@ -1580,7 +1597,7 @@
                         : ` <span class="text-success font-weight-bold">[Available: ${remQty}/${origQty}]</span>`);
                 html += `
                     <div class="custom-control custom-checkbox py-1 border-bottom">
-                        <input type="checkbox" class="custom-control-input sr-bill-item-checkbox" id="sr-bic-${idx}" data-idx="${idx}" data-item-id="${item.item_id}"${isExhausted ? ' disabled' : ''}${isChecked ? ' checked' : ''}>
+                        <input type="checkbox" class="custom-control-input sr-bill-item-checkbox" id="sr-bic-${idx}" data-idx="${idx}" data-item-id="${item.item_id}" data-exp-date="${item.exp_date || ''}"${isExhausted ? ' disabled' : ''}${isChecked ? ' checked' : ''}>
                         <label class="custom-control-label w-100${isExhausted ? ' text-muted' : ''}" for="sr-bic-${idx}" style="cursor:pointer;">
                             <strong>${item.item_name}</strong>${codeStr} &mdash; Sold: ${origQty}${retQty > 0 ? ' (Other Returns: ' + retQty + ')' : ''} @ &#8377;${parseFloat(item.sell_price).toFixed(2)}${expStr}${remStr}
                         </label>
@@ -1610,7 +1627,7 @@
 
             // Already in the table (shouldn't normally happen since the checkbox
             // reflects this, but guards a stale double-fire) — just focus it.
-            let existingRow = $(tbody).find(`.sr-item-row .sr-item-select[value="${item.item_id}"]`).closest('tr');
+            let existingRow = findReturnRow(item.item_id, item.exp_date);
             if (existingRow.length > 0) {
                 existingRow.find('.sr-qty').focus().select();
                 return;
@@ -1626,12 +1643,11 @@
 
         // Remove this item's row from Return Items (fired when its checkbox is
         // unchecked).
-        function removeReturnRowForItem(itemId) {
-            $('#sr-items-body .sr-item-row').each(function () {
-                if (String($(this).find('.sr-item-select').val()) === String(itemId)) {
-                    $(this).remove();
-                }
-            });
+        function removeReturnRowForItem(itemId, expDate) {
+            const targetRow = findReturnRow(itemId, expDate);
+            if (targetRow.length > 0) {
+                targetRow.remove();
+            }
             if ($('#sr-items-body .sr-item-row').length === 0) {
                 document.getElementById('sr-items-body').innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4"><i class="fas fa-hand-pointer text-primary mr-1"></i> Check an item above to add it to Return Items.</td></tr>';
             }
@@ -1644,7 +1660,7 @@
                 addBillItemByIndex(idx);
             } else {
                 let item = cachedBillItems[idx];
-                if (item) removeReturnRowForItem(item.item_id);
+                if (item) removeReturnRowForItem(item.item_id, item.exp_date);
             }
         });
 
