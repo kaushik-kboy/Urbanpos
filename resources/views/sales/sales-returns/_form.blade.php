@@ -1007,13 +1007,20 @@
                 remainingQty = Math.max(0, origQty - returnedQty);
             }
 
-            // Sum quantities across all rows for this same item_id
+            // Sum quantities only across rows for the same bill line (data-bill-idx) or same (item_id + exp_date)
+            const rowBillIdx = $row.attr('data-bill-idx');
+            const rowExpDate = String($row.find('.sr-exp-date').val() || '').trim();
             let totalRequestedForThisItem = 0;
             $('#sr-items-body tr.sr-item-row').each(function () {
                 let thisItemId = $(this).find('.sr-item-select').val();
-                if (thisItemId && String(thisItemId) === String(itemId)) {
-                    totalRequestedForThisItem += (parseFloat($(this).find('.sr-qty').val()) || 0);
+                if (!thisItemId || String(thisItemId) !== String(itemId)) return;
+                if (rowBillIdx !== undefined && rowBillIdx !== '') {
+                    if (String($(this).attr('data-bill-idx') || '') !== String(rowBillIdx)) return;
+                } else if (rowExpDate) {
+                    let thisExp = String($(this).find('.sr-exp-date').val() || '').trim();
+                    if (thisExp && thisExp !== rowExpDate) return;
                 }
+                totalRequestedForThisItem += (parseFloat($(this).find('.sr-qty').val()) || 0);
             });
 
             let remDisplay = (remainingQty === parseInt(remainingQty, 10)) ? parseInt(remainingQty, 10) : remainingQty;
@@ -1208,16 +1215,16 @@
             const row = btn.closest('tr');
             const itemId = row.querySelector('.sr-item-select')?.value;
             const expDate = (row.querySelector('.sr-exp-date')?.value || '').trim();
+            const billIdx = row.getAttribute('data-bill-idx');
             row.remove();
-            // Keep the bill-item checkbox list in sync: manually removing a row
-            // here should uncheck only the matching (item_id + exp_date) checkbox above.
-            if (itemId) {
-                $(`.sr-bill-item-checkbox[data-item-id="${itemId}"]`).each(function () {
+            // Keep the bill-item checkbox list in sync: uncheck only one matching checkbox.
+            if (billIdx !== null && billIdx !== '') {
+                $(`.sr-bill-item-checkbox[data-idx="${billIdx}"]`).prop('checked', false);
+            } else if (itemId) {
+                $(`.sr-bill-item-checkbox[data-item-id="${itemId}"]:checked`).filter(function () {
                     const cbExp = String($(this).attr('data-exp-date') || '').trim();
-                    if (!expDate || !cbExp || cbExp === expDate) {
-                        $(this).prop('checked', false);
-                    }
-                });
+                    return !expDate || !cbExp || cbExp === expDate;
+                }).last().prop('checked', false);
             }
             recalculateAll();
         });
@@ -1560,6 +1567,20 @@
             }, 50);
         }
 
+        function getReturnRowsList() {
+            const rows = [];
+            $('#sr-items-body .sr-item-row').each(function () {
+                rows.push({
+                    $row: $(this),
+                    itemId: String($(this).find('.sr-item-select').val() || ''),
+                    expDate: String($(this).find('.sr-exp-date').val() || '').trim(),
+                    billIdx: $(this).attr('data-bill-idx'),
+                    matched: false
+                });
+            });
+            return rows;
+        }
+
         function findReturnRow(itemId, expDate) {
             const targetExp = String(expDate || '').trim();
             return $('#sr-items-body .sr-item-row').filter(function () {
@@ -1574,13 +1595,14 @@
         // Render the checkbox list of items from the loaded Sales Bill. Re-run
         // whenever cachedBillItems changes AND whenever Return Items rows change
         // out from under it (bill reload, row removed) so checked-state always
-        // reflects what's actually in Return Items below.
+        // reflects what's actually in Return Items below (1-to-1 row matching).
         function renderBillItemChecklist() {
             let $list = $('#sr-bill-item-checklist');
             if (cachedBillItems.length === 0) {
                 $list.html('<div class="text-muted small p-2">Original bill has 0 items.</div>');
                 return;
             }
+            const returnRows = getReturnRowsList();
             let html = '';
             cachedBillItems.forEach((item, idx) => {
                 let codeStr = item.item_code ? ' [' + item.item_code + ']' : '';
@@ -1588,7 +1610,19 @@
                 let remQty = typeof item.remaining_qty !== 'undefined' ? parseFloat(item.remaining_qty) : parseFloat(item.original_qty);
                 let origQty = parseFloat(item.original_qty) || 0;
                 let retQty = parseFloat(item.already_returned_qty) || 0;
-                let isChecked = findReturnRow(item.item_id, item.exp_date).length > 0;
+                const targetExp = String(item.exp_date || '').trim();
+
+                // Match 1-to-1 so 1 return row never checks 2 separate bill lines
+                let matchedRow = returnRows.find(r => !r.matched && r.billIdx !== undefined && String(r.billIdx) === String(idx));
+                if (!matchedRow) {
+                    matchedRow = returnRows.find(r => !r.matched && r.itemId === String(item.item_id) && (!targetExp || !r.expDate || r.expDate === targetExp));
+                }
+                if (matchedRow) {
+                    matchedRow.matched = true;
+                    matchedRow.$row.attr('data-bill-idx', idx);
+                }
+
+                let isChecked = !!matchedRow;
                 let isExhausted = remQty <= 0 && !isChecked;
                 let remStr = isExhausted
                     ? ' <span class="text-danger font-weight-bold">[No returnable qty available]</span>'
@@ -1625,9 +1659,8 @@
 
             let tbody = document.getElementById('sr-items-body');
 
-            // Already in the table (shouldn't normally happen since the checkbox
-            // reflects this, but guards a stale double-fire) — just focus it.
-            let existingRow = findReturnRow(item.item_id, item.exp_date);
+            // Guard against double-fire for this specific bill checklist index
+            let existingRow = $(tbody).find(`.sr-item-row[data-bill-idx="${idx}"]`);
             if (existingRow.length > 0) {
                 existingRow.find('.sr-qty').focus().select();
                 return;
@@ -1639,12 +1672,18 @@
             }
 
             appendBillItemRow(item, remQty);
+            $(tbody).find('.sr-item-row').last().attr('data-bill-idx', idx);
         }
 
         // Remove this item's row from Return Items (fired when its checkbox is
         // unchecked).
-        function removeReturnRowForItem(itemId, expDate) {
-            const targetRow = findReturnRow(itemId, expDate);
+        function removeReturnRowForItem(itemId, expDate, idx) {
+            let targetRow = (idx !== undefined && idx !== null)
+                ? $(`#sr-items-body .sr-item-row[data-bill-idx="${idx}"]`).first()
+                : $();
+            if (targetRow.length === 0) {
+                targetRow = findReturnRow(itemId, expDate);
+            }
             if (targetRow.length > 0) {
                 targetRow.remove();
             }
@@ -1660,7 +1699,7 @@
                 addBillItemByIndex(idx);
             } else {
                 let item = cachedBillItems[idx];
-                if (item) removeReturnRowForItem(item.item_id, item.exp_date);
+                if (item) removeReturnRowForItem(item.item_id, item.exp_date, idx);
             }
         });
 
@@ -1898,14 +1937,21 @@
             // Validate all rows that have items or entered input
             let $rows = $('#sr-items-body .sr-item-row');
 
-            // Aggregate item quantities across rows
+            // Aggregate item quantities per bill line (data-bill-idx) or (item_id + exp_date)
             let itemTotals = {};
+            const getRowLimitKey = ($r, itemIdVal) => {
+                const bIdx = $r.attr('data-bill-idx');
+                if (bIdx !== undefined && bIdx !== '') return 'idx:' + bIdx;
+                const expV = String($r.find('.sr-exp-date').val() || '').trim();
+                return 'item:' + itemIdVal + '|' + expV;
+            };
             $rows.each(function () {
                 let itemId = $(this).find('.sr-item-select').val();
                 let $qtyInput = $(this).find('.sr-qty');
                 let qty = parseFloat($qtyInput.val()) || 0;
                 if (itemId && qty > 0) {
-                    itemTotals[itemId] = (itemTotals[itemId] || 0) + qty;
+                    let k = getRowLimitKey($(this), itemId);
+                    itemTotals[k] = (itemTotals[k] || 0) + qty;
                 }
             });
 
@@ -1990,7 +2036,7 @@
                         hasError = true;
                         return false;
                     }
-                    let totalRequested = itemTotals[itemId] || qty;
+                    let totalRequested = itemTotals[getRowLimitKey($row, itemId)] || qty;
                     if (totalRequested > remQty + 0.0001) {
                         e.preventDefault();
                         let remDisplay = (remQty === parseInt(remQty, 10)) ? parseInt(remQty, 10) : remQty;
